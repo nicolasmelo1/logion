@@ -1,0 +1,64 @@
+[project]
+name = "logion"
+version = "0.1.0"
+description = "Open-source Logion workspace."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "packages/cli",
+    "packages/landing",
+]
+
+[dependency-groups]
+dev = [
+    "python-semantic-release>=10.5.3,<10.6.0",
+    "ruff>=0.15.12,<0.16.0",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cli", "landing"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
