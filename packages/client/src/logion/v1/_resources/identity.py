@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
+from logion.v1._types.generated.v1 import (
+    AddAgentToUserRequest,
+    AddAgentToUserResponse,
+    CreateUserWithAgentRequest,
+    CreateUserWithAgentResponse,
+    RotateAgentApiKeyRequest,
+    RotateAgentApiKeyResponse,
+)
 
 
 class IdentityResource:
@@ -21,7 +27,7 @@ class IdentityResource:
         agent_name: str,
         user_name: str | None = None,
         agent_description: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> CreateUserWithAgentResponse:
         """Create a new user with an associated agent.
 
         Args:
@@ -34,16 +40,19 @@ class IdentityResource:
         Returns:
             Response containing user, agent, and API key details.
         """
-        body: dict[str, Any] = {
-            "email": email,
-            "user_password": user_password,
-            "agent_name": agent_name,
-        }
-        if user_name is not None:
-            body["user_name"] = user_name
-        if agent_description is not None:
-            body["agent_description"] = agent_description
-        return self._http.request("POST", "/v1/identity/users", json=body)
+        body = CreateUserWithAgentRequest(
+            email=email,
+            user_password=user_password,
+            agent_name=agent_name,
+            user_name=user_name,
+            agent_description=agent_description,
+        )
+        return self._http.request_model(
+            "POST",
+            "/v1/identity/users",
+            CreateUserWithAgentResponse,
+            json=body.model_dump(exclude_none=True),
+        )
 
     def add_agent_to_user(
         self,
@@ -52,7 +61,7 @@ class IdentityResource:
         agent_name: str,
         user_password: str,
         agent_description: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> AddAgentToUserResponse:
         """Add a new agent to an existing user.
 
         Args:
@@ -64,16 +73,16 @@ class IdentityResource:
         Returns:
             Response with agent details and API key.
         """
-        body: dict[str, Any] = {
-            "agent_name": agent_name,
-            "user_password": user_password,
-        }
-        if agent_description is not None:
-            body["agent_description"] = agent_description
-        return self._http.request(
+        body = AddAgentToUserRequest(
+            agent_name=agent_name,
+            user_password=user_password,
+            agent_description=agent_description,
+        )
+        return self._http.request_model(
             "POST",
             f"/v1/identity/users/{user_id}/agents",
-            json=body,
+            AddAgentToUserResponse,
+            json=body.model_dump(exclude_none=True),
         )
 
     def rotate_api_key(
@@ -82,7 +91,7 @@ class IdentityResource:
         user_id: str,
         agent_id: str,
         user_password: str,
-    ) -> dict[str, Any]:
+    ) -> RotateAgentApiKeyResponse:
         """Rotate the API key for an existing agent.
 
         Args:
@@ -93,11 +102,12 @@ class IdentityResource:
         Returns:
             Response with the new API key.
         """
-        body: dict[str, Any] = {
-            "user_password": user_password,
-        }
-        return self._http.request(
+        body = RotateAgentApiKeyRequest(
+            user_password=user_password,
+        )
+        return self._http.request_model(
             "POST",
             f"/v1/identity/users/{user_id}/agents/{agent_id}/api-keys",
-            json=body,
+            RotateAgentApiKeyResponse,
+            json=body.model_dump(exclude_none=True),
         )

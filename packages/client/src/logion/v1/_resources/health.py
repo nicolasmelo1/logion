@@ -16,7 +16,7 @@ class HealthResource:
     def check(self) -> dict[str, Any]:
         """Check if the API is healthy.
 
-        Returns:
-            Health status dict, e.g. {"status": "ok"}.
+        The health endpoint returns a free-form dict
+        (e.g. ``{"status": "ok"}``) — no generated model exists.
         """
         return self._http.request("GET", "/health")

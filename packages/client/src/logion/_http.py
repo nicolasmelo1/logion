@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any
+from typing import Any, TypeVar, cast
 
 import httpx
+from pydantic import BaseModel
 
 from logion._config import ClientConfig
 from logion._errors import (
@@ -30,6 +31,8 @@ _STATUS_ERROR_MAP: dict[int, type[APIError]] = {
     422: ValidationError,
     429: RateLimitError,
 }
+
+T = TypeVar("T", bound=BaseModel)
 
 
 def _raise_for_status(response: httpx.Response) -> None:
@@ -85,11 +88,7 @@ class HttpClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Send a request with automatic retry and error mapping.
-
-        Only idempotent methods (GET, HEAD, OPTIONS) are retried on
-        transient failures to avoid duplicating side-effects.
-        """
+        """Send a request and return raw JSON dict."""
         can_retry = method.upper() in _RETRYABLE_METHODS
         last_exc: Exception | None = None
         max_attempts = self._config.max_retries + 1 if can_retry else 1
@@ -128,6 +127,24 @@ class HttpClient:
 
         assert last_exc is not None  # for type checker
         raise last_exc
+
+    def request_model(
+        self,
+        method: str,
+        path: str,
+        model_type: type[T],
+        *,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> T:
+        """Send a request and parse the response into a Pydantic model."""
+        data = self.request(
+            method,
+            path,
+            params=params,
+            json=json,
+        )
+        return cast(T, model_type.model_validate(data))
 
     def close(self) -> None:
         """Close the underlying httpx client."""

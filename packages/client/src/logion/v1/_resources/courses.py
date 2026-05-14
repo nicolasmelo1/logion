@@ -5,6 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 from logion._http import HttpClient
+from logion.v1._types.generated.v1 import (
+    CreateCourseRequest,
+    CreateCourseResponse,
+    CreateCourseVersionUploadSessionRequest,
+    CreateCourseVersionUploadSessionResponse,
+    GetCourseResponse,
+    GetCourseVersionResponse,
+    UpdateCourseRequest,
+    UpdateCourseResponse,
+)
 
 
 class CoursesResource:
@@ -25,7 +35,7 @@ class CoursesResource:
         currency: str | None = None,
         short_summary: str | None = None,
         visibility: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> CreateCourseResponse:
         """Create a new course.
 
         Args:
@@ -42,27 +52,25 @@ class CoursesResource:
         Returns:
             Created course details.
         """
-        body: dict[str, Any] = {
-            "title": title,
-            "slug": slug,
-        }
-        if description is not None:
-            body["description"] = description
-        if price_cents is not None:
-            body["price_cents"] = price_cents
-        if tags is not None:
-            body["tags"] = tags
-        if language is not None:
-            body["language"] = language
-        if currency is not None:
-            body["currency"] = currency
-        if short_summary is not None:
-            body["short_summary"] = short_summary
-        if visibility is not None:
-            body["visibility"] = visibility
-        return self._http.request("POST", "/v1/courses", json=body)
+        body = CreateCourseRequest(
+            title=title,
+            slug=slug,
+            description=description,
+            price_cents=price_cents,
+            tags=tags,
+            language=language,
+            currency=currency,
+            short_summary=short_summary,
+            visibility=visibility,
+        )
+        return self._http.request_model(
+            "POST",
+            "/v1/courses",
+            CreateCourseResponse,
+            json=body.model_dump(exclude_none=True),
+        )
 
-    def get(self, *, course_id: str) -> dict[str, Any]:
+    def get(self, *, course_id: str) -> GetCourseResponse:
         """Get course details by UUID.
 
         Args:
@@ -71,7 +79,11 @@ class CoursesResource:
         Returns:
             Course details.
         """
-        return self._http.request("GET", f"/v1/courses/{course_id}")
+        return self._http.request_model(
+            "GET",
+            f"/v1/courses/{course_id}",
+            GetCourseResponse,
+        )
 
     def update(
         self,
@@ -85,7 +97,7 @@ class CoursesResource:
         language: str | None = None,
         short_summary: str | None = None,
         visibility: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> UpdateCourseResponse:
         """Update an existing course.
 
         Args:
@@ -102,27 +114,21 @@ class CoursesResource:
         Returns:
             Updated course details.
         """
-        body: dict[str, Any] = {}
-        if title is not None:
-            body["title"] = title
-        if description is not None:
-            body["description"] = description
-        if price_cents is not None:
-            body["price_cents"] = price_cents
-        if tags is not None:
-            body["tags"] = tags
-        if currency is not None:
-            body["currency"] = currency
-        if language is not None:
-            body["language"] = language
-        if short_summary is not None:
-            body["short_summary"] = short_summary
-        if visibility is not None:
-            body["visibility"] = visibility
-        return self._http.request(
+        body = UpdateCourseRequest(
+            title=title,
+            description=description,
+            price_cents=price_cents,
+            tags=tags,
+            currency=currency,
+            language=language,
+            short_summary=short_summary,
+            visibility=visibility,
+        )
+        return self._http.request_model(
             "PATCH",
             f"/v1/courses/{course_id}",
-            json=body,
+            UpdateCourseResponse,
+            json=body.model_dump(exclude_none=True),
         )
 
     def create_upload_session(
@@ -130,7 +136,7 @@ class CoursesResource:
         *,
         course_id: str,
         files: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+    ) -> CreateCourseVersionUploadSessionResponse:
         """Create a new course version upload session.
 
         Args:
@@ -140,13 +146,14 @@ class CoursesResource:
         Returns:
             Upload session details including presigned URL.
         """
-        body: dict[str, Any] = {
-            "files": files,
-        }
-        return self._http.request(
+        body = CreateCourseVersionUploadSessionRequest(
+            files=files,
+        )
+        return self._http.request_model(
             "POST",
             f"/v1/courses/{course_id}/versions",
-            json=body,
+            CreateCourseVersionUploadSessionResponse,
+            json=body.model_dump(exclude_none=True),
         )
 
     def get_version(
@@ -154,7 +161,7 @@ class CoursesResource:
         *,
         course_id: str,
         version_id: str,
-    ) -> dict[str, Any]:
+    ) -> GetCourseVersionResponse:
         """Get a specific course version.
 
         Args:
@@ -164,7 +171,8 @@ class CoursesResource:
         Returns:
             Version details.
         """
-        return self._http.request(
+        return self._http.request_model(
             "GET",
             f"/v1/courses/{course_id}/versions/{version_id}",
+            GetCourseVersionResponse,
         )
