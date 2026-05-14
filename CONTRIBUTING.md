@@ -29,7 +29,7 @@ uv run logion --help
 logion/
 ├── contracts/openapi/v1.json   # Public API contract (auto-synced from logion-private)
 ├── packages/cli/               # Logion CLI agent tool
-├── packages/landing/          # Public landing application
+├── packages/landing/           # Public landing application
 ├── Makefile                    # Development task runner
 └── pyproject.toml              # Workspace root
 ```
@@ -103,19 +103,15 @@ make lint
 
 ### Running Tests
 
-Tests have not been added yet. Once they are, run:
-
 ```bash
-uv run pytest packages/
+make test
 ```
-
-The `make test` target currently prints a reminder because no tests exist under
-`packages/`.
 
 ### Type Checking
 
-Type checking is not configured yet. It will be available once `mypy` is added
-to dev dependencies.
+```bash
+make typecheck
+```
 
 ## API Contract
 
@@ -161,7 +157,7 @@ only be reviewed for accuracy, not edited manually.
 3. **Make your changes** and commit with clear messages
 4. **Run checks** before pushing:
    ```bash
-   make lint
+   make lint test typecheck
    ```
 5. **Open a Pull Request** against `main`
 

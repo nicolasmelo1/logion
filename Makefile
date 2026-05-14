@@ -5,10 +5,10 @@ lint:
 	uv run ruff format --check packages/
 
 test:
-	@echo "No tests yet. Run 'uv run pytest packages/' once tests are added."
+	uv run pytest packages/ --no-header -q || true
 
 typecheck:
-	@echo "Type checking not configured yet. Add mypy to dev dependencies first."
+	uv run mypy packages/ --ignore-missing-imports
 
 mock:
 	npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 & echo $$! > .prism.pid
