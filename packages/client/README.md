@@ -38,7 +38,9 @@ client.v1.identity.create_user_with_agent(
 )
 
 # Create a checkout session
-client.v1.payments.create_checkout(course_id="550e8400-e29b-41d4-a716-446655440000")
+client.v1.payments.create_checkout(
+    course_id="550e8400-e29b-41d4-a716-446655440000"
+)
 ```
 
 ## Configuration

@@ -1,0 +1,62 @@
+name: PR Safety
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test-security:
+    name: Lint, Test, Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --all-packages --all-groups --locked
+
+      - name: Lint
+        run: uv run ruff check packages/
+
+      - name: Format check
+        run: uv run ruff format --check packages/
+
+      - name: Type check
+        run: uv run mypy packages/ --ignore-missing-imports
+
+      - name: Tests
+        run: uv run pytest packages/ -m "not integration" --no-header -q
+
+      - name: Check generated models
+        run: |
+          cd packages/client
+          make check-models
+
+      - name: Dependency audit
+        run: uv run pip-audit
+
+      - name: Static security scan
+        run: uv run bandit -c pyproject.toml -r packages
+
+      - name: Secret scan
+        run: uv run detect-secrets scan --baseline .secrets.baseline

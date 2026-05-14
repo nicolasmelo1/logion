@@ -14,7 +14,10 @@ members = [
 
 [dependency-groups]
 dev = [
+    "bandit>=1.9.4",
+    "detect-secrets>=1.5.0",
     "mypy>=1.15,<2",
+    "pip-audit>=2.10.0",
     "pytest>=8.0,<9",
     "python-semantic-release>=10.5.3,<10.6.0",
     "ruff>=0.15.12,<0.16.0",
@@ -65,3 +68,11 @@ known-first-party = ["cli", "landing", "logion"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    ".venv",
+    "packages/client/src/logion/v1/_types/generated",
+]
+skips = ["B101"]
