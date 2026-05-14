@@ -17,39 +17,56 @@ class CoursesResource:
         self,
         *,
         title: str,
-        description: str,
-        price_cents: int,
+        slug: str,
+        description: str | None = None,
+        price_cents: int | None = None,
         tags: list[str] | None = None,
         language: str | None = None,
+        currency: str | None = None,
+        short_summary: str | None = None,
+        visibility: str | None = None,
     ) -> dict[str, Any]:
         """Create a new course.
 
         Args:
-            title: Course title.
+            title: Course title (required).
+            slug: URL-friendly identifier (required).
             description: Course description.
             price_cents: Price in cents.
             tags: Optional list of tags.
             language: Optional language code.
+            currency: Currency code (e.g. "USD").
+            short_summary: Short summary of the course.
+            visibility: Visibility setting.
 
         Returns:
             Created course details.
         """
         body: dict[str, Any] = {
             "title": title,
-            "description": description,
-            "price_cents": price_cents,
+            "slug": slug,
         }
+        if description is not None:
+            body["description"] = description
+        if price_cents is not None:
+            body["price_cents"] = price_cents
         if tags is not None:
             body["tags"] = tags
         if language is not None:
             body["language"] = language
+        if currency is not None:
+            body["currency"] = currency
+        if short_summary is not None:
+            body["short_summary"] = short_summary
+        if visibility is not None:
+            body["visibility"] = visibility
         return self._http.request("POST", "/v1/courses", json=body)
 
     def get(self, *, course_id: str) -> dict[str, Any]:
-        """Get course details.
+        """Get course details by UUID.
 
         Args:
-            course_id: The course's unique identifier.
+            course_id: The course's unique identifier (UUID).
 
         Returns:
             Course details.
@@ -64,6 +81,10 @@ class CoursesResource:
         description: str | None = None,
         price_cents: int | None = None,
         tags: list[str] | None = None,
+        currency: str | None = None,
+        language: str | None = None,
+        short_summary: str | None = None,
+        visibility: str | None = None,
     ) -> dict[str, Any]:
         """Update an existing course.
 
@@ -73,6 +94,10 @@ class CoursesResource:
             description: New description (optional).
             price_cents: New price in cents (optional).
             tags: New tag list (optional).
+            currency: Currency code (optional).
+            language: Language code (optional).
+            short_summary: Short summary (optional).
+            visibility: Visibility setting (optional).
 
         Returns:
             Updated course details.
@@ -86,6 +111,14 @@ class CoursesResource:
             body["price_cents"] = price_cents
         if tags is not None:
             body["tags"] = tags
+        if currency is not None:
+            body["currency"] = currency
+        if language is not None:
+            body["language"] = language
+        if short_summary is not None:
+            body["short_summary"] = short_summary
+        if visibility is not None:
+            body["visibility"] = visibility
         return self._http.request(
             "PATCH",
             f"/v1/courses/{course_id}",
@@ -96,20 +129,20 @@ class CoursesResource:
         self,
         *,
         course_id: str,
-        version_label: str | None = None,
+        files: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Create a new course version upload session.
 
         Args:
             course_id: The course to create a version for.
-            version_label: Optional version label.
+            files: List of file metadata dicts (required).
 
         Returns:
             Upload session details including presigned URL.
         """
-        body: dict[str, Any] = {}
-        if version_label is not None:
-            body["version_label"] = version_label
+        body: dict[str, Any] = {
+            "files": files,
+        }
         return self._http.request(
             "POST",
             f"/v1/courses/{course_id}/versions",
@@ -125,8 +158,8 @@ class CoursesResource:
         """Get a specific course version.
 
         Args:
-            course_id: The course identifier.
-            version_id: The version identifier.
+            course_id: The course identifier (UUID).
+            version_id: The version identifier (UUID).
 
         Returns:
             Version details.

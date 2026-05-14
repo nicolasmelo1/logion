@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from logion._config import ClientConfig
+from logion._config import DEFAULT_BASE_URL, ClientConfig
 from logion._http import HttpClient
 from logion._versioning import VersionedNamespaces
 
 
 class LogionClient:
     """Python client for the Logion API.
+
+    Configuration can be provided via constructor arguments or
+    environment variables (``LOGION_API_KEY``, ``LOGION_BASE_URL``).
 
     Usage::
 
@@ -22,17 +25,17 @@ class LogionClient:
     def __init__(
         self,
         *,
-        api_key: str = "",
-        base_url: str = "https://api.logion.dev",
-        timeout: float = 30.0,
-        max_retries: int = 3,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
         extra_headers: dict[str, str] | None = None,
     ) -> None:
         config = ClientConfig(
-            base_url=base_url,
-            api_key=api_key,
-            timeout=timeout,
-            max_retries=max_retries,
+            base_url=base_url or DEFAULT_BASE_URL,
+            api_key=api_key or "",
+            timeout=timeout if timeout is not None else 30.0,
+            max_retries=(max_retries if max_retries is not None else 3),
             extra_headers=extra_headers or {},
         )
         self._http = HttpClient(config)

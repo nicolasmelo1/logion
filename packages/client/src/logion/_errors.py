@@ -13,7 +13,7 @@ class APIError(LogionError):
     def __init__(
         self,
         status_code: int,
-        detail: str,
+        detail: str | list[dict[str, object]],
         request_id: str | None = None,
     ) -> None:
         self.status_code = status_code
@@ -32,6 +32,14 @@ class AuthenticationError(APIError):
 
 class ConflictError(APIError):
     """409 — Resource already exists."""
+
+
+class NotFoundError(APIError):
+    """404 — Resource not found."""
+
+
+class ForbiddenError(APIError):
+    """403 — Insufficient permissions."""
 
 
 class ValidationError(APIError):

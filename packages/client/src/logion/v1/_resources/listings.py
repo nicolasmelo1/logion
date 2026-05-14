@@ -6,6 +6,15 @@ from typing import Any
 
 from logion._http import HttpClient
 
+_VALID_SORT_VALUES = (
+    "relevance",
+    "newest",
+    "recently_updated",
+    "price_low",
+    "price_high",
+    "most_useful",
+)
+
 
 class ListingsResource:
     """Search and browse course listings."""
@@ -17,7 +26,7 @@ class ListingsResource:
         self,
         *,
         query: str | None = None,
-        tags: list[str] | None = None,
+        tags: str | None = None,
         language: str | None = None,
         price_min: int | None = None,
         price_max: int | None = None,
@@ -31,11 +40,12 @@ class ListingsResource:
 
         Args:
             query: Full-text search query.
-            tags: Filter by tag names.
+            tags: Filter by tag names (comma-separated string).
             language: Filter by language code (e.g. "en", "pt").
             price_min: Minimum price in cents.
             price_max: Maximum price in cents.
-            sort: Sort order (e.g. "newest", "price_asc").
+            sort: Sort order — one of: relevance, newest,
+                recently_updated, price_low, price_high, most_useful.
             limit: Maximum number of results per page.
             cursor: Pagination cursor for the next page.
 

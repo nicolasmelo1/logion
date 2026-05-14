@@ -27,29 +27,41 @@ client.v1.health.check()
 # Search course listings
 client.v1.listings.search(query="rag")
 
-# Get a specific course
-client.v1.courses.get(course_id="course_abc123")
+# Get a specific course (UUID required)
+client.v1.courses.get(course_id="550e8400-e29b-41d4-a716-446655440000")
 
 # Create a user with an agent
 client.v1.identity.create_user_with_agent(
     email="user@example.com",
+    user_password="secure-password",
     agent_name="My Agent",
 )
 
 # Create a checkout session
-client.v1.payments.create_checkout(course_id="course_abc123")
+client.v1.payments.create_checkout(course_id="550e8400-e29b-41d4-a716-446655440000")
 ```
 
 ## Configuration
 
-| Parameter      | Default                  | Description                        |
-| --------------- | ------------------------ | ---------------------------------- |
-| `base_url`      | `https://api.logion.dev` | API base URL                       |
-| `timeout`       | `30.0`                   | Request timeout in seconds         |
-| `max_retries`   | `3`                      | Max retry attempts for retryable errors |
-| `extra_headers` | `{}`                     | Additional headers to send with every request |
+The SDK reads ``LOGION_API_KEY`` and ``LOGION_BASE_URL`` from the
+environment by default. Explicit constructor arguments take precedence.
+
+| Parameter      | Default                  | Environment variable | Description                            |
+| --------------- | ------------------------ | -------------------- | -------------------------------------- |
+| `api_key`       | `""` (empty)             | `LOGION_API_KEY`     | API key for authentication             |
+| `base_url`      | `https://api.logion.dev` | `LOGION_BASE_URL`    | API base URL                           |
+| `timeout`       | `30.0`                   | —                    | Request timeout in seconds             |
+| `max_retries`   | `3`                      | —                    | Max retry attempts (GET only)           |
+| `extra_headers` | `{}`                     | —                    | Additional headers per request         |
 
 ```python
+import os
+
+# Using environment variables
+os.environ["LOGION_API_KEY"] = "lgk_..."
+client = LogionClient()
+
+# Or passing explicitly
 client = LogionClient(
     api_key="lgk_...",
     base_url="https://api.logion.dev",
@@ -66,6 +78,8 @@ details:
 - **`LogionError`** — base exception for all SDK errors
 - **`APIError`** — base for errors returned by the API (includes `status_code`, `detail`, `request_id`)
 - **`AuthenticationError`** — 401 responses
+- **`ForbiddenError`** — 403 responses
+- **`NotFoundError`** — 404 responses
 - **`ConflictError`** — 409 responses
 - **`ValidationError`** — 422 responses
 - **`RateLimitError`** — 429 responses
@@ -77,7 +91,7 @@ from logion import LogionClient, AuthenticationError, RateLimitError
 client = LogionClient(api_key="lgk_...")
 
 try:
-    client.v1.courses.get(course_id="abc")
+    client.v1.courses.get(course_id="550e8400-e29b-41d4-a716-446655440000")
 except AuthenticationError as exc:
     print(f"Auth failed: {exc.detail}")
 except RateLimitError as exc:
@@ -107,8 +121,7 @@ client = LogionClient(
 )
 ```
 
-Or set the `LOGION_BASE_URL` environment variable and pass it to the
-constructor.
+Or set the ``LOGION_BASE_URL`` environment variable.
 
 ## Code Generation
 

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import httpx
+
 from logion import LogionClient
 
 
 def test_client_default_config() -> None:
     """Client uses default base URL when none provided."""
     client = LogionClient(api_key="lgk_test")
-    assert client._http._client.base_url == ("https://api.logion.dev")
+    assert client._http._client.base_url == httpx.URL("https://api.logion.dev")
     client.close()
 
 
@@ -18,7 +20,7 @@ def test_client_custom_base_url() -> None:
         api_key="lgk_test",
         base_url="http://localhost:4010",
     )
-    assert client._http._client.base_url == "http://localhost:4010"
+    assert client._http._client.base_url == httpx.URL("http://localhost:4010")
     client.close()
 
 

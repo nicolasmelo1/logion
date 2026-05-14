@@ -61,7 +61,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "client", "landing"]
+known-first-party = ["cli", "landing", "logion"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12

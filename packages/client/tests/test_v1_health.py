@@ -10,15 +10,17 @@ from logion import LogionClient
 @pytest.fixture
 def unauthenticated_client() -> LogionClient:
     """Client without API key (health endpoint needs no auth)."""
-    return LogionClient(
+    c = LogionClient(
         base_url="http://localhost:4010",
         max_retries=0,
     )
+    yield c
+    c.close()
 
 
 # NOTE: These tests require a running Prism mock server on port 4010.
-# Run ``make mock`` before running these tests, or skip them in CI
-# where Prism is started as a service.
+# Run ``make -C packages/client mock-server`` from the workspace root,
+# or skip them in CI where Prism is started as a service.
 
 
 @pytest.mark.integration
@@ -28,8 +30,7 @@ class TestHealthCheck:
     def test_health_check_returns_ok(
         self, unauthenticated_client: LogionClient
     ) -> None:
-        """GET /health returns a status dict."""
+        """GET /health returns a dict with a status key."""
         result = unauthenticated_client.v1.health.check()
         assert isinstance(result, dict)
-        assert "status" in result or "ok" in result or result
-        unauthenticated_client.close()
+        assert "status" in result

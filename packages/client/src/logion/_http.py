@@ -13,14 +13,19 @@ from logion._errors import (
     APIError,
     AuthenticationError,
     ConflictError,
+    ForbiddenError,
+    NotFoundError,
     RateLimitError,
     ServerError,
     ValidationError,
 )
 
 _RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
+_RETRYABLE_METHODS = {"GET", "HEAD", "OPTIONS"}
 _STATUS_ERROR_MAP: dict[int, type[APIError]] = {
     401: AuthenticationError,
+    403: ForbiddenError,
+    404: NotFoundError,
     409: ConflictError,
     422: ValidationError,
     429: RateLimitError,
@@ -33,25 +38,16 @@ def _raise_for_status(response: httpx.Response) -> None:
         return
 
     status_code = response.status_code
-    detail = response.text
-    request_id: str | None = None
+    detail: str | list[dict[str, object]] = response.text
+    request_id: str | None = response.headers.get("x-request-id")
 
     try:
         body = response.json()
         detail = body.get("detail", detail)
-        request_id = response.headers.get("x-request-id")
     except Exception:
         pass
 
     error_cls = _STATUS_ERROR_MAP.get(status_code, ServerError)
-
-    if status_code >= 500 and error_cls not in (
-        RateLimitError,
-        AuthenticationError,
-        ConflictError,
-        ValidationError,
-    ):
-        error_cls = ServerError
 
     raise error_cls(
         status_code=status_code,
@@ -89,24 +85,39 @@ class HttpClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Send a request with automatic retry and error mapping."""
-        last_exc: Exception | None = None
+        """Send a request with automatic retry and error mapping.
 
-        for attempt in range(self._config.max_retries + 1):
+        Only idempotent methods (GET, HEAD, OPTIONS) are retried on
+        transient failures to avoid duplicating side-effects.
+        """
+        can_retry = method.upper() in _RETRYABLE_METHODS
+        last_exc: Exception | None = None
+        max_attempts = self._config.max_retries + 1 if can_retry else 1
+
+        for attempt in range(max_attempts):
             request_id = str(uuid.uuid4())
             headers = {"X-Request-ID": request_id}
 
-            response = self._client.request(
-                method,
-                path,
-                params=params,
-                json=json,
-                headers=headers,
-            )
+            try:
+                response = self._client.request(
+                    method,
+                    path,
+                    params=params,
+                    json=json,
+                    headers=headers,
+                )
+            except httpx.TransportError as exc:
+                last_exc = exc
+                if can_retry and attempt < max_attempts - 1:
+                    backoff = 0.5 * (2**attempt)
+                    time.sleep(backoff)
+                    continue
+                raise
 
             if (
                 response.status_code in _RETRYABLE_STATUS_CODES
-                and attempt < self._config.max_retries
+                and can_retry
+                and attempt < max_attempts - 1
             ):
                 backoff = 0.5 * (2**attempt)
                 time.sleep(backoff)

@@ -1,4 +1,4 @@
-ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)/..
+ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 SPEC := $(ROOT)/contracts/openapi/v1.json
 GEN_DIR := src/logion/v1/_types/generated
 GEN_FILE := $(GEN_DIR)/v1.py
