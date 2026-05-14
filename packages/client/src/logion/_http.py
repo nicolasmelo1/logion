@@ -13,11 +13,13 @@ from logion._config import ClientConfig
 from logion._errors import (
     APIError,
     AuthenticationError,
+    ClientError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
     RateLimitError,
     ServerError,
+    TransportError,
     ValidationError,
 )
 
@@ -41,8 +43,8 @@ def _raise_for_status(response: httpx.Response) -> None:
         return
 
     status_code = response.status_code
-    detail: str | list[dict[str, object]] = response.text
     request_id: str | None = response.headers.get("x-request-id")
+    detail: str | list[dict[str, object]] = response.text
 
     try:
         body = response.json()
@@ -50,7 +52,9 @@ def _raise_for_status(response: httpx.Response) -> None:
     except Exception:
         pass
 
-    error_cls = _STATUS_ERROR_MAP.get(status_code, ServerError)
+    error_cls = _STATUS_ERROR_MAP.get(status_code)
+    if error_cls is None:
+        error_cls = ServerError if status_code >= 500 else ClientError
 
     raise error_cls(
         status_code=status_code,
@@ -90,7 +94,7 @@ class HttpClient:
     ) -> dict[str, Any]:
         """Send a request and return raw JSON dict."""
         can_retry = method.upper() in _RETRYABLE_METHODS
-        last_exc: Exception | None = None
+        last_exc: httpx.TransportError | None = None
         max_attempts = self._config.max_retries + 1 if can_retry else 1
 
         for attempt in range(max_attempts):
@@ -111,7 +115,10 @@ class HttpClient:
                     backoff = 0.5 * (2**attempt)
                     time.sleep(backoff)
                     continue
-                raise
+                raise TransportError(
+                    f"Request failed after {attempt + 1} attempt(s): {exc}",
+                    original=exc,
+                ) from exc
 
             if (
                 response.status_code in _RETRYABLE_STATUS_CODES
@@ -126,7 +133,10 @@ class HttpClient:
             return response.json()
 
         assert last_exc is not None  # for type checker
-        raise last_exc
+        raise TransportError(
+            f"Request failed after {max_attempts} attempts",
+            original=last_exc,
+        ) from last_exc
 
     def request_model(
         self,

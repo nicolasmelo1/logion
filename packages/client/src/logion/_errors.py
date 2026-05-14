@@ -26,20 +26,24 @@ class APIError(LogionError):
         super().__init__(msg)
 
 
+class ClientError(APIError):
+    """4xx response that isn't mapped to a specific error class."""
+
+
 class AuthenticationError(APIError):
     """401 — Invalid or missing API key."""
 
 
-class ConflictError(APIError):
-    """409 — Resource already exists."""
+class ForbiddenError(APIError):
+    """403 — Insufficient permissions."""
 
 
 class NotFoundError(APIError):
     """404 — Resource not found."""
 
 
-class ForbiddenError(APIError):
-    """403 — Insufficient permissions."""
+class ConflictError(APIError):
+    """409 — Resource already exists."""
 
 
 class ValidationError(APIError):
@@ -52,3 +56,18 @@ class RateLimitError(APIError):
 
 class ServerError(APIError):
     """5xx — Server-side error."""
+
+
+class TransportError(LogionError):
+    """Network-level failure (DNS, connection, timeout, etc.).
+
+    Wraps an ``httpx.TransportError`` after retries are exhausted.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        original: Exception | None = None,
+    ) -> None:
+        self.original = original
+        super().__init__(message)

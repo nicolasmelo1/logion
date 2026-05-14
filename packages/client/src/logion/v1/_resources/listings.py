@@ -52,7 +52,15 @@ class ListingsResource:
 
         Returns:
             Search results with items and pagination cursor.
+
+        Raises:
+            ValueError: If *sort* is not a recognised value.
         """
+        if sort is not None and sort not in _VALID_SORT_VALUES:
+            valid = ", ".join(_VALID_SORT_VALUES)
+            msg = f"Invalid sort value {sort!r}. Must be one of: {valid}"
+            raise ValueError(msg)
+
         params: dict[str, Any] = {}
         if query is not None:
             params["query"] = query

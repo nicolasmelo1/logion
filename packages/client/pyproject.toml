@@ -24,6 +24,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/logion"]
+artifacts = ["src/logion/py.typed"]
 
 [tool.ruff]
 line-length = 79

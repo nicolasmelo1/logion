@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from logion._config import DEFAULT_BASE_URL, ClientConfig
+from logion._config import ClientConfig, resolve_config
 from logion._http import HttpClient
 from logion._versioning import VersionedNamespaces
+from logion.v1 import V1Namespace
 
 
 class LogionClient:
@@ -12,6 +13,8 @@ class LogionClient:
 
     Configuration can be provided via constructor arguments or
     environment variables (``LOGION_API_KEY``, ``LOGION_BASE_URL``).
+    Omitted arguments fall back to the corresponding environment
+    variable, then to built-in defaults.
 
     Usage::
 
@@ -32,17 +35,19 @@ class LogionClient:
         extra_headers: dict[str, str] | None = None,
     ) -> None:
         config = ClientConfig(
-            base_url=base_url or DEFAULT_BASE_URL,
-            api_key=api_key or "",
-            timeout=timeout if timeout is not None else 30.0,
-            max_retries=(max_retries if max_retries is not None else 3),
-            extra_headers=extra_headers or {},
+            **resolve_config(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=timeout,
+                max_retries=max_retries,
+                extra_headers=extra_headers,
+            )
         )
         self._http = HttpClient(config)
         self._namespaces = VersionedNamespaces(self._http)
 
     @property
-    def v1(self):
+    def v1(self) -> V1Namespace:
         """Access the v1 API namespace."""
         return self._namespaces.v1
 

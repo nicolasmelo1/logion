@@ -83,7 +83,9 @@ details:
 - **`ConflictError`** — 409 responses
 - **`ValidationError`** — 422 responses
 - **`RateLimitError`** — 429 responses
+- **`ClientError`** — other 4xx responses not mapped above
 - **`ServerError`** — 5xx responses
+- **`TransportError`** — network failures (DNS, connection, timeout)
 
 ```python
 from logion import LogionClient, AuthenticationError, RateLimitError
@@ -137,4 +139,4 @@ make check-models
 
 ## License
 
-See the [root repository LICENSE](../../../LICENSE) for details.
+See the [root repository LICENSE](../../LICENSE) for details.

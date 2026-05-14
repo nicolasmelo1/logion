@@ -67,7 +67,7 @@ class CoursesResource:
             "POST",
             "/v1/courses",
             CreateCourseResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
 
     def get(self, *, course_id: str) -> GetCourseResponse:
@@ -89,46 +89,51 @@ class CoursesResource:
         self,
         *,
         course_id: str,
-        title: str | None = None,
-        description: str | None = None,
-        price_cents: int | None = None,
-        tags: list[str] | None = None,
-        currency: str | None = None,
-        language: str | None = None,
-        short_summary: str | None = None,
-        visibility: str | None = None,
+        title: str | None = ...,
+        description: str | None = ...,
+        price_cents: int | None = ...,
+        tags: list[str] | None = ...,
+        currency: str | None = ...,
+        language: str | None = ...,
+        short_summary: str | None = ...,
+        visibility: str | None = ...,
     ) -> UpdateCourseResponse:
         """Update an existing course.
 
+        Use ``None`` to set a field to null (clear it), or omit
+        the parameter (leave as default) to keep the existing value.
+
         Args:
             course_id: The course's unique identifier.
-            title: New title (optional).
-            description: New description (optional).
-            price_cents: New price in cents (optional).
-            tags: New tag list (optional).
-            currency: Currency code (optional).
-            language: Language code (optional).
-            short_summary: Short summary (optional).
-            visibility: Visibility setting (optional).
+            title: New title.
+            description: New description.
+            price_cents: New price in cents.
+            tags: New tag list.
+            currency: Currency code.
+            language: Language code.
+            short_summary: Short summary.
+            visibility: Visibility setting.
 
         Returns:
             Updated course details.
         """
         body = UpdateCourseRequest(
-            title=title,
-            description=description,
-            price_cents=price_cents,
-            tags=tags,
-            currency=currency,
-            language=language,
-            short_summary=short_summary,
-            visibility=visibility,
+            title=title if title is not ... else None,
+            description=(description if description is not ... else None),
+            price_cents=(price_cents if price_cents is not ... else None),
+            tags=tags if tags is not ... else None,
+            currency=currency if currency is not ... else None,
+            language=language if language is not ... else None,
+            short_summary=(
+                short_summary if short_summary is not ... else None
+            ),
+            visibility=(visibility if visibility is not ... else None),
         )
         return self._http.request_model(
             "PATCH",
             f"/v1/courses/{course_id}",
             UpdateCourseResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_unset=True),
         )
 
     def create_upload_session(
@@ -153,7 +158,7 @@ class CoursesResource:
             "POST",
             f"/v1/courses/{course_id}/versions",
             CreateCourseVersionUploadSessionResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
 
     def get_version(

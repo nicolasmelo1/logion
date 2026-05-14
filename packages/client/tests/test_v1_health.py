@@ -19,8 +19,8 @@ def unauthenticated_client() -> LogionClient:
 
 
 # NOTE: These tests require a running Prism mock server on port 4010.
-# Run ``make -C packages/client mock-server`` from the workspace root,
-# or skip them in CI where Prism is started as a service.
+# Start it with ``make mock`` from the repo root, or skip integration
+# tests in CI with:  pytest -m "not integration"
 
 
 @pytest.mark.integration

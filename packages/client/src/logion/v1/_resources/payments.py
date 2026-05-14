@@ -36,7 +36,7 @@ class PaymentsResource:
             "POST",
             "/v1/payments/course-checkouts",
             CourseCheckoutResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
 
     def get_order(self, *, order_id: str) -> OrderResponse:

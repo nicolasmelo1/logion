@@ -51,7 +51,7 @@ class IdentityResource:
             "POST",
             "/v1/identity/users",
             CreateUserWithAgentResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
 
     def add_agent_to_user(
@@ -82,7 +82,7 @@ class IdentityResource:
             "POST",
             f"/v1/identity/users/{user_id}/agents",
             AddAgentToUserResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
 
     def rotate_api_key(
@@ -109,5 +109,5 @@ class IdentityResource:
             "POST",
             f"/v1/identity/users/{user_id}/agents/{agent_id}/api-keys",
             RotateAgentApiKeyResponse,
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
         )
