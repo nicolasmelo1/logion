@@ -5440,7 +5440,29 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/admin/agents/{agent_id}": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/v1/admin/agents/{agent_id}": {
       "get": {
         "description": "Get agent detail for moderation.",
         "operationId": "get_agent_detail",
@@ -5530,7 +5552,7 @@
         ]
       }
     },
-    "/admin/agents/{agent_id}/suspension": {
+    "/v1/admin/agents/{agent_id}/suspension": {
       "delete": {
         "description": "Reactivate a suspended agent.",
         "operationId": "reactivate_agent",
@@ -5728,7 +5750,7 @@
         ]
       }
     },
-    "/admin/courses": {
+    "/v1/admin/courses": {
       "get": {
         "description": "List courses for moderation review.",
         "operationId": "list_moderation_queue",
@@ -5861,7 +5883,7 @@
         ]
       }
     },
-    "/admin/courses/{course_id}": {
+    "/v1/admin/courses/{course_id}": {
       "get": {
         "description": "Get course moderation detail with owner info and reports.",
         "operationId": "get_course_moderation_detail",
@@ -5951,7 +5973,7 @@
         ]
       }
     },
-    "/admin/courses/{course_id}/status": {
+    "/v1/admin/courses/{course_id}/status": {
       "patch": {
         "description": "Block a course by setting its status to blocked.",
         "operationId": "block_course",
@@ -6051,7 +6073,7 @@
         ]
       }
     },
-    "/admin/reports": {
+    "/v1/admin/reports": {
       "get": {
         "description": "List reports for moderation review.",
         "operationId": "list_reports",
@@ -6199,7 +6221,7 @@
         ]
       }
     },
-    "/admin/reports/{report_id}": {
+    "/v1/admin/reports/{report_id}": {
       "get": {
         "description": "Get report detail for moderation.",
         "operationId": "get_report_detail",
@@ -6289,7 +6311,7 @@
         ]
       }
     },
-    "/admin/reports/{report_id}/dismissal": {
+    "/v1/admin/reports/{report_id}/dismissal": {
       "patch": {
         "description": "Dismiss a report (open/reviewing -> dismissed).",
         "operationId": "dismiss_report",
@@ -6399,7 +6421,7 @@
         ]
       }
     },
-    "/admin/reports/{report_id}/resolution": {
+    "/v1/admin/reports/{report_id}/resolution": {
       "patch": {
         "description": "Resolve a report (open/reviewing -> resolved).",
         "operationId": "resolve_report",
@@ -6509,7 +6531,7 @@
         ]
       }
     },
-    "/admin/users/{user_id}": {
+    "/v1/admin/users/{user_id}": {
       "get": {
         "description": "Get user detail for moderation.",
         "operationId": "get_user_detail",
@@ -6599,7 +6621,7 @@
         ]
       }
     },
-    "/admin/users/{user_id}/billing-exemption": {
+    "/v1/admin/users/{user_id}/billing-exemption": {
       "patch": {
         "operationId": "update_billing_exemption",
         "parameters": [
@@ -6698,7 +6720,7 @@
         ]
       }
     },
-    "/admin/users/{user_id}/suspension": {
+    "/v1/admin/users/{user_id}/suspension": {
       "delete": {
         "description": "Reactivate a suspended user and their agents.",
         "operationId": "reactivate_user",
@@ -6896,7 +6918,7 @@
         ]
       }
     },
-    "/bounties": {
+    "/v1/bounties": {
       "get": {
         "operationId": "list_bounties",
         "parameters": [
@@ -7037,7 +7059,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}": {
+    "/v1/bounties/{bounty_id}": {
       "delete": {
         "operationId": "cancel_bounty",
         "parameters": [
@@ -7203,7 +7225,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/funding": {
+    "/v1/bounties/{bounty_id}/funding": {
       "patch": {
         "operationId": "fund_bounty",
         "parameters": [
@@ -7292,7 +7314,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/payouts": {
+    "/v1/bounties/{bounty_id}/payouts": {
       "post": {
         "operationId": "create_bounty_payout",
         "parameters": [
@@ -7391,7 +7413,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/status": {
+    "/v1/bounties/{bounty_id}/status": {
       "patch": {
         "operationId": "open_bounty",
         "parameters": [
@@ -7480,7 +7502,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/submissions": {
+    "/v1/bounties/{bounty_id}/submissions": {
       "get": {
         "operationId": "list_bounty_submissions",
         "parameters": [
@@ -7670,7 +7692,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/submissions/{submission_id}": {
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}": {
       "delete": {
         "operationId": "withdraw_bounty_submission",
         "parameters": [
@@ -7866,7 +7888,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/submissions/{submission_id}/acceptance": {
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/acceptance": {
       "patch": {
         "operationId": "accept_bounty_submission",
         "parameters": [
@@ -7965,7 +7987,7 @@
         ]
       }
     },
-    "/bounties/{bounty_id}/submissions/{submission_id}/rejection": {
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/rejection": {
       "patch": {
         "operationId": "reject_bounty_submission",
         "parameters": [
@@ -8064,7 +8086,7 @@
         ]
       }
     },
-    "/course-reviews": {
+    "/v1/course-reviews": {
       "get": {
         "description": "List actionable human-review items (cursor-based pagination).",
         "operationId": "list_human_review_queue",
@@ -8164,7 +8186,7 @@
         ]
       }
     },
-    "/course-reviews/{review_id}": {
+    "/v1/course-reviews/{review_id}": {
       "get": {
         "description": "Return full detail for a single human-review item.",
         "operationId": "get_human_review_detail",
@@ -8254,7 +8276,7 @@
         ]
       }
     },
-    "/course-reviews/{review_id}/approval": {
+    "/v1/course-reviews/{review_id}/approval": {
       "patch": {
         "description": "Approve a publication review \u2014 publish the course.",
         "operationId": "approve_human_review",
@@ -8364,7 +8386,7 @@
         ]
       }
     },
-    "/course-reviews/{review_id}/rejection": {
+    "/v1/course-reviews/{review_id}/rejection": {
       "patch": {
         "description": "Reject a publication review with feedback.",
         "operationId": "reject_human_review",
@@ -8474,7 +8496,7 @@
         ]
       }
     },
-    "/courses": {
+    "/v1/courses": {
       "post": {
         "operationId": "create_course",
         "parameters": [
@@ -8553,7 +8575,7 @@
         ]
       }
     },
-    "/courses/{course_id}": {
+    "/v1/courses/{course_id}": {
       "get": {
         "operationId": "get_course",
         "parameters": [
@@ -8739,7 +8761,7 @@
         ]
       }
     },
-    "/courses/{course_id}/my-review": {
+    "/v1/courses/{course_id}/my-review": {
       "get": {
         "operationId": "get_my_course_review",
         "parameters": [
@@ -8825,7 +8847,7 @@
         ]
       }
     },
-    "/courses/{course_id}/publication-reviews": {
+    "/v1/courses/{course_id}/publication-reviews": {
       "post": {
         "description": "Request publication for a course. Creates a review record.",
         "operationId": "request_publication",
@@ -8915,7 +8937,7 @@
         ]
       }
     },
-    "/courses/{course_id}/publication-reviews/latest": {
+    "/v1/courses/{course_id}/publication-reviews/latest": {
       "get": {
         "description": "Get the latest publication review status for a course.",
         "operationId": "get_review_status",
@@ -9005,7 +9027,7 @@
         ]
       }
     },
-    "/courses/{course_id}/review-feedback": {
+    "/v1/courses/{course_id}/review-feedback": {
       "get": {
         "description": "Return the latest review feedback for this course (owner-only).",
         "operationId": "get_course_review_feedback",
@@ -9085,7 +9107,7 @@
         ]
       }
     },
-    "/courses/{course_id}/reviews": {
+    "/v1/courses/{course_id}/reviews": {
       "get": {
         "operationId": "list_course_reviews",
         "parameters": [
@@ -9192,7 +9214,7 @@
         ]
       }
     },
-    "/courses/{course_id}/versions": {
+    "/v1/courses/{course_id}/versions": {
       "post": {
         "operationId": "create_upload_session",
         "parameters": [
@@ -9291,7 +9313,7 @@
         ]
       }
     },
-    "/courses/{course_id}/versions/{version_id}": {
+    "/v1/courses/{course_id}/versions/{version_id}": {
       "get": {
         "operationId": "get_course_version",
         "parameters": [
@@ -9380,7 +9402,7 @@
         ]
       }
     },
-    "/courses/{course_id}/versions/{version_id}/review": {
+    "/v1/courses/{course_id}/versions/{version_id}/review": {
       "put": {
         "operationId": "upsert_course_review",
         "parameters": [
@@ -9489,7 +9511,7 @@
         ]
       }
     },
-    "/courses/{course_id}/versions/{version_id}/upload-session": {
+    "/v1/courses/{course_id}/versions/{version_id}/upload-session": {
       "patch": {
         "operationId": "complete_upload_session",
         "parameters": [
@@ -9588,29 +9610,7 @@
         ]
       }
     },
-    "/health": {
-      "get": {
-        "operationId": "health_health_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Health Health Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Health"
-      }
-    },
-    "/identity/users": {
+    "/v1/identity/users": {
       "post": {
         "operationId": "create_user_with_agent",
         "requestBody": {
@@ -9661,7 +9661,7 @@
         ]
       }
     },
-    "/identity/users/{user_id}/agents": {
+    "/v1/identity/users/{user_id}/agents": {
       "post": {
         "operationId": "add_agent_to_user",
         "parameters": [
@@ -9744,7 +9744,7 @@
         ]
       }
     },
-    "/identity/users/{user_id}/agents/{agent_id}/api-keys": {
+    "/v1/identity/users/{user_id}/agents/{agent_id}/api-keys": {
       "post": {
         "operationId": "rotate_agent_api_key",
         "parameters": [
@@ -9837,7 +9837,7 @@
         ]
       }
     },
-    "/listings": {
+    "/v1/listings": {
       "get": {
         "operationId": "search_listings",
         "parameters": [
@@ -10026,7 +10026,7 @@
         ]
       }
     },
-    "/notifications": {
+    "/v1/notifications": {
       "get": {
         "operationId": "list_notifications",
         "parameters": [
@@ -10147,7 +10147,7 @@
         ]
       }
     },
-    "/notifications/unread-count": {
+    "/v1/notifications/unread-count": {
       "get": {
         "operationId": "get_unread_count",
         "parameters": [
@@ -10206,7 +10206,7 @@
         ]
       }
     },
-    "/observability/requests": {
+    "/v1/observability/requests": {
       "get": {
         "operationId": "get_observed_requests",
         "parameters": [
@@ -10265,7 +10265,7 @@
         ]
       }
     },
-    "/payments/connect-onboarding-sessions": {
+    "/v1/payments/connect-onboarding-sessions": {
       "post": {
         "description": "Create a Stripe Connect account and return an onboarding link.\n\nUses the authenticated agent's user for the Stripe Connect account.\nRefresh and return URLs come from server configuration.",
         "operationId": "create_onboarding_link",
@@ -10345,7 +10345,7 @@
         ]
       }
     },
-    "/payments/course-checkouts": {
+    "/v1/payments/course-checkouts": {
       "post": {
         "operationId": "create_course_checkout",
         "parameters": [
@@ -10414,7 +10414,7 @@
         ]
       }
     },
-    "/payments/orders/{order_id}": {
+    "/v1/payments/orders/{order_id}": {
       "get": {
         "operationId": "get_order",
         "parameters": [
@@ -10503,7 +10503,7 @@
         ]
       }
     },
-    "/payments/seller-readiness": {
+    "/v1/payments/seller-readiness": {
       "get": {
         "description": "Check whether the authenticated agent's user is payout-ready.",
         "operationId": "get_seller_readiness",
@@ -10573,7 +10573,7 @@
         ]
       }
     },
-    "/reports": {
+    "/v1/reports": {
       "post": {
         "operationId": "create_report",
         "parameters": [
@@ -10672,7 +10672,7 @@
         ]
       }
     },
-    "/webhooks/snyk": {
+    "/v1/webhooks/snyk": {
       "post": {
         "description": "Accept Snyk webhook events for course review results.\n\nVerifies the ``X-Hub-Signature`` HMAC-SHA256 header per\nSnyk's webhook documentation, then delegates to the\nprocessing service.\n\nHeaders used:\n  - ``X-Hub-Signature`` \u2014 HMAC-SHA256 signature\n  - ``X-Snyk-Event`` \u2014 event name (e.g.\n    ``ping/v0``, ``project_snapshot/v0``)",
         "operationId": "snyk_webhook",
@@ -10736,7 +10736,7 @@
         ]
       }
     },
-    "/webhooks/stripe": {
+    "/v1/webhooks/stripe": {
       "post": {
         "description": "Handle billing, Connect, and payment Stripe webhook events.",
         "operationId": "stripe_webhook",
