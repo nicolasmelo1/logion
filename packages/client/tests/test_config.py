@@ -40,8 +40,8 @@ class TestResolveConfig:
             api_key="explicit_key",
             base_url="http://explicit-url",
         )
-        assert config["api_key"] == "explicit_key"
-        assert config["base_url"] == "http://explicit-url"
+        assert config.api_key == "explicit_key"
+        assert config.base_url == "http://explicit-url"
 
     def test_falls_back_to_env_vars(self, monkeypatch) -> None:
         """None values fall back to env vars."""
@@ -52,8 +52,8 @@ class TestResolveConfig:
             api_key=None,
             base_url=None,
         )
-        assert config["api_key"] == "env_key"
-        assert config["base_url"] == "http://env-url"
+        assert config.api_key == "env_key"
+        assert config.base_url == "http://env-url"
 
     def test_falls_back_to_defaults(self, monkeypatch) -> None:
         """None values with no env vars fall back to defaults."""
@@ -61,11 +61,11 @@ class TestResolveConfig:
         monkeypatch.delenv("LOGION_BASE_URL", raising=False)
 
         config = resolve_config()
-        assert config["api_key"] == ""
-        assert config["base_url"] == DEFAULT_BASE_URL
-        assert config["timeout"] == DEFAULT_TIMEOUT
-        assert config["max_retries"] == DEFAULT_MAX_RETRIES
-        assert config["extra_headers"] == {}
+        assert config.api_key == ""
+        assert config.base_url == DEFAULT_BASE_URL
+        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.max_retries == DEFAULT_MAX_RETRIES
+        assert config.extra_headers == {}
 
     def test_explicit_none_uses_defaults(self, monkeypatch) -> None:
         """Explicit None uses defaults when no env vars set."""
@@ -79,11 +79,11 @@ class TestResolveConfig:
             max_retries=None,
             extra_headers=None,
         )
-        assert config["base_url"] == DEFAULT_BASE_URL
-        assert config["api_key"] == ""
-        assert config["timeout"] == DEFAULT_TIMEOUT
-        assert config["max_retries"] == DEFAULT_MAX_RETRIES
-        assert config["extra_headers"] == {}
+        assert config.base_url == DEFAULT_BASE_URL
+        assert config.api_key == ""
+        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.max_retries == DEFAULT_MAX_RETRIES
+        assert config.extra_headers == {}
 
 
 class TestClientConfig:

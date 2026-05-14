@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
 from logion._http import HttpClient
 from logion.v1._types.generated.v1 import (
@@ -10,13 +11,18 @@ from logion.v1._types.generated.v1 import (
     CreateCourseResponse,
     CreateCourseVersionUploadSessionRequest,
     CreateCourseVersionUploadSessionResponse,
+    FileUploadRequest,
     GetCourseResponse,
     GetCourseVersionResponse,
+    Language,
+    ShortSummary,
     UpdateCourseRequest,
     UpdateCourseResponse,
 )
 
 _SENTINEL = object()
+
+Visibility = Literal["public", "unlisted", "private"]
 
 
 class CoursesResource:
@@ -36,7 +42,7 @@ class CoursesResource:
         language: str | None = None,
         currency: str | None = None,
         short_summary: str | None = None,
-        visibility: str | None = None,
+        visibility: Visibility | None = None,
     ) -> CreateCourseResponse:
         """Create a new course.
 
@@ -60,9 +66,13 @@ class CoursesResource:
             description=description,
             price_cents=price_cents,
             tags=tags,
-            language=language,
+            language=Language(language) if language is not None else None,
             currency=currency,
-            short_summary=short_summary,
+            short_summary=(
+                ShortSummary(short_summary)
+                if short_summary is not None
+                else None
+            ),
             visibility=visibility,
         )
         return self._http.request_model(
@@ -72,7 +82,7 @@ class CoursesResource:
             json=body.model_dump(mode="json", exclude_none=True),
         )
 
-    def get(self, *, course_id: str) -> GetCourseResponse:
+    def get(self, *, course_id: str | UUID) -> GetCourseResponse:
         """Get course details by UUID.
 
         Args:
@@ -90,7 +100,7 @@ class CoursesResource:
     def update(
         self,
         *,
-        course_id: str,
+        course_id: str | UUID,
         title: str | None = _SENTINEL,  # type: ignore[assignment]
         description: str | None = _SENTINEL,  # type: ignore[assignment]
         price_cents: int | None = _SENTINEL,  # type: ignore[assignment]
@@ -98,7 +108,7 @@ class CoursesResource:
         currency: str | None = _SENTINEL,  # type: ignore[assignment]
         language: str | None = _SENTINEL,  # type: ignore[assignment]
         short_summary: str | None = _SENTINEL,  # type: ignore[assignment]
-        visibility: str | None = _SENTINEL,  # type: ignore[assignment]
+        visibility: Visibility | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UpdateCourseResponse:
         """Update an existing course.
 
@@ -132,9 +142,15 @@ class CoursesResource:
         if currency is not _SENTINEL:
             fields["currency"] = currency
         if language is not _SENTINEL:
-            fields["language"] = language
+            fields["language"] = (
+                Language(language) if language is not None else None
+            )
         if short_summary is not _SENTINEL:
-            fields["short_summary"] = short_summary
+            fields["short_summary"] = (
+                ShortSummary(short_summary)
+                if short_summary is not None
+                else None
+            )
         if visibility is not _SENTINEL:
             fields["visibility"] = visibility
         body = UpdateCourseRequest.model_construct(**fields)
@@ -148,7 +164,7 @@ class CoursesResource:
     def create_upload_session(
         self,
         *,
-        course_id: str,
+        course_id: str | UUID,
         files: list[dict[str, Any]],
     ) -> CreateCourseVersionUploadSessionResponse:
         """Create a new course version upload session.
@@ -160,8 +176,9 @@ class CoursesResource:
         Returns:
             Upload session details including presigned URL.
         """
+        typed_files = [FileUploadRequest(**f) for f in files]
         body = CreateCourseVersionUploadSessionRequest(
-            files=files,
+            files=typed_files,
         )
         return self._http.request_model(
             "POST",
@@ -173,8 +190,8 @@ class CoursesResource:
     def get_version(
         self,
         *,
-        course_id: str,
-        version_id: str,
+        course_id: str | UUID,
+        version_id: str | UUID,
     ) -> GetCourseVersionResponse:
         """Get a specific course version.
 

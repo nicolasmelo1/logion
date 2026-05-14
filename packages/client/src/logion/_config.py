@@ -15,35 +15,6 @@ def resolve_env_or(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
-def resolve_config(
-    *,
-    api_key: str | None = None,
-    base_url: str | None = None,
-    timeout: float | None = None,
-    max_retries: int | None = None,
-    extra_headers: dict[str, str] | None = None,
-) -> dict[str, object]:
-    """Resolve SDK configuration from explicit values, env vars, or
-    defaults — in that priority order."""
-    return {
-        "base_url": (
-            base_url
-            if base_url is not None
-            else resolve_env_or("LOGION_BASE_URL", DEFAULT_BASE_URL)
-        ),
-        "api_key": (
-            api_key
-            if api_key is not None
-            else resolve_env_or("LOGION_API_KEY", "")
-        ),
-        "timeout": timeout if timeout is not None else DEFAULT_TIMEOUT,
-        "max_retries": (
-            max_retries if max_retries is not None else DEFAULT_MAX_RETRIES
-        ),
-        "extra_headers": extra_headers if extra_headers is not None else {},
-    }
-
-
 @dataclass
 class ClientConfig:
     """Resolved configuration for the Logion HTTP client."""
@@ -53,3 +24,32 @@ class ClientConfig:
     timeout: float = DEFAULT_TIMEOUT
     max_retries: int = DEFAULT_MAX_RETRIES
     extra_headers: dict[str, str] = field(default_factory=dict)
+
+
+def resolve_config(
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    extra_headers: dict[str, str] | None = None,
+) -> ClientConfig:
+    """Resolve SDK configuration from explicit values, env vars, or
+    defaults — in that priority order."""
+    return ClientConfig(
+        base_url=(
+            base_url
+            if base_url is not None
+            else resolve_env_or("LOGION_BASE_URL", DEFAULT_BASE_URL)
+        ),
+        api_key=(
+            api_key
+            if api_key is not None
+            else resolve_env_or("LOGION_API_KEY", "")
+        ),
+        timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
+        max_retries=(
+            max_retries if max_retries is not None else DEFAULT_MAX_RETRIES
+        ),
+        extra_headers=extra_headers if extra_headers is not None else {},
+    )

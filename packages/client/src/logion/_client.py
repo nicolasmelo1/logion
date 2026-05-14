@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from logion._config import ClientConfig, resolve_config
+from logion._config import resolve_config
 from logion._http import HttpClient
 from logion._versioning import VersionedNamespaces
 from logion.v1 import V1Namespace
@@ -34,14 +34,12 @@ class LogionClient:
         max_retries: int | None = None,
         extra_headers: dict[str, str] | None = None,
     ) -> None:
-        config = ClientConfig(
-            **resolve_config(
-                api_key=api_key,
-                base_url=base_url,
-                timeout=timeout,
-                max_retries=max_retries,
-                extra_headers=extra_headers,
-            )
+        config = resolve_config(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            max_retries=max_retries,
+            extra_headers=extra_headers,
         )
         self._http = HttpClient(config)
         self._namespaces = VersionedNamespaces(self._http)

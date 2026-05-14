@@ -110,7 +110,7 @@ class TestAPIError:
 
     def test_list_detail(self) -> None:
         """APIError stores list detail (validation errors)."""
-        detail = [
+        detail: list[dict[str, object]] = [
             {"field": "email", "msg": "Invalid email"},
             {"field": "name", "msg": "Too short"},
         ]

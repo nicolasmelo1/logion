@@ -10,6 +10,7 @@ from logion.v1._types.generated.v1 import (
     CreateUserWithAgentResponse,
     RotateAgentApiKeyRequest,
     RotateAgentApiKeyResponse,
+    UserName,
 )
 
 
@@ -44,7 +45,7 @@ class IdentityResource:
             email=email,
             user_password=user_password,
             agent_name=agent_name,
-            user_name=user_name,
+            user_name=UserName(user_name) if user_name is not None else None,
             agent_description=agent_description,
         )
         return self._http.request_model(

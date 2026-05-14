@@ -23,9 +23,9 @@ from logion._errors import (
 from logion._http import HttpClient, _raise_for_status
 
 
-def _make_config(**overrides) -> ClientConfig:
+def _make_config(**overrides: object) -> ClientConfig:
     """Build a ClientConfig with sensible test defaults."""
-    defaults = {
+    defaults: dict[str, object] = {
         "base_url": "http://localhost:4010",
         "api_key": "lgk_test",
         "timeout": 5.0,
@@ -33,7 +33,13 @@ def _make_config(**overrides) -> ClientConfig:
         "extra_headers": {},
     }
     defaults.update(overrides)
-    return ClientConfig(**defaults)
+    return ClientConfig(
+        base_url=str(defaults["base_url"]),
+        api_key=str(defaults["api_key"]),
+        timeout=float(defaults["timeout"]),
+        max_retries=int(defaults["max_retries"]),
+        extra_headers=dict(defaults["extra_headers"]),  # type: ignore[arg-type]
+    )
 
 
 def _mock_response(

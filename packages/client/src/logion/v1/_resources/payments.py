@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from logion._http import HttpClient
 from logion.v1._types.generated.v1 import (
     CourseCheckoutRequest,
@@ -21,7 +23,7 @@ class PaymentsResource:
     def create_checkout(
         self,
         *,
-        course_id: str,
+        course_id: str | UUID,
     ) -> CourseCheckoutResponse:
         """Create a checkout session for a course purchase.
 
@@ -31,7 +33,11 @@ class PaymentsResource:
         Returns:
             Checkout session details including payment URL.
         """
-        body = CourseCheckoutRequest(course_id=course_id)
+        body = CourseCheckoutRequest(
+            course_id=(
+                course_id if isinstance(course_id, UUID) else UUID(course_id)
+            ),
+        )
         return self._http.request_model(
             "POST",
             "/v1/payments/course-checkouts",
