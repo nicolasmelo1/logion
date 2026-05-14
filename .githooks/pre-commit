@@ -12,10 +12,13 @@ echo "Running type check..."
 uv run mypy packages/ --ignore-missing-imports
 
 echo "Running tests..."
-uv run pytest packages/ --no-header -q -m "not integration"
+uv run pytest packages/ -m "not integration" --no-header -q
+
+echo "Checking generated models..."
+(cd packages/client && make check-models)
 
 echo "Running dependency audit..."
-uv run pip-audit
+uv run pip-audit --skip-editable
 
 echo "Running Bandit..."
 uv run bandit -c pyproject.toml -r packages

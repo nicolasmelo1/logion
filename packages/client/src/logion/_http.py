@@ -49,7 +49,7 @@ def _raise_for_status(response: httpx.Response) -> None:
     try:
         body = response.json()
         detail = body.get("detail", detail)
-    except Exception:
+    except Exception:  # nosec B110 — intentional: non-JSON responses are fine as plain text
         pass
 
     error_cls = _STATUS_ERROR_MAP.get(status_code)
