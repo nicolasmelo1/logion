@@ -22,7 +22,9 @@ generate-models:
 	uv run ruff format $(GEN_FILE)
 
 check-models:
-	@tmpfile=$$(mktemp /tmp/logion-models-XXXXXX.py) && \
+	@set -e; \
+	tmpfile=$$(mktemp /tmp/logion-models-XXXXXX.py); \
+	trap 'rm -f "$$tmpfile" "$$tmpfile.clean"' EXIT; \
 	uv run datamodel-codegen \
 		--input $(SPEC) \
 		--output "$$tmpfile" \
@@ -34,12 +36,10 @@ check-models:
 		--target-python-version 3.12 \
 		--use-annotated \
 		--enum-field-as-literal all \
-		--extra-fields allow && \
-	uv run ruff format "$$tmpfile" && \
-	sed '1,3d' "$$tmpfile" > "$$tmpfile.clean" && \
-	sed '1,3d' $(GEN_FILE) > "$(GEN_FILE).clean" && \
-	diff "$$tmpfile.clean" "$(GEN_FILE).clean" && \
-	rm -f "$$tmpfile" "$$tmpfile.clean" "$(GEN_FILE).clean"
+		--extra-fields allow; \
+	uv run ruff format "$$tmpfile"; \
+	sed '1,3d' "$$tmpfile" > "$$tmpfile.clean"; \
+	diff "$$tmpfile.clean" <(sed '1,3d' $(GEN_FILE))
 
 lint:
 	uv run ruff check src/ tests/
