@@ -1,0 +1,46 @@
+name: Request GitHub Copilot PR review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  copilot-review:
+    name: Request Copilot review
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.ref != 'main' &&
+      !startsWith(github.event.pull_request.head.ref, 'copilot/')
+
+    steps:
+      - name: Check Copilot token
+        id: copilot-token
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          if [ -z "${COPILOT_GITHUB_TOKEN}" ]; then
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning title=Missing secret::Skipping Copilot review because COPILOT_GITHUB_TOKEN is not configured."
+            exit 0
+          fi
+          echo "available=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Request Copilot review
+        if: steps.copilot-token.outputs.available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh pr edit "${PR_NUMBER}" \
+            --repo "${REPOSITORY}" \
+            --add-reviewer "@copilot"

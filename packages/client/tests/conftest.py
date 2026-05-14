@@ -1,0 +1,24 @@
+"""Shared test fixtures for the Logion client SDK."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+
+import pytest
+
+from logion import LogionClient
+
+MOCK_BASE_URL = "http://localhost:4010"
+MOCK_API_KEY = "***"
+
+
+@pytest.fixture
+def client() -> Iterator[LogionClient]:
+    """Provide a LogionClient pointed at the local Prism mock server."""
+    c = LogionClient(
+        api_key=MOCK_API_KEY,
+        base_url=MOCK_BASE_URL,
+        max_retries=0,
+    )
+    yield c
+    c.close()

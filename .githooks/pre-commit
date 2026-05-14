@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -eu
+
+echo "Running Ruff..."
+uv run ruff check packages/
+
+echo "Running format check..."
+uv run ruff format --check packages/
+
+echo "Running type check..."
+uv run mypy packages/ --ignore-missing-imports
+
+echo "Running tests..."
+uv run pytest packages/ -m "not integration" --no-header -q
+
+echo "Checking generated models..."
+(cd packages/client && make check-models)
+
+echo "Running dependency audit..."
+uv run pip-audit --skip-editable
+
+echo "Running Bandit..."
+uv run bandit -c pyproject.toml -r packages
+
+echo "Running secret scan..."
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+if [ -n "${staged_files}" ]; then
+	printf '%s\n' "${staged_files}" | xargs uv run detect-secrets-hook --baseline .secrets.baseline
+fi
+
+echo "All checks passed."
