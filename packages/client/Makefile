@@ -18,7 +18,7 @@ generate-models:
 		--target-python-version 3.12 \
 		--use-annotated \
 		--enum-field-as-literal all \
-		--extra-fields allow
+		--allow-extra-fields
 	uv run ruff format $(GEN_FILE)
 
 check-models:
@@ -36,7 +36,7 @@ check-models:
 		--target-python-version 3.12 \
 		--use-annotated \
 		--enum-field-as-literal all \
-		--extra-fields allow; \
+		--allow-extra-fields; \
 	uv run ruff format "$$tmpfile"; \
 	sed '1,3d' "$$tmpfile" > "$$tmpfile.clean"; \
 	diff "$$tmpfile.clean" <(sed '1,3d' $(GEN_FILE))

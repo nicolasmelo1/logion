@@ -67,7 +67,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/logion/v1/_types/generated/**" = ["E501", "ERA001", "I001"]
+"src/logion/v1/_types/generated/**" = ["ALL"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion"]
