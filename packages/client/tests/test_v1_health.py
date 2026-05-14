@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from logion import LogionClient
 
 
 @pytest.fixture
-def unauthenticated_client() -> LogionClient:
+def unauthenticated_client() -> Iterator[LogionClient]:
     """Client without API key (health endpoint needs no auth)."""
     c = LogionClient(
         base_url="http://localhost:4010",

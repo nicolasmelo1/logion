@@ -133,8 +133,8 @@ class TestCoursesResource:
     def test_update_uses_sentinel_pattern(
         self,
     ) -> None:
-        """update() uses sentinel (Ellipsis = omitted) and
-        exclude_unset=True."""
+        """update() only includes fields that were explicitly
+        provided — omitted fields are absent from the payload."""
         http = MagicMock(spec=HttpClient)
         mock_resp = MagicMock(spec=UpdateCourseResponse)
         http.request_model.return_value = mock_resp
@@ -150,6 +150,15 @@ class TestCoursesResource:
         json_body = call_args.kwargs["json"]
         # Only 'title' should be present (exclude_unset)
         assert "title" in json_body
+        assert json_body["title"] == "New Title"
+        # Omitted fields must NOT appear in the payload
+        assert "description" not in json_body
+        assert "price_cents" not in json_body
+        assert "tags" not in json_body
+        assert "currency" not in json_body
+        assert "language" not in json_body
+        assert "short_summary" not in json_body
+        assert "visibility" not in json_body
 
     def test_update_with_null_value(self) -> None:
         """update() with None sends null (not omitted)."""
@@ -168,7 +177,9 @@ class TestCoursesResource:
     def test_create_upload_session(self) -> None:
         """create_upload_session() sends files param."""
         http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CreateCourseVersionUploadSessionResponse)
+        mock_resp = MagicMock(
+            spec=CreateCourseVersionUploadSessionResponse,
+        )
         http.request_model.return_value = mock_resp
         resource = CoursesResource(http)
         files = [

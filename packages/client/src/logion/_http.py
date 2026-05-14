@@ -93,6 +93,9 @@ class HttpClient:
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Send a request and return raw JSON dict."""
+        if self._config.max_retries < 0:
+            msg = f"max_retries must be >= 0, got {self._config.max_retries}"
+            raise ValueError(msg)
         can_retry = method.upper() in _RETRYABLE_METHODS
         last_exc: httpx.TransportError | None = None
         max_attempts = self._config.max_retries + 1 if can_retry else 1

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from logion import LogionClient
@@ -11,7 +13,7 @@ MOCK_API_KEY = "***"
 
 
 @pytest.fixture
-def client() -> LogionClient:
+def client() -> Iterator[LogionClient]:
     """Provide a LogionClient pointed at the local Prism mock server."""
     c = LogionClient(
         api_key=MOCK_API_KEY,

@@ -16,6 +16,8 @@ from logion.v1._types.generated.v1 import (
     UpdateCourseResponse,
 )
 
+_SENTINEL = object()
+
 
 class CoursesResource:
     """Manage courses in the Logion marketplace."""
@@ -89,46 +91,53 @@ class CoursesResource:
         self,
         *,
         course_id: str,
-        title: str | None = ...,
-        description: str | None = ...,
-        price_cents: int | None = ...,
-        tags: list[str] | None = ...,
-        currency: str | None = ...,
-        language: str | None = ...,
-        short_summary: str | None = ...,
-        visibility: str | None = ...,
+        title: str | None = _SENTINEL,  # type: ignore[assignment]
+        description: str | None = _SENTINEL,  # type: ignore[assignment]
+        price_cents: int | None = _SENTINEL,  # type: ignore[assignment]
+        tags: list[str] | None = _SENTINEL,  # type: ignore[assignment]
+        currency: str | None = _SENTINEL,  # type: ignore[assignment]
+        language: str | None = _SENTINEL,  # type: ignore[assignment]
+        short_summary: str | None = _SENTINEL,  # type: ignore[assignment]
+        visibility: str | None = _SENTINEL,  # type: ignore[assignment]
     ) -> UpdateCourseResponse:
         """Update an existing course.
 
-        Use ``None`` to set a field to null (clear it), or omit
-        the parameter (leave as default) to keep the existing value.
+        Only fields that are explicitly passed will be included in the
+        request.  Pass ``None`` to set a nullable field to null; omit
+        the parameter to leave it unchanged.
 
         Args:
             course_id: The course's unique identifier.
-            title: New title.
-            description: New description.
-            price_cents: New price in cents.
-            tags: New tag list.
-            currency: Currency code.
-            language: Language code.
-            short_summary: Short summary.
-            visibility: Visibility setting.
+            title: New title (or ``None`` to clear).
+            description: New description (or ``None`` to clear).
+            price_cents: New price (or ``None`` to clear).
+            tags: New tag list (or ``None`` to clear).
+            currency: Currency code (or ``None`` to clear).
+            language: Language code (or ``None`` to clear).
+            short_summary: Short summary (or ``None`` to clear).
+            visibility: Visibility setting (or ``None`` to clear).
 
         Returns:
             Updated course details.
         """
-        body = UpdateCourseRequest(
-            title=title if title is not ... else None,
-            description=(description if description is not ... else None),
-            price_cents=(price_cents if price_cents is not ... else None),
-            tags=tags if tags is not ... else None,
-            currency=currency if currency is not ... else None,
-            language=language if language is not ... else None,
-            short_summary=(
-                short_summary if short_summary is not ... else None
-            ),
-            visibility=(visibility if visibility is not ... else None),
-        )
+        fields: dict[str, Any] = {}
+        if title is not _SENTINEL:
+            fields["title"] = title
+        if description is not _SENTINEL:
+            fields["description"] = description
+        if price_cents is not _SENTINEL:
+            fields["price_cents"] = price_cents
+        if tags is not _SENTINEL:
+            fields["tags"] = tags
+        if currency is not _SENTINEL:
+            fields["currency"] = currency
+        if language is not _SENTINEL:
+            fields["language"] = language
+        if short_summary is not _SENTINEL:
+            fields["short_summary"] = short_summary
+        if visibility is not _SENTINEL:
+            fields["visibility"] = visibility
+        body = UpdateCourseRequest.model_construct(**fields)
         return self._http.request_model(
             "PATCH",
             f"/v1/courses/{course_id}",

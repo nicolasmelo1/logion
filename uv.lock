@@ -691,6 +691,7 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "python-semantic-release" },
     { name = "ruff" },
 ]
 
@@ -707,6 +708,7 @@ dev = [
     { name = "mypy", specifier = ">=1.15,<2" },
     { name = "pytest", specifier = ">=8.0,<9" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
+    { name = "python-semantic-release", specifier = ">=10.5.3,<10.6.0" },
     { name = "ruff", specifier = ">=0.15.12,<0.16.0" },
 ]
 
