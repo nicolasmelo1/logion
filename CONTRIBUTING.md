@@ -29,7 +29,7 @@ uv run logion --help
 logion/
 ├── contracts/openapi/v1.json   # Public API contract (auto-synced from logion-private)
 ├── packages/cli/               # Logion CLI agent tool
-├── packages/landing/           # Public landing application
+├── packages/landing/          # Public landing application
 ├── Makefile                    # Development task runner
 └── pyproject.toml              # Workspace root
 ```
@@ -49,29 +49,37 @@ serves realistic responses directly from the OpenAPI contract.
 make mock
 ```
 
-This runs:
+This starts Prism in the background on port 4010 and writes its PID to
+`.prism.pid` so it can be stopped cleanly:
 
 ```bash
-npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010
+npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 &
 ```
 
-The mock server starts at `http://localhost:4010` and responds to every endpoint
-defined in the contract with example data or auto-generated values.
+The mock server responds to every endpoint defined in the contract with example
+data or auto-generated values that conform to the schema.
 
 ### Using the Mock Server with the CLI
 
-Point the CLI at the mock server:
+The `--api-url` option belongs to the `health` subcommand, not the root
+command. Point the CLI at the mock server like this:
 
 ```bash
-uv run logion --api-url http://localhost:4010 health
+uv run logion health --api-url http://localhost:4010
 ```
 
 ### Stopping the Mock Server
 
-`Ctrl+C` or:
-
 ```bash
 make mock-stop
+```
+
+This reads the PID from `.prism.pid` and kills only that process. If you
+started the mock server manually (without `make mock`), stop it with `Ctrl+C`
+or find it by port:
+
+```bash
+lsof -ti :4010 | xargs kill
 ```
 
 ### How the Mock Works
@@ -95,15 +103,19 @@ make lint
 
 ### Running Tests
 
+Tests have not been added yet. Once they are, run:
+
 ```bash
-make test
+uv run pytest packages/
 ```
+
+The `make test` target currently prints a reminder because no tests exist under
+`packages/`.
 
 ### Type Checking
 
-```bash
-make typecheck
-```
+Type checking is not configured yet. It will be available once `mypy` is added
+to dev dependencies.
 
 ## API Contract
 
@@ -149,7 +161,7 @@ only be reviewed for accuracy, not edited manually.
 3. **Make your changes** and commit with clear messages
 4. **Run checks** before pushing:
    ```bash
-   make lint test
+   make lint
    ```
 5. **Open a Pull Request** against `main`
 
@@ -172,7 +184,9 @@ config lives in `pyproject.toml`. Key rules:
 - Line length: **79**
 - Target Python: **3.12**
 - Import sorting enforced
-- Type annotations required for public APIs
+- Extended rules: unused arguments (`ARG`), simplified logic (`SIM`),  
+  comprehension refactors (`C4`), and others (see `pyproject.toml` for the  
+  full list)
 
 ## Questions?
 
