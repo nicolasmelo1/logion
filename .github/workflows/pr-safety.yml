@@ -53,7 +53,7 @@ jobs:
           make check-models
 
       - name: Dependency audit
-        run: uv run pip-audit
+        run: uv run pip-audit --skip-editable
 
       - name: Static security scan
         run: uv run bandit -c pyproject.toml -r packages

@@ -18,7 +18,7 @@ dev = [
     "detect-secrets>=1.5.0",
     "mypy>=1.15,<2",
     "pip-audit>=2.10.0",
-    "pytest>=8.0,<9",
+    "pytest>=9.0.3",
     "python-semantic-release>=10.5.3,<10.6.0",
     "ruff>=0.15.12,<0.16.0",
 ]

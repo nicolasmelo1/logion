@@ -14,7 +14,7 @@ typecheck:
 	uv run mypy packages/ --ignore-missing-imports
 
 audit:
-	uv run pip-audit
+	uv run pip-audit --skip-editable
 
 bandit:
 	uv run bandit -c pyproject.toml -r packages
