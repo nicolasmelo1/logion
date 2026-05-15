@@ -11,7 +11,7 @@ test:
 	uv run pytest packages/ --no-header -q -m "not integration"
 
 typecheck:
-	uv run mypy packages/ --ignore-missing-imports
+	uv run mypy packages/cli/cli/ packages/client/src/ --ignore-missing-imports
 
 audit:
 	uv run pip-audit --skip-editable

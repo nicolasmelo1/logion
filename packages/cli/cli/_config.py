@@ -33,11 +33,14 @@ def resolve_config_from_args(
     args: object,
 ) -> CliConfig:
     """Build a CliConfig from parsed argparse args + env vars."""
-    api_key = getattr(args, "api_key", None) or os.getenv("LOGION_API_KEY")
-    base_url = getattr(args, "base_url", None) or os.getenv(
-        "LOGION_BASE_URL",
-        DEFAULT_BASE_URL,
-    )
+    api_key: str | None = getattr(args, "api_key", None)
+    if api_key is None:
+        api_key = os.getenv("LOGION_API_KEY")
+
+    base_url: str | None = getattr(args, "base_url", None)
+    if base_url is None:
+        base_url = os.getenv("LOGION_BASE_URL", DEFAULT_BASE_URL)
+
     return CliConfig(
         api_key=api_key,
         base_url=base_url,

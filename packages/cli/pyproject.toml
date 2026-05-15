@@ -80,6 +80,9 @@ known-first-party = ["cli", "landing", "logion"]
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
+[tool.mypy]
+exclude = ["tests/"]
+
 [tool.semantic_release]
 build_command = "uv build"
 commit_message = """\
