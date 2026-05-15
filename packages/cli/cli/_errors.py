@@ -25,3 +25,11 @@ def handle_error(exc: Exception) -> int:
 def print_err(msg: str) -> None:
     """Print a user-facing message to stderr."""
     print(msg, file=sys.stderr)
+
+
+def require_non_empty_id(value: str, label: str) -> int | None:
+    """Return ``2`` if *value* is empty/whitespace, else ``None``."""
+    if not value or not value.strip():
+        print_err(f"Error: {label} must not be empty.")
+        return 2
+    return None

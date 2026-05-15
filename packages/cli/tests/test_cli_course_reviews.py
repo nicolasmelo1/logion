@@ -154,3 +154,31 @@ def test_course_reviews_reject_without_yes() -> None:
         "nope",
     ])
     assert code == 2
+
+
+def test_course_reviews_approve_empty_id() -> None:
+    """course-reviews approve rejects empty review_id."""
+    code = main([
+        "course-reviews",
+        "approve",
+        "",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2
+
+
+def test_course_reviews_reject_empty_id() -> None:
+    """course-reviews reject rejects empty review_id."""
+    code = main([
+        "course-reviews",
+        "reject",
+        "",
+        "--decision-reason",
+        "bad",
+        "--reviewer-notes",
+        "nope",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2

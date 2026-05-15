@@ -335,6 +335,9 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
     """Execute the courses uploads create command."""
+    if not args.files:
+        print_err("at least one --file is required")
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

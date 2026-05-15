@@ -248,6 +248,23 @@ def test_courses_uploads_create_file_not_found(
     assert code == 2
 
 
+def test_courses_uploads_create_no_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses uploads create requires at least one --file."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "uploads",
+        "create",
+        "c1",
+        "--json",
+    ])
+    assert code == 2
+
+
 def test_courses_uploads_complete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -359,6 +376,29 @@ def test_courses_reviews_upsert_no_completed_task(
     assert code == 0
     _method, kwargs = courses.last_call
     assert "completed_task" not in kwargs
+
+
+def test_courses_reviews_upsert_no_completed_task_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--no-completed-task sends completed_task=False to SDK."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "reviews",
+        "upsert",
+        "c1",
+        "v1",
+        "--rating",
+        "3",
+        "--no-completed-task",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert kwargs["completed_task"] is False
 
 
 def test_courses_reviews_list(

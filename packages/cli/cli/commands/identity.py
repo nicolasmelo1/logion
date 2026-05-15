@@ -16,11 +16,12 @@ def _resolve_password(cli_value: str | None) -> tuple[int | None, str]:
     """Return ``(None, password)`` or ``(exit_code, "")`` on failure.
 
     Checks CLI arg first, then ``LOGION_PASSWORD`` env var.
+    Empty or whitespace-only values are treated as missing.
     """
-    if cli_value is not None:
+    if cli_value is not None and cli_value.strip():
         return None, cli_value
     env = os.environ.get("LOGION_PASSWORD")
-    if env:
+    if env and env.strip():
         return None, env
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
     return 2, ""

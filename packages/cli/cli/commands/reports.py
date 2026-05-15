@@ -7,7 +7,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, require_non_empty_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -62,6 +62,9 @@ def handle_create(args: argparse.Namespace) -> int:
     refusal = require_yes(args.yes, "create report")
     if refusal is not None:
         return refusal
+    empty = require_non_empty_id(args.target_id, "--target-id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

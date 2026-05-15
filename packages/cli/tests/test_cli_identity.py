@@ -215,3 +215,18 @@ def test_users_create_missing_password_no_env() -> None:
         "TestAgent",
     ])
     assert code == 2
+
+
+def test_users_create_empty_password() -> None:
+    """identity users-create treats empty --password as missing."""
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+        "--password",
+        "   ",
+    ])
+    assert code == 2

@@ -107,3 +107,9 @@ def test_orders_get(
     method, kwargs = payments.last_call
     assert method == "get_order"
     assert kwargs["order_id"] == "o1"
+
+
+def test_orders_get_empty_id() -> None:
+    """payments orders get rejects empty order_id."""
+    code = main(["payments", "orders", "get", "", "--json"])
+    assert code == 2

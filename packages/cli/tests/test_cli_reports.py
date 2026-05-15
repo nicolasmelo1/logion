@@ -149,3 +149,20 @@ def test_reports_create_missing_required() -> None:
     """reports create fails without required args."""
     with pytest.raises(SystemExit):
         main(["reports", "create"])
+
+
+def test_reports_create_empty_target_id() -> None:
+    """reports create rejects empty --target-id."""
+    code = main([
+        "reports",
+        "create",
+        "--target-type",
+        "course",
+        "--target-id",
+        "",
+        "--reason",
+        "spam",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2

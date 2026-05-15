@@ -6,7 +6,7 @@ import argparse
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, require_non_empty_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -112,6 +112,9 @@ def handle_checkout(args: argparse.Namespace) -> int:
 
 def handle_orders_get(args: argparse.Namespace) -> int:
     """Execute the payments orders get command."""
+    empty = require_non_empty_id(args.order_id, "order_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

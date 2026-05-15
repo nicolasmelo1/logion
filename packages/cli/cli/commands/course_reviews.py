@@ -7,7 +7,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, require_non_empty_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -101,6 +101,9 @@ def handle_get(args: argparse.Namespace) -> int:
 
 def handle_approve(args: argparse.Namespace) -> int:
     """Execute course-reviews approve."""
+    empty = require_non_empty_id(args.review_id, "review_id")
+    if empty is not None:
+        return empty
     refusal = require_yes(args.yes, "approve")
     if refusal is not None:
         return refusal
@@ -122,6 +125,9 @@ def handle_approve(args: argparse.Namespace) -> int:
 
 def handle_reject(args: argparse.Namespace) -> int:
     """Execute course-reviews reject."""
+    empty = require_non_empty_id(args.review_id, "review_id")
+    if empty is not None:
+        return empty
     refusal = require_yes(args.yes, "reject")
     if refusal is not None:
         return refusal
