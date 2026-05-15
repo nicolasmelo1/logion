@@ -14,7 +14,7 @@ class FakePaymentsResource:
     """Fake payments resource."""
 
     def __init__(self) -> None:
-        self.last_call: dict[str, Any] = {}
+        self.last_call: tuple[str, dict[str, Any]] = ("", {})
 
     def get_seller_readiness(self) -> dict[str, Any]:
         self.last_call = ("get_seller_readiness", {})

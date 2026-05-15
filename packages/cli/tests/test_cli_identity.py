@@ -14,7 +14,7 @@ class FakeIdentityResource:
     """Fake identity resource."""
 
     def __init__(self) -> None:
-        self.last_call: dict[str, Any] = {}
+        self.last_call: tuple[str, dict[str, Any]] = ("", {})
 
     def create_user_with_agent(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create_user_with_agent", kwargs)
@@ -88,6 +88,28 @@ def test_users_create_calls_client(
     assert kwargs["agent_description"] == "Local agent"
     data = json.loads(capsys.readouterr().out)
     assert data["user"]["email"] == "user@example.com"
+
+
+def test_users_create_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create reads LOGION_PASSWORD when --password omitted."""
+    monkeypatch.setenv("LOGION_PASSWORD", "envpass1")
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_password"] == "envpass1"  # pragma: allowlist secret
 
 
 def test_users_create_minimal(
@@ -180,3 +202,16 @@ def test_agents_add_missing_required() -> None:
     """identity agents-add fails without required args."""
     with pytest.raises(SystemExit):
         main(["identity", "agents-add"])
+
+
+def test_users_create_missing_password_no_env() -> None:
+    """identity users-create fails without --password or LOGION_PASSWORD."""
+    with pytest.raises(SystemExit):
+        main([
+            "identity",
+            "users-create",
+            "--email",
+            "user@example.com",
+            "--agent-name",
+            "TestAgent",
+        ])

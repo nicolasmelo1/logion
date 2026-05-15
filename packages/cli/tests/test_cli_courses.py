@@ -14,7 +14,7 @@ class FakeCoursesResource:
     """Fake courses resource."""
 
     def __init__(self) -> None:
-        self.last_call: dict[str, Any] = {}
+        self.last_call: tuple[str, dict[str, Any]] = ("", {})
 
     def create(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create", kwargs)
@@ -194,6 +194,62 @@ def test_courses_update(
     assert "language" not in kwargs
 
 
+def test_courses_uploads_create(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pytest.Path,
+) -> None:
+    """courses uploads create builds file dicts from paths."""
+    f1 = tmp_path / "module1.md"
+    f1.write_text("# Module 1\nHello world")
+    f2 = tmp_path / "data.json"
+    f2.write_text('{"key": "val"}')
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "uploads",
+        "create",
+        "c1",
+        "--file",
+        str(f1),
+        "--file",
+        str(f2),
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "create_upload_session"
+    assert kwargs["course_id"] == "c1"
+    files = kwargs["files"]
+    assert len(files) == 2
+    assert files[0]["path"] == str(f1)
+    assert files[0]["size_bytes"] == f1.stat().st_size
+    assert files[1]["path"] == str(f2)
+
+
+def test_courses_uploads_complete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses uploads complete forwards IDs."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "uploads",
+        "complete",
+        "c1",
+        "v1",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "complete_upload_session"
+    assert kwargs["course_id"] == "c1"
+    assert kwargs["version_id"] == "v1"
+
+
 def test_courses_publication_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -289,6 +345,29 @@ def test_courses_reviews_list(
     assert kwargs["limit"] == 20
 
 
+def test_courses_reviews_mine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses reviews mine calls SDK."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "reviews",
+        "mine",
+        "c1",
+        "--version-id",
+        "v1",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "get_my_review"
+    assert kwargs["course_id"] == "c1"
+    assert kwargs["version_id"] == "v1"
+
+
 def test_courses_feedback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -302,29 +381,22 @@ def test_courses_feedback(
     assert kwargs["course_id"] == "c1"
 
 
+def test_courses_versions_get(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses versions get calls SDK."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main(["courses", "versions", "get", "c1", "v1", "--json"])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "get_version"
+    assert kwargs["course_id"] == "c1"
+    assert kwargs["version_id"] == "v1"
+
+
 def test_courses_create_missing_required() -> None:
     """courses create fails without required args."""
     with pytest.raises(SystemExit):
         main(["courses", "create"])
-
-
-def test_courses_uploads_complete(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """courses uploads complete forwards IDs."""
-    courses = FakeCoursesResource()
-    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "courses",
-        "uploads",
-        "complete",
-        "c1",
-        "v1",
-        "--json",
-    ])
-    assert code == 0
-    method, kwargs = courses.last_call
-    assert method == "complete_upload_session"
-    assert kwargs["course_id"] == "c1"
-    assert kwargs["version_id"] == "v1"

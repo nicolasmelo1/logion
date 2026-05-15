@@ -14,7 +14,7 @@ class FakeReportsResource:
     """Fake reports resource."""
 
     def __init__(self) -> None:
-        self.last_call: dict[str, Any] = {}
+        self.last_call: tuple[str, dict[str, Any]] = ("", {})
 
     def create(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create", kwargs)
@@ -47,7 +47,7 @@ def test_reports_create_calls_client(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """reports create forwards args to SDK."""
+    """reports create --yes forwards args to SDK."""
     reports = FakeReportsResource()
     fake = FakeClient(v1=FakeV1Namespace(reports=reports))
     _patch_client(monkeypatch, fake)
@@ -62,6 +62,7 @@ def test_reports_create_calls_client(
         "spam",
         "--description",
         "Suspicious listing",
+        "--yes",
         "--json",
     ])
     assert code == 0
@@ -91,11 +92,27 @@ def test_reports_create_without_description(
         "a1",
         "--reason",
         "harassment",
+        "--yes",
         "--json",
     ])
     assert code == 0
     _method, kwargs = reports.last_call
     assert kwargs["description"] is None
+
+
+def test_reports_create_without_yes() -> None:
+    """reports create refuses without --yes."""
+    code = main([
+        "reports",
+        "create",
+        "--target-type",
+        "course",
+        "--target-id",
+        "c1",
+        "--reason",
+        "spam",
+    ])
+    assert code == 2
 
 
 def test_reports_create_invalid_target_type() -> None:

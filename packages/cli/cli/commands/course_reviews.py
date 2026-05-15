@@ -49,7 +49,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     approve.add_argument("review_id")
-    approve.add_argument("--notes")
+    approve.add_argument("--reviewer-notes")
     approve.add_argument("--yes", action="store_true")
     approve.set_defaults(handler=handle_approve)
 
@@ -109,7 +109,7 @@ def handle_approve(args: argparse.Namespace) -> int:
     try:
         result = client.v1.course_reviews.approve(
             review_id=args.review_id,
-            reviewer_notes=args.notes,
+            reviewer_notes=args.reviewer_notes,
         )
         emit(result, json_output=config.json_output)
     except Exception as exc:

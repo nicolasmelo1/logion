@@ -20,3 +20,8 @@ def handle_error(exc: Exception) -> int:
         print(f"Logion error: {exc}", file=sys.stderr)
         return 1
     raise exc
+
+
+def print_err(msg: str) -> None:
+    """Print a user-facing message to stderr."""
+    print(msg, file=sys.stderr)

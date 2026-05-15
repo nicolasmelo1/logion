@@ -14,7 +14,7 @@ class FakeCourseReviewsResource:
     """Fake course_reviews resource."""
 
     def __init__(self) -> None:
-        self.last_call: dict[str, Any] = {}
+        self.last_call: tuple[str, dict[str, Any]] = ("", {})
 
     def list(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("list", kwargs)
@@ -98,7 +98,7 @@ def test_course_reviews_approve_with_yes(
         "course-reviews",
         "approve",
         "r1",
-        "--notes",
+        "--reviewer-notes",
         "Looks good",
         "--yes",
         "--json",

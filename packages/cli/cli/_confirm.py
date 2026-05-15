@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sys
+from cli._errors import print_err
 
 
 def require_yes(yes: bool, action: str) -> int | None:
@@ -11,5 +11,5 @@ def require_yes(yes: bool, action: str) -> int | None:
     """
     if yes:
         return None
-    print(f"Refusing to {action} without --yes.", file=sys.stderr)
+    print_err(f"Refusing to {action} without --yes.")
     return 2
