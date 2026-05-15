@@ -5,7 +5,16 @@ from __future__ import annotations
 import argparse
 
 from cli._version import get_cli_version
-from cli.commands import health, listings, notifications
+from cli.commands import (
+    course_reviews,
+    courses,
+    health,
+    identity,
+    listings,
+    notifications,
+    payments,
+    reports,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,7 +31,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     health.register(subparsers)
+    identity.register(subparsers)
     listings.register(subparsers)
     notifications.register(subparsers)
+    courses.register(subparsers)
+    payments.register(subparsers)
+    reports.register(subparsers)
+    course_reviews.register(subparsers)
 
     return parser
