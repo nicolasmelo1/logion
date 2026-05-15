@@ -1,0 +1,406 @@
+"""Generate internal client operation functions from the OpenAPI contract."""
+
+from __future__ import annotations
+
+import argparse
+import builtins
+import json
+import keyword
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[3]
+CONTRACT_PATH = ROOT / "contracts" / "openapi" / "v1.json"
+OUTPUT_PATH = (
+    ROOT
+    / "packages"
+    / "client"
+    / "src"
+    / "logion"
+    / "v1"
+    / "_generated"
+    / "operations.py"
+)
+HTTP_METHODS = {"delete", "get", "patch", "post", "put"}
+RESERVED_NAMES = set(keyword.kwlist) | set(dir(builtins))
+
+
+@dataclass(frozen=True)
+class Parameter:
+    """OpenAPI parameter needed by a generated operation."""
+
+    wire_name: str
+    python_name: str
+    location: str
+    annotation: str
+    required: bool
+
+
+@dataclass(frozen=True)
+class Response:
+    """Generated response handling."""
+
+    kind: str
+    annotation: str
+    model_name: str | None = None
+
+
+@dataclass(frozen=True)
+class Operation:
+    """OpenAPI operation needed by the SDK transport layer."""
+
+    operation_id: str
+    method: str
+    path: str
+    path_params: tuple[Parameter, ...]
+    query_params: tuple[Parameter, ...]
+    request_model: str | None
+    response: Response
+
+
+def main() -> int:
+    """Run the operation generator."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Fail if generated operations are not up to date.",
+    )
+    args = parser.parse_args()
+
+    content = generate_operations()
+    if args.check:
+        existing = OUTPUT_PATH.read_text() if OUTPUT_PATH.exists() else ""
+        if existing != content:
+            sys.stderr.write(
+                f"{OUTPUT_PATH.relative_to(ROOT)} is out of date. "
+                "Run `make -C packages/client generate-operations`.\n"
+            )
+            return 1
+        return 0
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(content)
+    return 0
+
+
+def generate_operations() -> str:
+    """Generate the operations module content."""
+    spec = json.loads(CONTRACT_PATH.read_text())
+    operations = collect_operations(spec)
+    return render_module(operations)
+
+
+def collect_operations(spec: dict[str, Any]) -> list[Operation]:
+    """Extract supported OpenAPI operations in stable order."""
+    operations: list[Operation] = []
+    for path, path_item in sorted(spec.get("paths", {}).items()):
+        for method, operation in sorted(path_item.items()):
+            if method not in HTTP_METHODS:
+                continue
+            operations.append(parse_operation(path, method, operation))
+    return operations
+
+
+def parse_operation(
+    path: str,
+    method: str,
+    operation: dict[str, Any],
+) -> Operation:
+    """Parse the parts of an OpenAPI operation used by the generator."""
+    parameters = [
+        parse_parameter(param)
+        for param in operation.get("parameters", [])
+        if param.get("in") in {"path", "query"}
+    ]
+    request_model = parse_ref(
+        operation
+        .get("requestBody", {})
+        .get("content", {})
+        .get("application/json", {})
+        .get("schema", {})
+    )
+    return Operation(
+        operation_id=operation["operationId"],
+        method=method.upper(),
+        path=path,
+        path_params=tuple(
+            param for param in parameters if param.location == "path"
+        ),
+        query_params=tuple(
+            param for param in parameters if param.location == "query"
+        ),
+        request_model=request_model,
+        response=parse_response(operation),
+    )
+
+
+def parse_parameter(parameter: dict[str, Any]) -> Parameter:
+    """Parse a path or query parameter."""
+    wire_name = parameter["name"]
+    schema = parameter.get("schema", {})
+    annotation = schema_to_annotation(
+        schema,
+        is_path=parameter["in"] == "path",
+    )
+    required = bool(parameter.get("required"))
+    if not required and annotation != "Any" and "None" not in annotation:
+        annotation = f"{annotation} | None"
+    return Parameter(
+        wire_name=wire_name,
+        python_name=to_python_name(wire_name),
+        location=parameter["in"],
+        annotation=annotation,
+        required=required,
+    )
+
+
+def parse_response(operation: dict[str, Any]) -> Response:
+    """Parse the preferred JSON success response."""
+    responses = operation.get("responses", {})
+    response = (
+        responses.get("200")
+        or responses.get("201")
+        or responses.get("202")
+        or responses.get("204")
+        or {}
+    )
+    schema = (
+        response
+        .get("content", {})
+        .get("application/json", {})
+        .get("schema", {})
+    )
+    model_name = parse_ref(schema)
+    if model_name is not None:
+        return Response("model", model_name, model_name)
+    if schema.get("type") == "array":
+        item_model = parse_ref(schema.get("items", {}))
+        if item_model is not None:
+            return Response("list_model", f"list[{item_model}]", item_model)
+        return Response("list_dict", "list[dict[str, Any]]")
+    if schema.get("type") == "object":
+        value_type = schema_to_annotation(
+            schema.get("additionalProperties", {})
+        )
+        return Response("dict", f"dict[str, {value_type}]")
+    return Response("dict", "dict[str, Any]")
+
+
+def parse_ref(schema: dict[str, Any]) -> str | None:
+    """Return the schema component name for a JSON schema $ref."""
+    ref = schema.get("$ref")
+    if not isinstance(ref, str):
+        return None
+    return ref.rsplit("/", maxsplit=1)[-1]
+
+
+def schema_to_annotation(
+    schema: dict[str, Any],
+    *,
+    is_path: bool = False,
+) -> str:
+    """Map a small OpenAPI schema subset to Python annotations."""
+    if "anyOf" in schema:
+        non_null = [
+            item for item in schema["anyOf"] if item.get("type") != "null"
+        ]
+        if len(non_null) == 1:
+            annotation = schema_to_annotation(non_null[0], is_path=is_path)
+            return f"{annotation} | None"
+        return "Any"
+    schema_type = schema.get("type")
+    schema_format = schema.get("format")
+    if schema_type == "string" and schema_format == "uuid":
+        return "str | UUID"
+    if schema_type == "string":
+        return "str"
+    if schema_type == "integer":
+        return "int"
+    if schema_type == "number":
+        return "float"
+    if schema_type == "boolean":
+        return "bool"
+    if schema_type == "array":
+        item_type = schema_to_annotation(schema.get("items", {}))
+        return f"list[{item_type}]"
+    if schema_type == "object":
+        return "dict[str, Any]"
+    return "Any"
+
+
+def to_python_name(name: str) -> str:
+    """Convert a wire parameter name to a valid Python identifier."""
+    python_name = re.sub(r"\W", "_", name)
+    if python_name in RESERVED_NAMES:
+        return f"{python_name}_"
+    return python_name
+
+
+def render_module(operations: list[Operation]) -> str:
+    """Render the generated operations module."""
+    model_imports = sorted({
+        name
+        for operation in operations
+        for name in (
+            operation.request_model,
+            operation.response.model_name,
+        )
+        if name is not None
+    })
+    lines = [
+        '"""Generated internal operation functions for the v1 API."""',
+        "",
+        "from __future__ import annotations",
+        "",
+        "from typing import Any, cast",
+        "from uuid import UUID",
+        "",
+        "from logion._http import HttpClient",
+    ]
+    if model_imports:
+        lines.extend(render_model_imports(model_imports))
+    lines.append("")
+    lines.append("")
+    for index, operation in enumerate(operations):
+        if index:
+            lines.append("")
+            lines.append("")
+        lines.extend(render_operation(operation))
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_model_imports(model_imports: list[str]) -> list[str]:
+    """Render imports from the generated Pydantic models module."""
+    lines = ["from logion.v1._types.generated.v1 import ("]
+    lines.extend(f"    {model_name}," for model_name in model_imports)
+    lines.append(")")
+    return lines
+
+
+def render_operation(operation: Operation) -> list[str]:
+    """Render one generated function."""
+    signature = render_signature(operation)
+    return [
+        f"def {operation.operation_id}(",
+        *signature,
+        f") -> {operation.response.annotation}:",
+        f'    """Call the {operation.operation_id} API operation."""',
+        *render_query_params(operation),
+        *render_request(operation),
+    ]
+
+
+def render_signature(operation: Operation) -> list[str]:
+    """Render function signature lines."""
+    params = [
+        *operation.path_params,
+        *operation.query_params,
+    ]
+    lines = ["    http: HttpClient,"]
+    if params or operation.request_model is not None:
+        lines.append("    *,")
+    for param in params:
+        default = "" if param.required else " = None"
+        lines.append(f"    {param.python_name}: {param.annotation}{default},")
+    if operation.request_model is not None:
+        lines.append(f"    body: {operation.request_model},")
+    return lines
+
+
+def render_query_params(operation: Operation) -> list[str]:
+    """Render query-parameter collection code."""
+    if not operation.query_params:
+        return []
+    lines = ["    params: dict[str, Any] = {}"]
+    for param in operation.query_params:
+        lines.extend([
+            f"    if {param.python_name} is not None:",
+            f'        params["{param.wire_name}"] = {param.python_name}',
+        ])
+    return lines
+
+
+def render_request(operation: Operation) -> list[str]:
+    """Render request and response handling."""
+    path = render_path(operation)
+    kwargs = render_request_kwargs(operation)
+    if operation.response.kind == "model":
+        return [
+            "    return http.request_model(",
+            f'        "{operation.method}",',
+            f"        {path},",
+            f"        {operation.response.model_name},",
+            *kwargs,
+            "    )",
+        ]
+    if operation.response.kind == "list_model":
+        return [
+            "    return [",
+            f"        {operation.response.model_name}.model_validate(item)",
+            "        for item in http.request_list(",
+            f'            "{operation.method}",',
+            f"            {path},",
+            *[f"    {line}" for line in kwargs],
+            "        )",
+            "    ]",
+        ]
+    if operation.response.kind == "list_dict":
+        return [
+            "    return http.request_list(",
+            f'        "{operation.method}",',
+            f"        {path},",
+            *kwargs,
+            "    )",
+        ]
+    return [
+        "    return cast(",
+        f"        {operation.response.annotation},",
+        "        http.request(",
+        f'            "{operation.method}",',
+        f"            {path},",
+        *[f"    {line}" for line in kwargs],
+        "        ),",
+        "    )",
+    ]
+
+
+def render_request_kwargs(operation: Operation) -> list[str]:
+    """Render request keyword argument lines."""
+    kwargs: list[str] = []
+    if operation.query_params:
+        kwargs.append("        params=params,")
+    json_arg = render_json_arg(operation)
+    if json_arg is not None:
+        kwargs.append(f"        {json_arg},")
+    return kwargs
+
+
+def render_path(operation: Operation) -> str:
+    """Render the request path expression."""
+    if not operation.path_params:
+        return f'"{operation.path}"'
+    path = operation.path
+    for param in operation.path_params:
+        path = path.replace(
+            f"{{{param.wire_name}}}",
+            f"{{{param.python_name}}}",
+        )
+    return f'f"{path}"'
+
+
+def render_json_arg(operation: Operation) -> str | None:
+    """Render the JSON request-body argument."""
+    if operation.request_model is None:
+        return None
+    if operation.operation_id == "update_course":
+        return 'json=body.model_dump(mode="json", exclude_unset=True)'
+    return 'json=body.model_dump(mode="json", exclude_none=True)'
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

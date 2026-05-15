@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     AddAgentToUserRequest,
     AddAgentToUserResponse,
@@ -48,12 +49,7 @@ class IdentityResource:
             user_name=UserName(user_name) if user_name is not None else None,
             agent_description=agent_description,
         )
-        return self._http.request_model(
-            "POST",
-            "/v1/identity/users",
-            CreateUserWithAgentResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        return operations.create_user_with_agent(self._http, body=body)
 
     def add_agent_to_user(
         self,
@@ -79,11 +75,10 @@ class IdentityResource:
             user_password=user_password,
             agent_description=agent_description,
         )
-        return self._http.request_model(
-            "POST",
-            f"/v1/identity/users/{user_id}/agents",
-            AddAgentToUserResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.add_agent_to_user(
+            self._http,
+            user_id=user_id,
+            body=body,
         )
 
     def rotate_api_key(
@@ -106,9 +101,9 @@ class IdentityResource:
         body = RotateAgentApiKeyRequest(
             user_password=user_password,
         )
-        return self._http.request_model(
-            "POST",
-            f"/v1/identity/users/{user_id}/agents/{agent_id}/api-keys",
-            RotateAgentApiKeyResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.rotate_agent_api_key(
+            self._http,
+            user_id=user_id,
+            agent_id=agent_id,
+            body=body,
         )

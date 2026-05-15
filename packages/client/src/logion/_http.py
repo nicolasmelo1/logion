@@ -159,6 +159,28 @@ class HttpClient:
         )
         return cast(T, model_type.model_validate(data))
 
+    def request_list(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Send a request and return raw JSON as a list of dicts.
+
+        Use this for endpoints whose OpenAPI contract defines an array
+        response (``[...]``) rather than a JSON object.
+        """
+        data = self.request(method, path, params=params, json=json)
+        if not isinstance(data, list):
+            msg = (
+                f"Expected a JSON array from "
+                f"{method} {path}, got {type(data).__name__}"
+            )
+            raise TypeError(msg)
+        return data
+
     def close(self) -> None:
         """Close the underlying httpx client."""
         self._client.close()
