@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -42,6 +43,7 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
 
 def test_listings_search_basic(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """listings search --query rag emits results."""
     listings = FakeListingsResource()
@@ -49,10 +51,14 @@ def test_listings_search_basic(
     _patch_client(monkeypatch, fake)
     assert main(["listings", "search", "--query", "rag"]) == 0
     assert listings.last_call["query"] == "rag"
+    # Verify output is valid JSON
+    data = json.loads(capsys.readouterr().out)
+    assert "items" in data
 
 
 def test_listings_search_with_filters(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """listings search forwards all filters to the SDK."""
     listings = FakeListingsResource()
@@ -77,13 +83,24 @@ def test_listings_search_with_filters(
     assert listings.last_call["language"] == "pt"
     assert listings.last_call["limit"] == 10
     assert listings.last_call["sort"] == "newest"
+    # Verify output is valid JSON
+    data = json.loads(capsys.readouterr().out)
+    assert "items" in data
 
 
 def test_listings_search_json(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """listings search --json outputs valid JSON."""
-    listings = FakeListingsResource(response={"items": []})
+    """listings search --json outputs sorted JSON."""
+    listings = FakeListingsResource(
+        response={"items": [], "next_cursor": None},
+    )
     fake = FakeClient(v1=FakeV1Namespace(listings=listings))
     _patch_client(monkeypatch, fake)
     assert main(["listings", "search", "--json"]) == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["items"] == []
+    # --json sorts keys alphabetically
+    assert out.index('"items"') < out.index('"next_cursor"')

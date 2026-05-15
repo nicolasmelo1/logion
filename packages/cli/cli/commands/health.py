@@ -7,14 +7,17 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._options import add_common_options
+from cli._options import COMMON_PARSER
 from cli._output import emit
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
     """Register the ``health`` subcommand."""
-    parser = subparsers.add_parser("health", help="Check API health")
-    add_common_options(parser)
+    parser = subparsers.add_parser(
+        "health",
+        help="Check API health",
+        parents=[COMMON_PARSER],
+    )
     parser.set_defaults(handler=handle_health)
 
 

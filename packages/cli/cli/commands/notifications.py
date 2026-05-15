@@ -7,7 +7,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._options import add_common_options
+from cli._options import COMMON_PARSER
 from cli._output import emit
 
 
@@ -17,7 +17,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "notifications",
         help="List notifications and check unread count",
     )
-    add_common_options(parser)
     sub = parser.add_subparsers(
         dest="notifications_command",
         required=True,
@@ -27,13 +26,16 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     uc = sub.add_parser(
         "unread-count",
         help="Get unread notification count",
+        parents=[COMMON_PARSER],
     )
-    add_common_options(uc)
     uc.set_defaults(handler=handle_unread_count)
 
     # list
-    ls = sub.add_parser("list", help="List notifications")
-    add_common_options(ls)
+    ls = sub.add_parser(
+        "list",
+        help="List notifications",
+        parents=[COMMON_PARSER],
+    )
     ls.add_argument("--unread-only", action="store_true")
     ls.add_argument("--notification-type")
     ls.add_argument("--limit", type=int)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -41,17 +42,27 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
     monkeypatch.setattr("cli._context.LogionClient", lambda **_: fake)
 
 
-def test_health_json(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """health --json prints valid JSON with status."""
     fake = FakeClient(v1=FakeV1Namespace(health=FakeHealthResource()))
     _patch_client(monkeypatch, fake)
     assert main(["health", "--json"]) == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "ok"
 
 
 def test_health_human_readable(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """health without --json prints the dict repr."""
+    """health without --json prints pretty JSON."""
     fake = FakeClient(v1=FakeV1Namespace(health=FakeHealthResource()))
     _patch_client(monkeypatch, fake)
     assert main(["health"]) == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["status"] == "ok"

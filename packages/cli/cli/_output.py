@@ -20,9 +20,14 @@ def to_data(value: Any) -> Any:
 
 
 def emit(value: Any, *, json_output: bool) -> None:
-    """Print *value* as JSON or as a plain representation."""
+    """Print *value* as JSON.
+
+    In JSON mode the output is sorted and indented for scripts.
+    In human mode the output is indented but preserves natural key order
+    for readability.
+    """
     data = to_data(value)
     if json_output:
         print(json.dumps(data, indent=2, sort_keys=True))
-        return
-    print(data)
+    else:
+        print(json.dumps(data, indent=2))

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -52,26 +53,33 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
 
 def test_unread_count_json(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """notifications unread-count --json emits count."""
     notif = FakeNotificationsResource()
     fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
     _patch_client(monkeypatch, fake)
     assert main(["notifications", "unread-count", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["unread_count"] == 5
 
 
 def test_unread_count_human(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """notifications unread-count without --json."""
     notif = FakeNotificationsResource()
     fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
     _patch_client(monkeypatch, fake)
     assert main(["notifications", "unread-count"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["unread_count"] == 5
 
 
 def test_notifications_list_basic(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """notifications list forwards params to SDK."""
     notif = FakeNotificationsResource()
@@ -79,10 +87,13 @@ def test_notifications_list_basic(
     _patch_client(monkeypatch, fake)
     assert main(["notifications", "list", "--unread-only"]) == 0
     assert notif.last_list_call["unread_only"] is True
+    data = json.loads(capsys.readouterr().out)
+    assert "items" in data
 
 
 def test_notifications_list_with_filters(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """notifications list forwards all filters."""
     notif = FakeNotificationsResource()
@@ -104,3 +115,5 @@ def test_notifications_list_with_filters(
     assert notif.last_list_call["limit"] == 20
     assert notif.last_list_call["cursor"] == "abc"
     assert notif.last_list_call["notification_type"] == "course_update"
+    data = json.loads(capsys.readouterr().out)
+    assert "items" in data
