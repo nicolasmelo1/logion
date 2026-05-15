@@ -174,7 +174,10 @@ class HttpClient:
         """
         data = self.request(method, path, params=params, json=json)
         if not isinstance(data, list):
-            msg = f"Expected a JSON array from {method} {path}, got {type(data).__name__}"
+            msg = (
+                f"Expected a JSON array from "
+                f"{method} {path}, got {type(data).__name__}"
+            )
             raise TypeError(msg)
         return data
 
