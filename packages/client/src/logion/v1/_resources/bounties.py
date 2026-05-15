@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
     CancelBountyResponse,
@@ -69,12 +70,7 @@ class BountiesResource:
             currency=currency,
             submission_deadline=submission_deadline,
         )
-        return self._http.request_model(
-            "POST",
-            "/v1/bounties",
-            CreateBountyResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        return operations.create_bounty(self._http, body=body)
 
     def list(
         self,
@@ -98,16 +94,7 @@ class BountiesResource:
             msg = f"Invalid scope value {scope!r}. Must be one of: {valid}"
             raise ValueError(msg)
 
-        params: dict[str, Any] = {}
-        if scope is not None:
-            params["scope"] = scope
-
-        data = self._http.request_list(
-            "GET",
-            "/v1/bounties",
-            params=params,
-        )
-        return [ListBountiesResponse.model_validate(item) for item in data]
+        return operations.list_bounties(self._http, scope=scope)
 
     def get(
         self,
@@ -121,11 +108,7 @@ class BountiesResource:
         Returns:
             Bounty details.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/bounties/{bounty_id}",
-            GetBountyResponse,
-        )
+        return operations.get_bounty(self._http, bounty_id=bounty_id)
 
     def update_status(
         self,
@@ -139,11 +122,7 @@ class BountiesResource:
         Returns:
             Updated bounty details.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/bounties/{bounty_id}/status",
-            OpenBountyResponse,
-        )
+        return operations.open_bounty(self._http, bounty_id=bounty_id)
 
     def update_funding(
         self,
@@ -157,11 +136,7 @@ class BountiesResource:
         Returns:
             Updated bounty details with funding info.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/bounties/{bounty_id}/funding",
-            FundBountyResponse,
-        )
+        return operations.fund_bounty(self._http, bounty_id=bounty_id)
 
     def delete(
         self,
@@ -175,11 +150,7 @@ class BountiesResource:
         Returns:
             Cancelled bounty details.
         """
-        return self._http.request_model(
-            "DELETE",
-            f"/v1/bounties/{bounty_id}",
-            CancelBountyResponse,
-        )
+        return operations.cancel_bounty(self._http, bounty_id=bounty_id)
 
     def create_payout(
         self,
@@ -193,10 +164,9 @@ class BountiesResource:
         Returns:
             Created payout details.
         """
-        return self._http.request_model(
-            "POST",
-            f"/v1/bounties/{bounty_id}/payouts",
-            CreateBountyPayoutResponse,
+        return operations.create_bounty_payout(
+            self._http,
+            bounty_id=bounty_id,
         )
 
     def create_submission(
@@ -232,11 +202,10 @@ class BountiesResource:
                 else UUID(proposed_course_version_id)
             ),
         )
-        return self._http.request_model(
-            "POST",
-            f"/v1/bounties/{bounty_id}/submissions",
-            CreateBountySubmissionResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.create_bounty_submission(
+            self._http,
+            bounty_id=bounty_id,
+            body=body,
         )
 
     def list_submissions(
@@ -251,13 +220,10 @@ class BountiesResource:
         Returns:
             List of submission items.
         """
-        data = self._http.request_list(
-            "GET",
-            f"/v1/bounties/{bounty_id}/submissions",
+        return operations.list_bounty_submissions(
+            self._http,
+            bounty_id=bounty_id,
         )
-        return [
-            ListBountySubmissionsResponse.model_validate(item) for item in data
-        ]
 
     def get_submission(
         self,
@@ -274,10 +240,10 @@ class BountiesResource:
         Returns:
             Submission details.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/bounties/{bounty_id}/submissions/{submission_id}",
-            GetBountySubmissionResponse,
+        return operations.get_bounty_submission(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
         )
 
     def accept_submission(
@@ -295,10 +261,10 @@ class BountiesResource:
         Returns:
             Accepted submission details.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/bounties/{bounty_id}/submissions/{submission_id}/acceptance",
-            AcceptBountySubmissionResponse,
+        return operations.accept_bounty_submission(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
         )
 
     def reject_submission(
@@ -316,10 +282,10 @@ class BountiesResource:
         Returns:
             Rejected submission details.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/bounties/{bounty_id}/submissions/{submission_id}/rejection",
-            RejectBountySubmissionResponse,
+        return operations.reject_bounty_submission(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
         )
 
     def delete_submission(
@@ -337,8 +303,8 @@ class BountiesResource:
         Returns:
             Withdrawn submission details.
         """
-        return self._http.request_model(
-            "DELETE",
-            f"/v1/bounties/{bounty_id}/submissions/{submission_id}",
-            WithdrawBountySubmissionResponse,
+        return operations.withdraw_bounty_submission(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
         )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CourseCheckoutRequest,
     CourseCheckoutResponse,
@@ -38,12 +39,7 @@ class PaymentsResource:
                 course_id if isinstance(course_id, UUID) else UUID(course_id)
             ),
         )
-        return self._http.request_model(
-            "POST",
-            "/v1/payments/course-checkouts",
-            CourseCheckoutResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        return operations.create_course_checkout(self._http, body=body)
 
     def get_order(self, *, order_id: str) -> OrderResponse:
         """Get order details by ID.
@@ -54,11 +50,7 @@ class PaymentsResource:
         Returns:
             Order details including status and amount.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/payments/orders/{order_id}",
-            OrderResponse,
-        )
+        return operations.get_order(self._http, order_id=order_id)
 
     def get_seller_readiness(self) -> SellerReadinessResponse:
         """Check if the authenticated user is ready to sell courses.
@@ -67,11 +59,7 @@ class PaymentsResource:
             Seller readiness status including Stripe onboarding
             state.
         """
-        return self._http.request_model(
-            "GET",
-            "/v1/payments/seller-readiness",
-            SellerReadinessResponse,
-        )
+        return operations.get_seller_readiness(self._http)
 
     def create_onboarding_link(self) -> OnboardingLinkResponse:
         """Create a Stripe Connect onboarding link for the seller.
@@ -79,8 +67,4 @@ class PaymentsResource:
         Returns:
             Onboarding link details with redirect URL.
         """
-        return self._http.request_model(
-            "POST",
-            "/v1/payments/connect-onboarding-sessions",
-            OnboardingLinkResponse,
-        )
+        return operations.create_onboarding_link(self._http)

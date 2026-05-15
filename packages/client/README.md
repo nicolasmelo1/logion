@@ -129,14 +129,34 @@ Or set the ``LOGION_BASE_URL`` environment variable.
 
 ## Code Generation
 
-Pydantic models are generated from the OpenAPI spec:
+The SDK uses the OpenAPI spec as the source of truth for generated
+internals:
+
+- Pydantic request and response models live under
+  `src/logion/v1/_types/generated/`.
+- Low-level HTTP operation functions live under
+  `src/logion/v1/_generated/`.
+- Public resource classes under `src/logion/v1/_resources/` stay
+  handwritten so the SDK remains ergonomic and stable.
 
 ```bash
-# Generate models
+# Generate models only
 make generate-models
+
+# Generate low-level operation functions only
+make generate-operations
+
+# Generate all client code derived from the OpenAPI contract
+make generate-client
 
 # Check if generated models are up to date
 make check-models
+
+# Check if generated operation functions are up to date
+make check-operations
+
+# Check all generated client code
+make check-client
 ```
 
 ## License

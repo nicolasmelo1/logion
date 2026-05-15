@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import SearchListingsResponse
 
 _VALID_SORT_VALUES = (
@@ -61,26 +60,14 @@ class ListingsResource:
             msg = f"Invalid sort value {sort!r}. Must be one of: {valid}"
             raise ValueError(msg)
 
-        params: dict[str, Any] = {}
-        if query is not None:
-            params["query"] = query
-        if tags is not None:
-            params["tags"] = tags
-        if language is not None:
-            params["language"] = language
-        if price_min is not None:
-            params["price_min"] = price_min
-        if price_max is not None:
-            params["price_max"] = price_max
-        if sort is not None:
-            params["sort"] = sort
-        if limit is not None:
-            params["limit"] = limit
-        if cursor is not None:
-            params["cursor"] = cursor
-        return self._http.request_model(
-            "GET",
-            "/v1/listings",
-            SearchListingsResponse,
-            params=params,
+        return operations.search_listings(
+            self._http,
+            query=query,
+            tags=tags,
+            language=language,
+            price_min=price_min,
+            price_max=price_max,
+            sort=sort,
+            limit=limit,
+            cursor=cursor,
         )

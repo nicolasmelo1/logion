@@ -6,6 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CreateReportRequest,
     CreateReportResponse,
@@ -70,9 +71,4 @@ class ReportsResource:
                 Description(description) if description is not None else None
             ),
         )
-        return self._http.request_model(
-            "POST",
-            "/v1/reports",
-            CreateReportResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        return operations.create_report(self._http, body=body)

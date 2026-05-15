@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     BlockCourseResponse,
     DismissReportRequest,
@@ -54,20 +54,12 @@ class AdminResource:
         Returns:
             Paginated list of moderation queue items.
         """
-        params: dict[str, Any] = {}
-        if status is not None:
-            params["status"] = status
-        if owner_agent_id is not None:
-            params["owner_agent_id"] = str(owner_agent_id)
-        if limit is not None:
-            params["limit"] = limit
-        if cursor is not None:
-            params["cursor"] = cursor
-        return self._http.request_model(
-            "GET",
-            "/v1/admin/courses",
-            ListModerationQueueResponse,
-            params=params,
+        return operations.list_moderation_queue(
+            self._http,
+            status=status,
+            owner_agent_id=owner_agent_id,
+            limit=limit,
+            cursor=cursor,
         )
 
     def get_course(
@@ -82,10 +74,9 @@ class AdminResource:
         Returns:
             Course detail with owner info and reports.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/admin/courses/{course_id}",
-            GetCourseDetailResponse,
+        return operations.get_course_moderation_detail(
+            self._http,
+            course_id=course_id,
         )
 
     def update_course_status(
@@ -100,11 +91,7 @@ class AdminResource:
         Returns:
             Updated course status confirmation.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/courses/{course_id}/status",
-            BlockCourseResponse,
-        )
+        return operations.block_course(self._http, course_id=course_id)
 
     # -- Users --
 
@@ -120,11 +107,7 @@ class AdminResource:
         Returns:
             User detail information.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/admin/users/{user_id}",
-            GetUserDetailResponse,
-        )
+        return operations.get_user_detail(self._http, user_id=user_id)
 
     def update_user_billing_exemption(
         self,
@@ -143,11 +126,10 @@ class AdminResource:
             Updated billing exemption status.
         """
         body = UpdateBillingExemptionRequest(enabled=enabled)
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/users/{user_id}/billing-exemption",
-            UpdateBillingExemptionResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.update_billing_exemption(
+            self._http,
+            user_id=user_id,
+            body=body,
         )
 
     def suspend_user(
@@ -162,11 +144,7 @@ class AdminResource:
         Returns:
             Suspension confirmation with affected details.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/users/{user_id}/suspension",
-            SuspendUserResponse,
-        )
+        return operations.suspend_user(self._http, user_id=user_id)
 
     def unsuspend_user(
         self,
@@ -180,11 +158,7 @@ class AdminResource:
         Returns:
             Reactivation confirmation.
         """
-        return self._http.request_model(
-            "DELETE",
-            f"/v1/admin/users/{user_id}/suspension",
-            ReactivateUserResponse,
-        )
+        return operations.reactivate_user(self._http, user_id=user_id)
 
     # -- Agents --
 
@@ -200,11 +174,7 @@ class AdminResource:
         Returns:
             Agent detail information.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/admin/agents/{agent_id}",
-            GetAgentDetailResponse,
-        )
+        return operations.get_agent_detail(self._http, agent_id=agent_id)
 
     def suspend_agent(
         self,
@@ -218,11 +188,7 @@ class AdminResource:
         Returns:
             Suspension confirmation.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/agents/{agent_id}/suspension",
-            SuspendAgentResponse,
-        )
+        return operations.suspend_agent(self._http, agent_id=agent_id)
 
     def unsuspend_agent(
         self,
@@ -236,11 +202,7 @@ class AdminResource:
         Returns:
             Reactivation confirmation.
         """
-        return self._http.request_model(
-            "DELETE",
-            f"/v1/admin/agents/{agent_id}/suspension",
-            ReactivateAgentResponse,
-        )
+        return operations.reactivate_agent(self._http, agent_id=agent_id)
 
     # -- Reports --
 
@@ -265,22 +227,13 @@ class AdminResource:
         Returns:
             Paginated list of report items.
         """
-        params: dict[str, Any] = {}
-        if status is not None:
-            params["status"] = status
-        if severity is not None:
-            params["severity"] = severity
-        if target_type is not None:
-            params["target_type"] = target_type
-        if limit is not None:
-            params["limit"] = limit
-        if cursor is not None:
-            params["cursor"] = cursor
-        return self._http.request_model(
-            "GET",
-            "/v1/admin/reports",
-            ListReportsResponse,
-            params=params,
+        return operations.list_reports(
+            self._http,
+            status=status,
+            severity=severity,
+            target_type=target_type,
+            limit=limit,
+            cursor=cursor,
         )
 
     def get_report(
@@ -295,11 +248,7 @@ class AdminResource:
         Returns:
             Report detail information.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/admin/reports/{report_id}",
-            GetReportDetailResponse,
-        )
+        return operations.get_report_detail(self._http, report_id=report_id)
 
     def resolve_report(
         self,
@@ -317,11 +266,10 @@ class AdminResource:
             Resolution confirmation.
         """
         body = ResolveReportRequest(note=note)
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/reports/{report_id}/resolution",
-            ResolveReportResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.resolve_report(
+            self._http,
+            report_id=report_id,
+            body=body,
         )
 
     def dismiss_report(
@@ -340,9 +288,8 @@ class AdminResource:
             Dismissal confirmation.
         """
         body = DismissReportRequest(reason=reason)
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/admin/reports/{report_id}/dismissal",
-            DismissReportResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.dismiss_report(
+            self._http,
+            report_id=report_id,
+            body=body,
         )

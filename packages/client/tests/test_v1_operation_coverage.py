@@ -4,6 +4,7 @@ import importlib
 import json
 from pathlib import Path
 
+from logion.v1._generated import operations
 from logion.v1._operation_map import (
     IMPLEMENTED_OPERATIONS,
     UNSUPPORTED_OPERATIONS,
@@ -69,6 +70,13 @@ def test_implemented_operations_point_to_real_methods() -> None:
             f"Class {class_name} has no method"
             f" {method_name}"
             f" (operationId: {op_id})"
+        )
+
+
+def test_every_operation_id_has_generated_operation() -> None:
+    for op_id in _collect_operation_ids():
+        assert hasattr(operations, op_id), (
+            f"Generated operations module has no function for {op_id}"
         )
 
 

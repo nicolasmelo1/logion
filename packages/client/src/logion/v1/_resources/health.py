@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 
 
 class HealthResource:
@@ -19,4 +20,4 @@ class HealthResource:
         The health endpoint returns a free-form dict
         (e.g. ``{"status": "ok"}``) — no generated model exists.
         """
-        return self._http.request("GET", "/health")
+        return operations.health_health_get(self._http)

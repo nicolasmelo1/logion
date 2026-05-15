@@ -3,8 +3,9 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 SPEC := $(ROOT)/contracts/openapi/v1.json
 GEN_DIR := src/logion/v1/_types/generated
 GEN_FILE := $(GEN_DIR)/v1.py
+OPS_FILE := src/logion/v1/_generated/operations.py
 
-.PHONY: generate-models check-models lint test typecheck
+.PHONY: generate-models check-models generate-operations check-operations generate-client check-client lint test typecheck
 
 generate-models:
 	uv run datamodel-codegen \
@@ -41,9 +42,21 @@ check-models:
 	sed '1,3d' "$$tmpfile" > "$$tmpfile.clean"; \
 	diff "$$tmpfile.clean" <(sed '1,3d' $(GEN_FILE))
 
+generate-operations:
+	uv run python scripts/generate_operations.py
+	uv run ruff format $(OPS_FILE)
+	uv run ruff check --fix $(OPS_FILE)
+
+check-operations:
+	uv run python scripts/generate_operations.py --check
+
+generate-client: generate-models generate-operations
+
+check-client: check-models check-operations
+
 lint:
-	uv run ruff check src/ tests/
-	uv run ruff format --check src/ tests/
+	uv run ruff check src/ tests/ scripts/
+	uv run ruff format --check src/ tests/ scripts/
 
 test:
 	uv run pytest tests/ -v -m "not integration"

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
@@ -37,16 +37,10 @@ class CourseReviewsResource:
         Returns:
             Paginated list of review queue items.
         """
-        params: dict[str, Any] = {}
-        if limit is not None:
-            params["limit"] = limit
-        if cursor is not None:
-            params["cursor"] = cursor
-        return self._http.request_model(
-            "GET",
-            "/v1/course-reviews",
-            ListHumanReviewQueueResponse,
-            params=params,
+        return operations.list_human_review_queue(
+            self._http,
+            limit=limit,
+            cursor=cursor,
         )
 
     def get(
@@ -61,10 +55,9 @@ class CourseReviewsResource:
         Returns:
             Detailed review information.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/course-reviews/{review_id}",
-            GetHumanReviewDetailResponse,
+        return operations.get_human_review_detail(
+            self._http,
+            review_id=review_id,
         )
 
     def approve(
@@ -85,11 +78,10 @@ class CourseReviewsResource:
         body = ApproveHumanReviewRequest(
             reviewer_notes=reviewer_notes,
         )
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/course-reviews/{review_id}/approval",
-            ApproveHumanReviewResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.approve_human_review(
+            self._http,
+            review_id=review_id,
+            body=body,
         )
 
     def reject(
@@ -113,9 +105,8 @@ class CourseReviewsResource:
             decision_reason=decision_reason,
             reviewer_notes=reviewer_notes,
         )
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/course-reviews/{review_id}/rejection",
-            RejectHumanReviewResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.reject_human_review(
+            self._http,
+            review_id=review_id,
+            body=body,
         )

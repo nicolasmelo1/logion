@@ -6,6 +6,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
     CreateCourseRequest,
@@ -83,12 +84,7 @@ class CoursesResource:
             ),
             visibility=visibility,
         )
-        return self._http.request_model(
-            "POST",
-            "/v1/courses",
-            CreateCourseResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        return operations.create_course(self._http, body=body)
 
     def get(self, *, course_id: str | UUID) -> GetCourseResponse:
         """Get course details by UUID.
@@ -99,11 +95,7 @@ class CoursesResource:
         Returns:
             Course details.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}",
-            GetCourseResponse,
-        )
+        return operations.get_course(self._http, course_id=course_id)
 
     def update(
         self,
@@ -162,11 +154,10 @@ class CoursesResource:
         if visibility is not _SENTINEL:
             fields["visibility"] = visibility
         body = UpdateCourseRequest.model_construct(**fields)
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/courses/{course_id}",
-            UpdateCourseResponse,
-            json=body.model_dump(mode="json", exclude_unset=True),
+        return operations.update_course(
+            self._http,
+            course_id=course_id,
+            body=body,
         )
 
     def create_upload_session(
@@ -188,11 +179,10 @@ class CoursesResource:
         body = CreateCourseVersionUploadSessionRequest(
             files=typed_files,
         )
-        return self._http.request_model(
-            "POST",
-            f"/v1/courses/{course_id}/versions",
-            CreateCourseVersionUploadSessionResponse,
-            json=body.model_dump(mode="json", exclude_none=True),
+        return operations.create_upload_session(
+            self._http,
+            course_id=course_id,
+            body=body,
         )
 
     def get_version(
@@ -210,10 +200,10 @@ class CoursesResource:
         Returns:
             Version details.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}/versions/{version_id}",
-            GetCourseVersionResponse,
+        return operations.get_course_version(
+            self._http,
+            course_id=course_id,
+            version_id=version_id,
         )
 
     def complete_upload_session(
@@ -234,10 +224,10 @@ class CoursesResource:
         Returns:
             Completed upload session details.
         """
-        return self._http.request_model(
-            "PATCH",
-            f"/v1/courses/{course_id}/versions/{version_id}/upload-session",
-            CompleteCourseVersionUploadSessionResponse,
+        return operations.complete_upload_session(
+            self._http,
+            course_id=course_id,
+            version_id=version_id,
         )
 
     def review_version(
@@ -287,11 +277,11 @@ class CoursesResource:
         if telemetry is not None:
             kwargs["telemetry"] = telemetry
         body_model = UpsertCourseReviewRequest(**kwargs)
-        return self._http.request_model(
-            "PUT",
-            f"/v1/courses/{course_id}/versions/{version_id}/review",
-            UpsertCourseReviewResponse,
-            json=body_model.model_dump(mode="json", exclude_none=True),
+        return operations.upsert_course_review(
+            self._http,
+            course_id=course_id,
+            version_id=version_id,
+            body=body_model,
         )
 
     def get_review_feedback(
@@ -307,10 +297,9 @@ class CoursesResource:
         Returns:
             Review feedback details.
         """
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}/review-feedback",
-            GetCourseReviewFeedbackResponse,
+        return operations.get_course_review_feedback(
+            self._http,
+            course_id=course_id,
         )
 
     def list_reviews(
@@ -332,18 +321,12 @@ class CoursesResource:
         Returns:
             Paginated list of reviews.
         """
-        params: dict[str, Any] = {}
-        if version is not None:
-            params["version"] = version
-        if limit is not None:
-            params["limit"] = limit
-        if cursor is not None:
-            params["cursor"] = cursor
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}/reviews",
-            ListCourseReviewsResponse,
-            params=params,
+        return operations.list_course_reviews(
+            self._http,
+            course_id=course_id,
+            version=version,
+            limit=limit,
+            cursor=cursor,
         )
 
     def get_my_review(
@@ -361,14 +344,10 @@ class CoursesResource:
         Returns:
             The authenticated agent's review.
         """
-        params: dict[str, Any] = {}
-        if version_id is not None:
-            params["version_id"] = str(version_id)
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}/my-review",
-            GetMyCourseReviewResponse,
-            params=params,
+        return operations.get_my_course_review(
+            self._http,
+            course_id=course_id,
+            version_id=version_id,
         )
 
     def request_publication_review(
@@ -387,10 +366,9 @@ class CoursesResource:
         Returns:
             Publication review request details.
         """
-        return self._http.request_model(
-            "POST",
-            f"/v1/courses/{course_id}/publication-reviews",
-            RequestPublicationResponse,
+        return operations.request_publication(
+            self._http,
+            course_id=course_id,
         )
 
     def get_latest_publication_review(
@@ -408,12 +386,8 @@ class CoursesResource:
         Returns:
             The latest review status.
         """
-        params: dict[str, Any] = {}
-        if include_pass is not None:
-            params["include_pass"] = include_pass
-        return self._http.request_model(
-            "GET",
-            f"/v1/courses/{course_id}/publication-reviews/latest",
-            GetReviewStatusResponse,
-            params=params,
+        return operations.get_review_status(
+            self._http,
+            course_id=course_id,
+            include_pass=include_pass,
         )
