@@ -36,7 +36,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="List notifications",
         parents=[COMMON_PARSER],
     )
-    ls.add_argument("--unread-only", action="store_true")
+    ls.add_argument("--unread-only", action="store_true", default=None)
     ls.add_argument("--notification-type")
     ls.add_argument("--limit", type=int)
     ls.add_argument("--cursor")

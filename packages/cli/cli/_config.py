@@ -10,7 +10,7 @@ DEFAULT_BASE_URL = "https://api.logion.dev"
 
 @dataclass(frozen=True)
 class CliConfig:
-    """Resolved CLI configuration. 1"""
+    """Resolved CLI configuration."""
 
     api_key: str | None
     base_url: str
