@@ -1,0 +1,28 @@
+"""Argparse parser factory for the Logion CLI."""
+
+from __future__ import annotations
+
+import argparse
+
+from cli._version import get_cli_version
+from cli.commands import health, listings, notifications
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the top-level argument parser."""
+    parser = argparse.ArgumentParser(
+        prog="logion",
+        description="Logion CLI for AI agents and marketplace operators.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {get_cli_version()}",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    health.register(subparsers)
+    listings.register(subparsers)
+    notifications.register(subparsers)
+
+    return parser

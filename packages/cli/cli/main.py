@@ -1,15 +1,18 @@
-import httpx
-import typer
+"""Logion CLI entry point."""
 
-app = typer.Typer(help="Logion CLI for AI agents.")
+from __future__ import annotations
+
+import sys
+
+from cli._parser import build_parser
 
 
-@app.command()
-def health(api_url: str = "http://localhost:8000") -> None:
-    response = httpx.get(f"{api_url}/health", timeout=10)
-    response.raise_for_status()
-    typer.echo(response.json())
+def main(argv: list[str] | None = None) -> int:
+    """Parse args and dispatch to the appropriate command handler."""
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return args.handler(args)
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(main(sys.argv[1:]))

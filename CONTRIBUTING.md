@@ -17,7 +17,10 @@ git clone https://github.com/nicolasmelo1/logion.git
 cd logion
 
 # Install workspace dependencies
-uv sync
+uv sync --all-packages
+
+# Install repo Git hooks
+make install-hooks
 
 # Verify CLI works
 uv run logion --help
@@ -59,13 +62,23 @@ npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 &
 The mock server responds to every endpoint defined in the contract with example
 data or auto-generated values that conform to the schema.
 
-### Using the Mock Server with the CLI
+### Installing Git Hooks
 
-The `--api-url` option belongs to the `health` subcommand, not the root
-command. Point the CLI at the mock server like this:
+Run this once per clone to configure Git to use the committed hook scripts in
+`.githooks`:
 
 ```bash
-uv run logion health --api-url http://localhost:4010
+make install-hooks
+```
+
+### Using the Mock Server with the CLI
+
+The CLI reads `LOGION_BASE_URL` from the environment, or you can pass
+`--base-url` directly to a subcommand. Point the CLI at the mock server like
+this:
+
+```bash
+uv run logion health --base-url http://localhost:4010
 ```
 
 ### Stopping the Mock Server

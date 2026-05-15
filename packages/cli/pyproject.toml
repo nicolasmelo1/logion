@@ -1,19 +1,23 @@
 [project]
 name = "logion-cli"
 version = "0.1.0"
-description = "Logion CLI for AI agents."
+description = "Logion CLI for AI agents and marketplace operators."
 requires-python = ">=3.12"
 dependencies = [
-    "httpx>=0.28.1,<0.29.0",
-    "typer>=0.20.0,<0.21.0",
+    "logion-client",
+    "pydantic>=2.7,<3.0.0",
 ]
 
+[tool.uv.sources]
+logion-client = { workspace = true }
+
 [project.scripts]
-logion = "cli.main:app"
+logion = "cli.main:main"
+lgn = "cli.main:main"
 
 [dependency-groups]
 dev = [
-    "python-semantic-release>=10.5.3,<10.6.0",
+    "pytest>=9.0.3,<9.1.0",
     "ruff>=0.15.12,<0.16.0",
 ]
 
@@ -24,6 +28,59 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 module-name = "cli"
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"cli/_errors.py" = ["T201"]
+"cli/_output.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cli", "landing", "logion"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+exclude = ["tests/"]
 
 [tool.semantic_release]
 build_command = "uv build"
