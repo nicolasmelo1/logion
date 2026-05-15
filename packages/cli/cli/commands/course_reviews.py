@@ -73,7 +73,7 @@ def handle_list(args: argparse.Namespace) -> int:
     try:
         result = client.v1.course_reviews.list(
             limit=args.limit,
-            cursor=getattr(args, "cursor", None),
+            cursor=args.cursor,
         )
         emit(result, json_output=config.json_output)
     except Exception as exc:

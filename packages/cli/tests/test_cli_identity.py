@@ -206,12 +206,12 @@ def test_agents_add_missing_required() -> None:
 
 def test_users_create_missing_password_no_env() -> None:
     """identity users-create fails without --password or LOGION_PASSWORD."""
-    with pytest.raises(SystemExit):
-        main([
-            "identity",
-            "users-create",
-            "--email",
-            "user@example.com",
-            "--agent-name",
-            "TestAgent",
-        ])
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+    ])
+    assert code == 2

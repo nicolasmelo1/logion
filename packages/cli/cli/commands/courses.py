@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import mimetypes
+from pathlib import Path
 from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, print_err
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -234,18 +236,32 @@ def _bool_flag(
 
     ``--flag`` sets True, ``--no-flag`` sets False, omit → None.
     """
+    base = flag.removeprefix("--")
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         flag,
         dest=dest,
         action="store_true",
-        default=None,
     )
     group.add_argument(
-        f"--no-{flag.lstrip('-')}",
+        f"--no-{base}",
         dest=dest,
         action="store_false",
     )
+    parser.set_defaults(**{dest: None})
+
+
+# ── Helpers ───────────────────────────────────────────────────────
+
+
+def _only_not_none(
+    base: dict[str, Any],
+    **optional: Any,
+) -> dict[str, Any]:
+    """Return *base* merged with only the non-None *optional* entries."""
+    result = dict(base)
+    result.update({k: v for k, v in optional.items() if v is not None})
+    return result
 
 
 # ── Handlers ──────────────────────────────────────────────────────
@@ -256,17 +272,18 @@ def handle_create(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.courses.create(
-            title=args.title,
-            slug=args.slug,
+        kwargs = _only_not_none(
+            {"title": args.title, "slug": args.slug},
             description=args.description,
             price_cents=args.price_cents,
-            tags=args.tags or None,
-            language=args.language,
             currency=args.currency,
+            language=args.language,
             short_summary=args.short_summary,
             visibility=args.visibility,
         )
+        if args.tags:
+            kwargs["tags"] = args.tags
+        result = client.v1.courses.create(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -296,21 +313,16 @@ def handle_update(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        kwargs: dict[str, Any] = {"course_id": args.course_id}
-        if args.title is not None:
-            kwargs["title"] = args.title
-        if args.description is not None:
-            kwargs["description"] = args.description
-        if args.price_cents is not None:
-            kwargs["price_cents"] = args.price_cents
-        if args.currency is not None:
-            kwargs["currency"] = args.currency
-        if args.language is not None:
-            kwargs["language"] = args.language
-        if args.short_summary is not None:
-            kwargs["short_summary"] = args.short_summary
-        if args.visibility is not None:
-            kwargs["visibility"] = args.visibility
+        kwargs = _only_not_none(
+            {"course_id": args.course_id},
+            title=args.title,
+            description=args.description,
+            price_cents=args.price_cents,
+            currency=args.currency,
+            language=args.language,
+            short_summary=args.short_summary,
+            visibility=args.visibility,
+        )
         result = client.v1.courses.update(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -323,15 +335,15 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
     """Execute the courses uploads create command."""
-    import mimetypes
-    from pathlib import Path
-
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
         files = []
         for path_str in args.files:
             p = Path(path_str)
+            if not p.is_file():
+                print_err(f"file not found: {path_str}")
+                return 2
             files.append({
                 "path": path_str,
                 "size_bytes": p.stat().st_size,
@@ -411,9 +423,9 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
     try:
         result = client.v1.courses.list_reviews(
             course_id=args.course_id,
-            version=getattr(args, "version", None),
+            version=args.version,
             limit=args.limit,
-            cursor=getattr(args, "cursor", None),
+            cursor=args.cursor,
         )
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -447,23 +459,19 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        kwargs: dict[str, Any] = {
-            "course_id": args.course_id,
-            "version_id": args.version_id,
-            "rating": args.rating,
-        }
-        if args.body is not None:
-            kwargs["body"] = args.body
-        if args.completed_task is not None:
-            kwargs["completed_task"] = args.completed_task
-        if args.reliability is not None:
-            kwargs["reliability"] = args.reliability
-        if args.usefulness is not None:
-            kwargs["usefulness"] = args.usefulness
-        if args.tool_safety is not None:
-            kwargs["tool_safety"] = args.tool_safety
-        if args.token_efficiency is not None:
-            kwargs["token_efficiency"] = args.token_efficiency
+        kwargs = _only_not_none(
+            {
+                "course_id": args.course_id,
+                "version_id": args.version_id,
+                "rating": args.rating,
+            },
+            body=args.body,
+            completed_task=args.completed_task,
+            reliability=args.reliability,
+            usefulness=args.usefulness,
+            tool_safety=args.tool_safety,
+            token_efficiency=args.token_efficiency,
+        )
         result = client.v1.courses.review_version(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:

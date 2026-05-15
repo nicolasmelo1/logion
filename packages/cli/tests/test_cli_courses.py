@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -109,8 +110,8 @@ def test_courses_create_calls_client(
     assert kwargs["title"] == "RAG"
     assert kwargs["slug"] == "rag"
     assert kwargs["tags"] == ["python", "agents"]
-    assert kwargs["description"] is None
-    assert kwargs["price_cents"] is None
+    assert "description" not in kwargs
+    assert "price_cents" not in kwargs
     data = json.loads(capsys.readouterr().out)
     assert data["title"] == "RAG"
 
@@ -196,7 +197,7 @@ def test_courses_update(
 
 def test_courses_uploads_create(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: pytest.Path,
+    tmp_path: Path,
 ) -> None:
     """courses uploads create builds file dicts from paths."""
     f1 = tmp_path / "module1.md"
@@ -226,6 +227,25 @@ def test_courses_uploads_create(
     assert files[0]["path"] == str(f1)
     assert files[0]["size_bytes"] == f1.stat().st_size
     assert files[1]["path"] == str(f2)
+
+
+def test_courses_uploads_create_file_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses uploads create rejects a non-existent file path."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "uploads",
+        "create",
+        "c1",
+        "--file",
+        "/no/such/file.md",
+        "--json",
+    ])
+    assert code == 2
 
 
 def test_courses_uploads_complete(
@@ -317,6 +337,28 @@ def test_courses_reviews_upsert(
     assert kwargs["body"] == "Great course"
     assert kwargs["completed_task"] is True
     assert kwargs["reliability"] == 4.5
+
+
+def test_courses_reviews_upsert_no_completed_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Omitting --completed-task means it is not sent to the SDK."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "reviews",
+        "upsert",
+        "c1",
+        "v1",
+        "--rating",
+        "4",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert "completed_task" not in kwargs
 
 
 def test_courses_reviews_list(
