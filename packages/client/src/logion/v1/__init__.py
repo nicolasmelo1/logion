@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from logion._http import HttpClient
 from logion.v1._resources.admin import AdminResource
+from logion.v1._resources.bounties import BountiesResource
 from logion.v1._resources.course_reviews import CourseReviewsResource
 from logion.v1._resources.courses import CoursesResource
 from logion.v1._resources.health import HealthResource
@@ -27,3 +28,4 @@ class V1Namespace:
         self.notifications = NotificationsResource(http)
         self.reports = ReportsResource(http)
         self.admin = AdminResource(http)
+        self.bounties = BountiesResource(http)

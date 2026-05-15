@@ -49,27 +49,27 @@ class TestBountiesResource:
         assert json_body["description"] == "A test bounty"
         assert json_body["reward_amount_cents"] == 5000
 
-    def test_list_calls_request_with_params(self) -> None:
-        """list() calls GET /v1/bounties with scope param."""
+    def test_list_calls_request_list_with_params(self) -> None:
+        """list() calls GET /v1/bounties with scope param via request_list."""
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = []
+        http.request_list.return_value = []
         resource = BountiesResource(http)
         resource.list(scope="mine")
-        http.request.assert_called_once()
-        call_args = http.request.call_args
+        http.request_list.assert_called_once()
+        call_args = http.request_list.call_args
         assert call_args.args[0] == "GET"
         assert call_args.args[1] == "/v1/bounties"
         params = call_args.kwargs["params"]
         assert params["scope"] == "mine"
 
     def test_list_without_params(self) -> None:
-        """list() with no params sends empty params dict."""
+        """list() with no params sends empty params dict via request_list."""
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = []
+        http.request_list.return_value = []
         resource = BountiesResource(http)
         resource.list()
-        http.request.assert_called_once()
-        call_args = http.request.call_args
+        http.request_list.assert_called_once()
+        call_args = http.request_list.call_args
         params = call_args.kwargs["params"]
         assert params == {}
 
@@ -189,14 +189,14 @@ class TestBountiesResource:
         assert "evidence" in json_body
         assert "proposed_course_version_id" in json_body
 
-    def test_list_submissions_calls_request(self) -> None:
-        """list_submissions() calls GET via request (returns list)."""
+    def test_list_submissions_calls_request_list(self) -> None:
+        """list_submissions() calls GET via request_list (returns list)."""
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = []
+        http.request_list.return_value = []
         resource = BountiesResource(http)
         resource.list_submissions(bounty_id="bounty-1")
-        http.request.assert_called_once()
-        call_args = http.request.call_args
+        http.request_list.assert_called_once()
+        call_args = http.request_list.call_args
         assert call_args.args[0] == "GET"
         assert call_args.args[1] == "/v1/bounties/bounty-1/submissions"
 

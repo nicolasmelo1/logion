@@ -102,7 +102,7 @@ class BountiesResource:
         if scope is not None:
             params["scope"] = scope
 
-        data = self._http.request(
+        data = self._http.request_list(
             "GET",
             "/v1/bounties",
             params=params,
@@ -251,7 +251,7 @@ class BountiesResource:
         Returns:
             List of submission items.
         """
-        data = self._http.request(
+        data = self._http.request_list(
             "GET",
             f"/v1/bounties/{bounty_id}/submissions",
         )
