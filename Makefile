@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-.PHONY: lint test typecheck security audit secrets mock mock-stop
+.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks
 
 lint:
 	uv run ruff check packages/
@@ -23,6 +23,10 @@ secrets:
 	uv run detect-secrets scan --baseline .secrets.baseline
 
 security: audit bandit secrets
+
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "Configured Git hooks path to .githooks"
 
 mock:
 	npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 & echo $$! > .prism.pid

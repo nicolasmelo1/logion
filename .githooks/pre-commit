@@ -2,6 +2,12 @@
 
 set -eu
 
+if ! uv sync --all-packages --check >/dev/null 2>&1; then
+	echo "Workspace dependencies are not fully synced."
+	echo "Run: uv sync --all-packages"
+	exit 1
+fi
+
 echo "Running Ruff..."
 uv run ruff check packages/
 

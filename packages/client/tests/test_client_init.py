@@ -8,8 +8,10 @@ from logion import LogionClient
 from logion.v1 import V1Namespace
 
 
-def test_client_default_config() -> None:
+def test_client_default_config(monkeypatch) -> None:
     """Client uses default base URL when none provided."""
+    monkeypatch.delenv("LOGION_API_KEY", raising=False)
+    monkeypatch.delenv("LOGION_BASE_URL", raising=False)
     client = LogionClient(api_key="lgk_test")
     assert client._http._client.base_url == httpx.URL("https://api.logion.dev")
     client.close()
@@ -31,9 +33,11 @@ def test_client_context_manager() -> None:
         assert client is not None
 
 
-def test_client_no_api_key() -> None:
+def test_client_no_api_key(monkeypatch) -> None:
     """Client can be created without an API key
     (health-endpoint only)."""
+    monkeypatch.delenv("LOGION_API_KEY", raising=False)
+    monkeypatch.delenv("LOGION_BASE_URL", raising=False)
     client = LogionClient()
     assert client._http._config.api_key == ""
     client.close()
