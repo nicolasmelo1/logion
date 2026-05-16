@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from uuid import UUID
 
 from logion import APIError, LogionError
 
@@ -20,3 +21,38 @@ def handle_error(exc: Exception) -> int:
         print(f"Logion error: {exc}", file=sys.stderr)
         return 1
     raise exc
+
+
+def print_err(msg: str) -> None:
+    """Print a user-facing message to stderr."""
+    print(msg, file=sys.stderr)
+
+
+def require_non_empty_id(value: str, label: str) -> int | None:
+    """Return ``2`` if *value* is empty/whitespace, else ``None``."""
+    if not value or not value.strip():
+        print_err(f"Error: {label} must not be empty.")
+        return 2
+    return None
+
+
+def validate_uuid(value: str, label: str) -> int | None:
+    """Return ``2`` if *value* is not a valid UUID, else ``None``."""
+    try:
+        UUID(value)
+    except ValueError:
+        print_err(f"Error: {label} must be a valid UUID (got: {value!r}).")
+        return 2
+    return None
+
+
+def validate_uuid_id(value: str, label: str) -> int | None:
+    """Check *value* is non-empty and a valid UUID.
+
+    Combines :func:`require_non_empty_id` and :func:`validate_uuid`
+    into a single call for positional-ID validation.
+    """
+    empty = require_non_empty_id(value, label)
+    if empty is not None:
+        return empty
+    return validate_uuid(value, label)
