@@ -574,6 +574,19 @@ def test_courses_reviews_mine(
     assert kwargs["version_id"] == "660e8400-e29b-41d4-a716-446655440001"
 
 
+def test_courses_reviews_mine_invalid_version_id() -> None:
+    """courses reviews mine rejects an invalid --version-id UUID."""
+    code = main([
+        "courses",
+        "reviews",
+        "mine",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--version-id",
+        "not-a-uuid",
+    ])
+    assert code == 2
+
+
 def test_courses_feedback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

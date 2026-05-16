@@ -119,7 +119,7 @@ def handle_approve(args: argparse.Namespace) -> int:
     if args.reviewer_notes is not None and not args.reviewer_notes.strip():
         print_err(_REQUIRE_NON_EMPTY_MSG.format("--reviewer-notes"))
         return 2
-    refusal = require_yes(args.yes, "approve")
+    refusal = require_yes(args.yes, "approve this review")
     if refusal is not None:
         return refusal
     config = resolve_config_from_args(args)
@@ -150,7 +150,7 @@ def handle_reject(args: argparse.Namespace) -> int:
     if not args.reviewer_notes.strip():
         print_err(_REQUIRE_NON_EMPTY_MSG.format("--reviewer-notes"))
         return 2
-    refusal = require_yes(args.yes, "reject")
+    refusal = require_yes(args.yes, "reject this review")
     if refusal is not None:
         return refusal
     config = resolve_config_from_args(args)

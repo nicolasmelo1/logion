@@ -133,11 +133,11 @@ def handle_users_create(args: argparse.Namespace) -> int:
             user_name=args.user_name,
             agent_description=args.agent_description,
         )
+        print_err(_API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
-        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()
@@ -157,11 +157,11 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             user_password=password,
             agent_description=args.agent_description,
         )
+        print_err(_API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
-        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()
@@ -180,11 +180,11 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
             agent_id=args.agent_id,
             user_password=password,
         )
+        print_err(_API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
-        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()

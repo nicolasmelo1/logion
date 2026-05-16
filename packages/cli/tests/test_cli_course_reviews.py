@@ -128,7 +128,9 @@ def test_course_reviews_approve_whitespace_reviewer_notes() -> None:
     assert code == 2
 
 
-def test_course_reviews_approve_without_yes() -> None:
+def test_course_reviews_approve_without_yes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """course-reviews approve without --yes refuses."""
     code = main([
         "course-reviews",
@@ -136,6 +138,8 @@ def test_course_reviews_approve_without_yes() -> None:
         "770e8400-e29b-41d4-a716-446655440002",
     ])
     assert code == 2
+    stderr = capsys.readouterr().err
+    assert "Re-run with --yes to approve this review." in stderr
 
 
 def test_course_reviews_reject_with_yes(
@@ -164,7 +168,9 @@ def test_course_reviews_reject_with_yes(
     assert kwargs["reviewer_notes"] == "Contains risky command"
 
 
-def test_course_reviews_reject_without_yes() -> None:
+def test_course_reviews_reject_without_yes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """course-reviews reject without --yes refuses."""
     code = main([
         "course-reviews",
@@ -176,6 +182,8 @@ def test_course_reviews_reject_without_yes() -> None:
         "nope",
     ])
     assert code == 2
+    stderr = capsys.readouterr().err
+    assert "Re-run with --yes to reject this review." in stderr
 
 
 @pytest.mark.parametrize(

@@ -100,7 +100,9 @@ def test_reports_create_without_description(
     assert "description" not in kwargs
 
 
-def test_reports_create_without_yes() -> None:
+def test_reports_create_without_yes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """reports create refuses without --yes."""
     code = main([
         "reports",
@@ -113,6 +115,8 @@ def test_reports_create_without_yes() -> None:
         "spam",
     ])
     assert code == 2
+    stderr = capsys.readouterr().err
+    assert "Re-run with --yes to create this report." in stderr
 
 
 def test_reports_create_invalid_target_type() -> None:

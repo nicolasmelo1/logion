@@ -7,12 +7,13 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, validate_uuid_id
+from cli._errors import handle_error, require_non_empty_id, validate_uuid_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 from cli._utils import only_not_none
 
 _TARGET_TYPES = ["agent", "bounty", "bounty_submission", "course", "user"]
+_UUID_TARGET_TYPES = frozenset(_TARGET_TYPES)
 _REPORT_REASONS = [
     "spam",
     "scam",
@@ -23,6 +24,13 @@ _REPORT_REASONS = [
     "malware",
     "other",
 ]
+
+
+def _validate_target_id(target_type: str, target_id: str) -> int | None:
+    """Validate ``target_id`` for the selected report target type."""
+    if target_type in _UUID_TARGET_TYPES:
+        return validate_uuid_id(target_id, "--target-id")
+    return require_non_empty_id(target_id, "--target-id")
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -60,16 +68,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the reports create command."""
-    # All current target types (agent, bounty, bounty_submission, course,
-    # user) use UUID identifiers — validate client-side for early feedback.
-    # Confirmed with SDK/backend: the reports API only accepts UUIDs for
-    # target_id regardless of target_type.
-    # If a future target type uses a different ID format, replace
-    # validate_uuid_id with require_non_empty_id for that type.
-    bad_id = validate_uuid_id(args.target_id, "--target-id")
+    # All current target types use UUID identifiers. Keep the validation
+    # keyed off ``target_type`` so future non-UUID targets can be added by
+    # updating ``_UUID_TARGET_TYPES`` instead of rewriting the handler.
+    bad_id = _validate_target_id(args.target_type, args.target_id)
     if bad_id is not None:
         return bad_id
-    refusal = require_yes(args.yes, "create report")
+    refusal = require_yes(args.yes, "create this report")
     if refusal is not None:
         return refusal
     config = resolve_config_from_args(args)

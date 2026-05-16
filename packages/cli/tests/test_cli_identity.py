@@ -293,6 +293,36 @@ def test_users_create_api_key_warning_non_json(
     assert "will not be shown again" in stderr
 
 
+def test_users_create_api_key_warning_survives_emit_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """API key warning is printed even if output serialization fails."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+
+    def _raise_broken_pipe(*_args: object, **_kwargs: object) -> None:
+        raise BrokenPipeError("pipe closed")
+
+    monkeypatch.setattr("cli.commands.identity.emit", _raise_broken_pipe)
+    with pytest.raises(BrokenPipeError):
+        main([
+            "identity",
+            "users-create",
+            "--email",
+            "user@example.com",
+            "--password",
+            "testpass1",
+            "--agent-name",
+            "TestAgent",
+            "--json",
+        ])
+    stderr = capsys.readouterr().err
+    assert "will not be shown again" in stderr
+
+
 def test_agents_add_api_key_warning(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

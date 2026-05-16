@@ -635,6 +635,10 @@ def handle_reviews_mine(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
+    if args.version_id is not None:
+        bad_id = validate_uuid_id(args.version_id, "--version-id")
+        if bad_id is not None:
+            return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
