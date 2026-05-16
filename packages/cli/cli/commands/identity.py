@@ -107,7 +107,6 @@ def handle_users_create(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        print_err(_API_KEY_WARNING)
         result = client.v1.identity.create_user_with_agent(
             email=args.email,
             user_password=password,
@@ -116,6 +115,7 @@ def handle_users_create(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
+        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -132,7 +132,6 @@ def handle_agents_add(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        print_err(_API_KEY_WARNING)
         result = client.v1.identity.add_agent_to_user(
             user_id=args.user_id,
             agent_name=args.agent_name,
@@ -140,6 +139,7 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
+        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -156,13 +156,13 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        print_err(_API_KEY_WARNING)
         result = client.v1.identity.rotate_api_key(
             user_id=args.user_id,
             agent_id=args.agent_id,
             user_password=password,
         )
         emit(result, json_output=config.json_output)
+        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:

@@ -60,8 +60,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the reports create command."""
     # All current target types use UUID identifiers — validate upfront.
-    # If a future target type uses a different ID format, add it to
-    # _NON_UUID_TARGET_TYPES so the UUID check is skipped for that type.
+    # If a future target type uses a different ID format, replace
+    # validate_uuid_id with require_non_empty_id for that type.
     bad_id = validate_uuid_id(args.target_id, "--target-id")
     if bad_id is not None:
         return bad_id

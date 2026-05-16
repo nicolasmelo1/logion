@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import mimetypes
 from pathlib import Path
 
@@ -85,7 +86,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Clear the course description",
     )
-    # price-cents / clear-price are mutually exclusive
+    # price-cents / clear-price are mutually exclusive.
+    # Note: --clear-price also nullifies currency; _check_clear_price_conflict
+    # prevents --clear-price + (--currency | --clear-currency) combinations.
     _price = update.add_mutually_exclusive_group()
     _price.add_argument("--price-cents", type=int)
     _price.add_argument(
@@ -294,13 +297,14 @@ def _add_tristate_flag(
         flag,
         dest=dest,
         action="store_true",
+        default=None,
     )
     group.add_argument(
         f"--no-{base}",
         dest=dest,
         action="store_false",
+        default=None,
     )
-    parser.set_defaults(**{dest: None})
 
 
 # ── Handlers ──────────────────────────────────────────────────────
@@ -433,8 +437,9 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
             return 2
         resolved.append(p)
     basenames = [p.name for p in resolved]
-    if len(basenames) != len(set(basenames)):
-        dupes = [name for name in basenames if basenames.count(name) > 1]
+    basename_counts = collections.Counter(basenames)
+    dupes = [name for name, count in basename_counts.items() if count > 1]
+    if dupes:
         print_err(f"duplicate file names not allowed: {sorted(set(dupes))}")
         return 2
     config = resolve_config_from_args(args)
@@ -559,10 +564,11 @@ def handle_reviews_mine(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.courses.get_my_review(
-            course_id=args.course_id,
+        kwargs = only_not_none(
+            {"course_id": args.course_id},
             version_id=args.version_id,
         )
+        result = client.v1.courses.get_my_review(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)

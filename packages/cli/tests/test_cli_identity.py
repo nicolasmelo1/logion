@@ -198,14 +198,16 @@ def test_agents_rotate_key_calls_client(
 
 def test_users_create_missing_required() -> None:
     """identity users-create fails without required args."""
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exc_info:
         main(["identity", "users-create"])
+    assert exc_info.value.code == 2
 
 
 def test_agents_add_missing_required() -> None:
     """identity agents-add fails without required args."""
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exc_info:
         main(["identity", "agents-add"])
+    assert exc_info.value.code == 2
 
 
 def test_users_create_missing_password_no_env(
@@ -242,12 +244,11 @@ def test_users_create_empty_password(
     assert code == 2
 
 
-def test_users_create_api_key_warning_non_json(
+def test_users_create_api_key_warning_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """API key save warning is always emitted on stderr,
-    even in --json mode."""
+    """API key save warning is emitted on stderr in --json mode."""
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
@@ -262,6 +263,30 @@ def test_users_create_api_key_warning_non_json(
         "--agent-name",
         "TestAgent",
         "--json",
+    ])
+    assert code == 0
+    stderr = capsys.readouterr().err
+    assert "will not be shown again" in stderr
+
+
+def test_users_create_api_key_warning_non_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """API key save warning is emitted on stderr in non-JSON mode too."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--password",
+        "testpass1",
+        "--agent-name",
+        "TestAgent",
     ])
     assert code == 0
     stderr = capsys.readouterr().err
