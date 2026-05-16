@@ -8,8 +8,7 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import (
     handle_error,
-    require_non_empty_id,
-    validate_uuid,
+    validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
 from cli._output import emit
@@ -101,12 +100,9 @@ def handle_onboarding_link(args: argparse.Namespace) -> int:
 
 def handle_checkout(args: argparse.Namespace) -> int:
     """Execute the payments checkout command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -122,12 +118,9 @@ def handle_checkout(args: argparse.Namespace) -> int:
 
 def handle_orders_get(args: argparse.Namespace) -> int:
     """Execute the payments orders get command."""
-    empty = require_non_empty_id(args.order_id, "order_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.order_id, "order_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.order_id, "order_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

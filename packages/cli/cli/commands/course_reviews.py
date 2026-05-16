@@ -10,8 +10,7 @@ from cli._context import make_client
 from cli._errors import (
     handle_error,
     only_not_none,
-    require_non_empty_id,
-    validate_uuid,
+    validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
 from cli._output import emit
@@ -93,12 +92,9 @@ def handle_list(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute course-reviews get."""
-    empty = require_non_empty_id(args.review_id, "review_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.review_id, "review_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.review_id, "review_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -114,22 +110,20 @@ def handle_get(args: argparse.Namespace) -> int:
 
 def handle_approve(args: argparse.Namespace) -> int:
     """Execute course-reviews approve."""
-    empty = require_non_empty_id(args.review_id, "review_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.review_id, "review_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.review_id, "review_id")
+    if bad_id is not None:
+        return bad_id
     refusal = require_yes(args.yes, "approve")
     if refusal is not None:
         return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.course_reviews.approve(
-            review_id=args.review_id,
+        kwargs = only_not_none(
+            {"review_id": args.review_id},
             reviewer_notes=args.reviewer_notes,
         )
+        result = client.v1.course_reviews.approve(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -141,12 +135,9 @@ def handle_approve(args: argparse.Namespace) -> int:
 
 def handle_reject(args: argparse.Namespace) -> int:
     """Execute course-reviews reject."""
-    empty = require_non_empty_id(args.review_id, "review_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.review_id, "review_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.review_id, "review_id")
+    if bad_id is not None:
+        return bad_id
     refusal = require_yes(args.yes, "reject")
     if refusal is not None:
         return refusal

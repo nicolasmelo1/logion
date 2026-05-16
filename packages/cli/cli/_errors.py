@@ -48,6 +48,18 @@ def validate_uuid(value: str, label: str) -> int | None:
     return None
 
 
+def validate_uuid_id(value: str, label: str) -> int | None:
+    """Check *value* is non-empty and a valid UUID.
+
+    Combines :func:`require_non_empty_id` and :func:`validate_uuid`
+    into a single call for positional-ID validation.
+    """
+    empty = require_non_empty_id(value, label)
+    if empty is not None:
+        return empty
+    return validate_uuid(value, label)
+
+
 def only_not_none(
     base: dict[str, Any],
     **optional: Any,

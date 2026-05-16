@@ -12,30 +12,32 @@ from cli._options import COMMON_PARSER
 from cli._output import emit
 
 
-def _resolve_password(cli_value: str | None) -> tuple[int | None, str]:
-    """Return ``(None, password)`` or ``(exit_code, "")`` on failure.
+def _resolve_password(cli_value: str | None) -> str | None:
+    """Return the resolved password, or ``None`` on validation failure.
 
     Checks CLI arg first, then ``LOGION_PASSWORD`` env var.
-    Explicitly provided but empty/whitespace values are rejected
+    Explicitly provided but empty/whitespace-only values are rejected
     outright — they do *not* fall through to the env var.
-    Both paths strip leading/trailing whitespace so that the
-    value sent to the SDK is consistent regardless of source.
+    Leading/trailing whitespace on the *value* (not the password
+    itself) is stripped so that accidental shell quoting does not
+    silently alter the credential.  The actual password content is
+    preserved verbatim — passwords are opaque and must not be mutated.
     """
     if cli_value is not None:
-        stripped = cli_value.strip()
-        if not stripped:
+        value = cli_value.strip()
+        if not value:
             print_err("Error: --password must not be empty.")
-            return 2, ""
-        return None, stripped
+            return None
+        return value
     raw_env = os.environ.get("LOGION_PASSWORD")
     if raw_env is not None:
-        env = raw_env.strip()
-        if not env:
+        value = raw_env.strip()
+        if not value:
             print_err("Error: LOGION_PASSWORD is set but empty/whitespace.")
-            return 2, ""
-        return None, env
+            return None
+        return value
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
-    return 2, ""
+    return None
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -95,14 +97,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     rk.set_defaults(handler=handle_agents_rotate_key)
 
 
+_API_KEY_WARNING = (
+    "Important: save the API key now — it will not be shown again."
+)
+
+
 def handle_users_create(args: argparse.Namespace) -> int:
     """Execute the identity users-create command."""
-    refusal, password = _resolve_password(args.password)
-    if refusal is not None:
-        return refusal
+    password = _resolve_password(args.password)
+    if password is None:
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        print_err(_API_KEY_WARNING)
         result = client.v1.identity.create_user_with_agent(
             email=args.email,
             user_password=password,
@@ -111,9 +119,6 @@ def handle_users_create(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
-        print_err(
-            "Important: save the API key now — it will not be shown again."
-        )
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -124,12 +129,13 @@ def handle_users_create(args: argparse.Namespace) -> int:
 
 def handle_agents_add(args: argparse.Namespace) -> int:
     """Execute the identity agents-add command."""
-    refusal, password = _resolve_password(args.password)
-    if refusal is not None:
-        return refusal
+    password = _resolve_password(args.password)
+    if password is None:
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        print_err(_API_KEY_WARNING)
         result = client.v1.identity.add_agent_to_user(
             user_id=args.user_id,
             agent_name=args.agent_name,
@@ -137,9 +143,6 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
-        print_err(
-            "Important: save the API key now — it will not be shown again."
-        )
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -150,21 +153,19 @@ def handle_agents_add(args: argparse.Namespace) -> int:
 
 def handle_agents_rotate_key(args: argparse.Namespace) -> int:
     """Execute the identity agents-rotate-key command."""
-    refusal, password = _resolve_password(args.password)
-    if refusal is not None:
-        return refusal
+    password = _resolve_password(args.password)
+    if password is None:
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        print_err(_API_KEY_WARNING)
         result = client.v1.identity.rotate_api_key(
             user_id=args.user_id,
             agent_id=args.agent_id,
             user_password=password,
         )
         emit(result, json_output=config.json_output)
-        print_err(
-            "Important: save the API key now — it will not be shown again."
-        )
     except Exception as exc:
         return handle_error(exc)
     else:

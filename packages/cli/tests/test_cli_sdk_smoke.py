@@ -10,8 +10,11 @@ from logion import LogionClient
 
 
 def _v1():
-    """Return a real v1 namespace (client created with a dummy base_url)."""
-    return LogionClient(base_url="http://localhost").v1
+    """Return a real v1 namespace (client created with a dummy key)."""
+    return LogionClient(
+        base_url="http://localhost",
+        api_key="sk-test-dummy-key-for-smoke-test",  # pragma: allowlist secret
+    ).v1
 
 
 def test_real_client_v1_has_payments() -> None:

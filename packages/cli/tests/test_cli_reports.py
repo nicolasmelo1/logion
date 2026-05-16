@@ -97,7 +97,7 @@ def test_reports_create_without_description(
     ])
     assert code == 0
     _method, kwargs = reports.last_call
-    assert kwargs["description"] is None
+    assert "description" not in kwargs
 
 
 def test_reports_create_without_yes() -> None:

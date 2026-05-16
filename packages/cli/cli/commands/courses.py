@@ -12,8 +12,7 @@ from cli._errors import (
     handle_error,
     only_not_none,
     print_err,
-    require_non_empty_id,
-    validate_uuid,
+    validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
 from cli._output import emit
@@ -330,12 +329,9 @@ def handle_create(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute the courses get command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -385,12 +381,9 @@ def _apply_update_overrides(
 
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     price_conflict = _check_clear_price_conflict(args)
     if price_conflict is not None:
         return price_conflict
@@ -420,14 +413,11 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
     """Execute the courses uploads create command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     if not args.files:
-        print_err("at least one --file is required")
+        print_err("Error: at least one --file is required")
         return 2
     # Validate all paths exist and check for duplicate basenames
     resolved: list[Path] = []
@@ -468,12 +458,12 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
 
 def handle_uploads_complete(args: argparse.Namespace) -> int:
     """Execute the courses uploads complete command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    empty = require_non_empty_id(args.version_id, "version_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.version_id, "version_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -492,12 +482,9 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
 
 def handle_publication_request(args: argparse.Namespace) -> int:
     """Execute publication request."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -515,16 +502,17 @@ def handle_publication_request(args: argparse.Namespace) -> int:
 
 def handle_publication_latest(args: argparse.Namespace) -> int:
     """Execute publication latest."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.courses.get_latest_publication_review(
-            course_id=args.course_id,
+        kwargs = only_not_none(
+            {"course_id": args.course_id},
             include_pass=args.include_pass,
         )
+        result = client.v1.courses.get_latest_publication_review(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -536,9 +524,9 @@ def handle_publication_latest(args: argparse.Namespace) -> int:
 
 def handle_reviews_list(args: argparse.Namespace) -> int:
     """Execute the courses reviews list command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -560,9 +548,9 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
 
 def handle_reviews_mine(args: argparse.Namespace) -> int:
     """Execute the courses reviews mine command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -581,15 +569,12 @@ def handle_reviews_mine(args: argparse.Namespace) -> int:
 
 def handle_reviews_upsert(args: argparse.Namespace) -> int:
     """Execute the courses reviews upsert command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.course_id, "course_id")
-    if bad_uuid is not None:
-        return bad_uuid
-    empty = require_non_empty_id(args.version_id, "version_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.version_id, "version_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -618,9 +603,9 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
 
 def handle_feedback(args: argparse.Namespace) -> int:
     """Execute the courses feedback command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -638,12 +623,12 @@ def handle_feedback(args: argparse.Namespace) -> int:
 
 def handle_versions_get(args: argparse.Namespace) -> int:
     """Execute the courses versions get command."""
-    empty = require_non_empty_id(args.course_id, "course_id")
-    if empty is not None:
-        return empty
-    empty = require_non_empty_id(args.version_id, "version_id")
-    if empty is not None:
-        return empty
+    bad_id = validate_uuid_id(args.course_id, "course_id")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.version_id, "version_id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

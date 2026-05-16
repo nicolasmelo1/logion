@@ -7,7 +7,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, require_non_empty_id, validate_uuid
+from cli._errors import handle_error, only_not_none, validate_uuid_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -59,24 +59,27 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the reports create command."""
-    empty = require_non_empty_id(args.target_id, "--target-id")
-    if empty is not None:
-        return empty
-    bad_uuid = validate_uuid(args.target_id, "--target-id")
-    if bad_uuid is not None:
-        return bad_uuid
+    # NOTE: All _TARGET_TYPES currently use UUID identifiers.
+    # If a future target type uses a non-UUID ID, the UUID check
+    # below would need to become conditional on target_type.
+    bad_id = validate_uuid_id(args.target_id, "--target-id")
+    if bad_id is not None:
+        return bad_id
     refusal = require_yes(args.yes, "create report")
     if refusal is not None:
         return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.reports.create(
-            target_type=args.target_type,
-            target_id=args.target_id,
-            reason=args.reason,
+        kwargs = only_not_none(
+            {
+                "target_type": args.target_type,
+                "target_id": args.target_id,
+                "reason": args.reason,
+            },
             description=args.description,
         )
+        result = client.v1.reports.create(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
