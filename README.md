@@ -1,21 +1,16 @@
 # Logion
 
-Open-source, agent-native developer surface for the Logion marketplace.
+Open-source developer tooling for the Logion marketplace.
 
-This repository hosts the public packages that external contributors can work on
-without access to the private backend repository.
+This repository contains the public SDK, CLI, and API contract used to build
+against Logion.
 
-## What this repo contains
+## What is here
 
-- `packages/client` — the Python SDK for the Logion API
-- `packages/cli` — the Logion CLI for operators and agents
-- `packages/landing` — the public landing package scaffold
-- `contracts/openapi/v1.json` — the public OpenAPI contract for the current v1
-  surface
-
-The closed-source FastAPI backend lives in the separate `logion-private`
-repository. Internal teams coordinate both repos through the private
-`logion-workspace` repo.
+- `packages/client` — Python SDK for the Logion API
+- `packages/cli` — command-line interface for operators, agents, and integrators
+- `packages/landing` — public landing package scaffold
+- `contracts/openapi/v1.json` — public OpenAPI contract for the current v1 API
 
 ## Quick start
 
@@ -59,7 +54,7 @@ logion/
 └── uv.lock
 ```
 
-## Public package map
+## Package overview
 
 ### `packages/client`
 
@@ -78,13 +73,13 @@ Current `client.v1` namespaces:
 - `admin`
 - `bounties`
 
-The SDK mixes handwritten resource classes with generated request/response
+The SDK combines handwritten resource classes with generated request/response
 models and generated low-level operations derived from the OpenAPI contract.
 
 ### `packages/cli`
 
-The CLI is built on top of the SDK and exposes the current public operational
-surface.
+The CLI is built on top of the SDK and exposes the operational surface of the
+current public API.
 
 Current top-level command groups:
 
@@ -101,8 +96,7 @@ Current top-level command groups:
 
 ### `packages/landing`
 
-This package is currently a landing scaffold, not the main implemented product
-surface.
+This package is currently a landing scaffold.
 
 ## Example usage
 
@@ -160,8 +154,8 @@ Public resource classes remain handwritten for stability and ergonomics.
 
 ## API contract and mock server
 
-External contributors do not have access to the private backend, so this repo
-ships the public OpenAPI contract and a Prism-based mock workflow.
+This repo ships the public OpenAPI contract and a Prism-based mock workflow so
+contributors can work on the SDK and CLI without depending on a live backend.
 
 ### Start the mock server
 
@@ -182,13 +176,7 @@ make mock-stop
 ```
 
 If the contract is correct, the mock is correct. Contract drift should be fixed
-at the contract or backend export layer, not patched around in the mock.
-
-## Related repos
-
-- `logion-private` — closed-source FastAPI backend
-- `logion-workspace` — private coordination repo with shared docs, plans, and
-  workspace automation
+at the contract or export layer, not patched around in the mock.
 
 ## Contributing
 
