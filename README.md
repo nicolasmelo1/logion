@@ -81,7 +81,7 @@ models and generated low-level operations derived from the OpenAPI contract.
 The CLI is built on top of the SDK and exposes the operational surface of the
 current public API.
 
-Current top-level command groups:
+Current top-level commands and groups:
 
 - `health`
 - `identity`
