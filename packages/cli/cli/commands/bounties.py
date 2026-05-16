@@ -12,6 +12,7 @@ from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import (
     handle_error,
+    print_err,
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
@@ -28,10 +29,18 @@ def parse_datetime(value: str | None) -> datetime | None:
 
 
 def load_evidence(path: Path | None) -> dict[str, object] | None:
-    """Load a JSON evidence file, returning None if *path* is None."""
+    """Load a JSON evidence file, returning None if *path* is None.
+
+    Returns ``None`` and prints a user-facing error when the file
+    is missing or contains invalid JSON.
+    """
     if path is None:
         return None
-    return json.loads(path.read_text())
+    try:
+        return json.loads(path.read_text())  # type: ignore[no-any-return]
+    except (OSError, json.JSONDecodeError) as exc:
+        print_err(f"Error: evidence JSON must be valid: {exc}")
+        return None
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -212,6 +221,13 @@ def handle_create(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.course_id, "--course-id")
     if bad_id is not None:
         return bad_id
+    # Validate --submission-deadline format early
+    if args.submission_deadline is not None:
+        try:
+            parse_datetime(args.submission_deadline)
+        except (ValueError, TypeError) as exc:
+            print_err(f"Error: --submission-deadline: {exc}")
+            return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
