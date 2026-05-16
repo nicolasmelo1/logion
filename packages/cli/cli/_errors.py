@@ -19,6 +19,9 @@ def handle_error(exc: Exception) -> int:
     if isinstance(exc, LogionError):
         print(f"Logion error: {exc}", file=sys.stderr)
         return 1
+    if isinstance(exc, ValueError):
+        print_err(f"Invalid value: {exc}")
+        return 2
     raise exc
 
 

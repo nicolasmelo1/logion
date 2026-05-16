@@ -264,3 +264,41 @@ def test_users_create_api_key_warning_non_json(
     assert code == 0
     stderr = capsys.readouterr().err
     assert "will not be shown again" in stderr
+
+
+def test_users_create_env_password_whitespace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create strips whitespace from LOGION_PASSWORD."""
+    monkeypatch.setenv("LOGION_PASSWORD", "  envpass1  ")
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_password"] == "envpass1"  # pragma: allowlist secret
+
+
+def test_users_create_env_password_whitespace_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create fails when LOGION_PASSWORD is whitespace-only."""
+    monkeypatch.setenv("LOGION_PASSWORD", "   ")
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+    ])
+    assert code == 2

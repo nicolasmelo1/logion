@@ -59,12 +59,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the reports create command."""
-    refusal = require_yes(args.yes, "create report")
-    if refusal is not None:
-        return refusal
     empty = require_non_empty_id(args.target_id, "--target-id")
     if empty is not None:
         return empty
+    refusal = require_yes(args.yes, "create report")
+    if refusal is not None:
+        return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

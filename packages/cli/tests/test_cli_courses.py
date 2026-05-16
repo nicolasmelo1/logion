@@ -265,9 +265,9 @@ def test_courses_uploads_create(
     assert kwargs["course_id"] == "c1"
     files = kwargs["files"]
     assert len(files) == 2
-    assert files[0]["path"] == str(f1)
+    assert files[0]["path"] == f1.name
     assert files[0]["size_bytes"] == f1.stat().st_size
-    assert files[1]["path"] == str(f2)
+    assert files[1]["path"] == f2.name
 
 
 def test_courses_uploads_create_file_not_found(
@@ -535,3 +535,42 @@ def test_courses_update_empty_id() -> None:
     """courses update rejects empty course_id."""
     code = main(["courses", "update", "", "--title", "X", "--json"])
     assert code == 2
+
+
+def test_courses_update_clear_description(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses update --clear-description sends description=None."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "update",
+        "c1",
+        "--clear-description",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert kwargs.get("description") is None
+
+
+def test_courses_update_clear_price(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses update --clear-price clears both price_cents and currency."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "update",
+        "c1",
+        "--clear-price",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert kwargs.get("price_cents") is None
+    assert kwargs.get("currency") is None

@@ -25,7 +25,9 @@ def _resolve_password(cli_value: str | None) -> tuple[int | None, str]:
             return 2, ""
         return None, cli_value
     env = os.environ.get("LOGION_PASSWORD")
-    if env and env.strip():
+    if env:
+        env = env.strip()
+    if env:
         return None, env
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
     return 2, ""
@@ -49,7 +51,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     uc.add_argument("--email", required=True)
-    uc.add_argument("--password", help="Password (or set LOGION_PASSWORD)")
+    uc.add_argument(
+        "--password",
+        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+    )
     uc.add_argument("--agent-name", required=True)
     uc.add_argument("--user-name")
     uc.add_argument("--agent-description")
@@ -63,7 +68,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     aa.add_argument("--user-id", required=True)
     aa.add_argument("--agent-name", required=True)
-    aa.add_argument("--password", help="Password (or set LOGION_PASSWORD)")
+    aa.add_argument(
+        "--password",
+        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+    )
     aa.add_argument("--agent-description")
     aa.set_defaults(handler=handle_agents_add)
 
@@ -75,7 +83,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     rk.add_argument("--user-id", required=True)
     rk.add_argument("--agent-id", required=True)
-    rk.add_argument("--password", help="Password (or set LOGION_PASSWORD)")
+    rk.add_argument(
+        "--password",
+        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+    )
     rk.set_defaults(handler=handle_agents_rotate_key)
 
 

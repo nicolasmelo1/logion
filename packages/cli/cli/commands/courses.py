@@ -85,6 +85,31 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Remove all tags from the course",
     )
     update.add_argument(
+        "--clear-description",
+        action="store_true",
+        help="Clear the course description",
+    )
+    update.add_argument(
+        "--clear-short-summary",
+        action="store_true",
+        help="Clear the short summary",
+    )
+    update.add_argument(
+        "--clear-language",
+        action="store_true",
+        help="Clear the course language",
+    )
+    update.add_argument(
+        "--clear-currency",
+        action="store_true",
+        help="Clear the course currency (also clears price_cents)",
+    )
+    update.add_argument(
+        "--clear-price",
+        action="store_true",
+        help="Clear the course price (price_cents and currency)",
+    )
+    update.add_argument(
         "--visibility",
         choices=["public", "unlisted", "private"],
     )
@@ -339,6 +364,18 @@ def handle_update(args: argparse.Namespace) -> int:
             kwargs["tags"] = []
         elif args.tags:
             kwargs["tags"] = args.tags
+        # --clear-<field> explicitly sets nullable fields to None
+        if args.clear_description:
+            kwargs["description"] = None
+        if args.clear_short_summary:
+            kwargs["short_summary"] = None
+        if args.clear_language:
+            kwargs["language"] = None
+        if args.clear_currency:
+            kwargs["currency"] = None
+        if args.clear_price:
+            kwargs["price_cents"] = None
+            kwargs["currency"] = None
         result = client.v1.courses.update(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -367,7 +404,7 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
                 print_err(f"file not found: {path_str}")
                 return 2
             files.append({
-                "path": path_str,
+                "path": p.name,
                 "size_bytes": p.stat().st_size,
                 "content_type": mimetypes.guess_type(path_str)[0]
                 or "application/octet-stream",
