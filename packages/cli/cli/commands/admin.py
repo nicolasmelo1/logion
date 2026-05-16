@@ -114,6 +114,10 @@ def _register_courses(sub: argparse._SubParsersAction) -> None:
 
 def handle_admin_courses_list(args: argparse.Namespace) -> int:
     """Execute the admin courses list command."""
+    if args.owner_agent_id is not None:
+        bad_id = validate_uuid_id(args.owner_agent_id, "--owner-agent-id")
+        if bad_id is not None:
+            return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

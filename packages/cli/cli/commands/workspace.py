@@ -219,10 +219,11 @@ def _handle_checkout(args: argparse.Namespace) -> int:
 
 
 def _handle_switch(args: argparse.Namespace) -> int:
-    """Archive current work and check out a different submission.
+    """Switch to a different submission.
 
-    This is identical to ``checkout`` but always archives first (i.e. it
-    refuses to run if there are dirty files — use ``--force`` to discard).
+    Without ``--force``, archives current work before switching
+    (refuses if there are dirty files). With ``--force``, discards
+    dirty files and switches unconditionally.
     """
     bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
     if bad_id is not None:

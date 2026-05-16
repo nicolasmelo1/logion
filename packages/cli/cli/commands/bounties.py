@@ -304,6 +304,8 @@ def handle_submissions_create(args: argparse.Namespace) -> int:
         if bad_id is not None:
             return bad_id
     evidence = load_evidence(args.evidence_json)
+    if args.evidence_json is not None and evidence is None:
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

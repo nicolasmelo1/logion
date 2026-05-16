@@ -574,3 +574,51 @@ def test_submissions_withdraw_calls_client(
     assert method == "delete_submission"
     assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
+
+
+def test_submissions_create_evidence_missing_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """bounties submissions create exits 2 on missing --evidence-json."""
+    bounties = FakeBountiesResource()
+    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "bounties",
+        "submissions",
+        "create",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--title",
+        "My submission",
+        "--evidence-json",
+        str(tmp_path / "nonexistent.json"),
+        "--json",
+    ])
+    assert code == 2
+    assert bounties.last_call == ("", {})
+
+
+def test_submissions_create_evidence_invalid_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """bounties submissions create exits 2 on invalid --evidence-json."""
+    bad_file = tmp_path / "bad.json"
+    bad_file.write_text("{invalid json")
+    bounties = FakeBountiesResource()
+    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "bounties",
+        "submissions",
+        "create",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--title",
+        "My submission",
+        "--evidence-json",
+        str(bad_file),
+        "--json",
+    ])
+    assert code == 2
+    assert bounties.last_call == ("", {})
