@@ -306,7 +306,10 @@ def test_users_create_api_key_warning_survives_emit_failure(
     def _raise_broken_pipe(*_args: object, **_kwargs: object) -> None:
         raise BrokenPipeError("pipe closed")
 
-    monkeypatch.setattr("cli.commands.identity.emit", _raise_broken_pipe)
+    monkeypatch.setattr(
+        "cli.commands.identity.handlers.emit",
+        _raise_broken_pipe,
+    )
     with pytest.raises(BrokenPipeError):
         main([
             "identity",
