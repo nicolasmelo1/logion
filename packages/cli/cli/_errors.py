@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from uuid import UUID
 
-# Re-export for backward compatibility; moved to _utils.py
-from cli._utils import only_not_none  # noqa: F401
 from logion import APIError, LogionError
 
 

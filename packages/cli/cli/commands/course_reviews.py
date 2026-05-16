@@ -46,7 +46,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Get review queue item details",
         parents=[COMMON_PARSER],
     )
-    get.add_argument("review_id")
+    get.add_argument("review_id", metavar="REVIEW_ID")
     get.set_defaults(handler=handle_get)
 
     # ── approve ─────────────────────────────────────────────────
@@ -55,7 +55,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Approve a publication review",
         parents=[COMMON_PARSER],
     )
-    approve.add_argument("review_id")
+    approve.add_argument("review_id", metavar="REVIEW_ID")
     approve.add_argument("--reviewer-notes")
     approve.add_argument("--yes", action="store_true")
     approve.set_defaults(handler=handle_approve)
@@ -66,7 +66,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Reject a publication review",
         parents=[COMMON_PARSER],
     )
-    reject.add_argument("review_id")
+    reject.add_argument("review_id", metavar="REVIEW_ID")
     reject.add_argument("--decision-reason", required=True)
     reject.add_argument("--reviewer-notes", required=True)
     reject.add_argument("--yes", action="store_true")
@@ -95,7 +95,7 @@ def handle_list(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute course-reviews get."""
-    bad_id = validate_uuid_id(args.review_id, "review_id")
+    bad_id = validate_uuid_id(args.review_id, "REVIEW_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -113,9 +113,12 @@ def handle_get(args: argparse.Namespace) -> int:
 
 def handle_approve(args: argparse.Namespace) -> int:
     """Execute course-reviews approve."""
-    bad_id = validate_uuid_id(args.review_id, "review_id")
+    bad_id = validate_uuid_id(args.review_id, "REVIEW_ID")
     if bad_id is not None:
         return bad_id
+    if args.reviewer_notes is not None and not args.reviewer_notes.strip():
+        print_err(_REQUIRE_NON_EMPTY_MSG.format("--reviewer-notes"))
+        return 2
     refusal = require_yes(args.yes, "approve")
     if refusal is not None:
         return refusal
@@ -138,7 +141,7 @@ def handle_approve(args: argparse.Namespace) -> int:
 
 def handle_reject(args: argparse.Namespace) -> int:
     """Execute course-reviews reject."""
-    bad_id = validate_uuid_id(args.review_id, "review_id")
+    bad_id = validate_uuid_id(args.review_id, "REVIEW_ID")
     if bad_id is not None:
         return bad_id
     if not args.decision_reason.strip():

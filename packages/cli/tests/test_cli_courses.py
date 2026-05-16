@@ -285,6 +285,41 @@ def test_courses_uploads_create(
     assert files[1]["path"] == f2.name
 
 
+def test_courses_uploads_create_with_custom_upload_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """courses uploads create supports UPLOAD_PATH=FILE_PATH specs."""
+    dir1 = tmp_path / "a"
+    dir2 = tmp_path / "b"
+    dir1.mkdir()
+    dir2.mkdir()
+    f1 = dir1 / "file.txt"
+    f2 = dir2 / "file.txt"
+    f1.write_text("hello")
+    f2.write_text("world")
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "uploads",
+        "create",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--file",
+        f"docs/first.txt={f1}",
+        "--file",
+        f"docs/second.txt={f2}",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert [entry["path"] for entry in kwargs["files"]] == [
+        "docs/first.txt",
+        "docs/second.txt",
+    ]
+
+
 def test_courses_uploads_create_file_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -386,6 +421,30 @@ def test_courses_publication_latest(
     method, kwargs = courses.last_call
     assert method == "get_latest_publication_review"
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["include_pass"] is True
+
+
+def test_courses_publication_latest_no_include_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses publication latest can explicitly send include_pass=False."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    assert (
+        main([
+            "courses",
+            "publication",
+            "latest",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--no-include-pass",
+            "--json",
+        ])
+        == 0
+    )
+    method, kwargs = courses.last_call
+    assert method == "get_latest_publication_review"
+    assert kwargs["include_pass"] is False
 
 
 def test_courses_reviews_upsert(
@@ -702,13 +761,8 @@ def test_courses_update_clear_price_with_currency_conflict() -> None:
     assert code == 2
 
 
-def test_courses_reviews_upsert_rating_out_of_range(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_courses_reviews_upsert_rating_out_of_range() -> None:
     """courses reviews upsert rejects --rating outside 1-5."""
-    courses = FakeCoursesResource()
-    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
-    monkeypatch.setattr("cli._context.make_client", lambda _c: fake)
     code = main([
         "courses",
         "reviews",
@@ -721,13 +775,8 @@ def test_courses_reviews_upsert_rating_out_of_range(
     assert code == 2
 
 
-def test_courses_reviews_upsert_subscore_out_of_range(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_courses_reviews_upsert_subscore_out_of_range() -> None:
     """courses reviews upsert rejects sub-scores outside 0-5."""
-    courses = FakeCoursesResource()
-    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
-    monkeypatch.setattr("cli._context.make_client", lambda _c: fake)
     code = main([
         "courses",
         "reviews",

@@ -96,7 +96,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help=_CMD_HELP["get"],
         parents=[COMMON_PARSER],
     )
-    get.add_argument("course_id")
+    get.add_argument("course_id", metavar="COURSE_ID")
     get.set_defaults(handler=handle_get)
 
     # ── update ────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help=_CMD_HELP["update"],
         parents=[COMMON_PARSER],
     )
-    update.add_argument("course_id")
+    update.add_argument("course_id", metavar="COURSE_ID")
     update.add_argument("--title")
     # description / clear-description are mutually exclusive
     _desc = update.add_mutually_exclusive_group()
@@ -176,7 +176,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Create an upload session for a course version",
         parents=[COMMON_PARSER],
     )
-    uc.add_argument("course_id")
+    uc.add_argument("course_id", metavar="COURSE_ID")
     uc.add_argument(
         "--file",
         action="append",
@@ -184,8 +184,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=[],
         help=(
             "File path to include in the upload session. "
-            "Only the basename is used as the upload path; "
-            "directory structure is flattened."
+            "Use FILE_PATH or UPLOAD_PATH=FILE_PATH to override the upload "
+            "path. When omitted, only the basename is used and directory "
+            "structure is flattened."
         ),
     )
     uc.set_defaults(handler=handle_uploads_create)
@@ -196,8 +197,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Complete an upload session",
         parents=[COMMON_PARSER],
     )
-    ucomp.add_argument("course_id")
-    ucomp.add_argument("version_id")
+    ucomp.add_argument("course_id", metavar="COURSE_ID")
+    ucomp.add_argument("version_id", metavar="VERSION_ID")
     ucomp.set_defaults(handler=handle_uploads_complete)
 
     # ── publication sub-group ────────────────────────────────────
@@ -216,7 +217,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Request publication review",
         parents=[COMMON_PARSER],
     )
-    pr.add_argument("course_id")
+    pr.add_argument("course_id", metavar="COURSE_ID")
     pr.set_defaults(handler=handle_publication_request)
 
     # publication latest
@@ -225,8 +226,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Get latest publication review status",
         parents=[COMMON_PARSER],
     )
-    pl.add_argument("course_id")
-    pl.add_argument("--include-pass", action="store_true", default=None)
+    pl.add_argument("course_id", metavar="COURSE_ID")
+    _add_tristate_flag(pl, "--include-pass", dest="include_pass")
     pl.set_defaults(handler=handle_publication_latest)
 
     # ── reviews sub-group ────────────────────────────────────────
@@ -245,7 +246,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="List reviews for a course",
         parents=[COMMON_PARSER],
     )
-    rl.add_argument("course_id")
+    rl.add_argument("course_id", metavar="COURSE_ID")
     rl.add_argument("--version")
     rl.add_argument("--limit", type=int)
     rl.add_argument("--cursor")
@@ -257,7 +258,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Get your review for a course version",
         parents=[COMMON_PARSER],
     )
-    rm.add_argument("course_id")
+    rm.add_argument("course_id", metavar="COURSE_ID")
     rm.add_argument("--version-id")
     rm.set_defaults(handler=handle_reviews_mine)
 
@@ -267,8 +268,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Create or update a review for a course version",
         parents=[COMMON_PARSER],
     )
-    ru.add_argument("course_id")
-    ru.add_argument("version_id")
+    ru.add_argument("course_id", metavar="COURSE_ID")
+    ru.add_argument("version_id", metavar="VERSION_ID")
     ru.add_argument("--rating", type=int, required=True)
     ru.add_argument("--body")
     _add_tristate_flag(ru, "--completed-task", dest="completed_task")
@@ -284,7 +285,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help=_CMD_HELP["feedback"],
         parents=[COMMON_PARSER],
     )
-    feedback.add_argument("course_id")
+    feedback.add_argument("course_id", metavar="COURSE_ID")
     feedback.set_defaults(handler=handle_feedback)
 
     # ── versions get ─────────────────────────────────────────────
@@ -301,8 +302,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Get a course version",
         parents=[COMMON_PARSER],
     )
-    vg.add_argument("course_id")
-    vg.add_argument("version_id")
+    vg.add_argument("course_id", metavar="COURSE_ID")
+    vg.add_argument("version_id", metavar="VERSION_ID")
     vg.set_defaults(handler=handle_versions_get)
 
 
@@ -330,6 +331,18 @@ def _add_tristate_flag(
         action="store_false",
         default=None,
     )
+
+
+def _parse_upload_file_spec(spec: str) -> tuple[str, Path]:
+    """Return ``(upload_path, file_path)`` from a ``--file`` argument."""
+    if "=" not in spec:
+        file_path = Path(spec)
+        return (file_path.name, file_path)
+
+    upload_path, file_path_str = spec.split("=", 1)
+    if not upload_path.strip():
+        raise ValueError("upload path before '=' must not be empty")
+    return (upload_path, Path(file_path_str))
 
 
 # ── Handlers ──────────────────────────────────────────────────────
@@ -363,7 +376,7 @@ def handle_create(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute the courses get command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -442,7 +455,7 @@ def _has_mutable_field(args: argparse.Namespace) -> bool:
 
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     price_conflict = _check_clear_price_conflict(args)
@@ -479,23 +492,27 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
     """Execute the courses uploads create command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     if not args.files:
         print_err("Error: at least one --file is required")
         return 2
-    # Validate all paths exist and check for duplicate basenames
-    resolved: list[Path] = []
-    for path_str in args.files:
-        p = Path(path_str)
-        if not p.is_file():
-            print_err(f"file not found: {path_str}")
+    # Validate all paths exist and check for duplicate upload paths
+    resolved: list[tuple[str, Path]] = []
+    for file_spec in args.files:
+        try:
+            upload_path, p = _parse_upload_file_spec(file_spec)
+        except ValueError as exc:
+            print_err(f"Error: {exc}")
             return 2
-        resolved.append(p)
-    basenames = [p.name for p in resolved]
-    basename_counts = collections.Counter(basenames)
-    dupes = [name for name, count in basename_counts.items() if count > 1]
+        if not p.is_file():
+            print_err(f"file not found: {p}")
+            return 2
+        resolved.append((upload_path, p))
+    upload_paths = [upload_path for upload_path, _ in resolved]
+    path_counts = collections.Counter(upload_paths)
+    dupes = [name for name, count in path_counts.items() if count > 1]
     if dupes:
         print_err(f"duplicate file names not allowed: {sorted(set(dupes))}")
         return 2
@@ -503,9 +520,9 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         files = []
-        for p in resolved:
+        for upload_path, p in resolved:
             files.append({
-                "path": p.name,
+                "path": upload_path,
                 "size_bytes": p.stat().st_size,
                 "content_type": mimetypes.guess_type(str(p))[0]
                 or "application/octet-stream",
@@ -525,10 +542,10 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
 
 def handle_uploads_complete(args: argparse.Namespace) -> int:
     """Execute the courses uploads complete command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
-    bad_id = validate_uuid_id(args.version_id, "version_id")
+    bad_id = validate_uuid_id(args.version_id, "VERSION_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -549,7 +566,7 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
 
 def handle_publication_request(args: argparse.Namespace) -> int:
     """Execute publication request."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -569,7 +586,7 @@ def handle_publication_request(args: argparse.Namespace) -> int:
 
 def handle_publication_latest(args: argparse.Namespace) -> int:
     """Execute publication latest."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -591,7 +608,7 @@ def handle_publication_latest(args: argparse.Namespace) -> int:
 
 def handle_reviews_list(args: argparse.Namespace) -> int:
     """Execute the courses reviews list command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -615,7 +632,7 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
 
 def handle_reviews_mine(args: argparse.Namespace) -> int:
     """Execute the courses reviews mine command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -637,14 +654,14 @@ def handle_reviews_mine(args: argparse.Namespace) -> int:
 
 def handle_reviews_upsert(args: argparse.Namespace) -> int:
     """Execute the courses reviews upsert command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
-    bad_id = validate_uuid_id(args.version_id, "version_id")
+    bad_id = validate_uuid_id(args.version_id, "VERSION_ID")
     if bad_id is not None:
         return bad_id
     # Validate rating range (1-5)
-    if args.rating is not None and not (1 <= args.rating <= 5):
+    if not (1 <= args.rating <= 5):
         print_err("Error: --rating must be between 1 and 5.")
         return 2
     # Validate sub-score ranges (0.0-5.0, matching rating scale)
@@ -686,7 +703,7 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
 
 def handle_feedback(args: argparse.Namespace) -> int:
     """Execute the courses feedback command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -706,10 +723,10 @@ def handle_feedback(args: argparse.Namespace) -> int:
 
 def handle_versions_get(args: argparse.Namespace) -> int:
     """Execute the courses versions get command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
-    bad_id = validate_uuid_id(args.version_id, "version_id")
+    bad_id = validate_uuid_id(args.version_id, "VERSION_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)

@@ -37,6 +37,11 @@ def _resolve_password(cli_value: str | None) -> str | None:
         if not raw_env.strip():
             print_err("Error: LOGION_PASSWORD is set but empty/whitespace.")
             return None
+        if raw_env != raw_env.strip():
+            print_err(
+                "Warning: LOGION_PASSWORD has leading/trailing whitespace — "
+                "this is intentional, but may be an environment setup mistake."
+            )
         return raw_env
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
     return None

@@ -115,6 +115,19 @@ def test_course_reviews_approve_with_yes(
     assert kwargs["reviewer_notes"] == "Looks good"
 
 
+def test_course_reviews_approve_whitespace_reviewer_notes() -> None:
+    """course-reviews approve rejects whitespace-only reviewer notes."""
+    code = main([
+        "course-reviews",
+        "approve",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--reviewer-notes",
+        "   ",
+        "--yes",
+    ])
+    assert code == 2
+
+
 def test_course_reviews_approve_without_yes() -> None:
     """course-reviews approve without --yes refuses."""
     code = main([
@@ -163,6 +176,48 @@ def test_course_reviews_reject_without_yes() -> None:
         "nope",
     ])
     assert code == 2
+
+
+@pytest.mark.parametrize(
+    ("args", "expected_message"),
+    [
+        (
+            [
+                "course-reviews",
+                "reject",
+                "770e8400-e29b-41d4-a716-446655440002",
+                "--decision-reason",
+                "   ",
+                "--reviewer-notes",
+                "has notes",
+                "--yes",
+            ],
+            "Error: --decision-reason must not be empty.",
+        ),
+        (
+            [
+                "course-reviews",
+                "reject",
+                "770e8400-e29b-41d4-a716-446655440002",
+                "--decision-reason",
+                "unsafe command",
+                "--reviewer-notes",
+                "   ",
+                "--yes",
+            ],
+            "Error: --reviewer-notes must not be empty.",
+        ),
+    ],
+)
+def test_course_reviews_reject_whitespace_validation(
+    args: list[str],
+    expected_message: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews reject rejects whitespace-only required text fields."""
+    code = main(args)
+    assert code == 2
+    assert expected_message in capsys.readouterr().err
 
 
 def test_course_reviews_approve_empty_id() -> None:

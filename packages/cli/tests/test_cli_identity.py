@@ -345,6 +345,7 @@ def test_agents_rotate_key_api_key_warning(
 
 def test_users_create_env_password_whitespace(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """identity users-create preserves whitespace in LOGION_PASSWORD."""
     monkeypatch.setenv("LOGION_PASSWORD", "  envpass1  ")
@@ -365,6 +366,8 @@ def test_users_create_env_password_whitespace(
     assert kwargs["user_password"] == (  # pragma: allowlist secret
         "  envpass1  "
     )
+    stderr = capsys.readouterr().err
+    assert "LOGION_PASSWORD has leading/trailing whitespace" in stderr
 
 
 def test_users_create_env_password_whitespace_only(

@@ -47,7 +47,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Create a checkout session for a course",
         parents=[COMMON_PARSER],
     )
-    co.add_argument("course_id")
+    co.add_argument("course_id", metavar="COURSE_ID")
     co.set_defaults(handler=handle_checkout)
 
     # ── orders get ────────────────────────────────────────────────
@@ -64,7 +64,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Get order details",
         parents=[COMMON_PARSER],
     )
-    og.add_argument("order_id")
+    og.add_argument("order_id", metavar="ORDER_ID")
     og.set_defaults(handler=handle_orders_get)
 
 
@@ -100,7 +100,7 @@ def handle_onboarding_link(args: argparse.Namespace) -> int:
 
 def handle_checkout(args: argparse.Namespace) -> int:
     """Execute the payments checkout command."""
-    bad_id = validate_uuid_id(args.course_id, "course_id")
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
@@ -118,7 +118,7 @@ def handle_checkout(args: argparse.Namespace) -> int:
 
 def handle_orders_get(args: argparse.Namespace) -> int:
     """Execute the payments orders get command."""
-    bad_id = validate_uuid_id(args.order_id, "order_id")
+    bad_id = validate_uuid_id(args.order_id, "ORDER_ID")
     if bad_id is not None:
         return bad_id
     config = resolve_config_from_args(args)
