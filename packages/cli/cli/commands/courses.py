@@ -161,7 +161,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="append",
         dest="files",
         default=[],
-        help="File path to include in the upload session",
+        help=(
+            "File path to include in the upload session. "
+            "Only the basename is used as the upload path; "
+            "directory structure is flattened."
+        ),
     )
     uc.set_defaults(handler=handle_uploads_create)
 
@@ -388,6 +392,33 @@ def _apply_update_overrides(
         kwargs["currency"] = None
 
 
+_MUTABLE_UPDATE_FIELDS = [
+    "title",
+    "description",
+    "price_cents",
+    "currency",
+    "language",
+    "short_summary",
+    "visibility",
+]
+
+
+def _has_mutable_field(args: argparse.Namespace) -> bool:
+    """Return True if at least one mutable field or --clear-* flag was set."""
+    if any(getattr(args, f, None) is not None for f in _MUTABLE_UPDATE_FIELDS):
+        return True
+    if args.tags:
+        return True
+    return bool(
+        args.clear_tags
+        or args.clear_description
+        or args.clear_short_summary
+        or args.clear_language
+        or args.clear_currency
+        or args.clear_price
+    )
+
+
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
     bad_id = validate_uuid_id(args.course_id, "course_id")
@@ -396,6 +427,11 @@ def handle_update(args: argparse.Namespace) -> int:
     price_conflict = _check_clear_price_conflict(args)
     if price_conflict is not None:
         return price_conflict
+    if not _has_mutable_field(args):
+        print_err(
+            "Error: courses update requires at least one field to change."
+        )
+        return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -586,6 +622,21 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.version_id, "version_id")
     if bad_id is not None:
         return bad_id
+    # Validate rating range (1-5)
+    if args.rating is not None and not (1 <= args.rating <= 5):
+        print_err("Error: --rating must be between 1 and 5.")
+        return 2
+    # Validate sub-score ranges (0.0-5.0, matching rating scale)
+    for attr, label in [
+        ("reliability", "--reliability"),
+        ("usefulness", "--usefulness"),
+        ("tool_safety", "--tool-safety"),
+        ("token_efficiency", "--token-efficiency"),
+    ]:
+        val = getattr(args, attr)
+        if val is not None and not (0.0 <= val <= 5.0):
+            print_err(f"Error: {label} must be between 0.0 and 5.0.")
+            return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

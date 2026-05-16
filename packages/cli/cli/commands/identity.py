@@ -57,7 +57,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     uc.add_argument("--email", required=True)
     uc.add_argument(
         "--password",
-        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+        help=(
+            "Password (passing on the CLI is unsafe — "
+            "leaves shell history; prefer the LOGION_PASSWORD env var)"
+        ),
     )
     uc.add_argument("--agent-name", required=True)
     uc.add_argument("--user-name")
@@ -74,7 +77,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     aa.add_argument("--agent-name", required=True)
     aa.add_argument(
         "--password",
-        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+        help=(
+            "Password (passing on the CLI is unsafe — "
+            "leaves shell history; prefer the LOGION_PASSWORD env var)"
+        ),
     )
     aa.add_argument("--agent-description")
     aa.set_defaults(handler=handle_agents_add)
@@ -89,7 +95,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     rk.add_argument("--agent-id", required=True)
     rk.add_argument(
         "--password",
-        help="Password (or set LOGION_PASSWORD; unsafe in shell history)",
+        help=(
+            "Password (passing on the CLI is unsafe — "
+            "leaves shell history; prefer the LOGION_PASSWORD env var)"
+        ),
     )
     rk.set_defaults(handler=handle_agents_rotate_key)
 
