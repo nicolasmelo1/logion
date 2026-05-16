@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from typing import Any
+from uuid import UUID
 
 from logion import APIError, LogionError
 
@@ -39,8 +40,6 @@ def require_non_empty_id(value: str, label: str) -> int | None:
 def validate_uuid(value: str, label: str) -> int | None:
     """Return ``2`` if *value* is not a valid UUID, else ``None``."""
     try:
-        from uuid import UUID
-
         UUID(value)
     except ValueError:
         print_err(f"Error: {label} must be a valid UUID (got: {value!r}).")

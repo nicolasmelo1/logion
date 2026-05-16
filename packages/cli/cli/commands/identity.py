@@ -18,24 +18,21 @@ def _resolve_password(cli_value: str | None) -> str | None:
     Checks CLI arg first, then ``LOGION_PASSWORD`` env var.
     Explicitly provided but empty/whitespace-only values are rejected
     outright — they do *not* fall through to the env var.
-    Leading/trailing whitespace on the *value* (not the password
-    itself) is stripped so that accidental shell quoting does not
-    silently alter the credential.  The actual password content is
-    preserved verbatim — passwords are opaque and must not be mutated.
+    Whitespace is stripped only for the emptiness check; the actual
+    password value is returned verbatim — passwords are opaque and
+    must not be mutated.
     """
     if cli_value is not None:
-        value = cli_value.strip()
-        if not value:
+        if not cli_value.strip():
             print_err("Error: --password must not be empty.")
             return None
-        return value
+        return cli_value
     raw_env = os.environ.get("LOGION_PASSWORD")
     if raw_env is not None:
-        value = raw_env.strip()
-        if not value:
+        if not raw_env.strip():
             print_err("Error: LOGION_PASSWORD is set but empty/whitespace.")
             return None
-        return value
+        return raw_env
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
     return None
 

@@ -321,7 +321,7 @@ def test_agents_rotate_key_api_key_warning(
 def test_users_create_env_password_whitespace(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """identity users-create strips whitespace from LOGION_PASSWORD."""
+    """identity users-create preserves whitespace in LOGION_PASSWORD."""
     monkeypatch.setenv("LOGION_PASSWORD", "  envpass1  ")
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
@@ -337,7 +337,9 @@ def test_users_create_env_password_whitespace(
     ])
     assert code == 0
     _method, kwargs = identity.last_call
-    assert kwargs["user_password"] == "envpass1"  # pragma: allowlist secret
+    assert kwargs["user_password"] == (  # pragma: allowlist secret
+        "  envpass1  "
+    )
 
 
 def test_users_create_env_password_whitespace_only(
@@ -356,11 +358,11 @@ def test_users_create_env_password_whitespace_only(
     assert code == 2
 
 
-def test_users_create_cli_password_strips_whitespace(
+def test_users_create_cli_password_preserves_whitespace(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """identity users-create strips leading/trailing whitespace
-    from --password."""
+    """identity users-create preserves leading/trailing whitespace
+    in --password — passwords are opaque and must not be mutated."""
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
@@ -378,4 +380,6 @@ def test_users_create_cli_password_strips_whitespace(
     ])
     assert code == 0
     _method, kwargs = identity.last_call
-    assert kwargs["user_password"] == "testpass1"  # pragma: allowlist secret
+    assert kwargs["user_password"] == (  # pragma: allowlist secret
+        "  testpass1  "
+    )

@@ -91,7 +91,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     _price.add_argument(
         "--clear-price",
         action="store_true",
-        help="Clear the course price (price_cents and currency)",
+        help=(
+            "Clear the course price (price_cents and currency). "
+            "Note: this also clears the currency."
+        ),
     )
     # currency / clear-currency are mutually exclusive
     _cur = update.add_mutually_exclusive_group()
@@ -120,6 +123,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # tag / clear-tags are mutually exclusive
     _tags = update.add_mutually_exclusive_group()
     _tags.add_argument("--tag", action="append", dest="tags", default=None)
+    # NOTE: tags default must remain None (not []), so that
+    # "no --tag" is distinguishable from "--clear-tags".
     _tags.add_argument(
         "--clear-tags",
         action="store_true",
