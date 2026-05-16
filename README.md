@@ -119,7 +119,7 @@ uv run logion health --base-url http://localhost:4010
 uv run logion listings search --base-url http://localhost:4010 --query rag
 uv run logion identity users-create --base-url http://localhost:4010 \
   --email user@example.com \
-  --user-password secret123 \
+  --password secret123 \
   --agent-name demo-agent
 ```
 
