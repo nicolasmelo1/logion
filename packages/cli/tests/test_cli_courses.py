@@ -592,7 +592,8 @@ def test_courses_update_clear_description(
     ])
     assert code == 0
     _method, kwargs = courses.last_call
-    assert kwargs.get("description") is None
+    assert "description" in kwargs
+    assert kwargs["description"] is None
 
 
 def test_courses_update_clear_price(
@@ -611,8 +612,10 @@ def test_courses_update_clear_price(
     ])
     assert code == 0
     _method, kwargs = courses.last_call
-    assert kwargs.get("price_cents") is None
-    assert kwargs.get("currency") is None
+    assert "price_cents" in kwargs
+    assert kwargs["price_cents"] is None
+    assert "currency" in kwargs
+    assert kwargs["currency"] is None
 
 
 def test_courses_uploads_create_duplicate_basenames(
@@ -671,3 +674,29 @@ def test_courses_update_tag_and_clear_mutex() -> None:
             "python",
             "--clear-tags",
         ])
+
+
+def test_courses_update_price_and_clear_price_mutex() -> None:
+    """courses update rejects --price-cents together with --clear-price."""
+    with pytest.raises(SystemExit):
+        main([
+            "courses",
+            "update",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--price-cents",
+            "5000",
+            "--clear-price",
+        ])
+
+
+def test_courses_update_clear_price_with_currency_conflict() -> None:
+    """courses update rejects --clear-price together with --currency."""
+    code = main([
+        "courses",
+        "update",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--clear-price",
+        "--currency",
+        "USD",
+    ])
+    assert code == 2

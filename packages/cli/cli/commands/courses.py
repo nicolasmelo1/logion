@@ -86,14 +86,21 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Clear the course description",
     )
-    update.add_argument("--price-cents", type=int)
+    # price-cents / clear-price are mutually exclusive
+    _price = update.add_mutually_exclusive_group()
+    _price.add_argument("--price-cents", type=int)
+    _price.add_argument(
+        "--clear-price",
+        action="store_true",
+        help="Clear the course price (price_cents and currency)",
+    )
     # currency / clear-currency are mutually exclusive
     _cur = update.add_mutually_exclusive_group()
     _cur.add_argument("--currency")
     _cur.add_argument(
         "--clear-currency",
         action="store_true",
-        help="Clear the course currency (also clears price_cents)",
+        help="Clear the course currency",
     )
     # language / clear-language are mutually exclusive
     _lang = update.add_mutually_exclusive_group()
@@ -118,11 +125,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--clear-tags",
         action="store_true",
         help="Remove all tags from the course",
-    )
-    update.add_argument(
-        "--clear-price",
-        action="store_true",
-        help="Clear the course price (price_cents and currency)",
     )
     update.add_argument(
         "--visibility",
@@ -347,6 +349,40 @@ def handle_get(args: argparse.Namespace) -> int:
         client.close()
 
 
+def _check_clear_price_conflict(args: argparse.Namespace) -> int | None:
+    """Return exit code 2 if --clear-price conflicts with other flags."""
+    if args.clear_price and (args.currency or args.clear_currency):
+        print_err(
+            "Error: --clear-price cannot be used with "
+            "--currency or --clear-currency."
+        )
+        return 2
+    return None
+
+
+def _apply_update_overrides(
+    args: argparse.Namespace,
+    kwargs: dict[str, object],
+) -> None:
+    """Mutate *kwargs* with tag and --clear-<field> overrides."""
+    if args.clear_tags:
+        kwargs["tags"] = []
+    elif args.tags:
+        kwargs["tags"] = args.tags
+    # --clear-<field> explicitly sets nullable fields to None
+    if args.clear_description:
+        kwargs["description"] = None
+    if args.clear_short_summary:
+        kwargs["short_summary"] = None
+    if args.clear_language:
+        kwargs["language"] = None
+    if args.clear_currency:
+        kwargs["currency"] = None
+    if args.clear_price:
+        kwargs["price_cents"] = None
+        kwargs["currency"] = None
+
+
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
     empty = require_non_empty_id(args.course_id, "course_id")
@@ -355,6 +391,9 @@ def handle_update(args: argparse.Namespace) -> int:
     bad_uuid = validate_uuid(args.course_id, "course_id")
     if bad_uuid is not None:
         return bad_uuid
+    price_conflict = _check_clear_price_conflict(args)
+    if price_conflict is not None:
+        return price_conflict
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -368,22 +407,7 @@ def handle_update(args: argparse.Namespace) -> int:
             short_summary=args.short_summary,
             visibility=args.visibility,
         )
-        if args.clear_tags:
-            kwargs["tags"] = []
-        elif args.tags:
-            kwargs["tags"] = args.tags
-        # --clear-<field> explicitly sets nullable fields to None
-        if args.clear_description:
-            kwargs["description"] = None
-        if args.clear_short_summary:
-            kwargs["short_summary"] = None
-        if args.clear_language:
-            kwargs["language"] = None
-        if args.clear_currency:
-            kwargs["currency"] = None
-        if args.clear_price:
-            kwargs["price_cents"] = None
-            kwargs["currency"] = None
+        _apply_update_overrides(args, kwargs)
         result = client.v1.courses.update(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:

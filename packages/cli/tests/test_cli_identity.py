@@ -246,7 +246,8 @@ def test_users_create_api_key_warning_non_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Non-JSON output includes API key save warning on stderr."""
+    """API key save warning is always emitted on stderr,
+    even in --json mode."""
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
@@ -260,6 +261,57 @@ def test_users_create_api_key_warning_non_json(
         "testpass1",
         "--agent-name",
         "TestAgent",
+        "--json",
+    ])
+    assert code == 0
+    stderr = capsys.readouterr().err
+    assert "will not be shown again" in stderr
+
+
+def test_agents_add_api_key_warning(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """agents-add also emits API key save warning."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "agents-add",
+        "--user-id",
+        "u1",
+        "--agent-name",
+        "Worker",
+        "--password",
+        "testpass1",
+        "--json",
+    ])
+    assert code == 0
+    stderr = capsys.readouterr().err
+    assert "will not be shown again" in stderr
+
+
+def test_agents_rotate_key_api_key_warning(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """agents-rotate-key also emits API key save warning."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "agents-rotate-key",
+        "--user-id",
+        "u1",
+        "--agent-id",
+        "a1",
+        "--password",
+        "testpass1",
+        "--json",
     ])
     assert code == 0
     stderr = capsys.readouterr().err
@@ -302,3 +354,28 @@ def test_users_create_env_password_whitespace_only(
         "TestAgent",
     ])
     assert code == 2
+
+
+def test_users_create_cli_password_strips_whitespace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create strips leading/trailing whitespace
+    from --password."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--password",
+        "  testpass1  ",
+        "--agent-name",
+        "TestAgent",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_password"] == "testpass1"  # pragma: allowlist secret
