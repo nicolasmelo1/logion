@@ -97,6 +97,9 @@ def handle_onboarding_link(args: argparse.Namespace) -> int:
 
 def handle_checkout(args: argparse.Namespace) -> int:
     """Execute the payments checkout command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

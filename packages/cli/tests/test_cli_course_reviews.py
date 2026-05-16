@@ -182,3 +182,9 @@ def test_course_reviews_reject_empty_id() -> None:
         "--json",
     ])
     assert code == 2
+
+
+def test_course_reviews_get_empty_id() -> None:
+    """course-reviews get rejects empty review_id."""
+    code = main(["course-reviews", "get", "", "--json"])
+    assert code == 2

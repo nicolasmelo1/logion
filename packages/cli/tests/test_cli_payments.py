@@ -113,3 +113,9 @@ def test_orders_get_empty_id() -> None:
     """payments orders get rejects empty order_id."""
     code = main(["payments", "orders", "get", "", "--json"])
     assert code == 2
+
+
+def test_checkout_empty_id() -> None:
+    """payments checkout rejects empty course_id."""
+    code = main(["payments", "checkout", "", "--json"])
+    assert code == 2

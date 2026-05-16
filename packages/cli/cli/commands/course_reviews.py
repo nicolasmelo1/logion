@@ -86,6 +86,9 @@ def handle_list(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute course-reviews get."""
+    empty = require_non_empty_id(args.review_id, "review_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

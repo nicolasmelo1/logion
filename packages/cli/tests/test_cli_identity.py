@@ -60,6 +60,7 @@ def test_users_create_calls_client(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """identity users-create forwards args to SDK."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
     _patch_client(monkeypatch, fake)
@@ -116,6 +117,7 @@ def test_users_create_minimal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """identity users-create with only required args."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
     _patch_client(monkeypatch, fake)
@@ -141,6 +143,7 @@ def test_agents_add_calls_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """identity agents-add forwards args to SDK."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
     _patch_client(monkeypatch, fake)
@@ -170,6 +173,7 @@ def test_agents_rotate_key_calls_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """identity agents-rotate-key forwards args to SDK."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
     _patch_client(monkeypatch, fake)
@@ -204,8 +208,11 @@ def test_agents_add_missing_required() -> None:
         main(["identity", "agents-add"])
 
 
-def test_users_create_missing_password_no_env() -> None:
+def test_users_create_missing_password_no_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """identity users-create fails without --password or LOGION_PASSWORD."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     code = main([
         "identity",
         "users-create",
@@ -217,8 +224,11 @@ def test_users_create_missing_password_no_env() -> None:
     assert code == 2
 
 
-def test_users_create_empty_password() -> None:
-    """identity users-create treats empty --password as missing."""
+def test_users_create_empty_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create rejects empty --password without fallback."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     code = main([
         "identity",
         "users-create",
@@ -230,3 +240,27 @@ def test_users_create_empty_password() -> None:
         "   ",
     ])
     assert code == 2
+
+
+def test_users_create_api_key_warning_non_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Non-JSON output includes API key save warning on stderr."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--password",
+        "testpass1",
+        "--agent-name",
+        "TestAgent",
+    ])
+    assert code == 0
+    stderr = capsys.readouterr().err
+    assert "will not be shown again" in stderr

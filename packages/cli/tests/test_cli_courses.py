@@ -195,6 +195,47 @@ def test_courses_update(
     assert "language" not in kwargs
 
 
+def test_courses_update_with_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses update --tag appends tags."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "update",
+        "c1",
+        "--tag",
+        "python",
+        "--tag",
+        "ml",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert kwargs["tags"] == ["python", "ml"]
+
+
+def test_courses_update_clear_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses update --clear-tags sends empty tags list."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "update",
+        "c1",
+        "--clear-tags",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = courses.last_call
+    assert kwargs["tags"] == []
+
+
 def test_courses_uploads_create(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -482,3 +523,15 @@ def test_courses_create_missing_required() -> None:
     """courses create fails without required args."""
     with pytest.raises(SystemExit):
         main(["courses", "create"])
+
+
+def test_courses_get_empty_id() -> None:
+    """courses get rejects empty course_id."""
+    code = main(["courses", "get", "", "--json"])
+    assert code == 2
+
+
+def test_courses_update_empty_id() -> None:
+    """courses update rejects empty course_id."""
+    code = main(["courses", "update", "", "--title", "X", "--json"])
+    assert code == 2

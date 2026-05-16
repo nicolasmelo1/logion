@@ -9,7 +9,7 @@ from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error, print_err
+from cli._errors import handle_error, print_err, require_non_empty_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -78,6 +78,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     update.add_argument("--currency")
     update.add_argument("--language")
     update.add_argument("--short-summary")
+    update.add_argument("--tag", action="append", dest="tags", default=None)
+    update.add_argument(
+        "--clear-tags",
+        action="store_true",
+        help="Remove all tags from the course",
+    )
     update.add_argument(
         "--visibility",
         choices=["public", "unlisted", "private"],
@@ -295,6 +301,9 @@ def handle_create(args: argparse.Namespace) -> int:
 
 def handle_get(args: argparse.Namespace) -> int:
     """Execute the courses get command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -310,6 +319,9 @@ def handle_get(args: argparse.Namespace) -> int:
 
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -323,6 +335,10 @@ def handle_update(args: argparse.Namespace) -> int:
             short_summary=args.short_summary,
             visibility=args.visibility,
         )
+        if args.clear_tags:
+            kwargs["tags"] = []
+        elif args.tags:
+            kwargs["tags"] = args.tags
         result = client.v1.courses.update(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -335,6 +351,9 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
     """Execute the courses uploads create command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     if not args.files:
         print_err("at least one --file is required")
         return 2
@@ -368,6 +387,12 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
 
 def handle_uploads_complete(args: argparse.Namespace) -> int:
     """Execute the courses uploads complete command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
+    empty = require_non_empty_id(args.version_id, "version_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -386,6 +411,9 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
 
 def handle_publication_request(args: argparse.Namespace) -> int:
     """Execute publication request."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -403,6 +431,9 @@ def handle_publication_request(args: argparse.Namespace) -> int:
 
 def handle_publication_latest(args: argparse.Namespace) -> int:
     """Execute publication latest."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -421,6 +452,9 @@ def handle_publication_latest(args: argparse.Namespace) -> int:
 
 def handle_reviews_list(args: argparse.Namespace) -> int:
     """Execute the courses reviews list command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -441,6 +475,9 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
 
 def handle_reviews_mine(args: argparse.Namespace) -> int:
     """Execute the courses reviews mine command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -459,6 +496,12 @@ def handle_reviews_mine(args: argparse.Namespace) -> int:
 
 def handle_reviews_upsert(args: argparse.Namespace) -> int:
     """Execute the courses reviews upsert command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
+    empty = require_non_empty_id(args.version_id, "version_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -487,6 +530,9 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
 
 def handle_feedback(args: argparse.Namespace) -> int:
     """Execute the courses feedback command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -504,6 +550,12 @@ def handle_feedback(args: argparse.Namespace) -> int:
 
 def handle_versions_get(args: argparse.Namespace) -> int:
     """Execute the courses versions get command."""
+    empty = require_non_empty_id(args.course_id, "course_id")
+    if empty is not None:
+        return empty
+    empty = require_non_empty_id(args.version_id, "version_id")
+    if empty is not None:
+        return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

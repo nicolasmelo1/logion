@@ -16,9 +16,13 @@ def _resolve_password(cli_value: str | None) -> tuple[int | None, str]:
     """Return ``(None, password)`` or ``(exit_code, "")`` on failure.
 
     Checks CLI arg first, then ``LOGION_PASSWORD`` env var.
-    Empty or whitespace-only values are treated as missing.
+    Explicitly provided but empty/whitespace values are rejected
+    outright — they do *not* fall through to the env var.
     """
-    if cli_value is not None and cli_value.strip():
+    if cli_value is not None:
+        if not cli_value.strip():
+            print_err("Error: --password must not be empty.")
+            return 2, ""
         return None, cli_value
     env = os.environ.get("LOGION_PASSWORD")
     if env and env.strip():
@@ -91,6 +95,10 @@ def handle_users_create(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
+        if not config.json_output:
+            print_err(
+                "Important: save the API key now — it will not be shown again."
+            )
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -114,6 +122,10 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
+        if not config.json_output:
+            print_err(
+                "Important: save the API key now — it will not be shown again."
+            )
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -136,6 +148,10 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
             user_password=password,
         )
         emit(result, json_output=config.json_output)
+        if not config.json_output:
+            print_err(
+                "Important: save the API key now — it will not be shown again."
+            )
     except Exception as exc:
         return handle_error(exc)
     else:
