@@ -6,6 +6,8 @@ import argparse
 
 from cli._version import get_cli_version
 from cli.commands import (
+    admin,
+    bounties,
     course_reviews,
     courses,
     health,
@@ -38,5 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     payments.register(subparsers)
     reports.register(subparsers)
     course_reviews.register(subparsers)
+    admin.register(subparsers)
+    bounties.register(subparsers)
 
     return parser
