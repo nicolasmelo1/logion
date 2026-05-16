@@ -191,25 +191,34 @@ class TestWorkspaceCheckout:
             "bounties",
             "workspace",
             "checkout",
-            "bounty-1",
-            "sub-1",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "660e8400-e29b-41d4-a716-446655440001",
             "--workspace",
             str(ws),
         ])
         assert rc == 0
 
         # Metadata file created
-        meta_path = ws / "submissions" / "sub-1" / "metadata.json"
+        meta_path = (
+            ws
+            / "submissions"
+            / "660e8400-e29b-41d4-a716-446655440001"
+            / "metadata.json"
+        )
         assert meta_path.is_file()
         meta = json.loads(meta_path.read_text())
-        assert meta["bounty_id"] == "bounty-1"
-        assert meta["submission_id"] == "sub-1"
+        assert meta["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert meta["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
         assert meta["remote_status"] == "checked_out"
 
         # State updated
         state = json.loads((ws / "state.json").read_text())
-        assert state["active_bounty_id"] == "bounty-1"
-        assert state["active_submission_id"] == "sub-1"
+        assert state["active_bounty_id"] == (
+            "550e8400-e29b-41d4-a716-446655440000"
+        )
+        assert state["active_submission_id"] == (
+            "660e8400-e29b-41d4-a716-446655440001"
+        )
 
     def test_checkout_refuses_dirty(self, ws: Path) -> None:
         """Checkout without --force fails when current/ has files."""
@@ -222,8 +231,8 @@ class TestWorkspaceCheckout:
             "bounties",
             "workspace",
             "checkout",
-            "bounty-1",
-            "sub-1",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "660e8400-e29b-41d4-a716-446655440001",
             "--workspace",
             str(ws),
         ])
@@ -240,8 +249,8 @@ class TestWorkspaceCheckout:
             "bounties",
             "workspace",
             "checkout",
-            "bounty-1",
-            "sub-1",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "660e8400-e29b-41d4-a716-446655440001",
             "--workspace",
             str(ws),
             "--force",
@@ -250,7 +259,9 @@ class TestWorkspaceCheckout:
 
         # Dirty file was archived (moved into submission)
         state = json.loads((ws / "state.json").read_text())
-        assert state["active_bounty_id"] == "bounty-1"
+        assert state["active_bounty_id"] == (
+            "550e8400-e29b-41d4-a716-446655440000"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -268,8 +279,8 @@ class TestWorkspaceSwitch:
             "bounties",
             "workspace",
             "checkout",
-            "bounty-1",
-            "sub-1",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "660e8400-e29b-41d4-a716-446655440001",
             "--workspace",
             str(ws),
         ])
@@ -285,8 +296,8 @@ class TestWorkspaceSwitch:
             "bounties",
             "workspace",
             "switch",
-            "bounty-1",
-            "sub-2",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "770e8400-e29b-41d4-a716-446655440002",
             "--workspace",
             str(ws),
         ])
@@ -304,8 +315,8 @@ class TestWorkspaceSwitch:
             "bounties",
             "workspace",
             "switch",
-            "bounty-1",
-            "sub-2",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "770e8400-e29b-41d4-a716-446655440002",
             "--workspace",
             str(ws),
             "--force",
@@ -313,7 +324,9 @@ class TestWorkspaceSwitch:
         assert rc == 0
 
         state = json.loads((ws / "state.json").read_text())
-        assert state["active_submission_id"] == "sub-2"
+        assert state["active_submission_id"] == (
+            "770e8400-e29b-41d4-a716-446655440002"
+        )
 
 
 # ---------------------------------------------------------------------------

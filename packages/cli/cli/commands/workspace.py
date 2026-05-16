@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from cli._errors import print_err, validate_uuid_id
+from cli._options import COMMON_PARSER
 from cli._output import emit
 
 # ---------------------------------------------------------------------------
@@ -22,9 +24,7 @@ class UserError(Exception):
 
 def _print_err(msg: str) -> None:
     """Print a user-facing message to stderr."""
-    import sys
-
-    print(msg, file=sys.stderr)
+    print_err(msg)
 
 
 def has_dirty_files(path: Path) -> bool:
@@ -36,11 +36,16 @@ def write_json_atomic(path: Path, data: dict[str, object]) -> None:
     """Write *data* as JSON to *path* atomically via a temp file."""
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, sort_keys=True))
-    tmp.rename(path)
+    tmp.replace(path)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    """Read and parse a JSON file, or return an empty dict on failure."""
+    """Read and parse a JSON file.
+
+    Returns an empty dict when the file does not exist.
+    Re-raises ``json.JSONDecodeError`` if the file contains
+    invalid JSON (corrupt state is a hard error, not a missing file).
+    """
     if not path.exists():
         return {}
     return json.loads(path.read_text())
@@ -131,6 +136,12 @@ def _archive_current(root: Path) -> None:
 
 def _handle_checkout(args: argparse.Namespace) -> int:
     """Materialize a submission into ``current/``."""
+    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
+    if bad_id is not None:
+        return bad_id
     root = _resolve_workspace(args.workspace)
     state_path = root / "state.json"
     if not state_path.exists():
@@ -197,6 +208,12 @@ def _handle_switch(args: argparse.Namespace) -> int:
     This is identical to ``checkout`` but always archives first (i.e. it
     refuses to run if there are dirty files — use ``--force`` to discard).
     """
+    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
+    if bad_id is not None:
+        return bad_id
     root = _resolve_workspace(args.workspace)
     state_path = root / "state.json"
     if not state_path.exists():
@@ -231,10 +248,11 @@ def _handle_switch(args: argparse.Namespace) -> int:
 def _handle_evidence(args: argparse.Namespace) -> int:
     """Walk ``current/`` and build an evidence JSON manifest."""
     root = _resolve_workspace(args.workspace)
-    current_dir = root / "current"
-    if not current_dir.exists():
+    state_path = root / "state.json"
+    if not state_path.exists():
         _print_err("Error: workspace not initialised. Run init first.")
         return 2
+    current_dir = root / "current"
 
     evidence: dict[str, Any] = {
         "files": [],
@@ -271,7 +289,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
 
     # ── init ────────────────────────────────────────────────────
-    init = sub.add_parser("init", help="Initialise a new bounty workspace")
+    init = sub.add_parser(
+        "init",
+        help="Initialise a new bounty workspace",
+        parents=[COMMON_PARSER],
+    )
     init.add_argument(
         "--path",
         default=None,
@@ -285,7 +307,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     init.set_defaults(handler=_handle_init)
 
     # ── status ─────────────────────────────────────────────────
-    status = sub.add_parser("status", help="Print current workspace state")
+    status = sub.add_parser(
+        "status",
+        help="Print current workspace state",
+        parents=[COMMON_PARSER],
+    )
     status.add_argument(
         "--workspace",
         default=None,
@@ -294,7 +320,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     status.set_defaults(handler=_handle_status)
 
     # ── checkout ────────────────────────────────────────────────
-    checkout = sub.add_parser("checkout", help="Check out a bounty submission")
+    checkout = sub.add_parser(
+        "checkout",
+        help="Check out a bounty submission",
+        parents=[COMMON_PARSER],
+    )
     checkout.add_argument("bounty_id", help="Bounty UUID")
     checkout.add_argument("submission_id", help="Submission UUID")
     checkout.add_argument(
@@ -313,6 +343,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     switch = sub.add_parser(
         "switch",
         help="Archive current and check out another submission",
+        parents=[COMMON_PARSER],
     )
     switch.add_argument("bounty_id", help="Bounty UUID")
     switch.add_argument("submission_id", help="Submission UUID")
@@ -332,6 +363,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     evidence = sub.add_parser(
         "evidence",
         help="Build an evidence manifest from current/",
+        parents=[COMMON_PARSER],
     )
     evidence.add_argument(
         "--workspace",

@@ -209,6 +209,9 @@ def _make_lifecycle_handler(cmd: str, sdk_method: str, action: str):
 
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the bounties create command."""
+    bad_id = validate_uuid_id(args.course_id, "--course-id")
+    if bad_id is not None:
+        return bad_id
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -277,6 +280,13 @@ def handle_submissions_create(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
     if bad_id is not None:
         return bad_id
+    if args.proposed_course_version_id is not None:
+        bad_id = validate_uuid_id(
+            args.proposed_course_version_id,
+            "--proposed-course-version-id",
+        )
+        if bad_id is not None:
+            return bad_id
     evidence = load_evidence(args.evidence_json)
     config = resolve_config_from_args(args)
     client = make_client(config)

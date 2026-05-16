@@ -29,7 +29,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     if not is_admin_enabled():
         parser = subparsers.add_parser(
             "admin",
-            help="Admin operations (disabled)",
+            help=argparse.SUPPRESS,
             add_help=False,
         )
         parser.set_defaults(handler=_handle_disabled)
