@@ -4,8 +4,6 @@ from .mutations import (
     handle_create,
     handle_get,
     handle_update,
-    handle_uploads_complete,
-    handle_uploads_create,
 )
 from .publication import (
     handle_publication_latest,
@@ -16,6 +14,10 @@ from .reviews import (
     handle_reviews_list,
     handle_reviews_mine,
     handle_reviews_upsert,
+)
+from .uploads import (
+    handle_uploads_complete,
+    handle_uploads_create,
 )
 from .versions import handle_versions_get
 
