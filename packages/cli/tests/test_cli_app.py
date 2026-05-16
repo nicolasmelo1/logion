@@ -47,6 +47,36 @@ def test_version_uses_package_metadata(
     assert "1.2.3" in capsys.readouterr().out
 
 
+def test_bounties_appears_in_help(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--help lists bounties as a top-level command."""
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "bounties" in output
+
+
+def test_admin_hidden_by_default() -> None:
+    """admin subcommand exits 2 without LOGION_ENABLE_ADMIN."""
+    code = main(["admin"])
+    assert code == 2
+
+
+def test_admin_visible_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With LOGION_ENABLE_ADMIN set, admin --help shows sub-commands."""
+    monkeypatch.setenv("LOGION_ENABLE_ADMIN", "1")
+    with pytest.raises(SystemExit) as exc_info:
+        main(["admin", "--help"])
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "users" in output
+
+
 def test_no_command_exits_with_error() -> None:
     """Running with no subcommand exits 2."""
     with pytest.raises(SystemExit) as exc_info:
