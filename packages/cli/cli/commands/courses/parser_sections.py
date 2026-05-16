@@ -1,0 +1,230 @@
+"""Subparser builders for courses commands."""
+
+from __future__ import annotations
+
+import argparse
+
+from cli._options import COMMON_PARSER
+
+from .handlers import (
+    handle_create,
+    handle_get,
+    handle_publication_latest,
+    handle_publication_request,
+    handle_reviews_list,
+    handle_reviews_mine,
+    handle_reviews_upsert,
+    handle_update,
+    handle_uploads_complete,
+    handle_uploads_create,
+)
+from .parser_utils import add_tag_arguments, add_tristate_flag
+
+CMD_HELP = {
+    "create": "Create a new course",
+    "get": "Get course details",
+    "update": "Update an existing course",
+    "uploads": "Manage course version uploads",
+    "publication": "Manage course publication review",
+    "reviews": "Manage marketplace course reviews",
+    "feedback": "Get review feedback for a course",
+    "versions": "Manage course versions",
+}
+
+
+def register_create(subparsers: argparse._SubParsersAction) -> None:
+    create = subparsers.add_parser(
+        "create",
+        help=CMD_HELP["create"],
+        parents=[COMMON_PARSER],
+    )
+    create.add_argument("--title", required=True)
+    create.add_argument("--slug", required=True)
+    create.add_argument("--description")
+    create.add_argument("--price-cents", type=int)
+    create.add_argument("--currency")
+    add_tag_arguments(create, default=[])
+    create.add_argument("--language")
+    create.add_argument("--short-summary")
+    create.add_argument(
+        "--visibility", choices=["public", "unlisted", "private"]
+    )
+    create.set_defaults(handler=handle_create)
+
+
+def register_get(subparsers: argparse._SubParsersAction) -> None:
+    get = subparsers.add_parser(
+        "get",
+        help=CMD_HELP["get"],
+        parents=[COMMON_PARSER],
+    )
+    get.add_argument("course_id", metavar="COURSE_ID")
+    get.set_defaults(handler=handle_get)
+
+
+def register_update(subparsers: argparse._SubParsersAction) -> None:
+    update = subparsers.add_parser(
+        "update",
+        help=CMD_HELP["update"],
+        parents=[COMMON_PARSER],
+    )
+    update.add_argument("course_id", metavar="COURSE_ID")
+    update.add_argument("--title")
+
+    description = update.add_mutually_exclusive_group()
+    description.add_argument("--description")
+    description.add_argument(
+        "--clear-description",
+        action="store_true",
+        help="Clear the course description",
+    )
+
+    price = update.add_mutually_exclusive_group()
+    price.add_argument("--price-cents", type=int)
+    price.add_argument(
+        "--clear-price",
+        action="store_true",
+        help=(
+            "Clear the course price (price_cents and currency). "
+            "Note: this also clears the currency."
+        ),
+    )
+
+    currency = update.add_mutually_exclusive_group()
+    currency.add_argument("--currency")
+    currency.add_argument(
+        "--clear-currency",
+        action="store_true",
+        help="Clear the course currency",
+    )
+
+    language = update.add_mutually_exclusive_group()
+    language.add_argument("--language")
+    language.add_argument(
+        "--clear-language",
+        action="store_true",
+        help="Clear the course language",
+    )
+
+    short_summary = update.add_mutually_exclusive_group()
+    short_summary.add_argument("--short-summary")
+    short_summary.add_argument(
+        "--clear-short-summary",
+        action="store_true",
+        help="Clear the short summary",
+    )
+
+    add_tag_arguments(update, default=None)
+    update.add_argument(
+        "--visibility", choices=["public", "unlisted", "private"]
+    )
+    update.set_defaults(handler=handle_update)
+
+
+def register_uploads(subparsers: argparse._SubParsersAction) -> None:
+    uploads = subparsers.add_parser("uploads", help=CMD_HELP["uploads"])
+    uploads_sub = uploads.add_subparsers(
+        dest="courses_uploads_command",
+        required=True,
+    )
+
+    create = uploads_sub.add_parser(
+        "create",
+        help="Create an upload session for a course version",
+        parents=[COMMON_PARSER],
+    )
+    create.add_argument("course_id", metavar="COURSE_ID")
+    create.add_argument(
+        "--file",
+        action="append",
+        dest="files",
+        default=[],
+        help=(
+            "File path to include in the upload session. "
+            "Use FILE_PATH or UPLOAD_PATH=FILE_PATH to override the upload "
+            "path. When omitted, only the basename is used and directory "
+            "structure is flattened."
+        ),
+    )
+    create.set_defaults(handler=handle_uploads_create)
+
+    complete = uploads_sub.add_parser(
+        "complete",
+        help="Complete an upload session",
+        parents=[COMMON_PARSER],
+    )
+    complete.add_argument("course_id", metavar="COURSE_ID")
+    complete.add_argument("version_id", metavar="VERSION_ID")
+    complete.set_defaults(handler=handle_uploads_complete)
+
+
+def register_publication(subparsers: argparse._SubParsersAction) -> None:
+    publication = subparsers.add_parser(
+        "publication",
+        help=CMD_HELP["publication"],
+    )
+    pub_sub = publication.add_subparsers(
+        dest="courses_publication_command",
+        required=True,
+    )
+
+    request = pub_sub.add_parser(
+        "request",
+        help="Request publication review",
+        parents=[COMMON_PARSER],
+    )
+    request.add_argument("course_id", metavar="COURSE_ID")
+    request.set_defaults(handler=handle_publication_request)
+
+    latest = pub_sub.add_parser(
+        "latest",
+        help="Get latest publication review status",
+        parents=[COMMON_PARSER],
+    )
+    latest.add_argument("course_id", metavar="COURSE_ID")
+    add_tristate_flag(latest, "--include-pass", dest="include_pass")
+    latest.set_defaults(handler=handle_publication_latest)
+
+
+def register_reviews(subparsers: argparse._SubParsersAction) -> None:
+    reviews = subparsers.add_parser("reviews", help=CMD_HELP["reviews"])
+    reviews_sub = reviews.add_subparsers(
+        dest="courses_reviews_command",
+        required=True,
+    )
+
+    list_parser = reviews_sub.add_parser(
+        "list",
+        help="List reviews for a course",
+        parents=[COMMON_PARSER],
+    )
+    list_parser.add_argument("course_id", metavar="COURSE_ID")
+    list_parser.add_argument("--version")
+    list_parser.add_argument("--limit", type=int)
+    list_parser.add_argument("--cursor")
+    list_parser.set_defaults(handler=handle_reviews_list)
+
+    mine = reviews_sub.add_parser(
+        "mine",
+        help="Get your review for a course version",
+        parents=[COMMON_PARSER],
+    )
+    mine.add_argument("course_id", metavar="COURSE_ID")
+    mine.add_argument("--version-id")
+    mine.set_defaults(handler=handle_reviews_mine)
+
+    upsert = reviews_sub.add_parser(
+        "upsert",
+        help="Create or update a review for a course version",
+        parents=[COMMON_PARSER],
+    )
+    upsert.add_argument("course_id", metavar="COURSE_ID")
+    upsert.add_argument("version_id", metavar="VERSION_ID")
+    upsert.add_argument("--rating", type=int, required=True)
+    upsert.add_argument("--body")
+    add_tristate_flag(upsert, "--completed-task", dest="completed_task")
+    upsert.add_argument("--reliability", type=float)
+    upsert.add_argument("--usefulness", type=float)
+    upsert.add_argument("--tool-safety", type=float)
+    upsert.add_argument("--token-efficiency", type=float)
+    upsert.set_defaults(handler=handle_reviews_upsert)
