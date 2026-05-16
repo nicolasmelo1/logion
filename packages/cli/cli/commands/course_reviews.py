@@ -7,7 +7,12 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, require_non_empty_id
+from cli._errors import (
+    handle_error,
+    only_not_none,
+    require_non_empty_id,
+    validate_uuid,
+)
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -71,10 +76,12 @@ def handle_list(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.course_reviews.list(
+        kwargs = only_not_none(
+            {},
             limit=args.limit,
             cursor=args.cursor,
         )
+        result = client.v1.course_reviews.list(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -89,6 +96,9 @@ def handle_get(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.review_id, "review_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.review_id, "review_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -107,6 +117,9 @@ def handle_approve(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.review_id, "review_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.review_id, "review_id")
+    if bad_uuid is not None:
+        return bad_uuid
     refusal = require_yes(args.yes, "approve")
     if refusal is not None:
         return refusal
@@ -131,6 +144,9 @@ def handle_reject(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.review_id, "review_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.review_id, "review_id")
+    if bad_uuid is not None:
+        return bad_uuid
     refusal = require_yes(args.yes, "reject")
     if refusal is not None:
         return refusal

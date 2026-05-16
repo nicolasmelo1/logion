@@ -6,7 +6,11 @@ import argparse
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error, require_non_empty_id
+from cli._errors import (
+    handle_error,
+    require_non_empty_id,
+    validate_uuid,
+)
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -100,6 +104,9 @@ def handle_checkout(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -118,6 +125,9 @@ def handle_orders_get(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.order_id, "order_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.order_id, "order_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

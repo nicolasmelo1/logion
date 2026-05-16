@@ -80,11 +80,16 @@ def test_course_reviews_get(
     cr = FakeCourseReviewsResource()
     fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
     _patch_client(monkeypatch, fake)
-    code = main(["course-reviews", "get", "r1", "--json"])
+    code = main([
+        "course-reviews",
+        "get",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--json",
+    ])
     assert code == 0
     method, kwargs = cr.last_call
     assert method == "get"
-    assert kwargs["review_id"] == "r1"
+    assert kwargs["review_id"] == "770e8400-e29b-41d4-a716-446655440002"
 
 
 def test_course_reviews_approve_with_yes(
@@ -97,7 +102,7 @@ def test_course_reviews_approve_with_yes(
     code = main([
         "course-reviews",
         "approve",
-        "r1",
+        "770e8400-e29b-41d4-a716-446655440002",
         "--reviewer-notes",
         "Looks good",
         "--yes",
@@ -106,13 +111,17 @@ def test_course_reviews_approve_with_yes(
     assert code == 0
     method, kwargs = cr.last_call
     assert method == "approve"
-    assert kwargs["review_id"] == "r1"
+    assert kwargs["review_id"] == "770e8400-e29b-41d4-a716-446655440002"
     assert kwargs["reviewer_notes"] == "Looks good"
 
 
 def test_course_reviews_approve_without_yes() -> None:
     """course-reviews approve without --yes refuses."""
-    code = main(["course-reviews", "approve", "r1"])
+    code = main([
+        "course-reviews",
+        "approve",
+        "770e8400-e29b-41d4-a716-446655440002",
+    ])
     assert code == 2
 
 
@@ -126,7 +135,7 @@ def test_course_reviews_reject_with_yes(
     code = main([
         "course-reviews",
         "reject",
-        "r1",
+        "770e8400-e29b-41d4-a716-446655440002",
         "--decision-reason",
         "unsafe command",
         "--reviewer-notes",
@@ -137,7 +146,7 @@ def test_course_reviews_reject_with_yes(
     assert code == 0
     method, kwargs = cr.last_call
     assert method == "reject"
-    assert kwargs["review_id"] == "r1"
+    assert kwargs["review_id"] == "770e8400-e29b-41d4-a716-446655440002"
     assert kwargs["decision_reason"] == "unsafe command"
     assert kwargs["reviewer_notes"] == "Contains risky command"
 
@@ -147,7 +156,7 @@ def test_course_reviews_reject_without_yes() -> None:
     code = main([
         "course-reviews",
         "reject",
-        "r1",
+        "770e8400-e29b-41d4-a716-446655440002",
         "--decision-reason",
         "bad",
         "--reviewer-notes",
@@ -187,4 +196,40 @@ def test_course_reviews_reject_empty_id() -> None:
 def test_course_reviews_get_empty_id() -> None:
     """course-reviews get rejects empty review_id."""
     code = main(["course-reviews", "get", "", "--json"])
+    assert code == 2
+
+
+def test_course_reviews_get_invalid_uuid() -> None:
+    """course-reviews get rejects an invalid UUID."""
+    code = main(["course-reviews", "get", "not-a-uuid", "--json"])
+    assert code == 2
+
+
+def test_course_reviews_approve_invalid_uuid() -> None:
+    """course-reviews approve rejects an invalid UUID."""
+    code = main([
+        "course-reviews",
+        "approve",
+        "not-a-uuid",
+        "--reviewer-notes",
+        "ok",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2
+
+
+def test_course_reviews_reject_invalid_uuid() -> None:
+    """course-reviews reject rejects an invalid UUID."""
+    code = main([
+        "course-reviews",
+        "reject",
+        "not-a-uuid",
+        "--decision-reason",
+        "bad",
+        "--reviewer-notes",
+        "nope",
+        "--yes",
+        "--json",
+    ])
     assert code == 2

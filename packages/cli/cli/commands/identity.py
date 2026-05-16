@@ -24,10 +24,12 @@ def _resolve_password(cli_value: str | None) -> tuple[int | None, str]:
             print_err("Error: --password must not be empty.")
             return 2, ""
         return None, cli_value
-    env = os.environ.get("LOGION_PASSWORD")
-    if env:
-        env = env.strip()
-    if env:
+    raw_env = os.environ.get("LOGION_PASSWORD")
+    if raw_env is not None:
+        env = raw_env.strip()
+        if not env:
+            print_err("Error: LOGION_PASSWORD is set but empty/whitespace.")
+            return 2, ""
         return None, env
     print_err("Error: --password is required (or set LOGION_PASSWORD).")
     return 2, ""

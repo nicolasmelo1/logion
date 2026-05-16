@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from typing import Any
 
 from logion import APIError, LogionError
 
@@ -19,9 +20,6 @@ def handle_error(exc: Exception) -> int:
     if isinstance(exc, LogionError):
         print(f"Logion error: {exc}", file=sys.stderr)
         return 1
-    if isinstance(exc, ValueError):
-        print_err(f"Invalid value: {exc}")
-        return 2
     raise exc
 
 
@@ -36,3 +34,25 @@ def require_non_empty_id(value: str, label: str) -> int | None:
         print_err(f"Error: {label} must not be empty.")
         return 2
     return None
+
+
+def validate_uuid(value: str, label: str) -> int | None:
+    """Return ``2`` if *value* is not a valid UUID, else ``None``."""
+    try:
+        from uuid import UUID
+
+        UUID(value)
+    except ValueError:
+        print_err(f"Error: {label} must be a valid UUID (got: {value!r}).")
+        return 2
+    return None
+
+
+def only_not_none(
+    base: dict[str, Any],
+    **optional: Any,
+) -> dict[str, Any]:
+    """Return *base* merged with only the non-None *optional* entries."""
+    result = dict(base)
+    result.update({k: v for k, v in optional.items() if v is not None})
+    return result

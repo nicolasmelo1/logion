@@ -7,7 +7,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, require_non_empty_id
+from cli._errors import handle_error, require_non_empty_id, validate_uuid
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -62,6 +62,9 @@ def handle_create(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.target_id, "--target-id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.target_id, "--target-id")
+    if bad_uuid is not None:
+        return bad_uuid
     refusal = require_yes(args.yes, "create report")
     if refusal is not None:
         return refusal

@@ -19,7 +19,7 @@ class FakeReportsResource:
     def create(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create", kwargs)
         return {
-            "id": "r1",
+            "id": "770e8400-e29b-41d4-a716-446655440002",
             "target_type": kwargs["target_type"],
             "target_id": kwargs["target_id"],
             "reason": kwargs["reason"],
@@ -57,7 +57,7 @@ def test_reports_create_calls_client(
         "--target-type",
         "course",
         "--target-id",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--reason",
         "spam",
         "--description",
@@ -69,7 +69,7 @@ def test_reports_create_calls_client(
     method, kwargs = reports.last_call
     assert method == "create"
     assert kwargs["target_type"] == "course"
-    assert kwargs["target_id"] == "c1"
+    assert kwargs["target_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["reason"] == "spam"
     assert kwargs["description"] == "Suspicious listing"
     data = json.loads(capsys.readouterr().out)
@@ -89,7 +89,7 @@ def test_reports_create_without_description(
         "--target-type",
         "agent",
         "--target-id",
-        "a1",
+        "990e8400-e29b-41d4-a716-446655440004",
         "--reason",
         "harassment",
         "--yes",
@@ -108,7 +108,7 @@ def test_reports_create_without_yes() -> None:
         "--target-type",
         "course",
         "--target-id",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--reason",
         "spam",
     ])
@@ -124,7 +124,7 @@ def test_reports_create_invalid_target_type() -> None:
             "--target-type",
             "invalid",
             "--target-id",
-            "c1",
+            "550e8400-e29b-41d4-a716-446655440000",
             "--reason",
             "spam",
         ])
@@ -139,7 +139,7 @@ def test_reports_create_invalid_reason() -> None:
             "--target-type",
             "course",
             "--target-id",
-            "c1",
+            "550e8400-e29b-41d4-a716-446655440000",
             "--reason",
             "invalid",
         ])
@@ -160,6 +160,23 @@ def test_reports_create_empty_target_id() -> None:
         "course",
         "--target-id",
         "",
+        "--reason",
+        "spam",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2
+
+
+def test_reports_create_invalid_uuid() -> None:
+    """reports create rejects an invalid UUID --target-id."""
+    code = main([
+        "reports",
+        "create",
+        "--target-type",
+        "course",
+        "--target-id",
+        "not-a-uuid",
         "--reason",
         "spam",
         "--yes",

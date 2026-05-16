@@ -28,7 +28,7 @@ class FakePaymentsResource:
         self.last_call = ("create_checkout", kwargs)
         return {
             "checkout_url": "https://stripe.example.com/pay",
-            "order_id": "o1",
+            "order_id": "880e8400-e29b-41d4-a716-446655440003",
         }
 
     def get_order(self, **kwargs: Any) -> dict[str, Any]:
@@ -90,10 +90,18 @@ def test_checkout(
     payments = FakePaymentsResource()
     fake = FakeClient(v1=FakeV1Namespace(payments=payments))
     _patch_client(monkeypatch, fake)
-    assert main(["payments", "checkout", "c1", "--json"]) == 0
+    assert (
+        main([
+            "payments",
+            "checkout",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--json",
+        ])
+        == 0
+    )
     method, kwargs = payments.last_call
     assert method == "create_checkout"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_orders_get(
@@ -103,10 +111,19 @@ def test_orders_get(
     payments = FakePaymentsResource()
     fake = FakeClient(v1=FakeV1Namespace(payments=payments))
     _patch_client(monkeypatch, fake)
-    assert main(["payments", "orders", "get", "o1", "--json"]) == 0
+    assert (
+        main([
+            "payments",
+            "orders",
+            "get",
+            "880e8400-e29b-41d4-a716-446655440003",
+            "--json",
+        ])
+        == 0
+    )
     method, kwargs = payments.last_call
     assert method == "get_order"
-    assert kwargs["order_id"] == "o1"
+    assert kwargs["order_id"] == "880e8400-e29b-41d4-a716-446655440003"
 
 
 def test_orders_get_empty_id() -> None:
@@ -118,4 +135,16 @@ def test_orders_get_empty_id() -> None:
 def test_checkout_empty_id() -> None:
     """payments checkout rejects empty course_id."""
     code = main(["payments", "checkout", "", "--json"])
+    assert code == 2
+
+
+def test_checkout_invalid_uuid() -> None:
+    """payments checkout rejects an invalid UUID."""
+    code = main(["payments", "checkout", "not-a-uuid", "--json"])
+    assert code == 2
+
+
+def test_orders_get_invalid_uuid() -> None:
+    """payments orders get rejects an invalid UUID."""
+    code = main(["payments", "orders", "get", "not-a-uuid", "--json"])
     assert code == 2

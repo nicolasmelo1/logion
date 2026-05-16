@@ -19,7 +19,11 @@ class FakeCoursesResource:
 
     def create(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create", kwargs)
-        return {"id": "c1", "title": kwargs["title"], "slug": kwargs["slug"]}
+        return {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "title": kwargs["title"],
+            "slug": kwargs["slug"],
+        }
 
     def get(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("get", kwargs)
@@ -31,7 +35,10 @@ class FakeCoursesResource:
 
     def create_upload_session(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("create_upload_session", kwargs)
-        return {"version_id": "v1", "files": kwargs["files"]}
+        return {
+            "version_id": "660e8400-e29b-41d4-a716-446655440001",
+            "files": kwargs["files"],
+        }
 
     def complete_upload_session(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("complete_upload_session", kwargs)
@@ -161,10 +168,18 @@ def test_courses_get(
     courses = FakeCoursesResource()
     fake = FakeClient(v1=FakeV1Namespace(courses=courses))
     _patch_client(monkeypatch, fake)
-    assert main(["courses", "get", "c1", "--json"]) == 0
+    assert (
+        main([
+            "courses",
+            "get",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--json",
+        ])
+        == 0
+    )
     method, kwargs = courses.last_call
     assert method == "get"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_courses_update(
@@ -177,7 +192,7 @@ def test_courses_update(
     code = main([
         "courses",
         "update",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--title",
         "New Title",
         "--price-cents",
@@ -187,7 +202,7 @@ def test_courses_update(
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "update"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["title"] == "New Title"
     assert kwargs["price_cents"] == 3000
     # Omitted fields should NOT appear
@@ -205,7 +220,7 @@ def test_courses_update_with_tags(
     code = main([
         "courses",
         "update",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--tag",
         "python",
         "--tag",
@@ -227,7 +242,7 @@ def test_courses_update_clear_tags(
     code = main([
         "courses",
         "update",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--clear-tags",
         "--json",
     ])
@@ -252,7 +267,7 @@ def test_courses_uploads_create(
         "courses",
         "uploads",
         "create",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--file",
         str(f1),
         "--file",
@@ -262,7 +277,7 @@ def test_courses_uploads_create(
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "create_upload_session"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     files = kwargs["files"]
     assert len(files) == 2
     assert files[0]["path"] == f1.name
@@ -281,7 +296,7 @@ def test_courses_uploads_create_file_not_found(
         "courses",
         "uploads",
         "create",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--file",
         "/no/such/file.md",
         "--json",
@@ -300,7 +315,7 @@ def test_courses_uploads_create_no_files(
         "courses",
         "uploads",
         "create",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--json",
     ])
     assert code == 2
@@ -317,15 +332,15 @@ def test_courses_uploads_complete(
         "courses",
         "uploads",
         "complete",
-        "c1",
-        "v1",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
         "--json",
     ])
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "complete_upload_session"
-    assert kwargs["course_id"] == "c1"
-    assert kwargs["version_id"] == "v1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["version_id"] == "660e8400-e29b-41d4-a716-446655440001"
 
 
 def test_courses_publication_request(
@@ -335,10 +350,19 @@ def test_courses_publication_request(
     courses = FakeCoursesResource()
     fake = FakeClient(v1=FakeV1Namespace(courses=courses))
     _patch_client(monkeypatch, fake)
-    assert main(["courses", "publication", "request", "c1", "--json"]) == 0
+    assert (
+        main([
+            "courses",
+            "publication",
+            "request",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--json",
+        ])
+        == 0
+    )
     method, kwargs = courses.last_call
     assert method == "request_publication_review"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_courses_publication_latest(
@@ -353,7 +377,7 @@ def test_courses_publication_latest(
             "courses",
             "publication",
             "latest",
-            "c1",
+            "550e8400-e29b-41d4-a716-446655440000",
             "--include-pass",
             "--json",
         ])
@@ -361,7 +385,7 @@ def test_courses_publication_latest(
     )
     method, kwargs = courses.last_call
     assert method == "get_latest_publication_review"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_courses_reviews_upsert(
@@ -375,8 +399,8 @@ def test_courses_reviews_upsert(
         "courses",
         "reviews",
         "upsert",
-        "c1",
-        "v1",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
         "--rating",
         "5",
         "--body",
@@ -389,8 +413,8 @@ def test_courses_reviews_upsert(
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "review_version"
-    assert kwargs["course_id"] == "c1"
-    assert kwargs["version_id"] == "v1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["version_id"] == "660e8400-e29b-41d4-a716-446655440001"
     assert kwargs["rating"] == 5
     assert kwargs["body"] == "Great course"
     assert kwargs["completed_task"] is True
@@ -408,8 +432,8 @@ def test_courses_reviews_upsert_no_completed_task(
         "courses",
         "reviews",
         "upsert",
-        "c1",
-        "v1",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
         "--rating",
         "4",
         "--json",
@@ -430,8 +454,8 @@ def test_courses_reviews_upsert_no_completed_task_false(
         "courses",
         "reviews",
         "upsert",
-        "c1",
-        "v1",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
         "--rating",
         "3",
         "--no-completed-task",
@@ -453,7 +477,7 @@ def test_courses_reviews_list(
         "courses",
         "reviews",
         "list",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--version",
         "latest",
         "--limit",
@@ -463,7 +487,7 @@ def test_courses_reviews_list(
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "list_reviews"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["version"] == "latest"
     assert kwargs["limit"] == 20
 
@@ -479,16 +503,16 @@ def test_courses_reviews_mine(
         "courses",
         "reviews",
         "mine",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--version-id",
-        "v1",
+        "660e8400-e29b-41d4-a716-446655440001",
         "--json",
     ])
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "get_my_review"
-    assert kwargs["course_id"] == "c1"
-    assert kwargs["version_id"] == "v1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["version_id"] == "660e8400-e29b-41d4-a716-446655440001"
 
 
 def test_courses_feedback(
@@ -498,10 +522,18 @@ def test_courses_feedback(
     courses = FakeCoursesResource()
     fake = FakeClient(v1=FakeV1Namespace(courses=courses))
     _patch_client(monkeypatch, fake)
-    assert main(["courses", "feedback", "c1", "--json"]) == 0
+    assert (
+        main([
+            "courses",
+            "feedback",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--json",
+        ])
+        == 0
+    )
     method, kwargs = courses.last_call
     assert method == "get_review_feedback"
-    assert kwargs["course_id"] == "c1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_courses_versions_get(
@@ -511,12 +543,19 @@ def test_courses_versions_get(
     courses = FakeCoursesResource()
     fake = FakeClient(v1=FakeV1Namespace(courses=courses))
     _patch_client(monkeypatch, fake)
-    code = main(["courses", "versions", "get", "c1", "v1", "--json"])
+    code = main([
+        "courses",
+        "versions",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--json",
+    ])
     assert code == 0
     method, kwargs = courses.last_call
     assert method == "get_version"
-    assert kwargs["course_id"] == "c1"
-    assert kwargs["version_id"] == "v1"
+    assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["version_id"] == "660e8400-e29b-41d4-a716-446655440001"
 
 
 def test_courses_create_missing_required() -> None:
@@ -547,7 +586,7 @@ def test_courses_update_clear_description(
     code = main([
         "courses",
         "update",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--clear-description",
         "--json",
     ])
@@ -566,7 +605,7 @@ def test_courses_update_clear_price(
     code = main([
         "courses",
         "update",
-        "c1",
+        "550e8400-e29b-41d4-a716-446655440000",
         "--clear-price",
         "--json",
     ])
@@ -574,3 +613,61 @@ def test_courses_update_clear_price(
     _method, kwargs = courses.last_call
     assert kwargs.get("price_cents") is None
     assert kwargs.get("currency") is None
+
+
+def test_courses_uploads_create_duplicate_basenames(
+    tmp_path: Path,
+) -> None:
+    """courses uploads create rejects files with duplicate basenames."""
+    dir1 = tmp_path / "a"
+    dir2 = tmp_path / "b"
+    dir1.mkdir()
+    dir2.mkdir()
+    f1 = dir1 / "file.txt"
+    f2 = dir2 / "file.txt"
+    f1.write_text("hello")
+    f2.write_text("world")
+    code = main([
+        "courses",
+        "uploads",
+        "create",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--file",
+        str(f1),
+        "--file",
+        str(f2),
+        "--json",
+    ])
+    assert code == 2
+
+
+def test_courses_get_invalid_uuid() -> None:
+    """courses get rejects an invalid UUID."""
+    code = main(["courses", "get", "not-a-uuid", "--json"])
+    assert code == 2
+
+
+def test_courses_update_description_and_clear_mutex() -> None:
+    """courses update rejects --description with --clear-description."""
+    with pytest.raises(SystemExit):
+        main([
+            "courses",
+            "update",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--description",
+            "hello",
+            "--clear-description",
+        ])
+
+
+def test_courses_update_tag_and_clear_mutex() -> None:
+    """courses update rejects --tag together with --clear-tags."""
+    with pytest.raises(SystemExit):
+        main([
+            "courses",
+            "update",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--tag",
+            "python",
+            "--clear-tags",
+        ])

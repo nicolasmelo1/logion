@@ -5,11 +5,16 @@ from __future__ import annotations
 import argparse
 import mimetypes
 from pathlib import Path
-from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error, print_err, require_non_empty_id
+from cli._errors import (
+    handle_error,
+    only_not_none,
+    print_err,
+    require_non_empty_id,
+    validate_uuid,
+)
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -73,36 +78,46 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     update.add_argument("course_id")
     update.add_argument("--title")
-    update.add_argument("--description")
-    update.add_argument("--price-cents", type=int)
-    update.add_argument("--currency")
-    update.add_argument("--language")
-    update.add_argument("--short-summary")
-    update.add_argument("--tag", action="append", dest="tags", default=None)
-    update.add_argument(
-        "--clear-tags",
-        action="store_true",
-        help="Remove all tags from the course",
-    )
-    update.add_argument(
+    # description / clear-description are mutually exclusive
+    _desc = update.add_mutually_exclusive_group()
+    _desc.add_argument("--description")
+    _desc.add_argument(
         "--clear-description",
         action="store_true",
         help="Clear the course description",
     )
-    update.add_argument(
-        "--clear-short-summary",
+    update.add_argument("--price-cents", type=int)
+    # currency / clear-currency are mutually exclusive
+    _cur = update.add_mutually_exclusive_group()
+    _cur.add_argument("--currency")
+    _cur.add_argument(
+        "--clear-currency",
         action="store_true",
-        help="Clear the short summary",
+        help="Clear the course currency (also clears price_cents)",
     )
-    update.add_argument(
+    # language / clear-language are mutually exclusive
+    _lang = update.add_mutually_exclusive_group()
+    _lang.add_argument("--language")
+    _lang.add_argument(
         "--clear-language",
         action="store_true",
         help="Clear the course language",
     )
-    update.add_argument(
-        "--clear-currency",
+    # short-summary / clear-short-summary are mutually exclusive
+    _ss = update.add_mutually_exclusive_group()
+    _ss.add_argument("--short-summary")
+    _ss.add_argument(
+        "--clear-short-summary",
         action="store_true",
-        help="Clear the course currency (also clears price_cents)",
+        help="Clear the short summary",
+    )
+    # tag / clear-tags are mutually exclusive
+    _tags = update.add_mutually_exclusive_group()
+    _tags.add_argument("--tag", action="append", dest="tags", default=None)
+    _tags.add_argument(
+        "--clear-tags",
+        action="store_true",
+        help="Remove all tags from the course",
     )
     update.add_argument(
         "--clear-price",
@@ -222,7 +237,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     ru.add_argument("version_id")
     ru.add_argument("--rating", type=int, required=True)
     ru.add_argument("--body")
-    _bool_flag(ru, "--completed-task", dest="completed_task")
+    _add_tristate_flag(ru, "--completed-task", dest="completed_task")
     ru.add_argument("--reliability", type=float)
     ru.add_argument("--usefulness", type=float)
     ru.add_argument("--tool-safety", type=float)
@@ -257,7 +272,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     vg.set_defaults(handler=handle_versions_get)
 
 
-def _bool_flag(
+def _add_tristate_flag(
     parser: argparse.ArgumentParser,
     flag: str,
     *,
@@ -282,19 +297,6 @@ def _bool_flag(
     parser.set_defaults(**{dest: None})
 
 
-# ── Helpers ───────────────────────────────────────────────────────
-
-
-def _only_not_none(
-    base: dict[str, Any],
-    **optional: Any,
-) -> dict[str, Any]:
-    """Return *base* merged with only the non-None *optional* entries."""
-    result = dict(base)
-    result.update({k: v for k, v in optional.items() if v is not None})
-    return result
-
-
 # ── Handlers ──────────────────────────────────────────────────────
 
 
@@ -303,7 +305,7 @@ def handle_create(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        kwargs = _only_not_none(
+        kwargs = only_not_none(
             {"title": args.title, "slug": args.slug},
             description=args.description,
             price_cents=args.price_cents,
@@ -329,6 +331,9 @@ def handle_get(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -347,10 +352,13 @@ def handle_update(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        kwargs = _only_not_none(
+        kwargs = only_not_none(
             {"course_id": args.course_id},
             title=args.title,
             description=args.description,
@@ -391,22 +399,34 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     if not args.files:
         print_err("at least one --file is required")
+        return 2
+    # Validate all paths exist and check for duplicate basenames
+    resolved: list[Path] = []
+    for path_str in args.files:
+        p = Path(path_str)
+        if not p.is_file():
+            print_err(f"file not found: {path_str}")
+            return 2
+        resolved.append(p)
+    basenames = [p.name for p in resolved]
+    if len(basenames) != len(set(basenames)):
+        dupes = [name for name in basenames if basenames.count(name) > 1]
+        print_err(f"duplicate file names not allowed: {sorted(set(dupes))}")
         return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
         files = []
-        for path_str in args.files:
-            p = Path(path_str)
-            if not p.is_file():
-                print_err(f"file not found: {path_str}")
-                return 2
+        for p in resolved:
             files.append({
                 "path": p.name,
                 "size_bytes": p.stat().st_size,
-                "content_type": mimetypes.guess_type(path_str)[0]
+                "content_type": mimetypes.guess_type(str(p))[0]
                 or "application/octet-stream",
             })
         result = client.v1.courses.create_upload_session(
@@ -451,6 +471,9 @@ def handle_publication_request(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -495,12 +518,13 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.courses.list_reviews(
-            course_id=args.course_id,
+        kwargs = only_not_none(
+            {"course_id": args.course_id},
             version=args.version,
             limit=args.limit,
             cursor=args.cursor,
         )
+        result = client.v1.courses.list_reviews(**kwargs)
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -536,13 +560,16 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
     empty = require_non_empty_id(args.course_id, "course_id")
     if empty is not None:
         return empty
+    bad_uuid = validate_uuid(args.course_id, "course_id")
+    if bad_uuid is not None:
+        return bad_uuid
     empty = require_non_empty_id(args.version_id, "version_id")
     if empty is not None:
         return empty
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        kwargs = _only_not_none(
+        kwargs = only_not_none(
             {
                 "course_id": args.course_id,
                 "version_id": args.version_id,
