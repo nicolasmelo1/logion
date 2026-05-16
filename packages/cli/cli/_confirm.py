@@ -11,5 +11,5 @@ def require_yes(yes: bool, action: str) -> int | None:
     """
     if yes:
         return None
-    print_err(f"Refusing to {action} without --yes.")
+    print_err(f"This is a destructive action. Re-run with --yes to {action}.")
     return 2

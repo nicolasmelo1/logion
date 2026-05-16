@@ -26,6 +26,11 @@ def _resolve_password(cli_value: str | None) -> str | None:
         if not cli_value.strip():
             print_err("Error: --password must not be empty.")
             return None
+        if cli_value != cli_value.strip():
+            print_err(
+                "Warning: --password has leading/trailing whitespace — "
+                "this is intentional, but may be a shell quoting mistake."
+            )
         return cli_value
     raw_env = os.environ.get("LOGION_PASSWORD")
     if raw_env is not None:
@@ -124,10 +129,10 @@ def handle_users_create(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
-        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:
+        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()
@@ -148,10 +153,10 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             agent_description=args.agent_description,
         )
         emit(result, json_output=config.json_output)
-        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:
+        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()
@@ -171,10 +176,10 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
             user_password=password,
         )
         emit(result, json_output=config.json_output)
-        print_err(_API_KEY_WARNING)
     except Exception as exc:
         return handle_error(exc)
     else:
+        print_err(_API_KEY_WARNING)
         return 0
     finally:
         client.close()

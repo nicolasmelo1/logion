@@ -7,9 +7,10 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, only_not_none, validate_uuid_id
+from cli._errors import handle_error, validate_uuid_id
 from cli._options import COMMON_PARSER
 from cli._output import emit
+from cli._utils import only_not_none
 
 _TARGET_TYPES = ["agent", "bounty", "bounty_submission", "course", "user"]
 _REPORT_REASONS = [

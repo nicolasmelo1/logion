@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
 from uuid import UUID
 
+# Re-export for backward compatibility; moved to _utils.py
+from cli._utils import only_not_none  # noqa: F401
 from logion import APIError, LogionError
 
 
@@ -57,13 +58,3 @@ def validate_uuid_id(value: str, label: str) -> int | None:
     if empty is not None:
         return empty
     return validate_uuid(value, label)
-
-
-def only_not_none(
-    base: dict[str, Any],
-    **optional: Any,
-) -> dict[str, Any]:
-    """Return *base* merged with only the non-None *optional* entries."""
-    result = dict(base)
-    result.update({k: v for k, v in optional.items() if v is not None})
-    return result

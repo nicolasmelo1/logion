@@ -11,12 +11,41 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import (
     handle_error,
-    only_not_none,
     print_err,
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
 from cli._output import emit
+from cli._utils import only_not_none
+
+
+def _add_tag_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    default: list[str] | None,
+) -> None:
+    """Add ``--tag`` and ``--clear-tags`` arguments.
+
+    For ``create`` the default is ``[]`` (append-only, no clear).
+    For ``update`` the default is ``None`` (distinguish "no --tag"
+    from ``--clear-tags``).
+    """
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--tag",
+        action="append",
+        dest="tags",
+        default=default,
+        help="Tag to add (can be specified multiple times)",
+    )
+    if default is None:
+        # update mode: can also clear all tags
+        group.add_argument(
+            "--clear-tags",
+            action="store_true",
+            help="Remove all tags from the course",
+        )
+
 
 _CMD_HELP = {
     "create": "Create a new course",
@@ -52,7 +81,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     create.add_argument("--description")
     create.add_argument("--price-cents", type=int)
     create.add_argument("--currency")
-    create.add_argument("--tag", action="append", dest="tags", default=[])
+    _add_tag_arguments(create, default=[])
     create.add_argument("--language")
     create.add_argument("--short-summary")
     create.add_argument(
@@ -123,16 +152,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Clear the short summary",
     )
-    # tag / clear-tags are mutually exclusive
-    _tags = update.add_mutually_exclusive_group()
-    _tags.add_argument("--tag", action="append", dest="tags", default=None)
-    # NOTE: tags default must remain None (not []), so that
-    # "no --tag" is distinguishable from "--clear-tags".
-    _tags.add_argument(
-        "--clear-tags",
-        action="store_true",
-        help="Remove all tags from the course",
-    )
+    # tags
+    _add_tag_arguments(update, default=None)
     update.add_argument(
         "--visibility",
         choices=["public", "unlisted", "private"],

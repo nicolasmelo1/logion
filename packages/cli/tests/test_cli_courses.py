@@ -700,3 +700,43 @@ def test_courses_update_clear_price_with_currency_conflict() -> None:
         "USD",
     ])
     assert code == 2
+
+
+def test_courses_reviews_upsert_rating_out_of_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses reviews upsert rejects --rating outside 1-5."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    monkeypatch.setattr("cli._context.make_client", lambda _c: fake)
+    code = main([
+        "courses",
+        "reviews",
+        "upsert",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--rating",
+        "6",
+    ])
+    assert code == 2
+
+
+def test_courses_reviews_upsert_subscore_out_of_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses reviews upsert rejects sub-scores outside 0-5."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    monkeypatch.setattr("cli._context.make_client", lambda _c: fake)
+    code = main([
+        "courses",
+        "reviews",
+        "upsert",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--rating",
+        "4",
+        "--reliability",
+        "-1",
+    ])
+    assert code == 2

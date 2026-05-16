@@ -9,11 +9,14 @@ from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import (
     handle_error,
-    only_not_none,
+    print_err,
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
 from cli._output import emit
+from cli._utils import only_not_none
+
+_REQUIRE_NON_EMPTY_MSG = "Error: {} must not be empty."
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -138,6 +141,12 @@ def handle_reject(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.review_id, "review_id")
     if bad_id is not None:
         return bad_id
+    if not args.decision_reason.strip():
+        print_err(_REQUIRE_NON_EMPTY_MSG.format("--decision-reason"))
+        return 2
+    if not args.reviewer_notes.strip():
+        print_err(_REQUIRE_NON_EMPTY_MSG.format("--reviewer-notes"))
+        return 2
     refusal = require_yes(args.yes, "reject")
     if refusal is not None:
         return refusal
