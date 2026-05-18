@@ -890,6 +890,7 @@ def test_courses_uploads_complete_human_prints_capability_summary(
     assert code == 0
     output = capsys.readouterr().out
     assert "capabilities_status: declared" in output
+    assert "tools: file" in output
     assert "allows_shell: true" in output
 
 
@@ -938,6 +939,7 @@ def test_courses_versions_get_human_output_prints_capability_summary(
     assert code == 0
     output = capsys.readouterr().out
     assert "capabilities_status: declared" in output
+    assert "tools: file" in output
     assert "allows_shell: true" in output
     assert "api.openai.com" in output
 
