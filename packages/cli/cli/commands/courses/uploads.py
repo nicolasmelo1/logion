@@ -5,12 +5,16 @@ from __future__ import annotations
 import argparse
 import collections
 import mimetypes
+import sys
 from pathlib import Path
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit
+from cli._output import emit, to_data
+from cli.commands.courses._capability_render import (
+    append_capability_summary_lines,
+)
 
 
 def _parse_upload_file_spec(spec: str) -> tuple[str, Path]:
@@ -108,7 +112,24 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
             course_id=args.course_id,
             version_id=args.version_id,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit(result, json_output=True)
+        else:
+            data = to_data(result)
+            lines: list[str] = [
+                f"version_id: {data['version_id']}",
+                f"version_number: {data['version_number']}",
+                f"status: {data['status']}",
+            ]
+            manifest_s3_key = data.get("manifest_s3_key")
+            if manifest_s3_key:
+                lines.append(f"manifest_s3_key: {manifest_s3_key}")
+            content_hash = data.get("content_hash")
+            if content_hash:
+                lines.append(f"content_hash: {content_hash}")
+            append_capability_summary_lines(lines, data)
+            sys.stdout.write("\n".join(lines))
+            sys.stdout.write("\n")
     except Exception as exc:
         return handle_error(exc)
     else:
