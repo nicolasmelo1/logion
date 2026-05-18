@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import collections
 import mimetypes
+import sys
 from pathlib import Path
+from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit
+from cli._output import emit, to_data
 
 
 def _parse_upload_file_spec(spec: str) -> tuple[str, Path]:
@@ -53,6 +55,44 @@ def _resolve_upload_files(
         )
         return None
     return resolved
+
+
+def _append_capability_summary_lines(
+    lines: list[str],
+    payload: dict[str, Any],
+) -> None:
+    """Append human-readable capability summary lines to *lines*."""
+    status = payload.get("capabilities_status")
+    if status:
+        lines.append(f"capabilities_status: {status}")
+    schema_version = payload.get("capabilities_schema_version")
+    if schema_version is not None:
+        lines.append(f"capabilities_schema_version: {schema_version}")
+    manifest_path = payload.get("capabilities_manifest_path")
+    if manifest_path is not None:
+        lines.append(f"capabilities_manifest_path: {manifest_path}")
+
+    summary = payload.get("capabilities_summary")
+    if summary:
+        allows_shell = summary.get("allows_shell")
+        if allows_shell is not None:
+            lines.append(f"allows_shell: {str(allows_shell).lower()}")
+        allows_network = summary.get("allows_network")
+        if allows_network is not None:
+            lines.append(f"allows_network: {str(allows_network).lower()}")
+        for domain in summary.get("allowed_domains") or []:
+            lines.append(f"allowed_domains: {domain}")
+        for rpath in summary.get("filesystem_read") or []:
+            lines.append(f"filesystem_read: {rpath}")
+        for wpath in summary.get("filesystem_write") or []:
+            lines.append(f"filesystem_write: {wpath}")
+        for env_var in summary.get("secrets_env") or []:
+            lines.append(f"secrets_env: {env_var}")
+        human_approval = summary.get("human_approval_required")
+        if human_approval is not None:
+            lines.append(
+                f"human_approval_required: {str(human_approval).lower()}"
+            )
 
 
 def handle_uploads_create(args: argparse.Namespace) -> int:
@@ -108,7 +148,24 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
             course_id=args.course_id,
             version_id=args.version_id,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit(result, json_output=True)
+        else:
+            data = to_data(result)
+            lines: list[str] = [
+                f"version_id: {data['version_id']}",
+                f"version_number: {data['version_number']}",
+                f"status: {data['status']}",
+            ]
+            manifest_s3_key = data.get("manifest_s3_key")
+            if manifest_s3_key:
+                lines.append(f"manifest_s3_key: {manifest_s3_key}")
+            content_hash = data.get("content_hash")
+            if content_hash:
+                lines.append(f"content_hash: {content_hash}")
+            _append_capability_summary_lines(lines, data)
+            sys.stdout.write("\n".join(lines))
+            sys.stdout.write("\n")
     except Exception as exc:
         return handle_error(exc)
     else:

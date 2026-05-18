@@ -802,3 +802,185 @@ def test_courses_reviews_upsert_subscore_out_of_range() -> None:
         "-1",
     ])
     assert code == 2
+
+
+def test_courses_uploads_complete_json_preserves_capability_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Uploads complete --json preserves capability fields."""
+    complete_resp = {
+        "version_id": "660e8400-e29b-41d4-a716-446655440001",
+        "version_number": 1,
+        "status": "ready",
+        "manifest_s3_key": "courses/x/manifest.json",
+        "content_hash": "abc",
+        "assets": [],
+        "capabilities_status": "declared",
+        "capabilities_schema_version": 1,
+        "capabilities_manifest_path": "course/capabilities.yaml",
+        "capabilities_summary": {
+            "tools": ["terminal"],
+            "allows_shell": True,
+        },
+        "declared_capabilities": {
+            "version": 1,
+            "tools": ["terminal"],
+        },
+    }
+    courses = FakeCoursesResource()
+    courses.complete_upload_session = lambda **_kw: complete_resp  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "uploads",
+        "complete",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--json",
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["capabilities_status"] == "declared"
+    assert payload["declared_capabilities"]["tools"] == ["terminal"]
+
+
+def test_courses_uploads_complete_human_prints_capability_summary(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Uploads complete without --json prints capability summary."""
+    complete_resp = {
+        "version_id": "660e8400-e29b-41d4-a716-446655440001",
+        "version_number": 1,
+        "status": "ready",
+        "manifest_s3_key": "courses/x/manifest.json",
+        "content_hash": "abc",
+        "assets": [],
+        "capabilities_status": "declared",
+        "capabilities_schema_version": 1,
+        "capabilities_manifest_path": "course/capabilities.yaml",
+        "capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "declared_capabilities": {"version": 1},
+    }
+    courses = FakeCoursesResource()
+    courses.complete_upload_session = lambda **_kw: complete_resp  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "uploads",
+        "complete",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "capabilities_status: declared" in output
+    assert "allows_shell: true" in output
+
+
+def test_courses_versions_get_human_output_prints_capability_summary(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Versions get without --json prints capability summary."""
+    version_resp = {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "course_id": "550e8400-e29b-41d4-a716-446655440000",
+        "version_number": 1,
+        "status": "ready",
+        "manifest_s3_key": "courses/x/manifest.json",
+        "content_hash": "abc",
+        "created_by_agent_id": "770e8400-e29b-41d4-a716-446655440002",
+        "created_at": "2025-01-01T00:00:00Z",
+        "assets": [],
+        "capabilities_status": "declared",
+        "capabilities_schema_version": 1,
+        "capabilities_manifest_path": "course/capabilities.yaml",
+        "capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "declared_capabilities": {"version": 1},
+    }
+    courses = FakeCoursesResource()
+    courses.get_version = lambda **_kw: version_resp  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "versions",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "capabilities_status: declared" in output
+    assert "allows_shell: true" in output
+    assert "api.openai.com" in output
+
+
+def test_courses_versions_get_json_output(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Versions get --json preserves capability fields."""
+    version_resp = {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "course_id": "550e8400-e29b-41d4-a716-446655440000",
+        "version_number": 1,
+        "status": "ready",
+        "manifest_s3_key": "courses/x/manifest.json",
+        "content_hash": "abc",
+        "created_by_agent_id": "770e8400-e29b-41d4-a716-446655440002",
+        "created_at": "2025-01-01T00:00:00Z",
+        "assets": [],
+        "capabilities_status": "declared",
+        "capabilities_schema_version": 1,
+        "capabilities_manifest_path": "course/capabilities.yaml",
+        "capabilities_summary": {
+            "tools": ["terminal"],
+            "allows_shell": True,
+        },
+        "declared_capabilities": {"version": 1},
+    }
+    courses = FakeCoursesResource()
+    courses.get_version = lambda **_kw: version_resp  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "versions",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--json",
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["capabilities_status"] == "declared"
+    assert payload["capabilities_summary"]["tools"] == ["terminal"]

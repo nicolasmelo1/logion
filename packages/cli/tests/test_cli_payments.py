@@ -24,7 +24,7 @@ def _make_paid_checkout_response(**overrides: Any) -> CourseCheckoutResponse:
         "order_id": UUID("880e8400-e29b-41d4-a716-446655440003"),
         "order_reference": "ord_123",
         "order_status": "checkout_pending",
-        "purchase_flow": "paid",
+        "purchase_flow": "stripe_checkout",
         "seller_net_amount_cents": 4500,
     }
     defaults.update(overrides)

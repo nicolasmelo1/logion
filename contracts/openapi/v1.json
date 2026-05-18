@@ -463,6 +463,63 @@
         "title": "CancelBountyResponse",
         "type": "object"
       },
+      "CapabilitySummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Domains",
+            "type": "array"
+          },
+          "allows_network": {
+            "default": false,
+            "title": "Allows Network",
+            "type": "boolean"
+          },
+          "allows_shell": {
+            "default": false,
+            "title": "Allows Shell",
+            "type": "boolean"
+          },
+          "filesystem_read": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Filesystem Read",
+            "type": "array"
+          },
+          "filesystem_write": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Filesystem Write",
+            "type": "array"
+          },
+          "human_approval_required": {
+            "default": false,
+            "title": "Human Approval Required",
+            "type": "boolean"
+          },
+          "secrets_env": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Secrets Env",
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "title": "CapabilitySummaryResponse",
+        "type": "object"
+      },
       "CompleteCourseVersionUploadSessionResponse": {
         "properties": {
           "assets": {
@@ -472,9 +529,59 @@
             "title": "Assets",
             "type": "array"
           },
+          "capabilities_manifest_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Manifest Path"
+          },
+          "capabilities_schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Schema Version"
+          },
+          "capabilities_status": {
+            "title": "Capabilities Status",
+            "type": "string"
+          },
+          "capabilities_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Summary"
+          },
           "content_hash": {
             "title": "Content Hash",
             "type": "string"
+          },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
           },
           "manifest_s3_key": {
             "title": "Manifest S3 Key",
@@ -500,7 +607,8 @@
           "status",
           "manifest_s3_key",
           "content_hash",
-          "assets"
+          "assets",
+          "capabilities_status"
         ],
         "title": "CompleteCourseVersionUploadSessionResponse",
         "type": "object"
@@ -521,7 +629,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Price Cents"
           }
         },
@@ -590,6 +697,10 @@
             "type": "string"
           },
           "purchase_flow": {
+            "enum": [
+              "free",
+              "stripe_checkout"
+            ],
             "title": "Purchase Flow",
             "type": "string"
           },
@@ -601,12 +712,12 @@
         "required": [
           "order_id",
           "order_reference",
+          "purchase_flow",
           "checkout_required",
           "amount_cents",
           "currency",
           "marketplace_fee_cents",
           "seller_net_amount_cents",
-          "purchase_flow",
           "order_status"
         ],
         "title": "CourseCheckoutResponse",
@@ -2364,6 +2475,42 @@
             "title": "Assets",
             "type": "array"
           },
+          "capabilities_manifest_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Manifest Path"
+          },
+          "capabilities_schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Schema Version"
+          },
+          "capabilities_status": {
+            "title": "Capabilities Status",
+            "type": "string"
+          },
+          "capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "content_hash": {
             "anyOf": [
               {
@@ -2389,6 +2536,18 @@
             "format": "uuid",
             "title": "Created By Agent Id",
             "type": "string"
+          },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
           },
           "id": {
             "format": "uuid",
@@ -2449,7 +2608,8 @@
           "created_by_agent_id",
           "created_at",
           "published_at",
-          "assets"
+          "assets",
+          "capabilities_status"
         ],
         "title": "GetCourseVersionResponse",
         "type": "object"
