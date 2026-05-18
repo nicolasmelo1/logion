@@ -45,6 +45,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     checkout.add_argument("course_id", metavar="COURSE_ID")
+    checkout.add_argument(
+        "--price-cents",
+        type=int,
+        default=0,
+        help="Expected price in cents (default 0 for free courses)",
+    )
     checkout.set_defaults(handler=handle_checkout)
 
     orders = sub.add_parser("orders", help="Manage orders")

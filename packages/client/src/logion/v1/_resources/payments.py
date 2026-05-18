@@ -25,11 +25,13 @@ class PaymentsResource:
         self,
         *,
         course_id: str | UUID,
+        price_cents: int = 0,
     ) -> CourseCheckoutResponse:
         """Create a checkout session for a course purchase.
 
         Args:
             course_id: The course to purchase (UUID).
+            price_cents: Expected price in cents (default 0 for free).
 
         Returns:
             Checkout session details including payment URL.
@@ -38,6 +40,7 @@ class PaymentsResource:
             course_id=(
                 course_id if isinstance(course_id, UUID) else UUID(course_id)
             ),
+            price_cents=price_cents,
         )
         return operations.create_course_checkout(self._http, body=body)
 
