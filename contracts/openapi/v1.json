@@ -511,6 +511,18 @@
             "format": "uuid",
             "title": "Course Id",
             "type": "string"
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Price Cents"
           }
         },
         "required": [
@@ -525,17 +537,40 @@
             "title": "Amount Cents",
             "type": "integer"
           },
+          "checkout_required": {
+            "title": "Checkout Required",
+            "type": "boolean"
+          },
           "checkout_session_id": {
-            "title": "Checkout Session Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Session Id"
           },
           "checkout_url": {
-            "title": "Checkout Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Url"
           },
           "currency": {
             "title": "Currency",
             "type": "string"
+          },
+          "entitlement_granted": {
+            "default": false,
+            "title": "Entitlement Granted",
+            "type": "boolean"
           },
           "marketplace_fee_cents": {
             "title": "Marketplace Fee Cents",
@@ -550,6 +585,14 @@
             "title": "Order Reference",
             "type": "string"
           },
+          "order_status": {
+            "title": "Order Status",
+            "type": "string"
+          },
+          "purchase_flow": {
+            "title": "Purchase Flow",
+            "type": "string"
+          },
           "seller_net_amount_cents": {
             "title": "Seller Net Amount Cents",
             "type": "integer"
@@ -558,12 +601,13 @@
         "required": [
           "order_id",
           "order_reference",
-          "checkout_session_id",
-          "checkout_url",
+          "checkout_required",
           "amount_cents",
           "currency",
           "marketplace_fee_cents",
-          "seller_net_amount_cents"
+          "seller_net_amount_cents",
+          "purchase_flow",
+          "order_status"
         ],
         "title": "CourseCheckoutResponse",
         "type": "object"
