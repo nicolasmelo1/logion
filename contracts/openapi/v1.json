@@ -513,9 +513,16 @@
             "type": "string"
           },
           "price_cents": {
-            "default": 0,
-            "title": "Price Cents",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Price Cents"
           }
         },
         "required": [

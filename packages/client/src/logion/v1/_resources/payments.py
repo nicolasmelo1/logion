@@ -25,13 +25,16 @@ class PaymentsResource:
         self,
         *,
         course_id: str | UUID,
-        price_cents: int = 0,
+        price_cents: int | None = None,
     ) -> CourseCheckoutResponse:
         """Create a checkout session for a course purchase.
 
         Args:
             course_id: The course to purchase (UUID).
-            price_cents: Expected price in cents (default 0 for free).
+            price_cents: Expected price in cents. Omit or pass None
+                to skip price validation and route based on the
+                course's stored price. Pass an explicit value to
+                verify it matches before proceeding.
 
         Returns:
             Checkout session details including payment URL.

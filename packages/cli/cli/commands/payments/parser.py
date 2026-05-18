@@ -48,8 +48,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     checkout.add_argument(
         "--price-cents",
         type=int,
-        default=0,
-        help="Expected price in cents (default 0 for free courses)",
+        default=None,
+        help=(
+            "Expected price in cents. Omit to skip price validation "
+            "and route based on the course's stored price."
+        ),
     )
     checkout.set_defaults(handler=handle_checkout)
 
