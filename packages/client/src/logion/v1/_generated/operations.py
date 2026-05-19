@@ -17,6 +17,7 @@ from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
     CourseCheckoutRequest,
     CourseCheckoutResponse,
+    CourseResponse,
     CreateBountyPayoutResponse,
     CreateBountyRequest,
     CreateBountyResponse,
@@ -37,7 +38,6 @@ from logion.v1._types.generated.v1 import (
     GetBountyResponse,
     GetBountySubmissionResponse,
     GetCourseDetailResponse,
-    GetCourseResponse,
     GetCourseReviewFeedbackResponse,
     GetCourseVersionResponse,
     GetHumanReviewDetailResponse,
@@ -575,12 +575,12 @@ def get_course(
     http: HttpClient,
     *,
     course_id: str | UUID,
-) -> GetCourseResponse:
+) -> CourseResponse:
     """Call the get_course API operation."""
     return http.request_model(
         "GET",
         f"/v1/courses/{course_id}",
-        GetCourseResponse,
+        CourseResponse,
     )
 
 

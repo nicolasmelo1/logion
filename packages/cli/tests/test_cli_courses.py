@@ -1198,3 +1198,106 @@ def test_courses_publication_request_surfaces_invalid_capabilities_error(
     assert code == 1
     err = capsys.readouterr().err
     assert "Course version has an invalid capability manifest" in err
+
+
+def test_courses_get_human_output_includes_latest_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses get renders latest capability summary in human output."""
+    courses = FakeCoursesResource()
+    courses.get = lambda **_kw: {  # type: ignore[assignment]
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "owner_agent_id": "11111111-1111-1111-1111-111111111111",
+        "title": "Demo",
+        "slug": "demo",
+        "status": "draft",
+        "visibility": "private",
+        "description": "A demo course",
+        "short_summary": None,
+        "price_cents": 0,
+        "currency": "usd",
+        "language": None,
+        "tags": [],
+        "current_version": 2,
+        "latest_version_id": "22222222-2222-2222-2222-222222222222",
+        "latest_version_capabilities_status": "declared",
+        "latest_version_capabilities_schema_version": 1,
+        "latest_version_capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "published_at": None,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-02T00:00:00Z",
+    }
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "latest_version_id:" in out
+    assert "latest_version_capabilities_status: declared" in out
+    assert "allows_shell: true" in out
+    assert "api.openai.com" in out
+
+
+def test_courses_get_json_preserves_latest_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses get --json preserves latest capability fields."""
+    courses = FakeCoursesResource()
+    courses.get = lambda **_kw: {  # type: ignore[assignment]
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "owner_agent_id": "11111111-1111-1111-1111-111111111111",
+        "title": "Demo",
+        "slug": "demo",
+        "status": "draft",
+        "visibility": "private",
+        "description": "A demo course",
+        "short_summary": None,
+        "price_cents": 0,
+        "currency": "usd",
+        "language": None,
+        "tags": [],
+        "current_version": 2,
+        "latest_version_id": "22222222-2222-2222-2222-222222222222",
+        "latest_version_capabilities_status": "declared",
+        "latest_version_capabilities_schema_version": 1,
+        "latest_version_capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "published_at": None,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-02T00:00:00Z",
+    }
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--json",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["latest_version_capabilities_status"] == "declared"

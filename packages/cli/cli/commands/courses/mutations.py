@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit
+from cli._output import emit, to_data
 from cli._utils import only_not_none
+from cli.commands.courses._capability_render import (
+    _append_summary_fields,
+)
 
 MUTABLE_UPDATE_FIELDS = [
     "title",
@@ -19,6 +23,24 @@ MUTABLE_UPDATE_FIELDS = [
     "short_summary",
     "visibility",
 ]
+
+
+def _append_course_capability_lines(
+    lines: list[str],
+    data: dict[str, object],
+) -> None:
+    """Append latest-version capability summary lines for course detail."""
+    status = data.get("latest_version_capabilities_status")
+    if status:
+        lines.append(f"latest_version_capabilities_status: {status}")
+    schema_version = data.get("latest_version_capabilities_schema_version")
+    if schema_version is not None:
+        lines.append(
+            f"latest_version_capabilities_schema_version: {schema_version}"
+        )
+    summary = data.get("latest_version_capabilities_summary")
+    if summary and isinstance(summary, dict):
+        _append_summary_fields(lines, summary)
 
 
 def _check_clear_price_conflict(args: argparse.Namespace) -> int | None:
@@ -105,7 +127,39 @@ def handle_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.courses.get(course_id=args.course_id)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit(result, json_output=True)
+        else:
+            data = to_data(result)
+            lines: list[str] = [
+                f"id: {data['id']}",
+                f"owner_agent_id: {data['owner_agent_id']}",
+                f"title: {data['title']}",
+                f"slug: {data['slug']}",
+                f"status: {data['status']}",
+                f"visibility: {data['visibility']}",
+            ]
+            if data.get("description"):
+                lines.append(f"description: {data['description']}")
+            if data.get("short_summary"):
+                lines.append(f"short_summary: {data['short_summary']}")
+            lines.append(f"price_cents: {data['price_cents']}")
+            lines.append(f"currency: {data['currency']}")
+            if data.get("language"):
+                lines.append(f"language: {data['language']}")
+            if data.get("tags"):
+                lines.append(f"tags: {', '.join(data['tags'])}")
+            lines.append(f"current_version: {data.get('current_version')}")
+            latest_version_id = data.get("latest_version_id")
+            if latest_version_id:
+                lines.append(f"latest_version_id: {latest_version_id}")
+            _append_course_capability_lines(lines, data)
+            if data.get("published_at"):
+                lines.append(f"published_at: {data['published_at']}")
+            lines.append(f"created_at: {data['created_at']}")
+            lines.append(f"updated_at: {data['updated_at']}")
+            sys.stdout.write("\n".join(lines))
+            sys.stdout.write("\n")
     except Exception as exc:
         return handle_error(exc)
     else:
