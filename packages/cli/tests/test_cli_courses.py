@@ -8,7 +8,14 @@ from typing import Any
 
 import pytest
 
+from cli._course_capabilities import (
+    CapabilityManifestError,
+    load_and_validate_capability_manifest,
+    normalize_capability_manifest,
+    summarize_capability_manifest,
+)
 from cli.main import main
+from logion import APIError
 
 
 class FakeCoursesResource:
@@ -986,3 +993,393 @@ def test_courses_versions_get_json_output(
     payload = json.loads(output)
     assert payload["capabilities_status"] == "declared"
     assert payload["capabilities_summary"]["tools"] == ["terminal"]
+
+
+# ---------------------------------------------------------------------------
+# Task 7: Local capability validator
+# ---------------------------------------------------------------------------
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_local_capability_validator_normalizes_valid_fixture() -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    manifest = load_and_validate_capability_manifest(bundle)
+    summary = summarize_capability_manifest(manifest)
+    assert manifest["tools"] == ["file", "terminal"]
+    assert summary["allows_shell"] is True
+    assert summary["allowed_domains"] == ["api.openai.com"]
+
+
+def test_local_capability_validator_rejects_invalid_fixture() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    with pytest.raises(CapabilityManifestError):
+        load_and_validate_capability_manifest(bundle)
+
+
+@pytest.mark.parametrize("version", [True, False, "1"])
+def test_local_capability_validator_rejects_non_integer_version(
+    version: object,
+) -> None:
+    raw = {"version": version}
+
+    with pytest.raises(
+        CapabilityManifestError,
+        match="Unsupported capability manifest version",
+    ):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ({"version": 1, "tools": ""}, "tools must be a list"),
+        (
+            {"version": 1, "network": {"allow_domains": ""}},
+            "allow_domains must be a list",
+        ),
+        (
+            {"version": 1, "filesystem": {"read": ""}},
+            "Filesystem paths must be a list",
+        ),
+        (
+            {"version": 1, "filesystem": {"write": ""}},
+            "Filesystem paths must be a list",
+        ),
+        ({"version": 1, "secrets": {"env": ""}}, "env must be a list"),
+    ],
+)
+def test_local_capability_validator_rejects_falsy_non_list_values(
+    raw: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(CapabilityManifestError, match=message):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("network", []),
+        ("filesystem", []),
+        ("secrets", []),
+        ("human_approval", []),
+    ],
+)
+def test_local_capability_validator_rejects_non_mapping_sections(
+    field_name: str,
+    value: object,
+) -> None:
+    raw = {"version": 1, field_name: value}
+
+    with pytest.raises(CapabilityManifestError, match="must be a mapping"):
+        normalize_capability_manifest(raw)
+
+
+def test_local_capability_validator_rejects_non_boolean_human_approval() -> (
+    None
+):
+    raw = {"version": 1, "human_approval": {"required": "false"}}
+
+    with pytest.raises(CapabilityManifestError, match="must be a boolean"):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["./../secrets", "course/../../secrets"],
+)
+def test_local_capability_validator_rejects_nested_path_traversal(
+    path: str,
+) -> None:
+    raw = {"version": 1, "filesystem": {"read": [path]}}
+
+    with pytest.raises(CapabilityManifestError, match="Path traversal"):
+        normalize_capability_manifest(raw)
+
+
+# ---------------------------------------------------------------------------
+# Task 8: Parser for courses capabilities sub-commands
+# ---------------------------------------------------------------------------
+
+
+def test_courses_capabilities_validate_parser() -> None:
+    from cli._parser import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        "bundle",
+    ])
+    assert args.bundle_dir == Path("bundle")
+    assert callable(args.handler)
+
+
+def test_courses_capabilities_print_parser() -> None:
+    from cli._parser import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        "bundle",
+    ])
+    assert args.bundle_dir == Path("bundle")
+    assert callable(args.handler)
+
+
+# ---------------------------------------------------------------------------
+# Task 9: Capability command handlers
+# ---------------------------------------------------------------------------
+
+
+def test_courses_capabilities_validate_success() -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+
+
+def test_courses_capabilities_validate_success_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "capabilities_status: declared" in output
+    assert "allows_shell: true" in output
+    assert "api.openai.com" in output
+
+
+def test_courses_capabilities_validate_failure_exits_2() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+
+
+def test_courses_capabilities_validate_failure_error_message(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "Invalid capability manifest" in err
+
+
+def test_courses_capabilities_print_outputs_normalized_json(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["version"] == 1
+    assert payload["tools"] == ["file", "terminal"]
+
+
+def test_courses_capabilities_print_failure_exits_2() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+
+
+# ---------------------------------------------------------------------------
+# Task 11: Publication request preserves capability errors
+# ---------------------------------------------------------------------------
+
+
+def test_courses_publication_request_surfaces_missing_capabilities_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API 422 with missing-capabilities detail is surfaced to the user."""
+    courses = FakeCoursesResource()
+    courses.request_publication_review = (  # type: ignore[assignment]
+        lambda **_kw: (_ for _ in ()).throw(
+            APIError(
+                status_code=422,
+                detail=("Course version is missing course/capabilities.yaml"),
+            )
+        )
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "publication",
+        "request",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 1
+
+
+def test_courses_publication_request_surfaces_invalid_capabilities_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """API 422 with invalid-capability detail is surfaced to the user."""
+    courses = FakeCoursesResource()
+    courses.request_publication_review = (  # type: ignore[assignment]
+        lambda **_kw: (_ for _ in ()).throw(
+            APIError(
+                status_code=422,
+                detail=("Course version has an invalid capability manifest"),
+            )
+        )
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "publication",
+        "request",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "Course version has an invalid capability manifest" in err
+
+
+def test_courses_get_human_output_includes_latest_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses get renders latest capability summary in human output."""
+    courses = FakeCoursesResource()
+    courses.get = lambda **_kw: {  # type: ignore[assignment]
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "owner_agent_id": "11111111-1111-1111-1111-111111111111",
+        "title": "Demo",
+        "slug": "demo",
+        "status": "draft",
+        "visibility": "private",
+        "description": "A demo course",
+        "short_summary": None,
+        "price_cents": 0,
+        "currency": "usd",
+        "language": None,
+        "tags": [],
+        "current_version": 2,
+        "latest_version_id": "22222222-2222-2222-2222-222222222222",
+        "latest_version_capabilities_status": "declared",
+        "latest_version_capabilities_schema_version": 1,
+        "latest_version_capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "published_at": None,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-02T00:00:00Z",
+    }
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "latest_version_id:" in out
+    assert "latest_version_capabilities_status: declared" in out
+    assert "allows_shell: true" in out
+    assert "api.openai.com" in out
+
+
+def test_courses_get_json_preserves_latest_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses get --json preserves latest capability fields."""
+    courses = FakeCoursesResource()
+    courses.get = lambda **_kw: {  # type: ignore[assignment]
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "owner_agent_id": "11111111-1111-1111-1111-111111111111",
+        "title": "Demo",
+        "slug": "demo",
+        "status": "draft",
+        "visibility": "private",
+        "description": "A demo course",
+        "short_summary": None,
+        "price_cents": 0,
+        "currency": "usd",
+        "language": None,
+        "tags": [],
+        "current_version": 2,
+        "latest_version_id": "22222222-2222-2222-2222-222222222222",
+        "latest_version_capabilities_status": "declared",
+        "latest_version_capabilities_schema_version": 1,
+        "latest_version_capabilities_summary": {
+            "tools": ["file", "terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "filesystem_read": ["."],
+            "filesystem_write": ["./outputs"],
+            "secrets_env": ["OPENAI_API_KEY"],
+            "human_approval_required": True,
+        },
+        "published_at": None,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-02T00:00:00Z",
+    }
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--json",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["latest_version_capabilities_status"] == "declared"

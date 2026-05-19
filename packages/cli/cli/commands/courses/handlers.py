@@ -1,5 +1,9 @@
 """Stable handler exports for courses commands."""
 
+from .capabilities import (
+    handle_courses_capabilities_print,
+    handle_courses_capabilities_validate,
+)
 from .mutations import (
     handle_create,
     handle_get,
@@ -22,6 +26,8 @@ from .uploads import (
 from .versions import handle_versions_get
 
 __all__ = [
+    "handle_courses_capabilities_print",
+    "handle_courses_capabilities_validate",
     "handle_create",
     "handle_feedback",
     "handle_get",

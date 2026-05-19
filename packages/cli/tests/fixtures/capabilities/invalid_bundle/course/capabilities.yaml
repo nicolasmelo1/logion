@@ -1,0 +1,9 @@
+version: 1
+tools:
+  - email
+network:
+  allow_domains:
+    - "*"
+filesystem:
+  read:
+    - ../secrets

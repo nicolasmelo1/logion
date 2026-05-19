@@ -7,6 +7,7 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import handle_feedback, handle_versions_get
+from .parser_capabilities import register_capabilities
 from .parser_sections import (
     CMD_HELP,
     register_create,
@@ -32,6 +33,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     register_uploads(sub)
     register_publication(sub)
     register_reviews(sub)
+    register_capabilities(sub)
     feedback = sub.add_parser(
         "feedback",
         help=CMD_HELP["feedback"],

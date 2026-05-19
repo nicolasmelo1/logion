@@ -558,14 +558,12 @@
           "capabilities_summary": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/CapabilitySummaryResponse"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Capabilities Summary"
+            ]
           },
           "content_hash": {
             "title": "Content Hash",
@@ -2319,6 +2317,55 @@
               }
             ],
             "title": "Language"
+          },
+          "latest_version_capabilities_schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Capabilities Schema Version"
+          },
+          "latest_version_capabilities_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "missing",
+                  "declared",
+                  "invalid"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Capabilities Status"
+          },
+          "latest_version_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Id"
           },
           "owner_agent_id": {
             "format": "uuid",

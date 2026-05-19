@@ -29,6 +29,7 @@ CMD_HELP = {
     "reviews": "Manage marketplace course reviews",
     "feedback": "Get review feedback for a course",
     "versions": "Manage course versions",
+    "capabilities": "Validate and inspect local capability manifests",
 }
 
 
