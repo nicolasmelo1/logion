@@ -61,11 +61,16 @@ def normalize_capability_manifest(
         raise CapabilityManifestError(
             f"Unknown top-level key: {sorted(unknown)[0]}"
         )
-    if raw.get("version") != 1:
+    version = raw.get("version")
+    if (
+        not isinstance(version, int)
+        or isinstance(version, bool)
+        or version != 1
+    ):
         raise CapabilityManifestError(
             "Unsupported capability manifest version"
         )
-    tools = _normalize_tools(raw.get("tools") or [])
+    tools = _normalize_tools(_default_list(raw.get("tools")))
     network = _mapping_or_empty(raw.get("network"), "network")
     filesystem = _mapping_or_empty(raw.get("filesystem"), "filesystem")
     secrets = _mapping_or_empty(raw.get("secrets"), "secrets")
@@ -77,18 +82,20 @@ def normalize_capability_manifest(
         raise CapabilityManifestError(
             "human_approval.required must be a boolean"
         )
-    allow_domains = _normalize_domains(network.get("allow_domains") or [])
+    allow_domains = _normalize_domains(
+        _default_list(network.get("allow_domains"))
+    )
     return {
         "version": 1,
         "summary": raw.get("summary"),
         "tools": tools,
         "network": {"allow_domains": allow_domains},
         "filesystem": {
-            "read": _normalize_paths(filesystem.get("read") or []),
-            "write": _normalize_paths(filesystem.get("write") or []),
+            "read": _normalize_paths(_default_list(filesystem.get("read"))),
+            "write": _normalize_paths(_default_list(filesystem.get("write"))),
         },
         "secrets": {
-            "env": _normalize_env(secrets.get("env") or []),
+            "env": _normalize_env(_default_list(secrets.get("env"))),
         },
         "human_approval": {
             "required": human_approval_required,
@@ -133,7 +140,11 @@ def _mapping_or_empty(value: Any, field_name: str) -> dict[str, Any]:
     return value
 
 
-def _normalize_tools(tools: list[Any]) -> list[str]:
+def _default_list(value: Any) -> Any:
+    return [] if value is None else value
+
+
+def _normalize_tools(tools: Any) -> list[str]:
     if not isinstance(tools, list):
         raise CapabilityManifestError("tools must be a list")
     result: list[str] = []
@@ -146,7 +157,7 @@ def _normalize_tools(tools: list[Any]) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_domains(domains: list[Any]) -> list[str]:
+def _normalize_domains(domains: Any) -> list[str]:
     if not isinstance(domains, list):
         raise CapabilityManifestError("allow_domains must be a list")
     result: list[str] = []
@@ -163,7 +174,7 @@ def _normalize_domains(domains: list[Any]) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_paths(paths: list[Any]) -> list[str]:
+def _normalize_paths(paths: Any) -> list[str]:
     if not isinstance(paths, list):
         raise CapabilityManifestError("Filesystem paths must be a list")
     result: list[str] = []
@@ -179,7 +190,7 @@ def _normalize_paths(paths: list[Any]) -> list[str]:
     return result
 
 
-def _normalize_env(env_vars: list[Any]) -> list[str]:
+def _normalize_env(env_vars: Any) -> list[str]:
     if not isinstance(env_vars, list):
         raise CapabilityManifestError("env must be a list")
     result: list[str] = []

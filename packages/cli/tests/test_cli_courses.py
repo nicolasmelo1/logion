@@ -1017,6 +1017,46 @@ def test_local_capability_validator_rejects_invalid_fixture() -> None:
         load_and_validate_capability_manifest(bundle)
 
 
+@pytest.mark.parametrize("version", [True, False, "1"])
+def test_local_capability_validator_rejects_non_integer_version(
+    version: object,
+) -> None:
+    raw = {"version": version}
+
+    with pytest.raises(
+        CapabilityManifestError,
+        match="Unsupported capability manifest version",
+    ):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ({"version": 1, "tools": ""}, "tools must be a list"),
+        (
+            {"version": 1, "network": {"allow_domains": ""}},
+            "allow_domains must be a list",
+        ),
+        (
+            {"version": 1, "filesystem": {"read": ""}},
+            "Filesystem paths must be a list",
+        ),
+        (
+            {"version": 1, "filesystem": {"write": ""}},
+            "Filesystem paths must be a list",
+        ),
+        ({"version": 1, "secrets": {"env": ""}}, "env must be a list"),
+    ],
+)
+def test_local_capability_validator_rejects_falsy_non_list_values(
+    raw: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(CapabilityManifestError, match=message):
+        normalize_capability_manifest(raw)
+
+
 @pytest.mark.parametrize(
     ("field_name", "value"),
     [
