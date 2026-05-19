@@ -123,4 +123,6 @@ def _append_observed_lines(
 
     dangerous = observed.get("dangerous_commands_detected")
     if dangerous is not None:
-        lines.append(f"  dangerous_commands_detected: {str(dangerous).lower()}")
+        lines.append(
+            f"  dangerous_commands_detected: {str(dangerous).lower()}"
+        )

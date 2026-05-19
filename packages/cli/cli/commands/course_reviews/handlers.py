@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 
 from pydantic import BaseModel
 
@@ -137,26 +138,29 @@ def _render_list(result: object) -> None:
     data = _to_data(result)
     items = data.get("items", [])
     if not items:
-        print("No reviews in the queue.")
+        sys.stdout.write("No reviews in the queue.\n")
         return
     for item in items:
+        course = (
+            f"{item.get('course_title', '')} ({item.get('course_id', '')})"
+        )
         lines: list[str] = [
             f"review_id: {item.get('review_id', '')}",
-            f"course: {item.get('course_title', '')} ({item.get('course_id', '')})",
+            f"course: {course}",
             f"status: {item.get('review_status', '')}",
             f"findings: {item.get('finding_count', 0)}",
         ]
         append_queue_capability_summary_lines(lines, item)
-        print("\n".join(lines))
-        print()
+        sys.stdout.write("\n".join(lines) + "\n\n")
 
 
 def _render_get(result: object) -> None:
     """Render review detail with human-readable capability evidence."""
     data = _to_data(result)
+    course = f"{data.get('course_title', '')} ({data.get('course_id', '')})"
     lines: list[str] = [
         f"review_id: {data.get('review_id', '')}",
-        f"course: {data.get('course_title', '')} ({data.get('course_id', '')})",
+        f"course: {course}",
         f"version_id: {data.get('version_id', '')}",
         f"status: {data.get('review_status', '')}",
         f"owner_agent_id: {data.get('owner_agent_id', '')}",
@@ -178,4 +182,4 @@ def _render_get(result: object) -> None:
                 if desc:
                     lines.append(f"      {desc}")
 
-    print("\n".join(lines))
+    sys.stdout.write("\n".join(lines) + "\n")

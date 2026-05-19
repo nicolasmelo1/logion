@@ -384,7 +384,7 @@ def test_course_reviews_get_json_capability_fields(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """course-reviews get --json preserves declared/observed/mismatch payloads."""
+    """course-reviews get --json preserves capability payloads."""
     cr = FakeCourseReviewsResource()
     fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
     _patch_client(monkeypatch, fake)
