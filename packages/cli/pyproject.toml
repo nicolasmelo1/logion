@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "logion-client",
     "pydantic>=2.7,<3.0.0",
+    "pyyaml>=6.0,<7.0",
 ]
 
 [tool.uv.sources]
@@ -19,6 +20,7 @@ lgn = "cli.main:main"
 dev = [
     "pytest>=9.0.3,<9.1.0",
     "ruff>=0.15.12,<0.16.0",
+    "types-PyYAML>=6.0,<7.0",
 ]
 
 [build-system]
@@ -72,6 +74,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "cli/_errors.py" = ["T201"]
 "cli/_output.py" = ["T201"]
+"cli/commands/courses/capabilities.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion"]

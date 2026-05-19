@@ -8,7 +8,13 @@ from typing import Any
 
 import pytest
 
+from cli._course_capabilities import (
+    CapabilityManifestError,
+    load_and_validate_capability_manifest,
+    summarize_capability_manifest,
+)
 from cli.main import main
+from logion import APIError
 
 
 class FakeCoursesResource:
@@ -986,3 +992,209 @@ def test_courses_versions_get_json_output(
     payload = json.loads(output)
     assert payload["capabilities_status"] == "declared"
     assert payload["capabilities_summary"]["tools"] == ["terminal"]
+
+
+# ---------------------------------------------------------------------------
+# Task 7: Local capability validator
+# ---------------------------------------------------------------------------
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_local_capability_validator_normalizes_valid_fixture() -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    manifest = load_and_validate_capability_manifest(bundle)
+    summary = summarize_capability_manifest(manifest)
+    assert manifest["tools"] == ["file", "terminal"]
+    assert summary["allows_shell"] is True
+    assert summary["allowed_domains"] == ["api.openai.com"]
+
+
+def test_local_capability_validator_rejects_invalid_fixture() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    with pytest.raises(CapabilityManifestError):
+        load_and_validate_capability_manifest(bundle)
+
+
+# ---------------------------------------------------------------------------
+# Task 8: Parser for courses capabilities sub-commands
+# ---------------------------------------------------------------------------
+
+
+def test_courses_capabilities_validate_parser() -> None:
+    from cli._parser import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        "bundle",
+    ])
+    assert args.bundle_dir == Path("bundle")
+    assert callable(args.handler)
+
+
+def test_courses_capabilities_print_parser() -> None:
+    from cli._parser import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        "bundle",
+    ])
+    assert args.bundle_dir == Path("bundle")
+    assert callable(args.handler)
+
+
+# ---------------------------------------------------------------------------
+# Task 9: Capability command handlers
+# ---------------------------------------------------------------------------
+
+
+def test_courses_capabilities_validate_success() -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+
+
+def test_courses_capabilities_validate_success_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "capabilities_status: declared" in output
+    assert "allows_shell: true" in output
+    assert "api.openai.com" in output
+
+
+def test_courses_capabilities_validate_failure_exits_2() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+
+
+def test_courses_capabilities_validate_failure_error_message(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "Invalid capability manifest" in err
+
+
+def test_courses_capabilities_print_outputs_normalized_json(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    bundle = FIXTURES / "capabilities" / "valid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["version"] == 1
+    assert payload["tools"] == ["file", "terminal"]
+
+
+def test_courses_capabilities_print_failure_exits_2() -> None:
+    bundle = FIXTURES / "capabilities" / "invalid_bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "print",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+
+
+# ---------------------------------------------------------------------------
+# Task 11: Publication request preserves capability errors
+# ---------------------------------------------------------------------------
+
+
+def test_courses_publication_request_surfaces_missing_capabilities_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API 422 with missing-capabilities detail is surfaced to the user."""
+    courses = FakeCoursesResource()
+    courses.request_publication_review = (  # type: ignore[assignment]
+        lambda **_kw: (_ for _ in ()).throw(
+            APIError(
+                status_code=422,
+                detail=("Course version is missing course/capabilities.yaml"),
+            )
+        )
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "publication",
+        "request",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 1
+
+
+def test_courses_publication_request_surfaces_invalid_capabilities_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """API 422 with invalid-capability detail is surfaced to the user."""
+    courses = FakeCoursesResource()
+    courses.request_publication_review = (  # type: ignore[assignment]
+        lambda **_kw: (_ for _ in ()).throw(
+            APIError(
+                status_code=422,
+                detail=("Course version has an invalid capability manifest"),
+            )
+        )
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "publication",
+        "request",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "Course version has an invalid capability manifest" in err

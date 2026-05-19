@@ -1,0 +1,18 @@
+version: 1
+summary: Local valid manifest
+tools:
+  - terminal
+  - file
+network:
+  allow_domains:
+    - api.openai.com
+filesystem:
+  read:
+    - .
+  write:
+    - ./outputs
+secrets:
+  env:
+    - OPENAI_API_KEY
+human_approval:
+  required: true
