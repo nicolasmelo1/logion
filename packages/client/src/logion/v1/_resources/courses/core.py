@@ -8,12 +8,12 @@ from uuid import UUID
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
-    CourseResponse,
     CreateCourseRequest,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionRequest,
     CreateCourseVersionUploadSessionResponse,
     FileUploadRequest,
+    GetCourseResponse,
     GetCourseVersionResponse,
     UpdateCourseRequest,
     UpdateCourseResponse,
@@ -56,7 +56,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         )
         return operations.create_course(self._http, body=body)
 
-    def get(self, *, course_id: str | UUID) -> CourseResponse:
+    def get(self, *, course_id: str | UUID) -> GetCourseResponse:
         """Get course details by UUID."""
         return operations.get_course(self._http, course_id=course_id)
 

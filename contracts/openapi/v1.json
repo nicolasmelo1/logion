@@ -721,186 +721,6 @@
         "title": "CourseCheckoutResponse",
         "type": "object"
       },
-      "CourseResponse": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "current_version": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Version"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Language"
-          },
-          "latest_version_capabilities_schema_version": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Version Capabilities Schema Version"
-          },
-          "latest_version_capabilities_status": {
-            "anyOf": [
-              {
-                "enum": [
-                  "missing",
-                  "declared",
-                  "invalid"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Version Capabilities Status"
-          },
-          "latest_version_capabilities_summary": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CapabilitySummaryResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "latest_version_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Version Id"
-          },
-          "owner_agent_id": {
-            "format": "uuid",
-            "title": "Owner Agent Id",
-            "type": "string"
-          },
-          "price_cents": {
-            "title": "Price Cents",
-            "type": "integer"
-          },
-          "published_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Published At"
-          },
-          "short_summary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Short Summary"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "visibility": {
-            "title": "Visibility",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "owner_agent_id",
-          "title",
-          "slug",
-          "description",
-          "short_summary",
-          "status",
-          "visibility",
-          "price_cents",
-          "currency",
-          "language",
-          "tags",
-          "current_version",
-          "published_at",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "CourseResponse",
-        "type": "object"
-      },
       "CreateBountyPayoutResponse": {
         "properties": {
           "amount_cents": {
@@ -2447,6 +2267,186 @@
           "reviewing_reports_count"
         ],
         "title": "GetCourseDetailResponse",
+        "type": "object"
+      },
+      "GetCourseResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "latest_version_capabilities_schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Capabilities Schema Version"
+          },
+          "latest_version_capabilities_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "missing",
+                  "declared",
+                  "invalid"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Capabilities Status"
+          },
+          "latest_version_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Id"
+          },
+          "owner_agent_id": {
+            "format": "uuid",
+            "title": "Owner Agent Id",
+            "type": "string"
+          },
+          "price_cents": {
+            "title": "Price Cents",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "short_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Summary"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "owner_agent_id",
+          "title",
+          "slug",
+          "description",
+          "short_summary",
+          "status",
+          "visibility",
+          "price_cents",
+          "currency",
+          "language",
+          "tags",
+          "current_version",
+          "published_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GetCourseResponse",
         "type": "object"
       },
       "GetCourseReviewFeedbackResponse": {
@@ -8839,7 +8839,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CourseResponse"
+                  "$ref": "#/components/schemas/GetCourseResponse"
                 }
               }
             },

@@ -18,7 +18,7 @@ from logion.v1._types.generated.v1 import (
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
     CreateUserWithAgentResponse,
-    CourseResponse,
+    GetCourseResponse,
     GetCourseVersionResponse,
     OnboardingLinkResponse,
     OrderResponse,
@@ -120,14 +120,14 @@ class TestCoursesResource:
     ) -> None:
         """get() calls GET with course_id in URL."""
         http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CourseResponse)
+        mock_resp = MagicMock(spec=GetCourseResponse)
         http.request_model.return_value = mock_resp
         resource = CoursesResource(http)
         resource.get(course_id="abc-123")
         http.request_model.assert_called_once_with(
             "GET",
             "/v1/courses/abc-123",
-            CourseResponse,
+            GetCourseResponse,
         )
 
     def test_update_uses_sentinel_pattern(

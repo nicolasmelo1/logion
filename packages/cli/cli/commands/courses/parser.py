@@ -7,9 +7,9 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import handle_feedback, handle_versions_get
+from .parser_capabilities import register_capabilities
 from .parser_sections import (
     CMD_HELP,
-    register_capabilities,
     register_create,
     register_get,
     register_publication,
