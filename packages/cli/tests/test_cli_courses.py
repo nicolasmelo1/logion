@@ -11,6 +11,7 @@ import pytest
 from cli._course_capabilities import (
     CapabilityManifestError,
     load_and_validate_capability_manifest,
+    normalize_capability_manifest,
     summarize_capability_manifest,
 )
 from cli.main import main
@@ -1014,6 +1015,47 @@ def test_local_capability_validator_rejects_invalid_fixture() -> None:
     bundle = FIXTURES / "capabilities" / "invalid_bundle"
     with pytest.raises(CapabilityManifestError):
         load_and_validate_capability_manifest(bundle)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("network", []),
+        ("filesystem", []),
+        ("secrets", []),
+        ("human_approval", []),
+    ],
+)
+def test_local_capability_validator_rejects_non_mapping_sections(
+    field_name: str,
+    value: object,
+) -> None:
+    raw = {"version": 1, field_name: value}
+
+    with pytest.raises(CapabilityManifestError, match="must be a mapping"):
+        normalize_capability_manifest(raw)
+
+
+def test_local_capability_validator_rejects_non_boolean_human_approval() -> (
+    None
+):
+    raw = {"version": 1, "human_approval": {"required": "false"}}
+
+    with pytest.raises(CapabilityManifestError, match="must be a boolean"):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["./../secrets", "course/../../secrets"],
+)
+def test_local_capability_validator_rejects_nested_path_traversal(
+    path: str,
+) -> None:
+    raw = {"version": 1, "filesystem": {"read": [path]}}
+
+    with pytest.raises(CapabilityManifestError, match="Path traversal"):
+        normalize_capability_manifest(raw)
 
 
 # ---------------------------------------------------------------------------

@@ -66,10 +66,17 @@ def normalize_capability_manifest(
             "Unsupported capability manifest version"
         )
     tools = _normalize_tools(raw.get("tools") or [])
-    network = raw.get("network") or {}
-    filesystem = raw.get("filesystem") or {}
-    secrets = raw.get("secrets") or {}
-    human_approval = raw.get("human_approval") or {}
+    network = _mapping_or_empty(raw.get("network"), "network")
+    filesystem = _mapping_or_empty(raw.get("filesystem"), "filesystem")
+    secrets = _mapping_or_empty(raw.get("secrets"), "secrets")
+    human_approval = _mapping_or_empty(
+        raw.get("human_approval"), "human_approval"
+    )
+    human_approval_required = human_approval.get("required", False)
+    if not isinstance(human_approval_required, bool):
+        raise CapabilityManifestError(
+            "human_approval.required must be a boolean"
+        )
     allow_domains = _normalize_domains(network.get("allow_domains") or [])
     return {
         "version": 1,
@@ -84,7 +91,7 @@ def normalize_capability_manifest(
             "env": _normalize_env(secrets.get("env") or []),
         },
         "human_approval": {
-            "required": bool(human_approval.get("required", False)),
+            "required": human_approval_required,
         },
     }
 
@@ -116,6 +123,14 @@ def summarize_capability_manifest(
 # ---------------------------------------------------------------------------
 # Internal normalisers
 # ---------------------------------------------------------------------------
+
+
+def _mapping_or_empty(value: Any, field_name: str) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise CapabilityManifestError(f"{field_name} must be a mapping")
+    return value
 
 
 def _normalize_tools(tools: list[Any]) -> list[str]:
@@ -155,10 +170,11 @@ def _normalize_paths(paths: list[Any]) -> list[str]:
     for p in paths:
         if not isinstance(p, str):
             raise CapabilityManifestError(f"Invalid path: {p!r}")
-        if p.startswith(".."):
-            raise CapabilityManifestError(f"Path traversal not allowed: {p!r}")
-        if p.startswith("/"):
+        path = Path(p)
+        if path.is_absolute():
             raise CapabilityManifestError(f"Absolute paths not allowed: {p!r}")
+        if ".." in path.parts:
+            raise CapabilityManifestError(f"Path traversal not allowed: {p!r}")
         result.append(p)
     return result
 
