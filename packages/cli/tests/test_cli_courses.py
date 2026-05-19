@@ -1007,6 +1007,7 @@ def test_local_capability_validator_normalizes_valid_fixture() -> None:
     manifest = load_and_validate_capability_manifest(bundle)
     summary = summarize_capability_manifest(manifest)
     assert manifest["tools"] == ["file", "terminal"]
+    assert manifest["summary"] == "Local valid manifest"
     assert summary["allows_shell"] is True
     assert summary["allowed_domains"] == ["api.openai.com"]
 
@@ -1086,6 +1087,44 @@ def test_local_capability_validator_rejects_non_boolean_human_approval() -> (
 
 
 @pytest.mark.parametrize(
+    ("summary", "message"),
+    [
+        (123, "summary must be a string"),
+        ("x" * 513, "summary must be at most 512 characters"),
+    ],
+)
+def test_local_capability_validator_rejects_invalid_summary(
+    summary: object,
+    message: str,
+) -> None:
+    raw = {"version": 1, "summary": summary}
+
+    with pytest.raises(CapabilityManifestError, match=message):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
+    ("domain", "message"),
+    [
+        ("", "Domain must not be empty"),
+        (
+            " api.openai.com",
+            "Domain must not contain leading/trailing whitespace",
+        ),
+        ("api.openai.com/path", "Domain must not contain a slash path"),
+    ],
+)
+def test_local_capability_validator_rejects_invalid_domains(
+    domain: str,
+    message: str,
+) -> None:
+    raw = {"version": 1, "network": {"allow_domains": [domain]}}
+
+    with pytest.raises(CapabilityManifestError, match=message):
+        normalize_capability_manifest(raw)
+
+
+@pytest.mark.parametrize(
     "path",
     ["./../secrets", "course/../../secrets"],
 )
@@ -1096,6 +1135,23 @@ def test_local_capability_validator_rejects_nested_path_traversal(
 
     with pytest.raises(CapabilityManifestError, match="Path traversal"):
         normalize_capability_manifest(raw)
+
+
+def test_local_capability_validator_normalizes_summary_and_paths() -> None:
+    raw = {
+        "version": 1,
+        "tools": ["terminal"],
+        "filesystem": {
+            "read": ["./outputs", ".", "./outputs"],
+            "write": ["./outputs", "./tmp", "./outputs"],
+        },
+    }
+
+    manifest = normalize_capability_manifest(raw)
+
+    assert manifest["summary"] == ""
+    assert manifest["filesystem"]["read"] == [".", "./outputs"]
+    assert manifest["filesystem"]["write"] == ["./outputs", "./tmp"]
 
 
 # ---------------------------------------------------------------------------

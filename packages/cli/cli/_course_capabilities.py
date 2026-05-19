@@ -70,6 +70,11 @@ def normalize_capability_manifest(
         raise CapabilityManifestError(
             "Unsupported capability manifest version"
         )
+    summary = raw.get("summary", "")
+    if not isinstance(summary, str):
+        raise CapabilityManifestError("summary must be a string")
+    if len(summary) > 512:
+        raise CapabilityManifestError("summary must be at most 512 characters")
     tools = _normalize_tools(_default_list(raw.get("tools")))
     network = _mapping_or_empty(raw.get("network"), "network")
     filesystem = _mapping_or_empty(raw.get("filesystem"), "filesystem")
@@ -87,7 +92,7 @@ def normalize_capability_manifest(
     )
     return {
         "version": 1,
-        "summary": raw.get("summary"),
+        "summary": summary,
         "tools": tools,
         "network": {"allow_domains": allow_domains},
         "filesystem": {
@@ -164,11 +169,21 @@ def _normalize_domains(domains: Any) -> list[str]:
     for d in domains:
         if not isinstance(d, str):
             raise CapabilityManifestError(f"Invalid domain: {d!r}")
+        if not d:
+            raise CapabilityManifestError("Domain must not be empty")
         if d == "*":
             raise CapabilityManifestError("Wildcard domain not allowed")
         if "://" in d:
             raise CapabilityManifestError(
                 f"Domain must not include scheme: {d!r}"
+            )
+        if "/" in d:
+            raise CapabilityManifestError(
+                f"Domain must not contain a slash path: {d!r}"
+            )
+        if d.strip() != d:
+            raise CapabilityManifestError(
+                "Domain must not contain leading/trailing whitespace"
             )
         result.append(d)
     return sorted(set(result))
@@ -187,7 +202,7 @@ def _normalize_paths(paths: Any) -> list[str]:
         if ".." in path.parts:
             raise CapabilityManifestError(f"Path traversal not allowed: {p!r}")
         result.append(p)
-    return result
+    return sorted(set(result))
 
 
 def _normalize_env(env_vars: Any) -> list[str]:
