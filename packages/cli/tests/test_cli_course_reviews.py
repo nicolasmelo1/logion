@@ -422,3 +422,100 @@ def test_course_reviews_get_human_capability_evidence(
     assert "capability_risk_score: 8" in out
     assert "high: network_domain_not_declared" in out
     assert "medium: tool_not_declared" in out
+
+
+def test_course_reviews_approve_forwards_acknowledge_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """course-reviews approve --acknowledge-capability-mismatches
+    forwards flag."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "approve",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--reviewer-notes",
+        "Acknowledged",
+        "--acknowledge-capability-mismatches",
+        "--yes",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = cr.last_call
+    assert method == "approve"
+    assert kwargs["acknowledge_capability_mismatches"] is True
+
+
+def test_course_reviews_approve_without_acknowledge_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """course-reviews approve without
+    --acknowledge-capability-mismatches omits flag."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "approve",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--reviewer-notes",
+        "OK",
+        "--yes",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = cr.last_call
+    assert method == "approve"
+    assert "acknowledge_capability_mismatches" not in kwargs
+
+
+def test_course_reviews_reject_forwards_capability_reason_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """course-reviews reject --capability-reason-code forwards code."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "reject",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--decision-reason",
+        "capability mismatch",
+        "--reviewer-notes",
+        "Network domain not declared",
+        "--capability-reason-code",
+        "network_domain_not_declared",
+        "--yes",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = cr.last_call
+    assert method == "reject"
+    assert kwargs["capability_reason_code"] == "network_domain_not_declared"
+
+
+def test_course_reviews_reject_without_capability_reason_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """course-reviews reject without --capability-reason-code omits code."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "reject",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--decision-reason",
+        "other issue",
+        "--reviewer-notes",
+        "Not capability related",
+        "--yes",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = cr.last_call
+    assert method == "reject"
+    assert kwargs.get("capability_reason_code") is None

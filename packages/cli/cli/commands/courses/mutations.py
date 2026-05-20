@@ -12,6 +12,7 @@ from cli._output import emit, to_data
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
+    append_approved_capability_summary_lines,
 )
 
 MUTABLE_UPDATE_FIELDS = [
@@ -154,6 +155,7 @@ def handle_get(args: argparse.Namespace) -> int:
             if latest_version_id:
                 lines.append(f"latest_version_id: {latest_version_id}")
             _append_course_capability_lines(lines, data)
+            append_approved_capability_summary_lines(lines, data)
             if data.get("published_at"):
                 lines.append(f"published_at: {data['published_at']}")
             lines.append(f"created_at: {data['created_at']}")

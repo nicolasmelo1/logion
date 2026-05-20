@@ -10,6 +10,7 @@ from cli._context import make_client
 from cli._errors import handle_error, validate_uuid_id
 from cli._output import emit, to_data
 from cli.commands.courses._capability_render import (
+    append_approved_capability_summary_lines,
     append_capability_summary_lines,
 )
 
@@ -52,6 +53,7 @@ def handle_versions_get(args: argparse.Namespace) -> int:
             if created_by:
                 lines.append(f"created_by_agent_id: {created_by}")
             append_capability_summary_lines(lines, data)
+            append_approved_capability_summary_lines(lines, data)
             sys.stdout.write("\n".join(lines))
             sys.stdout.write("\n")
     except Exception as exc:
