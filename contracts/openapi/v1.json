@@ -2663,6 +2663,43 @@
       },
       "GetHumanReviewDetailResponse": {
         "properties": {
+          "capabilities_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Status"
+          },
+          "capability_mismatches": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Mismatches"
+          },
+          "capability_risk_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Risk Score"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -2698,6 +2735,18 @@
             ],
             "title": "Decision Reason"
           },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
+          },
           "findings_by_layer": {
             "additionalProperties": {
               "items": {
@@ -2711,6 +2760,18 @@
           "initiated_by": {
             "title": "Initiated By",
             "type": "string"
+          },
+          "observed_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Capabilities"
           },
           "owner_agent_id": {
             "title": "Owner Agent Id",
@@ -3023,6 +3084,43 @@
       },
       "GetReviewStatusResponse": {
         "properties": {
+          "capabilities_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Status"
+          },
+          "capability_mismatches": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Mismatches"
+          },
+          "capability_risk_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Risk Score"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -3045,6 +3143,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
+          },
           "findings": {
             "items": {
               "$ref": "#/components/schemas/ReviewFindingResponse"
@@ -3061,6 +3171,18 @@
             "format": "uuid",
             "title": "Initiated By",
             "type": "string"
+          },
+          "observed_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Capabilities"
           },
           "started_at": {
             "anyOf": [
@@ -4171,6 +4293,39 @@
       },
       "QueueItemResponse": {
         "properties": {
+          "capabilities_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Status"
+          },
+          "capability_mismatch_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Mismatch Count"
+          },
+          "capability_risk_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Risk Score"
+          },
           "course_id": {
             "title": "Course Id",
             "type": "string"
