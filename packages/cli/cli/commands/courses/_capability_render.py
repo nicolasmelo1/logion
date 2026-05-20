@@ -56,3 +56,52 @@ def append_capability_summary_lines(
     summary = payload.get("capabilities_summary")
     if summary:
         _append_summary_fields(lines, summary)
+
+
+def append_approved_capability_summary_lines(
+    lines: list[str],
+    payload: dict[str, Any],
+) -> None:
+    """Append human-readable approved capability summary lines.
+
+    Only renders the buyer-safe subset: tools, allows_shell,
+    allows_network, allowed_domains, human_approval_required.
+    Does not expose review-only evidence.
+    """
+    approved = payload.get("approved_capabilities_summary")
+    if not approved or not isinstance(approved, dict):
+        return
+    lines.append("approved_capabilities_summary:")
+    for tool in approved.get("tools") or []:
+        lines.append(f"  tools: {tool}")
+    allows_shell = approved.get("allows_shell")
+    if allows_shell is not None:
+        lines.append(f"  allows_shell: {str(allows_shell).lower()}")
+    allows_network = approved.get("allows_network")
+    if allows_network is not None:
+        lines.append(f"  allows_network: {str(allows_network).lower()}")
+    for domain in approved.get("allowed_domains") or []:
+        lines.append(f"  allowed_domains: {domain}")
+    human_approval = payload.get("human_approval_required")
+    if human_approval is not None:
+        lines.append(f"human_approval_required: {str(human_approval).lower()}")
+
+
+def append_capability_feedback_lines(
+    lines: list[str],
+    payload: dict[str, Any],
+) -> None:
+    """Append human-readable capability feedback items."""
+    feedback_items = payload.get("capability_feedback")
+    if not feedback_items:
+        return
+    lines.append("capability_feedback:")
+    for item in feedback_items:
+        code = item.get("reason_code", "unknown")
+        msg = item.get("message", "")
+        lines.append(f"  - reason_code: {code}")
+        if msg:
+            lines.append(f"    message: {msg}")
+        file_path = item.get("file_path")
+        if file_path:
+            lines.append(f"    file_path: {file_path}")

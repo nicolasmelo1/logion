@@ -7,8 +7,11 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit
+from cli._output import emit, to_data
 from cli._utils import only_not_none
+from cli.commands.courses._capability_render import (
+    append_capability_feedback_lines,
+)
 
 REVIEW_SCORE_FIELDS = [
     ("reliability", "--reliability"),
@@ -119,6 +122,8 @@ def handle_reviews_upsert(args: argparse.Namespace) -> int:
 
 def handle_feedback(args: argparse.Namespace) -> int:
     """Execute the courses feedback command."""
+    import sys
+
     bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
@@ -128,7 +133,22 @@ def handle_feedback(args: argparse.Namespace) -> int:
         result = client.v1.courses.get_review_feedback(
             course_id=args.course_id,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit(result, json_output=True)
+        else:
+            data = to_data(result)
+            lines: list[str] = []
+            if data.get("summary"):
+                lines.append(f"summary: {data['summary']}")
+            if data.get("findings"):
+                lines.append("findings:")
+                for f in data["findings"]:
+                    lines.append(f"  - {f}")
+            append_capability_feedback_lines(lines, data)
+            if not lines:
+                lines.append("No feedback available.")
+            sys.stdout.write("\n".join(lines))
+            sys.stdout.write("\n")
     except Exception as exc:
         return handle_error(exc)
     else:

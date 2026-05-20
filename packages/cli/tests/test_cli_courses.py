@@ -1439,3 +1439,180 @@ def test_courses_get_json_preserves_latest_capabilities(
     out = capsys.readouterr().out
     payload = json.loads(out)
     assert payload["latest_version_capabilities_status"] == "declared"
+
+
+def test_courses_get_approved_capability_summary_human(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses get human output includes
+    approved_capabilities_summary block."""
+    courses = FakeCoursesResource()
+    courses._get_response = {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "owner_agent_id": "a-001",
+        "title": "Test",
+        "slug": "test",
+        "status": "published",
+        "visibility": "public",
+        "description": None,
+        "short_summary": None,
+        "price_cents": 0,
+        "currency": None,
+        "language": None,
+        "tags": [],
+        "current_version": 1,
+        "latest_version_id": "v-001",
+        "latest_version_capabilities_status": "declared",
+        "latest_version_capabilities_schema_version": 1,
+        "latest_version_capabilities_summary": None,
+        "approved_capabilities_summary": {
+            "tools": ["terminal"],
+            "allows_shell": True,
+            "allows_network": True,
+            "allowed_domains": ["api.openai.com"],
+            "human_approval_required": True,
+        },
+        "human_approval_required": True,
+        "published_at": "2025-01-01T00:00:00Z",
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-01T00:00:00Z",
+    }
+
+    def _get(**kwargs: Any) -> dict[str, Any]:
+        courses.last_call = ("get", kwargs)
+        return courses._get_response
+
+    courses.get = _get  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "approved_capabilities_summary:" in out
+    assert "allows_shell: true" in out
+    assert "allows_network: true" in out
+    assert "human_approval_required: true" in out
+
+
+def test_courses_versions_get_approved_capability_summary_human(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses versions get human output includes approved summary."""
+    courses = FakeCoursesResource()
+
+    def _get_version(**kwargs: Any) -> dict[str, Any]:
+        courses.last_call = ("get_version", kwargs)
+        return {
+            "id": kwargs["version_id"],
+            "course_id": kwargs["course_id"],
+            "version_number": 1,
+            "status": "published",
+            "capabilities_status": "declared",
+            "capabilities_summary": {
+                "tools": ["terminal"],
+                "allows_shell": True,
+            },
+            "approved_capabilities_summary": {
+                "tools": ["terminal"],
+                "allows_shell": True,
+                "allows_network": True,
+                "allowed_domains": ["api.openai.com"],
+                "human_approval_required": True,
+            },
+            "human_approval_required": True,
+            "assets": [],
+            "created_by_agent_id": "a-001",
+            "created_at": "2025-01-01T00:00:00Z",
+        }
+
+    courses.get_version = _get_version  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "versions",
+        "get",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "approved_capabilities_summary:" in out
+    assert "allows_shell: true" in out
+
+
+def test_courses_feedback_capability_feedback_human(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses feedback human output includes structured capability blocks."""
+    courses = FakeCoursesResource()
+
+    def _feedback(**kwargs: Any) -> dict[str, Any]:
+        courses.last_call = ("get_review_feedback", kwargs)
+        return {
+            "summary": "Rejected due to capability mismatch",
+            "findings": ["undeclared network access"],
+            "capability_feedback": [
+                {
+                    "category": "capabilities",
+                    "reason_code": "network_domain_not_declared",
+                    "message": "Observed outbound domain was not declared.",
+                    "file_path": "src/app.py",
+                },
+            ],
+        }
+
+    courses.get_review_feedback = _feedback  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "feedback",
+        "550e8400-e29b-41d4-a716-446655440000",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "capability_feedback:" in out
+    assert "reason_code: network_domain_not_declared" in out
+    assert "message: Observed outbound domain was not declared." in out
+
+
+def test_courses_feedback_capability_feedback_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses feedback --json preserves capability_feedback."""
+    courses = FakeCoursesResource()
+
+    def _feedback(**kwargs: Any) -> dict[str, Any]:
+        courses.last_call = ("get_review_feedback", kwargs)
+        return {
+            "summary": "Rejected",
+            "capability_feedback": [
+                {
+                    "category": "capabilities",
+                    "reason_code": "tool_not_declared",
+                    "message": "Observed tool not declared.",
+                },
+            ],
+        }
+
+    courses.get_review_feedback = _feedback  # type: ignore[assignment]
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "feedback",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--json",
+    ])
+    assert code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["capability_feedback"][0]["reason_code"] == "tool_not_declared"

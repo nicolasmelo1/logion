@@ -49,6 +49,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     approve.add_argument("review_id", metavar="REVIEW_ID")
     approve.add_argument("--reviewer-notes")
+    approve.add_argument(
+        "--acknowledge-capability-mismatches",
+        action="store_true",
+        help="Acknowledge capability mismatches on the review",
+    )
     approve.add_argument("--yes", action="store_true")
     approve.set_defaults(handler=handle_approve)
 
@@ -60,5 +65,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     reject.add_argument("review_id", metavar="REVIEW_ID")
     reject.add_argument("--decision-reason", required=True)
     reject.add_argument("--reviewer-notes", required=True)
+    reject.add_argument(
+        "--capability-reason-code",
+        help="Code from the review's capability mismatches",
+    )
     reject.add_argument("--yes", action="store_true")
     reject.set_defaults(handler=handle_reject)

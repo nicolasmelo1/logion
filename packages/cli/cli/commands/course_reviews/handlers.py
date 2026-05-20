@@ -79,6 +79,9 @@ def handle_approve(args: argparse.Namespace) -> int:
         kwargs = only_not_none(
             {"review_id": args.review_id},
             reviewer_notes=args.reviewer_notes,
+            acknowledge_capability_mismatches=(
+                args.acknowledge_capability_mismatches or None
+            ),
         )
         result = client.v1.course_reviews.approve(**kwargs)
         emit(result, json_output=config.json_output)
@@ -111,6 +114,7 @@ def handle_reject(args: argparse.Namespace) -> int:
             review_id=args.review_id,
             decision_reason=args.decision_reason,
             reviewer_notes=args.reviewer_notes,
+            capability_reason_code=args.capability_reason_code,
         )
         emit(result, json_output=config.json_output)
     except Exception as exc:

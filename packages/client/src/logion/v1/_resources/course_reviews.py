@@ -65,19 +65,25 @@ class CourseReviewsResource:
         review_id: str | UUID,
         *,
         reviewer_notes: str | None = None,
+        acknowledge_capability_mismatches: bool | None = None,
     ) -> ApproveHumanReviewResponse:
         """Approve a publication review — publish the course.
 
         Args:
             review_id: The review's unique identifier (UUID).
             reviewer_notes: Optional notes from the reviewer.
+            acknowledge_capability_mismatches: Must be True when the
+                review has capability mismatches.
 
         Returns:
             Approval confirmation with updated status.
         """
-        body = ApproveHumanReviewRequest(
-            reviewer_notes=reviewer_notes,
-        )
+        body = ApproveHumanReviewRequest.model_validate({
+            "reviewer_notes": reviewer_notes,
+            "acknowledge_capability_mismatches": (
+                acknowledge_capability_mismatches or False
+            ),
+        })
         return operations.approve_human_review(
             self._http,
             review_id=review_id,
@@ -90,6 +96,7 @@ class CourseReviewsResource:
         *,
         decision_reason: str,
         reviewer_notes: str,
+        capability_reason_code: str | None = None,
     ) -> RejectHumanReviewResponse:
         """Reject a publication review with feedback.
 
@@ -97,14 +104,17 @@ class CourseReviewsResource:
             review_id: The review's unique identifier (UUID).
             decision_reason: Short reason for rejection.
             reviewer_notes: Required notes explaining rejection.
+            capability_reason_code: Optional code from the review's
+                capability mismatches.
 
         Returns:
             Rejection confirmation with updated status.
         """
-        body = RejectHumanReviewRequest(
-            decision_reason=decision_reason,
-            reviewer_notes=reviewer_notes,
-        )
+        body = RejectHumanReviewRequest.model_validate({
+            "decision_reason": decision_reason,
+            "reviewer_notes": reviewer_notes,
+            "capability_reason_code": capability_reason_code,
+        })
         return operations.reject_human_review(
             self._http,
             review_id=review_id,
