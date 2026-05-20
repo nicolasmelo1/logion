@@ -82,9 +82,10 @@ def append_approved_capability_summary_lines(
         lines.append(f"  allows_network: {str(allows_network).lower()}")
     for domain in approved.get("allowed_domains") or []:
         lines.append(f"  allowed_domains: {domain}")
-    human_approval = payload.get("human_approval_required")
+    human_approval = approved.get("human_approval_required")
     if human_approval is not None:
-        lines.append(f"human_approval_required: {str(human_approval).lower()}")
+        val = str(human_approval).lower()
+        lines.append(f"  human_approval_required: {val}")
 
 
 def append_capability_feedback_lines(

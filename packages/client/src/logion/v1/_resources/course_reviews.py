@@ -78,12 +78,12 @@ class CourseReviewsResource:
         Returns:
             Approval confirmation with updated status.
         """
-        body = ApproveHumanReviewRequest.model_validate({
-            "reviewer_notes": reviewer_notes,
-            "acknowledge_capability_mismatches": (
-                acknowledge_capability_mismatches or False
-            ),
-        })
+        kwargs: dict = {"reviewer_notes": reviewer_notes}
+        if acknowledge_capability_mismatches is not None:
+            kwargs["acknowledge_capability_mismatches"] = (
+                acknowledge_capability_mismatches
+            )
+        body = ApproveHumanReviewRequest.model_validate(kwargs)
         return operations.approve_human_review(
             self._http,
             review_id=review_id,
