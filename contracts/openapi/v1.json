@@ -184,6 +184,12 @@
       },
       "ApproveHumanReviewRequest": {
         "properties": {
+          "acknowledge_capability_mismatches": {
+            "default": false,
+            "description": "Required when the review has capability mismatches; confirms the reviewer consciously accepts them",
+            "title": "Acknowledge Capability Mismatches",
+            "type": "boolean"
+          },
           "reviewer_notes": {
             "anyOf": [
               {
@@ -227,6 +233,43 @@
           "reviewed_at"
         ],
         "title": "ApproveHumanReviewResponse",
+        "type": "object"
+      },
+      "ApprovedCapabilitySummaryResponse": {
+        "additionalProperties": false,
+        "description": "Buyer-safe capability summary exposed on published course/version reads.\n\nOnly includes the approved public contract \u2014 no raw declared/observed\ndata, no mismatches, no reviewer notes.",
+        "properties": {
+          "allowed_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Domains",
+            "type": "array"
+          },
+          "allows_network": {
+            "default": false,
+            "title": "Allows Network",
+            "type": "boolean"
+          },
+          "allows_shell": {
+            "default": false,
+            "title": "Allows Shell",
+            "type": "boolean"
+          },
+          "human_approval_required": {
+            "default": false,
+            "title": "Human Approval Required",
+            "type": "boolean"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "title": "ApprovedCapabilitySummaryResponse",
         "type": "object"
       },
       "AssetResponse": {
@@ -461,6 +504,52 @@
           "updated_at"
         ],
         "title": "CancelBountyResponse",
+        "type": "object"
+      },
+      "CapabilityFeedbackBlock": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "title": "CapabilityFeedbackBlock",
         "type": "object"
       },
       "CapabilitySummaryResponse": {
@@ -2271,6 +2360,16 @@
       },
       "GetCourseResponse": {
         "properties": {
+          "approved_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedCapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2301,6 +2400,17 @@
               }
             ],
             "title": "Description"
+          },
+          "human_approval_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Approval Required"
           },
           "id": {
             "format": "uuid",
@@ -2335,8 +2445,7 @@
                 "enum": [
                   "missing",
                   "declared",
-                  "invalid",
-                  "mismatch_found"
+                  "invalid"
                 ],
                 "type": "string"
               },
@@ -2452,6 +2561,13 @@
       },
       "GetCourseReviewFeedbackResponse": {
         "properties": {
+          "capability_feedback": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityFeedbackBlock"
+            },
+            "title": "Capability Feedback",
+            "type": "array"
+          },
           "course_id": {
             "title": "Course Id",
             "type": "string"
@@ -2516,6 +2632,16 @@
       },
       "GetCourseVersionResponse": {
         "properties": {
+          "approved_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedCapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "assets": {
             "items": {
               "$ref": "#/components/schemas/AssetResponse"
@@ -2596,6 +2722,17 @@
               }
             ],
             "title": "Declared Capabilities"
+          },
+          "human_approval_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Approval Required"
           },
           "id": {
             "format": "uuid",
@@ -4496,6 +4633,20 @@
       },
       "RejectHumanReviewRequest": {
         "properties": {
+          "capability_reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Machine-stable reason code when rejection is capability-related (e.g. network_domain_not_declared)",
+            "title": "Capability Reason Code"
+          },
           "decision_reason": {
             "description": "Short reason for rejection",
             "maxLength": 255,
@@ -8757,11 +8908,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Capability mismatch acknowledgement required"
           }
         },
         "summary": "Approve a publication review \u2014 publish the course.",
@@ -8867,11 +9018,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unprocessable entity"
           }
         },
         "summary": "Reject a publication review with feedback.",
