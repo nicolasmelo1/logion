@@ -18,11 +18,77 @@ class FakeCourseReviewsResource:
 
     def list(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("list", kwargs)
-        return {"items": [], "next_cursor": None}
+        return {
+            "items": [
+                {
+                    "review_id": "r-001",
+                    "course_id": "c-001",
+                    "course_title": "Test Course",
+                    "owner_agent_id": "a-001",
+                    "submitted_at": "2026-01-01T00:00:00Z",
+                    "review_status": "human_review",
+                    "course_status": "auto_review",
+                    "finding_count": 3,
+                    "has_snyk": False,
+                    "capabilities_status": "mismatch_found",
+                    "capability_risk_score": 8,
+                    "capability_mismatch_count": 2,
+                },
+            ],
+            "next_cursor": None,
+        }
 
     def get(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("get", {"review_id": review_id, **kwargs})
-        return {"id": review_id, "status": "pending"}
+        return {
+            "review_id": review_id,
+            "course_id": "c-001",
+            "course_title": "Test Course",
+            "version_id": "v-001",
+            "review_status": "human_review",
+            "course_status": "auto_review",
+            "owner_agent_id": "a-001",
+            "submitted_at": "2026-01-01T00:00:00Z",
+            "initiated_by": "a-002",
+            "completed_at": None,
+            "reviewed_by_user_id": None,
+            "reviewed_at": None,
+            "reviewer_notes": None,
+            "decision_reason": None,
+            "snyk_project_id": None,
+            "snyk_scan_url": None,
+            "capabilities_status": "mismatch_found",
+            "declared_capabilities": {
+                "version": 1,
+                "tools": ["terminal"],
+                "network": {"allow_domains": ["docs.python.org"]},
+            },
+            "observed_capabilities": {
+                "tools": ["terminal", "web"],
+                "network_hosts": ["api.openai.com"],
+                "filesystem_write": [],
+                "secrets_env": [],
+                "dangerous_commands_detected": False,
+            },
+            "capability_mismatches": [
+                {
+                    "code": "network_domain_not_declared",
+                    "severity": "high",
+                    "observed": "api.openai.com",
+                    "declared": ["docs.python.org"],
+                    "message": "Observed outbound domain was not declared.",
+                },
+                {
+                    "code": "tool_not_declared",
+                    "severity": "medium",
+                    "observed": "web",
+                    "declared": ["terminal"],
+                    "message": "Observed tool 'web' was not declared.",
+                },
+            ],
+            "capability_risk_score": 8,
+            "findings_by_layer": {},
+        }
 
     def approve(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("approve", {"review_id": review_id, **kwargs})
@@ -296,3 +362,63 @@ def test_course_reviews_reject_invalid_uuid() -> None:
         "--json",
     ])
     assert code == 2
+
+
+def test_course_reviews_list_capability_fields(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews list prints mismatch count and risk score."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main(["course-reviews", "list"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "capabilities_status: mismatch_found" in out
+    assert "capability_risk_score: 8" in out
+    assert "capability_mismatch_count: 2" in out
+
+
+def test_course_reviews_get_json_capability_fields(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews get --json preserves capability payloads."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "get",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--json",
+    ])
+    assert code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["capabilities_status"] == "mismatch_found"
+    assert data["capability_risk_score"] == 8
+    assert len(data["capability_mismatches"]) == 2
+    assert data["declared_capabilities"]["tools"] == ["terminal"]
+    assert "web" in data["observed_capabilities"]["tools"]
+
+
+def test_course_reviews_get_human_capability_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews get human output groups mismatch evidence clearly."""
+    cr = FakeCourseReviewsResource()
+    fake = FakeClient(v1=FakeV1Namespace(course_reviews=cr))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "course-reviews",
+        "get",
+        "770e8400-e29b-41d4-a716-446655440002",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "capabilities_status: mismatch_found" in out
+    assert "capability_risk_score: 8" in out
+    assert "high: network_domain_not_declared" in out
+    assert "medium: tool_not_declared" in out
