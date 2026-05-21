@@ -73,6 +73,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "scripts/package_skill.py" = ["T201"]
 "scripts/check_updates.py" = ["T201"]
+"scripts/install_skill.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]

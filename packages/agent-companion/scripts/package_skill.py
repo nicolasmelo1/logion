@@ -205,6 +205,8 @@ _LOW_PATTERN_ALLOWLIST = {
     "safety-and-approval.md",
     "low-context-loading.md",
     "troubleshooting.md",
+    "check_updates.py",
+    "local_state.py",
 }
 
 # Files that reference secret pattern names for documentation
@@ -213,6 +215,10 @@ _SECRET_NAME_SKIP_FILES = {
     "package_skill.py",
     "test_package_skill.py",
     "test_skill_structure.py",
+    "test_local_state.py",
+    "check_updates.py",
+    "install_skill.py",
+    "local_state.py",
 }
 
 

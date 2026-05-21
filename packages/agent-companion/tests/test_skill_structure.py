@@ -33,6 +33,8 @@ REQUIRED_FILES = [
     "references/low-context-loading.md",
     "references/troubleshooting.md",
     "scripts/package_skill.py",
+    "scripts/check_updates.py",
+    "scripts/install_skill.py",
 ]
 
 MAX_SKILL_SIZE_BYTES = 16 * 1024
