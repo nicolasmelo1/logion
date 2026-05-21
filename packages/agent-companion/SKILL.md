@@ -63,6 +63,22 @@ those same local sources only. Recall never implies automatic execution.
 
 ## Safe discovery commands
 
+Start with CLI help so the agent can discover what exists before guessing:
+```bash
+logion --help
+logion health --help
+logion identity --help
+logion listings --help
+logion notifications --help
+logion courses --help
+logion courses versions --help
+logion payments --help
+logion reports --help
+logion course-reviews --help
+logion bounties --help
+LOGION_ENABLE_ADMIN=1 logion admin --help  # gated
+```
+
 Implemented safe discovery commands:
 ```bash
 logion listings search --query "video cuts" --limit 5

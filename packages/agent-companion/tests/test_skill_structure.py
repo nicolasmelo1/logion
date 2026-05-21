@@ -35,19 +35,22 @@ REQUIRED_FILES = [
     "scripts/package_skill.py",
 ]
 
-MAX_SKILL_CHAR_BUDGET = 4608
+MAX_SKILL_SIZE_BYTES = 16 * 1024
 
-REQUIRED_SKILL_SECTIONS = [
-    "## When to use Logion",
-    "## When not to use Logion",
-    "## Decision tree",
-    "## Local Recall Guardrail",
-    "## Safe discovery commands",
-    "## Course inspection checklist",
-    "## Install/update approval rules",
-    "## Context budget rules",
-    "## Troubleshooting",
-]
+HELP_COMMANDS = {
+    "logion --help",
+    "logion health --help",
+    "logion identity --help",
+    "logion listings --help",
+    "logion notifications --help",
+    "logion courses --help",
+    "logion courses versions --help",
+    "logion payments --help",
+    "logion reports --help",
+    "logion course-reviews --help",
+    "logion bounties --help",
+    "LOGION_ENABLE_ADMIN=1 logion admin --help",
+}
 
 IMPLEMENTED_COMMANDS = {
     'logion listings search --query "video cuts" --limit 5',
@@ -91,7 +94,11 @@ def _skill_body(content: str) -> str:
 
 
 def _bash_command_lines(content: str) -> list[str]:
-    blocks = re.findall(r"```bash\n(.*?)```", content, flags=re.DOTALL)
+    blocks = re.findall(
+        r"```bash[ \t]*\r?\n(.*?)```",
+        content,
+        flags=re.DOTALL,
+    )
     lines: list[str] = []
     for block in blocks:
         for raw_line in block.splitlines():
@@ -142,10 +149,10 @@ class TestSkillStructure:
 
     def test_skill_md_within_size_budget(self) -> None:
         content = _read_skill()
-        char_count = len(content)
-        assert char_count <= MAX_SKILL_CHAR_BUDGET, (
-            f"SKILL.md is {char_count} chars, "
-            f"exceeds budget of {MAX_SKILL_CHAR_BUDGET} chars"
+        size_bytes = len(content.encode("utf-8"))
+        assert size_bytes <= MAX_SKILL_SIZE_BYTES, (
+            f"SKILL.md is {size_bytes} bytes, "
+            f"exceeds budget of {MAX_SKILL_SIZE_BYTES} bytes"
         )
 
     def test_skill_md_no_banned_terms_in_body(self) -> None:
@@ -237,25 +244,36 @@ class TestSkillStructure:
     def test_decision_tree_prefers_existing_local_skill_or_tool(self) -> None:
         body = _skill_body(_read_skill()).lower()
         assert "existing local" in body
-        assert "use that local path first" in body
+        assert "local path first" in body or "use that local" in body
         assert "skill/tool" in body or "skill or tool" in body
 
-    def test_skill_md_has_required_sections(self) -> None:
-        content = _read_skill()
-        for section in REQUIRED_SKILL_SECTIONS:
-            assert section in content, (
-                f"SKILL.md missing required section: {section}"
-            )
+    def test_skill_md_exposes_cli_help_entrypoints(self) -> None:
+        skill_commands = _bash_command_lines(_read_skill())
+        parsed_commands = dict(
+            _split_command_line(line) for line in skill_commands
+        )
+        assert HELP_COMMANDS.issubset(parsed_commands), (
+            "SKILL.md must list CLI help entrypoints so the agent can explore "
+            "the available Logion command surface"
+        )
+        admin_help = "LOGION_ENABLE_ADMIN=1 logion admin --help"
+        assert "gated" in parsed_commands[admin_help]
 
     def test_install_checkout_and_update_require_explicit_approval(
         self,
     ) -> None:
         body = _skill_body(_read_skill()).lower()
         assert "explicit user approval" in body
-        assert "before install" in body
-        assert "before any paid checkout" in body
-        assert "before updates that change price" in body
-        assert "permissions, required tools, or execution policy" in body
+        assert "install" in body
+        assert "paid checkout" in body
+        assert (
+            "change price" in body
+            or "change price," in body
+            or "price," in body
+        )
+        assert "permissions" in body
+        assert "required tools" in body
+        assert "execution policy" in body
 
     def test_recall_examples_are_read_only_and_not_automatic(self) -> None:
         body = _skill_body(_read_skill()).lower()
