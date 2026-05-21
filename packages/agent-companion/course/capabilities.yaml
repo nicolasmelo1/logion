@@ -1,0 +1,53 @@
+version: 1
+summary: >-
+  Companion skill for discovering, acquiring, installing, updating, creating,
+  and managing Logion courses/capabilities without loading the whole
+  marketplace into context.
+capabilities:
+  - id: logion.recall.search
+    title: "Search local recall index"
+    description: >-
+      Find installed capabilities, local workflows, and proven commands
+      before marketplace search without executing them.
+  - id: logion.marketplace.search
+    title: "Search Logion marketplace"
+    description: >-
+      Find candidate courses/capabilities when local skills are
+      insufficient.
+  - id: logion.course.inspect
+    title: "Inspect Logion course"
+    description: >-
+      Review price, permissions, version, reviews, and capability metadata
+      before install.
+  - id: logion.skill.install
+    title: "Install selected capability"
+    description: >-
+      Install one approved skill/course artifact after explicit user
+      approval.
+  - id: logion.skill.update
+    title: "Check and apply capability updates"
+    description: >-
+      Detect updates and apply them only when policy allows.
+  - id: logion.course.author
+    title: "Create and update Logion courses"
+    description: >-
+      Guide authors through course metadata, manifests, versions, uploads,
+      and publication requests.
+  - id: logion.course.operate
+    title: "Manage published courses"
+    description: >-
+      Help creators inspect feedback, notifications, reviews, versions, and
+      update requirements.
+required_tools:
+  - terminal
+  - file
+required_env: []
+safety:
+  requires_confirmation:
+    - paid_checkout
+    - install_new_capability
+    - update_paid_capability
+    - permission_expansion
+    - publish_or_unpublish_course
+    - upload_new_course_version
+    - change_course_price
