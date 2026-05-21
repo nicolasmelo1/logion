@@ -12,6 +12,7 @@ resolution-markers = [
 [manifest]
 members = [
     "logion",
+    "logion-agent-companion",
     "logion-cli",
     "logion-client",
     "logion-landing",
@@ -751,6 +752,35 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3,<9.1.0" },
     { name = "python-semantic-release", specifier = ">=10.5.3,<10.6.0" },
     { name = "ruff", specifier = ">=0.15.12,<0.16.0" },
+]
+
+[[package]]
+name = "logion-agent-companion"
+version = "0.1.0"
+source = { editable = "packages/agent-companion" }
+dependencies = [
+    { name = "pyyaml" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pyyaml" },
+    { name = "ruff" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyyaml", specifier = ">=6.0,<7.0" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.15,<2.0.0" },
+    { name = "pytest", specifier = ">=9.0.3,<9.1.0" },
+    { name = "pyyaml", specifier = ">=6.0,<7.0" },
+    { name = "ruff", specifier = ">=0.15.12,<0.16.0" },
+    { name = "types-pyyaml", specifier = ">=6.0,<7.0" },
 ]
 
 [[package]]

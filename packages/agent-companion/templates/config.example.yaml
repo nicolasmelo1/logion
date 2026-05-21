@@ -1,0 +1,33 @@
+# Example companion configuration
+# Copy to ~/.logion/companion.yaml and adjust values.
+
+# Local recall settings
+recall:
+  # Maximum number of results from local recall search
+  limit: 5
+  # Rebuild the recall index on every install/update
+  auto_rebuild: true
+  # Paths to include in the recall index
+  include_paths:
+    - ~/.logion/installed
+    - ~/.logion/workflows
+    - ~/.logion/commands
+
+# Marketplace settings
+marketplace:
+  # Search only when local recall is insufficient
+  search_after_recall: true
+  # Maximum number of marketplace results
+  limit: 5
+
+# Safety settings
+safety:
+  # Require confirmation for these action types
+  requires_confirmation:
+    - paid_checkout
+    - install_new_capability
+    - update_paid_capability
+    - permission_expansion
+    - publish_or_unpublish_course
+    - upload_new_course_version
+    - change_course_price

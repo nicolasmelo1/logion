@@ -1,0 +1,24 @@
+# Example local evaluation configuration
+# Copy to eval.local.yaml and adjust values.
+
+# Evaluation provider settings
+provider:
+  # Default to llama.cpp with GGUF for local eval
+  backend: llama_cpp
+  # Path to GGUF model file
+  model_path: ~/.logion/models/default.gguf
+  # Number of threads (default: auto-detect)
+  threads: auto
+
+# Evaluation scenarios directory
+scenarios: evals/scenarios/
+
+# Reporting directory
+reports: evals/reports/
+
+# Grading settings
+grading:
+  # Local recall guardrail: first-step accuracy target
+  local_recall_first_step_accuracy: 0.95
+  # Unnecessary marketplace query rate (lower is better)
+  unnecessary_marketplace_query_rate: 0.10
