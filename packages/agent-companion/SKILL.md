@@ -2,9 +2,8 @@
 name: logion-marketplace-companion
 version: 0.1.0
 description: >-
-  Companion skill for discovering, acquiring, installing, updating, creating,
-  and managing Logion courses/capabilities without loading the whole marketplace
-  into context.
+  Compact bootstrap skill for recall-first Logion discovery, inspection,
+  install, and update routing without loading the whole marketplace.
 required_tools:
   - terminal
   - file
@@ -22,38 +21,90 @@ safety:
 
 # Logion Marketplace Companion
 
-Small bootstrap skill that helps agents discover, evaluate, install, update,
-create, and manage Logion marketplace capabilities while keeping context usage
-minimal.
+Use Logion only as a fallback or explicit browse/acquire path. Keep bootstrap
+context small; load only the selected skill artifact.
 
-## Runtime policy
+## When to use Logion
 
-1. **Local recall first.** Before searching the Logion marketplace, check
-   local recall for installed capabilities, proven workflows, and compact
-   local references. Local recall is read-only and never executes commands.
-2. **Prefer local.** Prefer existing local tools, skills, and proven workflows
-   before reaching for marketplace search.
-3. **Search marketplace only when insufficient.** Only search Logion when
-   local recall and existing capabilities do not cover the need.
-4. **Inspect before acting.** Always review price, permissions, version, and
-   reviews before installing or purchasing.
-5. **Confirm sensitive actions.** Never install, purchase, publish, upload, or
-   change pricing without explicit user approval.
-6. **Load selected only.** Only load the specific skill/course the user chose,
-   not the entire catalog.
-7. **Check updates safely.** Detect and propose updates, but never apply them
-   automatically.
+Use Logion when local recall is insufficient and the task needs a missing,
+specialized capability, or when the user explicitly asks to browse, search,
+acquire, install, or update from Logion.
 
-## Capabilities
+## When not to use Logion
 
-See `course/capabilities.yaml` for the full capability manifest.
+Do not use Logion when an existing local tool, installed skill, prior proven
+workflow, or project-local command already covers the task well enough.
 
-## References
+## Decision tree
 
-- `references/marketplace-flows.md` — consumer discovery, inspection, install,
-  and update workflows.
-- `references/creator-course-management.md` — course creation, update, upload,
-  and publication workflows for creators.
-- `references/safety-and-approval.md` — confirmation gates and safety rules.
-- `references/low-context-loading.md` — strategies for keeping context small.
-- `references/troubleshooting.md` — common errors and recovery steps.
+0. Run the Local Recall Guardrail before marketplace search.
+1. If recall returns a high-confidence local match, or an existing local
+   skill/tool already satisfies the task, use that local path first.
+2. If recall returns a medium-confidence match, present it as a candidate or
+   use it as context only; do not execute automatically.
+3. If the user explicitly asks to browse/search/acquire from Logion, search
+   after noting recall is being bypassed or supplemented.
+4. Search Logion only when local recall is insufficient for a missing,
+   specialized capability.
+5. Inspect candidates before recommending installation.
+6. Prefer free or local equivalents when quality is comparable.
+7. Ask for explicit user approval before install.
+8. Ask for explicit user approval before any paid checkout.
+9. Ask for explicit user approval before updates that change price,
+   permissions, required tools, or execution policy.
+10. Load only the selected skill artifact, never the whole catalog.
+
+## Local Recall Guardrail
+
+Recall is read-only fuzzy lookup over installed capabilities, prior successful
+workflows or commands, local companion references, and project-local known
+commands when available. If no recall command exists yet, manually inspect
+those same local sources only. Recall never implies automatic execution.
+
+## Safe discovery commands
+
+Implemented safe discovery commands:
+```bash
+logion listings search --query "video cuts" --limit 5
+logion courses get COURSE_ID
+logion courses versions get COURSE_ID VERSION_ID
+logion notifications unread-count
+logion notifications list --unread-only --limit 20
+```
+
+Planned or read-only examples; do not run them now:
+```bash
+logion recall search "video cuts" --limit 5  # planned/read-only
+logion skills search "video cuts" --limit 5  # planned
+logion skills inspect COURSE_ID  # planned
+logion skills install COURSE_ID --version VERSION_ID  # planned
+logion skills installed  # planned
+logion skills updates  # planned
+logion skills update COURSE_ID  # planned
+```
+
+## Course inspection checklist
+
+Check course fit, version, price, permissions, required tools, execution
+policy, reviews, and whether a comparable free or local option already exists.
+Use `references/marketplace-flows.md` and `references/safety-and-approval.md`
+for detailed review steps.
+
+## Install/update approval rules
+
+Never install, purchase, or update on your own. Explicit user approval is
+required before install, before paid checkout, and before updates that change
+price, permissions, required tools, or execution policy.
+
+## Context budget rules
+
+Keep this file compact. Do not load the marketplace catalog. Load references
+only when needed: `references/marketplace-flows.md`,
+`references/low-context-loading.md`, `references/safety-and-approval.md`, or
+`references/troubleshooting.md`.
+
+## Troubleshooting
+
+If recall is weak, refine the task and inspect candidates before recommending
+anything. If commands fail or metadata is unclear, use
+`references/troubleshooting.md`.
