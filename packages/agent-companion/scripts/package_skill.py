@@ -138,8 +138,24 @@ def _check_capabilities(report: list[str]) -> bool:
 
     ok = True
     cap_path = ROOT / "course" / "capabilities.yaml"
-    content = cap_path.read_text(encoding="utf-8")
-    data = yaml.safe_load(content)
+    try:
+        content = cap_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        report.append("FAIL course/capabilities.yaml not found")
+        return False
+    except OSError as exc:
+        report.append(f"FAIL course/capabilities.yaml read error: {exc}")
+        return False
+
+    try:
+        data = yaml.safe_load(content)
+    except yaml.YAMLError as exc:
+        report.append(f"FAIL course/capabilities.yaml parse error: {exc}")
+        return False
+
+    if not isinstance(data, dict):
+        report.append("FAIL course/capabilities.yaml is not a mapping")
+        return False
 
     required_keys = [
         "version",

@@ -1,21 +1,20 @@
 SHELL := /bin/bash
-ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)/packages/agent-companion
 
 .PHONY: test lint format-check typecheck package-check verify
 
 test:
-	python -m pytest tests/ -q
+	uv run python -m pytest tests/ -q
 
 lint:
-	ruff check .
+	uv run ruff check .
 
 format-check:
-	ruff format --check .
+	uv run ruff format --check .
 
 typecheck:
-	python -m mypy scripts/package_skill.py scripts/check_updates.py --ignore-missing-imports
+	uv run python -m mypy scripts/package_skill.py scripts/check_updates.py --ignore-missing-imports
 
 package-check:
-	python scripts/package_skill.py
+	uv run python scripts/package_skill.py
 
 verify: lint format-check typecheck test package-check

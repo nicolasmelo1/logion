@@ -35,4 +35,4 @@ mock-stop:
 	@if [ -f .prism.pid ]; then kill $$(cat .prism.pid) 2>/dev/null || true; rm -f .prism.pid; fi
 
 companion-verify:
-	make -C packages/agent-companion verify
+	uv run make -C packages/agent-companion verify
