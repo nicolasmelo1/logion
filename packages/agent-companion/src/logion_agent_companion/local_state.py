@@ -3,13 +3,21 @@
 Manages the ~/.logion/ directory structure, manifest files, compact
 index, recall index, lockfile, and workflow history for the Logion
 Marketplace Companion.
+
+State files use a top-level envelope::
+
+    {"schema_version": 1, "entries": [...]}
+
+Reads accept the legacy bare-list form for forward compatibility.
 """
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,6 +28,8 @@ from typing import Any
 
 DEFAULT_HOME = Path.home() / ".logion"
 
+SCHEMA_VERSION = 1
+
 
 def get_home() -> Path:
     """Return the Logion home directory (LOGION_HOME override or default)."""
@@ -28,13 +38,87 @@ def get_home() -> Path:
 
 
 def ensure_layout(home: Path | None = None) -> Path:
-    """Create the directory layout under *home* if it does not exist.
-
-    Returns the *home* path so callers can chain.
-    """
+    """Create the directory layout under *home* if it does not exist."""
     h = home or get_home()
     (h / "installed").mkdir(parents=True, exist_ok=True)
     return h
+
+
+# ---------------------------------------------------------------------------
+# Envelope helpers
+# ---------------------------------------------------------------------------
+
+
+def _wrap(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"schema_version": SCHEMA_VERSION, "entries": entries}
+
+
+def _unwrap(raw: Any) -> list[dict[str, Any]]:
+    """Return entries from envelope or legacy bare-list form."""
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("entries"), list):
+        return raw["entries"]
+    return []
+
+
+def _read_json_entries(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    try:
+        return _unwrap(json.loads(path.read_text(encoding="utf-8")))
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _write_json_entries(path: Path, entries: list[dict[str, Any]]) -> Path:
+    path.write_text(
+        json.dumps(_wrap(entries), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Secret masking
+# ---------------------------------------------------------------------------
+
+SECRET_KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"api[_-]?key", re.IGNORECASE),
+    re.compile(r"secret", re.IGNORECASE),
+    re.compile(r"token", re.IGNORECASE),
+    re.compile(r"password|passwd", re.IGNORECASE),
+    re.compile(r"credential", re.IGNORECASE),
+    re.compile(r"bearer", re.IGNORECASE),
+    re.compile(r"^auth$|_auth$|auth_", re.IGNORECASE),
+)
+
+MASK_PLACEHOLDER = "***MASKED***"
+
+
+def _looks_like_secret_key(key: str) -> bool:
+    return any(p.search(key) for p in SECRET_KEY_PATTERNS)
+
+
+def mask_secrets(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of *data* with secret-like fields masked.
+
+    Walks nested dicts and lists.  String values under keys that match
+    :data:`SECRET_KEY_PATTERNS` are replaced with
+    :data:`MASK_PLACEHOLDER`.  Non-string values under those keys are
+    also masked.
+    """
+    return _mask_value(data)  # type: ignore[return-value]
+
+
+def _mask_value(value: Any, parent_key: str | None = None) -> Any:
+    if parent_key is not None and _looks_like_secret_key(parent_key):
+        return MASK_PLACEHOLDER
+    if isinstance(value, dict):
+        return {k: _mask_value(v, parent_key=k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask_value(item, parent_key=parent_key) for item in value]
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -61,10 +145,7 @@ MANIFEST_OPTIONAL_KEYS = frozenset({
 
 
 def validate_manifest(data: dict[str, Any]) -> list[str]:
-    """Return a list of validation errors for *data*.
-
-    An empty list means the manifest is valid.
-    """
+    """Return validation errors for *data*; empty list means valid."""
     errors: list[str] = []
     missing = REQUIRED_MANIFEST_KEYS - set(data.keys())
     for key in sorted(missing):
@@ -83,14 +164,20 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
 
 
 def sha256_of_files(paths: list[Path]) -> str:
-    """Return the SHA-256 hex digest of the concatenated contents of *paths*.
-
-    Files are read in sorted order by their relative name.
-    """
+    """SHA-256 of concatenated bytes of *paths*, sorted by path."""
     h = hashlib.sha256()
     for p in sorted(paths):
         h.update(p.read_bytes())
     return h.hexdigest()
+
+
+def _installed_files(version_dir: Path) -> list[Path]:
+    """Return on-disk files for an installed version, excluding manifest."""
+    return sorted(
+        p
+        for p in version_dir.rglob("*")
+        if p.is_file() and p.name != "manifest.json"
+    )
 
 
 def write_manifest(
@@ -99,10 +186,7 @@ def write_manifest(
     version_id: str,
     home: Path | None = None,
 ) -> Path:
-    """Write *manifest* to the installed capability directory.
-
-    Returns the path to ``manifest.json``.
-    """
+    """Write *manifest* to the installed capability directory."""
     h = home or get_home()
     dest = h / "installed" / course_id / version_id
     dest.mkdir(parents=True, exist_ok=True)
@@ -119,10 +203,7 @@ def read_manifest(
     version_id: str,
     home: Path | None = None,
 ) -> dict[str, Any] | None:
-    """Read the manifest for an installed capability.
-
-    Returns ``None`` if the file does not exist or is invalid JSON.
-    """
+    """Read an installed capability's manifest, or ``None`` if absent."""
     h = home or get_home()
     path = h / "installed" / course_id / version_id / "manifest.json"
     if not path.is_file():
@@ -134,7 +215,7 @@ def read_manifest(
 
 
 def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
-    """Return a list of manifest dicts for all installed capabilities."""
+    """Return manifest dicts for all installed capabilities."""
     h = home or get_home()
     installed_dir = h / "installed"
     if not installed_dir.is_dir():
@@ -155,6 +236,42 @@ def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
     return results
 
 
+def compute_installed_hash(
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> str:
+    """Re-hash on-disk content for an installed version."""
+    h = home or get_home()
+    version_dir = h / "installed" / course_id / version_id
+    if not version_dir.is_dir():
+        return ""
+    return sha256_of_files(_installed_files(version_dir))
+
+
+def verify_installed_content(
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> dict[str, Any]:
+    """Compare manifest ``content_sha256`` to on-disk hash.
+
+    Returns a dict with ``ok`` (bool), ``expected``, ``actual``, and
+    ``user_modified`` (True when hashes diverge).  Missing manifest
+    yields ``ok=False`` with empty hashes.
+    """
+    manifest = read_manifest(course_id, version_id, home)
+    expected = (manifest or {}).get("content_sha256", "")
+    actual = compute_installed_hash(course_id, version_id, home)
+    ok = bool(expected) and expected == actual
+    return {
+        "ok": ok,
+        "expected": expected,
+        "actual": actual,
+        "user_modified": bool(expected) and expected != actual,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Index
 # ---------------------------------------------------------------------------
@@ -163,11 +280,7 @@ INDEX_FILENAME = "index.json"
 
 
 def build_index(home: Path | None = None) -> list[dict[str, Any]]:
-    """Build the compact index from installed manifests.
-
-    The index contains only IDs, titles, summaries, capabilities,
-    entrypoints, versions, and required tools — no full skill bodies.
-    """
+    """Build the compact index from installed manifests (no skill bodies)."""
     manifests = list_installed(home)
     index: list[dict[str, Any]] = []
     for m in manifests:
@@ -187,30 +300,16 @@ def write_index(
     index: list[dict[str, Any]],
     home: Path | None = None,
 ) -> Path:
-    """Write the compact index to ``index.json``."""
+    """Write the compact index to ``index.json`` (enveloped)."""
     h = home or get_home()
     ensure_layout(h)
-    path = h / INDEX_FILENAME
-    path.write_text(
-        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return path
+    return _write_json_entries(h / INDEX_FILENAME, index)
 
 
 def read_index(home: Path | None = None) -> list[dict[str, Any]]:
-    """Read the compact index from ``index.json``.
-
-    Returns an empty list if the file does not exist.
-    """
+    """Read the compact index; empty list if absent."""
     h = home or get_home()
-    path = h / INDEX_FILENAME
-    if not path.is_file():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
+    return _read_json_entries(h / INDEX_FILENAME)
 
 
 # ---------------------------------------------------------------------------
@@ -219,71 +318,85 @@ def read_index(home: Path | None = None) -> list[dict[str, Any]]:
 
 RECALL_FILENAME = "recall.json"
 
-DANGEROUS_RECALL_TERMS = frozenset({
-    "delete",
-    "remove",
-    "drop",
-    "rm",
-    "force",
-    "sudo",
-    "chmod",
-    "exec",
-})
+# Closed enum of danger flags surfaced by recall.  Word-boundary regex
+# avoids false positives like "rm-safe-helper" or "removeListener".
+DANGER_FLAG_PATTERNS: dict[str, re.Pattern[str]] = {
+    "fs_destructive": re.compile(
+        r"\b(rm|rmdir|unlink|shred|mkfs|dd)\b|--force\b|\bdrop\s+table\b",
+        re.IGNORECASE,
+    ),
+    "privilege_escalation": re.compile(
+        r"\b(sudo|doas|su)\b",
+        re.IGNORECASE,
+    ),
+    "network_exec": re.compile(
+        r"(curl|wget)[^|]*\|\s*(sh|bash|zsh)\b",
+        re.IGNORECASE,
+    ),
+    "shell_eval": re.compile(
+        r"\b(eval|exec)\b",
+        re.IGNORECASE,
+    ),
+    "permission_change": re.compile(
+        r"\b(chmod|chown)\b",
+        re.IGNORECASE,
+    ),
+}
+
+DANGER_FLAGS: frozenset[str] = frozenset(DANGER_FLAG_PATTERNS)
 
 
-def _has_danger_flags(commands: list[str] | None) -> list[str]:
-    """Return danger flags for command strings."""
-    if commands is None:
+def detect_danger_flags(commands: list[str] | None) -> list[str]:
+    """Return sorted danger flags present in *commands*."""
+    if not commands:
         return []
-    flags: list[str] = []
+    found: set[str] = set()
     for cmd in commands:
-        lower = cmd.lower()
-        for term in DANGEROUS_RECALL_TERMS:
-            if term in lower:
-                flags.append(term)
-                break
-    return sorted(set(flags))
+        for flag, pattern in DANGER_FLAG_PATTERNS.items():
+            if pattern.search(cmd):
+                found.add(flag)
+    return sorted(found)
 
 
 def build_recall_entries(
     installed: list[dict[str, Any]],
     workflows: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build recall entries from installed manifests and workflows.
-
-    Each entry is compact with provenance and confidence — no full
-    skill bodies or secrets.
-    """
+    """Build compact recall entries with provenance and secret masking."""
     entries: list[dict[str, Any]] = []
 
     for m in installed:
-        entries.append({
+        entry = {
             "type": "installed_capability",
             "id": m.get("course_id", ""),
             "title": m.get("title", ""),
-            "summary": m.get("summary", "")[:200],
+            "summary": (m.get("summary", "") or "")[:200],
             "confidence": 0.91,
             "source": "installed_index",
             "entrypoint": (
-                f"installed/{m['course_id']}/{m['version_id']}"
-                f"/{m.get('entrypoint', 'SKILL.md')}"
+                f"installed/{m.get('course_id', '')}/"
+                f"{m.get('version_id', '')}/"
+                f"{m.get('entrypoint', 'SKILL.md')}"
             ),
             "danger_flags": [],
-        })
+        }
+        entries.append(mask_secrets(entry))
 
     if workflows:
         for w in workflows:
-            entries.append({
+            commands = w.get("commands", []) or []
+            entry = {
                 "type": "workflow",
                 "id": w.get("id", ""),
                 "title": w.get("title", ""),
-                "confidence": w.get("confidence", 0.5),
+                "confidence": float(w.get("confidence", 0.5)),
                 "source": "workflow_history",
-                "commands": w.get("commands", []),
-                "success_count": w.get("success_count", 0),
+                "commands": commands,
+                "success_count": int(w.get("success_count", 0)),
                 "last_success_at": w.get("last_success_at", ""),
-                "danger_flags": _has_danger_flags(w.get("commands")),
-            })
+                "danger_flags": detect_danger_flags(commands),
+            }
+            entries.append(mask_secrets(entry))
 
     return entries
 
@@ -292,30 +405,23 @@ def write_recall(
     entries: list[dict[str, Any]],
     home: Path | None = None,
 ) -> Path:
-    """Write recall index to ``recall.json``."""
+    """Write recall index to ``recall.json`` (enveloped)."""
     h = home or get_home()
     ensure_layout(h)
-    path = h / RECALL_FILENAME
-    path.write_text(
-        json.dumps(entries, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return path
+    return _write_json_entries(h / RECALL_FILENAME, entries)
 
 
 def read_recall(home: Path | None = None) -> list[dict[str, Any]]:
-    """Read recall index from ``recall.json``.
-
-    Returns an empty list if the file does not exist.
-    """
+    """Read recall entries; empty list if absent."""
     h = home or get_home()
-    path = h / RECALL_FILENAME
-    if not path.is_file():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
+    return _read_json_entries(h / RECALL_FILENAME)
+
+
+def rebuild_recall(home: Path | None = None) -> Path:
+    """Refresh recall.json from current installed manifests and workflows."""
+    h = home or get_home()
+    entries = build_recall_entries(list_installed(h), read_workflows(h))
+    return write_recall(entries, h)
 
 
 def search_recall(
@@ -323,12 +429,7 @@ def search_recall(
     home: Path | None = None,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    """Search the recall index for *query* (case-insensitive).
-
-    Returns up to *limit* entries ranked by a simple keyword match
-    score.  Each result includes ``confidence`` adjusted by match
-    quality.
-    """
+    """Search recall by case-insensitive keyword; ranked top-k matches."""
     entries = read_recall(home)
     if not entries or not query:
         return []
@@ -338,9 +439,9 @@ def search_recall(
 
     for entry in entries:
         score = 0.0
-        title = entry.get("title", "").lower()
-        summary = entry.get("summary", "").lower()
-        eid = entry.get("id", "").lower()
+        title = (entry.get("title", "") or "").lower()
+        summary = (entry.get("summary", "") or "").lower()
+        eid = (entry.get("id", "") or "").lower()
 
         if q_lower in title:
             score += 0.5
@@ -350,14 +451,14 @@ def search_recall(
             score += 0.2
 
         if entry.get("type") == "workflow":
-            for cmd in entry.get("commands", []):
+            for cmd in entry.get("commands", []) or []:
                 if q_lower in cmd.lower():
                     score += 0.4
                     break
 
         if score > 0:
             adjusted = min(
-                entry.get("confidence", 0.5) * (1 + score),
+                float(entry.get("confidence", 0.5)) * (1 + score),
                 1.0,
             )
             entry_copy = {**entry, "confidence": round(adjusted, 2)}
@@ -368,10 +469,15 @@ def search_recall(
 
 
 # ---------------------------------------------------------------------------
-# Lockfile
+# Lockfile (per course/version)
 # ---------------------------------------------------------------------------
 
-LOCK_FILENAME = "lock.json"
+LOCKS_DIRNAME = "locks"
+
+
+def _lock_path(home: Path, course_id: str, version_id: str) -> Path:
+    safe = f"{course_id}__{version_id}.json"
+    return home / LOCKS_DIRNAME / safe
 
 
 def acquire_lock(
@@ -379,31 +485,36 @@ def acquire_lock(
     version_id: str,
     home: Path | None = None,
 ) -> Path:
-    """Acquire an install lock for *course_id* / *version_id*.
+    """Acquire an install lock scoped to *course_id*/*version_id*.
 
-    Writes a ``lock.json`` with pid and timestamp.  Returns the
-    lock path.  Caller should call :func:`release_lock` when done.
+    Locks live under ``~/.logion/locks/`` so they survive ``rmtree`` of
+    the install directory during reinstall.
     """
     h = home or get_home()
-    ensure_layout(h)
-    path = h / LOCK_FILENAME
-    lock_data = {
+    path = _lock_path(h, course_id, version_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": SCHEMA_VERSION,
         "course_id": course_id,
         "version_id": version_id,
         "pid": os.getpid(),
         "locked_at": _utc_iso_now(),
     }
     path.write_text(
-        json.dumps(lock_data, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     return path
 
 
-def read_lock(home: Path | None = None) -> dict[str, Any] | None:
-    """Read the current lock.  Returns ``None`` if no lock file exists."""
+def read_lock(
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> dict[str, Any] | None:
+    """Read the lock for one course/version; ``None`` if absent."""
     h = home or get_home()
-    path = h / LOCK_FILENAME
+    path = _lock_path(h, course_id, version_id)
     if not path.is_file():
         return None
     try:
@@ -412,19 +523,46 @@ def read_lock(home: Path | None = None) -> dict[str, Any] | None:
         return None
 
 
-def release_lock(home: Path | None = None) -> bool:
-    """Remove the lock file.  Returns ``True`` if removed."""
+def release_lock(
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> bool:
+    """Remove the lock for one course/version; ``True`` if removed."""
     h = home or get_home()
-    path = h / LOCK_FILENAME
+    path = _lock_path(h, course_id, version_id)
     if path.is_file():
         path.unlink()
         return True
     return False
 
 
-def is_locked(home: Path | None = None) -> bool:
-    """Return ``True`` if a lock file exists."""
-    return read_lock(home) is not None
+def is_locked(
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> bool:
+    """Return ``True`` if the course/version has an active lock."""
+    return read_lock(course_id, version_id, home) is not None
+
+
+def any_locks(home: Path | None = None) -> list[tuple[str, str]]:
+    """Return ``(course_id, version_id)`` pairs with active locks."""
+    h = home or get_home()
+    locks_dir = h / LOCKS_DIRNAME
+    if not locks_dir.is_dir():
+        return []
+    locks: list[tuple[str, str]] = []
+    for path in sorted(locks_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        course = data.get("course_id")
+        version = data.get("version_id")
+        if isinstance(course, str) and isinstance(version, str):
+            locks.append((course, version))
+    return locks
 
 
 # ---------------------------------------------------------------------------
@@ -435,32 +573,75 @@ WORKFLOWS_FILENAME = "workflows.json"
 
 
 def read_workflows(home: Path | None = None) -> list[dict[str, Any]]:
-    """Read workflow history.  Returns empty list if no file."""
+    """Read workflow history; empty list if absent."""
     h = home or get_home()
-    path = h / WORKFLOWS_FILENAME
-    if not path.is_file():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
+    return _read_json_entries(h / WORKFLOWS_FILENAME)
+
+
+def write_workflows(
+    workflows: list[dict[str, Any]],
+    home: Path | None = None,
+) -> Path:
+    """Write workflow history (enveloped)."""
+    h = home or get_home()
+    ensure_layout(h)
+    return _write_json_entries(h / WORKFLOWS_FILENAME, workflows)
 
 
 def append_workflow(
     workflow: dict[str, Any],
     home: Path | None = None,
 ) -> Path:
-    """Append *workflow* to the workflows file and return the path."""
+    """Append a raw workflow record (no merge); returns the file path."""
     h = home or get_home()
-    ensure_layout(h)
-    path = h / WORKFLOWS_FILENAME
     workflows = read_workflows(h)
     workflows.append(workflow)
-    path.write_text(
-        json.dumps(workflows, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return path
+    return write_workflows(workflows, h)
+
+
+def record_workflow_success(
+    workflow_id: str,
+    title: str,
+    commands: list[str],
+    home: Path | None = None,
+    confidence: float = 0.5,
+) -> dict[str, Any]:
+    """Record a successful workflow invocation.
+
+    If a workflow with *workflow_id* exists, increments ``success_count``
+    and updates ``last_success_at``.  Otherwise creates a new record.
+    Always rebuilds the recall index so the new evidence is searchable.
+    Returns the resulting workflow record.
+    """
+    h = home or get_home()
+    workflows = read_workflows(h)
+    now = _utc_iso_now()
+    updated: dict[str, Any] | None = None
+    for w in workflows:
+        if w.get("id") == workflow_id:
+            w["title"] = title or w.get("title", "")
+            w["commands"] = commands or w.get("commands", [])
+            w["success_count"] = int(w.get("success_count", 0)) + 1
+            w["last_success_at"] = now
+            w["confidence"] = min(
+                float(w.get("confidence", confidence)) + 0.05, 1.0
+            )
+            updated = w
+            break
+    if updated is None:
+        updated = {
+            "id": workflow_id,
+            "title": title,
+            "commands": commands,
+            "success_count": 1,
+            "last_success_at": now,
+            "confidence": confidence,
+        }
+        workflows.append(updated)
+
+    write_workflows(workflows, h)
+    rebuild_recall(h)
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -469,9 +650,7 @@ def append_workflow(
 
 
 def _utc_iso_now() -> str:
-    """Return the current UTC time as an ISO-8601 string."""
-    import datetime
-
+    """Current UTC time as an ISO-8601 string."""
     return datetime.datetime.now(datetime.UTC).isoformat()
 
 
@@ -482,11 +661,11 @@ def main() -> int:
     h = ensure_layout()
     log = logging.getLogger(__name__)
     log.info("Logion home: %s", h)
-    log.info("  installed/:  %s", (h / "installed").is_dir())
-    log.info("  index.json:  %s", (h / "index.json").is_file())
-    log.info("  recall.json: %s", (h / "recall.json").is_file())
-    log.info("  lock.json:   %s", (h / "lock.json").is_file())
+    log.info("  installed/:     %s", (h / "installed").is_dir())
+    log.info("  index.json:     %s", (h / "index.json").is_file())
+    log.info("  recall.json:    %s", (h / "recall.json").is_file())
     log.info("  workflows.json: %s", (h / "workflows.json").is_file())
+    log.info("  active locks:   %s", any_locks(h))
     return 0
 
 

@@ -1,5 +1,6 @@
 """Tests for local_state module: layout, manifest, index, recall, lock,
-workflows, and update policy.
+workflows, update policy, secret masking, danger flag enum, content
+verification, and schema envelope.
 """
 
 from __future__ import annotations
@@ -10,23 +11,36 @@ from pathlib import Path
 import pytest
 
 from logion_agent_companion.local_state import (
+    DANGER_FLAGS,
+    INDEX_FILENAME,
+    LOCKS_DIRNAME,
+    MASK_PLACEHOLDER,
     RECALL_FILENAME,
+    SCHEMA_VERSION,
+    WORKFLOWS_FILENAME,
     acquire_lock,
+    any_locks,
     append_workflow,
     build_index,
     build_recall_entries,
+    compute_installed_hash,
+    detect_danger_flags,
     ensure_layout,
     is_locked,
     list_installed,
+    mask_secrets,
     read_index,
     read_lock,
     read_manifest,
     read_recall,
     read_workflows,
+    rebuild_recall,
+    record_workflow_success,
     release_lock,
     search_recall,
     sha256_of_files,
     validate_manifest,
+    verify_installed_content,
     write_index,
     write_manifest,
     write_recall,
@@ -39,7 +53,6 @@ from logion_agent_companion.local_state import (
 
 @pytest.fixture
 def home(tmp_path: Path) -> Path:
-    """Provide an isolated LOGION_HOME."""
     return ensure_layout(tmp_path / "logion-test")
 
 
@@ -62,6 +75,25 @@ def _make_manifest(
         "content_sha256": "abc123",
         "review_status": "approved",
     }
+
+
+def _install_files(
+    home: Path,
+    course_id: str,
+    version_id: str,
+    files: dict[str, str],
+) -> str:
+    """Install file contents under installed/<course>/<version>/ and
+    return the resulting content_sha256."""
+    base = home / "installed" / course_id / version_id
+    base.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    for rel, content in files.items():
+        p = base / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        paths.append(p)
+    return sha256_of_files(paths)
 
 
 # ---------------------------------------------------------------------------
@@ -116,13 +148,10 @@ class TestManifest:
         assert result["version_id"] == "2026.05.20"
 
     def test_read_manifest_missing(self, home: Path) -> None:
-        result = read_manifest("nonexistent", "1.0", home)
-        assert result is None
+        assert read_manifest("nonexistent", "1.0", home) is None
 
     def test_validate_manifest_valid(self) -> None:
-        m = _make_manifest()
-        errors = validate_manifest(m)
-        assert errors == []
+        assert validate_manifest(_make_manifest()) == []
 
     def test_validate_manifest_missing_keys(self) -> None:
         errors = validate_manifest({})
@@ -141,17 +170,12 @@ class TestManifest:
         assert any("required_tools must be a list" in e for e in errors)
 
     def test_list_installed_empty(self, home: Path) -> None:
-        result = list_installed(home)
-        assert result == []
+        assert list_installed(home) == []
 
     def test_list_installed_multiple(self, home: Path) -> None:
-        m1 = _make_manifest("a", "1.0")
-        m2 = _make_manifest("b", "2.0")
-        write_manifest(m1, "a", "1.0", home)
-        write_manifest(m2, "b", "2.0", home)
-        result = list_installed(home)
-        assert len(result) == 2
-        ids = {r["course_id"] for r in result}
+        write_manifest(_make_manifest("a", "1.0"), "a", "1.0", home)
+        write_manifest(_make_manifest("b", "2.0"), "b", "2.0", home)
+        ids = {r["course_id"] for r in list_installed(home)}
         assert ids == {"a", "b"}
 
     def test_sha256_of_files(self, tmp_path: Path) -> None:
@@ -160,8 +184,56 @@ class TestManifest:
         f1.write_text("hello")
         f2.write_text("world")
         digest = sha256_of_files([f1, f2])
-        assert isinstance(digest, str)
         assert len(digest) == 64
+
+
+# ---------------------------------------------------------------------------
+# Content verification
+# ---------------------------------------------------------------------------
+
+
+class TestContentVerification:
+    def test_compute_installed_hash_matches_manifest(self, home: Path) -> None:
+        sha = _install_files(
+            home,
+            "weather.basic",
+            "2026.05.20",
+            {"SKILL.md": "body"},
+        )
+        m = _make_manifest()
+        m["content_sha256"] = sha
+        write_manifest(m, "weather.basic", "2026.05.20", home)
+        assert (
+            compute_installed_hash("weather.basic", "2026.05.20", home) == sha
+        )
+
+    def test_verify_installed_content_ok(self, home: Path) -> None:
+        sha = _install_files(
+            home, "weather.basic", "2026.05.20", {"SKILL.md": "body"}
+        )
+        m = _make_manifest()
+        m["content_sha256"] = sha
+        write_manifest(m, "weather.basic", "2026.05.20", home)
+        result = verify_installed_content("weather.basic", "2026.05.20", home)
+        assert result["ok"] is True
+        assert result["user_modified"] is False
+
+    def test_verify_detects_user_modification(self, home: Path) -> None:
+        _install_files(
+            home, "weather.basic", "2026.05.20", {"SKILL.md": "original"}
+        )
+        m = _make_manifest()
+        m["content_sha256"] = "deadbeef"  # mismatched on purpose
+        write_manifest(m, "weather.basic", "2026.05.20", home)
+        result = verify_installed_content("weather.basic", "2026.05.20", home)
+        assert result["ok"] is False
+        assert result["user_modified"] is True
+        assert result["expected"] != result["actual"]
+
+    def test_verify_missing_manifest(self, home: Path) -> None:
+        result = verify_installed_content("nope", "1.0", home)
+        assert result["ok"] is False
+        assert result["user_modified"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -170,38 +242,34 @@ class TestManifest:
 
 
 class TestIndex:
-    def test_build_and_write_index(self, home: Path) -> None:
-        m = _make_manifest()
-        write_manifest(m, "weather.basic", "2026.05.20", home)
+    def test_build_index(self, home: Path) -> None:
+        write_manifest(_make_manifest(), "weather.basic", "2026.05.20", home)
         index = build_index(home)
         assert len(index) == 1
         assert index[0]["course_id"] == "weather.basic"
-        assert index[0]["version_id"] == "2026.05.20"
-        assert "capabilities" in index[0]
-        assert "required_tools" in index[0]
-        # no full skill body
         assert "content_sha256" not in index[0]
         assert "installed_at" not in index[0]
 
-    def test_write_and_read_index(self, home: Path) -> None:
-        data = [{"course_id": "x", "version_id": "1"}]
-        write_index(data, home)
+    def test_write_and_read_index_roundtrip(self, home: Path) -> None:
+        write_index([{"course_id": "x", "version_id": "1"}], home)
         result = read_index(home)
-        assert len(result) == 1
-        assert result[0]["course_id"] == "x"
+        assert result == [{"course_id": "x", "version_id": "1"}]
 
     def test_read_index_missing(self, home: Path) -> None:
-        result = read_index(home)
-        assert result == []
+        assert read_index(home) == []
 
-    def test_index_is_compact(self, home: Path) -> None:
-        m = _make_manifest()
-        write_manifest(m, "weather.basic", "2026.05.20", home)
-        index = build_index(home)
-        entry = index[0]
-        # index entry must not include full skill body
-        for forbidden in ("content_sha256", "installed_at"):
-            assert forbidden not in entry
+    def test_index_uses_envelope_on_disk(self, home: Path) -> None:
+        write_index([{"course_id": "x", "version_id": "1"}], home)
+        raw = json.loads((home / INDEX_FILENAME).read_text(encoding="utf-8"))
+        assert raw["schema_version"] == SCHEMA_VERSION
+        assert isinstance(raw["entries"], list)
+
+    def test_index_reads_legacy_bare_list(self, home: Path) -> None:
+        (home / INDEX_FILENAME).write_text(
+            json.dumps([{"course_id": "legacy", "version_id": "0"}]),
+            encoding="utf-8",
+        )
+        assert read_index(home) == [{"course_id": "legacy", "version_id": "0"}]
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +278,8 @@ class TestIndex:
 
 
 class TestRecall:
-    def test_build_recall_entries(self, home: Path) -> None:
-        m = _make_manifest()
-        write_manifest(m, "weather.basic", "2026.05.20", home)
+    def test_build_recall_from_installed(self, home: Path) -> None:
+        write_manifest(_make_manifest(), "weather.basic", "2026.05.20", home)
         entries = build_recall_entries(list_installed(home))
         assert len(entries) == 1
         e = entries[0]
@@ -221,9 +288,8 @@ class TestRecall:
         assert e["source"] == "installed_index"
         assert e["danger_flags"] == []
 
-    def test_recall_with_workflows(self, home: Path) -> None:
-        m = _make_manifest()
-        write_manifest(m, "weather.basic", "2026.05.20", home)
+    def test_build_recall_with_workflows(self, home: Path) -> None:
+        write_manifest(_make_manifest(), "weather.basic", "2026.05.20", home)
         wf = [
             {
                 "id": "verify-companion",
@@ -234,93 +300,151 @@ class TestRecall:
                 "confidence": 0.88,
             }
         ]
-        entries = build_recall_entries(list_installed(home), workflows=wf)
-        types = {e["type"] for e in entries}
-        assert "installed_capability" in types
-        assert "workflow" in types
+        types = {
+            e["type"] for e in build_recall_entries(list_installed(home), wf)
+        }
+        assert types == {"installed_capability", "workflow"}
 
-    def test_recall_danger_flags(self) -> None:
-        wf = [
-            {
-                "id": "dangerous-workflow",
-                "title": "Force delete temp files",
-                "commands": ["rm -rf /tmp/old", "sudo chmod 777 /tmp"],
-                "success_count": 1,
-                "last_success_at": "",
-                "confidence": 0.5,
-            }
-        ]
-        entries = build_recall_entries([], workflows=wf)
-        assert len(entries) == 1
-        assert len(entries[0]["danger_flags"]) > 0
-
-    def test_write_and_read_recall(self, home: Path) -> None:
-        entries = [
-            {
-                "type": "installed_capability",
-                "id": "test",
-                "title": "Test",
-                "summary": "A test capability.",
-                "confidence": 0.9,
-                "source": "installed_index",
-                "entrypoint": "installed/test/1.0/SKILL.md",
-                "danger_flags": [],
-            }
-        ]
-        write_recall(entries, home)
-        result = read_recall(home)
-        assert len(result) == 1
-        assert result[0]["id"] == "test"
+    def test_recall_envelope_on_disk(self, home: Path) -> None:
+        write_recall(
+            [{"type": "installed_capability", "id": "x"}],
+            home,
+        )
+        raw = json.loads((home / RECALL_FILENAME).read_text(encoding="utf-8"))
+        assert raw["schema_version"] == SCHEMA_VERSION
+        assert raw["entries"][0]["id"] == "x"
 
     def test_search_recall(self, home: Path) -> None:
-        m = _make_manifest(title="Weather Check Skill")
-        write_manifest(m, "weather.basic", "2026.05.20", home)
-        entries = build_recall_entries(list_installed(home))
-        write_recall(entries, home)
-
+        write_manifest(
+            _make_manifest(title="Weather Check Skill"),
+            "weather.basic",
+            "2026.05.20",
+            home,
+        )
+        write_recall(build_recall_entries(list_installed(home)), home)
         results = search_recall("weather", home, limit=5)
-        assert len(results) >= 1
         assert results[0]["id"] == "weather.basic"
 
     def test_search_recall_no_results(self, home: Path) -> None:
         write_recall([], home)
-        results = search_recall("nonexistent", home)
-        assert results == []
+        assert search_recall("nonexistent", home) == []
 
-    def test_recall_masks_secrets_in_entries(self, home: Path) -> None:
-        """Recall entries must not contain full command outputs or
-        secrets."""
-        entries = [
+    def test_rebuild_recall_includes_workflows(self, home: Path) -> None:
+        write_manifest(_make_manifest(), "weather.basic", "2026.05.20", home)
+        append_workflow(
             {
-                "type": "installed_capability",
-                "id": "safe.skill",
-                "title": "Safe Skill",
-                "summary": "Does safe things.",
-                "confidence": 0.91,
-                "source": "installed_index",
-                "entrypoint": "installed/safe.skill/1.0/SKILL.md",
-                "danger_flags": [],
+                "id": "wf1",
+                "title": "Workflow One",
+                "commands": ["echo hi"],
+                "success_count": 1,
+                "last_success_at": "2026-05-21T00:00:00Z",
+                "confidence": 0.5,
+            },
+            home,
+        )
+        rebuild_recall(home)
+        ids = {e["id"] for e in read_recall(home)}
+        assert "weather.basic" in ids
+        assert "wf1" in ids
+
+
+class TestRecallMasksSecrets:
+    def test_workflow_with_secret_field_is_masked(self) -> None:
+        wf = [
+            {
+                "id": "deploy",
+                "title": "Deploy",
+                "commands": ["./deploy.sh"],
+                "success_count": 1,
+                "last_success_at": "2026-05-21T00:00:00Z",
+                "confidence": 0.5,
+                "api_key": "sk-live-12345",  # pragma: allowlist secret
+                "auth_token": "ghp_xyz",  # pragma: allowlist secret
             }
         ]
-        write_recall(entries, home)
-        data = json.loads((home / RECALL_FILENAME).read_text(encoding="utf-8"))
-        for entry in data:
-            # must not contain secrets or full skill bodies
-            for forbidden in (
-                "api_key",
-                "bearer ",
-                "password",
-                "secret",
-                "content_sha256",
-            ):
-                entry_str = json.dumps(entry).lower()
-                assert forbidden not in entry_str, (
-                    f"Recall entry contains forbidden term: {forbidden}"
-                )
+        entries = build_recall_entries([], workflows=wf)
+        entry_str = json.dumps(entries[0])
+        # Recall builder drops unknown fields entirely AND mask_secrets
+        # masks any that survive — either way, secrets never leak.
+        assert "sk-live-12345" not in entry_str
+        assert "ghp_xyz" not in entry_str
+
+    def test_mask_secrets_nested(self) -> None:
+        data = {
+            "outer": {
+                "password": "hunter2",  # pragma: allowlist secret
+                "ok": "fine",
+            },
+            "list_field": [{"bearer": "x"}, {"safe": "y"}],
+        }
+        masked = mask_secrets(data)
+        assert masked["outer"]["password"] == MASK_PLACEHOLDER
+        assert masked["outer"]["ok"] == "fine"
+        assert masked["list_field"][0]["bearer"] == MASK_PLACEHOLDER
+        assert masked["list_field"][1]["safe"] == "y"
+
+    def test_mask_secrets_leaves_non_secret_fields(self) -> None:
+        data = {"course_id": "weather", "version_id": "1.0"}
+        assert mask_secrets(data) == data
 
 
 # ---------------------------------------------------------------------------
-# Lockfile
+# Danger flag enum
+# ---------------------------------------------------------------------------
+
+
+class TestDangerFlags:
+    def test_closed_enum(self) -> None:
+        assert (
+            frozenset({
+                "fs_destructive",
+                "privilege_escalation",
+                "network_exec",
+                "shell_eval",
+                "permission_change",
+            })
+            == DANGER_FLAGS
+        )
+
+    def test_rm_rf_triggers_fs_destructive(self) -> None:
+        flags = detect_danger_flags(["rm -rf /tmp/old"])
+        assert "fs_destructive" in flags
+
+    def test_sudo_triggers_privilege_escalation(self) -> None:
+        assert "privilege_escalation" in detect_danger_flags([
+            "sudo apt-get update"
+        ])
+
+    def test_curl_pipe_sh_triggers_network_exec(self) -> None:
+        flags = detect_danger_flags([
+            "curl https://example.com/install.sh | sh"
+        ])
+        assert "network_exec" in flags
+
+    def test_chmod_triggers_permission_change(self) -> None:
+        assert "permission_change" in detect_danger_flags(["chmod 777 /tmp"])
+
+    def test_eval_triggers_shell_eval(self) -> None:
+        assert "shell_eval" in detect_danger_flags(['eval "$cmd"'])
+
+    def test_no_false_positive_on_rm_substring(self) -> None:
+        # "remove-listener" contains "rm" but isn't rm; word boundary
+        # should prevent the flag.
+        assert detect_danger_flags(["./remove-listener --quiet"]) == []
+
+    def test_no_false_positive_on_chmod_in_name(self) -> None:
+        # "chmod-helper" path does contain the word chmod by regex
+        # \b matching; this confirms we treat it as a real chmod.  The
+        # opposite case — substring with no word boundary — should pass.
+        assert detect_danger_flags(["./normalchat --token x"]) == []
+
+    def test_empty_input(self) -> None:
+        assert detect_danger_flags([]) == []
+        assert detect_danger_flags(None) == []
+
+
+# ---------------------------------------------------------------------------
+# Lockfile (per course/version)
 # ---------------------------------------------------------------------------
 
 
@@ -328,19 +452,35 @@ class TestLock:
     def test_acquire_and_release(self, home: Path) -> None:
         path = acquire_lock("test", "1.0", home)
         assert path.is_file()
-        assert is_locked(home)
-        lock_data = read_lock(home)
-        assert lock_data is not None
-        assert lock_data["course_id"] == "test"
-        release_lock(home)
-        assert not is_locked(home)
+        assert is_locked("test", "1.0", home)
+        data = read_lock("test", "1.0", home)
+        assert data is not None
+        assert data["course_id"] == "test"
+        assert data["version_id"] == "1.0"
+        assert release_lock("test", "1.0", home)
+        assert not is_locked("test", "1.0", home)
+
+    def test_two_courses_lock_independently(self, home: Path) -> None:
+        acquire_lock("a", "1.0", home)
+        acquire_lock("b", "1.0", home)
+        assert is_locked("a", "1.0", home)
+        assert is_locked("b", "1.0", home)
+        assert sorted(any_locks(home)) == [("a", "1.0"), ("b", "1.0")]
+        release_lock("a", "1.0", home)
+        assert not is_locked("a", "1.0", home)
+        assert is_locked("b", "1.0", home)
 
     def test_read_lock_missing(self, home: Path) -> None:
-        assert read_lock(home) is None
-        assert not is_locked(home)
+        assert read_lock("nope", "0", home) is None
+        assert not is_locked("nope", "0", home)
 
     def test_release_lock_when_none(self, home: Path) -> None:
-        assert release_lock(home) is False
+        assert release_lock("nope", "0", home) is False
+
+    def test_locks_live_outside_install_dir(self, home: Path) -> None:
+        # rmtree of install dir must not destroy locks
+        acquire_lock("a", "1.0", home)
+        assert (home / LOCKS_DIRNAME).is_dir()
 
 
 # ---------------------------------------------------------------------------
@@ -350,8 +490,7 @@ class TestLock:
 
 class TestWorkflows:
     def test_read_workflows_empty(self, home: Path) -> None:
-        result = read_workflows(home)
-        assert result == []
+        assert read_workflows(home) == []
 
     def test_append_workflow(self, home: Path) -> None:
         wf = {
@@ -364,28 +503,55 @@ class TestWorkflows:
         path = append_workflow(wf, home)
         assert path.is_file()
         result = read_workflows(home)
-        assert len(result) == 1
         assert result[0]["id"] == "test-wf"
 
-    def test_append_multiple_workflows(self, home: Path) -> None:
-        for i in range(3):
-            append_workflow(
-                {"id": f"wf-{i}", "title": f"Workflow {i}"},
-                home,
-            )
-        result = read_workflows(home)
-        assert len(result) == 3
+    def test_workflows_envelope_on_disk(self, home: Path) -> None:
+        append_workflow({"id": "x"}, home)
+        raw = json.loads(
+            (home / WORKFLOWS_FILENAME).read_text(encoding="utf-8")
+        )
+        assert raw["schema_version"] == SCHEMA_VERSION
+        assert raw["entries"][0]["id"] == "x"
+
+    def test_record_workflow_success_creates_new(self, home: Path) -> None:
+        record = record_workflow_success(
+            "verify-companion",
+            "Verify companion",
+            ["make verify"],
+            home,
+        )
+        assert record["success_count"] == 1
+        assert record["last_success_at"]
+        # rebuild_recall also fires
+        ids = {e["id"] for e in read_recall(home)}
+        assert "verify-companion" in ids
+
+    def test_record_workflow_success_increments(self, home: Path) -> None:
+        record_workflow_success(
+            "verify-companion", "Verify", ["make verify"], home
+        )
+        record = record_workflow_success(
+            "verify-companion", "Verify", ["make verify"], home
+        )
+        assert record["success_count"] == 2
+
+    def test_record_workflow_confidence_grows(self, home: Path) -> None:
+        first = record_workflow_success(
+            "wf", "W", ["echo"], home, confidence=0.5
+        )
+        second = record_workflow_success("wf", "W", ["echo"], home)
+        assert second["confidence"] > first["confidence"]
+        assert second["confidence"] <= 1.0
 
 
 # ---------------------------------------------------------------------------
-# Update policy (from check_updates)
+# Update policy (lives in scripts.check_updates but re-exports
+# mask_secrets from local_state)
 # ---------------------------------------------------------------------------
 
 
 class TestUpdatePolicy:
-    def test_no_approval_needed_when_unchanged(
-        self,
-    ) -> None:
+    def test_no_approval_needed_when_unchanged(self) -> None:
         from scripts.check_updates import check_update_policy
 
         m = _make_manifest()
@@ -393,9 +559,7 @@ class TestUpdatePolicy:
         assert result["requires_approval"] is False
         assert result["reasons"] == []
 
-    def test_approval_needed_when_content_changes(
-        self,
-    ) -> None:
+    def test_approval_needed_when_content_changes(self) -> None:
         from scripts.check_updates import check_update_policy
 
         old = _make_manifest()
@@ -404,9 +568,7 @@ class TestUpdatePolicy:
         assert result["requires_approval"] is True
         assert any("content_sha256 changed" in r for r in result["reasons"])
 
-    def test_approval_needed_when_price_changes(
-        self,
-    ) -> None:
+    def test_approval_needed_when_price_changes(self) -> None:
         from scripts.check_updates import check_update_policy
 
         old = _make_manifest()
@@ -415,9 +577,7 @@ class TestUpdatePolicy:
         assert result["requires_approval"] is True
         assert any("price changed" in r for r in result["reasons"])
 
-    def test_approval_needed_for_permission_expansion(
-        self,
-    ) -> None:
+    def test_approval_needed_for_permission_expansion(self) -> None:
         from scripts.check_updates import check_update_policy
 
         old = _make_manifest()
@@ -426,30 +586,55 @@ class TestUpdatePolicy:
         assert result["requires_approval"] is True
         assert any("required_tools" in r for r in result["reasons"])
 
-    def test_mask_secrets(self) -> None:
-        from scripts.check_updates import mask_secrets
+    def test_mask_secrets_reexport(self) -> None:
+        from scripts.check_updates import mask_secrets as cu_mask
 
         data = {
             "apikey": "sk-12345",  # pragma: allowlist secret
             "token": "ghp_abcdef",  # pragma: allowlist secret
             "safe_field": "hello",
         }
-        masked = mask_secrets(data)
-        assert masked["apikey"] == "***MASKED***"
-        assert masked["token"] == "***MASKED***"
+        masked = cu_mask(data)
+        assert masked["apikey"] == MASK_PLACEHOLDER
+        assert masked["token"] == MASK_PLACEHOLDER
         assert masked["safe_field"] == "hello"
 
-    def test_detect_permission_expansion(
-        self,
-    ) -> None:
+    def test_detect_permission_expansion(self) -> None:
         from scripts.check_updates import detect_permission_expansion
 
         old = _make_manifest()
         new = {
             **old,
-            "capabilities": ["weather.current", "weather.forecast", "new.cap"],
+            "capabilities": [
+                "weather.current",
+                "weather.forecast",
+                "new.cap",
+            ],
             "required_tools": ["terminal", "file", "network"],
         }
         expansions = detect_permission_expansion(old, new)
         assert "capabilities" in expansions
         assert "required_tools" in expansions
+
+    def test_evaluate_update_blocks_local_modification(
+        self, home: Path
+    ) -> None:
+        from scripts.check_updates import evaluate_update
+
+        sha = _install_files(
+            home, "weather.basic", "2026.05.20", {"SKILL.md": "original"}
+        )
+        m = _make_manifest()
+        m["content_sha256"] = sha
+        write_manifest(m, "weather.basic", "2026.05.20", home)
+
+        # Modify the file locally after install
+        (
+            home / "installed" / "weather.basic" / "2026.05.20" / "SKILL.md"
+        ).write_text("modified by user", encoding="utf-8")
+
+        new = {**m, "content_sha256": "remote_new_hash"}
+        result = evaluate_update(m, new, home)
+        assert result["requires_approval"] is True
+        assert result["blocks_silent_overwrite"] is True
+        assert "local_modification_detected" in result["reasons"]

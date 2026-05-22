@@ -24,16 +24,13 @@ import yaml
 from logion_agent_companion.local_state import (
     acquire_lock,
     build_index,
-    build_recall_entries,
     ensure_layout,
-    list_installed,
     read_manifest,
-    read_workflows,
+    rebuild_recall,
     release_lock,
     validate_manifest,
     write_index,
     write_manifest,
-    write_recall,
 )
 
 
@@ -209,15 +206,11 @@ def install_skill(
 
     finally:
         if not dry_run:
-            release_lock(home)
+            release_lock(course_id, version_id, home)
 
     if not dry_run:
-        installed = list_installed(home)
         write_index(build_index(home), home)
-        write_recall(
-            build_recall_entries(installed, read_workflows(home)),
-            home,
-        )
+        rebuild_recall(home)
 
     action = "Would install" if dry_run else "Installed"
     print(
