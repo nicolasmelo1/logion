@@ -18,7 +18,6 @@ import hashlib
 import json
 import os
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -136,11 +135,6 @@ REQUIRED_MANIFEST_KEYS = frozenset({
     "required_tools",
     "content_sha256",
     "review_status",
-})
-
-MANIFEST_OPTIONAL_KEYS = frozenset({
-    "price_cents_at_install",
-    "currency",
 })
 
 
@@ -588,17 +582,6 @@ def write_workflows(
     return _write_json_entries(h / WORKFLOWS_FILENAME, workflows)
 
 
-def append_workflow(
-    workflow: dict[str, Any],
-    home: Path | None = None,
-) -> Path:
-    """Append a raw workflow record (no merge); returns the file path."""
-    h = home or get_home()
-    workflows = read_workflows(h)
-    workflows.append(workflow)
-    return write_workflows(workflows, h)
-
-
 def record_workflow_success(
     workflow_id: str,
     title: str,
@@ -652,22 +635,3 @@ def record_workflow_success(
 def _utc_iso_now() -> str:
     """Current UTC time as an ISO-8601 string."""
     return datetime.datetime.now(datetime.UTC).isoformat()
-
-
-def main() -> int:
-    """Dump the local state layout for debugging."""
-    import logging
-
-    h = ensure_layout()
-    log = logging.getLogger(__name__)
-    log.info("Logion home: %s", h)
-    log.info("  installed/:     %s", (h / "installed").is_dir())
-    log.info("  index.json:     %s", (h / "index.json").is_file())
-    log.info("  recall.json:    %s", (h / "recall.json").is_file())
-    log.info("  workflows.json: %s", (h / "workflows.json").is_file())
-    log.info("  active locks:   %s", any_locks(h))
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

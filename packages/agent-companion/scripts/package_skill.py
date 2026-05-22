@@ -20,7 +20,6 @@ REQUIRED_DIRS = [
     "references",
     "scripts",
     "tests",
-    "templates",
     "vendor",
 ]
 
@@ -133,71 +132,41 @@ def _check_skill_md(report: list[str]) -> bool:
 
 
 def _check_capabilities(report: list[str]) -> bool:
-    """Verify capabilities.yaml has required fields."""
+    """Verify the canonical capability manifest parses and is valid.
+
+    The detailed schema validation (tools enum, domain rules, env regex,
+    filesystem path rules) lives in
+    ``packages/cli/cli/_course_capabilities.py`` and is exercised by
+    ``tests/test_capability_manifest.py``.  Here we only confirm the
+    file parses as a mapping with ``version: 1`` so this lint passes
+    even when the cli package isn't on the path.
+    """
     import yaml
 
-    ok = True
     cap_path = ROOT / "course" / "capabilities.yaml"
     try:
-        content = cap_path.read_text(encoding="utf-8")
+        data = yaml.safe_load(cap_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         report.append("FAIL course/capabilities.yaml not found")
         return False
-    except OSError as exc:
-        report.append(f"FAIL course/capabilities.yaml read error: {exc}")
-        return False
-
-    try:
-        data = yaml.safe_load(content)
-    except yaml.YAMLError as exc:
-        report.append(f"FAIL course/capabilities.yaml parse error: {exc}")
+    except (OSError, yaml.YAMLError) as exc:
+        report.append(f"FAIL course/capabilities.yaml read/parse error: {exc}")
         return False
 
     if not isinstance(data, dict):
         report.append("FAIL course/capabilities.yaml is not a mapping")
         return False
 
-    required_keys = [
-        "version",
-        "summary",
-        "capabilities",
-        "required_tools",
-        "safety",
-    ]
-    for key in required_keys:
-        if key not in data:
-            report.append(f"FAIL capabilities.yaml missing key: {key}")
-            ok = False
-        else:
-            report.append(f"OK capabilities.yaml has key: {key}")
-
-    safety_data = data.get("safety", {})
-    if "requires_confirmation" not in safety_data:
+    if data.get("version") != 1:
         report.append(
-            "FAIL capabilities.yaml missing safety.requires_confirmation"
+            "FAIL course/capabilities.yaml: version must be exactly 1"
         )
-        ok = False
-    else:
-        report.append("OK capabilities.yaml has safety.requires_confirmation")
+        return False
 
-    caps = data.get("capabilities", [])
-    required_cap_ids = [
-        "logion.recall.search",
-        "logion.marketplace.search",
-        "logion.course.author",
-        "logion.course.operate",
-    ]
-    cap_ids = [c.get("id", "") for c in caps]
-    for req_id in required_cap_ids:
-        if req_id not in cap_ids:
-            report.append(
-                f"FAIL capabilities.yaml missing capability: {req_id}"
-            )
-            ok = False
-        else:
-            report.append(f"OK capabilities.yaml has capability: {req_id}")
-
-    return ok
+    report.append("OK course/capabilities.yaml parses as version 1 manifest")
+    if "summary" in data:
+        report.append("OK capabilities.yaml has key: summary")
+    return True
 
 
 # Files where low-confidence patterns are acceptable.
@@ -205,8 +174,8 @@ _LOW_PATTERN_ALLOWLIST = {
     "safety-and-approval.md",
     "low-context-loading.md",
     "troubleshooting.md",
-    "check_updates.py",
-    "local_state.py",
+    "companion-capabilities.md",
+    "capabilities.yaml",
 }
 
 # Files that reference secret pattern names for documentation
@@ -215,10 +184,7 @@ _SECRET_NAME_SKIP_FILES = {
     "package_skill.py",
     "test_package_skill.py",
     "test_skill_structure.py",
-    "test_local_state.py",
-    "check_updates.py",
-    "install_skill.py",
-    "local_state.py",
+    "test_capability_manifest.py",
 }
 
 

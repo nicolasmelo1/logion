@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from logion_agent_companion.local_state import (
+from cli._local_state import (
     DANGER_FLAGS,
     INDEX_FILENAME,
     LOCKS_DIRNAME,
@@ -20,7 +20,6 @@ from logion_agent_companion.local_state import (
     WORKFLOWS_FILENAME,
     acquire_lock,
     any_locks,
-    append_workflow,
     build_index,
     build_recall_entries,
     compute_installed_hash,
@@ -44,6 +43,7 @@ from logion_agent_companion.local_state import (
     write_index,
     write_manifest,
     write_recall,
+    write_workflows,
 )
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ class TestLayout:
         custom = tmp_path / "custom-logion"
         custom.mkdir()
         monkeypatch.setenv("LOGION_HOME", str(custom))
-        from logion_agent_companion.local_state import get_home
+        from cli._local_state import get_home
 
         assert get_home() == custom
 
@@ -124,7 +124,7 @@ class TestLayout:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("LOGION_HOME", raising=False)
-        from logion_agent_companion.local_state import (
+        from cli._local_state import (
             DEFAULT_HOME,
             get_home,
         )
@@ -331,15 +331,17 @@ class TestRecall:
 
     def test_rebuild_recall_includes_workflows(self, home: Path) -> None:
         write_manifest(_make_manifest(), "weather.basic", "2026.05.20", home)
-        append_workflow(
-            {
-                "id": "wf1",
-                "title": "Workflow One",
-                "commands": ["echo hi"],
-                "success_count": 1,
-                "last_success_at": "2026-05-21T00:00:00Z",
-                "confidence": 0.5,
-            },
+        write_workflows(
+            [
+                {
+                    "id": "wf1",
+                    "title": "Workflow One",
+                    "commands": ["echo hi"],
+                    "success_count": 1,
+                    "last_success_at": "2026-05-21T00:00:00Z",
+                    "confidence": 0.5,
+                }
+            ],
             home,
         )
         rebuild_recall(home)
@@ -492,21 +494,8 @@ class TestWorkflows:
     def test_read_workflows_empty(self, home: Path) -> None:
         assert read_workflows(home) == []
 
-    def test_append_workflow(self, home: Path) -> None:
-        wf = {
-            "id": "test-wf",
-            "title": "Test Workflow",
-            "commands": ["echo hello"],
-            "success_count": 3,
-            "last_success_at": "2026-05-20T00:00:00Z",
-        }
-        path = append_workflow(wf, home)
-        assert path.is_file()
-        result = read_workflows(home)
-        assert result[0]["id"] == "test-wf"
-
     def test_workflows_envelope_on_disk(self, home: Path) -> None:
-        append_workflow({"id": "x"}, home)
+        write_workflows([{"id": "x"}], home)
         raw = json.loads(
             (home / WORKFLOWS_FILENAME).read_text(encoding="utf-8")
         )
@@ -542,99 +531,3 @@ class TestWorkflows:
         second = record_workflow_success("wf", "W", ["echo"], home)
         assert second["confidence"] > first["confidence"]
         assert second["confidence"] <= 1.0
-
-
-# ---------------------------------------------------------------------------
-# Update policy (lives in scripts.check_updates but re-exports
-# mask_secrets from local_state)
-# ---------------------------------------------------------------------------
-
-
-class TestUpdatePolicy:
-    def test_no_approval_needed_when_unchanged(self) -> None:
-        from scripts.check_updates import check_update_policy
-
-        m = _make_manifest()
-        result = check_update_policy(m, m)
-        assert result["requires_approval"] is False
-        assert result["reasons"] == []
-
-    def test_approval_needed_when_content_changes(self) -> None:
-        from scripts.check_updates import check_update_policy
-
-        old = _make_manifest()
-        new = {**old, "content_sha256": "different_hash"}
-        result = check_update_policy(old, new)
-        assert result["requires_approval"] is True
-        assert any("content_sha256 changed" in r for r in result["reasons"])
-
-    def test_approval_needed_when_price_changes(self) -> None:
-        from scripts.check_updates import check_update_policy
-
-        old = _make_manifest()
-        new = {**old, "price_cents_at_install": 999}
-        result = check_update_policy(old, new)
-        assert result["requires_approval"] is True
-        assert any("price changed" in r for r in result["reasons"])
-
-    def test_approval_needed_for_permission_expansion(self) -> None:
-        from scripts.check_updates import check_update_policy
-
-        old = _make_manifest()
-        new = {**old, "required_tools": ["terminal", "file", "network"]}
-        result = check_update_policy(old, new)
-        assert result["requires_approval"] is True
-        assert any("required_tools" in r for r in result["reasons"])
-
-    def test_mask_secrets_reexport(self) -> None:
-        from scripts.check_updates import mask_secrets as cu_mask
-
-        data = {
-            "apikey": "sk-12345",  # pragma: allowlist secret
-            "token": "ghp_abcdef",  # pragma: allowlist secret
-            "safe_field": "hello",
-        }
-        masked = cu_mask(data)
-        assert masked["apikey"] == MASK_PLACEHOLDER
-        assert masked["token"] == MASK_PLACEHOLDER
-        assert masked["safe_field"] == "hello"
-
-    def test_detect_permission_expansion(self) -> None:
-        from scripts.check_updates import detect_permission_expansion
-
-        old = _make_manifest()
-        new = {
-            **old,
-            "capabilities": [
-                "weather.current",
-                "weather.forecast",
-                "new.cap",
-            ],
-            "required_tools": ["terminal", "file", "network"],
-        }
-        expansions = detect_permission_expansion(old, new)
-        assert "capabilities" in expansions
-        assert "required_tools" in expansions
-
-    def test_evaluate_update_blocks_local_modification(
-        self, home: Path
-    ) -> None:
-        from scripts.check_updates import evaluate_update
-
-        sha = _install_files(
-            home, "weather.basic", "2026.05.20", {"SKILL.md": "original"}
-        )
-        m = _make_manifest()
-        m["content_sha256"] = sha
-        write_manifest(m, "weather.basic", "2026.05.20", home)
-
-        # Modify the file locally after install
-        (
-            home / "installed" / "weather.basic" / "2026.05.20" / "SKILL.md"
-        ).write_text("modified by user", encoding="utf-8")
-
-        new = {**m, "content_sha256": "remote_new_hash"}
-        result = evaluate_update(m, new, home)
-        assert result["requires_approval"] is True
-        assert result["blocks_silent_overwrite"] is True
-        assert "local_modification_detected" in result["reasons"]

@@ -86,17 +86,24 @@ logion courses get COURSE_ID
 logion courses versions get COURSE_ID VERSION_ID
 logion notifications unread-count
 logion notifications list --unread-only --limit 20
+logion recall search "video cuts" --limit 5  # read-only
+logion skills installed
+logion skills inspect COURSE_ID
+logion skills updates
 ```
 
-Planned or read-only examples; do not run them now:
+Implemented mutating commands (require explicit approval):
 ```bash
-logion recall search "video cuts" --limit 5  # planned/read-only
+logion skills install --source ./BUNDLE --course-id COURSE_ID --version-id VERSION_ID
+logion skills update COURSE_ID --version-id VERSION_ID --source ./BUNDLE
+logion recall record --id WORKFLOW_ID --title TITLE --command CMD
+logion courses capabilities scaffold --bundle-dir ./new-course
+logion courses capabilities validate --bundle-dir ./new-course
+```
+
+Planned commands; do not run them now:
+```bash
 logion skills search "video cuts" --limit 5  # planned
-logion skills inspect COURSE_ID  # planned
-logion skills install COURSE_ID --version VERSION_ID  # planned
-logion skills installed  # planned
-logion skills updates  # planned
-logion skills update COURSE_ID  # planned
 ```
 
 ## Course inspection checklist

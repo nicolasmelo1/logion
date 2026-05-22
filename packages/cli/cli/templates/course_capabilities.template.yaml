@@ -1,0 +1,59 @@
+# course/capabilities.yaml — Logion course capability manifest
+#
+# Declare exactly what this course is allowed to do.  The Logion CLI and
+# server enforce these constraints identically; a manifest that fails
+# local validation will also fail on publish.
+#
+# Only `version: 1` is required.  Every other field defaults to empty
+# (nothing allowed).  Uncomment only what your course actually needs —
+# the smallest manifest is the safest one.
+
+version: 1
+
+# summary — short, human-readable description (string, max 512 chars).
+# summary: "One sentence about what this course does and for whom."
+
+# tools — closed enum.  Allowed values (any subset): browser (headless
+# browser automation), terminal (shell command execution), file (local
+# filesystem helpers), web (outbound HTTP from agent code), vision
+# (image/screenshot understanding).  Duplicates are deduplicated and the
+# list is sorted on validation.
+#
+# tools:
+#   - file
+#   - web
+
+# network — outbound HTTP allow-list.  allow_domains entries must be
+# plain hostnames (e.g. "api.example.com"); wildcards (*), schemes
+# (http://, https://), path components (any /), and leading/trailing
+# whitespace are rejected.  Leave network unset (or with an empty list)
+# to deny all outbound HTTP.
+#
+# network:
+#   allow_domains:
+#     - api.example.com
+
+# filesystem — read/write allow-list.
+# Paths must be relative to the course bundle root.  Absolute paths and
+# any path containing ".." are rejected.  Leave a section unset to deny
+# that mode entirely.
+#
+# filesystem:
+#   read:
+#     - .
+#   write:
+#     - ./outputs
+
+# secrets.env — environment variables the course may read.
+# Names must match the regex ^[A-Z_][A-Z0-9_]*$ (uppercase letters,
+# digits, and underscores; cannot start with a digit).
+#
+# secrets:
+#   env:
+#     - OPENAI_API_KEY
+
+# human_approval.required — when true, the agent must ask the user
+# before executing any step of this course.  Defaults to false.
+#
+# human_approval:
+#   required: true

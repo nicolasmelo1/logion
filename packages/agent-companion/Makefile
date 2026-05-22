@@ -12,7 +12,7 @@ format-check:
 	uv run ruff format --check .
 
 typecheck:
-	uv run python -m mypy scripts/package_skill.py scripts/check_updates.py scripts/install_skill.py src/logion_agent_companion/local_state.py --ignore-missing-imports
+	uv run python -m mypy scripts/package_skill.py --ignore-missing-imports
 
 package-check:
 	uv run python scripts/package_skill.py

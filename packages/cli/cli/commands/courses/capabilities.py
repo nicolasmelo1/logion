@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
+from importlib import resources
+from pathlib import Path
 
 from cli._course_capabilities import (
+    CAPABILITY_MANIFEST_PATH,
     CapabilityManifestError,
     load_and_validate_capability_manifest,
     summarize_capability_manifest,
@@ -14,6 +18,8 @@ from cli._course_capabilities import (
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
 )
+
+CAPABILITIES_TEMPLATE_FILENAME = "course_capabilities.template.yaml"
 
 
 def handle_courses_capabilities_validate(
@@ -43,3 +49,49 @@ def handle_courses_capabilities_print(
         return 2
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0
+
+
+def _template_text() -> str:
+    """Return the bundled capability manifest scaffold contents."""
+    return (
+        resources
+        .files("cli.templates")
+        .joinpath(CAPABILITIES_TEMPLATE_FILENAME)
+        .read_text(encoding="utf-8")
+    )
+
+
+def handle_courses_capabilities_scaffold(
+    args: argparse.Namespace,
+) -> int:
+    """Emit the capability manifest scaffold.
+
+    With ``--bundle-dir`` the scaffold is written to
+    ``<bundle-dir>/course/capabilities.yaml`` (refuses to overwrite an
+    existing file unless ``--force`` is passed).  Without ``--bundle-dir``
+    the scaffold is printed to stdout so the agent can pipe it.
+    """
+    text = _template_text()
+    bundle_dir: Path | None = getattr(args, "bundle_dir", None)
+    if bundle_dir is None:
+        print(text, end="")
+        return 0
+    dest = bundle_dir / CAPABILITY_MANIFEST_PATH
+    if dest.exists() and not args.force:
+        print(
+            f"Refusing to overwrite existing manifest: {dest} "
+            "(pass --force to replace)",
+            file=sys.stderr,
+        )
+        return 2
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(_template_path(), dest)
+    print(f"Wrote scaffold to {dest}")
+    return 0
+
+
+def _template_path() -> Path:
+    """Return the on-disk path of the bundled scaffold template."""
+    return Path(str(resources.files("cli.templates"))) / (
+        CAPABILITIES_TEMPLATE_FILENAME
+    )

@@ -764,6 +764,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "logion-cli" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pyyaml" },
@@ -776,6 +777,7 @@ requires-dist = [{ name = "pyyaml", specifier = ">=6.0,<7.0" }]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "logion-cli", editable = "packages/cli" },
     { name = "mypy", specifier = ">=1.15,<2.0.0" },
     { name = "pytest", specifier = ">=9.0.3,<9.1.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
