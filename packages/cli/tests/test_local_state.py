@@ -93,7 +93,7 @@ def _install_files(
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
         paths.append(p)
-    return sha256_of_files(paths)
+    return sha256_of_files(paths, root=base)
 
 
 # ---------------------------------------------------------------------------
@@ -434,11 +434,21 @@ class TestDangerFlags:
         # should prevent the flag.
         assert detect_danger_flags(["./remove-listener --quiet"]) == []
 
-    def test_no_false_positive_on_chmod_in_name(self) -> None:
-        # "chmod-helper" path does contain the word chmod by regex
-        # \b matching; this confirms we treat it as a real chmod.  The
-        # opposite case — substring with no word boundary — should pass.
+    def test_no_false_positive_on_chmod_substring(self) -> None:
+        # A path-like token with "chmod" as a substring but no word
+        # boundary (e.g. "./normalchat") must NOT trigger
+        # permission_change.  The word-boundary regex is what protects
+        # filenames that happen to embed the word.
         assert detect_danger_flags(["./normalchat --token x"]) == []
+
+    def test_chmod_helper_path_does_trigger(self) -> None:
+        # "./chmod-helper" DOES contain chmod at a word boundary, so
+        # the flag is expected to fire.  This documents the
+        # conservative direction: we'd rather false-positive on
+        # ambiguous tool names than miss a real chmod.
+        assert "permission_change" in detect_danger_flags([
+            "./chmod-helper --recursive"
+        ])
 
     def test_empty_input(self) -> None:
         assert detect_danger_flags([]) == []
@@ -531,3 +541,212 @@ class TestWorkflows:
         second = record_workflow_success("wf", "W", ["echo"], home)
         assert second["confidence"] > first["confidence"]
         assert second["confidence"] <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Identifier safety (path traversal)
+# ---------------------------------------------------------------------------
+
+
+class TestIdentifierSafety:
+    def test_write_manifest_rejects_path_traversal(self, home: Path) -> None:
+        from cli._local_state import UnsafeIdentifierError
+
+        with pytest.raises(UnsafeIdentifierError):
+            write_manifest(_make_manifest(), "../escape", "1.0", home)
+
+    def test_write_manifest_rejects_slash(self, home: Path) -> None:
+        from cli._local_state import UnsafeIdentifierError
+
+        with pytest.raises(UnsafeIdentifierError):
+            write_manifest(_make_manifest(), "a/b", "1.0", home)
+
+    def test_read_manifest_returns_none_for_unsafe(self, home: Path) -> None:
+        # read_manifest must not raise — it returns None so callers can
+        # treat traversal attempts the same as "not installed".
+        assert read_manifest("../etc", "1.0", home) is None
+
+    def test_compute_installed_hash_rejects_unsafe(self, home: Path) -> None:
+        assert compute_installed_hash("../etc", "1.0", home) == ""
+
+    def test_lock_path_rejects_unsafe(self, home: Path) -> None:
+        from cli._local_state import UnsafeIdentifierError, acquire_lock
+
+        with pytest.raises(UnsafeIdentifierError):
+            acquire_lock("../escape", "1.0", home)
+
+
+# ---------------------------------------------------------------------------
+# Lock atomicity (O_EXCL)
+# ---------------------------------------------------------------------------
+
+
+class TestLockExclusive:
+    def test_second_acquire_raises_lock_held(self, home: Path) -> None:
+        from cli._local_state import LockHeldError
+
+        acquire_lock("x", "1.0", home)
+        with pytest.raises(LockHeldError):
+            acquire_lock("x", "1.0", home)
+        release_lock("x", "1.0", home)
+
+    def test_release_then_reacquire(self, home: Path) -> None:
+        acquire_lock("x", "1.0", home)
+        release_lock("x", "1.0", home)
+        # Must succeed: lock file removed, O_EXCL is back to clean state
+        acquire_lock("x", "1.0", home)
+        release_lock("x", "1.0", home)
+
+
+# ---------------------------------------------------------------------------
+# Hash disambiguation (rename + ordering)
+# ---------------------------------------------------------------------------
+
+
+class TestHashDisambiguation:
+    def test_rename_changes_digest(self, tmp_path: Path) -> None:
+        # Two files with identical bytes but different names must
+        # produce different digests now that the hash includes the
+        # relative path.
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text("same")
+        b.write_text("same")
+        first = sha256_of_files([a], root=tmp_path)
+        # Rename a.txt -> renamed.txt; same bytes, different name
+        renamed = tmp_path / "renamed.txt"
+        a.rename(renamed)
+        second = sha256_of_files([renamed], root=tmp_path)
+        assert first != second
+
+    def test_repartition_changes_digest(self, tmp_path: Path) -> None:
+        # "hello" + "world" in two files vs. "helloworld" in one file
+        # must hash differently because of the length prefix.
+        a1 = tmp_path / "a"
+        b1 = tmp_path / "b"
+        a1.write_text("hello")
+        b1.write_text("world")
+        split = sha256_of_files([a1, b1], root=tmp_path)
+        a1.write_text("helloworld")
+        b1.unlink()
+        merged = sha256_of_files([a1], root=tmp_path)
+        assert split != merged
+
+
+# ---------------------------------------------------------------------------
+# Atomic state-file writes
+# ---------------------------------------------------------------------------
+
+
+class TestAtomicWrites:
+    def test_no_tempfile_leftover(self, home: Path) -> None:
+        write_index([{"course_id": "x", "version_id": "1"}], home)
+        # No .tmp.* leftover from the atomic rename
+        leftovers = list(home.glob(".index.json.tmp.*"))
+        assert leftovers == []
+
+    def test_existing_file_replaced_atomically(self, home: Path) -> None:
+        write_index([{"course_id": "a", "version_id": "1"}], home)
+        write_index([{"course_id": "b", "version_id": "2"}], home)
+        assert read_index(home) == [{"course_id": "b", "version_id": "2"}]
+
+
+# ---------------------------------------------------------------------------
+# Update policy
+# ---------------------------------------------------------------------------
+
+
+class TestUpdatePolicy:
+    def _local(self) -> dict:
+        return {
+            "course_id": "x",
+            "version_id": "1.0",
+            "required_tools": ["web"],
+            "permissions": ["read"],
+            "env_vars": [],
+            "execution_policy": "approval-required",
+            "content_sha256": "aaa",
+            "price_cents_at_install": 0,
+        }
+
+    def test_required_tools_expansion_requires_approval(self) -> None:
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "required_tools": ["web", "shell"]}
+        result = check_update_policy(local, remote)
+        assert result.requires_approval is True
+        assert "required_tools" in result.changed_fields
+
+    def test_permission_change_requires_approval(self) -> None:
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "permissions": ["read", "write"]}
+        result = check_update_policy(local, remote)
+        assert result.requires_approval is True
+        assert "permissions" in result.changed_fields
+
+    def test_env_vars_change_requires_approval(self) -> None:
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "env_vars": ["API_KEY"]}
+        result = check_update_policy(local, remote)
+        assert result.requires_approval is True
+
+    def test_execution_policy_change_requires_approval(self) -> None:
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "execution_policy": "auto-run"}
+        result = check_update_policy(local, remote)
+        assert result.requires_approval is True
+
+    def test_price_change_is_notice_not_gate(self) -> None:
+        # Per the entitlement model, an existing buyer is not re-billed
+        # when the seller raises the price.  Price change is surfaced
+        # as a notice but must not force approval.
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "price_cents_at_install": 999}
+        result = check_update_policy(local, remote)
+        assert result.requires_approval is False
+        assert any("price_cents_at_install" in n for n in result.notices)
+
+    def test_clean_content_only_upgrade_is_silent(self) -> None:
+        from cli._update_policy import check_update_policy
+
+        local = self._local()
+        remote = {**local, "version_id": "1.1", "content_sha256": "bbb"}
+        result = check_update_policy(local, remote)
+        assert result.applicable is True
+        assert result.requires_approval is False
+        assert result.blocks_silent_overwrite is False
+
+    def test_user_modified_blocks_clean_upgrade(self, home: Path) -> None:
+        from cli._update_policy import evaluate_update
+
+        # Install something with a known hash, then mutate the file so
+        # verify_installed_content reports user_modified=True.
+        sha = _install_files(home, "x", "1.0", {"SKILL.md": "original"})
+        m = _make_manifest("x", "1.0")
+        m["content_sha256"] = sha
+        m["required_tools"] = ["web"]
+        m["permissions"] = []
+        m["env_vars"] = []
+        m["execution_policy"] = "approval-required"
+        write_manifest(m, "x", "1.0", home)
+        (home / "installed" / "x" / "1.0" / "SKILL.md").write_text(
+            "tampered", encoding="utf-8"
+        )
+
+        remote = {
+            **m,
+            "version_id": "1.1",
+            "content_sha256": "different",
+        }
+        result = evaluate_update("x", "1.0", remote, m, home)
+        assert result.requires_approval is True
+        assert result.blocks_silent_overwrite is True

@@ -13,6 +13,7 @@ Reads accept the legacy bare-list form for forward compatibility.
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import hashlib
 import json
@@ -28,6 +29,32 @@ from typing import Any
 DEFAULT_HOME = Path.home() / ".logion"
 
 SCHEMA_VERSION = 1
+
+# Identifiers (course_id, version_id) become path segments and lock
+# filenames.  Restrict to a safe character set and reject traversal
+# sequences before they reach the filesystem.
+_SAFE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
+class UnsafeIdentifierError(ValueError):
+    """Raised when course_id/version_id contains unsafe characters."""
+
+
+def _safe_segment(value: str, kind: str = "identifier") -> str:
+    """Validate *value* as a safe single-segment identifier.
+
+    Rejects path separators, ``..``, leading dot, control characters,
+    empty strings, and anything outside ``[A-Za-z0-9._-]``.  Returns the
+    value unchanged so callers can use it inline.
+    """
+    if not isinstance(value, str) or not _SAFE_SEGMENT_RE.fullmatch(value):
+        raise UnsafeIdentifierError(
+            f"unsafe {kind}: {value!r} (must match [A-Za-z0-9._-], "
+            "max 128 chars, no path separators or '..')"
+        )
+    if value in (".", "..") or ".." in value:
+        raise UnsafeIdentifierError(f"unsafe {kind}: {value!r}")
+    return value
 
 
 def get_home() -> Path:
@@ -70,10 +97,28 @@ def _read_json_entries(path: Path) -> list[dict[str, Any]]:
         return []
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write *text* to *path* atomically (tmp file + rename).
+
+    Prevents truncated/half-written JSON if the process is interrupted
+    mid-write; readers either see the previous content or the new
+    content, never a partial buffer.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp.{os.getpid()}")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+    finally:
+        if tmp.exists():
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+
+
 def _write_json_entries(path: Path, entries: list[dict[str, Any]]) -> Path:
-    path.write_text(
+    _atomic_write_text(
+        path,
         json.dumps(_wrap(entries), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
     )
     return path
 
@@ -157,11 +202,33 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
     return errors
 
 
-def sha256_of_files(paths: list[Path]) -> str:
-    """SHA-256 of concatenated bytes of *paths*, sorted by path."""
+def sha256_of_files(
+    paths: list[Path],
+    root: Path | None = None,
+) -> str:
+    """SHA-256 over *paths* including each file's relative path.
+
+    Each file contributes ``<rel_path>\\0<length>\\0<bytes>\\0`` so a
+    rename, repartition, or reordering changes the digest.  When *root*
+    is provided, paths are taken relative to it; otherwise the file
+    name alone is used.
+    """
     h = hashlib.sha256()
     for p in sorted(paths):
-        h.update(p.read_bytes())
+        if root is not None:
+            try:
+                rel = p.relative_to(root).as_posix()
+            except ValueError:
+                rel = p.name
+        else:
+            rel = p.name
+        data = p.read_bytes()
+        h.update(rel.encode("utf-8"))
+        h.update(b"\0")
+        h.update(str(len(data)).encode("ascii"))
+        h.update(b"\0")
+        h.update(data)
+        h.update(b"\0")
     return h.hexdigest()
 
 
@@ -174,6 +241,27 @@ def _installed_files(version_dir: Path) -> list[Path]:
     )
 
 
+def _installed_dir(course_id: str, version_id: str, home: Path) -> Path:
+    """Resolve the install path with sanitized identifiers.
+
+    Rejects path-traversal in *course_id* / *version_id* and guarantees
+    the result stays under ``home/installed/``.
+    """
+    _safe_segment(course_id, "course_id")
+    _safe_segment(version_id, "version_id")
+    root = (home / "installed").resolve()
+    dest = (root / course_id / version_id).resolve()
+    # Defence in depth: even with the regex above, confirm the resolved
+    # path did not escape the installed root.
+    try:
+        dest.relative_to(root)
+    except ValueError as exc:
+        raise UnsafeIdentifierError(
+            f"resolved install path escapes home: {dest}"
+        ) from exc
+    return dest
+
+
 def write_manifest(
     manifest: dict[str, Any],
     course_id: str,
@@ -182,12 +270,12 @@ def write_manifest(
 ) -> Path:
     """Write *manifest* to the installed capability directory."""
     h = home or get_home()
-    dest = h / "installed" / course_id / version_id
+    dest = _installed_dir(course_id, version_id, h)
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / "manifest.json"
-    path.write_text(
+    _atomic_write_text(
+        path,
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
     )
     return path
 
@@ -199,7 +287,11 @@ def read_manifest(
 ) -> dict[str, Any] | None:
     """Read an installed capability's manifest, or ``None`` if absent."""
     h = home or get_home()
-    path = h / "installed" / course_id / version_id / "manifest.json"
+    try:
+        dest = _installed_dir(course_id, version_id, h)
+    except UnsafeIdentifierError:
+        return None
+    path = dest / "manifest.json"
     if not path.is_file():
         return None
     try:
@@ -237,10 +329,13 @@ def compute_installed_hash(
 ) -> str:
     """Re-hash on-disk content for an installed version."""
     h = home or get_home()
-    version_dir = h / "installed" / course_id / version_id
+    try:
+        version_dir = _installed_dir(course_id, version_id, h)
+    except UnsafeIdentifierError:
+        return ""
     if not version_dir.is_dir():
         return ""
-    return sha256_of_files(_installed_files(version_dir))
+    return sha256_of_files(_installed_files(version_dir), root=version_dir)
 
 
 def verify_installed_content(
@@ -469,7 +564,23 @@ def search_recall(
 LOCKS_DIRNAME = "locks"
 
 
+class LockHeldError(RuntimeError):
+    """Raised when ``acquire_lock`` finds an existing lock file."""
+
+    def __init__(self, course_id: str, version_id: str, path: Path) -> None:
+        super().__init__(
+            f"lock already held for {course_id}/{version_id} at {path}"
+        )
+        self.course_id = course_id
+        self.version_id = version_id
+        self.path = path
+
+
 def _lock_path(home: Path, course_id: str, version_id: str) -> Path:
+    # Validate before composing the filename so a malicious id cannot
+    # escape the locks dir or collide via embedded ``__``.
+    _safe_segment(course_id, "course_id")
+    _safe_segment(version_id, "version_id")
     safe = f"{course_id}__{version_id}.json"
     return home / LOCKS_DIRNAME / safe
 
@@ -481,8 +592,10 @@ def acquire_lock(
 ) -> Path:
     """Acquire an install lock scoped to *course_id*/*version_id*.
 
-    Locks live under ``~/.logion/locks/`` so they survive ``rmtree`` of
-    the install directory during reinstall.
+    Uses ``O_CREAT|O_EXCL`` so concurrent installers fail fast with
+    :class:`LockHeldError` instead of silently overwriting the same
+    lock file.  Locks live under ``~/.logion/locks/`` so they survive
+    ``rmtree`` of the install directory during reinstall.
     """
     h = home or get_home()
     path = _lock_path(h, course_id, version_id)
@@ -494,10 +607,18 @@ def acquire_lock(
         "pid": os.getpid(),
         "locked_at": _utc_iso_now(),
     }
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    body = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError as exc:
+        raise LockHeldError(course_id, version_id, path) from exc
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(body)
+    except Exception:
+        with contextlib.suppress(OSError):
+            path.unlink()
+        raise
     return path
 
 
@@ -508,7 +629,10 @@ def read_lock(
 ) -> dict[str, Any] | None:
     """Read the lock for one course/version; ``None`` if absent."""
     h = home or get_home()
-    path = _lock_path(h, course_id, version_id)
+    try:
+        path = _lock_path(h, course_id, version_id)
+    except UnsafeIdentifierError:
+        return None
     if not path.is_file():
         return None
     try:
@@ -524,7 +648,10 @@ def release_lock(
 ) -> bool:
     """Remove the lock for one course/version; ``True`` if removed."""
     h = home or get_home()
-    path = _lock_path(h, course_id, version_id)
+    try:
+        path = _lock_path(h, course_id, version_id)
+    except UnsafeIdentifierError:
+        return False
     if path.is_file():
         path.unlink()
         return True

@@ -224,7 +224,7 @@ class TestSkillsUpdate:
         ])
         captured = capsys.readouterr()
         assert rc == 2
-        assert "local modifications detected" in captured.err
+        assert "user modification detected" in captured.err
 
     def test_update_force_overwrites(
         self, tmp_path: Path, capsys: pytest.CaptureFixture
