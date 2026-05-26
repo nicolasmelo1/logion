@@ -790,6 +790,13 @@ models:
         assert payload["seed"] == 42
         assert payload["messages"][0]["role"] == "system"
         assert payload["messages"][1]["role"] == "user"
+        assert payload["tool_choice"] == "auto"
+        tool_names = [tool["function"]["name"] for tool in payload["tools"]]
+        assert "recall_search" in tool_names
+        assert "course_install" in tool_names
+        user_prompt = json.loads(payload["messages"][1]["content"])
+        assert "output_contract" in user_prompt["instructions"]
+        assert "json_schema" not in user_prompt["instructions"]
 
     def test_validation_retry_appends_feedback(
         self,
@@ -817,16 +824,20 @@ models:
                         "message": {
                             "role": "assistant",
                             "content": json.dumps({
-                                "calls": [
-                                    {
-                                        "tool": "resume.ats",
-                                        "args": {},
-                                    }
-                                ],
                                 "final_answer": "bad",
                                 "selected_course_ids": [],
                                 "loaded_skill_ids": [],
                             }),
+                            "tool_calls": [
+                                {
+                                    "id": "call_bad",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "resume_ats",
+                                        "arguments": "{}",
+                                    },
+                                }
+                            ],
                         }
                     }
                 ],
@@ -838,21 +849,25 @@ models:
                         "message": {
                             "role": "assistant",
                             "content": json.dumps({
-                                "calls": [
-                                    {
-                                        "tool": "recall.search",
-                                        "args": {
-                                            "query": "weather",
-                                            "limit": 5,
-                                        },
-                                    }
-                                ],
                                 "final_answer": (
                                     "weather.basic is free. Confirm install?"
                                 ),
                                 "selected_course_ids": ["weather.basic"],
                                 "loaded_skill_ids": [],
                             }),
+                            "tool_calls": [
+                                {
+                                    "id": "call_recall",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "recall_search",
+                                        "arguments": json.dumps({
+                                            "query": "weather",
+                                            "limit": 5,
+                                        }),
+                                    },
+                                }
+                            ],
                         }
                     }
                 ],
@@ -870,11 +885,14 @@ models:
         trace = provider.run(scenario, catalog)
 
         assert trace.selected_course_ids == ("weather.basic",)
+        assert trace.calls == (
+            ToolCall("recall.search", {"query": "weather", "limit": 5}),
+        )
         assert len(seen_payloads) == 2
         retry_messages = seen_payloads[1]["messages"]
         assert isinstance(retry_messages, list)
         assert retry_messages[-2]["role"] == "assistant"
-        assert "resume.ats" in retry_messages[-2]["content"]
+        assert "resume_ats" in retry_messages[-2]["content"]
         assert retry_messages[-1]["role"] == "user"
         assert "Validation error" in retry_messages[-1]["content"]
 

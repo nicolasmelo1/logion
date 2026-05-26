@@ -126,7 +126,7 @@ and grade only the trace.
 
 ## Tool-trace contract
 
-Allowed tools (see `harness/schema.py:KNOWN_TOOLS`):
+Allowed CLI trace tools (see `harness/schema.py:KNOWN_TOOLS`):
 
 - `recall.search` — read-only fuzzy local recall.
 - `marketplace.search` — Logion marketplace search.
@@ -137,6 +137,13 @@ Allowed tools (see `harness/schema.py:KNOWN_TOOLS`):
 - `checkout.start` / `checkout.confirm` — paid checkout.
 - `skill.load` — load a specific installed skill artifact.
 - `permission.expand` — request a wider permission scope.
+
+Live OpenAI-compatible providers should emit these actions through the
+Chat Completions `tool_calls` API, not by embedding a synthetic `calls`
+array in message content. The llama.cpp provider keeps a small explicit
+mapping from API-safe function names (for example `recall_search`) back
+to the CLI trace names above (for example `recall.search`) so reports,
+fake traces, and graders all keep the same CLI vocabulary.
 
 ## Graders
 
