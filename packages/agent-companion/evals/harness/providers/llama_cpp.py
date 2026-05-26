@@ -254,6 +254,10 @@ class LlamaCppModelConfig:
     quant: str | None
     context: int
     server_args: tuple[str, ...]
+    chat_template_kwargs: tuple[tuple[str, Any], ...] = ()
+
+    def chat_template_kwargs_dict(self) -> dict[str, Any]:
+        return dict(self.chat_template_kwargs)
 
 
 @dataclass(frozen=True)
@@ -374,7 +378,7 @@ class LlamaCppProvider:
     def _build_payload_from_messages(
         self, messages: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "model": self.model.id,
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
@@ -384,6 +388,9 @@ class LlamaCppProvider:
         }
         if self.config.seed is not None:
             payload["seed"] = self.config.seed
+        chat_template_kwargs = self.model.chat_template_kwargs_dict()
+        if chat_template_kwargs:
+            payload["chat_template_kwargs"] = chat_template_kwargs
         return payload
 
     def _build_messages(
@@ -588,6 +595,9 @@ def load_llama_cpp_provider(
             selected_model_raw.get("context", 8192), kind="context"
         ),
         server_args=_coerce_str_tuple(selected_model_raw.get("server_args")),
+        chat_template_kwargs=_coerce_template_kwargs(
+            selected_model_raw.get("chat_template_kwargs")
+        ),
     )
     return LlamaCppProvider(
         model=model_config,
@@ -919,6 +929,16 @@ def _coerce_str_tuple(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         raise LlamaCppProviderError("server_args must be a list")
     return tuple(str(item) for item in value)
+
+
+def _coerce_template_kwargs(
+    value: Any,
+) -> tuple[tuple[str, Any], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, dict):
+        raise LlamaCppProviderError("chat_template_kwargs must be a mapping")
+    return tuple((str(key), val) for key, val in value.items())
 
 
 def _coerce_positive_int(value: Any, *, kind: str) -> int:

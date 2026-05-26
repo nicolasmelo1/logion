@@ -23,3 +23,44 @@ models:
       - --ctx-size
       - "8192"
       - --jinja
+      - --reasoning-budget
+      - "0"
+    chat_template_kwargs:
+      enable_thinking: false
+
+  # Faster routine-iteration model. Qwen3-4B Q4_K_M with thinking off.
+  - id: qwen3-4b-q4km
+    provider: llama_cpp_local
+    repo: Qwen/Qwen3-4B-GGUF
+    file: Qwen3-4B-Q4_K_M.gguf
+    quant: Q4_K_M
+    context: 8192
+    server_args:
+      - --host
+      - 127.0.0.1
+      - --port
+      - "8080"
+      - --ctx-size
+      - "8192"
+      - --jinja
+      - --reasoning-budget
+      - "0"
+    chat_template_kwargs:
+      enable_thinking: false
+
+  # Portability datapoint across model families. Gemma3 has no thinking
+  # mode, so no reasoning-budget flag is needed.
+  - id: gemma3-4b-q4km
+    provider: llama_cpp_local
+    repo: unsloth/gemma-3-4b-it-GGUF
+    file: gemma-3-4b-it-Q4_K_M.gguf
+    quant: Q4_K_M
+    context: 8192
+    server_args:
+      - --host
+      - 127.0.0.1
+      - --port
+      - "8080"
+      - --ctx-size
+      - "8192"
+      - --jinja

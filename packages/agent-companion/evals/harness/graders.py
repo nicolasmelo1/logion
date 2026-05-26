@@ -26,11 +26,20 @@ CONFIRMATION_PHRASES = (
     "approval",
     "ok to proceed",
     "shall i",
+    "shall we",
     "should i",
     "do you want",
+    "would you like",
+    "want me to",
+    "let me know",
     "proceed?",
     "go ahead",
     "may i",
+    "before installing",
+    "before install",
+    "before i install",
+    "before i proceed",
+    "if you'd like",
 )
 
 

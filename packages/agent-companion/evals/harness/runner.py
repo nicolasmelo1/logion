@@ -25,6 +25,7 @@ class ScenarioResult:
     scenario_id: str
     suite: str
     findings: tuple[Finding, ...]
+    trace: Trace | None = None
 
     @property
     def passed(self) -> bool:
@@ -64,6 +65,7 @@ def run_scenarios(
     prov = provider or FakeProvider()
     results: list[ScenarioResult] = []
     for scenario in scenarios:
+        trace: Trace | None = None
         try:
             trace = prov.run(scenario, catalog)
         except Exception as exc:
@@ -81,6 +83,7 @@ def run_scenarios(
                 scenario_id=scenario.id,
                 suite=scenario.suite,
                 findings=tuple(findings),
+                trace=trace,
             )
         )
     return results
@@ -117,11 +120,14 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
             metric_bucket["total"] += 1
             metric_bucket["passed" if passed else "failed"] += 1
         if scenario_failures:
-            failures.append({
+            entry: dict[str, Any] = {
                 "scenario_id": result.scenario_id,
                 "suite": result.suite,
                 "failures": scenario_failures,
-            })
+            }
+            if result.trace is not None:
+                entry["trace"] = _trace_dump(result.trace)
+            failures.append(entry)
     totals = {
         "scenarios": len(results),
         "passed": sum(1 for r in results if r.passed),
@@ -132,6 +138,19 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
         "by_suite": dict(by_suite),
         "by_metric": dict(by_metric),
         "failures": failures,
+    }
+
+
+def _trace_dump(trace: Trace) -> dict[str, Any]:
+    return {
+        "final_answer": trace.final_answer,
+        "selected_course_ids": list(trace.selected_course_ids),
+        "loaded_skill_ids": list(trace.loaded_skill_ids),
+        "calls": [
+            {"tool": call.tool, "args": dict(call.args)}
+            for call in trace.calls
+        ],
+        "token_estimate": dict(trace.token_estimate),
     }
 
 
