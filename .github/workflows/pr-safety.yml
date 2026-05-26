@@ -30,7 +30,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
-          enable-cache: true 
+          enable-cache: true
 
       - name: Install locked dependencies
         run: uv sync --all-packages --all-groups --locked
