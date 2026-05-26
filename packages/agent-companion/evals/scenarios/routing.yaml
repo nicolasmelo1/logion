@@ -1,0 +1,399 @@
+suite: routing
+
+# Routing: does the agent query Logion only when local recall/capabilities
+# are insufficient? 12 positive (marketplace expected) and 9 negative
+# (marketplace forbidden) scenarios.
+
+scenarios:
+  - id: routing-weather-positive
+    prompt: "Vai chover amanhã em São Paulo?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [weather.basic]
+      forbidden_course_ids: [video.editor, infra.company-ops]
+      max_courses_inspected: 3
+      must_mention: [free]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "weather forecast", limit: 5}
+        - tool: marketplace.search
+          args: {query: "weather forecast"}
+        - tool: course.inspect
+          args: {course_id: weather.basic}
+      final_answer: "weather.basic is free. Confirm install?"
+      selected_course_ids: [weather.basic]
+
+  - id: routing-resume-positive
+    prompt: "Optimize my resume for an ATS scan."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [resume.ats]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "resume ats", limit: 5}
+        - tool: marketplace.search
+          args: {query: "resume ats"}
+        - tool: course.inspect
+          args: {course_id: resume.ats}
+      final_answer: "resume.ats fits ($5). Confirm install?"
+      selected_course_ids: [resume.ats]
+
+  - id: routing-cover-letter-positive
+    prompt: "Draft a cover letter for an SRE role."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [cover-letter.writer]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "cover letter sre", limit: 5}
+        - tool: marketplace.search
+          args: {query: "cover letter"}
+        - tool: course.inspect
+          args: {course_id: cover-letter.writer}
+      final_answer: "cover-letter.writer fits ($4). Confirm install?"
+      selected_course_ids: [cover-letter.writer]
+
+  - id: routing-video-clips-positive
+    prompt: "Make a 30s social clip from this video, no silences."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.clips]
+      forbidden_course_ids: [video.editor]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "social clip silence", limit: 5}
+        - tool: marketplace.search
+          args: {query: "short video clip silence"}
+        - tool: course.inspect
+          args: {course_id: video.clips}
+      final_answer: "video.clips fits ($9). Confirm install?"
+      selected_course_ids: [video.clips]
+
+  - id: routing-video-editor-positive
+    prompt: "Full timeline edit with color grading and render."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.editor]
+      forbidden_course_ids: [video.clips]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "timeline edit color render", limit: 5}
+        - tool: marketplace.search
+          args: {query: "video editor"}
+        - tool: course.inspect
+          args: {course_id: video.editor}
+      final_answer: "video.editor fits ($19). Confirm install?"
+      selected_course_ids: [video.editor]
+
+  - id: routing-terraform-review-positive
+    prompt: "Review this Terraform plan — don't apply."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [terraform.static-review]
+      forbidden_course_ids: [infra.company-ops]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "terraform review", limit: 5}
+        - tool: marketplace.search
+          args: {query: "terraform review"}
+        - tool: course.inspect
+          args: {course_id: terraform.static-review}
+      final_answer: "terraform.static-review is free. Confirm install?"
+      selected_course_ids: [terraform.static-review]
+
+  - id: routing-company-ops-positive
+    prompt: "Need runbooks and cloud ops helpers for on-call."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [infra.company-ops]
+      forbidden_course_ids: [terraform.static-review]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "runbooks oncall cloud ops", limit: 5}
+        - tool: marketplace.search
+          args: {query: "company ops"}
+        - tool: course.inspect
+          args: {course_id: infra.company-ops}
+      final_answer: "infra.company-ops fits ($49). Confirm install?"
+      selected_course_ids: [infra.company-ops]
+
+  - id: routing-data-spreadsheets-positive
+    prompt: "Analyze and pivot this Excel file by quarter."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [data.spreadsheets]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "excel pivot quarter", limit: 5}
+        - tool: marketplace.search
+          args: {query: "spreadsheet pivot"}
+        - tool: course.inspect
+          args: {course_id: data.spreadsheets}
+      final_answer: "data.spreadsheets fits ($7). Confirm install?"
+      selected_course_ids: [data.spreadsheets]
+
+  - id: routing-browser-positive
+    prompt: "Auto-fill this job application form across 30 sites."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [browser.automation]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "browser form automation", limit: 5}
+        - tool: marketplace.search
+          args: {query: "browser automation"}
+        - tool: course.inspect
+          args: {course_id: browser.automation}
+      final_answer: "browser.automation fits ($12). Confirm install?"
+      selected_course_ids: [browser.automation]
+
+  - id: routing-ocr-positive
+    prompt: "Extract structured data from these scanned PDFs."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [ocr.documents]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "ocr structured pdf", limit: 5}
+        - tool: marketplace.search
+          args: {query: "ocr structured"}
+        - tool: course.inspect
+          args: {course_id: ocr.documents}
+      final_answer: "ocr.documents fits ($6). Confirm install?"
+      selected_course_ids: [ocr.documents]
+
+  - id: routing-email-triage-positive
+    prompt: "Triaging my inbox after vacation."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [email.triage]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "email triage", limit: 5}
+        - tool: marketplace.search
+          args: {query: "email triage"}
+        - tool: course.inspect
+          args: {course_id: email.triage}
+      final_answer: "email.triage fits ($3). Confirm install?"
+      selected_course_ids: [email.triage]
+
+  - id: routing-travel-positive
+    prompt: "Plan a 5-day trip to Tokyo with a $1500 budget."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [travel.planner]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "trip planner tokyo", limit: 5}
+        - tool: marketplace.search
+          args: {query: "trip planner"}
+        - tool: course.inspect
+          args: {course_id: travel.planner}
+      final_answer: "travel.planner fits ($8). Confirm install?"
+      selected_course_ids: [travel.planner]
+
+  # --- Negative cases: marketplace must NOT be queried -------------------
+
+  - id: routing-negative-arithmetic
+    prompt: "What's 7 * 9?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "arithmetic", limit: 5}
+      final_answer: "63"
+
+  - id: routing-negative-already-installed-weather
+    prompt: "What's the weather in Lisbon tomorrow?"
+    installed_capabilities: ["weather.forecast"]
+    local_recall:
+      - kind: capability
+        capability_id: weather.forecast
+        confidence: 0.96
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+      forbidden_course_ids: [weather.basic]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "weather lisbon", limit: 5}
+      final_answer: "Using installed weather.forecast locally."
+
+  - id: routing-negative-already-installed-resume
+    prompt: "Tweak my resume bullets."
+    installed_capabilities: ["resume.edit"]
+    local_recall:
+      - kind: capability
+        capability_id: resume.edit
+        confidence: 0.93
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "resume bullets", limit: 5}
+      final_answer: "Using installed resume.edit locally."
+
+  - id: routing-negative-greeting
+    prompt: "Olá, tudo bem?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls: []
+      final_answer: "Olá! Tudo bem. Em que posso ajudar?"
+
+  - id: routing-negative-local-debug-workflow
+    prompt: "Debug this stack trace."
+    installed_capabilities: []
+    local_recall:
+      - kind: workflow
+        name: "reproduce + bisect"
+        confidence: 0.9
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+      forbidden_course_ids: [code.debugging]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "debug stack trace", limit: 5}
+      final_answer: "Reusing the local reproduce-and-bisect workflow."
+
+  - id: routing-negative-explain-existing-code
+    prompt: "Explain what this function does."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "explain function", limit: 5}
+      final_answer: "Here's what the function does: ..."
+
+  - id: routing-negative-pure-knowledge
+    prompt: "What's the capital of Iceland?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls: []
+      final_answer: "Reykjavík."
+
+  - id: routing-negative-installed-spreadsheets
+    prompt: "Pivot this CSV by region."
+    installed_capabilities: ["data.spreadsheet.pivot"]
+    local_recall:
+      - kind: capability
+        capability_id: data.spreadsheet.pivot
+        confidence: 0.92
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+      forbidden_course_ids: [data.spreadsheets]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "pivot csv", limit: 5}
+      final_answer: "Using installed data.spreadsheet.pivot locally."
+
+  - id: routing-negative-rephrase
+    prompt: "Rephrase this sentence for clarity."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls: []
+      final_answer: "Here's a clearer version: ..."

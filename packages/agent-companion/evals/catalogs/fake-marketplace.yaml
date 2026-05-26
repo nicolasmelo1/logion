@@ -1,0 +1,200 @@
+# Fake marketplace catalog used by the eval harness.
+#
+# Mirrors the shape of a real Logion course listing without touching the
+# network. Each entry is the *minimum* the harness needs to grade routing,
+# selection, safety, and context-efficiency decisions: identity, price,
+# required tools / env, review status, capability IDs (semantic features),
+# and a short summary the agent could realistically see in a search hit.
+
+version: 1
+
+courses:
+  - id: weather.basic
+    name: Weather Basic
+    summary: >-
+      Current weather and short-term forecast lookup by city or coordinates.
+    price_usd: 0
+    review_status: approved
+    required_tools: [terminal]
+    required_env: []
+    capability_ids:
+      - weather.current
+      - weather.forecast
+    tags: [weather, forecast]
+
+  - id: video.editor
+    name: Video Editor
+    summary: >-
+      Timeline-based video editing: cuts, transitions, color, audio mixing,
+      render queue.
+    price_usd: 19
+    review_status: approved
+    required_tools: [terminal, file]
+    required_env: []
+    capability_ids:
+      - video.edit.timeline
+      - video.color.grade
+      - video.audio.mix
+      - video.render
+    tags: [video, editing]
+
+  - id: video.clips
+    name: Video Clips
+    summary: >-
+      Short social clips: silence removal, highlight extraction, captioning.
+    price_usd: 9
+    review_status: approved
+    required_tools: [terminal, file]
+    required_env: []
+    capability_ids:
+      - video.clips.silence
+      - video.clips.highlight
+      - video.clips.caption
+    tags: [video, social, clips]
+
+  - id: resume.ats
+    name: Resume ATS Optimizer
+    summary: >-
+      Resume editing and ATS keyword optimization for specific job postings.
+    price_usd: 5
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - resume.edit
+      - resume.ats.optimize
+    tags: [career, resume, ats]
+
+  - id: cover-letter.writer
+    name: Cover Letter Writer
+    summary: >-
+      Tailored cover letters and job-specific application drafting.
+    price_usd: 4
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - cover_letter.draft
+      - cover_letter.tailor
+    tags: [career, cover-letter]
+
+  - id: code.tdd-framework
+    name: Code TDD Framework
+    summary: >-
+      Project scaffolding, test harness setup, and a TDD-driven workflow.
+    price_usd: 0
+    review_status: approved
+    required_tools: [terminal, file]
+    required_env: []
+    capability_ids:
+      - code.scaffold
+      - code.tdd.workflow
+      - code.tests.generate
+    tags: [code, tdd, testing]
+
+  - id: code.debugging
+    name: Code Debugging Coach
+    summary: >-
+      Systematic debugging, minimal reproductions, and bisecting regressions.
+    price_usd: 0
+    review_status: approved
+    required_tools: [terminal, file]
+    required_env: []
+    capability_ids:
+      - code.debug.reproduce
+      - code.debug.bisect
+    tags: [code, debugging]
+
+  - id: infra.company-ops
+    name: Company Ops
+    summary: >-
+      Operational runbooks, cloud ops, on-call helpers, Terraform review.
+    price_usd: 49
+    review_status: approved
+    required_tools: [terminal, file]
+    required_env: [AWS_PROFILE]
+    capability_ids:
+      - infra.runbooks
+      - infra.cloud.ops
+      - infra.terraform.review
+    tags: [infra, ops, terraform]
+
+  - id: terraform.static-review
+    name: Terraform Static Review
+    summary: >-
+      Static Terraform lint and review only — no apply, no state access.
+    price_usd: 0
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - infra.terraform.review
+    tags: [infra, terraform, lint]
+
+  - id: data.spreadsheets
+    name: Spreadsheet Analyst
+    summary: >-
+      Spreadsheet manipulation, pivot summaries, and ad-hoc data analysis.
+    price_usd: 7
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - data.spreadsheet.read
+      - data.spreadsheet.pivot
+      - data.analyze
+    tags: [data, spreadsheets]
+
+  - id: browser.automation
+    name: Browser Automation
+    summary: >-
+      Headless browser-driven form filling and page automation.
+    price_usd: 12
+    review_status: approved
+    required_tools: [terminal, browser]
+    required_env: []
+    capability_ids:
+      - browser.form.fill
+      - browser.automation.run
+    tags: [browser, automation]
+
+  - id: ocr.documents
+    name: Document OCR
+    summary: >-
+      OCR and structured extraction (tables, key-value) from PDFs and images.
+    price_usd: 6
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - ocr.text
+      - ocr.tables
+      - ocr.kv
+    tags: [ocr, documents]
+
+  - id: email.triage
+    name: Email Triage
+    summary: >-
+      Inbox prioritization, summaries, and reply drafting.
+    price_usd: 3
+    review_status: approved
+    required_tools: [file]
+    required_env: [EMAIL_TOKEN]
+    capability_ids:
+      - email.summarize
+      - email.triage.prioritize
+      - email.draft.reply
+    tags: [email, productivity]
+
+  - id: travel.planner
+    name: Travel Planner
+    summary: >-
+      Trip planning, day-by-day itineraries, and budget-aware suggestions.
+    price_usd: 8
+    review_status: approved
+    required_tools: [file]
+    required_env: []
+    capability_ids:
+      - travel.itinerary
+      - travel.budget
+    tags: [travel, planning]
