@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -127,40 +125,3 @@ class TestLowContextLoading:
                 "mention recall before marketplace "
                 "search"
             )
-
-
-class TestConfigExample:
-    """Verify the example config files."""
-
-    def test_config_example_exists(self) -> None:
-        assert (ROOT / "templates" / "config.example.yaml").is_file()
-
-    def test_config_example_is_valid_yaml(self) -> None:
-        content = (ROOT / "templates" / "config.example.yaml").read_text(
-            encoding="utf-8"
-        )
-        data = yaml.safe_load(content)
-        assert isinstance(data, dict), "Config example must be valid YAML"
-
-    def test_config_has_safety_section(self) -> None:
-        content = (ROOT / "templates" / "config.example.yaml").read_text(
-            encoding="utf-8"
-        )
-        data = yaml.safe_load(content)
-        assert "safety" in data, "Config example must have safety section"
-        assert "requires_confirmation" in data["safety"], (
-            "Config example safety must have requires_confirmation"
-        )
-
-    def test_eval_example_exists(self) -> None:
-        assert (ROOT / "templates" / "eval.local.example.yaml").is_file()
-
-    def test_eval_example_is_valid_yaml(self) -> None:
-        content = (ROOT / "templates" / "eval.local.example.yaml").read_text(
-            encoding="utf-8"
-        )
-        data = yaml.safe_load(content)
-        assert isinstance(data, dict), "Eval example must be valid YAML"
-        assert "provider" in data or "scenarios" in data, (
-            "Eval example must have provider or scenarios"
-        )

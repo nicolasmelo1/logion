@@ -1,20 +1,26 @@
-"""Tests for the course/capabilities.yaml manifest.
+"""Tests for the agent-companion course/capabilities.yaml manifest.
 
-Verifies the capability manifest has the required structure,
-safety rules, local recall capability, and creator/operator
-workflows.
+Verifies the manifest is a valid canonical Logion capability manifest
+(via the same validator the CLI and marketplace API use) and that the
+companion-specific expectations are met.
+
+Also asserts that the companion's semantic capability list lives in
+references/companion-capabilities.md, not in capabilities.yaml.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
+from cli._course_capabilities import (
+    ALLOWED_TOOLS,
+    load_and_validate_capability_manifest,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
-CAP_PATH = ROOT / "course" / "capabilities.yaml"
+COMPANION_CAPABILITIES_REF = ROOT / "references" / "companion-capabilities.md"
 
-REQUIRED_CAPABILITY_IDS = [
+REQUIRED_SEMANTIC_CAPABILITIES = [
     "logion.recall.search",
     "logion.marketplace.search",
     "logion.course.inspect",
@@ -35,108 +41,66 @@ REQUIRED_CONFIRMATION_ACTIONS = [
 ]
 
 
-def _load_manifest() -> dict:
-    content = CAP_PATH.read_text(encoding="utf-8")
-    return yaml.safe_load(content)
+class TestCanonicalManifest:
+    """The manifest must pass the same validator the CLI/API use."""
+
+    def test_manifest_validates(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["version"] == 1
+
+    def test_summary_is_nonempty(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["summary"].strip() != ""
+
+    def test_tools_are_subset_of_allowed_enum(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert set(manifest["tools"]).issubset(ALLOWED_TOOLS)
+
+    def test_companion_requires_terminal_and_file(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert "terminal" in manifest["tools"]
+        assert "file" in manifest["tools"]
+
+    def test_no_network_by_default(self) -> None:
+        """The companion does not call out — recall is offline."""
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["network"]["allow_domains"] == []
+
+    def test_human_approval_required(self) -> None:
+        """Companion guides paid/permission-expanding actions, so the
+        author-side default is human_approval.required=true."""
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["human_approval"]["required"] is True
+
+    def test_no_writable_filesystem_paths(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["filesystem"]["write"] == []
+
+    def test_no_environment_secrets(self) -> None:
+        manifest = load_and_validate_capability_manifest(ROOT)
+        assert manifest["secrets"]["env"] == []
 
 
-class TestCapabilityManifest:
-    """Verify the capability manifest has required fields."""
+class TestSemanticCapabilitiesReference:
+    """The semantic capability list lives in markdown, not in YAML."""
 
-    def test_manifest_file_exists(self) -> None:
-        assert CAP_PATH.is_file(), f"Missing manifest: {CAP_PATH}"
+    def test_reference_file_exists(self) -> None:
+        assert COMPANION_CAPABILITIES_REF.is_file(), (
+            f"Missing reference: {COMPANION_CAPABILITIES_REF}"
+        )
 
-    def test_manifest_has_required_top_level_keys(
-        self,
-    ) -> None:
-        data = _load_manifest()
-        required = [
-            "version",
-            "summary",
-            "capabilities",
-            "required_tools",
-            "safety",
-        ]
-        for key in required:
-            assert key in data, f"Manifest missing key: {key}"
-
-    def test_manifest_version_is_integer(self) -> None:
-        data = _load_manifest()
-        assert isinstance(data["version"], int), "Manifest version must be int"
-        assert data["version"] >= 1, "Manifest version must be >= 1"
-
-    def test_manifest_summary_is_nonempty(self) -> None:
-        data = _load_manifest()
-        assert isinstance(data["summary"], str), "Summary must be a string"
-        assert len(data["summary"].strip()) > 0, "Summary must not be empty"
-
-    def test_manifest_has_all_required_capabilities(
-        self,
-    ) -> None:
-        data = _load_manifest()
-        caps = data.get("capabilities", [])
-        cap_ids = [c.get("id", "") for c in caps]
-        for req_id in REQUIRED_CAPABILITY_IDS:
-            assert req_id in cap_ids, (
-                f"Manifest missing required capability: {req_id}"
+    def test_reference_lists_all_required_capability_ids(self) -> None:
+        content = COMPANION_CAPABILITIES_REF.read_text(encoding="utf-8")
+        for cap_id in REQUIRED_SEMANTIC_CAPABILITIES:
+            assert cap_id in content, (
+                f"companion-capabilities.md missing capability: {cap_id}"
             )
 
-    def test_each_capability_has_required_fields(self) -> None:
-        data = _load_manifest()
-        for cap in data.get("capabilities", []):
-            for field in ("id", "title", "description"):
-                assert field in cap, (
-                    f"Capability {cap.get('id', '?')} missing field: {field}"
-                )
-            assert isinstance(cap["id"], str)
-            assert len(cap["id"]) > 0
-            assert isinstance(cap["title"], str)
-            assert len(cap["title"]) > 0
-            assert isinstance(cap["description"], str)
-            assert len(cap["description"]) > 0
-
-    def test_local_recall_capability_exists(self) -> None:
-        data = _load_manifest()
-        caps = data.get("capabilities", [])
-        cap_ids = [c.get("id", "") for c in caps]
-        assert "logion.recall.search" in cap_ids, (
-            "Manifest must include logion.recall.search capability"
-        )
-
-    def test_creator_capability_exists(self) -> None:
-        data = _load_manifest()
-        caps = data.get("capabilities", [])
-        cap_ids = [c.get("id", "") for c in caps]
-        assert "logion.course.author" in cap_ids, (
-            "Manifest must include logion.course.author capability"
-        )
-        assert "logion.course.operate" in cap_ids, (
-            "Manifest must include logion.course.operate capability"
-        )
-
-    def test_safety_requires_confirmation(self) -> None:
-        data = _load_manifest()
-        safety = data.get("safety", {})
-        confirmation = safety.get("requires_confirmation", [])
-        assert isinstance(confirmation, list), (
-            "safety.requires_confirmation must be a list"
-        )
+    def test_reference_lists_all_required_confirmation_actions(
+        self,
+    ) -> None:
+        content = COMPANION_CAPABILITIES_REF.read_text(encoding="utf-8")
         for action in REQUIRED_CONFIRMATION_ACTIONS:
-            assert action in confirmation, (
-                f"safety.requires_confirmation missing action: {action}"
+            assert action in content, (
+                f"companion-capabilities.md missing action: {action}"
             )
-
-    def test_required_tools(self) -> None:
-        data = _load_manifest()
-        tools = data.get("required_tools", [])
-        assert isinstance(tools, list), "required_tools must be a list"
-        assert "terminal" in tools, "terminal must be in required_tools"
-        assert "file" in tools, "file must be in required_tools"
-
-    def test_required_env_is_empty(self) -> None:
-        data = _load_manifest()
-        env = data.get("required_env", [])
-        assert isinstance(env, list), "required_env must be a list"
-        assert len(env) == 0, (
-            "Manifest must not require environment variables by default"
-        )

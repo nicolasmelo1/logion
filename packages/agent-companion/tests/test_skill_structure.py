@@ -19,7 +19,6 @@ REQUIRED_DIRS = [
     "references",
     "scripts",
     "tests",
-    "templates",
     "vendor",
 ]
 
@@ -27,6 +26,7 @@ REQUIRED_FILES = [
     "SKILL.md",
     "course/capabilities.yaml",
     "README.md",
+    "references/companion-capabilities.md",
     "references/marketplace-flows.md",
     "references/creator-course-management.md",
     "references/safety-and-approval.md",
@@ -58,16 +58,25 @@ IMPLEMENTED_COMMANDS = {
     "logion courses versions get COURSE_ID VERSION_ID",
     "logion notifications unread-count",
     "logion notifications list --unread-only --limit 20",
+    'logion recall search "video cuts" --limit 5',
+    "logion skills installed",
+    "logion skills inspect COURSE_ID",
+    "logion skills updates",
+    (
+        "logion skills install --source ./BUNDLE "
+        "--course-id COURSE_ID --version-id VERSION_ID"
+    ),
+    (
+        "logion skills update COURSE_ID --version-id VERSION_ID "
+        "--source ./BUNDLE"
+    ),
+    "logion recall record --id WORKFLOW_ID --title TITLE --command CMD",
+    "logion courses capabilities scaffold --bundle-dir ./new-course",
+    "logion courses capabilities validate --bundle-dir ./new-course",
 }
 
 PLANNED_COMMANDS = {
-    'logion recall search "video cuts" --limit 5',
     'logion skills search "video cuts" --limit 5',
-    "logion skills inspect COURSE_ID",
-    "logion skills install COURSE_ID --version VERSION_ID",
-    "logion skills installed",
-    "logion skills updates",
-    "logion skills update COURSE_ID",
 }
 
 REQUIRED_CONFIRMATION_ACTIONS = {
@@ -278,7 +287,7 @@ class TestSkillStructure:
     def test_recall_examples_are_read_only_and_not_automatic(self) -> None:
         body = _skill_body(_read_skill()).lower()
         recall_command = (
-            'logion recall search "video cuts" --limit 5  # planned/read-only'
+            'logion recall search "video cuts" --limit 5  # read-only'
         )
         assert recall_command in body
         assert "read-only" in body
@@ -307,20 +316,22 @@ class TestSkillStructure:
         )
 
         assert IMPLEMENTED_COMMANDS.issubset(parsed_commands), (
-            "Missing one or more implemented command examples"
+            "Missing one or more implemented command examples: "
+            f"{sorted(IMPLEMENTED_COMMANDS - set(parsed_commands))}"
         )
         assert PLANNED_COMMANDS.issubset(parsed_commands), (
-            "Missing one or more planned command examples"
+            "Missing one or more planned command examples: "
+            f"{sorted(PLANNED_COMMANDS - set(parsed_commands))}"
         )
 
         recall_comment = parsed_commands[
             'logion recall search "video cuts" --limit 5'
         ]
-        assert "planned/read-only" in recall_comment
+        assert "read-only" in recall_comment, (
+            "logion recall search must remain tagged read-only"
+        )
 
-        for command in PLANNED_COMMANDS - {
-            'logion recall search "video cuts" --limit 5'
-        }:
+        for command in PLANNED_COMMANDS:
             assert "planned" in parsed_commands[command], (
                 f"Planned command must be tagged as planned: {command}"
             )

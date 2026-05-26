@@ -7,8 +7,12 @@ dependencies = [
     "pyyaml>=6.0,<7.0",
 ]
 
+[tool.uv.sources]
+logion-cli = { workspace = true }
+
 [dependency-groups]
 dev = [
+    "logion-cli",
     "pytest>=9.0.3,<9.1.0",
     "ruff>=0.15.12,<0.16.0",
     "mypy>=1.15,<2.0.0",
@@ -27,7 +31,6 @@ packages = ["src/logion_agent_companion"]
 "SKILL.md" = "logion_agent_companion/SKILL.md"
 "course" = "logion_agent_companion/course"
 "references" = "logion_agent_companion/references"
-"templates" = "logion_agent_companion/templates"
 "scripts" = "logion_agent_companion/scripts"
 
 [tool.ruff]
@@ -72,7 +75,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/package_skill.py" = ["T201"]
-"scripts/check_updates.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]

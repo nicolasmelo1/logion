@@ -9,6 +9,7 @@ from cli._options import COMMON_PARSER
 
 from .capabilities import (
     handle_courses_capabilities_print,
+    handle_courses_capabilities_scaffold,
     handle_courses_capabilities_validate,
 )
 from .parser_sections import CMD_HELP
@@ -50,3 +51,24 @@ def register_capabilities(subparsers: argparse._SubParsersAction) -> None:
         help="Path to the course bundle directory",
     )
     print_cmd.set_defaults(handler=handle_courses_capabilities_print)
+
+    scaffold = capabilities_sub.add_parser(
+        "scaffold",
+        help="Write a commented course/capabilities.yaml scaffold",
+        parents=[COMMON_PARSER],
+    )
+    scaffold.add_argument(
+        "--bundle-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Course bundle directory.  If omitted the scaffold is "
+            "printed to stdout."
+        ),
+    )
+    scaffold.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing course/capabilities.yaml",
+    )
+    scaffold.set_defaults(handler=handle_courses_capabilities_scaffold)
