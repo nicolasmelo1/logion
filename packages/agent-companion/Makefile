@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: test lint format-check typecheck package-check verify
+.PHONY: test lint format-check typecheck package-check eval verify
 
 test:
 	uv run python -m pytest tests/ -q
@@ -17,4 +17,10 @@ typecheck:
 package-check:
 	uv run python scripts/package_skill.py
 
-verify: lint format-check typecheck test package-check
+eval:
+	uv run python evals/run_eval.py \
+		--provider fake \
+		--scenarios evals/scenarios \
+		--catalog evals/catalogs/fake-marketplace.yaml
+
+verify: lint format-check typecheck test package-check eval

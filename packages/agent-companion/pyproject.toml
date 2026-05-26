@@ -75,6 +75,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/package_skill.py" = ["T201"]
+# Graders are a flat list of rule checks; nested-if / complexity rules
+# would push them into a less readable shape. The CLI prints by design.
+"evals/harness/graders.py" = ["SIM102", "C901"]
+"evals/run_eval.py" = ["T201"]
+"tests/test_eval_harness.py" = ["FBT003", "ARG002"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]

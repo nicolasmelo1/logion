@@ -1,0 +1,637 @@
+suite: course-selection
+
+# Course selection precision: when two courses overlap, the agent must
+# choose the right one. Confusion pairs are explicit (acceptable +
+# forbidden) so graders detect a wrong pick.
+
+scenarios:
+  - id: select-clips-not-editor
+    prompt: "Make a 15-second highlight clip from this long video."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.clips]
+      forbidden_course_ids: [video.editor]
+      max_courses_inspected: 3
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "highlight clip", limit: 5}
+        - tool: marketplace.search
+          args: {query: "video short clip"}
+        - tool: course.inspect
+          args: {course_id: video.clips}
+      final_answer: "video.clips fits ($9). Confirm install?"
+      selected_course_ids: [video.clips]
+
+  - id: select-editor-not-clips
+    prompt: "Full timeline edit with color grading and final render."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.editor]
+      forbidden_course_ids: [video.clips]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "timeline color grade render", limit: 5}
+        - tool: marketplace.search
+          args: {query: "video editor timeline"}
+        - tool: course.inspect
+          args: {course_id: video.editor}
+      final_answer: "video.editor fits ($19). Confirm install?"
+      selected_course_ids: [video.editor]
+
+  - id: select-resume-not-cover-letter
+    prompt: "Reword my resume bullets for an ATS keyword pass."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [resume.ats]
+      forbidden_course_ids: [cover-letter.writer]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "resume ats bullets", limit: 5}
+        - tool: marketplace.search
+          args: {query: "resume ats"}
+        - tool: course.inspect
+          args: {course_id: resume.ats}
+      final_answer: "resume.ats fits ($5). Confirm install?"
+      selected_course_ids: [resume.ats]
+
+  - id: select-cover-letter-not-resume
+    prompt: "Write a cover letter tailored to this job posting."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [cover-letter.writer]
+      forbidden_course_ids: [resume.ats]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "cover letter tailored", limit: 5}
+        - tool: marketplace.search
+          args: {query: "cover letter"}
+        - tool: course.inspect
+          args: {course_id: cover-letter.writer}
+      final_answer: "cover-letter.writer fits ($4). Confirm install?"
+      selected_course_ids: [cover-letter.writer]
+
+  - id: select-tdd-not-debugging
+    prompt: "Scaffold a new project with a TDD test harness."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [code.tdd-framework]
+      forbidden_course_ids: [code.debugging]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "tdd scaffold", limit: 5}
+        - tool: marketplace.search
+          args: {query: "tdd"}
+        - tool: course.inspect
+          args: {course_id: code.tdd-framework}
+      final_answer: "code.tdd-framework fits (free). Confirm install?"
+      selected_course_ids: [code.tdd-framework]
+
+  - id: select-debugging-not-tdd
+    prompt: "Bisect this regression in our service."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [code.debugging]
+      forbidden_course_ids: [code.tdd-framework]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "bisect regression", limit: 5}
+        - tool: marketplace.search
+          args: {query: "debug bisect"}
+        - tool: course.inspect
+          args: {course_id: code.debugging}
+      final_answer: "code.debugging fits (free). Confirm install?"
+      selected_course_ids: [code.debugging]
+
+  - id: select-terraform-review-not-company-ops
+    prompt: "Static review of this Terraform plan only."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [terraform.static-review]
+      forbidden_course_ids: [infra.company-ops]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "terraform static review", limit: 5}
+        - tool: marketplace.search
+          args: {query: "terraform review"}
+        - tool: course.inspect
+          args: {course_id: terraform.static-review}
+      final_answer: "terraform.static-review fits (free). Confirm install?"
+      selected_course_ids: [terraform.static-review]
+
+  - id: select-company-ops-not-terraform-review
+    prompt: "Need runbooks and cloud ops helpers."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [infra.company-ops]
+      forbidden_course_ids: [terraform.static-review]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "runbooks cloud ops", limit: 5}
+        - tool: marketplace.search
+          args: {query: "company ops"}
+        - tool: course.inspect
+          args: {course_id: infra.company-ops}
+      final_answer: "infra.company-ops fits ($49). Confirm install?"
+      selected_course_ids: [infra.company-ops]
+
+  - id: select-ocr-not-spreadsheets
+    prompt: "Extract tables from scanned PDFs."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [ocr.documents]
+      forbidden_course_ids: [data.spreadsheets]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "ocr scanned table", limit: 5}
+        - tool: marketplace.search
+          args: {query: "ocr"}
+        - tool: course.inspect
+          args: {course_id: ocr.documents}
+      final_answer: "ocr.documents fits ($6). Confirm install?"
+      selected_course_ids: [ocr.documents]
+
+  - id: select-spreadsheets-not-ocr
+    prompt: "Pivot this XLSX by region and quarter."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [data.spreadsheets]
+      forbidden_course_ids: [ocr.documents]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "xlsx pivot", limit: 5}
+        - tool: marketplace.search
+          args: {query: "spreadsheet pivot"}
+        - tool: course.inspect
+          args: {course_id: data.spreadsheets}
+      final_answer: "data.spreadsheets fits ($7). Confirm install?"
+      selected_course_ids: [data.spreadsheets]
+
+  - id: select-email-not-browser
+    prompt: "Summarize and prioritize my inbox."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [email.triage]
+      forbidden_course_ids: [browser.automation]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "inbox triage", limit: 5}
+        - tool: marketplace.search
+          args: {query: "email triage"}
+        - tool: course.inspect
+          args: {course_id: email.triage}
+      final_answer: "email.triage fits ($3). Confirm install?"
+      selected_course_ids: [email.triage]
+
+  - id: select-browser-not-email
+    prompt: "Auto-fill 50 job applications on different sites."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [browser.automation]
+      forbidden_course_ids: [email.triage]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "auto fill job applications", limit: 5}
+        - tool: marketplace.search
+          args: {query: "browser form automation"}
+        - tool: course.inspect
+          args: {course_id: browser.automation}
+      final_answer: "browser.automation fits ($12). Confirm install?"
+      selected_course_ids: [browser.automation]
+
+  - id: select-weather-not-travel
+    prompt: "Will it rain in Lisbon tomorrow?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [weather.basic]
+      forbidden_course_ids: [travel.planner]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "rain lisbon tomorrow", limit: 5}
+        - tool: marketplace.search
+          args: {query: "weather forecast"}
+        - tool: course.inspect
+          args: {course_id: weather.basic}
+      final_answer: "weather.basic fits (free). Confirm install?"
+      selected_course_ids: [weather.basic]
+
+  - id: select-travel-not-weather
+    prompt: "Plan a 4-day Lisbon trip."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [travel.planner]
+      forbidden_course_ids: [weather.basic]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "trip plan lisbon", limit: 5}
+        - tool: marketplace.search
+          args: {query: "trip planner"}
+        - tool: course.inspect
+          args: {course_id: travel.planner}
+      final_answer: "travel.planner fits ($8). Confirm install?"
+      selected_course_ids: [travel.planner]
+
+  - id: select-debugging-not-tdd-flaky
+    prompt: "This test is flaky. Help me reproduce and isolate."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [code.debugging]
+      forbidden_course_ids: [code.tdd-framework]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "flaky test reproduce", limit: 5}
+        - tool: marketplace.search
+          args: {query: "debug reproduce"}
+        - tool: course.inspect
+          args: {course_id: code.debugging}
+      final_answer: "code.debugging fits (free). Confirm install?"
+      selected_course_ids: [code.debugging]
+
+  - id: select-tdd-not-debugging-new-project
+    prompt: "Start a new microservice with red-green-refactor habits baked in."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [code.tdd-framework]
+      forbidden_course_ids: [code.debugging]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "new project tdd", limit: 5}
+        - tool: marketplace.search
+          args: {query: "tdd framework"}
+        - tool: course.inspect
+          args: {course_id: code.tdd-framework}
+      final_answer: "code.tdd-framework fits (free). Confirm install?"
+      selected_course_ids: [code.tdd-framework]
+
+  - id: select-resume-not-cover-letter-ats
+    prompt: "Improve resume keyword density for ATS."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [resume.ats]
+      forbidden_course_ids: [cover-letter.writer]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "resume ats keywords", limit: 5}
+        - tool: marketplace.search
+          args: {query: "resume ats"}
+        - tool: course.inspect
+          args: {course_id: resume.ats}
+      final_answer: "resume.ats fits ($5). Confirm install?"
+      selected_course_ids: [resume.ats]
+
+  - id: select-cover-letter-not-resume-tailor
+    prompt: "Tailor a cover letter for this exact posting."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [cover-letter.writer]
+      forbidden_course_ids: [resume.ats]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "tailor cover letter posting", limit: 5}
+        - tool: marketplace.search
+          args: {query: "cover letter tailor"}
+        - tool: course.inspect
+          args: {course_id: cover-letter.writer}
+      final_answer: "cover-letter.writer fits ($4). Confirm install?"
+      selected_course_ids: [cover-letter.writer]
+
+  - id: select-clips-with-captions-not-editor
+    prompt: "Auto-caption a 30s clip and trim silences."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.clips]
+      forbidden_course_ids: [video.editor]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "auto caption silence trim", limit: 5}
+        - tool: marketplace.search
+          args: {query: "clip captions silence"}
+        - tool: course.inspect
+          args: {course_id: video.clips}
+      final_answer: "video.clips fits ($9). Confirm install?"
+      selected_course_ids: [video.clips]
+
+  - id: select-editor-multitrack-not-clips
+    prompt: "Multi-track audio mix and color pass on a 20-min cut."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.editor]
+      forbidden_course_ids: [video.clips]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "multi track audio color", limit: 5}
+        - tool: marketplace.search
+          args: {query: "video editor audio color"}
+        - tool: course.inspect
+          args: {course_id: video.editor}
+      final_answer: "video.editor fits ($19). Confirm install?"
+      selected_course_ids: [video.editor]
+
+  - id: select-ocr-kv-not-spreadsheets
+    prompt: "Extract key-value pairs from a stack of receipts."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [ocr.documents]
+      forbidden_course_ids: [data.spreadsheets]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "receipts key value", limit: 5}
+        - tool: marketplace.search
+          args: {query: "ocr receipts"}
+        - tool: course.inspect
+          args: {course_id: ocr.documents}
+      final_answer: "ocr.documents fits ($6). Confirm install?"
+      selected_course_ids: [ocr.documents]
+
+  - id: select-spreadsheets-analyze-not-ocr
+    prompt: "Analyze CSV sales by SKU month over month."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [data.spreadsheets]
+      forbidden_course_ids: [ocr.documents]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "csv sales sku month", limit: 5}
+        - tool: marketplace.search
+          args: {query: "spreadsheet analyze"}
+        - tool: course.inspect
+          args: {course_id: data.spreadsheets}
+      final_answer: "data.spreadsheets fits ($7). Confirm install?"
+      selected_course_ids: [data.spreadsheets]
+
+  - id: select-browser-form-not-email
+    prompt: "Fill out a long government form across pages."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [browser.automation]
+      forbidden_course_ids: [email.triage]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "fill long form pages", limit: 5}
+        - tool: marketplace.search
+          args: {query: "browser form fill"}
+        - tool: course.inspect
+          args: {course_id: browser.automation}
+      final_answer: "browser.automation fits ($12). Confirm install?"
+      selected_course_ids: [browser.automation]
+
+  - id: select-email-reply-not-browser
+    prompt: "Draft a reply to every unread email from my boss."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [email.triage]
+      forbidden_course_ids: [browser.automation]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "email reply unread boss", limit: 5}
+        - tool: marketplace.search
+          args: {query: "email reply draft"}
+        - tool: course.inspect
+          args: {course_id: email.triage}
+      final_answer: "email.triage fits ($3). Confirm install?"
+      selected_course_ids: [email.triage]
+
+  - id: select-travel-budget-not-spreadsheets
+    prompt: "Plan a budget-aware itinerary for São Paulo."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [travel.planner]
+      forbidden_course_ids: [data.spreadsheets]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "budget itinerary sao paulo", limit: 5}
+        - tool: marketplace.search
+          args: {query: "trip itinerary budget"}
+        - tool: course.inspect
+          args: {course_id: travel.planner}
+      final_answer: "travel.planner fits ($8). Confirm install?"
+      selected_course_ids: [travel.planner]
+
+  - id: select-weather-not-company-ops
+    prompt: "Will the AWS region in us-east-1 see a storm tomorrow?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [weather.basic]
+      forbidden_course_ids: [infra.company-ops]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "weather storm region", limit: 5}
+        - tool: marketplace.search
+          args: {query: "weather forecast"}
+        - tool: course.inspect
+          args: {course_id: weather.basic}
+      final_answer: "weather.basic fits (free). Confirm install?"
+      selected_course_ids: [weather.basic]
+
+  - id: select-tdd-only-tests-not-debug
+    prompt: "Generate unit tests for this existing module."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [code.tdd-framework]
+      forbidden_course_ids: [code.debugging]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "generate unit tests module", limit: 5}
+        - tool: marketplace.search
+          args: {query: "tests generate tdd"}
+        - tool: course.inspect
+          args: {course_id: code.tdd-framework}
+      final_answer: "code.tdd-framework fits (free). Confirm install?"
+      selected_course_ids: [code.tdd-framework]
+
+  - id: select-terraform-review-only-no-apply
+    prompt: "Lint Terraform for risky resources, no state, no apply."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [terraform.static-review]
+      forbidden_course_ids: [infra.company-ops]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "terraform lint risky", limit: 5}
+        - tool: marketplace.search
+          args: {query: "terraform lint"}
+        - tool: course.inspect
+          args: {course_id: terraform.static-review}
+      final_answer: "terraform.static-review fits (free). Confirm install?"
+      selected_course_ids: [terraform.static-review]
+
+  - id: select-runbooks-not-terraform-review
+    prompt: "On-call runbook for paging escalation paths."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [infra.company-ops]
+      forbidden_course_ids: [terraform.static-review]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "oncall runbook escalation", limit: 5}
+        - tool: marketplace.search
+          args: {query: "runbooks oncall"}
+        - tool: course.inspect
+          args: {course_id: infra.company-ops}
+      final_answer: "infra.company-ops fits ($49). Confirm install?"
+      selected_course_ids: [infra.company-ops]
+
+  - id: select-clips-not-editor-with-budget
+    prompt: "Short clips for social, prefer free or cheap."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.clips]
+      forbidden_course_ids: [video.editor]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "short clips social cheap", limit: 5}
+        - tool: marketplace.search
+          args: {query: "short clips"}
+        - tool: course.inspect
+          args: {course_id: video.clips}
+      final_answer: "video.clips ($9) is the cheaper fit. Confirm install?"
+      selected_course_ids: [video.clips]

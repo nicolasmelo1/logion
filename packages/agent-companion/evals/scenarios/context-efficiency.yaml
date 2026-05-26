@@ -1,0 +1,277 @@
+suite: context-efficiency
+
+# Context efficiency: never load the full catalog, never inspect dozens of
+# unrelated courses, never auto-load every installed skill artifact.
+
+scenarios:
+  - id: ctx-inspect-at-most-3
+    prompt: "Find me a weather skill."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [weather.basic]
+      max_courses_inspected: 3
+      max_loaded_skills: 0
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "weather", limit: 5}
+        - tool: marketplace.search
+          args: {query: "weather"}
+        - tool: course.inspect
+          args: {course_id: weather.basic}
+      final_answer: "weather.basic (free). Confirm install?"
+      selected_course_ids: [weather.basic]
+
+  - id: ctx-skill-load-only-on-need
+    prompt: "What's 12 squared?"
+    installed_capabilities: ["data.analyze", "weather.forecast"]
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      max_loaded_skills: 0
+      forbidden_tools: [skill.load]
+    fake_trace:
+      calls: []
+      final_answer: "144"
+
+  - id: ctx-load-only-selected-skill
+    prompt: "Use my installed pivot capability."
+    installed_capabilities: ["data.spreadsheet.pivot"]
+    local_recall:
+      - kind: capability
+        capability_id: data.spreadsheet.pivot
+        confidence: 0.95
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 1
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "pivot", limit: 5}
+        - tool: skill.load
+          args: {capability_id: data.spreadsheet.pivot}
+      final_answer: "Pivoting your data using the local capability."
+      loaded_skill_ids: [data.spreadsheet.pivot]
+
+  - id: ctx-no-bulk-inspect
+    prompt: "Help me with OCR."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [ocr.documents]
+      max_courses_inspected: 2
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "ocr", limit: 5}
+        - tool: marketplace.search
+          args: {query: "ocr"}
+        - tool: course.inspect
+          args: {course_id: ocr.documents}
+      final_answer: "ocr.documents ($6). Confirm install?"
+      selected_course_ids: [ocr.documents]
+
+  - id: ctx-search-then-inspect-one
+    prompt: "I need email triage."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [email.triage]
+      max_courses_inspected: 1
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "email triage", limit: 5}
+        - tool: marketplace.search
+          args: {query: "email triage"}
+        - tool: course.inspect
+          args: {course_id: email.triage}
+      final_answer: "email.triage ($3). Confirm install?"
+      selected_course_ids: [email.triage]
+
+  - id: ctx-no-installed-skill-bulk-load
+    prompt: "Will it rain tomorrow?"
+    installed_capabilities: ["weather.forecast", "weather.current"]
+    local_recall:
+      - kind: capability
+        capability_id: weather.forecast
+        confidence: 0.97
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 1
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "rain forecast", limit: 5}
+        - tool: skill.load
+          args: {capability_id: weather.forecast}
+      final_answer: "It looks dry tomorrow."
+      loaded_skill_ids: [weather.forecast]
+
+  - id: ctx-search-bounded-to-need
+    prompt: "Free travel planning option."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [travel.planner]
+      max_courses_inspected: 2
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "travel planner free", limit: 5}
+        - tool: marketplace.search
+          args: {query: "travel planner free"}
+        - tool: course.inspect
+          args: {course_id: travel.planner}
+      final_answer: "travel.planner ($8). Confirm install?"
+      selected_course_ids: [travel.planner]
+
+  - id: ctx-no-load-without-recall
+    prompt: "Quick chat — what year is it?"
+    installed_capabilities: ["weather.forecast"]
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 0
+      forbidden_tools: [skill.load, marketplace.search]
+    fake_trace:
+      calls: []
+      final_answer: "2026."
+
+  - id: ctx-low-token-budget
+    prompt: "Cheap routing demo."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 0
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "demo", limit: 3}
+      final_answer: "Recall returned nothing actionable."
+      token_estimate: {input: 200, output: 30}
+
+  - id: ctx-installed-blocks-search
+    prompt: "Cover letter tailoring."
+    installed_capabilities: ["cover_letter.tailor"]
+    local_recall:
+      - kind: capability
+        capability_id: cover_letter.tailor
+        confidence: 0.93
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 1
+      forbidden_tools: [marketplace.search]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "cover letter tailor", limit: 5}
+        - tool: skill.load
+          args: {capability_id: cover_letter.tailor}
+      final_answer: "Using cover_letter.tailor locally."
+      loaded_skill_ids: [cover_letter.tailor]
+
+  - id: ctx-search-but-no-inspect-on-clear-match
+    prompt: "Browse only — show me the cheapest free weather skill name."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      recall_bypass_allowed: true
+      should_query_marketplace: true
+      max_courses_inspected: 1
+    fake_trace:
+      calls:
+        - tool: marketplace.search
+          args: {query: "weather free"}
+      final_answer: "weather.basic — free."
+
+  - id: ctx-update-check-no-load
+    prompt: "Any update for installed weather skill?"
+    installed_capabilities: ["weather.forecast"]
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 0
+      forbidden_tools: [course.update_apply]
+    fake_trace:
+      calls:
+        - tool: course.update_check
+          args: {course_id: weather.basic}
+      final_answer: "No update available. Nothing to apply."
+
+  - id: ctx-no-recall-then-no-marketplace-greeting
+    prompt: "Bom dia!"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 0
+      forbidden_tools: [marketplace.search, skill.load]
+    fake_trace:
+      calls: []
+      final_answer: "Bom dia! Como posso ajudar?"
+
+  - id: ctx-installed-multiple-load-only-needed
+    prompt: "Reply to that one email from Alice."
+    installed_capabilities: ["email.summarize", "email.draft.reply"]
+    local_recall:
+      - kind: capability
+        capability_id: email.draft.reply
+        confidence: 0.92
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      max_loaded_skills: 1
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "reply email", limit: 5}
+        - tool: skill.load
+          args: {capability_id: email.draft.reply}
+      final_answer: "Drafting a reply locally."
+      loaded_skill_ids: [email.draft.reply]
+
+  - id: ctx-search-single-query
+    prompt: "Need a Terraform reviewer skill."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [terraform.static-review]
+      max_courses_inspected: 1
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "terraform review", limit: 5}
+        - tool: marketplace.search
+          args: {query: "terraform review"}
+        - tool: course.inspect
+          args: {course_id: terraform.static-review}
+      final_answer: "terraform.static-review (free). Confirm install?"
+      selected_course_ids: [terraform.static-review]
