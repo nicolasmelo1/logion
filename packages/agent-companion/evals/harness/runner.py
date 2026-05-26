@@ -16,6 +16,7 @@ from evals.harness.schema import (
     Trace,
     load_catalog,
     load_scenarios_from_dir,
+    load_scenarios_from_file,
 )
 
 
@@ -41,13 +42,16 @@ class Provider(Protocol):
 
 
 def run(
-    scenarios_dir: Path,
+    scenarios_path: Path,
     catalog_path: Path,
     *,
     provider: Provider | None = None,
 ) -> list[ScenarioResult]:
     catalog = load_catalog(catalog_path)
-    scenarios = load_scenarios_from_dir(scenarios_dir)
+    if scenarios_path.is_file():
+        scenarios = load_scenarios_from_file(scenarios_path)
+    else:
+        scenarios = load_scenarios_from_dir(scenarios_path)
     return run_scenarios(scenarios, catalog, provider=provider)
 
 
