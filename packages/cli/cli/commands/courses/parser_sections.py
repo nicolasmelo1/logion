@@ -15,10 +15,13 @@ from .handlers import (
     handle_reviews_mine,
     handle_reviews_upsert,
     handle_update,
-    handle_uploads_complete,
-    handle_uploads_create,
 )
+from .parser_uploads import register_uploads as _register_uploads
 from .parser_utils import add_tag_arguments, add_tristate_flag
+
+# Re-export so existing imports (`from .parser_sections import
+# register_uploads`) still work.
+register_uploads = _register_uploads
 
 CMD_HELP = {
     "create": "Create a new course",
@@ -120,43 +123,6 @@ def register_update(subparsers: argparse._SubParsersAction) -> None:
         "--visibility", choices=["public", "unlisted", "private"]
     )
     update.set_defaults(handler=handle_update)
-
-
-def register_uploads(subparsers: argparse._SubParsersAction) -> None:
-    uploads = subparsers.add_parser("uploads", help=CMD_HELP["uploads"])
-    uploads_sub = uploads.add_subparsers(
-        dest="courses_uploads_command",
-        required=True,
-    )
-
-    create = uploads_sub.add_parser(
-        "create",
-        help="Create an upload session for a course version",
-        parents=[COMMON_PARSER],
-    )
-    create.add_argument("course_id", metavar="COURSE_ID")
-    create.add_argument(
-        "--file",
-        action="append",
-        dest="files",
-        default=[],
-        help=(
-            "File path to include in the upload session. "
-            "Use FILE_PATH or UPLOAD_PATH=FILE_PATH to override the upload "
-            "path. When omitted, only the basename is used and directory "
-            "structure is flattened."
-        ),
-    )
-    create.set_defaults(handler=handle_uploads_create)
-
-    complete = uploads_sub.add_parser(
-        "complete",
-        help="Complete an upload session",
-        parents=[COMMON_PARSER],
-    )
-    complete.add_argument("course_id", metavar="COURSE_ID")
-    complete.add_argument("version_id", metavar="VERSION_ID")
-    complete.set_defaults(handler=handle_uploads_complete)
 
 
 def register_publication(subparsers: argparse._SubParsersAction) -> None:

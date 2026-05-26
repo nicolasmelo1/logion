@@ -826,3 +826,84 @@ class TestStateLock:
         record_workflow_success("wf1", "WF 1", ["echo hi"], home)
         ids = {e["id"] for e in read_recall(home)}
         assert "wf1" in ids
+
+
+# ---------------------------------------------------------------------------
+# Command-string secret redaction
+# ---------------------------------------------------------------------------
+
+
+class TestCommandSecretRedaction:
+    def _record_and_get_commands(self, home: Path, cmd: str) -> list[str]:
+        record_workflow_success("wf", "wf", [cmd], home)
+        entries = [e for e in read_recall(home) if e.get("type") == "workflow"]
+        assert entries, "expected at least one workflow entry"
+        return entries[0]["commands"]
+
+    def test_bearer_token_redacted(self, home: Path) -> None:
+        cmds = self._record_and_get_commands(
+            home,
+            "curl -H 'Authorization: Bearer ghp_abcdefghijklmnopqrstuv' /x",
+        )
+        joined = " ".join(cmds)
+        assert "ghp_abcdefghijklmnopqrstuv" not in joined
+        assert "***MASKED***" in joined
+
+    def test_token_flag_redacted(self, home: Path) -> None:
+        cmds = self._record_and_get_commands(
+            home, "./deploy --token=sk-livesecretvalue123"
+        )
+        joined = " ".join(cmds)
+        assert "sk-livesecretvalue123" not in joined
+        assert "***MASKED***" in joined
+
+    def test_env_secret_redacted(self, home: Path) -> None:
+        cmds = self._record_and_get_commands(
+            home, "AWS_SECRET_ACCESS_KEY=abc123 aws s3 ls"
+        )
+        joined = " ".join(cmds)
+        assert "abc123" not in joined
+
+    def test_innocent_command_unchanged(self, home: Path) -> None:
+        cmds = self._record_and_get_commands(
+            home, "make -C packages/cli verify"
+        )
+        assert cmds[0] == "make -C packages/cli verify"
+
+
+# ---------------------------------------------------------------------------
+# Confidence validators (recall record + scripts/record_workflow.py)
+# ---------------------------------------------------------------------------
+
+
+class TestConfidenceValidator:
+    def test_parser_rejects_negative(self) -> None:
+        import argparse as _argparse
+
+        from cli.commands.recall.parser import _confidence
+
+        with pytest.raises(_argparse.ArgumentTypeError):
+            _confidence("-0.1")
+
+    def test_parser_rejects_above_one(self) -> None:
+        import argparse as _argparse
+
+        from cli.commands.recall.parser import _confidence
+
+        with pytest.raises(_argparse.ArgumentTypeError):
+            _confidence("1.5")
+
+    def test_parser_rejects_non_numeric(self) -> None:
+        import argparse as _argparse
+
+        from cli.commands.recall.parser import _confidence
+
+        with pytest.raises(_argparse.ArgumentTypeError):
+            _confidence("not-a-number")
+
+    def test_parser_accepts_boundary_values(self) -> None:
+        from cli.commands.recall.parser import _confidence
+
+        assert _confidence("0.0") == 0.0
+        assert _confidence("1.0") == 1.0
+        assert _confidence("0.42") == pytest.approx(0.42)

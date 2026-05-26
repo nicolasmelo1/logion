@@ -139,6 +139,55 @@ SECRET_KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 MASK_PLACEHOLDER = "***MASKED***"
 
+# String-level redaction patterns for command-line secrets.  Applied to
+# free-text fields (notably workflow ``commands``) before they hit
+# recall.json, because key-name masking alone cannot catch a secret
+# embedded in a positional argument like ``curl -H "Authorization:
+# Bearer ghp_..."`` or ``./deploy --token=abc123``.
+COMMAND_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Authorization: Bearer <token>  /  Authorization: Basic <b64>
+    re.compile(
+        r"(?i)(authorization:\s*(?:bearer|basic|token)\s+)\S+",
+    ),
+    # --token=..., --api-key=..., --password=..., -p=...
+    re.compile(
+        r"(?i)(--(?:api[_-]?key|token|password|passwd|secret|"
+        r"credential|bearer|auth)[=\s]+)(?:\"[^\"]+\"|'[^']+'|\S+)",
+    ),
+    # KEY=value style env exports for known secret env names
+    re.compile(
+        r"(?i)\b((?:AWS_SECRET_ACCESS_KEY|GITHUB_TOKEN|API_KEY|"
+        r"BEARER_TOKEN|PASSWORD)=)\S+",
+    ),
+    # Common token shapes (GitHub, Stripe, OpenAI, generic JWT-ish)
+    re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,})\b"),
+    re.compile(r"\b(sk-[A-Za-z0-9-]{16,})\b"),
+    re.compile(
+        r"\b(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+)\b"
+    ),
+)
+
+
+def mask_command_string(value: str) -> str:
+    """Redact common command-line secret shapes from *value*.
+
+    Used on workflow ``commands`` before they are written to
+    recall.json so a captured shell line like
+    ``curl -H 'Authorization: Bearer ghp_abc' …`` does not persist
+    the bearer token unmasked.  Pattern matching is conservative —
+    over-masking is preferred to under-masking.
+    """
+    for pat in COMMAND_SECRET_PATTERNS:
+        # Each pattern either has one capture group (prefix to keep) or
+        # captures the whole match; mask everything after the prefix.
+        def _sub(m: re.Match[str]) -> str:
+            if m.groups():
+                return f"{m.group(1)}{MASK_PLACEHOLDER}"
+            return MASK_PLACEHOLDER
+
+        value = pat.sub(_sub, value)
+    return value
+
 
 def _looks_like_secret_key(key: str) -> bool:
     return any(p.search(key) for p in SECRET_KEY_PATTERNS)
@@ -202,16 +251,22 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+_HASH_CHUNK = 64 * 1024  # 64 KiB — keeps peak memory bounded for big files.
+
+
 def sha256_of_files(
     paths: list[Path],
     root: Path | None = None,
 ) -> str:
     """SHA-256 over *paths* including each file's relative path.
 
-    Each file contributes ``<rel_path>\\0<length>\\0<bytes>\\0`` so a
-    rename, repartition, or reordering changes the digest.  When *root*
-    is provided, paths are taken relative to it; otherwise the file
-    name alone is used.
+    Reads each file in :data:`_HASH_CHUNK`-sized chunks so peak memory
+    stays bounded regardless of file size — important for
+    ``verify_installed_content`` running across large installed
+    bundles.  Each file contributes
+    ``<rel_path>\\0<length>\\0<bytes>\\0`` so a rename, repartition, or
+    reordering changes the digest.  When *root* is provided, paths are
+    taken relative to it; otherwise the file name alone is used.
     """
     h = hashlib.sha256()
     for p in sorted(paths):
@@ -222,12 +277,17 @@ def sha256_of_files(
                 rel = p.name
         else:
             rel = p.name
-        data = p.read_bytes()
+        size = p.stat().st_size
         h.update(rel.encode("utf-8"))
         h.update(b"\0")
-        h.update(str(len(data)).encode("ascii"))
+        h.update(str(size).encode("ascii"))
         h.update(b"\0")
-        h.update(data)
+        with p.open("rb") as fh:
+            while True:
+                chunk = fh.read(_HASH_CHUNK)
+                if not chunk:
+                    break
+                h.update(chunk)
         h.update(b"\0")
     return h.hexdigest()
 
@@ -474,17 +534,26 @@ def build_recall_entries(
 
     if workflows:
         for w in workflows:
-            commands = w.get("commands", []) or []
+            raw_commands = w.get("commands", []) or []
+            # Danger-flag detection runs on the *original* string so a
+            # token like ``--token=…`` does not get masked into
+            # invisibility before the regex sees it.  Persisted
+            # commands are the redacted form.
+            danger_flags = detect_danger_flags(raw_commands)
+            redacted_commands = [
+                mask_command_string(c) if isinstance(c, str) else c
+                for c in raw_commands
+            ]
             entry = {
                 "type": "workflow",
                 "id": w.get("id", ""),
                 "title": w.get("title", ""),
                 "confidence": float(w.get("confidence", 0.5)),
                 "source": "workflow_history",
-                "commands": commands,
+                "commands": redacted_commands,
                 "success_count": int(w.get("success_count", 0)),
                 "last_success_at": w.get("last_success_at", ""),
-                "danger_flags": detect_danger_flags(commands),
+                "danger_flags": danger_flags,
             }
             entries.append(mask_secrets(entry))
 

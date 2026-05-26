@@ -27,6 +27,21 @@ from pathlib import Path
 from cli._local_state import ensure_layout, record_workflow_success
 
 
+def _confidence(value: str) -> float:
+    """argparse ``type=`` validator for ``--confidence`` in [0.0, 1.0]."""
+    try:
+        f = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"--confidence must be a float, got {value!r}"
+        ) from exc
+    if not (0.0 <= f <= 1.0):
+        raise argparse.ArgumentTypeError(
+            f"--confidence must be in [0.0, 1.0], got {f}"
+        )
+    return f
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--id", required=True, help="Stable workflow id")
@@ -45,9 +60,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--confidence",
-        type=float,
+        type=_confidence,
         default=0.5,
-        help="Initial confidence when creating a new workflow record",
+        help=(
+            "Initial confidence when creating a new workflow record "
+            "(must be in [0.0, 1.0])"
+        ),
     )
     return parser.parse_args(argv)
 
