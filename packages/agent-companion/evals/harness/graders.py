@@ -326,8 +326,11 @@ def grade_context_efficiency(
             )
         )
 
+    unique_inspected = {
+        course_id for course_id in inspected if isinstance(course_id, str)
+    }
     full_catalog_size = len(catalog.courses)
-    if len(inspected) >= full_catalog_size and full_catalog_size > 0:
+    if len(unique_inspected) >= full_catalog_size and full_catalog_size > 0:
         findings.append(
             Finding.fail(
                 METRIC_CONTEXT_EFFICIENCY,

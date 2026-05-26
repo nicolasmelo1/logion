@@ -567,6 +567,20 @@ class TestContextEfficiencyGrader:
         findings = grade_context_efficiency(scenario, trace, catalog)
         assert not _passing(findings, METRIC_CONTEXT_EFFICIENCY)
 
+    def test_repeated_inspection_of_one_course_is_not_full_catalog(
+        self, catalog
+    ) -> None:
+        trace = _trace(
+            "s",
+            calls=[
+                ToolCall("course.inspect", {"course_id": "weather.basic"})
+                for _ in catalog.courses
+            ],
+        )
+        scenario = _mk(Expected(), FakeTrace((), ""))
+        findings = grade_context_efficiency(scenario, trace, catalog)
+        assert _passing(findings, METRIC_CONTEXT_EFFICIENCY)
+
     def test_too_many_loaded_skills_flagged(self, catalog) -> None:
         trace = _trace(
             "s", loaded=["weather.forecast", "data.analyze", "ocr.text"]
