@@ -800,6 +800,104 @@ models:
         assert "output_contract" in user_prompt["instructions"]
         assert "json_schema" not in user_prompt["instructions"]
 
+    def test_run_executes_openai_tool_loop(
+        self,
+        catalog,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        provider = load_llama_cpp_provider(
+            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            "qwen3-8b-q5km",
+        )
+        scenario = Scenario(
+            id="llama-tool-loop",
+            prompt="Find a weather skill",
+            suite="diag",
+            installed_capabilities=(),
+            local_recall=(),
+            catalog_fixture="fake-marketplace.yaml",
+            expected=Expected(),
+            fake_trace=FakeTrace(final_answer="ignored", calls=()),
+        )
+        responses = iter([
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "call_marketplace",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "marketplace.search",
+                                        "arguments": json.dumps({
+                                            "query": "weather"
+                                        }),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 4},
+            },
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "",
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 15, "completion_tokens": 0},
+            },
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": json.dumps({
+                                "final_answer": "weather.basic is free.",
+                                "selected_course_ids": ["weather.basic"],
+                                "loaded_skill_ids": [],
+                            }),
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 20, "completion_tokens": 5},
+            },
+        ])
+        seen_payloads: list[dict[str, object]] = []
+
+        def _fake_post(_self, payload: dict[str, Any]) -> dict[str, Any]:
+            seen_payloads.append(json.loads(json.dumps(payload)))
+            return next(responses)
+
+        monkeypatch.setattr(type(provider), "_post_json", _fake_post)
+
+        trace = provider.run(scenario, catalog)
+
+        assert trace.calls == (
+            ToolCall("marketplace.search", {"query": "weather"}),
+        )
+        assert trace.selected_course_ids == ("weather.basic",)
+        assert trace.token_estimate == {"input": 45, "output": 9}
+        retry_messages = seen_payloads[1]["messages"]
+        assert isinstance(retry_messages, list)
+        assert retry_messages[-2]["role"] == "assistant"
+        assert retry_messages[-2]["tool_calls"][0]["id"] == "call_marketplace"
+        assert retry_messages[-1]["role"] == "tool"
+        assert retry_messages[-1]["tool_call_id"] == "call_marketplace"
+        tool_payload = json.loads(retry_messages[-1]["content"])
+        assert tool_payload["results"][0]["id"] == "weather.basic"
+        final_messages = seen_payloads[2]["messages"]
+        assert isinstance(final_messages, list)
+        assert final_messages[-1]["role"] == "user"
+        assert "Return only strict JSON" in final_messages[-1]["content"]
+
     def test_validation_retry_appends_feedback(
         self,
         catalog,
@@ -879,7 +977,7 @@ models:
         seen_payloads: list[dict[str, object]] = []
 
         def _fake_post(_self, payload: dict[str, Any]) -> dict[str, Any]:
-            seen_payloads.append(payload)
+            seen_payloads.append(json.loads(json.dumps(payload)))
             return next(responses)
 
         monkeypatch.setattr(type(provider), "_post_json", _fake_post)
