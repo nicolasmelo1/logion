@@ -17,7 +17,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 from urllib import error as urllib_error
 
 import pytest
@@ -45,12 +44,7 @@ from evals.harness.providers.llama_cpp import (
     load_llama_cpp_provider,
     parse_trace_json,
 )
-from evals.harness.runner import (
-    METRIC_PROVIDER,
-    run,
-    run_scenarios,
-    summarize,
-)
+from evals.harness.runner import run, run_scenarios, summarize
 from evals.harness.schema import (
     Expected,
     FakeTrace,
@@ -683,32 +677,6 @@ class TestEndToEndRun:
         assert len(results) == 1
         assert results[0].scenario_id == "protocol"
 
-    def test_provider_exception_becomes_failed_scenario(self, catalog) -> None:
-        scenario = Scenario(
-            id="provider-error",
-            prompt="p",
-            suite="diag",
-            installed_capabilities=(),
-            local_recall=(),
-            catalog_fixture="fake-marketplace.yaml",
-            expected=Expected(),
-            fake_trace=FakeTrace(final_answer="ignored", calls=()),
-        )
-
-        class BrokenProvider:
-            def run(self, scenario: Scenario, catalog) -> Trace:
-                raise RuntimeError("bad trace")
-
-        results = run_scenarios([scenario], catalog, provider=BrokenProvider())
-        summary = summarize(results)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].findings[0].metric == METRIC_PROVIDER
-        assert "bad trace" in results[0].findings[0].message
-        assert summary["totals"]["failed"] == 1
-        assert summary["failures"][0]["scenario_id"] == "provider-error"
-
     def test_failure_is_visible_in_report(self, catalog) -> None:
         broken = Scenario(
             id="broken",
@@ -742,7 +710,6 @@ providers:
     base_url: http://127.0.0.1:8080/v1
     timeout_seconds: 75
     retries: 2
-    validation_retries: 2
     temperature: 0.0
     max_tokens: 777
     seed: 99
@@ -759,13 +726,11 @@ models:
         provider = load_llama_cpp_provider(config, "qwen-local")
 
         assert provider.config.timeout_seconds == 75
-        assert provider.config.validation_retries == 2
         payload = provider.report_metadata()
         assert payload["base_url"] == "http://127.0.0.1:8080/v1"
         assert payload["repo"] == "lmstudio-community/Qwen3-8B-GGUF"
         assert payload["file"] == "Qwen3-8B-Q5_K_M.gguf"
         assert payload["quant"] == "Q5_K_M"
-        assert payload["validation_retries"] == 2
         assert payload["server_args"] == ["--ctx-size", "8192", "--jinja"]
 
     def test_build_payload_uses_openai_shape(self, catalog) -> None:
@@ -790,93 +755,6 @@ models:
         assert payload["seed"] == 42
         assert payload["messages"][0]["role"] == "system"
         assert payload["messages"][1]["role"] == "user"
-
-    def test_validation_retry_appends_feedback(
-        self,
-        catalog,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
-            "qwen3-8b-q5km",
-        )
-        scenario = Scenario(
-            id="llama-retry",
-            prompt="Find a weather skill",
-            suite="diag",
-            installed_capabilities=(),
-            local_recall=(),
-            catalog_fixture="fake-marketplace.yaml",
-            expected=Expected(),
-            fake_trace=FakeTrace(final_answer="ignored", calls=()),
-        )
-        responses = iter([
-            {
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": json.dumps({
-                                "calls": [
-                                    {
-                                        "tool": "resume.ats",
-                                        "args": {},
-                                    }
-                                ],
-                                "final_answer": "bad",
-                                "selected_course_ids": [],
-                                "loaded_skill_ids": [],
-                            }),
-                        }
-                    }
-                ],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-            },
-            {
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": json.dumps({
-                                "calls": [
-                                    {
-                                        "tool": "recall.search",
-                                        "args": {
-                                            "query": "weather",
-                                            "limit": 5,
-                                        },
-                                    }
-                                ],
-                                "final_answer": (
-                                    "weather.basic is free. Confirm install?"
-                                ),
-                                "selected_course_ids": ["weather.basic"],
-                                "loaded_skill_ids": [],
-                            }),
-                        }
-                    }
-                ],
-                "usage": {"prompt_tokens": 20, "completion_tokens": 10},
-            },
-        ])
-        seen_payloads: list[dict[str, object]] = []
-
-        def _fake_post(_self, payload: dict[str, Any]) -> dict[str, Any]:
-            seen_payloads.append(payload)
-            return next(responses)
-
-        monkeypatch.setattr(type(provider), "_post_json", _fake_post)
-
-        trace = provider.run(scenario, catalog)
-
-        assert trace.selected_course_ids == ("weather.basic",)
-        assert len(seen_payloads) == 2
-        retry_messages = seen_payloads[1]["messages"]
-        assert isinstance(retry_messages, list)
-        assert retry_messages[-2]["role"] == "assistant"
-        assert "resume.ats" in retry_messages[-2]["content"]
-        assert retry_messages[-1]["role"] == "user"
-        assert "Validation error" in retry_messages[-1]["content"]
 
     def test_parse_trace_json_accepts_fenced_json(self) -> None:
         payload = parse_trace_json(
@@ -948,7 +826,6 @@ models:
         assert payload["run"]["file"] == "Qwen3-8B-Q5_K_M.gguf"
         assert payload["run"]["quant"] == "Q5_K_M"
         assert payload["run"]["base_url"] == "http://127.0.0.1:8080/v1"
-        assert payload["run"]["validation_retries"] == 1
 
     def test_live_eval_smoke_is_opt_in(self) -> None:
         if os.environ.get("LOGION_RUN_LIVE_LLM_EVALS") != "1":

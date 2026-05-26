@@ -33,9 +33,6 @@ class ScenarioResult:
         return [f for f in self.findings if not f.passed]
 
 
-METRIC_PROVIDER = "provider"
-
-
 class Provider(Protocol):
     def run(self, scenario: Scenario, catalog: Catalog) -> Trace: ...
 
@@ -60,18 +57,8 @@ def run_scenarios(
     prov = provider or FakeProvider()
     results: list[ScenarioResult] = []
     for scenario in scenarios:
-        try:
-            trace = prov.run(scenario, catalog)
-        except Exception as exc:
-            findings = [
-                Finding(
-                    metric=METRIC_PROVIDER,
-                    passed=False,
-                    message=f"provider failed before grading: {exc}",
-                )
-            ]
-        else:
-            findings = grade(scenario, trace, catalog)
+        trace = prov.run(scenario, catalog)
+        findings = grade(scenario, trace, catalog)
         results.append(
             ScenarioResult(
                 scenario_id=scenario.id,

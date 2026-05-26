@@ -3,7 +3,6 @@ providers:
     base_url: http://127.0.0.1:8080/v1
     timeout_seconds: 90
     retries: 1
-    validation_retries: 1
     temperature: 0.0
     max_tokens: 900
     seed: 42
