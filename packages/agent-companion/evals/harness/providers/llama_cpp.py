@@ -60,6 +60,15 @@ class LlamaCppProviderError(RuntimeError):
     """Raised when the local llama.cpp provider cannot produce a trace."""
 
 
+class LlamaCppTransportError(LlamaCppProviderError):
+    """Raised for HTTP/timeout failures talking to llama-server.
+
+    Distinguishing transport from contract errors lets the run loop avoid
+    feeding network errors back to the model as "your response was invalid"
+    validation feedback.
+    """
+
+
 @dataclass(frozen=True)
 class LlamaCppProviderConfig:
     name: str
@@ -225,10 +234,10 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         parameters={
             "type": "object",
             "properties": {
-                "course_id": {"type": "string"},
-                "permission": {"type": "string"},
+                "capability_id": {"type": "string"},
+                "scope": {"type": "string"},
             },
-            "required": ["course_id", "permission"],
+            "required": ["capability_id", "scope"],
             "additionalProperties": False,
         },
     ),
@@ -328,6 +337,11 @@ class LlamaCppProvider:
                             )
                         )
                 raise_tool_loop_exceeded()
+            except LlamaCppTransportError:
+                # Transport failures already retried inside _post_json; let
+                # them propagate rather than feeding "your response was
+                # invalid" back to the model as validation feedback.
+                raise
             except LlamaCppProviderError as exc:
                 last_error = exc
                 previous_response = extract_message_content(
@@ -379,7 +393,7 @@ class LlamaCppProvider:
         *,
         previous_response: str | None = None,
         validation_feedback: str | None = None,
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, Any]]:
         messages = [
             {"role": "system", "content": self._system_prompt()},
             {"role": "user", "content": self._build_user_prompt(scenario)},
@@ -446,17 +460,17 @@ class LlamaCppProvider:
                     raw = resp.read().decode("utf-8")
                 data = json.loads(raw)
                 if not isinstance(data, dict):
-                    raise LlamaCppProviderError(
+                    raise LlamaCppTransportError(
                         "llama-server returned a non-object JSON response"
                     )
             except error.HTTPError as exc:
                 details = exc.read().decode("utf-8", errors="replace")
-                last_error = LlamaCppProviderError(
+                last_error = LlamaCppTransportError(
                     f"llama-server at {self.base_url} returned HTTP "
                     f"{exc.code}: {details}"
                 )
             except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-                last_error = LlamaCppProviderError(
+                last_error = LlamaCppTransportError(
                     f"Could not reach llama-server at {self.base_url}. "
                     "Start it with `llama-server ... --port 8080` and retry. "
                     f"Underlying error: {exc}"
@@ -466,7 +480,7 @@ class LlamaCppProvider:
             if attempt < attempts:
                 time.sleep(0.5 * attempt)
         if last_error is None:
-            raise LlamaCppProviderError(
+            raise LlamaCppTransportError(
                 "llama-server request failed without a captured error"
             )
         raise last_error
@@ -645,7 +659,7 @@ def build_tool_result_message(
 ) -> dict[str, Any]:
     return {
         "role": "tool",
-        "tool_call_id": str(raw_call.get("id", call.tool)),
+        "tool_call_id": str(raw_call.get("id") or call.tool),
         "name": call.tool,
         "content": json.dumps(
             execute_synthetic_tool(call, scenario, catalog),
@@ -673,13 +687,19 @@ def execute_synthetic_tool(
     if call.tool == "logion_skills_inspect":
         course_id = str(call.args.get("course_id", ""))
         return {"ok": True, "course_id": course_id, "loaded": True}
+    if call.tool == "logion_skills_permission_expand":
+        return {
+            "ok": True,
+            "capability_id": str(call.args.get("capability_id", "")),
+            "scope": str(call.args.get("scope", "")),
+            "granted": False,
+        }
     if call.tool in {
         "logion_courses_get",
         "logion_skills_install",
         "logion_skills_update",
         "logion_payments_checkout_start",
         "logion_payments_checkout_confirm",
-        "logion_skills_permission_expand",
     }:
         course_id = str(call.args.get("course_id", ""))
         course = catalog.by_id(course_id)

@@ -1,9 +1,11 @@
 """Deterministic fake provider.
 
 Replays the trace embedded in the scenario YAML so we can exercise graders
-without invoking an LLM. Catalog-bound tool calls (logion_listings_search,
-logion_courses_get, logion_skills_install) are still routed through the catalog
-simulator so the trace is rejected if it references unknown course IDs.
+without invoking an LLM. Course-bound tool calls (logion_courses_get,
+logion_skills_install, logion_skills_updates, logion_skills_update,
+logion_payments_checkout_start, logion_payments_checkout_confirm) are
+validated against the catalog so a scenario that references an unknown
+course_id is rejected at load time.
 """
 
 from __future__ import annotations
