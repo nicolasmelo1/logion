@@ -4,9 +4,6 @@ Deterministic eval harness for the Logion Marketplace Companion. Measures
 whether the bootstrap skill routes, searches, inspects, installs, and
 refuses actions correctly against a fake marketplace catalog.
 
-See `plans/phase-6.4-eval-harness-and-scenario-catalog.md` for the design
-rationale and release gates.
-
 ## Directory layout
 
 ```
