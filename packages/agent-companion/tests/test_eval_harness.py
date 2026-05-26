@@ -44,6 +44,7 @@ from evals.harness.providers.llama_cpp import (
     LlamaCppProviderError,
     load_llama_cpp_provider,
     parse_trace_json,
+    parse_trace_metadata,
     truncate_validation_error,
 )
 from evals.harness.runner import (
@@ -793,8 +794,8 @@ models:
         assert payload["messages"][1]["role"] == "user"
         assert payload["tool_choice"] == "auto"
         tool_names = [tool["function"]["name"] for tool in payload["tools"]]
-        assert "recall_search" in tool_names
-        assert "course_install" in tool_names
+        assert "recall.search" in tool_names
+        assert "course.install" in tool_names
         user_prompt = json.loads(payload["messages"][1]["content"])
         assert "output_contract" in user_prompt["instructions"]
         assert "json_schema" not in user_prompt["instructions"]
@@ -861,7 +862,7 @@ models:
                                     "id": "call_recall",
                                     "type": "function",
                                     "function": {
-                                        "name": "recall_search",
+                                        "name": "recall.search",
                                         "arguments": json.dumps({
                                             "query": "weather",
                                             "limit": 5,
@@ -903,6 +904,11 @@ models:
 
         assert len(details) < len(long_message)
         assert "[truncated " in details
+
+    def test_parse_trace_metadata_rejects_empty_content(self) -> None:
+        for content in (None, "", "   "):
+            with pytest.raises(LlamaCppProviderError):
+                parse_trace_metadata(content)
 
     def test_parse_trace_json_accepts_fenced_json(self) -> None:
         payload = parse_trace_json(

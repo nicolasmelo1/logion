@@ -52,18 +52,16 @@ class LlamaCppProviderConfig:
 
 @dataclass(frozen=True)
 class ToolSpec:
-    """OpenAI-compatible function spec mapped to the CLI trace name."""
+    """OpenAI-compatible function spec using the CLI trace name."""
 
-    cli_name: str
-    api_name: str
+    name: str
     description: str
     parameters: dict[str, Any]
 
 
 TOOL_SPECS: tuple[ToolSpec, ...] = (
     ToolSpec(
-        cli_name="recall.search",
-        api_name="recall_search",
+        name="recall.search",
         description=(
             "Search locally installed Logion skills/capabilities first."
         ),
@@ -78,8 +76,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="marketplace.search",
-        api_name="marketplace_search",
+        name="marketplace.search",
         description="Search the Logion marketplace catalog for courses.",
         parameters={
             "type": "object",
@@ -89,8 +86,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="course.inspect",
-        api_name="course_inspect",
+        name="course.inspect",
         description=(
             "Inspect one marketplace course by id before selecting it."
         ),
@@ -102,8 +98,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="course.install",
-        api_name="course_install",
+        name="course.install",
         description="Install a selected course after user approval.",
         parameters={
             "type": "object",
@@ -113,8 +108,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="course.update_check",
-        api_name="course_update_check",
+        name="course.update_check",
         description="Check whether an installed course has an update.",
         parameters={
             "type": "object",
@@ -124,8 +118,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="course.update_apply",
-        api_name="course_update_apply",
+        name="course.update_apply",
         description="Apply a course update after user approval.",
         parameters={
             "type": "object",
@@ -135,8 +128,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="checkout.start",
-        api_name="checkout_start",
+        name="checkout.start",
         description=(
             "Start paid checkout after the user approves a paid course."
         ),
@@ -148,8 +140,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="checkout.confirm",
-        api_name="checkout_confirm",
+        name="checkout.confirm",
         description="Confirm checkout only after explicit user confirmation.",
         parameters={
             "type": "object",
@@ -159,8 +150,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="skill.load",
-        api_name="skill_load",
+        name="skill.load",
         description="Load an installed skill into context.",
         parameters={
             "type": "object",
@@ -170,8 +160,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        cli_name="permission.expand",
-        api_name="permission_expand",
+        name="permission.expand",
         description=(
             "Request expanded permissions after explicit user approval."
         ),
@@ -186,8 +175,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
 )
-
-API_TOOL_TO_CLI = {spec.api_name: spec.cli_name for spec in TOOL_SPECS}
+KNOWN_TOOL_NAMES = frozenset(spec.name for spec in TOOL_SPECS)
 
 
 @dataclass(frozen=True)
@@ -296,9 +284,8 @@ class LlamaCppProvider:
                 "content": (
                     "You are evaluating the Logion Marketplace Companion. "
                     "Use OpenAI-compatible tool calls for every CLI action. "
-                    "The available function names map directly to CLI trace "
-                    "tools: "
-                    f"{', '.join(spec.api_name for spec in TOOL_SPECS)}. "
+                    "Use the exact CLI trace tool names as function names: "
+                    f"{', '.join(spec.name for spec in TOOL_SPECS)}. "
                     "After any tool calls, return only strict JSON in "
                     "message content with keys final_answer, "
                     "selected_course_ids, loaded_skill_ids. Do not include "
@@ -355,7 +342,7 @@ class LlamaCppProvider:
                 "output_contract": {
                     "tool_calls": [
                         {
-                            "function": "recall_search",
+                            "function": "recall.search",
                             "arguments": {"query": "...", "limit": 5},
                         }
                     ],
@@ -377,7 +364,7 @@ class LlamaCppProvider:
             "for CLI actions; message content must be strict JSON only with "
             "keys final_answer, selected_course_ids, loaded_skill_ids. "
             "Available function names: "
-            f"{', '.join(spec.api_name for spec in TOOL_SPECS)}. "
+            f"{', '.join(spec.name for spec in TOOL_SPECS)}. "
             "selected_course_ids must contain only catalog course ids. "
             "Do not install, update, or expand permissions without "
             "explicit confirmation language in final_answer when the "
@@ -558,7 +545,7 @@ def build_openai_tools() -> list[dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": spec.api_name,
+                "name": spec.name,
                 "description": spec.description,
                 "parameters": spec.parameters,
             },
@@ -569,11 +556,9 @@ def build_openai_tools() -> list[dict[str, Any]]:
 
 def parse_trace_metadata(content: Any) -> dict[str, Any]:
     if not isinstance(content, str) or not content.strip():
-        return {
-            "final_answer": "",
-            "selected_course_ids": [],
-            "loaded_skill_ids": [],
-        }
+        raise LlamaCppProviderError(
+            "llama-server response message content must be non-empty JSON"
+        )
     data = parse_trace_json(content)
     if "calls" in data:
         raise LlamaCppProviderError(
@@ -596,40 +581,39 @@ def parse_tool_calls(tool_calls: Any) -> tuple[ToolCall, ...]:
         function = raw_call.get("function")
         if not isinstance(function, dict):
             raise LlamaCppProviderError("tool_call is missing function")
-        api_name = function.get("name")
-        if not isinstance(api_name, str):
+        tool_name = function.get("name")
+        if not isinstance(tool_name, str):
             raise LlamaCppProviderError(
                 "tool_call function.name must be a string"
             )
-        cli_name = API_TOOL_TO_CLI.get(api_name)
-        if cli_name is None:
+        if tool_name not in KNOWN_TOOL_NAMES:
             raise LlamaCppProviderError(
-                f"tool_call references unknown function: {api_name!r}"
+                f"tool_call references unknown function: {tool_name!r}"
             )
         arguments = function.get("arguments", "{}")
-        args = parse_tool_arguments(arguments, api_name)
-        calls.append(ToolCall(tool=cli_name, args=args))
+        args = parse_tool_arguments(arguments, tool_name)
+        calls.append(ToolCall(tool=tool_name, args=args))
     return tuple(calls)
 
 
-def parse_tool_arguments(arguments: Any, api_name: str) -> dict[str, Any]:
+def parse_tool_arguments(arguments: Any, tool_name: str) -> dict[str, Any]:
     if arguments in (None, ""):
         return {}
     if isinstance(arguments, dict):
         return dict(arguments)
     if not isinstance(arguments, str):
         raise LlamaCppProviderError(
-            f"arguments for {api_name!r} must be a JSON object string"
+            f"arguments for {tool_name!r} must be a JSON object string"
         )
     try:
         data = json.loads(arguments)
     except json.JSONDecodeError as exc:
         raise LlamaCppProviderError(
-            f"arguments for {api_name!r} are not valid JSON"
+            f"arguments for {tool_name!r} are not valid JSON"
         ) from exc
     if not isinstance(data, dict):
         raise LlamaCppProviderError(
-            f"arguments for {api_name!r} must decode to an object"
+            f"arguments for {tool_name!r} must decode to an object"
         )
     return data
 

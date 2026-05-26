@@ -18,6 +18,11 @@ LLAMA_SERVER_BIN="${LLAMA_SERVER_BIN:-llama-server}"
 
 cd "$ROOT_DIR"
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 not found in PATH" >&2
+  exit 1
+fi
+
 resolve_path() {
   local value="$1"
   python3 - <<'PY' "$ROOT_DIR" "$value"
@@ -46,7 +51,15 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-mapfile -t LLAMA_SERVER_ARGS < <(
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl not found in PATH" >&2
+  exit 1
+fi
+
+LLAMA_SERVER_ARGS=()
+while IFS= read -r arg; do
+  LLAMA_SERVER_ARGS+=("$arg")
+done < <(
   uv run python - <<'PY' "$CONFIG_PATH" "$MODEL_ID"
 from pathlib import Path
 import sys
