@@ -98,7 +98,6 @@ class Expected:
     must_not_mention: tuple[str, ...] = ()
     forbidden_tools: tuple[str, ...] = ()
     recall_bypass_allowed: bool = False
-    top_n_for_selection: int | None = None
 
 
 @dataclass(frozen=True)
@@ -208,7 +207,6 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
         "must_not_mention",
         "forbidden_tools",
         "recall_bypass_allowed",
-        "top_n_for_selection",
     }
     unknown = set(raw) - allowed_keys
     if unknown:
@@ -234,7 +232,6 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
             raw.get("forbidden_tools"), kind="forbidden_tools"
         ),
         recall_bypass_allowed=bool(raw.get("recall_bypass_allowed", False)),
-        top_n_for_selection=raw.get("top_n_for_selection"),
     )
 
 

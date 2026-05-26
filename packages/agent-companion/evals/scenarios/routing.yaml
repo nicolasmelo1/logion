@@ -1,7 +1,7 @@
 suite: routing
 
 # Routing: does the agent query Logion only when local recall/capabilities
-# are insufficient? 12 positive (marketplace expected) and 8 negative
+# are insufficient? 12 positive (marketplace expected) and 9 negative
 # (marketplace forbidden) scenarios.
 
 scenarios:

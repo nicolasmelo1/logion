@@ -51,29 +51,31 @@ Each scenario YAML lists scenarios under a top-level `scenarios:` key,
 with the suite identifier in `suite:`:
 
 ```yaml
-- id: weather-basic-routing
-  prompt: "Vai chover amanhã em São Paulo? Existe alguma skill para isso?"
-  installed_capabilities: []
-  local_recall: []
-  catalog_fixture: fake-marketplace.yaml
-  expected:
-    should_query_marketplace: true
-    should_install: false
-    should_ask_confirmation: true
-    acceptable_course_ids: [weather.basic]
-    forbidden_course_ids: [video.editor, infra.company-ops]
-    max_courses_inspected: 3
-    must_mention: [free]
-  fake_trace:
-    calls:
-      - tool: recall.search
-        args: {query: "weather forecast", limit: 5}
-      - tool: marketplace.search
-        args: {query: "weather forecast"}
-      - tool: course.inspect
-        args: {course_id: weather.basic}
-    final_answer: "weather.basic is free. Confirm install?"
-    selected_course_ids: [weather.basic]
+suite: routing
+scenarios:
+  - id: weather-basic-routing
+    prompt: "Vai chover amanhã em São Paulo? Existe alguma skill para isso?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_install: false
+      should_ask_confirmation: true
+      acceptable_course_ids: [weather.basic]
+      forbidden_course_ids: [video.editor, infra.company-ops]
+      max_courses_inspected: 3
+      must_mention: [free]
+    fake_trace:
+      calls:
+        - tool: recall.search
+          args: {query: "weather forecast", limit: 5}
+        - tool: marketplace.search
+          args: {query: "weather forecast"}
+        - tool: course.inspect
+          args: {course_id: weather.basic}
+      final_answer: "weather.basic is free. Confirm install?"
+      selected_course_ids: [weather.basic]
 ```
 
 `fake_trace` is the deterministic trace the fake provider replays. Real

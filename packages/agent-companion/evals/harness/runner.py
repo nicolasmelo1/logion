@@ -77,15 +77,23 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
         bucket["total"] += 1
         bucket["passed" if result.passed else "failed"] += 1
         scenario_failures: list[dict[str, str]] = []
+        # Aggregate findings per metric so a scenario contributes one
+        # pass/fail per metric to by_metric, regardless of how many
+        # findings a grader emitted (graders can emit multiple failure
+        # messages for the same metric).
+        metric_passed: dict[str, bool] = {}
         for finding in result.findings:
-            metric_bucket = by_metric[finding.metric]
-            metric_bucket["total"] += 1
-            metric_bucket["passed" if finding.passed else "failed"] += 1
+            prev = metric_passed.get(finding.metric, True)
+            metric_passed[finding.metric] = prev and finding.passed
             if not finding.passed:
                 scenario_failures.append({
                     "metric": finding.metric,
                     "message": finding.message,
                 })
+        for metric, passed in metric_passed.items():
+            metric_bucket = by_metric[metric]
+            metric_bucket["total"] += 1
+            metric_bucket["passed" if passed else "failed"] += 1
         if scenario_failures:
             failures.append({
                 "scenario_id": result.scenario_id,

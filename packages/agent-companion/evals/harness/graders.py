@@ -150,14 +150,18 @@ def grade_course_selection(
             )
 
     if exp.acceptable_course_ids:
-        if not selected and exp.should_install is not False:
+        # A scenario that names acceptable_course_ids is asserting that
+        # the agent ought to identify *some* course from that set — even
+        # when should_install is False because installation is gated on
+        # user confirmation. The selection step happens before install.
+        if not selected:
             findings.append(
                 Finding.fail(
                     METRIC_COURSE_SELECTION,
                     "no course selected but one was expected",
                 )
             )
-        elif selected and not (selected & set(exp.acceptable_course_ids)):
+        elif not (selected & set(exp.acceptable_course_ids)):
             findings.append(
                 Finding.fail(
                     METRIC_COURSE_SELECTION,
