@@ -44,6 +44,7 @@ from evals.harness.providers.llama_cpp import (
     LlamaCppProviderError,
     load_llama_cpp_provider,
     parse_trace_json,
+    truncate_validation_error,
 )
 from evals.harness.runner import (
     METRIC_PROVIDER,
@@ -705,7 +706,7 @@ class TestEndToEndRun:
         assert len(results) == 1
         assert results[0].passed is False
         assert results[0].findings[0].metric == METRIC_PROVIDER
-        assert "bad trace" in results[0].findings[0].message
+        assert "RuntimeError: bad trace" in results[0].findings[0].message
         assert summary["totals"]["failed"] == 1
         assert summary["failures"][0]["scenario_id"] == "provider-error"
 
@@ -895,6 +896,13 @@ models:
         assert "resume_ats" in retry_messages[-2]["content"]
         assert retry_messages[-1]["role"] == "user"
         assert "Validation error" in retry_messages[-1]["content"]
+
+    def test_validation_feedback_truncates_long_errors(self) -> None:
+        long_message = "x" * 1_200
+        details = truncate_validation_error(long_message)
+
+        assert len(details) < len(long_message)
+        assert "[truncated " in details
 
     def test_parse_trace_json_accepts_fenced_json(self) -> None:
         payload = parse_trace_json(

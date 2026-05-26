@@ -57,6 +57,18 @@ for arg in provider.model.server_args:
 PY
 )
 
+HEALTH_URL="$(
+  uv run python - <<'PY' "$CONFIG_PATH" "$MODEL_ID"
+from pathlib import Path
+import sys
+from urllib.parse import urlsplit, urlunsplit
+from evals.harness.providers.llama_cpp import load_llama_cpp_provider
+provider = load_llama_cpp_provider(Path(sys.argv[1]), sys.argv[2])
+parts = urlsplit(provider.base_url)
+print(urlunsplit((parts.scheme, parts.netloc, "/health", "", "")))
+PY
+)"
+
 if [[ ${#LLAMA_SERVER_ARGS[@]} -eq 0 ]]; then
   echo "No server_args found for model $MODEL_ID in $CONFIG_PATH" >&2
   exit 1
@@ -77,14 +89,14 @@ LLAMA_SERVER_PID=$!
 echo "Started $LLAMA_SERVER_BIN pid=$LLAMA_SERVER_PID for model=$MODEL_ID"
 
 for _attempt in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
+  if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-if ! curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
-  echo "llama-server did not become healthy on 127.0.0.1:8080" >&2
+if ! curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
+  echo "llama-server did not become healthy at $HEALTH_URL" >&2
   exit 1
 fi
 

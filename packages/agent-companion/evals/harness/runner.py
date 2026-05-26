@@ -64,10 +64,10 @@ def run_scenarios(
             trace = prov.run(scenario, catalog)
         except Exception as exc:
             findings = [
-                Finding(
-                    metric=METRIC_PROVIDER,
-                    passed=False,
-                    message=f"provider failed before grading: {exc}",
+                Finding.fail(
+                    METRIC_PROVIDER,
+                    "provider failed before grading: "
+                    f"{type(exc).__name__}: {exc}",
                 )
             ]
         else:
