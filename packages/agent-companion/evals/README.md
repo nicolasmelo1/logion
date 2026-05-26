@@ -38,6 +38,21 @@ python evals/run_eval.py \
 python -m pytest tests/test_eval_harness.py -q
 ```
 
+### Reproducible local llama.cpp workflow
+
+Copy `.env.example` to `.env`, tune paths/model ids, then use the helper scripts:
+
+```bash
+cp .env.example .env
+bash evals/scripts/download_llama_cpp_models.sh
+bash evals/scripts/run_llama_cpp_eval.sh
+```
+
+- `download_llama_cpp_models.sh` sources `.env` and downloads the configured GGUFs.
+- `run_llama_cpp_eval.sh` sources `.env`, starts `llama-server` from the
+  selected config/model `server_args`, waits for `/health`, runs the eval
+  harness, and always stops the server on exit via `trap` cleanup.
+
 ### Live local run with llama.cpp
 
 The fake provider stays the CI default. For opt-in Apple Silicon evals, run a
