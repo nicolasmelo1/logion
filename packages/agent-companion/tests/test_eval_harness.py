@@ -202,6 +202,75 @@ class TestScenarioSchema:
         with pytest.raises(SchemaError):
             load_scenarios_from_file(bad)
 
+    def test_rejects_non_list_local_recall(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    local_recall: nope\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(SchemaError, match="local_recall must be a list"):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_non_mapping_local_recall_entry(
+        self, tmp_path: Path
+    ) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    local_recall:\n"
+            "      - just-a-string\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError, match="Each local_recall entry must be a mapping"
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_invalid_token_estimate(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    fake_trace:\n"
+            "      token_estimate:\n"
+            "        input: nope\n"
+            "      final_answer: ''\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError, match=r"token_estimate\.input must be an integer"
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_negative_token_estimate(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    fake_trace:\n"
+            "      token_estimate:\n"
+            "        output: -1\n"
+            "      final_answer: ''\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError, match=r"token_estimate\.output must be non-negative"
+        ):
+            load_scenarios_from_file(bad)
+
 
 class TestFakeProvider:
     def test_replays_trace(self, catalog) -> None:

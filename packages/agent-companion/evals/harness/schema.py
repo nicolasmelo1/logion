@@ -134,6 +134,46 @@ def _as_tuple(value: Any, *, kind: str) -> tuple[str, ...]:
     return tuple(str(v) for v in value)
 
 
+def _load_local_recall(value: Any) -> tuple[dict[str, Any], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise SchemaError(
+            f"local_recall must be a list, got {type(value).__name__}"
+        )
+    entries: list[dict[str, Any]] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            raise SchemaError(
+                f"Each local_recall entry must be a mapping: {entry!r}"
+            )
+        entries.append(dict(entry))
+    return tuple(entries)
+
+
+def _load_token_estimate(value: Any) -> dict[str, int]:
+    if value is None:
+        value = {"input": 0, "output": 0}
+    if not isinstance(value, dict):
+        raise SchemaError("'token_estimate' must be a mapping")
+
+    token_estimate: dict[str, int] = {}
+    for key in ("input", "output"):
+        raw = value.get(key, 0)
+        try:
+            parsed = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError(
+                f"token_estimate.{key} must be an integer, got {raw!r}"
+            ) from exc
+        if parsed < 0:
+            raise SchemaError(
+                f"token_estimate.{key} must be non-negative, got {raw!r}"
+            )
+        token_estimate[key] = parsed
+    return token_estimate
+
+
 def load_catalog(path: Path) -> Catalog:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -261,13 +301,6 @@ def _load_calls(raw: Any) -> tuple[ToolCall, ...]:
 def _load_fake_trace(raw: Any) -> FakeTrace:
     if not isinstance(raw, dict):
         raise SchemaError("'fake_trace' must be a mapping")
-    token_estimate_raw = raw.get("token_estimate", {"input": 0, "output": 0})
-    if not isinstance(token_estimate_raw, dict):
-        raise SchemaError("'token_estimate' must be a mapping")
-    token_estimate = {
-        "input": int(token_estimate_raw.get("input", 0)),
-        "output": int(token_estimate_raw.get("output", 0)),
-    }
     return FakeTrace(
         calls=_load_calls(raw.get("calls")),
         final_answer=str(raw.get("final_answer", "")),
@@ -277,7 +310,7 @@ def _load_fake_trace(raw: Any) -> FakeTrace:
         loaded_skill_ids=_as_tuple(
             raw.get("loaded_skill_ids"), kind="loaded_skill_ids"
         ),
-        token_estimate=token_estimate,
+        token_estimate=_load_token_estimate(raw.get("token_estimate")),
     )
 
 
@@ -325,7 +358,7 @@ def load_scenarios_from_file(
                     entry.get("installed_capabilities"),
                     kind="installed_capabilities",
                 ),
-                local_recall=tuple(entry.get("local_recall") or ()),
+                local_recall=_load_local_recall(entry.get("local_recall")),
                 catalog_fixture=catalog_fixture,
                 expected=_load_expected(entry.get("expected", {})),
                 fake_trace=_load_fake_trace(entry.get("fake_trace", {})),
