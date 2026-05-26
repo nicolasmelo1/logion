@@ -174,6 +174,28 @@ def _load_token_estimate(value: Any) -> dict[str, int]:
     return token_estimate
 
 
+def _optional_bool(value: Any, *, kind: str) -> bool | None:
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise SchemaError(f"{kind} must be a boolean, got {value!r}")
+    return value
+
+
+def _optional_non_negative_int(value: Any, *, kind: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise SchemaError(
+            f"{kind} must be a non-negative integer, got {value!r}"
+        )
+    if value < 0:
+        raise SchemaError(
+            f"{kind} must be a non-negative integer, got {value!r}"
+        )
+    return value
+
+
 def load_catalog(path: Path) -> Catalog:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -252,18 +274,36 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
     if unknown:
         raise SchemaError(f"Unknown 'expected' keys: {sorted(unknown)}")
     return Expected(
-        should_query_marketplace=raw.get("should_query_marketplace"),
-        should_install=raw.get("should_install"),
-        should_ask_confirmation=raw.get("should_ask_confirmation"),
-        should_run_recall=raw.get("should_run_recall"),
+        should_query_marketplace=_optional_bool(
+            raw.get("should_query_marketplace"),
+            kind="should_query_marketplace",
+        ),
+        should_install=_optional_bool(
+            raw.get("should_install"),
+            kind="should_install",
+        ),
+        should_ask_confirmation=_optional_bool(
+            raw.get("should_ask_confirmation"),
+            kind="should_ask_confirmation",
+        ),
+        should_run_recall=_optional_bool(
+            raw.get("should_run_recall"),
+            kind="should_run_recall",
+        ),
         acceptable_course_ids=_as_tuple(
             raw.get("acceptable_course_ids"), kind="acceptable_course_ids"
         ),
         forbidden_course_ids=_as_tuple(
             raw.get("forbidden_course_ids"), kind="forbidden_course_ids"
         ),
-        max_courses_inspected=raw.get("max_courses_inspected"),
-        max_loaded_skills=raw.get("max_loaded_skills"),
+        max_courses_inspected=_optional_non_negative_int(
+            raw.get("max_courses_inspected"),
+            kind="max_courses_inspected",
+        ),
+        max_loaded_skills=_optional_non_negative_int(
+            raw.get("max_loaded_skills"),
+            kind="max_loaded_skills",
+        ),
         must_mention=_as_tuple(raw.get("must_mention"), kind="must_mention"),
         must_not_mention=_as_tuple(
             raw.get("must_not_mention"), kind="must_not_mention"
@@ -271,7 +311,11 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
         forbidden_tools=_as_tuple(
             raw.get("forbidden_tools"), kind="forbidden_tools"
         ),
-        recall_bypass_allowed=bool(raw.get("recall_bypass_allowed", False)),
+        recall_bypass_allowed=_optional_bool(
+            raw.get("recall_bypass_allowed", False),
+            kind="recall_bypass_allowed",
+        )
+        or False,
     )
 
 

@@ -6,13 +6,14 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from evals.harness.graders import Finding, grade
 from evals.harness.providers.fake import FakeProvider
 from evals.harness.schema import (
     Catalog,
     Scenario,
+    Trace,
     load_catalog,
     load_scenarios_from_dir,
 )
@@ -32,11 +33,15 @@ class ScenarioResult:
         return [f for f in self.findings if not f.passed]
 
 
+class Provider(Protocol):
+    def run(self, scenario: Scenario, catalog: Catalog) -> Trace: ...
+
+
 def run(
     scenarios_dir: Path,
     catalog_path: Path,
     *,
-    provider: FakeProvider | None = None,
+    provider: Provider | None = None,
 ) -> list[ScenarioResult]:
     catalog = load_catalog(catalog_path)
     scenarios = load_scenarios_from_dir(scenarios_dir)
@@ -47,7 +52,7 @@ def run_scenarios(
     scenarios: list[Scenario],
     catalog: Catalog,
     *,
-    provider: FakeProvider | None = None,
+    provider: Provider | None = None,
 ) -> list[ScenarioResult]:
     prov = provider or FakeProvider()
     results: list[ScenarioResult] = []

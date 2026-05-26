@@ -271,6 +271,62 @@ class TestScenarioSchema:
         ):
             load_scenarios_from_file(bad)
 
+    def test_rejects_string_should_field(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    expected:\n"
+            "      should_query_marketplace: 'false'\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError,
+            match=r"should_query_marketplace must be a boolean",
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_string_max_field(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    expected:\n"
+            "      max_courses_inspected: '3'\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError,
+            match=r"max_courses_inspected must be a non-negative integer",
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_string_recall_bypass_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    expected:\n"
+            "      recall_bypass_allowed: 'yes'\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError,
+            match=r"recall_bypass_allowed must be a boolean",
+        ):
+            load_scenarios_from_file(bad)
+
 
 class TestFakeProvider:
     def test_replays_trace(self, catalog) -> None:
@@ -569,6 +625,34 @@ class TestEndToEndRun:
             METRIC_CONTEXT_EFFICIENCY,
             METRIC_UPDATES,
         }.issubset(summary["by_metric"])
+
+    def test_run_scenarios_accepts_provider_contract(self, catalog) -> None:
+        scenario = Scenario(
+            id="protocol",
+            prompt="p",
+            suite="diag",
+            installed_capabilities=(),
+            local_recall=(),
+            catalog_fixture="fake-marketplace.yaml",
+            expected=Expected(),
+            fake_trace=FakeTrace(final_answer="ignored", calls=()),
+        )
+
+        class StubProvider:
+            def run(self, scenario: Scenario, catalog) -> Trace:
+                return Trace(
+                    scenario_id=scenario.id,
+                    model="stub",
+                    calls=(),
+                    final_answer="ok",
+                    selected_course_ids=(),
+                    loaded_skill_ids=(),
+                    token_estimate={"input": 0, "output": 0},
+                )
+
+        results = run_scenarios([scenario], catalog, provider=StubProvider())
+        assert len(results) == 1
+        assert results[0].scenario_id == "protocol"
 
     def test_failure_is_visible_in_report(self, catalog) -> None:
         broken = Scenario(
