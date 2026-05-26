@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 from importlib import resources
 from pathlib import Path
@@ -85,13 +84,10 @@ def handle_courses_capabilities_scaffold(
         )
         return 2
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(_template_path(), dest)
+    # Write the already-loaded text directly.  ``resources.files()``
+    # returns a Traversable that may not have a stable on-disk path
+    # (e.g. zip-installed wheels), so do not round-trip through
+    # ``Path(str(...))`` just to call shutil.copyfile.
+    dest.write_text(text, encoding="utf-8")
     print(f"Wrote scaffold to {dest}")
     return 0
-
-
-def _template_path() -> Path:
-    """Return the on-disk path of the bundled scaffold template."""
-    return Path(str(resources.files("cli.templates"))) / (
-        CAPABILITIES_TEMPLATE_FILENAME
-    )

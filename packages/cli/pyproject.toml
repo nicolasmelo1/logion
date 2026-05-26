@@ -77,6 +77,7 @@ ignore = [
 "cli/commands/courses/capabilities.py" = ["T201"]
 "cli/commands/skills/handlers.py" = ["T201"]
 "cli/commands/skills/_install_helpers.py" = ["T201"]
+"cli/commands/skills/_finalize.py" = ["T201"]
 "cli/commands/skills/_update_handler.py" = ["T201"]
 "cli/commands/recall/handlers.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]

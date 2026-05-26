@@ -25,9 +25,9 @@ from cli._local_state import (
     verify_installed_content,
 )
 
+from ._finalize import copy_and_finalize
 from ._install_helpers import (
     check_existing_install,
-    copy_and_finalize,
     copy_skill_files,
     read_capabilities,
     resolve_target,

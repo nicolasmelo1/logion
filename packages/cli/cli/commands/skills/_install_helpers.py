@@ -5,7 +5,6 @@ source-size budget."""
 from __future__ import annotations
 
 import argparse
-import datetime
 import hashlib
 import shutil
 import sys
@@ -14,16 +13,7 @@ from typing import Any
 
 import yaml
 
-from cli._local_state import (
-    build_index,
-    ensure_layout,
-    read_manifest,
-    rebuild_recall,
-    release_lock,
-    validate_manifest,
-    write_index,
-    write_manifest,
-)
+from cli._local_state import ensure_layout, read_manifest
 
 # Subset of ``source_dir`` that ``copy_skill_files`` actually installs.
 # Hashing must scan the same subset, otherwise extra files in the
@@ -61,12 +51,17 @@ def collect_installable_files(source_dir: Path) -> list[Path]:
     return sorted(out)
 
 
+_HASH_CHUNK = 64 * 1024  # 64 KiB — keeps peak memory bounded for big files.
+
+
 def compute_content_hash(files: list[Path], root: Path | None = None) -> str:
     """Return SHA-256 over *files*, prefixing each with its rel path + length.
 
-    Streams each file through ``hash.update`` (no ``b"".join``) so
-    large skills do not balloon memory.  When *root* is provided,
-    paths are taken relative to it; otherwise the file name is used.
+    Reads each file in :data:`_HASH_CHUNK`-sized chunks so the peak
+    memory cost is bounded regardless of file size.  Each file
+    contributes ``<rel_path>\\0<length>\\0<bytes>\\0`` so renames or
+    repartitioning change the digest.  When *root* is provided, paths
+    are taken relative to it; otherwise the file name is used.
     """
     if not files:
         return ""
@@ -79,12 +74,17 @@ def compute_content_hash(files: list[Path], root: Path | None = None) -> str:
                 rel = p.name
         else:
             rel = p.name
-        data = p.read_bytes()
+        size = p.stat().st_size
         h.update(rel.encode("utf-8"))
         h.update(b"\0")
-        h.update(str(len(data)).encode("ascii"))
+        h.update(str(size).encode("ascii"))
         h.update(b"\0")
-        h.update(data)
+        with p.open("rb") as fh:
+            while True:
+                chunk = fh.read(_HASH_CHUNK)
+                if not chunk:
+                    break
+                h.update(chunk)
         h.update(b"\0")
     return h.hexdigest()
 
@@ -144,7 +144,13 @@ def copy_skill_files(
     dest: Path,
     dry_run: bool,
 ) -> list[Path]:
-    """Copy SKILL.md and supporting dirs from *src* to *dest*."""
+    """Copy SKILL.md and supporting dirs from *src* to *dest*.
+
+    Excludes any ``manifest.json`` under the source tree — the manifest
+    is the install's own metadata, not part of the skill content, and
+    excluding it here keeps ``copy_skill_files`` byte-for-byte aligned
+    with the file set :func:`collect_installable_files` enumerates.
+    """
     copied: list[Path] = []
     skill_md = src / "SKILL.md"
     if skill_md.is_file():
@@ -158,7 +164,7 @@ def copy_skill_files(
         if not sdir.is_dir():
             continue
         for child in sorted(sdir.rglob("*")):
-            if not child.is_file():
+            if not child.is_file() or child.name == "manifest.json":
                 continue
             target = dest / child.relative_to(src)
             if not dry_run:
@@ -166,45 +172,3 @@ def copy_skill_files(
                 shutil.copy2(child, target)
             copied.append(target)
     return copied
-
-
-def copy_and_finalize(
-    source: Path,
-    dest: Path,
-    course_id: str,
-    version_id: str,
-    manifest_data: dict[str, Any],
-    home: Path,
-) -> tuple[int, list[Path]]:
-    """Copy files, write manifest+index+recall, and release the lock.
-
-    Split out of :func:`handle_skills_install` so the handler stays
-    under the project's complexity budget.  Returns
-    ``(exit_code, copied)``; on failure the partial install is removed
-    so the next attempt is not confused by orphan files.
-    """
-    try:
-        if dest.exists():
-            shutil.rmtree(dest)
-        copied = copy_skill_files(source, dest, dry_run=False)
-        existing_files = [p for p in sorted(dest.rglob("*")) if p.is_file()]
-        manifest_data["content_sha256"] = compute_content_hash(
-            existing_files, root=dest
-        )
-        manifest_data["installed_at"] = datetime.datetime.now(
-            datetime.UTC
-        ).isoformat()
-        errors = validate_manifest(manifest_data)
-        if errors:
-            for e in errors:
-                print(f"MANIFEST ERROR: {e}", file=sys.stderr)
-            if dest.exists():
-                shutil.rmtree(dest, ignore_errors=True)
-            return 3, copied
-        write_manifest(manifest_data, course_id, version_id, home)
-    finally:
-        release_lock(course_id, version_id, home)
-
-    write_index(build_index(home), home)
-    rebuild_recall(home)
-    return 0, copied
