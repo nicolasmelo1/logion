@@ -750,3 +750,79 @@ class TestUpdatePolicy:
         result = evaluate_update("x", "1.0", remote, m, home)
         assert result.requires_approval is True
         assert result.blocks_silent_overwrite is True
+
+
+# ---------------------------------------------------------------------------
+# Lock filename isolation (no `__` collisions, no missing-file crash)
+# ---------------------------------------------------------------------------
+
+
+class TestLockFilenameIsolation:
+    def test_no_collision_when_ids_contain_double_underscore(
+        self, home: Path
+    ) -> None:
+        # Before the fix, ("a__b", "c") and ("a", "b__c") both flattened
+        # to ``a__b__c.json``.  With nested ``locks/<course>/<version>``
+        # they live at different paths.
+        acquire_lock("a__b", "c", home)
+        # This must NOT raise LockHeldError — different course dir.
+        acquire_lock("a", "b__c", home)
+        release_lock("a__b", "c", home)
+        release_lock("a", "b__c", home)
+
+    def test_release_lock_tolerates_missing_file(self, home: Path) -> None:
+        # release_lock used to call path.unlink() unconditionally after
+        # is_file() — racy.  Now it must just return False.
+        assert release_lock("never-acquired", "1.0", home) is False
+
+    def test_release_lock_after_external_unlink(self, home: Path) -> None:
+        from cli._local_state import _lock_path
+
+        acquire_lock("x", "1.0", home)
+        path = _lock_path(home, "x", "1.0")
+        path.unlink()  # Simulate another process removing it.
+        # Must not raise even though the file is already gone.
+        assert release_lock("x", "1.0", home) is False
+
+
+# ---------------------------------------------------------------------------
+# Global state lock
+# ---------------------------------------------------------------------------
+
+
+class TestStateLock:
+    def test_reentrant_within_process(self, home: Path) -> None:
+        from cli._local_state import state_lock
+
+        # SIM117 off: the nested form is the point of the test
+        # (verifying re-entrant acquisition).
+        with state_lock(home, timeout=0.1):  # noqa: SIM117
+            with state_lock(home, timeout=0.1):
+                pass
+
+    def test_blocks_when_externally_held(self, home: Path) -> None:
+        import os
+
+        from cli._local_state import STATE_LOCK_FILENAME, state_lock
+
+        # Simulate another process holding the lock file.
+        (home / STATE_LOCK_FILENAME).touch()
+        # Workaround: the in-process registry sees the file as foreign,
+        # so this should time out instead of re-entering.
+        try:
+            with pytest.raises(TimeoutError), state_lock(home, timeout=0.1):
+                pass
+        finally:
+            os.unlink(home / STATE_LOCK_FILENAME)
+
+    def test_record_workflow_holds_lock_across_recall_rebuild(
+        self, home: Path
+    ) -> None:
+        # record_workflow_success must wrap its read-modify-write +
+        # rebuild_recall sequence in one state_lock acquisition.  We
+        # can't easily test the race directly; verify the call still
+        # works end-to-end and the recall index reflects the new
+        # workflow afterwards.
+        record_workflow_success("wf1", "WF 1", ["echo hi"], home)
+        ids = {e["id"] for e in read_recall(home)}
+        assert "wf1" in ids

@@ -93,11 +93,22 @@ def read_capabilities(
     cap_yaml: Path,
     manifest_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """Update *manifest_data* with capabilities.yaml data if present."""
+    """Update *manifest_data* with capabilities.yaml data if present.
+
+    Treats unreadable / malformed manifests the same way as a missing
+    file: leaves *manifest_data* untouched.  Catches ``OSError`` and
+    ``UnicodeDecodeError`` from ``read_text`` and ``yaml.YAMLError``
+    from parsing so a permissions glitch or non-UTF-8 file does not
+    crash ``logion skills install/update``.
+    """
     if not cap_yaml.is_file():
         return manifest_data
     try:
-        cap_data = yaml.safe_load(cap_yaml.read_text(encoding="utf-8"))
+        raw = cap_yaml.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return manifest_data
+    try:
+        cap_data = yaml.safe_load(raw)
     except yaml.YAMLError:
         return manifest_data
     if not isinstance(cap_data, dict):

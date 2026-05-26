@@ -16,6 +16,7 @@ from cli._local_state import (
     build_index,
     rebuild_recall,
     release_lock,
+    state_lock,
     validate_manifest,
     write_index,
     write_manifest,
@@ -86,8 +87,11 @@ def copy_and_finalize(
         release_lock(course_id, version_id, home)
 
     try:
-        write_index(build_index(home), home)
-        rebuild_recall(home)
+        # state_lock serializes the index+recall refresh so a parallel
+        # install or `recall record` cannot race and drop entries.
+        with state_lock(home):
+            write_index(build_index(home), home)
+            rebuild_recall(home)
     except OSError as exc:
         # Install succeeded on disk; only the index/recall refresh
         # failed.  Report but do not roll back — the next install or

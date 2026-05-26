@@ -241,7 +241,7 @@ def _installed_files(version_dir: Path) -> list[Path]:
     )
 
 
-def _installed_dir(course_id: str, version_id: str, home: Path) -> Path:
+def installed_dir(course_id: str, version_id: str, home: Path) -> Path:
     """Resolve the install path with sanitized identifiers.
 
     Rejects path-traversal in *course_id* / *version_id* and guarantees
@@ -270,7 +270,7 @@ def write_manifest(
 ) -> Path:
     """Write *manifest* to the installed capability directory."""
     h = home or get_home()
-    dest = _installed_dir(course_id, version_id, h)
+    dest = installed_dir(course_id, version_id, h)
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / "manifest.json"
     _atomic_write_text(
@@ -288,7 +288,7 @@ def read_manifest(
     """Read an installed capability's manifest, or ``None`` if absent."""
     h = home or get_home()
     try:
-        dest = _installed_dir(course_id, version_id, h)
+        dest = installed_dir(course_id, version_id, h)
     except UnsafeIdentifierError:
         return None
     path = dest / "manifest.json"
@@ -303,11 +303,11 @@ def read_manifest(
 def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
     """Return manifest dicts for all installed capabilities."""
     h = home or get_home()
-    installed_dir = h / "installed"
-    if not installed_dir.is_dir():
+    installed_root = h / "installed"
+    if not installed_root.is_dir():
         return []
     results: list[dict[str, Any]] = []
-    for course_dir in sorted(installed_dir.iterdir()):
+    for course_dir in sorted(installed_root.iterdir()):
         if not course_dir.is_dir():
             continue
         for version_dir in sorted(course_dir.iterdir()):
@@ -330,7 +330,7 @@ def compute_installed_hash(
     """Re-hash on-disk content for an installed version."""
     h = home or get_home()
     try:
-        version_dir = _installed_dir(course_id, version_id, h)
+        version_dir = installed_dir(course_id, version_id, h)
     except UnsafeIdentifierError:
         return ""
     if not version_dir.is_dir():
@@ -392,7 +392,8 @@ def write_index(
     """Write the compact index to ``index.json`` (enveloped)."""
     h = home or get_home()
     ensure_layout(h)
-    return _write_json_entries(h / INDEX_FILENAME, index)
+    with state_lock(h):
+        return _write_json_entries(h / INDEX_FILENAME, index)
 
 
 def read_index(home: Path | None = None) -> list[dict[str, Any]]:
@@ -497,7 +498,8 @@ def write_recall(
     """Write recall index to ``recall.json`` (enveloped)."""
     h = home or get_home()
     ensure_layout(h)
-    return _write_json_entries(h / RECALL_FILENAME, entries)
+    with state_lock(h):
+        return _write_json_entries(h / RECALL_FILENAME, entries)
 
 
 def read_recall(home: Path | None = None) -> list[dict[str, Any]]:
@@ -509,8 +511,9 @@ def read_recall(home: Path | None = None) -> list[dict[str, Any]]:
 def rebuild_recall(home: Path | None = None) -> Path:
     """Refresh recall.json from current installed manifests and workflows."""
     h = home or get_home()
-    entries = build_recall_entries(list_installed(h), read_workflows(h))
-    return write_recall(entries, h)
+    with state_lock(h):
+        entries = build_recall_entries(list_installed(h), read_workflows(h))
+        return write_recall(entries, h)
 
 
 def search_recall(
@@ -562,6 +565,68 @@ def search_recall(
 # ---------------------------------------------------------------------------
 
 LOCKS_DIRNAME = "locks"
+STATE_LOCK_FILENAME = ".state.lock"
+STATE_LOCK_RETRY_DELAY_S = 0.05
+STATE_LOCK_TIMEOUT_S = 5.0
+
+
+# Re-entrancy: paths this process is currently holding state-locks on.
+_STATE_LOCK_HELD: set[str] = set()
+
+
+@contextlib.contextmanager
+def state_lock(
+    home: Path | None = None,
+    timeout: float = STATE_LOCK_TIMEOUT_S,
+):
+    """Cross-process lock for global state files (index/recall/workflows).
+
+    Two concurrent ``logion skills install`` / ``logion recall record``
+    invocations otherwise race on ``index.json`` and ``recall.json`` —
+    each rebuilds from a different snapshot and the last writer wins.
+    This lock serializes those rebuilds via an ``O_EXCL`` lock file in
+    the Logion home directory.  Acquisition retries with a short
+    sleep up to *timeout* seconds before raising ``TimeoutError``.
+
+    Re-entrant within a single process: if this process already holds
+    the lock for the same *home*, nested ``with state_lock(...)`` calls
+    are no-ops.  Lets high-level routines (``record_workflow_success``,
+    ``copy_and_finalize``) lock once around a sequence of low-level
+    writers that each acquire the same lock defensively.
+
+    The lock is best-effort across processes: it is removed on normal
+    exit and on ``finally``; a process that crashes hard may leave a
+    stale lock that the next caller will eventually time out on.
+    """
+    import time
+
+    h = home or get_home()
+    h.mkdir(parents=True, exist_ok=True)
+    path = h / STATE_LOCK_FILENAME
+    key = str(path)
+    if key in _STATE_LOCK_HELD:
+        yield path
+        return
+    deadline = time.monotonic() + max(timeout, 0.0)
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            break
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"state lock {path} held longer than {timeout}s"
+                ) from None
+            time.sleep(STATE_LOCK_RETRY_DELAY_S)
+    _STATE_LOCK_HELD.add(key)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(str(os.getpid()))
+        yield path
+    finally:
+        _STATE_LOCK_HELD.discard(key)
+        with contextlib.suppress(OSError):
+            path.unlink()
 
 
 class LockHeldError(RuntimeError):
@@ -577,12 +642,14 @@ class LockHeldError(RuntimeError):
 
 
 def _lock_path(home: Path, course_id: str, version_id: str) -> Path:
-    # Validate before composing the filename so a malicious id cannot
-    # escape the locks dir or collide via embedded ``__``.
+    # Validate before composing the path.  Locks live in nested
+    # directories (``locks/<course>/<version>.json``) so identifiers
+    # containing ``__`` (legal under _SAFE_SEGMENT_RE) cannot collide
+    # onto the same filename — e.g. ``a__b``/``c`` and ``a``/``b__c``
+    # used to flatten to the same file with a ``__`` separator.
     _safe_segment(course_id, "course_id")
     _safe_segment(version_id, "version_id")
-    safe = f"{course_id}__{version_id}.json"
-    return home / LOCKS_DIRNAME / safe
+    return home / LOCKS_DIRNAME / course_id / f"{version_id}.json"
 
 
 def acquire_lock(
@@ -646,16 +713,26 @@ def release_lock(
     version_id: str,
     home: Path | None = None,
 ) -> bool:
-    """Remove the lock for one course/version; ``True`` if removed."""
+    """Remove the lock for one course/version; ``True`` if removed.
+
+    Tolerates the file already being gone (``FileNotFoundError``) and
+    other ``OSError`` failures so a stale or concurrently-removed lock
+    cannot crash a ``finally`` block (notably the one in
+    :func:`copy_and_finalize`).  Returns ``False`` when the file was
+    not present or could not be removed.
+    """
     h = home or get_home()
     try:
         path = _lock_path(h, course_id, version_id)
     except UnsafeIdentifierError:
         return False
-    if path.is_file():
+    try:
         path.unlink()
-        return True
-    return False
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+    return True
 
 
 def is_locked(
@@ -674,7 +751,8 @@ def any_locks(home: Path | None = None) -> list[tuple[str, str]]:
     if not locks_dir.is_dir():
         return []
     locks: list[tuple[str, str]] = []
-    for path in sorted(locks_dir.glob("*.json")):
+    # Locks live two levels deep under ``locks/<course>/<version>.json``.
+    for path in sorted(locks_dir.glob("*/*.json")):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
@@ -706,7 +784,8 @@ def write_workflows(
     """Write workflow history (enveloped)."""
     h = home or get_home()
     ensure_layout(h)
-    return _write_json_entries(h / WORKFLOWS_FILENAME, workflows)
+    with state_lock(h):
+        return _write_json_entries(h / WORKFLOWS_FILENAME, workflows)
 
 
 def record_workflow_success(
@@ -721,37 +800,40 @@ def record_workflow_success(
     If a workflow with *workflow_id* exists, increments ``success_count``
     and updates ``last_success_at``.  Otherwise creates a new record.
     Always rebuilds the recall index so the new evidence is searchable.
-    Returns the resulting workflow record.
+    Returns the resulting workflow record.  The read-modify-write
+    sequence and the recall rebuild are serialized via ``state_lock``
+    so concurrent ``logion recall record`` calls cannot lose updates.
     """
     h = home or get_home()
-    workflows = read_workflows(h)
-    now = _utc_iso_now()
-    updated: dict[str, Any] | None = None
-    for w in workflows:
-        if w.get("id") == workflow_id:
-            w["title"] = title or w.get("title", "")
-            w["commands"] = commands or w.get("commands", [])
-            w["success_count"] = int(w.get("success_count", 0)) + 1
-            w["last_success_at"] = now
-            w["confidence"] = min(
-                float(w.get("confidence", confidence)) + 0.05, 1.0
-            )
-            updated = w
-            break
-    if updated is None:
-        updated = {
-            "id": workflow_id,
-            "title": title,
-            "commands": commands,
-            "success_count": 1,
-            "last_success_at": now,
-            "confidence": confidence,
-        }
-        workflows.append(updated)
+    with state_lock(h):
+        workflows = read_workflows(h)
+        now = _utc_iso_now()
+        updated: dict[str, Any] | None = None
+        for w in workflows:
+            if w.get("id") == workflow_id:
+                w["title"] = title or w.get("title", "")
+                w["commands"] = commands or w.get("commands", [])
+                w["success_count"] = int(w.get("success_count", 0)) + 1
+                w["last_success_at"] = now
+                w["confidence"] = min(
+                    float(w.get("confidence", confidence)) + 0.05, 1.0
+                )
+                updated = w
+                break
+        if updated is None:
+            updated = {
+                "id": workflow_id,
+                "title": title,
+                "commands": commands,
+                "success_count": 1,
+                "last_success_at": now,
+                "confidence": confidence,
+            }
+            workflows.append(updated)
 
-    write_workflows(workflows, h)
-    rebuild_recall(h)
-    return updated
+        write_workflows(workflows, h)
+        rebuild_recall(h)
+        return updated
 
 
 # ---------------------------------------------------------------------------

@@ -17,8 +17,8 @@ from typing import Any
 from cli._local_state import (
     LockHeldError,
     UnsafeIdentifierError,
-    _installed_dir,
     acquire_lock,
+    installed_dir,
     list_installed,
     read_manifest,
     validate_manifest,
@@ -87,7 +87,7 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         return 3
 
     try:
-        dest = _installed_dir(course_id, version_id, home)
+        dest = installed_dir(course_id, version_id, home)
     except UnsafeIdentifierError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
