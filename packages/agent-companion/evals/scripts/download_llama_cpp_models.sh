@@ -14,7 +14,7 @@ if ! command -v hf >/dev/null 2>&1; then
   exit 1
 fi
 
-MODEL_CACHE_DIR="${LOGION_MODEL_CACHE_DIR:-${HOME}/models/logion-evals}"
+MODEL_CACHE_DIR="${LOGION_MODEL_CACHE_DIR:-${ROOT_DIR}/.models}"
 mkdir -p "$MODEL_CACHE_DIR"
 
 hf_download() {

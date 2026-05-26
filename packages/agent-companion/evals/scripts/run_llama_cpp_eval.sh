@@ -87,6 +87,18 @@ if [[ ${#LLAMA_SERVER_ARGS[@]} -eq 0 ]]; then
   exit 1
 fi
 
+# Append any extra args passed via LLAMA_EXTRA_ARGS or positional args after the
+# config/model. Both are forwarded verbatim to llama-server.
+if [[ -n "${LLAMA_EXTRA_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  EXTRA=($LLAMA_EXTRA_ARGS)
+  LLAMA_SERVER_ARGS+=("${EXTRA[@]}")
+fi
+if [[ $# -gt 2 ]]; then
+  shift 2
+  LLAMA_SERVER_ARGS+=("$@")
+fi
+
 LLAMA_SERVER_PID=""
 cleanup() {
   if [[ -n "$LLAMA_SERVER_PID" ]] && kill -0 "$LLAMA_SERVER_PID" >/dev/null 2>&1; then
