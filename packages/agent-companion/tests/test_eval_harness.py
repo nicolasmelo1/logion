@@ -14,10 +14,14 @@ These tests cover three concerns:
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
+from urllib import error as urllib_error
 
 import pytest
 
+from evals import run_eval as run_eval_cli
 from evals.harness.graders import (
     METRIC_CONTEXT_EFFICIENCY,
     METRIC_COURSE_SELECTION,
@@ -35,6 +39,11 @@ from evals.harness.graders import (
     grade_updates,
 )
 from evals.harness.providers.fake import FakeProvider, FakeProviderError
+from evals.harness.providers.llama_cpp import (
+    LlamaCppProviderError,
+    load_llama_cpp_provider,
+    parse_trace_json,
+)
 from evals.harness.runner import run, run_scenarios, summarize
 from evals.harness.schema import (
     Expected,
@@ -686,6 +695,159 @@ class TestEndToEndRun:
         summary = summarize(results)
         assert summary["totals"]["failed"] == 1
         assert summary["failures"][0]["scenario_id"] == "broken"
+
+
+class TestLlamaCppProvider:
+    def test_load_provider_config_and_report_metadata(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "eval.local.yaml"
+        config.write_text(
+            """
+providers:
+  llama_cpp_local:
+    base_url: http://127.0.0.1:8080/v1
+    timeout_seconds: 75
+    retries: 2
+    temperature: 0.0
+    max_tokens: 777
+    seed: 99
+models:
+  - id: qwen-local
+    provider: llama_cpp_local
+    repo: lmstudio-community/Qwen3-8B-GGUF
+    file: Qwen3-8B-Q5_K_M.gguf
+    context: 8192
+    server_args: [--ctx-size, '8192', --jinja]
+""".strip(),
+            encoding="utf-8",
+        )
+        provider = load_llama_cpp_provider(config, "qwen-local")
+
+        assert provider.config.timeout_seconds == 75
+        payload = provider.report_metadata()
+        assert payload["base_url"] == "http://127.0.0.1:8080/v1"
+        assert payload["repo"] == "lmstudio-community/Qwen3-8B-GGUF"
+        assert payload["file"] == "Qwen3-8B-Q5_K_M.gguf"
+        assert payload["quant"] == "Q5_K_M"
+        assert payload["server_args"] == ["--ctx-size", "8192", "--jinja"]
+
+    def test_build_payload_uses_openai_shape(self, catalog) -> None:
+        provider = load_llama_cpp_provider(
+            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            "qwen3-8b-q5km",
+        )
+        scenario = Scenario(
+            id="llama-payload",
+            prompt="Find a weather skill",
+            suite="diag",
+            installed_capabilities=(),
+            local_recall=(),
+            catalog_fixture="fake-marketplace.yaml",
+            expected=Expected(),
+            fake_trace=FakeTrace(final_answer="ignored", calls=()),
+        )
+        payload = provider._build_payload(scenario, catalog)
+
+        assert payload["model"] == "qwen3-8b-q5km"
+        assert payload["temperature"] == 0.0
+        assert payload["seed"] == 42
+        assert payload["messages"][0]["role"] == "system"
+        assert payload["messages"][1]["role"] == "user"
+
+    def test_parse_trace_json_accepts_fenced_json(self) -> None:
+        payload = parse_trace_json(
+            '```json\n{"calls": [], "final_answer": "ok"}\n```'
+        )
+        assert payload["final_answer"] == "ok"
+
+    def test_unreachable_server_raises_helpful_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        provider = load_llama_cpp_provider(
+            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            "qwen3-8b-q5km",
+        )
+
+        def _boom(*_args, **_kwargs):
+            raise urllib_error.URLError("connection refused")
+
+        monkeypatch.setattr(
+            "evals.harness.providers.llama_cpp.request.urlopen", _boom
+        )
+        with pytest.raises(LlamaCppProviderError) as excinfo:
+            provider._post_json({"messages": []})
+        assert "llama-server" in str(excinfo.value)
+        assert "127.0.0.1:8080" in str(excinfo.value)
+
+    def test_cli_report_embeds_live_model_metadata(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        report = tmp_path / "report.json"
+        config = EVALS / "providers" / "llama_cpp_local.example.yaml"
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "run_eval.py",
+                "--provider",
+                "llama_cpp_local",
+                "--config",
+                str(config),
+                "--model",
+                "qwen3-8b-q5km",
+                "--report",
+                str(report),
+            ],
+        )
+
+        def _fake_run(*_args, **_kwargs):
+            return []
+
+        def _fake_summarize(_results):
+            return {
+                "totals": {"scenarios": 0, "passed": 0, "failed": 0},
+                "by_suite": {},
+                "by_metric": {},
+                "failures": [],
+            }
+
+        monkeypatch.setattr(run_eval_cli, "run", _fake_run)
+        monkeypatch.setattr(run_eval_cli, "summarize", _fake_summarize)
+
+        exit_code = run_eval_cli.main()
+        payload = json.loads(report.read_text(encoding="utf-8"))
+
+        assert exit_code == 0
+        assert payload["run"]["provider"] == "llama_cpp_local"
+        assert payload["run"]["repo"] == "lmstudio-community/Qwen3-8B-GGUF"
+        assert payload["run"]["file"] == "Qwen3-8B-Q5_K_M.gguf"
+        assert payload["run"]["quant"] == "Q5_K_M"
+        assert payload["run"]["base_url"] == "http://127.0.0.1:8080/v1"
+
+    def test_live_eval_smoke_is_opt_in(self) -> None:
+        if os.environ.get("LOGION_RUN_LIVE_LLM_EVALS") != "1":
+            pytest.skip(
+                "Set LOGION_RUN_LIVE_LLM_EVALS=1 to run live llama.cpp "
+                "smoke evals."
+            )
+        config = os.environ.get("LOGION_LLAMACPP_CONFIG")
+        model_id = os.environ.get("LOGION_LLAMACPP_MODEL_ID")
+        if not config or not model_id:
+            pytest.skip(
+                "Set LOGION_LLAMACPP_CONFIG and LOGION_LLAMACPP_MODEL_ID "
+                "for live llama.cpp smoke evals."
+            )
+        provider = load_llama_cpp_provider(Path(config), model_id)
+        results = run(
+            SCENARIOS_DIR,
+            CATALOG_PATH,
+            provider=provider,
+        )
+        summary = summarize(results)
+        assert summary["totals"]["scenarios"] >= 1
 
 
 def test_full_grade_smoke(catalog) -> None:

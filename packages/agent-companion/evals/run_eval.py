@@ -1,25 +1,43 @@
 """CLI for the eval harness.
 
-Example:
-    python evals/run_eval.py \\
-        --provider fake \\
-        --scenarios evals/scenarios \\
+Examples:
+    python evals/run_eval.py \
+        --provider fake \
+        --scenarios evals/scenarios \
+        --catalog evals/catalogs/fake-marketplace.yaml
+
+    python evals/run_eval.py \
+        --provider llama_cpp_local \
+        --config evals/providers/llama_cpp_local.example.yaml \
+        --model qwen3-8b-q5km \
+        --scenarios evals/scenarios \
         --catalog evals/catalogs/fake-marketplace.yaml
 """
 
 from __future__ import annotations
 
 import argparse
+import subprocess  # nosec B404 - local git metadata lookup only
 import sys
 from pathlib import Path
+from typing import Any
 
 # Allow `python evals/run_eval.py` from the package root.
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals.harness.providers.fake import FakeProvider  # noqa: E402
-from evals.harness.runner import run, summarize, write_report  # noqa: E402
+from evals.harness.providers import (  # noqa: E402
+    FakeProvider,
+    LlamaCppProviderError,
+    load_llama_cpp_provider,
+)
+from evals.harness.runner import (  # noqa: E402
+    Provider,
+    run,
+    summarize,
+    write_report,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -27,8 +45,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         default="fake",
-        choices=["fake"],
-        help="Provider to use (currently only the deterministic fake).",
+        choices=["fake", "llama_cpp_local"],
+        help="Provider to use.",
     )
     parser.add_argument(
         "--scenarios",
@@ -53,20 +71,70 @@ def _parse_args() -> argparse.Namespace:
         default="fake-deterministic",
         help="Model identifier recorded in the trace.",
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Provider/model config YAML for live local evals.",
+    )
     return parser.parse_args()
+
+
+def _git_commit() -> str | None:
+    try:
+        result = subprocess.run(  # nosec - fixed local git query
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    commit = result.stdout.strip()
+    return commit or None
+
+
+def _resolve_provider(
+    args: argparse.Namespace,
+) -> tuple[Provider, dict[str, Any]]:
+    if args.provider == "fake":
+        return (
+            FakeProvider(model=args.model),
+            {
+                "provider": "fake",
+                "model_id": args.model,
+                "config_path": str(args.config) if args.config else None,
+            },
+        )
+    if args.config is None:
+        raise SystemExit(
+            "--config is required when --provider=llama_cpp_local"
+        )
+    provider = load_llama_cpp_provider(args.config, args.model)
+    return provider, provider.report_metadata()
 
 
 def main() -> int:
     args = _parse_args()
-    provider = FakeProvider(model=args.model)
-    results = run(args.scenarios, args.catalog, provider=provider)
+    try:
+        provider, run_metadata = _resolve_provider(args)
+        results = run(args.scenarios, args.catalog, provider=provider)
+    except LlamaCppProviderError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     summary = summarize(results)
+    summary["run"] = {
+        **run_metadata,
+        "git_commit": _git_commit(),
+        "report_path": str(args.report),
+    }
     write_report(summary, args.report)
     totals = summary["totals"]
     print(
         f"scenarios={totals['scenarios']} "
         f"passed={totals['passed']} "
         f"failed={totals['failed']} "
+        f"provider={summary['run']['provider']} "
+        f"model={summary['run']['model_id']} "
         f"report={args.report}"
     )
     for failure in summary["failures"]:

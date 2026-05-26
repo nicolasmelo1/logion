@@ -1,0 +1,24 @@
+providers:
+  llama_cpp_local:
+    base_url: http://127.0.0.1:8080/v1
+    timeout_seconds: 90
+    retries: 1
+    temperature: 0.0
+    max_tokens: 900
+    seed: 42
+
+models:
+  - id: qwen3-8b-q5km
+    provider: llama_cpp_local
+    repo: lmstudio-community/Qwen3-8B-GGUF
+    file: Qwen3-8B-Q5_K_M.gguf
+    quant: Q5_K_M
+    context: 8192
+    server_args:
+      - --host
+      - 127.0.0.1
+      - --port
+      - "8080"
+      - --ctx-size
+      - "8192"
+      - --jinja

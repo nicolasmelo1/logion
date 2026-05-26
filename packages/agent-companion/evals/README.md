@@ -38,9 +38,38 @@ python evals/run_eval.py \
 python -m pytest tests/test_eval_harness.py -q
 ```
 
-The default report path is `evals/reports/last-run.json`. The report
-buckets results by suite and by metric and lists every failing scenario
-with the failing message.
+### Live local run with llama.cpp
+
+The fake provider stays the CI default. For opt-in Apple Silicon evals, run a
+local OpenAI-compatible `llama-server` and point the harness at it:
+
+```bash
+# Example only — choose repo/file/context that fit your machine.
+llama-server \
+  --hf-repo lmstudio-community/Qwen3-8B-GGUF \
+  --hf-file Qwen3-8B-Q5_K_M.gguf \
+  --ctx-size 8192 \
+  --jinja \
+  --host 127.0.0.1 \
+  --port 8080
+
+python evals/run_eval.py \
+  --provider llama_cpp_local \
+  --config evals/providers/llama_cpp_local.example.yaml \
+  --model qwen3-8b-q5km \
+  --scenarios evals/scenarios \
+  --catalog evals/catalogs/fake-marketplace.yaml \
+  --report evals/reports/qwen3-8b-q5km.json
+```
+
+Reports now include a top-level `run` block with provider/model metadata such
+as base URL, model repo/file/quant, context window, server args, config path,
+and the current git commit. This keeps offline/local runs reproducible without
+forcing live evals into CI.
+
+The default report path is `evals/reports/last-run.json`. The report buckets
+results by suite and by metric and lists every failing scenario with the
+failing message.
 
 ## Scenario format
 
