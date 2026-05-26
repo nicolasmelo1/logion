@@ -17,11 +17,11 @@ scenarios:
       max_loaded_skills: 0
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "weather", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "weather"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: weather.basic}
       final_answer: "weather.basic (free). Confirm install?"
       selected_course_ids: [weather.basic]
@@ -35,7 +35,7 @@ scenarios:
       should_query_marketplace: false
       should_install: false
       max_loaded_skills: 0
-      forbidden_tools: [skill.load]
+      forbidden_tools: [logion_skills_inspect]
     fake_trace:
       calls: []
       final_answer: "144"
@@ -53,9 +53,9 @@ scenarios:
       max_loaded_skills: 1
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "pivot", limit: 5}
-        - tool: skill.load
+        - tool: logion_skills_inspect
           args: {capability_id: data.spreadsheet.pivot}
       final_answer: "Pivoting your data using the local capability."
       loaded_skill_ids: [data.spreadsheet.pivot]
@@ -72,11 +72,11 @@ scenarios:
       max_courses_inspected: 2
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "ocr", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "ocr"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: ocr.documents}
       final_answer: "ocr.documents ($6). Confirm install?"
       selected_course_ids: [ocr.documents]
@@ -93,11 +93,11 @@ scenarios:
       max_courses_inspected: 1
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "email triage", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "email triage"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: email.triage}
       final_answer: "email.triage ($3). Confirm install?"
       selected_course_ids: [email.triage]
@@ -115,9 +115,9 @@ scenarios:
       max_loaded_skills: 1
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "rain forecast", limit: 5}
-        - tool: skill.load
+        - tool: logion_skills_inspect
           args: {capability_id: weather.forecast}
       final_answer: "It looks dry tomorrow."
       loaded_skill_ids: [weather.forecast]
@@ -134,11 +134,11 @@ scenarios:
       max_courses_inspected: 2
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "travel planner free", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "travel planner free"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: travel.planner}
       final_answer: "travel.planner ($8). Confirm install?"
       selected_course_ids: [travel.planner]
@@ -151,7 +151,7 @@ scenarios:
     expected:
       should_query_marketplace: false
       max_loaded_skills: 0
-      forbidden_tools: [skill.load, marketplace.search]
+      forbidden_tools: [logion_skills_inspect, logion_listings_search]
     fake_trace:
       calls: []
       final_answer: "2026."
@@ -166,7 +166,7 @@ scenarios:
       max_loaded_skills: 0
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "demo", limit: 3}
       final_answer: "Recall returned nothing actionable."
       token_estimate: {input: 200, output: 30}
@@ -182,12 +182,12 @@ scenarios:
     expected:
       should_query_marketplace: false
       max_loaded_skills: 1
-      forbidden_tools: [marketplace.search]
+      forbidden_tools: [logion_listings_search]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "cover letter tailor", limit: 5}
-        - tool: skill.load
+        - tool: logion_skills_inspect
           args: {capability_id: cover_letter.tailor}
       final_answer: "Using cover_letter.tailor locally."
       loaded_skill_ids: [cover_letter.tailor]
@@ -203,7 +203,7 @@ scenarios:
       max_courses_inspected: 1
     fake_trace:
       calls:
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "weather free"}
       final_answer: "weather.basic — free."
 
@@ -215,10 +215,10 @@ scenarios:
     expected:
       should_query_marketplace: false
       max_loaded_skills: 0
-      forbidden_tools: [course.update_apply]
+      forbidden_tools: [logion_skills_update]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: weather.basic}
       final_answer: "No update available. Nothing to apply."
 
@@ -230,7 +230,7 @@ scenarios:
     expected:
       should_query_marketplace: false
       max_loaded_skills: 0
-      forbidden_tools: [marketplace.search, skill.load]
+      forbidden_tools: [logion_listings_search, logion_skills_inspect]
     fake_trace:
       calls: []
       final_answer: "Bom dia! Como posso ajudar?"
@@ -248,9 +248,9 @@ scenarios:
       max_loaded_skills: 1
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "reply email", limit: 5}
-        - tool: skill.load
+        - tool: logion_skills_inspect
           args: {capability_id: email.draft.reply}
       final_answer: "Drafting a reply locally."
       loaded_skill_ids: [email.draft.reply]
@@ -267,11 +267,11 @@ scenarios:
       max_courses_inspected: 1
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "terraform review", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "terraform review"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: terraform.static-review}
       final_answer: "terraform.static-review (free). Confirm install?"
       selected_course_ids: [terraform.static-review]

@@ -21,7 +21,7 @@ scenarios:
       forbidden_course_ids: [resume.ats]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "resume ats", limit: 5}
       final_answer: "Using the installed resume.ats.optimize capability locally."
 
@@ -39,7 +39,7 @@ scenarios:
       should_install: false
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "debug flaky test", limit: 5}
       final_answer: "Reusing the known reproduce-and-bisect workflow locally."
 
@@ -60,11 +60,11 @@ scenarios:
       max_courses_inspected: 2
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "ocr pdf invoices", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "ocr pdf"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: ocr.documents}
       final_answer: "Found ocr.documents. Shall I install it ($6)?"
       selected_course_ids: [ocr.documents]
@@ -85,7 +85,7 @@ scenarios:
       forbidden_course_ids: [video.clips, video.editor]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "highlight clip", limit: 5}
       final_answer: "Using installed video.clips.highlight locally."
 
@@ -105,7 +105,7 @@ scenarios:
       must_mention: [confirm]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "destructive cleanup", limit: 5}
       final_answer: "Found a high-risk command in history. Please confirm before I run it."
 
@@ -124,11 +124,11 @@ scenarios:
       acceptable_course_ids: [email.triage]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "summarize emails", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "email summarize"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: email.triage}
       final_answer: "Local match is weak. Confirm install of email.triage ($3)?"
       selected_course_ids: [email.triage]
@@ -145,11 +145,11 @@ scenarios:
       acceptable_course_ids: [travel.planner]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "trip planner lisbon", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "trip planner"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: travel.planner}
       final_answer: "travel.planner looks suitable. Shall I install it ($8)?"
       selected_course_ids: [travel.planner]
@@ -165,9 +165,9 @@ scenarios:
       should_ask_confirmation: true
     fake_trace:
       calls:
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "code"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.debugging}
       final_answer: "Found code.debugging. Shall I install it (free)?"
       selected_course_ids: [code.debugging]
@@ -186,7 +186,7 @@ scenarios:
       should_install: false
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "weather forecast recife", limit: 5}
       final_answer: "Using installed weather.forecast locally."
 
@@ -205,7 +205,7 @@ scenarios:
       forbidden_course_ids: [data.spreadsheets]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "csv pivot", limit: 5}
       final_answer: "Using installed data.spreadsheet.pivot locally."
 
@@ -224,7 +224,7 @@ scenarios:
       forbidden_course_ids: [cover-letter.writer]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "cover letter", limit: 5}
       final_answer: "Reusing the local cover-letter workflow."
 
@@ -240,11 +240,11 @@ scenarios:
       acceptable_course_ids: [browser.automation]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "browser form automation", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "browser automation"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: browser.automation}
       final_answer: "browser.automation matches. Confirm install ($12)?"
       selected_course_ids: [browser.automation]
@@ -261,11 +261,11 @@ scenarios:
       acceptable_course_ids: [code.tdd-framework]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "tdd scaffolding python", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "tdd"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.tdd-framework}
       final_answer: "code.tdd-framework fits. Shall I install it (free)?"
       selected_course_ids: [code.tdd-framework]
@@ -285,7 +285,7 @@ scenarios:
       forbidden_course_ids: [code.debugging]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "reproduce race condition", limit: 5}
       final_answer: "Using installed code.debug.reproduce locally."
 
@@ -305,7 +305,7 @@ scenarios:
       must_mention: [confirm]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "terraform apply", limit: 5}
       final_answer: "terraform apply is high-risk. Please confirm before I run it."
 
@@ -324,11 +324,11 @@ scenarios:
       acceptable_course_ids: [ocr.documents]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "ocr scanned table", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "ocr table"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: ocr.documents}
       final_answer: "ocr.documents covers it. Confirm install ($6)?"
       selected_course_ids: [ocr.documents]
@@ -348,7 +348,7 @@ scenarios:
       forbidden_course_ids: [video.editor]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "edit color grade film", limit: 5}
       final_answer: "Using installed video.edit.timeline and video.color.grade locally."
 
@@ -366,7 +366,7 @@ scenarios:
       should_install: false
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "terraform safe deploy", limit: 5}
       final_answer: "Reviewing only — not applying. Local terraform.review capability sufficient."
 
@@ -379,10 +379,10 @@ scenarios:
       should_run_recall: true
       should_query_marketplace: false
       should_install: false
-      forbidden_tools: [marketplace.search]
+      forbidden_tools: [logion_listings_search]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "arithmetic", limit: 5}
       final_answer: "4"
 
@@ -401,6 +401,6 @@ scenarios:
       forbidden_course_ids: [cover-letter.writer]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "tailor cover letter", limit: 5}
       final_answer: "Using installed cover_letter.tailor locally."

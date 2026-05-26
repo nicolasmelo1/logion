@@ -1,8 +1,8 @@
 """Deterministic fake provider.
 
 Replays the trace embedded in the scenario YAML so we can exercise graders
-without invoking an LLM. Catalog-bound tool calls (marketplace.search,
-course.inspect, course.install) are still routed through the catalog
+without invoking an LLM. Catalog-bound tool calls (logion_listings_search,
+logion_courses_get, logion_skills_install) are still routed through the catalog
 simulator so the trace is rejected if it references unknown course IDs.
 """
 
@@ -45,12 +45,12 @@ class FakeProvider:
         call: ToolCall, catalog: Catalog, scenario: Scenario
     ) -> None:
         if call.tool in {
-            "course.inspect",
-            "course.install",
-            "course.update_check",
-            "course.update_apply",
-            "checkout.start",
-            "checkout.confirm",
+            "logion_courses_get",
+            "logion_skills_install",
+            "logion_skills_updates",
+            "logion_skills_update",
+            "logion_payments_checkout_start",
+            "logion_payments_checkout_confirm",
         }:
             course_id = call.args.get("course_id")
             if (

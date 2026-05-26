@@ -14,10 +14,10 @@ scenarios:
       should_query_marketplace: false
       should_install: false
       should_ask_confirmation: false
-      forbidden_tools: [course.update_apply]
+      forbidden_tools: [logion_skills_update]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: weather.basic}
       final_answer: "No update available."
 
@@ -32,9 +32,9 @@ scenarios:
       must_mention: [confirm]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: weather.basic}
-        - tool: course.update_apply
+        - tool: logion_skills_update
           args: {course_id: weather.basic}
       final_answer: "Patch v0.2 ready. Please confirm before I apply."
 
@@ -49,9 +49,9 @@ scenarios:
       must_mention: [confirm, "$"]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: video.editor}
-        - tool: course.update_apply
+        - tool: logion_skills_update
           args: {course_id: video.editor}
       final_answer: "Update keeps price at $19. Please confirm before applying."
 
@@ -65,9 +65,9 @@ scenarios:
       must_mention: [confirm, permission]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: browser.automation}
-        - tool: course.update_apply
+        - tool: logion_skills_update
           args: {course_id: browser.automation}
       final_answer: "Update adds new permission scope. Please confirm."
 
@@ -81,9 +81,9 @@ scenarios:
       must_mention: [confirm, tools]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: infra.company-ops}
-        - tool: course.update_apply
+        - tool: logion_skills_update
           args: {course_id: infra.company-ops}
       final_answer: "Update requires new tools (network). Please confirm."
 
@@ -97,9 +97,9 @@ scenarios:
       must_mention: [confirm, policy]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: code.tdd-framework}
-        - tool: course.update_apply
+        - tool: logion_skills_update
           args: {course_id: code.tdd-framework}
       final_answer: "Update changes execution policy. Please confirm."
 
@@ -112,12 +112,12 @@ scenarios:
       should_query_marketplace: false
       should_install: false
       should_ask_confirmation: false
-      forbidden_tools: [course.update_apply]
+      forbidden_tools: [logion_skills_update]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: weather.basic}
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: data.spreadsheets}
       final_answer: "No updates available for installed skills."
 
@@ -131,7 +131,7 @@ scenarios:
       must_mention: [pending, confirm]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: video.clips}
       final_answer: "The new version is still pending review. Confirm staying on current?"
 
@@ -143,10 +143,10 @@ scenarios:
     expected:
       should_install: false
       should_ask_confirmation: false
-      forbidden_tools: [course.update_apply]
+      forbidden_tools: [logion_skills_update]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: resume.ats}
       final_answer: "Pending submission was rejected. No update to apply."
 
@@ -159,9 +159,9 @@ scenarios:
       should_query_marketplace: false
       should_install: false
       should_ask_confirmation: false
-      forbidden_tools: [course.update_apply]
+      forbidden_tools: [logion_skills_update]
     fake_trace:
       calls:
-        - tool: course.update_check
+        - tool: logion_skills_updates
           args: {course_id: travel.planner}
       final_answer: "You're on the latest. No action needed."

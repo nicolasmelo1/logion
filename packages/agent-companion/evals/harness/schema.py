@@ -14,16 +14,16 @@ from typing import Any
 import yaml
 
 KNOWN_TOOLS = {
-    "recall.search",
-    "marketplace.search",
-    "course.inspect",
-    "course.install",
-    "course.update_check",
-    "course.update_apply",
-    "checkout.start",
-    "checkout.confirm",
-    "skill.load",
-    "permission.expand",
+    "logion_recall_search",
+    "logion_listings_search",
+    "logion_courses_get",
+    "logion_skills_install",
+    "logion_skills_updates",
+    "logion_skills_update",
+    "logion_payments_checkout_start",
+    "logion_payments_checkout_confirm",
+    "logion_skills_inspect",
+    "logion_skills_permission_expand",
 }
 
 
