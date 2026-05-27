@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models verify
+.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models split-scenarios optimize-policy verify
 
 # Override defaults via env, e.g.:
 #   make eval-llama-cpp MODEL=qwen3-8b-q5km LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
@@ -35,5 +35,25 @@ download-models:
 eval-llama-cpp:
 	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
 		bash evals/scripts/run_llama_cpp_eval.sh "$(CONFIG)" "$(MODEL)"
+
+# --- DSPy offline optimization (requires [dspy] extra) ---
+
+SPLIT_SEED ?= 42
+SPLIT_OUTPUT ?= evals/optimizers/dspy/generated_candidates/split.json
+OPTIMIZER ?= bootstrap_few_shot
+OPTIMIZER_OUTPUT ?= evals/optimizers/dspy/generated_candidates/candidate-$(shell date +%Y%m%d-%H%M%S).json
+
+split-scenarios:
+	uv run --group dspy python evals/optimizers/dspy/split_scenarios.py \
+		--scenarios evals/scenarios \
+		--seed $(SPLIT_SEED) \
+		--output $(SPLIT_OUTPUT)
+
+optimize-policy: split-scenarios
+	uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
+		--scenarios evals/scenarios \
+		--catalog evals/catalogs/fake-marketplace.yaml \
+		--optimizer $(OPTIMIZER) \
+		--output $(OPTIMIZER_OUTPUT)
 
 verify: lint format-check typecheck test package-check eval

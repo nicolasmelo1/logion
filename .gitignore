@@ -223,3 +223,6 @@ __marimo__/
 # Local GGUF model cache for llama.cpp evals
 .models/
 *.gguf
+
+# DSPy optimizer generated candidates (keep .gitkeep only)
+evals/optimizers/dspy/generated_candidates/*.json
