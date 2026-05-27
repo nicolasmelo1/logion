@@ -53,12 +53,7 @@ jobs:
           make check-models
 
       - name: Dependency audit
-        # CVE-2025-12695 (dspy): Medium 5.9 — sandbox escape in PythonInterpreter.
-        #   Not used here: we only use dspy.Signature/Module/Predict/BootstrapFewShot/MIPROv2.
-        # CVE-2025-69872 (diskcache): Critical 9.8 — pickle deserialization RCE.
-        #   Transitive dep of dspy (optional [dspy] extra). Our optimizer runs offline
-        #   with no untrusted cache-dir exposure. Both are false positives for our use case.
-        run: uv run pip-audit --skip-editable --ignore-vuln CVE-2025-12695 --ignore-vuln CVE-2025-69872
+        run: uv run pip-audit --skip-editable
 
       - name: Static security scan
         run: uv run bandit -c pyproject.toml -r packages
