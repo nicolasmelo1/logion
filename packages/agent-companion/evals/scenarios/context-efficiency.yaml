@@ -56,7 +56,7 @@ scenarios:
         - tool: logion_recall_search
           args: {query: "pivot", limit: 5}
         - tool: logion_skills_inspect
-          args: {capability_id: data.spreadsheet.pivot}
+          args: {course_id: data.spreadsheets}
       final_answer: "Pivoting your data using the local capability."
       loaded_skill_ids: [data.spreadsheet.pivot]
 
@@ -118,7 +118,7 @@ scenarios:
         - tool: logion_recall_search
           args: {query: "rain forecast", limit: 5}
         - tool: logion_skills_inspect
-          args: {capability_id: weather.forecast}
+          args: {course_id: weather.basic}
       final_answer: "It looks dry tomorrow."
       loaded_skill_ids: [weather.forecast]
 
@@ -188,7 +188,7 @@ scenarios:
         - tool: logion_recall_search
           args: {query: "cover letter tailor", limit: 5}
         - tool: logion_skills_inspect
-          args: {capability_id: cover_letter.tailor}
+          args: {course_id: cover-letter.writer}
       final_answer: "Using cover_letter.tailor locally."
       loaded_skill_ids: [cover_letter.tailor]
 
@@ -251,7 +251,7 @@ scenarios:
         - tool: logion_recall_search
           args: {query: "reply email", limit: 5}
         - tool: logion_skills_inspect
-          args: {capability_id: email.draft.reply}
+          args: {course_id: email.triage}
       final_answer: "Drafting a reply locally."
       loaded_skill_ids: [email.draft.reply]
 

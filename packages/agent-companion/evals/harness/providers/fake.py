@@ -2,10 +2,13 @@
 
 Replays the trace embedded in the scenario YAML so we can exercise graders
 without invoking an LLM. Course-bound tool calls (logion_courses_get,
-logion_skills_install, logion_skills_updates, logion_skills_update,
+logion_skills_install, logion_skills_update,
 logion_payments_checkout_start, logion_payments_checkout_confirm) are
 validated against the catalog so a scenario that references an unknown
-course_id is rejected at load time.
+course_id is rejected at load time. logion_skills_updates is excluded
+because the real CLI command (`logion skills updates`) takes no required
+positional and lists all available updates, so a scenario calling it
+without a course filter is valid.
 """
 
 from __future__ import annotations
@@ -49,7 +52,6 @@ class FakeProvider:
         if call.tool in {
             "logion_courses_get",
             "logion_skills_install",
-            "logion_skills_updates",
             "logion_skills_update",
             "logion_payments_checkout_start",
             "logion_payments_checkout_confirm",
