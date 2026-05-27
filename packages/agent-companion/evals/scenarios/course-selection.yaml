@@ -18,11 +18,11 @@ scenarios:
       max_courses_inspected: 3
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "highlight clip", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "video short clip"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: video.clips}
       final_answer: "video.clips fits ($9). Confirm install?"
       selected_course_ids: [video.clips]
@@ -39,11 +39,11 @@ scenarios:
       forbidden_course_ids: [video.clips]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "timeline color grade render", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "video editor timeline"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: video.editor}
       final_answer: "video.editor fits ($19). Confirm install?"
       selected_course_ids: [video.editor]
@@ -60,11 +60,11 @@ scenarios:
       forbidden_course_ids: [cover-letter.writer]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "resume ats bullets", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "resume ats"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: resume.ats}
       final_answer: "resume.ats fits ($5). Confirm install?"
       selected_course_ids: [resume.ats]
@@ -81,11 +81,11 @@ scenarios:
       forbidden_course_ids: [resume.ats]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "cover letter tailored", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "cover letter"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: cover-letter.writer}
       final_answer: "cover-letter.writer fits ($4). Confirm install?"
       selected_course_ids: [cover-letter.writer]
@@ -102,11 +102,11 @@ scenarios:
       forbidden_course_ids: [code.debugging]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "tdd scaffold", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "tdd"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.tdd-framework}
       final_answer: "code.tdd-framework fits (free). Confirm install?"
       selected_course_ids: [code.tdd-framework]
@@ -123,11 +123,11 @@ scenarios:
       forbidden_course_ids: [code.tdd-framework]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "bisect regression", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "debug bisect"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.debugging}
       final_answer: "code.debugging fits (free). Confirm install?"
       selected_course_ids: [code.debugging]
@@ -144,11 +144,11 @@ scenarios:
       forbidden_course_ids: [infra.company-ops]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "terraform static review", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "terraform review"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: terraform.static-review}
       final_answer: "terraform.static-review fits (free). Confirm install?"
       selected_course_ids: [terraform.static-review]
@@ -165,11 +165,11 @@ scenarios:
       forbidden_course_ids: [terraform.static-review]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "runbooks cloud ops", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "company ops"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: infra.company-ops}
       final_answer: "infra.company-ops fits ($49). Confirm install?"
       selected_course_ids: [infra.company-ops]
@@ -186,11 +186,11 @@ scenarios:
       forbidden_course_ids: [data.spreadsheets]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "ocr scanned table", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "ocr"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: ocr.documents}
       final_answer: "ocr.documents fits ($6). Confirm install?"
       selected_course_ids: [ocr.documents]
@@ -207,11 +207,11 @@ scenarios:
       forbidden_course_ids: [ocr.documents]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "xlsx pivot", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "spreadsheet pivot"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: data.spreadsheets}
       final_answer: "data.spreadsheets fits ($7). Confirm install?"
       selected_course_ids: [data.spreadsheets]
@@ -228,11 +228,11 @@ scenarios:
       forbidden_course_ids: [browser.automation]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "inbox triage", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "email triage"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: email.triage}
       final_answer: "email.triage fits ($3). Confirm install?"
       selected_course_ids: [email.triage]
@@ -249,11 +249,11 @@ scenarios:
       forbidden_course_ids: [email.triage]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "auto fill job applications", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "browser form automation"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: browser.automation}
       final_answer: "browser.automation fits ($12). Confirm install?"
       selected_course_ids: [browser.automation]
@@ -270,11 +270,11 @@ scenarios:
       forbidden_course_ids: [travel.planner]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "rain lisbon tomorrow", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "weather forecast"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: weather.basic}
       final_answer: "weather.basic fits (free). Confirm install?"
       selected_course_ids: [weather.basic]
@@ -291,11 +291,11 @@ scenarios:
       forbidden_course_ids: [weather.basic]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "trip plan lisbon", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "trip planner"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: travel.planner}
       final_answer: "travel.planner fits ($8). Confirm install?"
       selected_course_ids: [travel.planner]
@@ -312,11 +312,11 @@ scenarios:
       forbidden_course_ids: [code.tdd-framework]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "flaky test reproduce", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "debug reproduce"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.debugging}
       final_answer: "code.debugging fits (free). Confirm install?"
       selected_course_ids: [code.debugging]
@@ -333,11 +333,11 @@ scenarios:
       forbidden_course_ids: [code.debugging]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "new project tdd", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "tdd framework"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.tdd-framework}
       final_answer: "code.tdd-framework fits (free). Confirm install?"
       selected_course_ids: [code.tdd-framework]
@@ -354,11 +354,11 @@ scenarios:
       forbidden_course_ids: [cover-letter.writer]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "resume ats keywords", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "resume ats"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: resume.ats}
       final_answer: "resume.ats fits ($5). Confirm install?"
       selected_course_ids: [resume.ats]
@@ -375,11 +375,11 @@ scenarios:
       forbidden_course_ids: [resume.ats]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "tailor cover letter posting", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "cover letter tailor"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: cover-letter.writer}
       final_answer: "cover-letter.writer fits ($4). Confirm install?"
       selected_course_ids: [cover-letter.writer]
@@ -396,11 +396,11 @@ scenarios:
       forbidden_course_ids: [video.editor]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "auto caption silence trim", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "clip captions silence"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: video.clips}
       final_answer: "video.clips fits ($9). Confirm install?"
       selected_course_ids: [video.clips]
@@ -417,11 +417,11 @@ scenarios:
       forbidden_course_ids: [video.clips]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "multi track audio color", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "video editor audio color"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: video.editor}
       final_answer: "video.editor fits ($19). Confirm install?"
       selected_course_ids: [video.editor]
@@ -438,11 +438,11 @@ scenarios:
       forbidden_course_ids: [data.spreadsheets]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "receipts key value", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "ocr receipts"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: ocr.documents}
       final_answer: "ocr.documents fits ($6). Confirm install?"
       selected_course_ids: [ocr.documents]
@@ -459,11 +459,11 @@ scenarios:
       forbidden_course_ids: [ocr.documents]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "csv sales sku month", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "spreadsheet analyze"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: data.spreadsheets}
       final_answer: "data.spreadsheets fits ($7). Confirm install?"
       selected_course_ids: [data.spreadsheets]
@@ -480,11 +480,11 @@ scenarios:
       forbidden_course_ids: [email.triage]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "fill long form pages", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "browser form fill"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: browser.automation}
       final_answer: "browser.automation fits ($12). Confirm install?"
       selected_course_ids: [browser.automation]
@@ -501,11 +501,11 @@ scenarios:
       forbidden_course_ids: [browser.automation]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "email reply unread boss", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "email reply draft"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: email.triage}
       final_answer: "email.triage fits ($3). Confirm install?"
       selected_course_ids: [email.triage]
@@ -522,11 +522,11 @@ scenarios:
       forbidden_course_ids: [data.spreadsheets]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "budget itinerary sao paulo", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "trip itinerary budget"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: travel.planner}
       final_answer: "travel.planner fits ($8). Confirm install?"
       selected_course_ids: [travel.planner]
@@ -543,11 +543,11 @@ scenarios:
       forbidden_course_ids: [infra.company-ops]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "weather storm region", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "weather forecast"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: weather.basic}
       final_answer: "weather.basic fits (free). Confirm install?"
       selected_course_ids: [weather.basic]
@@ -564,11 +564,11 @@ scenarios:
       forbidden_course_ids: [code.debugging]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "generate unit tests module", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "tests generate tdd"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: code.tdd-framework}
       final_answer: "code.tdd-framework fits (free). Confirm install?"
       selected_course_ids: [code.tdd-framework]
@@ -585,11 +585,11 @@ scenarios:
       forbidden_course_ids: [infra.company-ops]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "terraform lint risky", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "terraform lint"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: terraform.static-review}
       final_answer: "terraform.static-review fits (free). Confirm install?"
       selected_course_ids: [terraform.static-review]
@@ -606,11 +606,11 @@ scenarios:
       forbidden_course_ids: [terraform.static-review]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "oncall runbook escalation", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "runbooks oncall"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: infra.company-ops}
       final_answer: "infra.company-ops fits ($49). Confirm install?"
       selected_course_ids: [infra.company-ops]
@@ -627,11 +627,11 @@ scenarios:
       forbidden_course_ids: [video.editor]
     fake_trace:
       calls:
-        - tool: recall.search
+        - tool: logion_recall_search
           args: {query: "short clips social cheap", limit: 5}
-        - tool: marketplace.search
+        - tool: logion_listings_search
           args: {query: "short clips"}
-        - tool: course.inspect
+        - tool: logion_courses_get
           args: {course_id: video.clips}
       final_answer: "video.clips ($9) is the cheaper fit. Confirm install?"
       selected_course_ids: [video.clips]

@@ -219,3 +219,7 @@ __marimo__/
 
 # Mock server PID
 .prism.pid
+
+# Local GGUF model cache for llama.cpp evals
+.models/
+*.gguf

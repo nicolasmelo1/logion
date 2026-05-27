@@ -1,6 +1,12 @@
 SHELL := /bin/bash
 
-.PHONY: test lint format-check typecheck package-check eval verify
+.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models verify
+
+# Override defaults via env, e.g.:
+#   make eval-llama-cpp MODEL=qwen3-8b-q5km LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
+CONFIG ?= evals/providers/llama_cpp_local.example.yaml
+MODEL ?= qwen3-8b-q5km
+LLAMA_EXTRA_ARGS ?=
 
 test:
 	uv run python -m pytest tests/ -q
@@ -22,5 +28,12 @@ eval:
 		--provider fake \
 		--scenarios evals/scenarios \
 		--catalog evals/catalogs/fake-marketplace.yaml
+
+download-models:
+	bash evals/scripts/download_llama_cpp_models.sh
+
+eval-llama-cpp:
+	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
+		bash evals/scripts/run_llama_cpp_eval.sh "$(CONFIG)" "$(MODEL)"
 
 verify: lint format-check typecheck test package-check eval

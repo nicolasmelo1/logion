@@ -16,6 +16,7 @@ from evals.harness.schema import (
     Trace,
     load_catalog,
     load_scenarios_from_dir,
+    load_scenarios_from_file,
 )
 
 
@@ -24,6 +25,7 @@ class ScenarioResult:
     scenario_id: str
     suite: str
     findings: tuple[Finding, ...]
+    trace: Trace | None = None
 
     @property
     def passed(self) -> bool:
@@ -33,18 +35,24 @@ class ScenarioResult:
         return [f for f in self.findings if not f.passed]
 
 
+METRIC_PROVIDER = "provider"
+
+
 class Provider(Protocol):
     def run(self, scenario: Scenario, catalog: Catalog) -> Trace: ...
 
 
 def run(
-    scenarios_dir: Path,
+    scenarios_path: Path,
     catalog_path: Path,
     *,
     provider: Provider | None = None,
 ) -> list[ScenarioResult]:
     catalog = load_catalog(catalog_path)
-    scenarios = load_scenarios_from_dir(scenarios_dir)
+    if scenarios_path.is_file():
+        scenarios = load_scenarios_from_file(scenarios_path)
+    else:
+        scenarios = load_scenarios_from_dir(scenarios_path)
     return run_scenarios(scenarios, catalog, provider=provider)
 
 
@@ -57,13 +65,25 @@ def run_scenarios(
     prov = provider or FakeProvider()
     results: list[ScenarioResult] = []
     for scenario in scenarios:
-        trace = prov.run(scenario, catalog)
-        findings = grade(scenario, trace, catalog)
+        trace: Trace | None = None
+        try:
+            trace = prov.run(scenario, catalog)
+        except Exception as exc:
+            findings = [
+                Finding.fail(
+                    METRIC_PROVIDER,
+                    "provider failed before grading: "
+                    f"{type(exc).__name__}: {exc}",
+                )
+            ]
+        else:
+            findings = grade(scenario, trace, catalog)
         results.append(
             ScenarioResult(
                 scenario_id=scenario.id,
                 suite=scenario.suite,
                 findings=tuple(findings),
+                trace=trace,
             )
         )
     return results
@@ -100,11 +120,14 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
             metric_bucket["total"] += 1
             metric_bucket["passed" if passed else "failed"] += 1
         if scenario_failures:
-            failures.append({
+            entry: dict[str, Any] = {
                 "scenario_id": result.scenario_id,
                 "suite": result.suite,
                 "failures": scenario_failures,
-            })
+            }
+            if result.trace is not None:
+                entry["trace"] = _trace_dump(result.trace)
+            failures.append(entry)
     totals = {
         "scenarios": len(results),
         "passed": sum(1 for r in results if r.passed),
@@ -115,6 +138,19 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
         "by_suite": dict(by_suite),
         "by_metric": dict(by_metric),
         "failures": failures,
+    }
+
+
+def _trace_dump(trace: Trace) -> dict[str, Any]:
+    return {
+        "final_answer": trace.final_answer,
+        "selected_course_ids": list(trace.selected_course_ids),
+        "loaded_skill_ids": list(trace.loaded_skill_ids),
+        "calls": [
+            {"tool": call.tool, "args": dict(call.args)}
+            for call in trace.calls
+        ],
+        "token_estimate": dict(trace.token_estimate),
     }
 
 
