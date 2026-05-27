@@ -18,8 +18,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+# Allow `python evals/optimizers/dspy/split_scenarios.py` from the
+# package root.  evals/ is not part of the installed wheel.
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from evals.harness.schema import (
     Scenario,

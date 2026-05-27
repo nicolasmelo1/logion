@@ -133,6 +133,24 @@ def _build_trace_from_prediction(
     )
 
 
+def _dict_to_expected(raw: dict[str, Any]) -> Expected:
+    """Convert a JSON-roundtripped expected dict back to Expected."""
+    return Expected(
+        should_query_marketplace=raw.get("should_query_marketplace"),
+        should_install=raw.get("should_install"),
+        should_ask_confirmation=raw.get("should_ask_confirmation"),
+        should_run_recall=raw.get("should_run_recall"),
+        acceptable_course_ids=tuple(raw.get("acceptable_course_ids", [])),
+        forbidden_course_ids=tuple(raw.get("forbidden_course_ids", [])),
+        max_courses_inspected=raw.get("max_courses_inspected"),
+        max_loaded_skills=raw.get("max_loaded_skills"),
+        must_mention=tuple(raw.get("must_mention", [])),
+        must_not_mention=tuple(raw.get("must_not_mention", [])),
+        forbidden_tools=tuple(raw.get("forbidden_tools", [])),
+        recall_bypass_allowed=bool(raw.get("recall_bypass_allowed", False)),
+    )
+
+
 def _build_scenario_from_gold(gold: Any) -> Scenario:
     """Reconstruct a Scenario from a DSPy Example for grading."""
     expected_raw = getattr(gold, "expected", None)
@@ -140,6 +158,8 @@ def _build_scenario_from_gold(gold: Any) -> Scenario:
         expected = Expected()
     elif isinstance(expected_raw, Expected):
         expected = expected_raw
+    elif isinstance(expected_raw, dict):
+        expected = _dict_to_expected(expected_raw)
     else:
         expected = Expected()
 

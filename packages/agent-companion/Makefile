@@ -51,7 +51,7 @@ split-scenarios:
 
 optimize-policy: split-scenarios
 	uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
-		--scenarios evals/scenarios \
+		--split $(SPLIT_OUTPUT) \
 		--catalog evals/catalogs/fake-marketplace.yaml \
 		--optimizer $(OPTIMIZER) \
 		--output $(OPTIMIZER_OUTPUT)

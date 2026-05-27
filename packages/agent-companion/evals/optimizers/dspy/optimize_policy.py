@@ -31,6 +31,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+# Allow `python evals/optimizers/dspy/optimize_policy.py` from the
+# package root.  evals/ is not part of the installed wheel.
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import dspy
 
 from evals.harness.schema import load_catalog, load_scenarios_from_dir
@@ -76,19 +82,35 @@ def _build_examples(
     return examples
 
 
+def _load_split(path: Path) -> dict[str, list[dict[str, Any]]]:
+    """Load a previously written split JSON file."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data["splits"]
+
+
 def run_optimization(
     *,
     scenarios_path: Path,
     catalog_path: Path,
     optimizer_name: str,
     seed: int = 42,
+    split_path: Path | None = None,
     output_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Run a DSPy optimizer and return the candidate report."""
+    """Run a DSPy optimizer and return the candidate report.
+
+    If ``split_path`` is provided, the train/dev/test split is loaded
+    from the JSON file written by ``split_scenarios.py``. Otherwise the
+    scenarios are split in-process using ``seed``.
+    """
     catalog = load_catalog(catalog_path)
     metric = DecisionPolicyMetric(catalog)
-    scenarios = load_scenarios_from_dir(scenarios_path)
-    split = split_scenarios(scenarios, seed=seed)
+
+    if split_path is not None:
+        split = _load_split(split_path)
+    else:
+        scenarios = load_scenarios_from_dir(scenarios_path)
+        split = split_scenarios(scenarios, seed=seed)
 
     train_examples = _build_examples(split["train"])
     dev_examples = _build_examples(split["dev"])
@@ -190,7 +212,15 @@ def _parse_args() -> argparse.Namespace:
         "--seed",
         type=int,
         default=42,
-        help="Seed for scenario splitting.",
+        help="Seed for scenario splitting (ignored if --split is given).",
+    )
+    parser.add_argument(
+        "--split",
+        type=Path,
+        dest="split_path",
+        help="Path to a split JSON from split_scenarios.py. "
+        "If provided, --scenarios and --seed are only used as "
+        "fallback for in-process splitting.",
     )
     parser.add_argument(
         "--output",
@@ -208,6 +238,7 @@ def main() -> int:
             catalog_path=args.catalog,
             optimizer_name=args.optimizer,
             seed=args.seed,
+            split_path=args.split_path,
             output_path=args.output,
         )
     except ValueError as exc:
