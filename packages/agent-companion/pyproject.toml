@@ -12,7 +12,7 @@ logion-cli = { workspace = true }
 
 [project.optional-dependencies]
 dspy = [
-    "dspy>=2.6,<3.0",
+    "dspy>=3.0.4,<4.0",
 ]
 
 [dependency-groups]
@@ -30,7 +30,7 @@ dev = [
 # by different tooling (``uv run --group dspy`` vs
 # ``pip install -e '.[dspy]'``), so both must list the same version range.
 dspy = [
-    "dspy>=2.6,<3.0",
+    "dspy>=3.0.4,<4.0",
 ]
 
 [build-system]

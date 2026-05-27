@@ -33,7 +33,10 @@ jobs:
           enable-cache: true
 
       - name: Install locked dependencies
-        run: uv sync --all-packages --all-groups --locked
+        # --all-groups includes the dspy group which pulls in diskcache
+        # (CVE-2025-69872, unfixable). The dspy optimizer is an offline-only
+        # experimental tool — not needed in CI. Install without it.
+        run: uv sync --all-packages --locked
 
       - name: Lint
         run: uv run ruff check packages/
