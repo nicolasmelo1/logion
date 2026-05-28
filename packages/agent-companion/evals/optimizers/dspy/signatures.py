@@ -22,6 +22,9 @@ ActionKind = Literal[
 ]
 
 
+UNAVAILABLE_TOOLS: tuple[str, ...] = ("logion skills search",)
+
+
 class DecisionPolicySignature(dspy.Signature):
     """Decide which action the Logion bootstrap skill should take.
 
@@ -29,6 +32,16 @@ class DecisionPolicySignature(dspy.Signature):
     marketplace search results, and the current policy instructions,
     produce a structured decision with action, optional search query,
     selected courses, confirmation flag, and a short reason.
+
+    Constraints:
+    - Only emit actions from the `ActionKind` enum; do not invent new
+      action names or route through tools that are not yet implemented.
+    - Treat any command labeled "planned" in `current_policy_text` as
+      unavailable. Specifically, the following are NOT executable yet
+      and must not appear in the chosen routing: logion skills search.
+    - Marketplace search must go through `search_marketplace`
+      (which corresponds to `logion listings search`), never through a
+      planned/unimplemented command.
     """
 
     user_prompt: str = dspy.InputField(

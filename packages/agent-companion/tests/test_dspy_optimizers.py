@@ -196,6 +196,87 @@ def test_ask_before_install_prediction_does_not_install() -> None:
     assert "confirm" in trace.final_answer.lower()
 
 
+def test_run_optimization_end_to_end_with_dummy_lm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Compile + evaluate the policy module against a DummyLM end-to-end.
+
+    Guards the wiring between the CLI entry point, the signature, the
+    metric, and DSPy's optimizer pipeline so regressions surface without
+    needing a real LLM endpoint.
+    """
+    pytest.importorskip("dspy")
+    import dspy
+    from dspy.utils import DummyLM
+
+    import evals.optimizers.dspy.optimize_policy as optimize_policy
+
+    def _make_entry(idx: int) -> dict[str, Any]:
+        return {
+            "id": f"dummy-{idx:03d}",
+            "user_prompt": f"prompt {idx}",
+            "suite": "routing",
+            "installed_capabilities": [],
+            "local_recall": [],
+            "catalog_fixture": "fake-marketplace.yaml",
+            "expected": {
+                "should_query_marketplace": True,
+                "should_ask_confirmation": True,
+                "should_run_recall": True,
+                "acceptable_course_ids": ["weather.basic"],
+            },
+        }
+
+    split = {
+        "train": [_make_entry(0), _make_entry(1)],
+        "dev": [_make_entry(2)],
+        "test": [],
+    }
+    split_path = tmp_path / "split.json"
+    split_path.write_text(
+        '{"splits": ' + __import__("json").dumps(split) + "}",
+        encoding="utf-8",
+    )
+
+    def _install_dummy_lm() -> None:
+        answer = {
+            "action": "ask_before_install",
+            "query": "weather forecast",
+            "selected_course_ids": "weather.basic",
+            "requires_user_confirmation": True,
+            "reason": "Confirm before install.",
+        }
+        dspy.configure(lm=DummyLM([answer] * 64))
+
+    monkeypatch.setattr(
+        optimize_policy,
+        "_configure_dspy_lm_from_env",
+        _install_dummy_lm,
+    )
+
+    output_path = tmp_path / "candidate.json"
+    report = optimize_policy.run_optimization(
+        scenarios_path=Path("evals/scenarios"),
+        catalog_path=Path("evals/catalogs/fake-marketplace.yaml"),
+        optimizer_name="bootstrap_few_shot",
+        split_path=split_path,
+        output_path=output_path,
+    )
+
+    assert report["optimizer"] == "bootstrap_few_shot"
+    assert report["train_count"] == 2
+    assert report["dev_count"] == 1
+    assert report["test_count"] == 0
+    assert isinstance(report["optimizer_config"], dict)
+    assert report["optimizer_config"] == {
+        "max_bootstrapped_demos": 4,
+        "max_labeled_demos": 8,
+    }
+    assert 0.0 <= report["dev_score_avg"] <= 1.0
+    assert output_path.is_file()
+
+
 def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
     pred = SimpleNamespace(
         action="ask_before_checkout",

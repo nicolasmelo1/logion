@@ -45,26 +45,33 @@ from evals.optimizers.dspy.metrics import DecisionPolicyMetric
 from evals.optimizers.dspy.signatures import DecisionPolicyModule
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
+_BOOTSTRAP_FEW_SHOT_CONFIG: dict[str, Any] = {
+    "max_bootstrapped_demos": 4,
+    "max_labeled_demos": 8,
+}
+
+_MIPRO_V2_CONFIG: dict[str, Any] = {
+    "auto": "medium",
+    "num_threads": 1,
+}
+
 
 def _bootstrap_few_shot(metric: DecisionPolicyMetric) -> Any:
-    return dspy.BootstrapFewShot(
-        metric=metric,
-        max_bootstrapped_demos=4,
-        max_labeled_demos=8,
-    )
+    return dspy.BootstrapFewShot(metric=metric, **_BOOTSTRAP_FEW_SHOT_CONFIG)
 
 
 def _mipro_v2(metric: DecisionPolicyMetric) -> Any:
-    return dspy.MIPROv2(
-        metric=metric,
-        auto="medium",
-        num_threads=1,
-    )
+    return dspy.MIPROv2(metric=metric, **_MIPRO_V2_CONFIG)
 
 
 OPTIMIZERS = {
     "bootstrap_few_shot": _bootstrap_few_shot,
     "mipro_v2": _mipro_v2,
+}
+
+OPTIMIZER_CONFIGS: dict[str, dict[str, Any]] = {
+    "bootstrap_few_shot": _BOOTSTRAP_FEW_SHOT_CONFIG,
+    "mipro_v2": _MIPRO_V2_CONFIG,
 }
 
 
@@ -224,7 +231,7 @@ def run_optimization(
         "catalog": str(catalog_path),
         "scenarios_dir": str(scenarios_path),
         "split_hash": _split_hash(split),
-        "optimizer_config": str(optimizer),
+        "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
     }
 
     if output_path is not None:
