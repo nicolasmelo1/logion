@@ -81,20 +81,6 @@ def _action_to_calls(
                 args={"course_id": course_id},
             )
         )
-    if action == "ask_before_install" and selected_course_ids:
-        calls.append(
-            ToolCall(
-                tool="logion_skills_install",
-                args={"course_id": selected_course_ids[0]},
-            )
-        )
-    if action == "ask_before_checkout" and selected_course_ids:
-        calls.append(
-            ToolCall(
-                tool="logion_payments_checkout_start",
-                args={"course_id": selected_course_ids[0]},
-            )
-        )
     return tuple(calls)
 
 

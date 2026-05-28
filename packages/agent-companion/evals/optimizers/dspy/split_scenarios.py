@@ -40,6 +40,33 @@ def _stable_hash(text: str, seed: int) -> float:
     return int(h[:8], 16) / 0x100000000
 
 
+def _bucket_counts(
+    total: int,
+    *,
+    train_ratio: float,
+    dev_ratio: float,
+    test_ratio: float,
+) -> dict[str, int]:
+    """Return exact split counts using largest-remainder rounding."""
+    ratios = {
+        "train": train_ratio,
+        "dev": dev_ratio,
+        "test": test_ratio,
+    }
+    raw_counts = {name: total * ratio for name, ratio in ratios.items()}
+    counts = {name: int(value) for name, value in raw_counts.items()}
+    remaining = total - sum(counts.values())
+
+    by_remainder = sorted(
+        raw_counts,
+        key=lambda name: (raw_counts[name] - counts[name], ratios[name]),
+        reverse=True,
+    )
+    for name in by_remainder[:remaining]:
+        counts[name] += 1
+    return counts
+
+
 def _expected_dict(scenario: Scenario) -> dict[str, Any]:
     """Extract expected fields into a JSON-serializable dict."""
     return {
@@ -74,6 +101,11 @@ def split_scenarios(
     The ratios must sum to 1.0.
     """
     total = train_ratio + dev_ratio + test_ratio
+    if min(train_ratio, dev_ratio, test_ratio) < 0:
+        raise ValueError(
+            "Ratios must be non-negative, got "
+            f"train={train_ratio}, dev={dev_ratio}, test={test_ratio}"
+        )
     if abs(total - 1.0) > 1e-9:
         raise ValueError(
             f"Ratios must sum to 1.0, got {total} "
@@ -87,36 +119,49 @@ def split_scenarios(
         "test": [],
     }
 
-    for scenario in scenarios:
-        h = _stable_hash(scenario.id, seed)
-        if h < train_ratio:
-            bucket = "train"
-        elif h < train_ratio + dev_ratio:
-            bucket = "dev"
-        else:
-            bucket = "test"
+    counts = _bucket_counts(
+        len(scenarios),
+        train_ratio=train_ratio,
+        dev_ratio=dev_ratio,
+        test_ratio=test_ratio,
+    )
+    ordered = sorted(
+        scenarios,
+        key=lambda scenario: (_stable_hash(scenario.id, seed), scenario.id),
+    )
+    train_count = counts["train"]
+    dev_end = train_count + counts["dev"]
+    assignments = (
+        ("train", ordered[:train_count]),
+        ("dev", ordered[train_count:dev_end]),
+        ("test", ordered[dev_end:]),
+    )
 
-        entry: dict[str, Any] = {
-            "id": scenario.id,
-            "suite": scenario.suite,
-            "prompt": scenario.prompt,
-            "user_prompt": scenario.prompt,
-            "installed_capabilities": list(scenario.installed_capabilities),
-            "catalog_fixture": scenario.catalog_fixture,
-            "expected": _expected_dict(scenario),
-        }
-        if scenario.fake_trace.calls:
-            entry["fake_trace"] = {
-                "calls": [
-                    {"tool": c.tool, "args": dict(c.args)}
-                    for c in scenario.fake_trace.calls
-                ],
-                "final_answer": (scenario.fake_trace.final_answer),
-                "selected_course_ids": list(
-                    scenario.fake_trace.selected_course_ids
+    for bucket, bucket_scenarios in assignments:
+        for scenario in bucket_scenarios:
+            entry: dict[str, Any] = {
+                "id": scenario.id,
+                "suite": scenario.suite,
+                "prompt": scenario.prompt,
+                "user_prompt": scenario.prompt,
+                "installed_capabilities": list(
+                    scenario.installed_capabilities
                 ),
+                "catalog_fixture": scenario.catalog_fixture,
+                "expected": _expected_dict(scenario),
             }
-        buckets[bucket].append(entry)
+            if scenario.fake_trace.calls:
+                entry["fake_trace"] = {
+                    "calls": [
+                        {"tool": c.tool, "args": dict(c.args)}
+                        for c in scenario.fake_trace.calls
+                    ],
+                    "final_answer": (scenario.fake_trace.final_answer),
+                    "selected_course_ids": list(
+                        scenario.fake_trace.selected_course_ids
+                    ),
+                }
+            buckets[bucket].append(entry)
 
     return buckets
 
