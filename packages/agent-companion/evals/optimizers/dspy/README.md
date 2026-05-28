@@ -20,7 +20,7 @@ pip install -e '.[dspy]'
 ### 1. Split scenarios
 
 ```bash
-python evals/optimizers/dspy/split_scenarios.py \
+logion evals dspy split-scenarios \
     --scenarios evals/scenarios \
     --seed 42 \
     --output evals/optimizers/dspy/generated_candidates/split.json
@@ -32,7 +32,7 @@ Requires a running LLM endpoint (set `DSPY_LM` env var or configure
 `dspy.settings`):
 
 ```bash
-DSPY_LM=openai/qwen3-8b-q5km python evals/optimizers/dspy/optimize_policy.py \
+DSPY_LM=openai/qwen3-8b-q5km logion evals dspy optimize-policy \
     --scenarios evals/scenarios \
     --catalog evals/catalogs/fake-marketplace.yaml \
     --optimizer bootstrap_few_shot \
@@ -79,8 +79,8 @@ evals/optimizers/dspy/
 ├── __init__.py
 ├── signatures.py          ← DSPy Signature + Module
 ├── metrics.py              ← Composite decision-policy metric
-├── split_scenarios.py      ← Deterministic train/dev/test split
-├── optimize_policy.py      ← Optimizer CLI
+├── split_scenarios.py      ← implementation used by `logion evals dspy split-scenarios`
+├── optimize_policy.py      ← implementation used by `logion evals dspy optimize-policy`
 └── generated_candidates/
     └── .gitkeep
 ```

@@ -10,6 +10,7 @@ from cli.commands import (
     bounties,
     course_reviews,
     courses,
+    evals,
     health,
     identity,
     listings,
@@ -46,5 +47,6 @@ def build_parser() -> argparse.ArgumentParser:
     bounties.register(subparsers)
     skills.register(subparsers)
     recall.register(subparsers)
+    evals.register(subparsers)
 
     return parser
