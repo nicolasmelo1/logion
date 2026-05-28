@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
-from evals.harness.schema import Expected, FakeTrace, Scenario
-from evals.optimizers.dspy.metrics import _build_trace_from_prediction
+from evals.harness.graders import (
+    METRIC_CONTEXT_EFFICIENCY,
+    METRIC_ROUTING,
+    METRIC_UPDATES,
+    Finding,
+)
+from evals.harness.schema import Expected, FakeTrace, Scenario, load_catalog
+from evals.optimizers.dspy.metrics import (
+    _build_scenario_from_gold,
+    _build_trace_from_prediction,
+    _weighted_score,
+)
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
 
@@ -16,8 +28,8 @@ def _scenario(idx: int) -> Scenario:
         id=f"scenario-{idx:03d}",
         prompt=f"Prompt {idx}",
         suite="routing",
-        installed_capabilities=(),
-        local_recall=(),
+        installed_capabilities=("existing-skill",),
+        local_recall=({"id": "existing-skill", "summary": "Cached"},),
         catalog_fixture="fake-marketplace.yaml",
         expected=Expected(),
         fake_trace=FakeTrace(calls=(), final_answer=""),
@@ -77,6 +89,94 @@ def test_split_scenarios_rejects_negative_ratios() -> None:
             dev_ratio=0.6,
             test_ratio=0.5,
         )
+
+
+def test_split_scenarios_preserves_gold_context() -> None:
+    scenario = _scenario(1)
+
+    split = split_scenarios([scenario], seed=42)
+    [entry] = [entry for bucket in split.values() for entry in bucket]
+
+    assert entry["installed_capabilities"] == ["existing-skill"]
+    assert entry["local_recall"] == [
+        {"id": "existing-skill", "summary": "Cached"}
+    ]
+
+
+def test_build_scenario_from_gold_preserves_context() -> None:
+    gold = SimpleNamespace(
+        id="scenario-with-context",
+        user_prompt="Use the cached skill",
+        suite="routing",
+        installed_capabilities="existing-skill,other-skill",
+        local_recall=[{"id": "existing-skill", "summary": "Cached"}],
+        catalog_fixture="fake-marketplace.yaml",
+        expected={"should_query_marketplace": False},
+    )
+
+    scenario = _build_scenario_from_gold(gold)
+
+    assert scenario.installed_capabilities == (
+        "existing-skill",
+        "other-skill",
+    )
+    assert scenario.local_recall == (
+        {"id": "existing-skill", "summary": "Cached"},
+    )
+    assert scenario.expected.should_query_marketplace is False
+
+
+def test_weighted_score_renormalizes_over_applicable_metrics() -> None:
+    score = _weighted_score([
+        Finding.ok(METRIC_ROUTING),
+        Finding.fail(METRIC_UPDATES, "missing update check"),
+    ])
+
+    assert score == pytest.approx(0.35 / (0.35 + 0.15))
+    assert _weighted_score([Finding.ok(METRIC_CONTEXT_EFFICIENCY)]) == 1.0
+    assert _weighted_score([]) == 0.0
+
+
+def test_build_examples_populates_optimizer_inputs() -> None:
+    pytest.importorskip("dspy")
+    from evals.optimizers.dspy.optimize_policy import _build_examples
+
+    catalog = load_catalog(Path("evals/catalogs/fake-marketplace.yaml"))
+    entry = split_scenarios([_scenario(1)], seed=42)["train"][0]
+
+    [example] = _build_examples(
+        [entry],
+        catalog=catalog,
+        current_policy_text="Policy text",
+    )
+
+    assert example.marketplace_results
+    assert example.current_policy_text == "Policy text"
+    assert example.expected == entry["expected"]
+    assert example.local_recall == entry["local_recall"]
+
+
+def test_optimizer_factory_binds_metric(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("dspy")
+    import evals.optimizers.dspy.optimize_policy as optimize_policy
+
+    captured: dict[str, object] = {}
+
+    class FakeBootstrapFewShot:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr(
+        optimize_policy.dspy, "BootstrapFewShot", FakeBootstrapFewShot
+    )
+
+    metric: Any = SimpleNamespace()
+    optimizer = optimize_policy.OPTIMIZERS["bootstrap_few_shot"](metric)
+
+    assert isinstance(optimizer, FakeBootstrapFewShot)
+    assert captured["metric"] is metric
 
 
 def test_ask_before_install_prediction_does_not_install() -> None:

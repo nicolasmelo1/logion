@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -39,45 +40,102 @@ if str(ROOT) not in sys.path:
 
 import dspy
 
-from evals.harness.schema import load_catalog, load_scenarios_from_dir
+from evals.harness.schema import Catalog, load_catalog, load_scenarios_from_dir
 from evals.optimizers.dspy.metrics import DecisionPolicyMetric
 from evals.optimizers.dspy.signatures import DecisionPolicyModule
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
-OPTIMIZERS = {
-    "bootstrap_few_shot": lambda: dspy.BootstrapFewShot(
+
+def _bootstrap_few_shot(metric: DecisionPolicyMetric) -> Any:
+    return dspy.BootstrapFewShot(
+        metric=metric,
         max_bootstrapped_demos=4,
         max_labeled_demos=8,
-    ),
-    "mipro_v2": lambda: dspy.MIPROv2(
+    )
+
+
+def _mipro_v2(metric: DecisionPolicyMetric) -> Any:
+    return dspy.MIPROv2(
+        metric=metric,
         auto="medium",
         num_threads=1,
-    ),
+    )
+
+
+OPTIMIZERS = {
+    "bootstrap_few_shot": _bootstrap_few_shot,
+    "mipro_v2": _mipro_v2,
 }
+
+
+def _catalog_summary(catalog: Catalog) -> str:
+    """Return compact marketplace context for optimizer examples."""
+    lines: list[str] = []
+    for course in catalog.courses:
+        price = "free" if course.is_free else f"${course.price_usd:.2f}"
+        tags = ",".join(course.tags)
+        capabilities = ",".join(course.capability_ids)
+        lines.append(
+            f"{course.id}: {course.name} ({price}; status="
+            f"{course.review_status}; tags={tags}; "
+            f"capabilities={capabilities}) — {course.summary}"
+        )
+    return "\n".join(lines)
+
+
+def _current_policy_text() -> str:
+    """Read the current bootstrap policy text used as optimizer input."""
+    return (ROOT / "SKILL.md").read_text(encoding="utf-8")
+
+
+def _configure_dspy_lm_from_env() -> None:
+    """Configure DSPy's default LM from the documented environment vars."""
+    model = os.environ.get("DSPY_LM")
+    if not model:
+        raise ValueError(
+            "DSPY_LM must be set before running optimization, e.g. "
+            "DSPY_LM=openai/model-name"
+        )
+
+    kwargs: dict[str, str] = {}
+    api_base = os.environ.get("DSPY_API_BASE")
+    api_key = os.environ.get("DSPY_API_KEY")
+    if api_base:
+        kwargs["api_base"] = api_base
+    if api_key:
+        kwargs["api_key"] = api_key
+    dspy.configure(lm=dspy.LM(model, **kwargs))
 
 
 def _build_examples(
     bucket_scenarios: list[dict[str, Any]],
+    *,
+    catalog: Catalog,
+    current_policy_text: str,
 ) -> list[dspy.Example]:
     """Convert split JSON entries to DSPy Examples."""
+    marketplace_results = _catalog_summary(catalog)
     examples: list[dspy.Example] = []
     for entry in bucket_scenarios:
-        ex = dspy.Example(
-            user_prompt=entry["user_prompt"],
-            installed_capabilities=",".join(
-                entry.get("installed_capabilities", [])
+        installed_capabilities = ",".join(
+            entry.get("installed_capabilities", [])
+        )
+        payload = dict(entry)
+        payload.update({
+            "installed_capabilities": installed_capabilities,
+            "marketplace_results": entry.get(
+                "marketplace_results", marketplace_results
             ),
-            marketplace_results=entry.get("marketplace_results", ""),
-            current_policy_text=entry.get("current_policy_text", ""),
-        ).with_inputs(
+            "current_policy_text": entry.get(
+                "current_policy_text", current_policy_text
+            ),
+        })
+        ex = dspy.Example(**payload).with_inputs(
             "user_prompt",
             "installed_capabilities",
             "marketplace_results",
             "current_policy_text",
         )
-        for key, val in entry.items():
-            if not hasattr(ex, key):
-                setattr(ex, key, val)
         examples.append(ex)
     return examples
 
@@ -105,6 +163,7 @@ def run_optimization(
     """
     catalog = load_catalog(catalog_path)
     metric = DecisionPolicyMetric(catalog)
+    _configure_dspy_lm_from_env()
 
     if split_path is not None:
         split = _load_split(split_path)
@@ -112,8 +171,13 @@ def run_optimization(
         scenarios = load_scenarios_from_dir(scenarios_path)
         split = split_scenarios(scenarios, seed=seed)
 
-    train_examples = _build_examples(split["train"])
-    dev_examples = _build_examples(split["dev"])
+    current_policy = _current_policy_text()
+    train_examples = _build_examples(
+        split["train"], catalog=catalog, current_policy_text=current_policy
+    )
+    dev_examples = _build_examples(
+        split["dev"], catalog=catalog, current_policy_text=current_policy
+    )
 
     if not train_examples:
         raise ValueError("No training examples after split")
@@ -126,13 +190,12 @@ def run_optimization(
             f"Unknown optimizer '{optimizer_name}'. "
             f"Available: {sorted(OPTIMIZERS)}"
         )
-    optimizer = optimizer_factory()
+    optimizer = optimizer_factory(metric)
 
     module = DecisionPolicyModule()
     optimized = optimizer.compile(
         module,
         trainset=train_examples,
-        eval_kwargs={"metric": metric},
     )
 
     # Evaluate dev set with the optimized module

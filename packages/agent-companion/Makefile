@@ -49,7 +49,10 @@ split-scenarios:
 		--seed $(SPLIT_SEED) \
 		--output $(SPLIT_OUTPUT)
 
-optimize-policy: split-scenarios
+$(SPLIT_OUTPUT):
+	$(MAKE) split-scenarios
+
+optimize-policy: $(SPLIT_OUTPUT)
 	uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
 		--split $(SPLIT_OUTPUT) \
 		--catalog evals/catalogs/fake-marketplace.yaml \

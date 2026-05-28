@@ -147,6 +147,7 @@ def split_scenarios(
                 "installed_capabilities": list(
                     scenario.installed_capabilities
                 ),
+                "local_recall": [dict(item) for item in scenario.local_recall],
                 "catalog_fixture": scenario.catalog_fixture,
                 "expected": _expected_dict(scenario),
             }

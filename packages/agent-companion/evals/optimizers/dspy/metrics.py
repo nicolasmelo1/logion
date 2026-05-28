@@ -42,6 +42,13 @@ from evals.harness.schema import (
     load_catalog,
 )
 
+_WEIGHTED_METRICS = (
+    (METRIC_ROUTING, 0.35),
+    (METRIC_COURSE_SELECTION, 0.30),
+    (METRIC_CONTEXT_EFFICIENCY, 0.20),
+    (METRIC_UPDATES, 0.15),
+)
+
 # Actions that involve searching or inspecting courses.
 _SEARCH_ACTIONS = frozenset({
     "search_marketplace",
@@ -137,6 +144,24 @@ def _dict_to_expected(raw: dict[str, Any]) -> Expected:
     )
 
 
+def _str_tuple(value: Any) -> tuple[str, ...]:
+    """Convert list/tuple/string gold fields to a tuple of strings."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return tuple(item.strip() for item in value.split(",") if item.strip())
+    if isinstance(value, list | tuple):
+        return tuple(str(item) for item in value)
+    return ()
+
+
+def _local_recall_tuple(value: Any) -> tuple[dict[str, Any], ...]:
+    """Convert JSON-roundtripped local recall entries to grader shape."""
+    if not isinstance(value, list | tuple):
+        return ()
+    return tuple(dict(item) for item in value if isinstance(item, dict))
+
+
 def _build_scenario_from_gold(gold: Any) -> Scenario:
     """Reconstruct a Scenario from a DSPy Example for grading."""
     expected_raw = getattr(gold, "expected", None)
@@ -154,8 +179,10 @@ def _build_scenario_from_gold(gold: Any) -> Scenario:
         id=getattr(gold, "id", "unknown"),
         prompt=getattr(gold, "user_prompt", ""),
         suite=getattr(gold, "suite", "routing"),
-        installed_capabilities=(),
-        local_recall=(),
+        installed_capabilities=_str_tuple(
+            getattr(gold, "installed_capabilities", ())
+        ),
+        local_recall=_local_recall_tuple(getattr(gold, "local_recall", ())),
         catalog_fixture=fixture,
         expected=expected,
         fake_trace=FakeTrace(calls=(), final_answer=""),
@@ -163,13 +190,28 @@ def _build_scenario_from_gold(gold: Any) -> Scenario:
     )
 
 
-def _pass_rate(findings: list[Finding], metric: str) -> float:
-    """Return the pass rate for a specific metric."""
+def _pass_rate(findings: list[Finding], metric: str) -> float | None:
+    """Return the pass rate for a metric, or None if it did not apply."""
     relevant = [f for f in findings if f.metric == metric]
     if not relevant:
-        return 1.0
+        return None
     passed = sum(1 for f in relevant if f.passed)
     return passed / len(relevant)
+
+
+def _weighted_score(findings: list[Finding]) -> float:
+    """Return weighted score, renormalizing over applicable metrics only."""
+    weighted_sum = 0.0
+    active_weight = 0.0
+    for metric, weight in _WEIGHTED_METRICS:
+        rate = _pass_rate(findings, metric)
+        if rate is None:
+            continue
+        weighted_sum += weight * rate
+        active_weight += weight
+    if active_weight == 0.0:
+        return 0.0
+    return weighted_sum / active_weight
 
 
 def _safety_gate(findings: list[Finding]) -> float:
@@ -195,17 +237,7 @@ class DecisionPolicyMetric:
         if gate == 0.0:
             return 0.0
 
-        routing = _pass_rate(findings, METRIC_ROUTING)
-        course_sel = _pass_rate(findings, METRIC_COURSE_SELECTION)
-        context_eff = _pass_rate(findings, METRIC_CONTEXT_EFFICIENCY)
-        updates = _pass_rate(findings, METRIC_UPDATES)
-
-        return gate * (
-            0.35 * routing
-            + 0.30 * course_sel
-            + 0.20 * context_eff
-            + 0.15 * updates
-        )
+        return gate * _weighted_score(findings)
 
 
 def load_metric(catalog_path: str) -> DecisionPolicyMetric:
