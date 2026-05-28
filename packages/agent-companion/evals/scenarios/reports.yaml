@@ -1,0 +1,56 @@
+suite: reports
+
+# Reports should only be filed on explicit user direction, and the agent should
+# use the report surface rather than inventing ad-hoc moderation actions.
+
+scenarios:
+  - id: report-on-user-direction-only
+    prompt: "This browser automation course feels misleading."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      forbidden_tools: [logion_reports_create]
+    fake_trace:
+      calls: []
+      final_answer: "I can help inspect it, but I won't file a report unless you explicitly ask me to."
+
+  - id: report-required-target-field
+    prompt: "Please report the browser automation course for misleading claims."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_reports_create]
+      must_mention: [report, browser.automation]
+    fake_trace:
+      calls:
+        - tool: logion_reports_create
+          args: {target_type: course, target_id: browser.automation, reason: "misleading claims"}
+      final_answer: "Report filed for browser.automation."
+
+  - id: report-inspect-before-file
+    prompt: "Inspect browser.automation and then report it if the claims look misleading."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tool_sequence:
+        - logion_courses_get
+        - logion_reports_create
+      required_tools:
+        - logion_courses_get
+        - logion_reports_create
+    fake_trace:
+      calls:
+        - tool: logion_courses_get
+          args: {course_id: browser.automation}
+        - tool: logion_reports_create
+          args: {target_type: course, target_id: browser.automation, reason: "misleading claims after inspection"}
+      final_answer: "I inspected browser.automation and filed the report you requested."

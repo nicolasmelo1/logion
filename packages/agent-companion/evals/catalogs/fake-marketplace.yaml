@@ -29,6 +29,9 @@ courses:
       render queue.
     price_usd: 19
     review_status: approved
+    latest_version_review_status: pending
+    rating_avg: 4.6
+    rating_count: 112
     required_tools: [terminal, file]
     required_env: []
     capability_ids:
@@ -151,6 +154,8 @@ courses:
       Headless browser-driven form filling and page automation.
     price_usd: 12
     review_status: approved
+    rating_avg: 2.1
+    rating_count: 18
     required_tools: [terminal, browser]
     required_env: []
     capability_ids:

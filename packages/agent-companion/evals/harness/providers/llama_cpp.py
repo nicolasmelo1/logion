@@ -241,6 +241,131 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
             "additionalProperties": False,
         },
     ),
+    ToolSpec(
+        name="logion_notifications_unread_count",
+        description=(
+            "Run `logion notifications unread-count` before listing "
+            "notifications."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_notifications_list",
+        description=(
+            "Run `logion notifications list --unread-only --limit N` after "
+            "checking unread count."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "unread_only": {"type": "boolean"},
+                "limit": {"type": "integer", "minimum": 1},
+            },
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_course_reviews_list",
+        description=(
+            "Run `logion course-reviews list COURSE_ID` to inspect trust "
+            "signals before recommending a course."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"course_id": {"type": "string"}},
+            "required": ["course_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_payments_orders_get",
+        description=(
+            "Run `logion payments orders get ORDER_ID` to verify order state "
+            "after checkout."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"order_id": {"type": "string"}},
+            "required": ["order_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_ls",
+        description=(
+            "Run `logion bounties ls` to discover marketplace bounties."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer", "minimum": 1},
+            },
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_get",
+        description="Run `logion bounties get BOUNTY_ID` for bounty details.",
+        parameters={
+            "type": "object",
+            "properties": {"bounty_id": {"type": "string"}},
+            "required": ["bounty_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_submission_create",
+        description=(
+            "Create a bounty submission draft. Requires explicit user "
+            "approval."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "bounty_id": {"type": "string"},
+                "title": {"type": "string"},
+            },
+            "required": ["bounty_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_fund",
+        description=(
+            "Start the hosted funding flow for a bounty. Do not bypass the "
+            "checkout flow."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "bounty_id": {"type": "string"},
+                "amount_usd": {"type": "number"},
+            },
+            "required": ["bounty_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_reports_create",
+        description=(
+            "Run `logion reports create ...` only on explicit user direction."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "target_type": {"type": "string"},
+                "target_id": {"type": "string"},
+                "reason": {"type": "string"},
+            },
+            "required": ["target_type", "target_id"],
+            "additionalProperties": False,
+        },
+    ),
 )
 KNOWN_TOOL_NAMES = frozenset(spec.name for spec in TOOL_SPECS)
 
@@ -678,7 +803,7 @@ def build_tool_result_message(
     }
 
 
-def execute_synthetic_tool(
+def execute_synthetic_tool(  # noqa: C901
     call: ToolCall, scenario: Scenario, catalog: Catalog
 ) -> dict[str, Any]:
     if call.tool == "logion_recall_search":
@@ -694,6 +819,81 @@ def execute_synthetic_tool(
         # `logion skills updates` lists available updates across installed
         # skills; the fake catalog has none.
         return {"ok": True, "updates": []}
+    if call.tool == "logion_notifications_unread_count":
+        count = 0 if "no-noise-when-zero" in scenario.id else 2
+        return {"ok": True, "count": count}
+    if call.tool == "logion_notifications_list":
+        return {
+            "ok": True,
+            "notifications": [
+                {"id": "notif-1", "title": "New review on browser.automation"},
+                {
+                    "id": "notif-2",
+                    "title": "Publication feedback on video.editor",
+                },
+            ],
+        }
+    if call.tool == "logion_course_reviews_list":
+        course_id = str(call.args.get("course_id", ""))
+        course = catalog.by_id(course_id)
+        if course is None:
+            return {"ok": False, "error": f"unknown course_id: {course_id}"}
+        return {
+            "ok": True,
+            "course_id": course_id,
+            "rating_avg": course.rating_avg,
+            "rating_count": course.rating_count,
+            "reviews": [],
+        }
+    if call.tool == "logion_bounties_ls":
+        return {
+            "ok": True,
+            "results": [
+                {
+                    "id": "bounty-ocr-1",
+                    "title": "OCR receipt cleanup",
+                    "reward_usd": 300,
+                    "tags": ["ocr", "documents"],
+                }
+            ],
+        }
+    if call.tool == "logion_bounties_get":
+        bounty_id = str(call.args.get("bounty_id", ""))
+        return {
+            "ok": True,
+            "bounty": {
+                "id": bounty_id or "bounty-ocr-1",
+                "title": "OCR receipt cleanup",
+                "reward_usd": 300,
+                "status": "open",
+            },
+        }
+    if call.tool == "logion_bounties_submission_create":
+        return {
+            "ok": True,
+            "submission_id": "submission-1",
+            "bounty_id": str(call.args.get("bounty_id", "")),
+            "status": "draft",
+        }
+    if call.tool == "logion_bounties_fund":
+        return {
+            "ok": True,
+            "checkout_provider": "stripe",
+            "bounty_id": str(call.args.get("bounty_id", "")),
+        }
+    if call.tool == "logion_reports_create":
+        return {
+            "ok": True,
+            "report_id": "report-1",
+            "target_type": str(call.args.get("target_type", "")),
+            "target_id": str(call.args.get("target_id", "")),
+        }
+    if call.tool == "logion_payments_orders_get":
+        return {
+            "ok": True,
+            "order_id": str(call.args.get("order_id", "")),
+            "status": "paid",
+        }
     if call.tool == "logion_skills_inspect":
         course_id = str(call.args.get("course_id", ""))
         return {"ok": True, "course_id": course_id, "loaded": True}
@@ -751,6 +951,9 @@ def course_to_payload(course: Any) -> dict[str, Any]:
         "required_env": list(course.required_env),
         "capability_ids": list(course.capability_ids),
         "tags": list(course.tags),
+        "rating_avg": course.rating_avg,
+        "rating_count": course.rating_count,
+        "latest_version_review_status": course.latest_version_review_status,
     }
 
 

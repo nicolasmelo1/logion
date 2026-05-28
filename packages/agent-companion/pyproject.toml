@@ -10,6 +10,13 @@ dependencies = [
 [tool.uv.sources]
 logion-cli = { workspace = true }
 
+[project.optional-dependencies]
+dspy = [
+    "dspy>=3.0.4,<4.0",
+    # Required by MIPROv2 for Bayesian instruction/demo search.
+    "optuna>=3.6,<5.0",
+]
+
 [dependency-groups]
 dev = [
     "logion-cli",
@@ -18,6 +25,15 @@ dev = [
     "mypy>=1.15,<2.0.0",
     "pyyaml>=6.0,<7.0",
     "types-PyYAML>=6.0,<7.0",
+]
+
+# NOTE: keep in sync with [project.optional-dependencies] dspy above.
+# uv dependency-groups and PEP 621 optional-dependencies are consumed
+# by different tooling (``uv run --group dspy`` vs
+# ``pip install -e '.[dspy]'``), so both must list the same version range.
+dspy = [
+    "dspy>=3.0.4,<4.0",
+    "optuna>=3.6,<5.0",
 ]
 
 [build-system]
@@ -80,6 +96,12 @@ ignore = [
 "evals/harness/graders.py" = ["SIM102", "C901"]
 "evals/run_eval.py" = ["T201"]
 "tests/test_eval_harness.py" = ["FBT003", "ARG002"]
+# DSPy optimizer CLIs print by design; split_scenarios uses argparse
+# and is a standalone script. Both inject sys.path before imports
+# (no-install evals/ is not a package on the wheel).
+"evals/optimizers/dspy/optimize_policy.py" = ["T201", "E402"]
+"evals/optimizers/dspy/split_scenarios.py" = ["T201", "ERA001", "E402"]
+"evals/optimizers/dspy/render_candidate.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]

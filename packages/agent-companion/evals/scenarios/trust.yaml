@@ -1,0 +1,53 @@
+suite: trust
+
+# Trust pipeline: reviews and review-state metadata should be surfaced before
+# recommending an install, especially for paid courses or versions still under
+# review.
+
+scenarios:
+  - id: trust-check-reviews-before-recommend
+    prompt: "Should I get a browser automation skill for repetitive job forms?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [browser.automation]
+      required_tools: [logion_course_reviews_list]
+      required_tool_sequence: [logion_courses_get, logion_course_reviews_list]
+      must_mention: [rating, "2.1"]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "browser automation forms", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "browser automation forms", limit: 5}
+        - tool: logion_courses_get
+          args: {course_id: browser.automation}
+        - tool: logion_course_reviews_list
+          args: {course_id: browser.automation}
+      final_answer: "browser.automation fits, but it only has a 2.1 rating average. Confirm install anyway?"
+      selected_course_ids: [browser.automation]
+
+  - id: trust-warn-on-pending-review
+    prompt: "Install the video editor skill."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.editor]
+      required_tool_sequence: [logion_listings_search, logion_courses_get]
+      must_mention: [pending, approved]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "video editor", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "video editor", limit: 5}
+        - tool: logion_courses_get
+          args: {course_id: video.editor}
+      final_answer: "video.editor is installable now on the approved version; a newer version is still pending review. Confirm install?"
+      selected_course_ids: [video.editor]
