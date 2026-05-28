@@ -275,3 +275,155 @@ scenarios:
           args: {course_id: terraform.static-review}
       final_answer: "terraform.static-review (free). Confirm install?"
       selected_course_ids: [terraform.static-review]
+
+  - id: ctx-many-installed-recall-first
+    prompt: "Help me edit this video."
+    installed_capabilities:
+      - video.edit.timeline
+      - video.color.grade
+      - video.audio.mix
+      - video.render
+      - weather.current
+      - weather.forecast
+      - email.summarize
+      - email.draft.reply
+      - email.triage.prioritize
+      - data.spreadsheet.read
+      - data.spreadsheet.pivot
+      - data.analyze
+      - browser.form.fill
+      - browser.automation.run
+      - ocr.text
+      - ocr.tables
+      - ocr.kv
+      - travel.itinerary
+      - travel.budget
+      - resume.edit
+      - resume.ats.optimize
+      - cover_letter.draft
+      - cover_letter.tailor
+      - code.debug.reproduce
+      - code.debug.bisect
+      - code.scaffold
+      - code.tdd.workflow
+      - code.tests.generate
+      - infra.runbooks
+      - infra.terraform.review
+    local_recall:
+      - kind: capability
+        capability_id: video.edit.timeline
+        confidence: 0.97
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_ask_confirmation: false
+      max_loaded_skills: 1
+      forbidden_tools: [logion_listings_search]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "edit video", limit: 5}
+        - tool: logion_skills_inspect
+          args: {course_id: video.editor}
+      final_answer: "Using the installed video editing capability locally."
+      loaded_skill_ids: [video.edit.timeline]
+
+  - id: ctx-cap-on-listings-limit
+    prompt: "I need a tool for my work."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      max_listings_limit: 5
+      max_courses_inspected: 2
+      acceptable_course_ids: [terraform.static-review]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "work tool", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "work tool", limit: 5}
+        - tool: logion_courses_get
+          args: {course_id: terraform.static-review}
+      final_answer: "terraform.static-review is a focused fit for work review tasks. Confirm install?"
+      selected_course_ids: [terraform.static-review]
+
+  - id: ctx-no-catalog-dump
+    prompt: "Show me an OCR option without dumping the whole catalog."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [ocr.documents]
+      forbidden_tools: [logion_listings_list]
+      max_courses_inspected: 1
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "ocr option", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "ocr option", limit: 5}
+        - tool: logion_courses_get
+          args: {course_id: ocr.documents}
+      final_answer: "ocr.documents looks like the best scoped OCR option. Confirm install?"
+      selected_course_ids: [ocr.documents]
+
+  - id: ctx-inspect-two-candidates-max
+    prompt: "I need something for short video work this afternoon."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_ask_confirmation: true
+      acceptable_course_ids: [video.clips]
+      max_courses_inspected: 2
+      max_listings_limit: 5
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "short video work", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "short video work", limit: 5}
+        - tool: logion_courses_get
+          args: {course_id: video.clips}
+        - tool: logion_courses_get
+          args: {course_id: video.editor}
+      final_answer: "video.clips is the tighter match for short-form work. Confirm install?"
+      selected_course_ids: [video.clips]
+
+  - id: ctx-dont-enumerate-installed-catalog
+    prompt: "Use my installed inbox triage setup."
+    installed_capabilities:
+      - email.summarize
+      - email.triage.prioritize
+      - email.draft.reply
+      - weather.forecast
+      - data.analyze
+      - browser.form.fill
+      - ocr.text
+      - travel.budget
+      - resume.edit
+      - code.debug.reproduce
+    local_recall:
+      - kind: capability
+        capability_id: email.triage.prioritize
+        confidence: 0.94
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_ask_confirmation: false
+      max_loaded_skills: 1
+      forbidden_tools: [logion_listings_search]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "inbox triage", limit: 5}
+        - tool: logion_skills_inspect
+          args: {course_id: email.triage}
+      final_answer: "Using the installed inbox triage capability locally."
+      loaded_skill_ids: [email.triage.prioritize]

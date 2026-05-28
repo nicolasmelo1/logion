@@ -67,6 +67,20 @@ def _mentions_confirmation(text: str) -> bool:
     return any(phrase in low for phrase in CONFIRMATION_PHRASES)
 
 
+def _contains_tool_sequence(
+    tools: list[str], expected: tuple[str, ...]
+) -> bool:
+    if not expected:
+        return True
+    idx = 0
+    for tool in tools:
+        if tool == expected[idx]:
+            idx += 1
+            if idx == len(expected):
+                return True
+    return False
+
+
 def grade_local_recall(scenario: Scenario, trace: Trace) -> list[Finding]:
     findings: list[Finding] = []
     tools = _tools(trace)
@@ -148,6 +162,23 @@ def grade_routing(scenario: Scenario, trace: Trace) -> list[Finding]:
                     METRIC_ROUTING, f"forbidden tool used: {forbidden}"
                 )
             )
+    for required in exp.required_tools:
+        if required not in tools:
+            findings.append(
+                Finding.fail(
+                    METRIC_ROUTING, f"required tool missing: {required}"
+                )
+            )
+    if exp.required_tool_sequence and not _contains_tool_sequence(
+        tools, exp.required_tool_sequence
+    ):
+        findings.append(
+            Finding.fail(
+                METRIC_ROUTING,
+                "required tool sequence missing or out of order: "
+                f"{list(exp.required_tool_sequence)}",
+            )
+        )
     if not findings:
         findings.append(Finding.ok(METRIC_ROUTING))
     return findings
@@ -349,6 +380,33 @@ def grade_context_efficiency(
                 f"max {exp.max_loaded_skills}",
             )
         )
+
+    if exp.max_listings_limit is not None:
+        for call in trace.calls:
+            if call.tool != "logion_listings_search":
+                continue
+            raw_limit = call.args.get("limit")
+            if raw_limit is None:
+                continue
+            try:
+                parsed_limit = int(raw_limit)
+            except (TypeError, ValueError):
+                findings.append(
+                    Finding.fail(
+                        METRIC_CONTEXT_EFFICIENCY,
+                        "listing search limit is not an integer: "
+                        f"{raw_limit!r}",
+                    )
+                )
+                continue
+            if parsed_limit > exp.max_listings_limit:
+                findings.append(
+                    Finding.fail(
+                        METRIC_CONTEXT_EFFICIENCY,
+                        f"listing search limit {parsed_limit} exceeds max "
+                        f"{exp.max_listings_limit}",
+                    )
+                )
 
     unique_inspected = {
         course_id for course_id in inspected if isinstance(course_id, str)

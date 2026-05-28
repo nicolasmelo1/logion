@@ -22,8 +22,17 @@ KNOWN_TOOLS = {
     "logion_skills_update",
     "logion_payments_checkout_start",
     "logion_payments_checkout_confirm",
+    "logion_payments_orders_get",
     "logion_skills_inspect",
     "logion_skills_permission_expand",
+    "logion_notifications_unread_count",
+    "logion_notifications_list",
+    "logion_course_reviews_list",
+    "logion_bounties_ls",
+    "logion_bounties_get",
+    "logion_bounties_submission_create",
+    "logion_bounties_fund",
+    "logion_reports_create",
 }
 
 
@@ -42,6 +51,9 @@ class CatalogCourse:
     required_env: tuple[str, ...]
     capability_ids: tuple[str, ...]
     tags: tuple[str, ...]
+    rating_avg: float | None = None
+    rating_count: int = 0
+    latest_version_review_status: str = "approved"
 
     @property
     def is_free(self) -> bool:
@@ -94,9 +106,12 @@ class Expected:
     forbidden_course_ids: tuple[str, ...] = ()
     max_courses_inspected: int | None = None
     max_loaded_skills: int | None = None
+    max_listings_limit: int | None = None
     must_mention: tuple[str, ...] = ()
     must_not_mention: tuple[str, ...] = ()
     forbidden_tools: tuple[str, ...] = ()
+    required_tools: tuple[str, ...] = ()
+    required_tool_sequence: tuple[str, ...] = ()
     recall_bypass_allowed: bool = False
 
 
@@ -196,7 +211,7 @@ def _optional_non_negative_int(value: Any, *, kind: str) -> int | None:
     return value
 
 
-def load_catalog(path: Path) -> Catalog:
+def load_catalog(path: Path) -> Catalog:  # noqa: C901
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise SchemaError(f"Catalog {path} must be a mapping")
@@ -231,6 +246,38 @@ def load_catalog(path: Path) -> Catalog:
                 f"Course {course_id} has invalid review_status: "
                 f"{review_status!r}"
             )
+        rating_avg_raw = entry.get("rating_avg")
+        if rating_avg_raw is not None and not isinstance(
+            rating_avg_raw, (int, float)
+        ):
+            raise SchemaError(
+                "Course "
+                f"{course_id} has invalid rating_avg: {rating_avg_raw!r}"
+            )
+        rating_count_raw = entry.get("rating_count", 0)
+        if (
+            isinstance(rating_count_raw, bool)
+            or not isinstance(rating_count_raw, int)
+            or rating_count_raw < 0
+        ):
+            raise SchemaError(
+                "Course "
+                f"{course_id} has invalid rating_count: "
+                f"{rating_count_raw!r}"
+            )
+        latest_version_review_status = entry.get(
+            "latest_version_review_status", review_status
+        )
+        if latest_version_review_status not in {
+            "approved",
+            "pending",
+            "rejected",
+        }:
+            raise SchemaError(
+                "Course "
+                f"{course_id} has invalid latest_version_review_status: "
+                f"{latest_version_review_status!r}"
+            )
         courses.append(
             CatalogCourse(
                 id=course_id,
@@ -248,6 +295,13 @@ def load_catalog(path: Path) -> Catalog:
                     entry.get("capability_ids"), kind="capability_ids"
                 ),
                 tags=_as_tuple(entry.get("tags"), kind="tags"),
+                rating_avg=(
+                    float(rating_avg_raw)
+                    if rating_avg_raw is not None
+                    else None
+                ),
+                rating_count=rating_count_raw,
+                latest_version_review_status=latest_version_review_status,
             )
         )
     return Catalog(version=1, courses=tuple(courses))
@@ -265,9 +319,12 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
         "forbidden_course_ids",
         "max_courses_inspected",
         "max_loaded_skills",
+        "max_listings_limit",
         "must_mention",
         "must_not_mention",
         "forbidden_tools",
+        "required_tools",
+        "required_tool_sequence",
         "recall_bypass_allowed",
     }
     unknown = set(raw) - allowed_keys
@@ -304,12 +361,22 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
             raw.get("max_loaded_skills"),
             kind="max_loaded_skills",
         ),
+        max_listings_limit=_optional_non_negative_int(
+            raw.get("max_listings_limit"),
+            kind="max_listings_limit",
+        ),
         must_mention=_as_tuple(raw.get("must_mention"), kind="must_mention"),
         must_not_mention=_as_tuple(
             raw.get("must_not_mention"), kind="must_not_mention"
         ),
         forbidden_tools=_as_tuple(
             raw.get("forbidden_tools"), kind="forbidden_tools"
+        ),
+        required_tools=_as_tuple(
+            raw.get("required_tools"), kind="required_tools"
+        ),
+        required_tool_sequence=_as_tuple(
+            raw.get("required_tool_sequence"), kind="required_tool_sequence"
         ),
         recall_bypass_allowed=_optional_bool(
             raw.get("recall_bypass_allowed", False),

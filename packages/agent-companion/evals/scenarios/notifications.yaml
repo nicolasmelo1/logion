@@ -1,0 +1,45 @@
+suite: notifications
+
+# Notifications hygiene: check the cheap unread count first, then only list
+# notifications when there is actually something unread.
+
+scenarios:
+  - id: notifications-unread-count-cheap-first
+    prompt: "Any Logion notifications I should look at first?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tool_sequence:
+        - logion_notifications_unread_count
+        - logion_notifications_list
+      required_tools:
+        - logion_notifications_unread_count
+        - logion_notifications_list
+      must_mention: [unread]
+    fake_trace:
+      calls:
+        - tool: logion_notifications_unread_count
+          args: {}
+        - tool: logion_notifications_list
+          args: {unread_only: true, limit: 5}
+      final_answer: "You have 2 unread Logion notifications; I listed the top 5 unread items."
+
+  - id: notifications-no-noise-when-zero
+    prompt: "Check whether there are any unread Logion notifications."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_notifications_unread_count]
+      forbidden_tools: [logion_notifications_list]
+      must_mention: [0]
+    fake_trace:
+      calls:
+        - tool: logion_notifications_unread_count
+          args: {}
+      final_answer: "You have 0 unread Logion notifications."

@@ -75,8 +75,12 @@ SUITE_MINIMUMS = {
     "routing": 20,
     "safety": 20,
     "course-selection": 30,
-    "context-efficiency": 15,
+    "context-efficiency": 20,
     "updates": 10,
+    "trust": 2,
+    "notifications": 2,
+    "bounties": 5,
+    "reports": 3,
 }
 
 
@@ -341,6 +345,42 @@ class TestScenarioSchema:
         with pytest.raises(
             SchemaError,
             match=r"recall_bypass_allowed must be a boolean",
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_string_required_tools(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    expected:\n"
+            "      required_tools: nope\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError,
+            match=r"required_tools must be a list",
+        ):
+            load_scenarios_from_file(bad)
+
+    def test_rejects_string_max_listings_limit(self, tmp_path: Path) -> None:
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "scenarios:\n"
+            "  - id: x\n"
+            "    prompt: q\n"
+            "    catalog_fixture: fake-marketplace.yaml\n"
+            "    expected:\n"
+            "      max_listings_limit: '5'\n"
+            "    fake_trace: {final_answer: ''}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(
+            SchemaError,
+            match=r"max_listings_limit must be a non-negative integer",
         ):
             load_scenarios_from_file(bad)
 
@@ -1174,3 +1214,52 @@ def test_full_grade_smoke(catalog) -> None:
     assert all(f.passed for f in findings), [
         f for f in findings if not f.passed
     ]
+
+
+def test_grade_routing_requires_tool_sequence() -> None:
+    scenario = _mk(
+        Expected(
+            required_tool_sequence=(
+                "logion_notifications_unread_count",
+                "logion_notifications_list",
+            )
+        ),
+        FakeTrace((), ""),
+    )
+    trace = Trace(
+        scenario_id="t",
+        model="fake",
+        calls=(
+            ToolCall(
+                "logion_notifications_list",
+                {"unread_only": True, "limit": 5},
+            ),
+            ToolCall("logion_notifications_unread_count", {}),
+        ),
+        final_answer="",
+        selected_course_ids=(),
+        loaded_skill_ids=(),
+        token_estimate={"input": 0, "output": 0},
+    )
+    findings = grade_routing(scenario, trace)
+    assert any(
+        not f.passed and "required tool sequence" in f.message
+        for f in findings
+    )
+
+
+def test_grade_context_efficiency_enforces_listings_limit(catalog) -> None:
+    scenario = _mk(Expected(max_listings_limit=5), FakeTrace((), ""))
+    trace = Trace(
+        scenario_id="t",
+        model="fake",
+        calls=(
+            ToolCall("logion_listings_search", {"query": "ocr", "limit": 50}),
+        ),
+        final_answer="",
+        selected_course_ids=(),
+        loaded_skill_ids=(),
+        token_estimate={"input": 0, "output": 0},
+    )
+    findings = grade_context_efficiency(scenario, trace, catalog)
+    assert any(not f.passed and "exceeds max" in f.message for f in findings)

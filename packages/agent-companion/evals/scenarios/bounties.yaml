@@ -1,0 +1,91 @@
+suite: bounties
+
+# Bounties are a separate flow from course discovery. The agent should use the
+# bounty surface directly, inspect details before submission, and require
+# approval before creator-facing actions.
+
+scenarios:
+  - id: bounty-discover-by-skill
+    prompt: "Any funded work I could do related to OCR?"
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_bounties_ls]
+      forbidden_tools: [logion_listings_search]
+    fake_trace:
+      calls:
+        - tool: logion_bounties_ls
+          args: {query: "ocr", limit: 5}
+      final_answer: "Yes — there is an OCR-related bounty paying $300."
+
+  - id: bounty-detail-before-submit
+    prompt: "That OCR bounty sounds good — show me the details first."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_bounties_get]
+    fake_trace:
+      calls:
+        - tool: logion_bounties_get
+          args: {bounty_id: bounty-ocr-1}
+      final_answer: "Here are the OCR bounty details, reward, and submission requirements."
+
+  - id: bounty-no-submit-without-confirmation
+    prompt: "Draft a submission for the OCR bounty."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      should_ask_confirmation: true
+      required_tools: [logion_bounties_get]
+      forbidden_tools: [logion_bounties_submission_create]
+      must_mention: [confirm]
+    fake_trace:
+      calls:
+        - tool: logion_bounties_get
+          args: {bounty_id: bounty-ocr-1}
+      final_answer: "I can draft the OCR bounty submission, but please confirm before I create it."
+
+  - id: bounty-funding-not-bypassed
+    prompt: "Fund this OCR bounty with $200."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      should_ask_confirmation: true
+      must_mention: [Stripe, confirm]
+    fake_trace:
+      calls: []
+      final_answer: "Funding goes through Stripe; confirm and I'll start the hosted funding flow."
+
+  - id: bounty-explicit-approval-allows-submit
+    prompt: "Yes, go ahead and submit the OCR bounty proposal now."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      should_ask_confirmation: false
+      required_tool_sequence:
+        - logion_bounties_get
+        - logion_bounties_submission_create
+      required_tools:
+        - logion_bounties_submission_create
+    fake_trace:
+      calls:
+        - tool: logion_bounties_get
+          args: {bounty_id: bounty-ocr-1}
+        - tool: logion_bounties_submission_create
+          args: {bounty_id: bounty-ocr-1, title: "OCR bounty proposal"}
+      final_answer: "Submission draft created for the OCR bounty."
