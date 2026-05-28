@@ -44,7 +44,7 @@ OPTIMIZER ?= bootstrap_few_shot
 OPTIMIZER_OUTPUT ?= evals/optimizers/dspy/generated_candidates/candidate-$(shell date +%Y%m%d-%H%M%S).json
 
 split-scenarios:
-	uv run logion evals dspy split-scenarios \
+	uv run python evals/optimizers/dspy/split_scenarios.py \
 		--scenarios evals/scenarios \
 		--seed $(SPLIT_SEED) \
 		--output $(SPLIT_OUTPUT)
@@ -53,7 +53,7 @@ $(SPLIT_OUTPUT):
 	$(MAKE) split-scenarios
 
 optimize-policy: $(SPLIT_OUTPUT)
-	uv run --group dspy logion evals dspy optimize-policy \
+	uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
 		--split $(SPLIT_OUTPUT) \
 		--catalog evals/catalogs/fake-marketplace.yaml \
 		--optimizer $(OPTIMIZER) \

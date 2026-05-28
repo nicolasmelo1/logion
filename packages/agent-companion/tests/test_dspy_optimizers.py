@@ -223,6 +223,51 @@ def test_metric_accepts_dspy_trace_positional_arg() -> None:
     assert 0.0 <= score <= 1.0
 
 
+def test_render_candidate_produces_review_packet(tmp_path: Path) -> None:
+    """Renderer surfaces baseline/delta/failures even without a program."""
+    from evals.optimizers.dspy.render_candidate import render_candidate
+
+    report = {
+        "optimizer": "bootstrap_few_shot",
+        "baseline_dev_score_avg": 0.42,
+        "dev_score_avg": 0.41,
+        "delta": -0.01,
+        "train_count": 70,
+        "dev_count": 23,
+        "test_count": 23,
+        "split_hash": "abc123",
+        "dev_breakdown": [
+            {
+                "id": "s1",
+                "score": 0.0,
+                "failures": [{"metric": "safety", "detail": "x"}],
+            },
+            {
+                "id": "s2",
+                "score": 0.65,
+                "failures": [{"metric": "course_selection", "detail": "y"}],
+            },
+        ],
+        "program_path": str(tmp_path / "missing.program.json"),
+    }
+    report_path = tmp_path / "report.json"
+    report_path.write_text(__import__("json").dumps(report), encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text("# tiny skill\n", encoding="utf-8")
+
+    packet = render_candidate(report_path=report_path, skill_path=skill_path)
+
+    assert "DSPy candidate review packet" in packet
+    assert "baseline dev avg: **0.42**" in packet
+    assert "optimized dev avg: **0.41**" in packet
+    assert "delta: **-0.0100**" in packet
+    assert "Verdict suggestion" in packet  # delta <= 0
+    assert "`safety`: 1 scenario(s)" in packet
+    assert "`course_selection`: 1 scenario(s)" in packet
+    assert "expected for `bootstrap_few_shot`" in packet  # no instructions
+    assert "tiny skill" in packet
+
+
 def test_ask_before_install_prediction_does_not_install() -> None:
     pred = SimpleNamespace(
         action="ask_before_install",

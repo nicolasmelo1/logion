@@ -216,7 +216,7 @@ mkdir -p "$(dirname "$OUTPUT_PATH")"
 if [[ "${LOGION_DSPY_REUSE_SPLIT:-0}" == "1" && -f "$SPLIT_PATH" ]]; then
   echo "Reusing existing split: $SPLIT_PATH"
 else
-  uv run --group dspy logion evals dspy split-scenarios \
+  uv run --group dspy python evals/optimizers/dspy/split_scenarios.py \
     --scenarios "$SCENARIOS_PATH" \
     --seed "$SEED" \
     --output "$SPLIT_PATH"
@@ -225,7 +225,7 @@ fi
 DSPY_LM="openai/$MODEL_ID" \
 DSPY_API_BASE="$BASE_URL" \
 DSPY_API_KEY="${DSPY_API_KEY:-sk-local}" \
-uv run --group dspy logion evals dspy optimize-policy \
+uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
   --scenarios "$SCENARIOS_PATH" \
   --catalog "$CATALOG_PATH" \
   --optimizer "$OPTIMIZER" \

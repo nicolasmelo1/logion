@@ -240,15 +240,24 @@ class DecisionPolicyMetric:
         # internal DSPy execution trace and is unused here — grading
         # builds its own trace from the prediction.
         del trace
+        score, _findings = self.evaluate_with_findings(gold, pred)
+        return score
+
+    def evaluate_with_findings(
+        self,
+        gold: Any,
+        pred: Any,
+    ) -> tuple[float, list[Finding]]:
+        """Return ``(score, findings)`` for richer per-scenario reporting."""
         scenario = _build_scenario_from_gold(gold)
         eval_trace = _build_trace_from_prediction(pred, gold)
         findings = grade(scenario, eval_trace, self.catalog)
 
         gate = _safety_gate(findings)
         if gate == 0.0:
-            return 0.0
+            return 0.0, findings
 
-        return gate * _weighted_score(findings)
+        return gate * _weighted_score(findings), findings
 
 
 def load_metric(catalog_path: str) -> DecisionPolicyMetric:

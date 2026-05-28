@@ -153,6 +153,46 @@ def _load_split(path: Path) -> dict[str, list[dict[str, Any]]]:
     return data["splits"]
 
 
+def _evaluate_module(
+    module: Any,
+    dev_examples: list[dspy.Example],
+    metric: DecisionPolicyMetric,
+) -> tuple[list[float], list[dict[str, Any]]]:
+    """Score ``module`` on dev examples; return per-scenario findings."""
+    scores: list[float] = []
+    breakdown: list[dict[str, Any]] = []
+    for ex in dev_examples:
+        try:
+            pred = module(
+                user_prompt=ex.user_prompt,
+                installed_capabilities=getattr(
+                    ex, "installed_capabilities", ""
+                ),
+                marketplace_results=getattr(ex, "marketplace_results", ""),
+                current_policy_text=getattr(ex, "current_policy_text", ""),
+            )
+            score, findings = metric.evaluate_with_findings(ex, pred)
+            failures = [
+                {"metric": f.metric, "detail": f.message}
+                for f in findings
+                if not f.passed
+            ]
+            error: str | None = None
+        except Exception as exc:
+            score = 0.0
+            failures = []
+            error = f"{type(exc).__name__}: {exc}"
+
+        scores.append(score)
+        breakdown.append({
+            "id": getattr(ex, "id", "unknown"),
+            "score": round(score, 4),
+            "failures": failures,
+            "error": error,
+        })
+    return scores, breakdown
+
+
 def run_optimization(
     *,
     scenarios_path: Path,
@@ -167,6 +207,12 @@ def run_optimization(
     If ``split_path`` is provided, the train/dev/test split is loaded
     from the JSON file written by ``split_scenarios.py``. Otherwise the
     scenarios are split in-process using ``seed``.
+
+    The report includes both the baseline (un-optimized) and optimized
+    dev scores so reviewers can see whether the optimizer actually
+    helped before promoting any changes to SKILL.md. The compiled
+    program is saved alongside the report so reviewers can inspect the
+    rewritten signature instructions and selected demos.
     """
     catalog = load_catalog(catalog_path)
     metric = DecisionPolicyMetric(catalog)
@@ -191,6 +237,14 @@ def run_optimization(
     if not dev_examples:
         raise ValueError("No dev examples after split")
 
+    # Baseline: score the un-optimized module on the same dev set so
+    # the report carries a delta. Without this you cannot tell whether
+    # the optimizer produced anything useful or just noise.
+    baseline_module = DecisionPolicyModule()
+    baseline_scores, baseline_breakdown = _evaluate_module(
+        baseline_module, dev_examples, metric
+    )
+
     optimizer_factory = OPTIMIZERS.get(optimizer_name)
     if optimizer_factory is None:
         raise ValueError(
@@ -205,19 +259,20 @@ def run_optimization(
         trainset=train_examples,
     )
 
-    # Evaluate dev set with the optimized module
-    dev_scores: list[float] = []
-    for ex in dev_examples:
-        pred = optimized(
-            user_prompt=ex.user_prompt,
-            installed_capabilities=getattr(ex, "installed_capabilities", ""),
-            marketplace_results=getattr(ex, "marketplace_results", ""),
-            current_policy_text=getattr(ex, "current_policy_text", ""),
-        )
-        score = metric(ex, pred)
-        dev_scores.append(score)
+    dev_scores, dev_breakdown = _evaluate_module(
+        optimized, dev_examples, metric
+    )
 
+    baseline_avg = (
+        sum(baseline_scores) / len(baseline_scores) if baseline_scores else 0.0
+    )
     avg_dev = sum(dev_scores) / len(dev_scores) if dev_scores else 0.0
+
+    program_path: Path | None = None
+    if output_path is not None:
+        program_path = output_path.with_suffix(".program.json")
+        program_path.parent.mkdir(parents=True, exist_ok=True)
+        optimized.save(str(program_path))
 
     report: dict[str, Any] = {
         "timestamp": datetime.now(UTC).isoformat(),
@@ -226,12 +281,18 @@ def run_optimization(
         "train_count": len(train_examples),
         "dev_count": len(dev_examples),
         "test_count": len(split["test"]),
+        "baseline_dev_score_avg": round(baseline_avg, 4),
         "dev_score_avg": round(avg_dev, 4),
+        "delta": round(avg_dev - baseline_avg, 4),
         "dev_scores": [round(s, 4) for s in dev_scores],
+        "baseline_dev_scores": [round(s, 4) for s in baseline_scores],
+        "dev_breakdown": dev_breakdown,
+        "baseline_breakdown": baseline_breakdown,
         "catalog": str(catalog_path),
         "scenarios_dir": str(scenarios_path),
         "split_hash": _split_hash(split),
         "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
+        "program_path": str(program_path) if program_path else None,
     }
 
     if output_path is not None:
@@ -317,7 +378,9 @@ def main() -> int:
 
     print(
         f"optimizer={report['optimizer']} "
-        f"dev_avg={report['dev_score_avg']} "
+        f"baseline={report['baseline_dev_score_avg']} "
+        f"optimized={report['dev_score_avg']} "
+        f"delta={report['delta']:+.4f} "
         f"train={report['train_count']} "
         f"dev={report['dev_count']} "
         f"test={report['test_count']}"

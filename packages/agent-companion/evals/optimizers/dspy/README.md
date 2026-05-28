@@ -17,10 +17,14 @@ pip install -e '.[dspy]'
 
 ## Running
 
+DSPy optimization is a developer-only workflow — it is intentionally
+not exposed through the `logion` CLI. Invoke the scripts directly from
+the agent-companion package directory.
+
 ### 1. Split scenarios
 
 ```bash
-logion evals dspy split-scenarios \
+uv run python evals/optimizers/dspy/split_scenarios.py \
     --scenarios evals/scenarios \
     --seed 42 \
     --output evals/optimizers/dspy/generated_candidates/split.json
@@ -32,11 +36,20 @@ Requires a running LLM endpoint (set `DSPY_LM` env var or configure
 `dspy.settings`):
 
 ```bash
-DSPY_LM=openai/qwen3-8b-q5km logion evals dspy optimize-policy \
+DSPY_LM=openai/qwen3-8b-q5km \
+uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
     --scenarios evals/scenarios \
     --catalog evals/catalogs/fake-marketplace.yaml \
     --optimizer bootstrap_few_shot \
     --output evals/optimizers/dspy/generated_candidates/candidate-001.json
+```
+
+### 3. Render a candidate review packet
+
+```bash
+uv run --group dspy python evals/optimizers/dspy/render_candidate.py \
+    --report evals/optimizers/dspy/generated_candidates/candidate-001.json \
+    --skill SKILL.md
 ```
 
 Or via make:
@@ -106,8 +119,9 @@ evals/optimizers/dspy/
 ├── __init__.py
 ├── signatures.py          ← DSPy Signature + Module
 ├── metrics.py              ← Composite decision-policy metric
-├── split_scenarios.py      ← implementation used by `logion evals dspy split-scenarios`
-├── optimize_policy.py      ← implementation used by `logion evals dspy optimize-policy`
+├── split_scenarios.py      ← deterministic train/dev/test splitter
+├── optimize_policy.py      ← DSPy compile + dev eval runner
+├── render_candidate.py     ← render a Markdown review packet
 └── generated_candidates/
     └── .gitkeep
 ```

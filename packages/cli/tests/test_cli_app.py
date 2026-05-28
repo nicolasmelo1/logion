@@ -58,24 +58,6 @@ def test_bounties_appears_in_help(
     assert "bounties" in output
 
 
-def test_evals_dspy_appears_in_help(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """--help lists evals as a top-level development command."""
-    with pytest.raises(SystemExit) as exc_info:
-        main(["--help"])
-    assert exc_info.value.code == 0
-    output = capsys.readouterr().out
-    assert "evals" in output
-
-    with pytest.raises(SystemExit) as dspy_exc:
-        main(["evals", "dspy", "--help"])
-    assert dspy_exc.value.code == 0
-    dspy_output = capsys.readouterr().out
-    assert "split-scenarios" in dspy_output
-    assert "optimize-policy" in dspy_output
-
-
 def test_admin_hidden_by_default() -> None:
     """admin subcommand exits 2 without LOGION_ENABLE_ADMIN."""
     code = main(["admin"])
