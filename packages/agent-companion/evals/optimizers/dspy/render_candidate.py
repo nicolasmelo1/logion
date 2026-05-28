@@ -332,6 +332,15 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     matrix = report.get("model_matrix") or {}
     lines.append(f"- DSPY_LM: `{matrix.get('dspy_lm') or '?'}`")
     lines.append(f"- DSPY_API_BASE: `{matrix.get('dspy_api_base') or '?'}`")
+    if matrix.get("dspy_reflection_lm"):
+        lines.append(
+            f"- DSPY_REFLECTION_LM: `{matrix.get('dspy_reflection_lm')}`"
+        )
+        if matrix.get("dspy_reflection_api_base"):
+            lines.append(
+                f"- DSPY_REFLECTION_API_BASE: "
+                f"`{matrix.get('dspy_reflection_api_base')}`"
+            )
     lines.append(f"- optimizer: `{matrix.get('optimizer') or '?'}`")
     lines.append(f"- seed: `{report.get('seed', '?')}`")
     optimizer_config = (

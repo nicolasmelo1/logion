@@ -225,6 +225,9 @@ fi
 DSPY_LM="openai/$MODEL_ID" \
 DSPY_API_BASE="$BASE_URL" \
 DSPY_API_KEY="${DSPY_API_KEY:-sk-local}" \
+DSPY_REFLECTION_LM="${DSPY_REFLECTION_LM:-openai/$MODEL_ID}" \
+DSPY_REFLECTION_API_BASE="${DSPY_REFLECTION_API_BASE:-$BASE_URL}" \
+DSPY_REFLECTION_API_KEY="${DSPY_REFLECTION_API_KEY:-${DSPY_API_KEY:-sk-local}}" \
 uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
   --scenarios "$SCENARIOS_PATH" \
   --catalog "$CATALOG_PATH" \

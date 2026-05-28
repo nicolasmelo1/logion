@@ -85,11 +85,21 @@ DSPy/litellm can target `openai/<MODEL_ID>` against the OpenAI-compatible
 endpoint declared in the provider yaml. Set `LOGION_DSPY_REUSE_SPLIT=1`
 to skip regenerating the train/dev/test split between runs.
 
-### 3. Review candidates
+### 4. Promote or reject
 
-Optimization outputs go to `generated_candidates/`. Review the report
-JSON and compare against the current policy before promoting any
-changes to `SKILL.md`.
+Outputs go to `generated_candidates/`:
+
+- `candidate-<ts>.json` — eval report (baseline + optimized scores on
+  dev and holdout test, per-suite breakdowns, token-budget delta,
+  model matrix, split hash).
+- `candidate-<ts>.program.json` — compiled DSPy program (rewritten
+  signature instructions + selected demos).
+- `candidate-<ts>.review.md` — the human review packet produced by
+  step 3.
+
+Use the review packet's verdict and per-suite tables to decide
+whether to hand-translate prose into `SKILL.md`. Promotion remains a
+manual PR per the policy below.
 
 ## Promotion process
 

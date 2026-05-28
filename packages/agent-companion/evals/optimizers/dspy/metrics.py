@@ -49,8 +49,20 @@ _WEIGHTED_METRICS = (
     (METRIC_UPDATES, 0.15),
 )
 
-# Actions that involve searching or inspecting courses.
-_SEARCH_ACTIONS = frozenset({
+# Actions that trigger a marketplace listings search in the trace.
+# ``inspect_course`` intentionally excluded: course inspection should
+# only emit ``logion_courses_get`` lookups via the per-selected-id
+# loop below, not a fresh listings search (which would otherwise
+# trigger recall-ordering and context-efficiency failures).
+_LISTINGS_SEARCH_ACTIONS = frozenset({
+    "search_marketplace",
+    "ask_before_install",
+})
+
+# Actions that should be preceded by a local recall lookup. Includes
+# ``inspect_course`` so that picking a candidate from prior context is
+# still rooted in recall.
+_RECALL_ACTIONS = frozenset({
     "search_marketplace",
     "inspect_course",
     "ask_before_install",
@@ -64,17 +76,14 @@ def _action_to_calls(
 ) -> tuple[ToolCall, ...]:
     """Translate a DSPy prediction output into tool calls."""
     calls: list[ToolCall] = []
-    if query and action in {
-        "search_marketplace",
-        "inspect_course",
-    }:
+    if query and action in _RECALL_ACTIONS:
         calls.append(
             ToolCall(
                 tool="logion_recall_search",
                 args={"query": query, "limit": 5},
             )
         )
-    if action in _SEARCH_ACTIONS:
+    if action in _LISTINGS_SEARCH_ACTIONS:
         calls.append(
             ToolCall(
                 tool="logion_listings_search",
@@ -233,14 +242,37 @@ class DecisionPolicyMetric:
         gold: Any,
         pred: Any,
         trace: Any = None,
+        pred_name: Any = None,
+        pred_trace: Any = None,
         **_: Any,
-    ) -> float:
-        # DSPy teleprompters (e.g. BootstrapFewShot) call metrics as
-        # ``metric(example, prediction, trace)``; the trace arg is the
-        # internal DSPy execution trace and is unused here — grading
-        # builds its own trace from the prediction.
+    ) -> Any:
+        """DSPy metric entry point.
+
+        BootstrapFewShot and MIPROv2 call this as ``(gold, pred, trace)``
+        and expect a float. GEPA calls it as
+        ``(gold, pred, trace, pred_name, pred_trace)`` and accepts either
+        a float or a ``dspy.GEPAFeedback`` / dict with ``score`` and
+        ``feedback`` keys. We return ``ScoreWithFeedback``-shaped dicts
+        when the caller looks like GEPA (extra args present) so the
+        reflection LM has the grader's ``Finding.message`` strings to
+        diagnose failures with; otherwise we return the scalar score
+        for backwards compatibility.
+        """
         del trace
-        score, _findings = self.evaluate_with_findings(gold, pred)
+        score, findings = self.evaluate_with_findings(gold, pred)
+        # Heuristic: GEPA passes a non-None pred_name. Older optimizers
+        # do not. Return rich feedback only on the GEPA path so we don't
+        # break MIPROv2's scalar expectation.
+        if pred_name is not None or pred_trace is not None:
+            failures = [
+                f"{f.metric}: {f.message}" for f in findings if not f.passed
+            ]
+            feedback = (
+                "All graders passed."
+                if not failures
+                else "Failures:\n- " + "\n- ".join(failures)
+            )
+            return {"score": score, "feedback": feedback}
         return score
 
     def evaluate_with_findings(

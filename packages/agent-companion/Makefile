@@ -49,10 +49,10 @@ split-scenarios:
 		--seed $(SPLIT_SEED) \
 		--output $(SPLIT_OUTPUT)
 
-$(SPLIT_OUTPUT):
-	$(MAKE) split-scenarios
-
-optimize-policy: $(SPLIT_OUTPUT)
+# ``optimize-policy`` depends on the phony ``split-scenarios`` target
+# (not the file output) so changing SPLIT_SEED or the scenarios dir
+# regenerates the split instead of silently reusing a stale one.
+optimize-policy: split-scenarios
 	uv run --group dspy python evals/optimizers/dspy/optimize_policy.py \
 		--split $(SPLIT_OUTPUT) \
 		--catalog evals/catalogs/fake-marketplace.yaml \

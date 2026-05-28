@@ -55,6 +55,10 @@ _MIPRO_V2_CONFIG: dict[str, Any] = {
     "num_threads": 1,
 }
 
+_GEPA_CONFIG: dict[str, Any] = {
+    "auto": "light",
+}
+
 
 def _bootstrap_few_shot(metric: DecisionPolicyMetric) -> Any:
     return dspy.BootstrapFewShot(metric=metric, **_BOOTSTRAP_FEW_SHOT_CONFIG)
@@ -64,14 +68,50 @@ def _mipro_v2(metric: DecisionPolicyMetric) -> Any:
     return dspy.MIPROv2(metric=metric, **_MIPRO_V2_CONFIG)
 
 
+def _build_reflection_lm() -> Any:
+    """Build the GEPA reflection LM from env, defaulting to the task LM."""
+    model = os.environ.get("DSPY_REFLECTION_LM") or os.environ.get("DSPY_LM")
+    if not model:
+        raise ValueError(
+            "GEPA requires a reflection LM: set DSPY_REFLECTION_LM (or "
+            "fall back to DSPY_LM)."
+        )
+    kwargs: dict[str, Any] = {}
+    api_base = os.environ.get("DSPY_REFLECTION_API_BASE") or os.environ.get(
+        "DSPY_API_BASE"
+    )
+    api_key = os.environ.get("DSPY_REFLECTION_API_KEY") or os.environ.get(
+        "DSPY_API_KEY"
+    )
+    if api_base:
+        kwargs["api_base"] = api_base
+    if api_key:
+        kwargs["api_key"] = api_key
+    # GEPA's reflection step benefits from higher max_tokens and
+    # non-zero temperature per upstream guidance.
+    kwargs.setdefault("temperature", 1.0)
+    kwargs.setdefault("max_tokens", 8000)
+    return dspy.LM(model, **kwargs)
+
+
+def _gepa(metric: DecisionPolicyMetric) -> Any:
+    return dspy.GEPA(
+        metric=metric,
+        reflection_lm=_build_reflection_lm(),
+        **_GEPA_CONFIG,
+    )
+
+
 OPTIMIZERS = {
     "bootstrap_few_shot": _bootstrap_few_shot,
     "mipro_v2": _mipro_v2,
+    "gepa": _gepa,
 }
 
 OPTIMIZER_CONFIGS: dict[str, dict[str, Any]] = {
     "bootstrap_few_shot": _BOOTSTRAP_FEW_SHOT_CONFIG,
     "mipro_v2": _MIPRO_V2_CONFIG,
+    "gepa": _GEPA_CONFIG,
 }
 
 
@@ -257,12 +297,20 @@ def _optimized_program_tokens(optimized: Any) -> int:
 
 def _capture_model_matrix(optimizer_name: str) -> dict[str, Any]:
     """Record the LM and optimizer configuration used for this run."""
-    return {
+    matrix: dict[str, Any] = {
         "dspy_lm": os.environ.get("DSPY_LM", ""),
         "dspy_api_base": os.environ.get("DSPY_API_BASE", ""),
         "optimizer": optimizer_name,
         "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
     }
+    if optimizer_name == "gepa":
+        matrix["dspy_reflection_lm"] = os.environ.get(
+            "DSPY_REFLECTION_LM", ""
+        ) or os.environ.get("DSPY_LM", "")
+        matrix["dspy_reflection_api_base"] = os.environ.get(
+            "DSPY_REFLECTION_API_BASE", ""
+        ) or os.environ.get("DSPY_API_BASE", "")
+    return matrix
 
 
 def run_optimization(
@@ -326,10 +374,20 @@ def run_optimization(
     optimizer = optimizer_factory(metric)
 
     module = DecisionPolicyModule()
-    optimized = optimizer.compile(
-        module,
-        trainset=train_examples,
-    )
+    if optimizer_name == "gepa":
+        # GEPA uses an explicit validation set; pass the dev split as
+        # the valset so it can reflect against held-out signal during
+        # evolution.
+        optimized = optimizer.compile(
+            module,
+            trainset=train_examples,
+            valset=dev_examples,
+        )
+    else:
+        optimized = optimizer.compile(
+            module,
+            trainset=train_examples,
+        )
 
     dev_scores, dev_breakdown = _evaluate_module(
         optimized, dev_examples, metric

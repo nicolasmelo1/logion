@@ -187,6 +187,116 @@ def test_optimizer_factory_binds_metric(
     assert captured["metric"] is metric
 
 
+def test_metric_returns_score_with_feedback_on_gepa_signature() -> None:
+    """GEPA passes 5 positional args; metric must return ScoreWithFeedback.
+
+    The presence of ``pred_name`` (the 4th positional arg) is the
+    heuristic that distinguishes the GEPA call site from MIPROv2 /
+    BootstrapFewShot, which expect a plain float.
+    """
+    from evals.harness.schema import load_catalog
+    from evals.optimizers.dspy.metrics import DecisionPolicyMetric
+
+    catalog = load_catalog(CATALOG_PATH)
+    metric = DecisionPolicyMetric(catalog)
+    gold = SimpleNamespace(
+        id="gepa-arg-check",
+        user_prompt="test",
+        suite="routing",
+        installed_capabilities="",
+        local_recall=[],
+        catalog_fixture="fake-marketplace.yaml",
+        expected={
+            "should_query_marketplace": True,
+            "should_run_recall": True,
+        },
+    )
+    pred = SimpleNamespace(
+        action="answer_directly",
+        query="",
+        selected_course_ids="",
+        requires_user_confirmation=False,
+        reason="",
+    )
+
+    result = metric(
+        gold,
+        pred,
+        [("predictor", {}, {})],
+        "predictor",
+        [("predictor", {}, {})],
+    )
+    assert isinstance(result, dict)
+    assert "score" in result
+    assert "feedback" in result
+    assert isinstance(result["score"], float)
+    assert isinstance(result["feedback"], str)
+    assert 0.0 <= result["score"] <= 1.0
+
+
+def test_metric_returns_scalar_on_mipro_signature() -> None:
+    """Without GEPA-specific args, the metric must still return a float."""
+    from evals.harness.schema import load_catalog
+    from evals.optimizers.dspy.metrics import DecisionPolicyMetric
+
+    catalog = load_catalog(CATALOG_PATH)
+    metric = DecisionPolicyMetric(catalog)
+    gold = SimpleNamespace(
+        id="scalar",
+        user_prompt="x",
+        suite="routing",
+        installed_capabilities="",
+        local_recall=[],
+        catalog_fixture="fake-marketplace.yaml",
+        expected={},
+    )
+    pred = SimpleNamespace(
+        action="answer_directly",
+        query="",
+        selected_course_ids="",
+        requires_user_confirmation=False,
+        reason="",
+    )
+    score = metric(gold, pred, [("predictor", {}, {})])
+    assert isinstance(score, float)
+
+
+def test_gepa_factory_wires_reflection_lm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``_gepa`` should construct dspy.GEPA with reflection_lm from env."""
+    pytest.importorskip("dspy")
+    import evals.optimizers.dspy.optimize_policy as optimize_policy
+
+    captured: dict[str, Any] = {}
+
+    class FakeGEPA:
+        def __init__(self, **kwargs: Any) -> None:
+            captured.update(kwargs)
+
+    class FakeLM:
+        def __init__(self, model: str, **kwargs: Any) -> None:
+            captured["lm_model"] = model
+            captured["lm_kwargs"] = kwargs
+
+    monkeypatch.setattr(optimize_policy.dspy, "GEPA", FakeGEPA)
+    monkeypatch.setattr(optimize_policy.dspy, "LM", FakeLM)
+    monkeypatch.setenv("DSPY_LM", "openai/test-model")
+    monkeypatch.setenv("DSPY_API_BASE", "http://example/v1")
+    monkeypatch.setenv("DSPY_API_KEY", "sk-test")
+    monkeypatch.delenv("DSPY_REFLECTION_LM", raising=False)
+
+    metric: Any = SimpleNamespace()
+    optimizer = optimize_policy.OPTIMIZERS["gepa"](metric)
+
+    assert isinstance(optimizer, FakeGEPA)
+    assert captured["metric"] is metric
+    assert captured["auto"] == "light"
+    assert captured["lm_model"] == "openai/test-model"
+    assert captured["lm_kwargs"]["api_base"] == "http://example/v1"
+    assert captured["lm_kwargs"]["temperature"] == 1.0
+
+
 def test_metric_accepts_dspy_trace_positional_arg() -> None:
     """DSPy teleprompters call ``metric(example, prediction, trace)``.
 
