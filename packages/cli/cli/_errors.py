@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from uuid import UUID
 
 from logion import APIError, LogionError
+
+ALLOWED_ERROR_CODES = frozenset({
+    "auth_missing",
+    "entitlement_missing",
+    "entitlement_expired",
+    "unsafe_identifier",
+    "not_found",
+    "validation_failed",
+    "server_error",
+    "confirmation_required",
+    "order_timeout",
+})
 
 
 def handle_error(exc: Exception) -> int:
@@ -26,6 +39,16 @@ def handle_error(exc: Exception) -> int:
 def print_err(msg: str) -> None:
     """Print a user-facing message to stderr."""
     print(msg, file=sys.stderr)
+
+
+def emit_error_json(code: str, message: str, exit_code: int) -> None:
+    """Emit a v1 JSON error envelope to stderr."""
+    payload = {
+        "version": "v1",
+        "kind": "logion.error",
+        "data": {"code": code, "message": message, "exit_code": exit_code},
+    }
+    print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
 
 
 def require_non_empty_id(value: str, label: str) -> int | None:

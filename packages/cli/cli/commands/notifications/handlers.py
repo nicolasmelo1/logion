@@ -7,7 +7,16 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._output import emit
+from cli._output import emit, emit_json, to_data
+
+
+def _extract_count(raw: object) -> int:
+    """Extract an integer count from whatever the SDK returns."""
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, dict):
+        return int(raw.get("count", 0))
+    return int(getattr(raw, "count", 0))
 
 
 def handle_unread_count(args: argparse.Namespace) -> int:
@@ -37,6 +46,52 @@ def handle_list(args: argparse.Namespace) -> int:
             cursor=getattr(args, "cursor", None),
         )
         emit(result, json_output=config.json_output)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_peek(args: argparse.Namespace) -> int:
+    """Quick check: show unread count, list recent if any."""
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        raw_count = client.v1.notifications.get_unread_count()
+        unread_count = _extract_count(raw_count)
+        if unread_count == 0:
+            if config.json_output:
+                emit_json(
+                    "logion.notifications.peek",
+                    {"unread_count": 0, "items": []},
+                )
+            else:
+                print("No unread notifications.")
+            return 0
+        items_raw = client.v1.notifications.list(
+            unread_only=True,
+            limit=5,
+        )
+        items_data = to_data(items_raw)
+        if isinstance(items_data, dict) and "items" in items_data:
+            items = items_data["items"]
+        elif isinstance(items_data, list):
+            items = items_data
+        else:
+            items = []
+        if config.json_output:
+            emit_json(
+                "logion.notifications.peek",
+                {"unread_count": unread_count, "items": items},
+            )
+        else:
+            print(f"You have {unread_count} unread notification(s):")
+            for item in items:
+                title = item.get("title", "") if isinstance(item, dict) else ""
+                nid = item.get("id", "") if isinstance(item, dict) else ""
+                print(f"  {nid}: {title}")
     except Exception as exc:
         return handle_error(exc)
     else:

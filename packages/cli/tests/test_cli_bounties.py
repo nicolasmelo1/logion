@@ -160,6 +160,7 @@ def test_create_bounty_with_optional_fields(
 
 def test_list_bounties_calls_client(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """bounties list forwards scope filter."""
     bounties = FakeBountiesResource()
@@ -176,10 +177,14 @@ def test_list_bounties_calls_client(
     method, kwargs = bounties.last_call
     assert method == "list"
     assert kwargs["scope"] == "open"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.bounties.list"
 
 
 def test_list_bounties_default_scope(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """bounties list without --scope omits it from kwargs."""
     bounties = FakeBountiesResource()
@@ -194,6 +199,9 @@ def test_list_bounties_default_scope(
     method, kwargs = bounties.last_call
     assert method == "list"
     assert "scope" not in kwargs
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.bounties.list"
 
 
 # ── Get ──────────────────────────────────────────────────────────
@@ -201,6 +209,7 @@ def test_list_bounties_default_scope(
 
 def test_get_bounty_calls_client(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """bounties get forwards bounty_id."""
     bounties = FakeBountiesResource()
@@ -216,6 +225,9 @@ def test_get_bounty_calls_client(
     method, kwargs = bounties.last_call
     assert method == "get"
     assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.bounties.get"
 
 
 def test_get_bounty_invalid_uuid() -> None:
@@ -431,6 +443,7 @@ def test_submissions_create_with_version_id(
 
 def test_submissions_list_calls_client(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """bounties submissions list forwards bounty_id."""
     bounties = FakeBountiesResource()
@@ -447,10 +460,14 @@ def test_submissions_list_calls_client(
     method, kwargs = bounties.last_call
     assert method == "list_submissions"
     assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.bounties.submissions.list"
 
 
 def test_submissions_get_calls_client(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """bounties submissions get forwards bounty_id and submission_id."""
     bounties = FakeBountiesResource()
@@ -469,6 +486,9 @@ def test_submissions_get_calls_client(
     assert method == "get_submission"
     assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.bounties.submissions.get"
 
 
 def test_submissions_accept_requires_yes() -> None:

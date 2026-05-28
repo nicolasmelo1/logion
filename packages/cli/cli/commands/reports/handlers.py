@@ -8,7 +8,7 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, require_non_empty_id, validate_uuid_id
-from cli._output import emit
+from cli._output import emit, emit_json
 from cli._utils import only_not_none
 
 UUID_TARGET_TYPES = frozenset([
@@ -48,6 +48,58 @@ def handle_create(args: argparse.Namespace) -> int:
         )
         result = client.v1.reports.create(**kwargs)
         emit(result, json_output=config.json_output)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_list(args: argparse.Namespace) -> int:
+    """Execute the reports list command."""
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.reports.list(
+            limit=args.limit,
+            cursor=args.cursor,
+        )
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else result
+            )
+            emit_json("logion.reports.list", data)
+        else:
+            emit(result, json_output=False)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_get(args: argparse.Namespace) -> int:
+    """Execute the reports get command."""
+    bad_id = validate_uuid_id(args.report_id, "REPORT_ID")
+    if bad_id is not None:
+        return bad_id
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.reports.get(report_id=args.report_id)
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else result
+            )
+            emit_json("logion.reports.get", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

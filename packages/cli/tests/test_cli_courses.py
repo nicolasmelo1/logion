@@ -1615,4 +1615,7 @@ def test_courses_feedback_capability_feedback_json(
     ])
     assert code == 0
     data = json.loads(capsys.readouterr().out)
-    assert data["capability_feedback"][0]["reason_code"] == "tool_not_declared"
+    inner = data.get("data", data)
+    assert (
+        inner["capability_feedback"][0]["reason_code"] == "tool_not_declared"
+    )

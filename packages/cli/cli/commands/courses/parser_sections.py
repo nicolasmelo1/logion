@@ -13,6 +13,7 @@ from .handlers import (
     handle_publication_request,
     handle_reviews_list,
     handle_reviews_mine,
+    handle_reviews_summary,
     handle_reviews_upsert,
     handle_update,
 )
@@ -195,3 +196,13 @@ def register_reviews(subparsers: argparse._SubParsersAction) -> None:
     upsert.add_argument("--tool-safety", type=float)
     upsert.add_argument("--token-efficiency", type=float)
     upsert.set_defaults(handler=handle_reviews_upsert)
+
+    summary = reviews_sub.add_parser(
+        "summary",
+        help="Show aggregate review statistics for a course",
+        parents=[COMMON_PARSER],
+    )
+    summary.add_argument("course_id", metavar="COURSE_ID")
+    summary.add_argument("--version")
+    summary.add_argument("--limit", type=int)
+    summary.set_defaults(handler=handle_reviews_summary)

@@ -7,12 +7,14 @@ from pathlib import Path
 
 from cli._options import COMMON_PARSER
 
+from ._search_handler import handle_skills_search
 from .handlers import (
     handle_skills_inspect,
     handle_skills_install,
     handle_skills_installed,
     handle_skills_update,
     handle_skills_updates,
+    handle_skills_verify,
 )
 
 
@@ -106,3 +108,26 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Overwrite a locally modified installation",
     )
     update.set_defaults(handler=handle_skills_update)
+
+    verify = sub.add_parser(
+        "verify",
+        help="Re-check entitlement status for installed skills",
+        parents=[COMMON_PARSER],
+    )
+    verify.add_argument("course_id", nargs="?", default=None)
+    verify.add_argument("--target", type=Path, default=None)
+    verify.set_defaults(handler=handle_skills_verify)
+
+    search = sub.add_parser(
+        "search",
+        help=(
+            "Search marketplace listings"
+            " with installed/entitlement annotations"
+        ),
+        parents=[COMMON_PARSER],
+    )
+    search.add_argument("query", metavar="QUERY")
+    search.add_argument("--limit", type=int, default=5)
+    search.add_argument("--verbose", action="store_true", default=False)
+    search.add_argument("--target", type=Path, default=None)
+    search.set_defaults(handler=handle_skills_search)

@@ -229,6 +229,24 @@ REQUIRED_MANIFEST_KEYS = frozenset({
     "required_tools",
     "content_sha256",
     "review_status",
+    "entitlement_status",
+    "license_scope",
+    "official_update_channel",
+    "last_verified_at",
+})
+
+VALID_ENTITLEMENT_STATUSES = frozenset({
+    "active",
+    "missing",
+    "expired",
+    "unknown",
+})
+
+VALID_LICENSE_SCOPES = frozenset({
+    "single_buyer",
+    "team",
+    "open",
+    "unknown",
 })
 
 
@@ -248,6 +266,31 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
         data["required_tools"], list
     ):
         errors.append("required_tools must be a list")
+    if (
+        "entitlement_status" in data
+        and data["entitlement_status"] not in VALID_ENTITLEMENT_STATUSES
+    ):
+        errors.append(
+            f"entitlement_status must be one of "
+            f"{sorted(VALID_ENTITLEMENT_STATUSES)}"
+        )
+    if (
+        "license_scope" in data
+        and data["license_scope"] not in VALID_LICENSE_SCOPES
+    ):
+        errors.append(
+            f"license_scope must be one of {sorted(VALID_LICENSE_SCOPES)}"
+        )
+    if "official_update_channel" in data and not isinstance(
+        data["official_update_channel"], bool
+    ):
+        errors.append("official_update_channel must be a bool")
+    if (
+        "last_verified_at" in data
+        and data["last_verified_at"] is not None
+        and not isinstance(data["last_verified_at"], str)
+    ):
+        errors.append("last_verified_at must be an ISO 8601 string or null")
     return errors
 
 
@@ -441,6 +484,10 @@ def build_index(home: Path | None = None) -> list[dict[str, Any]]:
             "capabilities": m.get("capabilities", []),
             "required_tools": m.get("required_tools", []),
             "review_status": m.get("review_status", ""),
+            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "license_scope": m.get("license_scope", "unknown"),
+            "official_update_channel": m.get("official_update_channel", False),
+            "last_verified_at": m.get("last_verified_at"),
         })
     return index
 
@@ -529,6 +576,7 @@ def build_recall_entries(
                 f"{m.get('entrypoint', 'SKILL.md')}"
             ),
             "danger_flags": [],
+            "entitlement_status": m.get("entitlement_status", "unknown"),
         }
         entries.append(mask_secrets(entry))
 

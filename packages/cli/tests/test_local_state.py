@@ -74,6 +74,10 @@ def _make_manifest(
         "required_tools": ["web"],
         "content_sha256": "abc123",
         "review_status": "approved",
+        "entitlement_status": "unknown",
+        "license_scope": "unknown",
+        "official_update_channel": False,
+        "last_verified_at": None,
     }
 
 

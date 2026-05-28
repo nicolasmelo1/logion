@@ -25,6 +25,25 @@ class FakeReportsResource:
             "reason": kwargs["reason"],
         }
 
+    def list(self, **kwargs: Any) -> list[dict[str, Any]]:
+        self.last_call = ("list", kwargs)
+        return [
+            {
+                "id": "770e8400-e29b-41d4-a716-446655440002",
+                "target_type": "course",
+                "reason": "spam",
+            },
+        ]
+
+    def get(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("get", kwargs)
+        return {
+            "id": kwargs["report_id"],
+            "target_type": "course",
+            "target_id": "550e8400-e29b-41d4-a716-446655440000",
+            "reason": "spam",
+        }
+
 
 class FakeV1Namespace:
     def __init__(self, reports: FakeReportsResource) -> None:
@@ -186,4 +205,52 @@ def test_reports_create_invalid_uuid() -> None:
         "--yes",
         "--json",
     ])
+    assert code == 2
+
+
+def test_reports_list_json_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """reports list --json produces a v1 JSON envelope."""
+    reports = FakeReportsResource()
+    fake = FakeClient(v1=FakeV1Namespace(reports=reports))
+    _patch_client(monkeypatch, fake)
+    code = main(["reports", "list", "--json"])
+    assert code == 0
+    method, _kwargs = reports.last_call
+    assert method == "list"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.reports.list"
+    assert "data" in payload
+
+
+def test_reports_get_json_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """reports get --json produces a v1 JSON envelope."""
+    reports = FakeReportsResource()
+    fake = FakeClient(v1=FakeV1Namespace(reports=reports))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "reports",
+        "get",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = reports.last_call
+    assert method == "get"
+    assert kwargs["report_id"] == "770e8400-e29b-41d4-a716-446655440002"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.reports.get"
+    assert "data" in payload
+
+
+def test_reports_get_validates_uuid() -> None:
+    """reports get rejects an invalid UUID."""
+    code = main(["reports", "get", "not-a-uuid", "--json"])
     assert code == 2
