@@ -228,10 +228,21 @@ class DecisionPolicyMetric:
     def __init__(self, catalog: Catalog) -> None:
         self.catalog = catalog
 
-    def __call__(self, gold: Any, pred: Any) -> float:
+    def __call__(
+        self,
+        gold: Any,
+        pred: Any,
+        trace: Any = None,
+        **_: Any,
+    ) -> float:
+        # DSPy teleprompters (e.g. BootstrapFewShot) call metrics as
+        # ``metric(example, prediction, trace)``; the trace arg is the
+        # internal DSPy execution trace and is unused here — grading
+        # builds its own trace from the prediction.
+        del trace
         scenario = _build_scenario_from_gold(gold)
-        trace = _build_trace_from_prediction(pred, gold)
-        findings = grade(scenario, trace, self.catalog)
+        eval_trace = _build_trace_from_prediction(pred, gold)
+        findings = grade(scenario, eval_trace, self.catalog)
 
         gate = _safety_gate(findings)
         if gate == 0.0:

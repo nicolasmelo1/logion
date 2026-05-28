@@ -137,11 +137,19 @@ def test_weighted_score_renormalizes_over_applicable_metrics() -> None:
     assert _weighted_score([]) == 0.0
 
 
+CATALOG_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "evals"
+    / "catalogs"
+    / "fake-marketplace.yaml"
+)
+
+
 def test_build_examples_populates_optimizer_inputs() -> None:
     pytest.importorskip("dspy")
     from evals.optimizers.dspy.optimize_policy import _build_examples
 
-    catalog = load_catalog(Path("evals/catalogs/fake-marketplace.yaml"))
+    catalog = load_catalog(CATALOG_PATH)
     entry = split_scenarios([_scenario(1)], seed=42)["train"][0]
 
     [example] = _build_examples(
@@ -177,6 +185,42 @@ def test_optimizer_factory_binds_metric(
 
     assert isinstance(optimizer, FakeBootstrapFewShot)
     assert captured["metric"] is metric
+
+
+def test_metric_accepts_dspy_trace_positional_arg() -> None:
+    """DSPy teleprompters call ``metric(example, prediction, trace)``.
+
+    Guards against regressing the 3-arg signature: BootstrapFewShot
+    invokes the metric with the internal execution trace as a third
+    positional arg, so a 2-arg-only signature crashes the optimizer
+    only when compile actually reaches the success branch (which the
+    DummyLM end-to-end test does not always exercise).
+    """
+    from evals.harness.schema import load_catalog
+    from evals.optimizers.dspy.metrics import DecisionPolicyMetric
+
+    catalog = load_catalog(CATALOG_PATH)
+    metric = DecisionPolicyMetric(catalog)
+    gold = SimpleNamespace(
+        id="trace-arg-check",
+        user_prompt="test",
+        suite="routing",
+        installed_capabilities="",
+        local_recall=[],
+        catalog_fixture="fake-marketplace.yaml",
+        expected={},
+    )
+    pred = SimpleNamespace(
+        action="answer_directly",
+        query="",
+        selected_course_ids="",
+        requires_user_confirmation=False,
+        reason="",
+    )
+
+    score = metric(gold, pred, [("predictor", {}, {})])
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
 
 
 def test_ask_before_install_prediction_does_not_install() -> None:
@@ -257,8 +301,8 @@ def test_run_optimization_end_to_end_with_dummy_lm(
 
     output_path = tmp_path / "candidate.json"
     report = optimize_policy.run_optimization(
-        scenarios_path=Path("evals/scenarios"),
-        catalog_path=Path("evals/catalogs/fake-marketplace.yaml"),
+        scenarios_path=CATALOG_PATH.parent.parent / "scenarios",
+        catalog_path=CATALOG_PATH,
         optimizer_name="bootstrap_few_shot",
         split_path=split_path,
         output_path=output_path,

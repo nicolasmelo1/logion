@@ -45,6 +45,33 @@ Or via make:
 make optimize-policy
 ```
 
+### llama.cpp one-shot helper
+
+To boot a local llama.cpp server from the provider config, run the
+optimizer against it, and tear the server down afterwards:
+
+```bash
+# defaults: qwen3-4b-q4km + bootstrap_few_shot
+bash evals/scripts/run_llama_cpp_dspy_optimize.sh
+
+# pick a different model / optimizer
+bash evals/scripts/run_llama_cpp_dspy_optimize.sh \
+    evals/providers/llama_cpp_local.example.yaml \
+    qwen3-8b-q5km \
+    mipro_v2
+```
+
+Or via make:
+
+```bash
+make optimize-policy-llama-cpp MODEL=qwen3-4b-q4km OPTIMIZER=bootstrap_few_shot
+```
+
+The script injects `--alias <MODEL_ID>` into the llama-server args so
+DSPy/litellm can target `openai/<MODEL_ID>` against the OpenAI-compatible
+endpoint declared in the provider yaml. Set `LOGION_DSPY_REUSE_SPLIT=1`
+to skip regenerating the train/dev/test split between runs.
+
 ### 3. Review candidates
 
 Optimization outputs go to `generated_candidates/`. Review the report

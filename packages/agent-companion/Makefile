@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models split-scenarios optimize-policy verify
+.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models split-scenarios optimize-policy optimize-policy-llama-cpp verify
 
 # Override defaults via env, e.g.:
 #   make eval-llama-cpp MODEL=qwen3-8b-q5km LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
@@ -58,5 +58,16 @@ optimize-policy: $(SPLIT_OUTPUT)
 		--catalog evals/catalogs/fake-marketplace.yaml \
 		--optimizer $(OPTIMIZER) \
 		--output $(OPTIMIZER_OUTPUT)
+
+# Boot llama-server for $(MODEL) from $(CONFIG) and run DSPy optimization
+# against it. Override OPTIMIZER, SPLIT_OUTPUT, OPTIMIZER_OUTPUT,
+# LLAMA_EXTRA_ARGS, LOGION_DSPY_REUSE_SPLIT as needed.
+optimize-policy-llama-cpp:
+	LOGION_DSPY_OPTIMIZER="$(OPTIMIZER)" \
+	LOGION_DSPY_SPLIT="$(SPLIT_OUTPUT)" \
+	LOGION_DSPY_OUTPUT="$(OPTIMIZER_OUTPUT)" \
+	LOGION_DSPY_SEED="$(SPLIT_SEED)" \
+	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
+		bash evals/scripts/run_llama_cpp_dspy_optimize.sh "$(CONFIG)" "$(MODEL)" "$(OPTIMIZER)"
 
 verify: lint format-check typecheck test package-check eval
