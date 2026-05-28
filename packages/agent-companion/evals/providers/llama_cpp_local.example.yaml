@@ -28,6 +28,28 @@ models:
     chat_template_kwargs:
       enable_thinking: false
 
+  # Same family as qwen3-8b-q5km but Q4_K_M (smaller, ~4.6GB) — the file
+  # `make download-models` fetches by default. Use this when you have
+  # Qwen3-8B-Q4_K_M.gguf on disk but not the Q5_K_M variant.
+  - id: qwen3-8b-q4km
+    provider: llama_cpp_local
+    repo: Qwen/Qwen3-8B-GGUF
+    file: Qwen3-8B-Q4_K_M.gguf
+    quant: Q4_K_M
+    context: 8192
+    server_args:
+      - --host
+      - 127.0.0.1
+      - --port
+      - "8080"
+      - --ctx-size
+      - "8192"
+      - --jinja
+      - --reasoning-budget
+      - "0"
+    chat_template_kwargs:
+      enable_thinking: false
+
   # Faster routine-iteration model. Qwen3-4B Q4_K_M with thinking off.
   - id: qwen3-4b-q4km
     provider: llama_cpp_local

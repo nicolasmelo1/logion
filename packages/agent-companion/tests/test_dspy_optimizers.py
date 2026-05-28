@@ -258,14 +258,121 @@ def test_render_candidate_produces_review_packet(tmp_path: Path) -> None:
     packet = render_candidate(report_path=report_path, skill_path=skill_path)
 
     assert "DSPy candidate review packet" in packet
-    assert "baseline dev avg: **0.42**" in packet
-    assert "optimized dev avg: **0.41**" in packet
-    assert "delta: **-0.0100**" in packet
-    assert "Verdict suggestion" in packet  # delta <= 0
+    assert "1. Before/after eval" in packet
+    assert "2. Model matrix" in packet
+    assert "3. Scenario split hash" in packet
+    assert "4. Token budget delta" in packet
+    assert "5. Changed instructions" in packet
+    assert "6. Runtime statement" in packet
+    assert "Suggested verdict:** do not promote" in packet
+    assert "did not beat baseline" in packet
     assert "`safety`: 1 scenario(s)" in packet
     assert "`course_selection`: 1 scenario(s)" in packet
-    assert "expected for `bootstrap_few_shot`" in packet  # no instructions
+    assert "expected for `bootstrap_few_shot`" in packet
     assert "tiny skill" in packet
+
+
+def test_render_candidate_flags_test_set_regression(tmp_path: Path) -> None:
+    """test_delta < 0 must override a positive dev delta in the verdict."""
+    from evals.optimizers.dspy.render_candidate import render_candidate
+
+    report = {
+        "optimizer": "mipro_v2",
+        "baseline_dev_score_avg": 0.50,
+        "dev_score_avg": 0.70,
+        "delta": 0.20,
+        "baseline_test_score_avg": 0.55,
+        "test_score_avg": 0.40,
+        "test_delta": -0.15,
+        "train_count": 70,
+        "dev_count": 23,
+        "test_count": 23,
+        "split_hash": "abc",
+        "model_matrix": {
+            "dspy_lm": "openai/qwen3-8b-q4km",
+            "dspy_api_base": "http://127.0.0.1:8080/v1",
+            "optimizer": "mipro_v2",
+            "optimizer_config": {"auto": "medium"},
+        },
+        "baseline_program_tokens": 120,
+        "optimized_program_tokens": 540,
+        "token_delta": 420,
+    }
+    report_path = tmp_path / "report.json"
+    report_path.write_text(__import__("json").dumps(report), encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text("# tiny\n", encoding="utf-8")
+
+    packet = render_candidate(report_path=report_path, skill_path=skill_path)
+
+    assert "do not promote" in packet
+    assert "regressed on holdout" in packet
+    assert "DSPY_LM: `openai/qwen3-8b-q4km`" in packet
+    assert "token delta: **+420**" in packet
+
+
+def test_render_candidate_flags_safety_suite_regression(
+    tmp_path: Path,
+) -> None:
+    """Safety suite regression blocks promotion even with positive deltas."""
+    from evals.optimizers.dspy.render_candidate import render_candidate
+
+    report = {
+        "optimizer": "mipro_v2",
+        "baseline_dev_score_avg": 0.50,
+        "dev_score_avg": 0.70,
+        "delta": 0.20,
+        "baseline_test_score_avg": 0.50,
+        "test_score_avg": 0.60,
+        "test_delta": 0.10,
+        "baseline_dev_per_suite": {"safety": 0.95, "routing": 0.40},
+        "dev_per_suite": {"safety": 0.70, "routing": 0.90},
+        "train_count": 70,
+        "dev_count": 23,
+        "test_count": 23,
+        "split_hash": "abc",
+    }
+    report_path = tmp_path / "report.json"
+    report_path.write_text(__import__("json").dumps(report), encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text("# tiny\n", encoding="utf-8")
+
+    packet = render_candidate(report_path=report_path, skill_path=skill_path)
+
+    assert "do not promote" in packet
+    assert "safety suite regressed on dev" in packet
+
+
+def test_render_candidate_promotes_when_all_gates_pass(
+    tmp_path: Path,
+) -> None:
+    """Positive deltas + no suite regressions = promote verdict."""
+    from evals.optimizers.dspy.render_candidate import render_candidate
+
+    report = {
+        "optimizer": "mipro_v2",
+        "baseline_dev_score_avg": 0.50,
+        "dev_score_avg": 0.70,
+        "delta": 0.20,
+        "baseline_test_score_avg": 0.50,
+        "test_score_avg": 0.65,
+        "test_delta": 0.15,
+        "baseline_dev_per_suite": {"safety": 0.80, "routing": 0.40},
+        "dev_per_suite": {"safety": 0.95, "routing": 0.80},
+        "train_count": 70,
+        "dev_count": 23,
+        "test_count": 23,
+        "split_hash": "abc",
+    }
+    report_path = tmp_path / "report.json"
+    report_path.write_text(__import__("json").dumps(report), encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text("# tiny\n", encoding="utf-8")
+
+    packet = render_candidate(report_path=report_path, skill_path=skill_path)
+
+    assert "Suggested verdict:** promote" in packet
+    assert "Suggested verdict:** do not promote" not in packet
 
 
 def test_ask_before_install_prediction_does_not_install() -> None:
@@ -320,7 +427,7 @@ def test_run_optimization_end_to_end_with_dummy_lm(
     split = {
         "train": [_make_entry(0), _make_entry(1)],
         "dev": [_make_entry(2)],
-        "test": [],
+        "test": [_make_entry(3)],
     }
     split_path = tmp_path / "split.json"
     split_path.write_text(
@@ -356,13 +463,26 @@ def test_run_optimization_end_to_end_with_dummy_lm(
     assert report["optimizer"] == "bootstrap_few_shot"
     assert report["train_count"] == 2
     assert report["dev_count"] == 1
-    assert report["test_count"] == 0
+    assert report["test_count"] == 1
     assert isinstance(report["optimizer_config"], dict)
     assert report["optimizer_config"] == {
         "max_bootstrapped_demos": 4,
         "max_labeled_demos": 8,
     }
     assert 0.0 <= report["dev_score_avg"] <= 1.0
+    assert 0.0 <= report["test_score_avg"] <= 1.0
+    assert "test_delta" in report
+    assert "baseline_test_score_avg" in report
+    assert isinstance(report["test_breakdown"], list)
+    assert isinstance(report["dev_per_suite"], dict)
+    assert isinstance(report["test_per_suite"], dict)
+    assert isinstance(report["baseline_program_tokens"], int)
+    assert isinstance(report["optimized_program_tokens"], int)
+    assert report["token_delta"] == (
+        report["optimized_program_tokens"] - report["baseline_program_tokens"]
+    )
+    assert isinstance(report["model_matrix"], dict)
+    assert report["model_matrix"]["optimizer"] == "bootstrap_few_shot"
     assert output_path.is_file()
 
 

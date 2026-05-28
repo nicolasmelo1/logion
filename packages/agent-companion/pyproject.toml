@@ -13,6 +13,8 @@ logion-cli = { workspace = true }
 [project.optional-dependencies]
 dspy = [
     "dspy>=3.0.4,<4.0",
+    # Required by MIPROv2 for Bayesian instruction/demo search.
+    "optuna>=3.6,<5.0",
 ]
 
 [dependency-groups]
@@ -31,6 +33,7 @@ dev = [
 # ``pip install -e '.[dspy]'``), so both must list the same version range.
 dspy = [
     "dspy>=3.0.4,<4.0",
+    "optuna>=3.6,<5.0",
 ]
 
 [build-system]

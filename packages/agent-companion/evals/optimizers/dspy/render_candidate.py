@@ -9,6 +9,7 @@ manual PR per the policy in ``README.md``.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import sys
 from collections import Counter
@@ -20,57 +21,59 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _extract_instructions(program: dict[str, Any]) -> str | None:
-    """Pull the rewritten signature instructions from a saved program.
+_PREDICTOR_KEYS = ("predictor", "predict")
 
-    DSPy's ``Module.save`` writes a JSON whose exact shape varies by
-    version. The instructions live under one of a few known keys; we
-    search for the first match. Returns ``None`` if not found.
+
+def _predictor_blocks(program: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every predictor-shaped block in a saved DSPy program.
+
+    DSPy 3.x serializes a single-predictor module as
+    ``{"predictor": {"signature": {...}, "demos": [...], ...}}``.
+    Older or multi-predictor variants nest under "predictors" (list)
+    or use flat dotted keys. Collect all shapes so downstream
+    extractors can iterate uniformly.
     """
-    candidate_keys = (
+    blocks: list[dict[str, Any]] = []
+    for key in _PREDICTOR_KEYS:
+        block = program.get(key)
+        if isinstance(block, dict):
+            blocks.append(block)
+    predictors = program.get("predictors")
+    if isinstance(predictors, list):
+        blocks.extend(p for p in predictors if isinstance(p, dict))
+    return blocks
+
+
+def _extract_instructions(program: dict[str, Any]) -> str | None:
+    """Pull the rewritten signature instructions from a saved program."""
+    for block in _predictor_blocks(program):
+        sig = block.get("signature")
+        if isinstance(sig, dict):
+            instructions = sig.get("instructions")
+            if isinstance(instructions, str) and instructions.strip():
+                return instructions
+    # Fallback: flat dotted keys some serializers use.
+    for key in (
         "predictor.signature.instructions",
         "predict.signature.instructions",
         "signature.instructions",
-    )
-    for key in candidate_keys:
+    ):
         value = program.get(key)
         if isinstance(value, str) and value.strip():
             return value
-
-    # Some DSPy versions nest the signature under a "predictors" list.
-    predictors = program.get("predictors")
-    if isinstance(predictors, list):
-        for item in predictors:
-            sig = (
-                (item or {}).get("signature")
-                if isinstance(item, dict)
-                else None
-            )
-            instructions = (
-                (sig or {}).get("instructions")
-                if isinstance(sig, dict)
-                else None
-            )
-            if isinstance(instructions, str) and instructions.strip():
-                return instructions
     return None
 
 
 def _extract_demos(program: dict[str, Any]) -> list[dict[str, Any]]:
     """Pull selected few-shot demos from a saved program."""
+    for block in _predictor_blocks(program):
+        demos = block.get("demos")
+        if isinstance(demos, list):
+            return [d for d in demos if isinstance(d, dict)]
     for key in ("predictor.demos", "predict.demos", "demos"):
         value = program.get(key)
         if isinstance(value, list):
             return [d for d in value if isinstance(d, dict)]
-
-    predictors = program.get("predictors")
-    if isinstance(predictors, list):
-        for item in predictors:
-            demos = (
-                (item or {}).get("demos") if isinstance(item, dict) else None
-            )
-            if isinstance(demos, list):
-                return [d for d in demos if isinstance(d, dict)]
     return []
 
 
@@ -107,12 +110,127 @@ def _format_demo(idx: int, demo: dict[str, Any]) -> str:
     return f"### Demo {idx}\n\n{body}\n"
 
 
-def render_candidate(
+def _current_signature_docstring() -> str:
+    """Return the current `DecisionPolicySignature` docstring as baseline."""
+    try:
+        from evals.optimizers.dspy.signatures import DecisionPolicySignature
+
+        return (DecisionPolicySignature.__doc__ or "").strip()
+    except Exception:
+        return ""
+
+
+def _instruction_diff(current: str, proposed: str) -> str:
+    """Unified diff between current docstring and proposed instructions."""
+    if not current and not proposed:
+        return ""
+    diff = difflib.unified_diff(
+        current.splitlines(),
+        proposed.splitlines(),
+        fromfile="current_signature_docstring",
+        tofile="proposed_signature_instructions",
+        lineterm="",
+        n=3,
+    )
+    return "\n".join(diff)
+
+
+def _format_per_suite(
+    label: str,
+    baseline: dict[str, float],
+    optimized: dict[str, float],
+    failures: dict[str, int] | None = None,
+) -> list[str]:
+    """Markdown rows comparing per-suite baseline vs optimized averages."""
+    rows: list[str] = []
+    suites = sorted(set(baseline) | set(optimized))
+    if not suites:
+        return rows
+    rows.append(f"### {label}")
+    rows.append("")
+    rows.append("| suite | baseline | optimized | delta | failures |")
+    rows.append("|---|---:|---:|---:|---:|")
+    for suite in suites:
+        b = baseline.get(suite, 0.0)
+        o = optimized.get(suite, 0.0)
+        d = o - b
+        fcount = (failures or {}).get(suite, 0)
+        rows.append(f"| `{suite}` | {b:.4f} | {o:.4f} | {d:+.4f} | {fcount} |")
+    rows.append("")
+    return rows
+
+
+def _per_suite_regressions(
+    baseline: dict[str, float],
+    optimized: dict[str, float],
+    *,
+    tolerance: float = 0.0,
+) -> list[tuple[str, float, float]]:
+    """Return regressed suites as (suite, baseline_avg, optimized_avg)."""
+    out: list[tuple[str, float, float]] = []
+    for suite, b in baseline.items():
+        o = optimized.get(suite, 0.0)
+        if o + tolerance < b:
+            out.append((suite, b, o))
+    return out
+
+
+def _verdict(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """Compute promotion verdict. Returns (verdict, reasons)."""
+    reasons: list[str] = []
+    dev_delta = report.get("delta")
+    test_delta = report.get("test_delta")
+    if isinstance(dev_delta, (int, float)) and dev_delta <= 0:
+        reasons.append(f"dev_delta {dev_delta:+.4f} did not beat baseline")
+    if isinstance(test_delta, (int, float)) and test_delta < 0:
+        reasons.append(f"test_delta {test_delta:+.4f} regressed on holdout")
+    safety_baseline = report.get("baseline_dev_per_suite", {}).get("safety")
+    safety_opt = report.get("dev_per_suite", {}).get("safety")
+    if (
+        isinstance(safety_baseline, (int, float))
+        and isinstance(safety_opt, (int, float))
+        and safety_opt + 1e-6 < safety_baseline
+    ):
+        reasons.append(
+            f"safety suite regressed on dev "
+            f"({safety_baseline:.4f} -> {safety_opt:.4f})"
+        )
+    test_safety_baseline = report.get("baseline_test_per_suite", {}).get(
+        "safety"
+    )
+    test_safety_opt = report.get("test_per_suite", {}).get("safety")
+    if (
+        isinstance(test_safety_baseline, (int, float))
+        and isinstance(test_safety_opt, (int, float))
+        and test_safety_opt + 1e-6 < test_safety_baseline
+    ):
+        reasons.append(
+            f"safety suite regressed on test "
+            f"({test_safety_baseline:.4f} -> {test_safety_opt:.4f})"
+        )
+    for suite, b, o in _per_suite_regressions(
+        report.get("baseline_dev_per_suite", {}) or {},
+        report.get("dev_per_suite", {}) or {},
+        tolerance=1e-6,
+    ):
+        if suite == "safety":
+            continue
+        reasons.append(f"dev suite `{suite}` regressed ({b:.4f} -> {o:.4f})")
+    return ("do not promote" if reasons else "promote", reasons)
+
+
+def render_candidate(  # noqa: C901 — single-purpose packet builder
     report_path: Path,
     skill_path: Path,
     program_path: Path | None = None,
 ) -> str:
-    """Return a Markdown review packet for the given candidate."""
+    """Return a Markdown review packet for the given candidate.
+
+    The output is structured to match the phase-6.6 promotion-PR
+    required fields (before/after eval, model matrix, scenario split
+    hash, token budget delta, changed-instructions diff, runtime
+    boilerplate) so it can be pasted directly into the PR description.
+    """
     report = _load_json(report_path)
 
     if program_path is None:
@@ -124,9 +242,11 @@ def render_candidate(
     if program_path is not None and program_path.is_file():
         program = _load_json(program_path)
 
-    instructions = _extract_instructions(program)
+    instructions = _extract_instructions(program) or ""
     demos = _extract_demos(program)
+    current_doc = _current_signature_docstring()
     failure_counts = _failure_summary(report.get("dev_breakdown", []) or [])
+    verdict, verdict_reasons = _verdict(report)
 
     skill_excerpt = ""
     if skill_path.is_file():
@@ -142,59 +262,150 @@ def render_candidate(
         "auto-write to SKILL.md."
     )
     lines.append("")
-    lines.append("## Scores")
+
+    # Verdict block — at the top so reviewers see it first.
+    lines.append("## Verdict")
     lines.append("")
-    lines.append(f"- optimizer: `{report.get('optimizer', '?')}`")
-    lines.append(
-        f"- baseline dev avg: **{report.get('baseline_dev_score_avg', '?')}**"
-    )
-    lines.append(
-        f"- optimized dev avg: **{report.get('dev_score_avg', '?')}**"
-    )
-    delta = report.get("delta")
-    lines.append(
-        f"- delta: **{delta:+.4f}**"
-        if isinstance(delta, (int, float))
-        else f"- delta: {delta}"
-    )
-    lines.append(
-        f"- train={report.get('train_count')} "
-        f"dev={report.get('dev_count')} "
-        f"test={report.get('test_count')} "
-        f"split_hash=`{report.get('split_hash')}`"
-    )
-    lines.append("")
-    if isinstance(delta, (int, float)) and delta <= 0:
+    if verdict == "promote":
         lines.append(
-            "**Verdict suggestion:** delta ≤ 0 — the optimizer did not "
-            "beat the baseline on this run. Do not promote."
+            "**Suggested verdict:** promote — score gates and per-suite "
+            "checks passed. Still review the instruction diff and "
+            "demos before merging."
         )
-        lines.append("")
-
-    lines.append("## Failure summary (optimized run)")
-    lines.append("")
-    if failure_counts:
-        for metric_name, count in failure_counts.most_common():
-            lines.append(f"- `{metric_name}`: {count} scenario(s)")
     else:
-        lines.append("_No per-scenario failures recorded._")
+        lines.append("**Suggested verdict:** do not promote.")
+        lines.append("")
+        for reason in verdict_reasons:
+            lines.append(f"- {reason}")
     lines.append("")
 
-    lines.append("## Rewritten signature instructions")
+    # 1. before/after eval (the plan's first required field).
+    lines.append("## 1. Before/after eval")
+    lines.append("")
+    lines.append("| split | baseline | optimized | delta |")
+    lines.append("|---|---:|---:|---:|")
+    dev_d = report.get("delta")
+    test_d = report.get("test_delta")
+    lines.append(
+        f"| dev | {report.get('baseline_dev_score_avg', '?')} | "
+        f"{report.get('dev_score_avg', '?')} | "
+        f"{dev_d:+.4f} |"
+        if isinstance(dev_d, (int, float))
+        else "| dev | ? | ? | ? |"
+    )
+    lines.append(
+        f"| test (holdout) | {report.get('baseline_test_score_avg', '?')} "
+        f"| {report.get('test_score_avg', '?')} | "
+        f"{test_d:+.4f} |"
+        if isinstance(test_d, (int, float))
+        else "| test (holdout) | ? | ? | ? |"
+    )
+    lines.append("")
+    lines.append(
+        f"Counts: train={report.get('train_count')}, "
+        f"dev={report.get('dev_count')}, "
+        f"test={report.get('test_count')}."
+    )
+    lines.append("")
+
+    # Per-suite breakdown.
+    lines.extend(
+        _format_per_suite(
+            "Dev — per-suite",
+            report.get("baseline_dev_per_suite", {}) or {},
+            report.get("dev_per_suite", {}) or {},
+            report.get("dev_failures_per_suite", {}) or {},
+        )
+    )
+    lines.extend(
+        _format_per_suite(
+            "Test — per-suite",
+            report.get("baseline_test_per_suite", {}) or {},
+            report.get("test_per_suite", {}) or {},
+            report.get("test_failures_per_suite", {}) or {},
+        )
+    )
+
+    # 2. model matrix.
+    lines.append("## 2. Model matrix")
+    lines.append("")
+    matrix = report.get("model_matrix") or {}
+    lines.append(f"- DSPY_LM: `{matrix.get('dspy_lm') or '?'}`")
+    lines.append(f"- DSPY_API_BASE: `{matrix.get('dspy_api_base') or '?'}`")
+    lines.append(f"- optimizer: `{matrix.get('optimizer') or '?'}`")
+    lines.append(f"- seed: `{report.get('seed', '?')}`")
+    optimizer_config = (
+        matrix.get("optimizer_config") or report.get("optimizer_config") or {}
+    )
+    if optimizer_config:
+        lines.append(f"- optimizer_config: `{json.dumps(optimizer_config)}`")
+    lines.append("")
+
+    # 3. scenario split hash.
+    lines.append("## 3. Scenario split hash")
+    lines.append("")
+    lines.append(f"`{report.get('split_hash', '?')}`")
+    lines.append("")
+    lines.append(
+        f"Catalog: `{report.get('catalog', '?')}`  "
+        f"Scenarios dir: `{report.get('scenarios_dir', '?')}`"
+    )
+    lines.append("")
+
+    # 4. token budget delta.
+    lines.append("## 4. Token budget delta")
+    lines.append("")
+    baseline_tokens = report.get("baseline_program_tokens")
+    optimized_tokens = report.get("optimized_program_tokens")
+    token_delta = report.get("token_delta")
+    lines.append(
+        f"- baseline program tokens (signature docstring): "
+        f"**{baseline_tokens}**"
+    )
+    lines.append(
+        f"- optimized program tokens (instructions + demos): "
+        f"**{optimized_tokens}**"
+    )
+    if isinstance(token_delta, int):
+        lines.append(f"- token delta: **{token_delta:+d}**")
+    else:
+        lines.append(f"- token delta: {token_delta}")
+    lines.append("")
+    lines.append(
+        "_Estimate uses 4 chars per token; signed delta is the cost "
+        "the agent pays per decision after promotion._"
+    )
+    lines.append("")
+
+    # 5. explanation of changed instructions: diff + raw text + demos.
+    lines.append("## 5. Changed instructions")
     lines.append("")
     if instructions:
+        diff = _instruction_diff(current_doc, instructions)
+        if diff:
+            lines.append(
+                "### Diff vs current `DecisionPolicySignature` docstring"
+            )
+            lines.append("")
+            lines.append("```diff")
+            lines.append(diff)
+            lines.append("```")
+            lines.append("")
+        lines.append("### Proposed instructions (full text)")
+        lines.append("")
         lines.append("```")
         lines.append(instructions.rstrip())
         lines.append("```")
+        lines.append("")
     else:
         lines.append(
             "_No rewritten instructions in the saved program. This is "
             "expected for `bootstrap_few_shot` (it only selects demos); "
             "use `mipro_v2` if you want instruction proposals._"
         )
-    lines.append("")
+        lines.append("")
 
-    lines.append(f"## Selected few-shot demos ({len(demos)})")
+    lines.append(f"### Selected few-shot demos ({len(demos)})")
     lines.append("")
     if demos:
         for idx, demo in enumerate(demos, start=1):
@@ -203,6 +414,28 @@ def render_candidate(
         lines.append("_No demos selected._")
     lines.append("")
 
+    # 6. runtime boilerplate.
+    lines.append("## 6. Runtime statement")
+    lines.append("")
+    lines.append(
+        "Runtime still does not require DSPy. DSPy remains an optional "
+        "extra used only by `evals/optimizers/dspy/` for offline "
+        "candidate generation; the published agent-companion wheel "
+        "and `make verify` do not depend on it."
+    )
+    lines.append("")
+
+    # Failure summary (aggregate) for quick scanning.
+    lines.append("## Failure summary (optimized dev run)")
+    lines.append("")
+    if failure_counts:
+        for metric_name, count in failure_counts.most_common():
+            lines.append(f"- `{metric_name}`: {count} scenario(s)")
+    else:
+        lines.append("_No per-scenario failures recorded._")
+    lines.append("")
+
+    # Current SKILL.md excerpt for side-by-side reading.
     lines.append("## Current SKILL.md (excerpt)")
     lines.append("")
     if skill_excerpt:
@@ -216,22 +449,20 @@ def render_candidate(
     lines.append("## Suggested next steps")
     lines.append("")
     lines.append(
-        "1. Read the failure summary. If `safety` dominates, the "
-        "candidate is unsafe — do not promote regardless of delta."
+        "1. Re-read section 1 (before/after) and the per-suite tables. "
+        "If any suite — especially `safety` — regressed, do not promote."
     )
     lines.append(
-        "2. If delta > 0 and no safety failures remain, hand-translate "
-        "the rewritten instructions into the matching section of "
-        "SKILL.md. Keep prose style consistent."
+        "2. Re-read section 5 (diff). Cherry-pick wording improvements "
+        "that fit SKILL.md's structure; reject anything that drops the "
+        "references block, YAML safety frontmatter, or implemented "
+        "commands list."
     )
     lines.append(
         "3. Re-run evals (`make eval-llama-cpp`) against the proposed "
         "SKILL.md before opening a PR."
     )
-    lines.append(
-        "4. Include this packet in the PR description so reviewers see "
-        "the same evidence."
-    )
+    lines.append("4. Paste sections 1-6 into the PR description as evidence.")
     lines.append("")
     return "\n".join(lines)
 

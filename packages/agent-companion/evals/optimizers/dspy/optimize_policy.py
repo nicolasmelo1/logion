@@ -186,11 +186,83 @@ def _evaluate_module(
         scores.append(score)
         breakdown.append({
             "id": getattr(ex, "id", "unknown"),
+            "suite": getattr(ex, "suite", "unknown"),
             "score": round(score, 4),
             "failures": failures,
             "error": error,
         })
     return scores, breakdown
+
+
+def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
+    """Aggregate per-scenario scores into per-suite averages."""
+    by_suite: dict[str, list[float]] = {}
+    for entry in breakdown:
+        suite = entry.get("suite", "unknown") or "unknown"
+        by_suite.setdefault(suite, []).append(float(entry.get("score", 0.0)))
+    return {
+        suite: round(sum(scores) / len(scores), 4)
+        for suite, scores in by_suite.items()
+        if scores
+    }
+
+
+def _per_suite_failure_counts(
+    breakdown: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Count scenarios with at least one failure per suite."""
+    by_suite: dict[str, int] = {}
+    for entry in breakdown:
+        suite = entry.get("suite", "unknown") or "unknown"
+        failures = entry.get("failures") or []
+        if failures or entry.get("error"):
+            by_suite[suite] = by_suite.get(suite, 0) + 1
+    return by_suite
+
+
+def _approx_tokens(text: str) -> int:
+    """4-chars-per-token estimate. Good enough for English policy text."""
+    return len(text) // 4
+
+
+def _baseline_program_tokens() -> int:
+    """Token estimate for the zero-shot policy: signature docstring only."""
+    docstring = DecisionPolicyModule().predictor.signature.__doc__ or ""
+    return _approx_tokens(docstring)
+
+
+def _demo_to_dict(demo: Any) -> dict[str, Any]:
+    """Best-effort conversion of a DSPy demo to a JSON-able dict."""
+    to_dict = getattr(demo, "toDict", None)
+    if callable(to_dict):
+        return to_dict()
+    if isinstance(demo, dict):
+        return dict(demo)
+    return {}
+
+
+def _optimized_program_tokens(optimized: Any) -> int:
+    """Token estimate for compiled program: instructions + serialized demos."""
+    predictor = getattr(optimized, "predictor", None)
+    instructions = ""
+    demos: list[Any] = []
+    if predictor is not None:
+        sig = getattr(predictor, "signature", None)
+        if sig is not None:
+            instructions = getattr(sig, "instructions", "") or ""
+        demos = list(getattr(predictor, "demos", []) or [])
+    demos_blob = json.dumps([_demo_to_dict(d) for d in demos])
+    return _approx_tokens(instructions) + _approx_tokens(demos_blob)
+
+
+def _capture_model_matrix(optimizer_name: str) -> dict[str, Any]:
+    """Record the LM and optimizer configuration used for this run."""
+    return {
+        "dspy_lm": os.environ.get("DSPY_LM", ""),
+        "dspy_api_base": os.environ.get("DSPY_API_BASE", ""),
+        "optimizer": optimizer_name,
+        "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
+    }
 
 
 def run_optimization(
@@ -263,10 +335,35 @@ def run_optimization(
         optimized, dev_examples, metric
     )
 
+    # Holdout test pass: never seen by the optimizer; this is the
+    # number that gates promotion per the phase-6.6 plan
+    # ("do not promote if regresses holdout").
+    test_examples = _build_examples(
+        split.get("test", []),
+        catalog=catalog,
+        current_policy_text=current_policy,
+    )
+    if test_examples:
+        baseline_test_scores, baseline_test_breakdown = _evaluate_module(
+            DecisionPolicyModule(), test_examples, metric
+        )
+        test_scores, test_breakdown = _evaluate_module(
+            optimized, test_examples, metric
+        )
+    else:
+        baseline_test_scores, baseline_test_breakdown = [], []
+        test_scores, test_breakdown = [], []
+
     baseline_avg = (
         sum(baseline_scores) / len(baseline_scores) if baseline_scores else 0.0
     )
     avg_dev = sum(dev_scores) / len(dev_scores) if dev_scores else 0.0
+    baseline_test_avg = (
+        sum(baseline_test_scores) / len(baseline_test_scores)
+        if baseline_test_scores
+        else 0.0
+    )
+    avg_test = sum(test_scores) / len(test_scores) if test_scores else 0.0
 
     program_path: Path | None = None
     if output_path is not None:
@@ -274,20 +371,42 @@ def run_optimization(
         program_path.parent.mkdir(parents=True, exist_ok=True)
         optimized.save(str(program_path))
 
+    baseline_program_tokens = _baseline_program_tokens()
+    optimized_program_tokens = _optimized_program_tokens(optimized)
+
     report: dict[str, Any] = {
         "timestamp": datetime.now(UTC).isoformat(),
         "optimizer": optimizer_name,
         "seed": seed,
         "train_count": len(train_examples),
         "dev_count": len(dev_examples),
-        "test_count": len(split["test"]),
+        "test_count": len(test_examples),
         "baseline_dev_score_avg": round(baseline_avg, 4),
         "dev_score_avg": round(avg_dev, 4),
         "delta": round(avg_dev - baseline_avg, 4),
+        "baseline_test_score_avg": round(baseline_test_avg, 4),
+        "test_score_avg": round(avg_test, 4),
+        "test_delta": round(avg_test - baseline_test_avg, 4),
         "dev_scores": [round(s, 4) for s in dev_scores],
         "baseline_dev_scores": [round(s, 4) for s in baseline_scores],
+        "test_scores": [round(s, 4) for s in test_scores],
+        "baseline_test_scores": [round(s, 4) for s in baseline_test_scores],
         "dev_breakdown": dev_breakdown,
         "baseline_breakdown": baseline_breakdown,
+        "test_breakdown": test_breakdown,
+        "baseline_test_breakdown": baseline_test_breakdown,
+        "dev_per_suite": _per_suite_averages(dev_breakdown),
+        "baseline_dev_per_suite": _per_suite_averages(baseline_breakdown),
+        "test_per_suite": _per_suite_averages(test_breakdown),
+        "baseline_test_per_suite": _per_suite_averages(
+            baseline_test_breakdown
+        ),
+        "dev_failures_per_suite": _per_suite_failure_counts(dev_breakdown),
+        "test_failures_per_suite": _per_suite_failure_counts(test_breakdown),
+        "baseline_program_tokens": baseline_program_tokens,
+        "optimized_program_tokens": optimized_program_tokens,
+        "token_delta": optimized_program_tokens - baseline_program_tokens,
+        "model_matrix": _capture_model_matrix(optimizer_name),
         "catalog": str(catalog_path),
         "scenarios_dir": str(scenarios_path),
         "split_hash": _split_hash(split),
@@ -379,11 +498,13 @@ def main() -> int:
     print(
         f"optimizer={report['optimizer']} "
         f"baseline={report['baseline_dev_score_avg']} "
-        f"optimized={report['dev_score_avg']} "
-        f"delta={report['delta']:+.4f} "
-        f"train={report['train_count']} "
-        f"dev={report['dev_count']} "
-        f"test={report['test_count']}"
+        f"dev={report['dev_score_avg']} "
+        f"dev_delta={report['delta']:+.4f} "
+        f"test={report['test_score_avg']} "
+        f"test_delta={report['test_delta']:+.4f} "
+        f"tokens={report['baseline_program_tokens']}->"
+        f"{report['optimized_program_tokens']} "
+        f"(Δ{report['token_delta']:+d})"
     )
     if args.output:
         print(f"report: {args.output}")

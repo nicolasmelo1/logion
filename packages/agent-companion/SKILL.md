@@ -43,16 +43,22 @@ workflow, or project-local command already covers the task well enough.
 2. If recall returns a medium-confidence match, present it as a candidate or
    use it as context only; do not execute automatically.
 3. If the user explicitly asks to browse/search/acquire from Logion, search
-   after noting recall is being bypassed or supplemented.
-4. Search Logion only when local recall is insufficient for a missing,
-   specialized capability.
-5. Inspect candidates before recommending installation.
+   via `logion listings search` after noting recall is being bypassed or
+   supplemented.
+4. Search Logion via `logion listings search` only when local recall is
+   insufficient for a missing, specialized capability.
+5. Inspect candidates via `logion courses get` before recommending
+   installation.
 6. Prefer free or local equivalents when quality is comparable.
-7. Ask for explicit user approval before install.
-8. Ask for explicit user approval before any paid checkout.
-9. Ask for explicit user approval before updates that change price,
-   permissions, required tools, or execution policy.
+7. Ask for explicit user approval before `logion skills install`.
+8. Ask for explicit user approval before any paid checkout
+   (`logion payments checkout-start`).
+9. Ask for explicit user approval before `logion skills update` calls that
+   change price, permissions, required tools, or execution policy.
 10. Load only the selected skill artifact, never the whole catalog.
+11. Only call commands listed under "Implemented safe discovery commands" or
+    "Implemented mutating commands" below; never call commands marked as
+    planned.
 
 ## Local Recall Guardrail
 
