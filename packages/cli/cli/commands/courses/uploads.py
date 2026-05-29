@@ -11,7 +11,7 @@ from pathlib import Path
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit, to_data
+from cli._output import emit, emit_json, to_data
 from cli.commands.courses._capability_render import (
     append_capability_summary_lines,
 )
@@ -88,7 +88,10 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
             course_id=args.course_id,
             files=files,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.courses.uploads.create", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -113,7 +116,7 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
             version_id=args.version_id,
         )
         if config.json_output:
-            emit(result, json_output=True)
+            emit_json("logion.courses.uploads.complete", to_data(result))
         else:
             data = to_data(result)
             lines: list[str] = [

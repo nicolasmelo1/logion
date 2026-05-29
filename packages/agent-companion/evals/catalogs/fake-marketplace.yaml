@@ -203,3 +203,15 @@ courses:
       - travel.itinerary
       - travel.budget
     tags: [travel, planning]
+
+  - id: ocr.documents.draft.v2
+    name: "OCR for documents (draft v2)"
+    summary: "Draft creator version under publication review."
+    price_usd: 0
+    review_status: in_review
+    required_tools: [terminal]
+    required_env: []
+    capability_ids:
+      - ocr.text
+      - ocr.tables
+    tags: [ocr, documents, draft]

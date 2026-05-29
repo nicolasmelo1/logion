@@ -31,7 +31,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+from cli._config import resolve_config_from_args
 from cli._errors import print_err, validate_uuid_id
+from cli._output import emit_json
 
 from .uploads import _resolve_upload_files
 
@@ -197,14 +199,9 @@ def _emit_results(
     failures: int,
     json_output: bool,
 ) -> None:
+    payload = {"results": results, "failures": failures}
     if json_output:
-        print(
-            json.dumps(
-                {"results": results, "failures": failures},
-                indent=2,
-                sort_keys=True,
-            )
-        )
+        emit_json("logion.courses.uploads.push", payload)
         return
     for r in results:
         status = "OK" if r["ok"] else "FAIL"
@@ -218,6 +215,7 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
     if rc != EXIT_OK or uploads is None or file_map is None:
         return rc
 
+    config = resolve_config_from_args(args)
     results: list[dict[str, Any]] = []
     failures = 0
     # COMMON_PARSER leaves --max-retries / --timeout as None when the
@@ -236,5 +234,5 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
         if not ok:
             failures += 1
 
-    _emit_results(results, failures, getattr(args, "json_output", False))
+    _emit_results(results, failures, config.json_output)
     return EXIT_OK if failures == 0 else EXIT_UPLOAD_FAILED

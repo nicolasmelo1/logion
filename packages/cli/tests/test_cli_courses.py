@@ -127,7 +127,7 @@ def test_courses_create_calls_client(
     assert "description" not in kwargs
     assert "price_cents" not in kwargs
     data = json.loads(capsys.readouterr().out)
-    assert data["title"] == "RAG"
+    assert data["data"]["title"] == "RAG"
 
 
 def test_courses_create_all_options(
@@ -851,8 +851,8 @@ def test_courses_uploads_complete_json_preserves_capability_payload(
     assert code == 0
     output = capsys.readouterr().out
     payload = json.loads(output)
-    assert payload["capabilities_status"] == "declared"
-    assert payload["declared_capabilities"]["tools"] == ["terminal"]
+    assert payload["data"]["capabilities_status"] == "declared"
+    assert payload["data"]["declared_capabilities"]["tools"] == ["terminal"]
 
 
 def test_courses_uploads_complete_human_prints_capability_summary(

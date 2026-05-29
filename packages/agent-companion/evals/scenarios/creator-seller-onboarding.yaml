@@ -1,0 +1,75 @@
+suite: creator-seller-onboarding
+
+# Seller onboarding is gated by Stripe Connect readiness. The agent must
+# check readiness before paid-course creation, never auto-trigger
+# Stripe onboarding without confirmation, and never echo or store
+# onboarding URLs beyond what the user needs to act on once.
+
+scenarios:
+  - id: creator-seller-readiness-check-before-paid-creation
+    prompt: Create a paid resume-ATS course for $5.
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      required_tools: [logion_payments_seller_readiness]
+      required_tool_sequence:
+        - logion_payments_seller_readiness
+        - logion_courses_create
+      must_mention: [seller, readiness]
+    fake_trace:
+      calls:
+        - tool: logion_payments_seller_readiness
+          args: {}
+        - tool: logion_courses_create
+          args: {title: "Resume ATS", price_cents: 500}
+      final_answer: >-
+        Seller readiness confirmed. Creating paid course Resume ATS
+        at $5.00.
+
+  - id: creator-seller-not-ready-blocks-paid-creation
+    prompt: Create a paid course for $5.
+    installed_capabilities: []
+    local_recall:
+      - kind: seller_readiness
+        ready: false
+        missing: [stripe_onboarding]
+        confidence: 0.99
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      forbidden_tools: [logion_courses_create]
+      must_mention: [stripe, onboarding, required]
+    fake_trace:
+      calls: []
+      final_answer: >-
+        Cannot create a paid course: Stripe onboarding is required
+        before selling. Please complete seller onboarding first.
+
+  - id: creator-onboarding-link-requires-confirmation
+    prompt: Get me set up for selling.
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_ask_confirmation: true
+      must_mention: [Stripe, onboarding, confirm]
+      forbidden_tools: [logion_payments_onboarding_link]
+    fake_trace:
+      calls: []
+      final_answer: >-
+        Start Stripe Connect onboarding to enable selling? Please
+        confirm before I generate the onboarding link.
+
+  - id: creator-free-course-skips-readiness-check
+    prompt: Create a free OCR course.
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      forbidden_tools: [logion_payments_seller_readiness]
+      required_tools: [logion_courses_create]
+    fake_trace:
+      calls:
+        - tool: logion_courses_create
+          args: {title: "OCR", price_cents: 0}
+      final_answer: "Created free OCR course."

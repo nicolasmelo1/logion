@@ -3,7 +3,8 @@ name: logion-marketplace-companion
 version: 0.1.0
 description: >-
   Compact bootstrap skill for recall-first Logion discovery, inspection,
-  install, and update routing without loading the whole marketplace.
+  install, update, and creator-course-management routing without loading
+  the whole marketplace.
 required_tools:
   - terminal
   - file
@@ -56,9 +57,8 @@ workflow, or project-local command already covers the task well enough.
 9. Ask for explicit user approval before `logion skills update` calls that
    change price, permissions, required tools, or execution policy.
 10. Load only the selected skill artifact, never the whole catalog.
-11. Only call commands listed under "Implemented safe discovery commands" or
-    "Implemented mutating commands" below; never call commands marked as
-    planned.
+11. Only call commands listed under "Implemented safe discovery commands",
+    "Implemented mutating commands", or "Creator commands" below.
 
 ## Local Recall Guardrail
 
@@ -96,6 +96,12 @@ logion recall search "video cuts" --limit 5  # read-only
 logion skills installed
 logion skills inspect COURSE_ID
 logion skills updates
+logion skills search "video cuts" --limit 5
+logion courses reviews list --course-id COURSE_ID
+logion courses reviews summary --course-id COURSE_ID
+logion courses publication latest COURSE_ID --json
+logion courses publication feedback COURSE_ID VERSION_ID --json
+logion payments seller-readiness --json
 ```
 
 Implemented mutating commands (require explicit approval):
@@ -104,12 +110,19 @@ logion skills install --source ./BUNDLE --course-id COURSE_ID --version-id VERSI
 logion skills update COURSE_ID --version-id VERSION_ID --source ./BUNDLE
 logion recall record --id WORKFLOW_ID --title TITLE --command CMD
 logion courses capabilities scaffold --bundle-dir ./new-course
-logion courses capabilities validate --bundle-dir ./new-course
+logion courses capabilities validate --bundle-dir ./new-course --json
+logion courses create --title ... --slug ... --json
+logion courses update COURSE_ID --json
+logion courses uploads create COURSE_ID --file ... --json
+logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
+logion courses uploads complete COURSE_ID VERSION_ID --json
+logion courses publication request COURSE_ID VERSION_ID --json
 ```
 
-Planned commands; do not run them now:
+Creator commands (require explicit approval for destructive actions):
 ```bash
-logion skills search "video cuts" --limit 5  # planned
+logion courses capabilities print --bundle-dir ./new-course --json
+logion payments onboarding-link --json
 ```
 
 ## Course inspection checklist
@@ -129,8 +142,8 @@ price, permissions, required tools, or execution policy.
 
 Keep this file compact. Do not load the marketplace catalog. Load references
 only when needed: `references/marketplace-flows.md`,
-`references/low-context-loading.md`, `references/safety-and-approval.md`, or
-`references/troubleshooting.md`.
+`references/low-context-loading.md`, `references/safety-and-approval.md`,
+`references/creator-course-management.md`, or `references/troubleshooting.md`.
 
 ## Troubleshooting
 
