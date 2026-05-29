@@ -405,7 +405,7 @@ scenarios:
           args: {query: "tailor cover letter", limit: 5}
       final_answer: "Using installed cover_letter.tailor locally."
 
-  # ── Phase 6.9: confidence-band routing + danger-flag gating (S21–S28) ──
+  # ── Confidence-band routing + danger-flag gating (S21–S28) ──
 
   - id: recall-high-band-suppresses-marketplace
     prompt: How do I run the agent-companion verify suite?

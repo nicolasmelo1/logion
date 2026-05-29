@@ -174,7 +174,7 @@ uv run --group dspy python evals/optimizers/dspy/render_candidate.py \
     --skill SKILL.md
 ```
 
-The packet contains the six fields the Phase 6.6 promotion process
+The packet contains the six fields the promotion process
 requires (before/after eval, model matrix, scenario split hash, token
 budget delta, instruction diff, runtime statement) and a suggested
 verdict that flips to **do not promote** if any of the following holds:
@@ -185,7 +185,7 @@ verdict that flips to **do not promote** if any of the following holds:
 - any other per-suite average regressed on dev.
 
 See `evals/optimizers/dspy/README.md` for the full setup and the
-Phase 6.6 promotion contract.
+promotion contract.
 
 ## CLI is not where DSPy lives
 
