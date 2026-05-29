@@ -123,7 +123,7 @@ def handle_skills_search(args: argparse.Namespace) -> int:
     items = _normalize_items(result)
     items = _annotate_entitlement(items, installed_manifests)
 
-    if getattr(args, "json_output", config.json_output):
+    if config.json_output:
         emit_json(
             "logion.skills.search",
             {"items": items, "total": len(items)},

@@ -168,5 +168,8 @@ def handle_payments_orders_wait(
     msg = (
         f"Order {args.order_id} did not reach terminal state within {timeout}s"
     )
-    emit_error_json("order_timeout", msg, 2)
+    if config.json_output:
+        emit_error_json("order_timeout", msg, 2)
+    else:
+        sys.stderr.write(f"ERROR: {msg}\n")
     return 2

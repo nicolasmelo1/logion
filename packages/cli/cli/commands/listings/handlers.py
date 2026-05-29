@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
-import sys
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -59,6 +57,41 @@ def _format_search_payload(
     return payload
 
 
+def _print_human(payload: dict[str, object]) -> None:
+    """Render a compact human-readable search result list."""
+    matches = payload.get("matches")
+    if not isinstance(matches, list) or not matches:
+        from sys import stdout
+
+        stdout.write("No listings found.\n")
+        return
+
+    from sys import stdout
+
+    stdout.write(f"Listings ({payload.get('total', len(matches))}):\n")
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        listing_id = match.get("id", "?")
+        title = match.get("title", "")
+        summary = match.get("summary", "")
+        price_value = match.get("price")
+        price = price_value if isinstance(price_value, dict) else {}
+        amount = price.get("amount_cents")
+        currency = price.get("currency")
+        status = match.get("status", "unknown")
+
+        line = f"  {listing_id}"
+        if title:
+            line += f" — {title}"
+        if amount is not None and currency:
+            line += f" [{amount} {currency}]"
+        line += f" [{status}]"
+        stdout.write(f"{line}\n")
+        if isinstance(summary, str) and summary:
+            stdout.write(f"    {summary}\n")
+
+
 def handle_search(args: argparse.Namespace) -> int:
     """Execute the listings search."""
     config = resolve_config_from_args(args)
@@ -84,7 +117,7 @@ def handle_search(args: argparse.Namespace) -> int:
         if config.json_output:
             emit_json("logion.listings.search", payload)
         else:
-            sys.stdout.write(f"{json.dumps(payload, indent=2)}\n")
+            _print_human(payload)
     except Exception as exc:
         return handle_error(exc)
     else:

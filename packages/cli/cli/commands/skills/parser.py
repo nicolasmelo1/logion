@@ -112,7 +112,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     verify = sub.add_parser(
         "verify",
-        help="Re-check entitlement status for installed skills",
+        help="Re-state locally stored entitlement status for installed skills",
         parents=[COMMON_PARSER],
     )
     verify.add_argument("course_id", nargs="?", default=None)

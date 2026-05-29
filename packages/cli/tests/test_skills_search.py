@@ -120,6 +120,52 @@ def test_skills_search_json_shape_matches_envelope(
     assert "total" in data["data"]
 
 
+def test_skills_search_uses_config_json_output_when_args_flag_is_false(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    items = [
+        {
+            "course_id": "course-1",
+            "id": "course-1",
+            "title": "Config Driven",
+            "short_summary": "A short summary",
+        },
+    ]
+    listings = FakeListingsResource(items)
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+
+    args = _make_args(target=tmp_path, json_output=False)
+    with (
+        patch(
+            "cli.commands.skills._search_handler.make_client",
+            return_value=fake,
+        ),
+        patch(
+            "cli.commands.skills._search_handler.list_installed",
+            return_value=[],
+        ),
+        patch(
+            "cli.commands.skills._search_handler.resolve_config_from_args"
+        ) as mock_cfg,
+        patch(
+            "cli.commands.skills._search_handler.resolve_target",
+            return_value=tmp_path,
+        ),
+    ):
+        mock_cfg.return_value = argparse.Namespace(
+            json_output=True,
+            api_key=None,
+            base_url="https://api.logion.dev",
+            timeout=None,
+            max_retries=None,
+        )
+        rc = handle_skills_search(args)
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["kind"] == "logion.skills.search"
+
+
 def test_skills_search_emits_entitlement_status_per_result(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

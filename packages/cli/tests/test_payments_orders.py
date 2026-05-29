@@ -265,6 +265,41 @@ def test_orders_wait_returns_two_on_timeout(
     assert payload["data"]["code"] == "order_timeout"
 
 
+def test_orders_wait_returns_plain_text_timeout_without_json(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_client = _mock_client_with_orders([
+        _make_order_response(status="pending", paid_at=None)
+    ])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 2.0, 2.0]
+    fake_time.sleep = MagicMock()
+
+    with (
+        patch(
+            "cli.commands.payments.handlers.make_client",
+            return_value=mock_client,
+        ),
+        patch(
+            "cli.commands.payments.handlers.resolve_config_from_args",
+            return_value=_default_config(json_output=False),
+        ),
+        patch("cli.commands.payments.handlers.time", fake_time),
+    ):
+        rc = handle_payments_orders_wait(
+            _make_args(timeout=1, interval=1, json_output=False)
+        )
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.out.strip() == (
+        "Order 880e8400-e29b-41d4-a716-446655440003: "
+        "status=pending (elapsed 2s)"
+    )
+    assert "did not reach terminal state within 1s" in captured.err
+    assert '"kind": "logion.error"' not in captured.err
+
+
 def test_orders_wait_respects_timeout_cap_of_six_hundred() -> None:
     mock_client = _mock_client_with_orders([
         _make_order_response(status="pending", paid_at=None)

@@ -81,7 +81,6 @@ def compact_review(review: dict[str, Any]) -> dict[str, Any]:
     return {
         "review_id": review.get("review_id", review.get("id")),
         "rating": review.get("rating"),
-        "title": review.get("title") or review.get("headline") or "",
         "body_excerpt": truncate_summary(
             review.get("body") if isinstance(review.get("body"), str) else None
         ),

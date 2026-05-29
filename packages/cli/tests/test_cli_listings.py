@@ -118,6 +118,23 @@ def test_listings_search_verbose_full_summary(
     assert payload["data"]["matches"] == [full_item]
 
 
+def test_listings_search_human_output_is_compact_text(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    listings = FakeListingsResource([_make_item("short summary")])
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["listings", "search", "--query", "video"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Listings (1):" in output
+    assert "listing-1 — Video Cuts [1299 USD] [published]" in output
+    assert "short summary" in output
+
+
 def test_listings_search_v1_envelope(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

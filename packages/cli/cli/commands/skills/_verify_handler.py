@@ -15,7 +15,6 @@ from cli._local_state import (
     VALID_ENTITLEMENT_STATUSES,
     UnsafeIdentifierError,
     _safe_segment,
-    _utc_iso_now,
     list_installed,
     write_manifest,
 )
@@ -36,12 +35,11 @@ def _error(
 
 
 def _local_verify_status(manifest: dict[str, Any]) -> str:
-    """Best-effort verification using only public SDK-local data.
+    """Preserve the locally recorded entitlement status.
 
-    The current public SDK exposes checkout/order state but no dedicated
-    entitlements endpoint, so verification cannot prove fresh ownership
-    server-side in this repository alone. We therefore preserve a known
-    marketplace entitlement state, while manual installs remain unknown.
+    The public SDK currently exposes no entitlements read endpoint, so this
+    command cannot prove fresh server-side ownership. Marketplace installs keep
+    their stored entitlement state; non-marketplace installs remain unknown.
     """
     source = manifest.get("source")
     current = manifest.get("entitlement_status")
@@ -52,8 +50,13 @@ def _local_verify_status(manifest: dict[str, Any]) -> str:
     return "unknown"
 
 
+def _verification_mode(_manifest: dict[str, Any]) -> str:
+    """Return the verification mode reported to callers."""
+    return "local-manifest-only"
+
+
 def handle_skills_verify(args: argparse.Namespace) -> int:
-    """Refresh local entitlement metadata for installed skills."""
+    """Refresh locally stored entitlement metadata for installed skills."""
     home = resolve_target(args)
     course_id: str | None = getattr(args, "course_id", None)
 
@@ -68,18 +71,18 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
         installed = [m for m in installed if m.get("course_id") == course_id]
 
     results: list[dict[str, Any]] = []
-    now = _utc_iso_now()
 
     for manifest in installed:
         cid = str(manifest.get("course_id", "?"))
         vid = str(manifest.get("version_id", "?"))
         manifest["entitlement_status"] = _local_verify_status(manifest)
-        manifest["last_verified_at"] = now
         write_manifest(manifest, cid, vid, home)
         results.append({
             "course_id": cid,
             "entitlement_status": manifest["entitlement_status"],
-            "last_verified_at": manifest["last_verified_at"],
+            "last_verified_at": manifest.get("last_verified_at"),
+            "source": manifest.get("source", "unknown"),
+            "verification_mode": _verification_mode(manifest),
         })
 
     if getattr(args, "json_output", False):
@@ -95,6 +98,8 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
         print(
             f"  {entry['course_id']}: "
             f"entitlement={entry['entitlement_status']}, "
-            f"verified_at={entry['last_verified_at']}"
+            f"mode={entry['verification_mode']}, "
+            f"source={entry['source']}, "
+            f"last_verified_at={entry['last_verified_at']}"
         )
     return 0

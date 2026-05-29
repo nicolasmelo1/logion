@@ -151,7 +151,7 @@ def test_skills_verify_updates_entitlement_status(home: Path) -> None:
     assert updated["entitlement_status"] == "expired"
 
 
-def test_skills_verify_updates_last_verified_at_to_recent_timestamp(
+def test_skills_verify_preserves_existing_last_verified_at(
     home: Path,
 ) -> None:
     manifest = _make_manifest(last_verified_at=None)
@@ -166,10 +166,24 @@ def test_skills_verify_updates_last_verified_at_to_recent_timestamp(
         manifest["course_id"], manifest["version_id"], home
     )
     assert updated is not None
-    assert updated["last_verified_at"] is not None
-    assert "+00:00" in updated["last_verified_at"] or updated[
-        "last_verified_at"
-    ].endswith("Z")
+    assert updated["last_verified_at"] is None
+
+
+def test_skills_verify_reports_local_only_verification_mode(
+    home: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest = _make_manifest(last_verified_at=None)
+    write_manifest(
+        manifest, manifest["course_id"], manifest["version_id"], home
+    )
+
+    rc = handle_skills_verify(_ns(target=home, json_output=True))
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    entry = payload["data"][0]
+    assert entry["verification_mode"] == "local-manifest-only"
+    assert entry["source"] == "logion-marketplace"
 
 
 def test_skills_verify_handles_expired_entitlement_without_crashing(

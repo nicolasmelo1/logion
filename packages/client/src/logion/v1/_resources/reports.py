@@ -1,4 +1,4 @@
-"""Reports resource — user-facing report creation and listing."""
+"""Reports resource — user-facing report creation."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ ReportReason = Literal[
 
 
 class ReportsResource:
-    """Create and list content reports."""
+    """Create content reports through the public API."""
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
