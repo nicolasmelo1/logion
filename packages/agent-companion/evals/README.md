@@ -10,8 +10,7 @@ refuses actions correctly against a fake marketplace catalog.
 evals/
 ├── README.md                  ← This file
 ├── catalogs/
-│   ├── fake-marketplace.yaml  ← 14-course fake catalog with confusion pairs
-│   └── fake-seller-state.yaml ← Seller-state catalog for creator suites (§11.3)
+│   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses + 1 draft
 ├── scenarios/
 │   ├── local-recall.yaml        ← 20 scenarios
 │   ├── routing.yaml             ← 21 scenarios (12 positive, 9 negative)
@@ -170,24 +169,20 @@ Deterministic graders in `harness/graders.py`, one per eval dimension:
 Optional LLM judges may be plugged in later for qualitative clarity
 review but cannot be a release gate.
 
-## Creator suites & seller-state catalog (§11.3)
+## Creator suites (§11.3)
 
-Three new eval suites cover the creator-authored marketplace path:
+Three new eval suites cover the creator-authored marketplace path using
+`fake-marketplace.yaml` (which includes a draft `in_review` course):
 
-- **creator-authoring** (8 scenarios) — verifies that the agent correctly
-  assists creators in drafting and editing course content, skill manifests,
-  and metadata before submission.
-- **creator-publication** (6 scenarios) — validates the publish/withdraw
-  lifecycle: listing a course, updating an existing listing, and retiring it.
-- **creator-seller-onboarding** (4 scenarios) — tests the seller identity
-  verification and state transitions (draft → pending → active → suspended).
+- **creator-authoring** (8 scenarios) — metadata create/update,
+  capability validation, upload gating, price/visibility confirmation.
+- **creator-publication** (6 scenarios) — review submission, status
+  checks, feedback handling, bypass refusal.
+- **creator-seller-onboarding** (4 scenarios) — seller readiness
+  checks, paid-course gating, onboarding confirmation.
 
-These suites use the **fake-seller-state.yaml** catalog
-(`catalogs/fake-seller-state.yaml`), which provides a minimal but
-representative set of seller-state fixtures (status, verification level,
-listing slots) rather than course metadata. This lets graders assert that
-the agent respects seller-gating rules without needing a full marketplace
-catalog.
+Seller readiness is asserted via `local_recall` entries in scenarios
+rather than a separate catalog fixture.
 
 ## Release gates (target V1)
 

@@ -66,12 +66,12 @@ scenarios:
           - {severity: warning, category: skill_md, message: "no quickstart section"}
     catalog_fixture: fake-marketplace.yaml
     expected:
-      required_tools: [logion_courses_publication_feedback]
+      required_tools: [logion_courses_feedback]
       must_mention: [error, "missing capability id", warning, "no quickstart"]
     fake_trace:
       calls:
-        - tool: logion_courses_publication_feedback
-          args: {course_id: ocr.documents, version_id: v2}
+        - tool: logion_courses_feedback
+          args: {course_id: ocr.documents}
       final_answer: >-
         OCR v2 feedback: [error] manifest: missing capability id.
         [warning] skill_md: no quickstart section.

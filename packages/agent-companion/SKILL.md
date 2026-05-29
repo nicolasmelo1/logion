@@ -100,7 +100,7 @@ logion skills search "video cuts" --limit 5
 logion courses reviews list --course-id COURSE_ID
 logion courses reviews summary --course-id COURSE_ID
 logion courses publication latest COURSE_ID --json
-logion courses publication feedback COURSE_ID VERSION_ID --json
+logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
 ```
 
@@ -116,7 +116,7 @@ logion courses update COURSE_ID --json
 logion courses uploads create COURSE_ID --file ... --json
 logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
 logion courses uploads complete COURSE_ID VERSION_ID --json
-logion courses publication request COURSE_ID VERSION_ID --json
+logion courses publication request COURSE_ID --json
 ```
 
 Creator commands (require explicit approval for destructive actions):

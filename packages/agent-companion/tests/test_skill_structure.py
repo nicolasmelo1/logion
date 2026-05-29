@@ -84,9 +84,9 @@ IMPLEMENTED_COMMANDS = {
         "--session-file session.json --file ... --json"
     ),
     "logion courses uploads complete COURSE_ID VERSION_ID --json",
-    ("logion courses publication request COURSE_ID VERSION_ID --json"),
+    ("logion courses publication request COURSE_ID --json"),
     ("logion courses publication latest COURSE_ID --json"),
-    ("logion courses publication feedback COURSE_ID VERSION_ID --json"),
+    ("logion courses feedback COURSE_ID --json"),
     "logion payments seller-readiness --json",
     "logion payments onboarding-link --json",
     ("logion courses capabilities print --bundle-dir ./new-course --json"),

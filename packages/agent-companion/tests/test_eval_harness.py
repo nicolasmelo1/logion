@@ -421,7 +421,7 @@ class TestScenarioSchema:
             "logion_courses_uploads_complete",
             "logion_courses_publication_request",
             "logion_courses_publication_latest",
-            "logion_courses_publication_feedback",
+            "logion_courses_feedback",
             "logion_payments_seller_readiness",
             "logion_payments_onboarding_link",
         }

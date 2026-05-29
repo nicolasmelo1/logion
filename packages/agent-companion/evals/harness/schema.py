@@ -23,7 +23,7 @@ KNOWN_TOOLS = {
     "logion_courses_capabilities_validate",
     "logion_courses_create",
     "logion_courses_get",
-    "logion_courses_publication_feedback",
+    "logion_courses_feedback",
     "logion_courses_publication_latest",
     "logion_courses_publication_request",
     "logion_courses_update",
@@ -285,7 +285,7 @@ def load_catalog(path: Path) -> Catalog:  # noqa: C901
             "in_review",
         }
         latest_version_review_status = entry.get(
-            "latest_version_review_status", "approved"
+            "latest_version_review_status", review_status
         )
         if latest_version_review_status not in valid_review_statuses:
             raise SchemaError(
