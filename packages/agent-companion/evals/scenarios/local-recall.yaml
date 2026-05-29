@@ -563,7 +563,7 @@ scenarios:
         title: Deploy with auth
         confidence: 0.85
         band: HIGH
-        commands: ["curl -H 'Authorization: Bearer *** https://api/deploy"]
+        commands: ["curl -H 'Authorization: Bearer ***' https://api/deploy"]
         danger_flags: []
     catalog_fixture: fake-marketplace.yaml
     expected:

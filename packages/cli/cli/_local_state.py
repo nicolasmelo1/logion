@@ -615,6 +615,17 @@ def detect_danger_flags(commands: list[str] | None) -> list[str]:
     return sorted(found)
 
 
+def _recall_tokens(*parts: str) -> list[str]:
+    """Return compact searchable tokens for recall ranking."""
+    tokens: list[str] = []
+    for part in parts:
+        text = str(part or "").strip()
+        if not text:
+            continue
+        tokens.extend(segment for segment in re.split(r"\s+", text) if segment)
+    return tokens
+
+
 def build_recall_entries(
     installed: list[dict[str, Any]],
     workflows: list[dict[str, Any]] | None = None,
@@ -628,12 +639,16 @@ def build_recall_entries(
             "id": m.get("course_id", ""),
             "title": m.get("title", ""),
             "summary": (m.get("summary", "") or "")[:200],
-            "confidence": 0.91,
             "source": "installed_index",
             "entrypoint": (
                 f"installed/{m.get('course_id', '')}/"
                 f"{m.get('version_id', '')}/"
                 f"{m.get('entrypoint', 'SKILL.md')}"
+            ),
+            "tokens": _recall_tokens(
+                str(m.get("course_id", "")),
+                str(m.get("version_id", "")),
+                str(m.get("entrypoint", "SKILL.md")),
             ),
             "danger_flags": [],
             "entitlement_status": m.get("entitlement_status", "unknown"),
@@ -656,9 +671,14 @@ def build_recall_entries(
                 "type": "workflow",
                 "id": w.get("id", ""),
                 "title": w.get("title", ""),
+                "summary": (w.get("summary", "") or "")[:200],
                 "confidence": float(w.get("confidence", 0.5)),
                 "source": "workflow_history",
                 "commands": redacted_commands,
+                "tokens": _recall_tokens(
+                    str(w.get("id", "")),
+                    *[str(command) for command in redacted_commands],
+                ),
                 "success_count": int(w.get("success_count", 0)),
                 "last_success_at": w.get("last_success_at", ""),
                 "danger_flags": danger_flags,

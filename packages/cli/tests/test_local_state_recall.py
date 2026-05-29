@@ -224,21 +224,23 @@ class TestRapidfuzzAndDifflibSameBand:
         ]
 
         orig = mod._HAS_RAPIDFUZZ
+        strong_query = (
+            "verify agent companion package "
+            "run lint, typecheck, tests, packaging checks."
+        )
         try:
             mod._HAS_RAPIDFUZZ = True
-            result_rf = rank("verify agent companion", entries, limit=5)
+            result_rf = rank(strong_query, entries, limit=5)
             band_rf = band_for(result_rf[0][0]) if result_rf else "NONE"
 
             mod._HAS_RAPIDFUZZ = False
-            result_dl = rank("verify agent companion", entries, limit=5)
+            result_dl = rank(strong_query, entries, limit=5)
             band_dl = band_for(result_dl[0][0]) if result_dl else "NONE"
         finally:
             mod._HAS_RAPIDFUZZ = orig
 
-        # On a strong match, rapidfuzz path should land in HIGH or MEDIUM.
-        # difflib may score lower for token-set mismatches; accept LOW+.
-        assert band_rf in {"HIGH", "MEDIUM"}
-        assert band_dl in {"HIGH", "MEDIUM", "LOW"}
+        assert band_rf == "HIGH"
+        assert band_dl == "HIGH"
 
 
 # ---------------------------------------------------------------------------
@@ -269,11 +271,50 @@ class TestSearchRecallIntegration:
         ]
         with mock.patch("cli._local_state.read_recall", return_value=entries):
             results = search_recall("test workflow", home=home, limit=5)
-        if results:
-            # confidence should differ from the persisted 0.91
-            # (it's recomputed from query_similarity + calibration)
-            assert "band" in results[0]
-            assert "query_similarity" in results[0]
+        assert results
+        expected = calibrate_workflow_confidence(
+            results[0]["query_similarity"],
+            entries[0]["success_count"],
+            entries[0]["last_success_at"],
+        )
+        assert results[0]["confidence"] != 0.91
+        assert results[0]["confidence"] == pytest.approx(round(expected, 4))
+        assert "band" in results[0]
+        assert "query_similarity" in results[0]
+
+    def test_build_recall_entries_preserve_id_and_command_searchability(
+        self,
+    ) -> None:
+        from cli._local_state import build_recall_entries, search_recall
+
+        entries = build_recall_entries(
+            installed=[],
+            workflows=[
+                {
+                    "id": "workflow.verify-agent-companion",
+                    "title": "Utility workflow",
+                    "commands": ["make -C packages/agent-companion verify"],
+                    "success_count": 4,
+                    "last_success_at": "2026-05-20T00:00:00Z",
+                    "confidence": 0.5,
+                }
+            ],
+        )
+        with mock.patch("cli._local_state.read_recall", return_value=entries):
+            by_id = search_recall(
+                "workflow.verify-agent-companion",
+                home=mock.MagicMock(),
+                limit=5,
+            )
+            by_command = search_recall(
+                "agent-companion verify",
+                home=mock.MagicMock(),
+                limit=5,
+            )
+        assert by_id
+        assert by_command
+        assert by_id[0]["id"] == "workflow.verify-agent-companion"
+        assert by_command[0]["id"] == "workflow.verify-agent-companion"
 
     def test_attaches_band_to_each_match(self) -> None:
         from cli._local_state import search_recall

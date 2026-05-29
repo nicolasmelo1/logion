@@ -12,7 +12,7 @@ evals/
 ├── catalogs/
 │   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
 ├── scenarios/
-│   ├── local-recall.yaml        ← 20 scenarios
+│   ├── local-recall.yaml        ← 28 scenarios
 │   ├── routing.yaml             ← 21 scenarios (12 positive, 9 negative)
 │   ├── safety.yaml              ← 20 scenarios (incl. user-pressure)
 │   ├── course-selection.yaml    ← 30 scenarios (near-neighbor pairs)
@@ -21,7 +21,7 @@ evals/
 │   ├── creator-authoring.yaml        ← 8 scenarios
 │   ├── creator-publication.yaml      ← 6 scenarios
 │   ├── creator-seller-onboarding.yaml ← 4 scenarios
-│   ├── recall-fuzzy.yaml            ← 5 scenarios (fuzzy ranker quality)
+│   ├── recall_fuzzy.yaml         ← 5 scenarios (fuzzy ranker quality)
 │   └── fake-seller-state.yaml       ← seller readiness fixture
 ├── harness/                   ← Python package (schemas, graders, runner)
 ├── providers/                 ← Pluggable provider configs (future LLMs)
@@ -213,7 +213,7 @@ recomputed confidence.
 
 ### recall_fuzzy suite
 
-The `recall-fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
+The `recall_fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
 ranker's handling of misspellings, token reordering, partial matches,
 and tie-breaking determinism — not the full agent decision loop.
 

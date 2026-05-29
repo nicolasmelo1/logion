@@ -24,9 +24,28 @@ from cli._output import emit_json
 def handle_recall_search(args: argparse.Namespace) -> int:
     """Search the local recall index for *query*."""
     home = ensure_layout(getattr(args, "target", None))
-    results = search_recall(args.query, home, limit=args.limit)
+    query = args.query.strip()
+    payload = {
+        "query": args.query,
+        "matches": [],
+        "total": 0,
+        "limit": args.limit,
+    }
+    if not query:
+        if getattr(args, "json_output", False):
+            emit_json("logion.recall.search", payload)
+            return 0
+        print("Please clarify the recall query before searching.")
+        return 0
+    results = search_recall(query, home, limit=args.limit)
+    payload = {
+        "query": args.query,
+        "matches": results,
+        "total": len(results),
+        "limit": args.limit,
+    }
     if getattr(args, "json_output", False):
-        emit_json("logion.recall.search", results)
+        emit_json("logion.recall.search", payload)
         return 0
     if not results:
         print(f"No recall matches for {args.query!r}.")

@@ -14,10 +14,12 @@ import difflib
 from typing import Any
 
 try:
-    from rapidfuzz import fuzz as _rf_fuzz
+    from rapidfuzz import fuzz as _rapidfuzz_fuzz
 
+    _rf_fuzz: Any | None = _rapidfuzz_fuzz
     _HAS_RAPIDFUZZ = True
 except ImportError:  # pragma: no cover
+    _rf_fuzz = None
     _HAS_RAPIDFUZZ = False
 
 
@@ -26,7 +28,7 @@ _MINIMUM_SIMILARITY = 0.10
 
 def _compute_similarity(query: str, composed: str) -> float:
     """Return similarity in [0, 1] between *query* and *composed* string."""
-    if _HAS_RAPIDFUZZ:
+    if _HAS_RAPIDFUZZ and _rf_fuzz is not None:
         return _rf_fuzz.partial_token_set_ratio(query, composed) / 100.0
     return difflib.SequenceMatcher(None, query, composed).ratio()
 
