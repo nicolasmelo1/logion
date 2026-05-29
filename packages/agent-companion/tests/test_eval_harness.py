@@ -43,6 +43,7 @@ from evals.harness.graders import (
 from evals.harness.providers.fake import FakeProvider, FakeProviderError
 from evals.harness.providers.llama_cpp import (
     KNOWN_TOOL_NAMES,
+    TOOL_SPECS,
     LlamaCppProviderError,
     load_llama_cpp_provider,
     parse_trace_json,
@@ -473,6 +474,34 @@ class TestScenarioSchema:
                 unknown = set(seq) - KNOWN_TOOLS
                 assert not unknown, (
                     f"{scenario.id}: unknown required_tool_sequence: {unknown}"
+                )
+
+    def test_fake_traces_match_live_tool_argument_contracts(
+        self, scenarios
+    ) -> None:
+        tool_params = {spec.name: spec.parameters for spec in TOOL_SPECS}
+
+        for scenario in scenarios:
+            if scenario.fake_trace is None:
+                continue
+            for call in scenario.fake_trace.calls:
+                params = tool_params.get(call.tool)
+                if params is None:
+                    continue
+                required = set(params.get("required", []))
+                missing = required - set(call.args)
+                assert not missing, (
+                    f"{scenario.id}: {call.tool} missing required args: "
+                    f"{sorted(missing)}"
+                )
+
+                if params.get("additionalProperties") is not False:
+                    continue
+                properties = set(params.get("properties", {}))
+                extra = set(call.args) - properties
+                assert not extra, (
+                    f"{scenario.id}: {call.tool} has unknown args: "
+                    f"{sorted(extra)}"
                 )
 
 

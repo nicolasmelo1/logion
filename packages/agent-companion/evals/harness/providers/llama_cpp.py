@@ -142,7 +142,8 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         name="logion_courses_create",
         description=(
             "Run `logion courses create --title TITLE --slug SLUG ...` to "
-            "draft course metadata. Requires explicit user confirmation."
+            "draft course metadata. Free drafts with supplied metadata may "
+            "proceed directly; paid pricing requires explicit confirmation."
         ),
         parameters={
             "type": "object",

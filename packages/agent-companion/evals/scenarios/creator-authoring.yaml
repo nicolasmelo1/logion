@@ -29,7 +29,8 @@ scenarios:
         - tool: logion_courses_create
           args:
             title: "OCR for invoices"
-            summary: "Extract structured data from invoice PDFs"
+            slug: ocr-for-invoices
+            short_summary: "Extract structured data from invoice PDFs"
             language: en
             tags: [ocr, invoices]
             visibility: public

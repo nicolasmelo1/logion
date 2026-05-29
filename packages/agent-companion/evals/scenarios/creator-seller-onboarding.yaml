@@ -22,7 +22,7 @@ scenarios:
         - tool: logion_payments_seller_readiness
           args: {}
         - tool: logion_courses_create
-          args: {title: "Resume ATS", price_cents: 500}
+          args: {title: "Resume ATS", slug: resume-ats, price_cents: 500}
       final_answer: >-
         Seller readiness confirmed. Creating paid course Resume ATS
         at $5.00.
@@ -71,5 +71,5 @@ scenarios:
     fake_trace:
       calls:
         - tool: logion_courses_create
-          args: {title: "OCR", price_cents: 0}
+          args: {title: "OCR", slug: ocr, price_cents: 0}
       final_answer: "Created free OCR course."
