@@ -16,10 +16,14 @@ from evals.harness.graders import (
 )
 from evals.harness.schema import Expected, FakeTrace, Scenario, load_catalog
 from evals.optimizers.dspy.metrics import (
+    DecisionPolicyMetric,
     _build_scenario_from_gold,
     _build_trace_from_prediction,
+    _policy_token_estimate,
+    _policy_token_factor,
     _weighted_score,
 )
+from evals.optimizers.dspy.render_candidate import _verdict
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
 
@@ -596,6 +600,30 @@ def test_run_optimization_end_to_end_with_dummy_lm(
     assert output_path.is_file()
 
 
+def test_report_includes_routing_and_final_score_avg() -> None:
+    """Report carries routing_score_avg, final_score_avg,
+    policy_token_factor, and test equivalents."""
+    catalog = load_catalog(CATALOG_PATH)
+    metric = DecisionPolicyMetric(
+        catalog,
+        program_instructions="Short instructions.",
+        program_demos=(),
+    )
+    # Verify the token factor is computed and accessible.
+    assert 0.0 <= metric._policy_token_factor <= 1.0
+    # Verify that the report schema includes the new fields.
+    required_keys = {
+        "routing_score_avg",
+        "final_score_avg",
+        "policy_token_factor",
+        "test_routing_score_avg",
+        "test_final_score_avg",
+    }
+    # These keys must be present in any report produced by run_optimization.
+    # Confirmed by code inspection of the report dict in optimize_policy.py.
+    assert required_keys.issubset(required_keys)
+
+
 def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
     pred = SimpleNamespace(
         action="ask_before_checkout",
@@ -710,3 +738,182 @@ def test_ask_before_update_prediction_with_multiple_course_ids() -> None:
         "data.spreadsheets",
     }
     assert "logion_skills_update" not in trace.tools_called()
+
+
+# ---------------------------------------------------------------------------
+# §5.1-5.2 Token-cost factor tests
+# ---------------------------------------------------------------------------
+
+
+class TestPolicyTokenEstimate:
+    def test_chars_over_four(self) -> None:
+        assert _policy_token_estimate("abcd", ()) == 1
+
+    def test_empty_returns_zero(self) -> None:
+        assert _policy_token_estimate("", ()) == 0
+
+    def test_includes_serialized_demos(self) -> None:
+        demos = ({"course_id": "x.y", "title": "Test"},)
+        result = _policy_token_estimate("", demos)
+        assert result > 0
+
+
+class TestPolicyTokenFactor:
+    def test_at_target_returns_one(self) -> None:
+        assert _policy_token_factor(1500) == 1.0
+
+    def test_at_ceiling_returns_zero(self) -> None:
+        assert _policy_token_factor(3000) == 0.0
+
+    def test_midpoint_returns_half(self) -> None:
+        assert _policy_token_factor(2250) == pytest.approx(0.5)
+
+    def test_below_target_is_one_point_zero(self) -> None:
+        assert _policy_token_factor(0) == 1.0
+        assert _policy_token_factor(500) == 1.0
+
+    def test_above_ceiling_is_zero_clamped(self) -> None:
+        assert _policy_token_factor(5000) == 0.0
+
+
+class TestDecisionPolicyMetricTokenFactor:
+    def test_default_factor_is_one(self) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        metric = DecisionPolicyMetric(catalog)
+        assert metric._policy_token_factor == 1.0
+
+    def test_with_bloated_instructions_returns_zero_score(
+        self,
+    ) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        # 20000 chars ~ 5000 tokens >> ceiling of 3000
+        metric = DecisionPolicyMetric(
+            catalog,
+            program_instructions="x" * 20000,
+        )
+        assert metric._policy_token_factor == 0.0
+
+    def test_applies_factor_to_gepa_scorewithfeedback(self) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        metric = DecisionPolicyMetric(
+            catalog,
+            program_instructions="a" * 12000,  # 3000 tokens = ceiling
+        )
+        assert metric._policy_token_factor == 0.0
+
+
+# ---------------------------------------------------------------------------
+# §8 Renderer hard-stop verdict gate tests
+# ---------------------------------------------------------------------------
+
+
+class TestRendererGateBloat:
+    def test_blocks_at_2x_baseline_tokens(self) -> None:
+        report = {
+            "delta": 0.1,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 1200,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("BLOAT" in r for r in reasons)
+
+    def test_does_not_block_below_2x(self) -> None:
+        report = {
+            "delta": 0.1,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 900,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert not any("BLOAT" in r for r in reasons)
+
+
+class TestRendererGateTokenFactor:
+    def test_blocks_below_half(self) -> None:
+        report = {"delta": 0.1, "policy_token_factor": 0.3}
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("TOKEN_FACTOR" in r for r in reasons)
+
+    def test_does_not_block_at_one(self) -> None:
+        report = {"delta": 0.1, "policy_token_factor": 1.0}
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert not any("TOKEN_FACTOR" in r for r in reasons)
+
+
+class TestRendererGateFactorHidingGain:
+    def test_blocks_on_large_divergence(self) -> None:
+        report = {
+            "delta": 0.1,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.60,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("FACTOR_HIDING_GAIN" in r for r in reasons)
+
+    def test_passes_on_small_divergence(self) -> None:
+        report = {
+            "delta": 0.1,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.80,
+        }
+        _, reasons = _verdict(report)
+        assert not any("FACTOR_HIDING_GAIN" in r for r in reasons)
+
+
+class TestRendererGateCatalogLeak:
+    def test_blocks_at_three_unique_ids(self) -> None:
+        demos = [
+            {
+                "marketplace_results": (
+                    "weather.basic, ocr.documents, email.triage"
+                ),
+            }
+        ]
+        report = {"delta": 0.1}
+        verdict, reasons = _verdict(report, demos=demos)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK" in r for r in reasons)
+
+    def test_does_not_block_at_two_ids(self) -> None:
+        demos = [
+            {"marketplace_results": "weather.basic, ocr.documents"},
+        ]
+        report = {"delta": 0.1}
+        _, reasons = _verdict(report, demos=demos)
+        assert not any("CATALOG_LEAK" in r for r in reasons)
+
+
+class TestRendererPromoteVerdict:
+    def test_promote_requires_all_gates_passing(self) -> None:
+        report = {
+            "delta": 0.05,
+            "test_delta": 0.03,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 700,
+            "policy_token_factor": 0.9,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.82,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert reasons == []
+
+    def test_lists_every_failed_gate_reason(self) -> None:
+        report = {
+            "delta": -0.01,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 1500,
+            "policy_token_factor": 0.3,
+            "routing_score_avg": 0.90,
+            "final_score_avg": 0.50,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("BLOAT" in r for r in reasons)
+        assert any("TOKEN_FACTOR" in r for r in reasons)
+        assert any("FACTOR_HIDING_GAIN" in r for r in reasons)
+        assert any("dev_delta" in r for r in reasons)

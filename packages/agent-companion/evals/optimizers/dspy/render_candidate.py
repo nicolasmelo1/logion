@@ -175,11 +175,110 @@ def _per_suite_regressions(
     return out
 
 
-def _verdict(report: dict[str, Any]) -> tuple[str, list[str]]:
-    """Compute promotion verdict. Returns (verdict, reasons)."""
+_CATALOG_COURSE_IDS: tuple[str, ...] = (
+    "weather.basic",
+    "weather.forecast",
+    "data.analyze",
+    "data.spreadsheets",
+    "ocr.text",
+    "ocr.documents",
+    "ocr.tables",
+    "email.triage",
+    "email.summarize",
+    "resume.edit",
+    "resume.ats",
+    "resume.ats.optimize",
+    "video.editor",
+    "video.clips",
+    "video.clips.highlight",
+    "browser.automation",
+    "infra.company-ops",
+    "travel.planner",
+)
+
+
+def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
+    """Count catalog course IDs in demo marketplace_results."""
+    max_leaks = 0
+    for demo in demos:
+        marketplace_results = demo.get("marketplace_results", "")
+        if not isinstance(marketplace_results, str):
+            marketplace_results = str(marketplace_results)
+        leaks = sum(
+            1 for cid in _CATALOG_COURSE_IDS if cid in marketplace_results
+        )
+        max_leaks = max(max_leaks, leaks)
+    return max_leaks
+
+
+def _verdict(
+    report: dict[str, Any], *, demos: list[dict[str, Any]] | None = None
+) -> tuple[str, list[str]]:
+    """Compute promotion verdict. Returns (verdict, reasons).
+
+    Hard-stop gates force "do not promote" regardless of score:
+      A: BLOAT — optimized tokens >= 2x baseline
+      B: TOKEN_FACTOR — policy_token_factor < 0.50
+      C: FACTOR_HIDING_GAIN — routing vs final divergence > 0.10
+      D: CATALOG_LEAK — any demo embeds >= 3 catalog course IDs
+    Plus existing regressions and safety checks.
+    """
     reasons: list[str] = []
     dev_delta = report.get("delta")
     test_delta = report.get("test_delta")
+
+    # Gate A: BLOAT
+    baseline_tokens = report.get("baseline_program_tokens", 0)
+    optimized_tokens = report.get("optimized_program_tokens", 0)
+    if (
+        isinstance(baseline_tokens, (int, float))
+        and baseline_tokens > 0
+        and isinstance(optimized_tokens, (int, float))
+        and optimized_tokens >= 2 * baseline_tokens
+    ):
+        reasons.append(
+            f"BLOAT: optimized program ({int(optimized_tokens)} tok) "
+            f"is >=2x baseline ({int(baseline_tokens)} tok). "
+            "Promotion blocked. Reduce instruction length or accept "
+            "fewer demos."
+        )
+
+    # Gate B: TOKEN_FACTOR
+    factor = report.get("policy_token_factor", 1.0)
+    if isinstance(factor, (int, float)) and factor < 0.5:
+        reasons.append(
+            f"TOKEN_FACTOR: policy_token_factor={factor:.2f} < 0.50. "
+            "The token budget has eaten more than half the routing "
+            "gain."
+        )
+
+    # Gate C: FACTOR_HIDING_GAIN
+    routing_avg = report.get("routing_score_avg")
+    final_avg = report.get("final_score_avg")
+    if (
+        isinstance(routing_avg, (int, float))
+        and isinstance(final_avg, (int, float))
+        and routing_avg - final_avg > 0.10
+    ):
+        reasons.append(
+            f"FACTOR_HIDING_GAIN: routing {routing_avg:.4f} vs "
+            f"final {final_avg:.4f}; delta of "
+            f"{routing_avg - final_avg:.4f} attributable to "
+            "token-budget penalty. The apparent routing gain is "
+            "being absorbed by the token-cost factor."
+        )
+
+    # Gate D: CATALOG_LEAK
+    if demos is not None:
+        leak_count = _catalog_leak_count(demos)
+        if leak_count >= 3:
+            reasons.append(
+                f"CATALOG_LEAK: a demo embeds {leak_count} "
+                "catalog-specific course IDs; the demo will become "
+                "misinformation if the catalog changes."
+            )
+
+    # Existing regressions
     if isinstance(dev_delta, (int, float)) and dev_delta <= 0:
         reasons.append(f"dev_delta {dev_delta:+.4f} did not beat baseline")
     if isinstance(test_delta, (int, float)) and test_delta < 0:
@@ -246,7 +345,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     demos = _extract_demos(program)
     current_doc = _current_signature_docstring()
     failure_counts = _failure_summary(report.get("dev_breakdown", []) or [])
-    verdict, verdict_reasons = _verdict(report)
+    verdict, verdict_reasons = _verdict(report, demos=demos)
 
     skill_excerpt = ""
     if skill_path.is_file():
