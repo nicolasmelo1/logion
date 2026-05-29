@@ -733,6 +733,9 @@ def search_recall(
     ranked = rank(query, entries, limit=limit)
     out: list[dict[str, Any]] = []
     for similarity, entry in ranked:
+        if similarity < 0.20:
+            continue
+
         entry_type = entry.get("type", "")
         if entry_type == "installed_capability":
             confidence = calibrate_installed_confidence(similarity)

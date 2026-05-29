@@ -9,6 +9,26 @@ from __future__ import annotations
 import datetime as _dt
 
 
+def _parse_last_success_at(value: str | None) -> _dt.datetime | None:
+    if not value:
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+
+    try:
+        parsed = _dt.datetime.fromisoformat(normalized)
+    except (ValueError, TypeError):
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=_dt.UTC)
+    return parsed
+
+
 def calibrate_installed_confidence(query_similarity: float) -> float:
     """Installed capabilities have no prior beyond presence.
 
@@ -34,20 +54,17 @@ def calibrate_workflow_confidence(
     persisted_prior = min(success_count / 10, 1.0)
 
     recency_boost = 0.0
-    if last_success_at is not None:
-        try:
-            last = _dt.datetime.fromisoformat(last_success_at)
-            if last.tzinfo is None:
-                last = last.replace(tzinfo=_dt.UTC)
-            now = _dt.datetime.now(_dt.UTC)
-            days_ago = (now - last).days
-            if days_ago <= 30:
-                recency_boost = 1.0
-            elif days_ago <= 365:
-                recency_boost = 1.0 - (days_ago - 30) / (365 - 30)
-            # beyond 365 days → 0.0
-        except (ValueError, TypeError):
-            recency_boost = 0.0
+    last = _parse_last_success_at(last_success_at)
+    if last is not None:
+        now = _dt.datetime.now(_dt.UTC)
+        if last > now:
+            last = now
+        days_ago = (now - last).days
+        if days_ago <= 30:
+            recency_boost = 1.0
+        elif days_ago <= 365:
+            recency_boost = 1.0 - (days_ago - 30) / (365 - 30)
+        # beyond 365 days → 0.0
 
     final = (
         0.6 * query_similarity + 0.3 * persisted_prior + 0.1 * recency_boost

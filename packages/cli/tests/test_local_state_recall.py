@@ -118,6 +118,28 @@ class TestCalibrateWorkflowConfidence:
         )
         assert result == pytest.approx(0.6 * 0.5)
 
+    def test_trailing_z_timestamp_gets_recency_boost(self) -> None:
+        recent_z = (
+            _dt.datetime.now(_dt.UTC) - _dt.timedelta(days=5)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        result = calibrate_workflow_confidence(
+            query_similarity=0.5,
+            success_count=0,
+            last_success_at=recent_z,
+        )
+        assert result == pytest.approx(0.6 * 0.5 + 0.1)
+
+    def test_future_timestamp_is_clamped_to_now(self) -> None:
+        future = (_dt.datetime.now(_dt.UTC) + _dt.timedelta(days=30)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        result = calibrate_workflow_confidence(
+            query_similarity=0.5,
+            success_count=0,
+            last_success_at=future,
+        )
+        assert result == pytest.approx(0.6 * 0.5 + 0.1)
+
 
 # ---------------------------------------------------------------------------
 # §2.4  Ranker tests
@@ -254,6 +276,8 @@ class TestSearchRecallIntegration:
         from cli._local_state import search_recall
 
         home = mock.MagicMock()
+        success_count = 3
+        last_success_at = "2020-01-01T00:00:00Z"
         entries = [
             {
                 "id": "workflow.test",
@@ -263,8 +287,8 @@ class TestSearchRecallIntegration:
                 "confidence": 0.91,  # persisted prior
                 "source": "workflow_history",
                 "commands": ["pytest tests/"],
-                "success_count": 3,
-                "last_success_at": "2020-01-01T00:00:00Z",
+                "success_count": success_count,
+                "last_success_at": last_success_at,
                 "danger_flags": [],
                 "tokens": [],
             },
@@ -274,8 +298,8 @@ class TestSearchRecallIntegration:
         assert results
         expected = calibrate_workflow_confidence(
             results[0]["query_similarity"],
-            entries[0]["success_count"],
-            entries[0]["last_success_at"],
+            success_count,
+            last_success_at,
         )
         assert results[0]["confidence"] != 0.91
         assert results[0]["confidence"] == pytest.approx(round(expected, 4))
@@ -360,6 +384,33 @@ class TestSearchRecallIntegration:
             )
         for r in results:
             assert r.get("band") != "NONE"
+
+    def test_filters_low_similarity_workflow_even_with_high_prior(
+        self,
+    ) -> None:
+        from cli._local_state import search_recall
+
+        entries = [
+            {
+                "id": "workflow.unrelated-but-frequent",
+                "type": "workflow",
+                "title": "Deploy to production",
+                "summary": "Push image and rollout.",
+                "confidence": 0.95,
+                "success_count": 10,
+                "last_success_at": (_dt.datetime.now(_dt.UTC)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "danger_flags": [],
+                "commands": [],
+                "tokens": [],
+            },
+        ]
+        with mock.patch("cli._local_state.read_recall", return_value=entries):
+            results = search_recall(
+                "zzzzzzzzz", home=mock.MagicMock(), limit=5
+            )
+        assert results == []
 
     def test_idempotent_across_calls(self) -> None:
         from cli._local_state import search_recall
