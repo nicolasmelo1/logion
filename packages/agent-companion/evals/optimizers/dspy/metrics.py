@@ -66,6 +66,7 @@ _RECALL_ACTIONS = frozenset({
     "search_marketplace",
     "inspect_course",
     "ask_before_install",
+    "ask_before_update",
 })
 
 
@@ -90,6 +91,16 @@ def _action_to_calls(
                 args={"query": query or "generic"},
             )
         )
+    if action == "ask_before_update":
+        # Emit a passive update-check for each selected course —
+        # never an auto-apply (``logion_skills_update``).
+        for course_id in selected_course_ids or [query or "unknown"]:
+            calls.append(
+                ToolCall(
+                    tool="logion_skills_updates",
+                    args={"course_id": course_id},
+                )
+            )
     for course_id in selected_course_ids:
         calls.append(
             ToolCall(

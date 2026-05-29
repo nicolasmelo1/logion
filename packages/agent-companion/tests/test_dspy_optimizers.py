@@ -611,3 +611,102 @@ def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
     assert "logion_payments_checkout_start" not in trace.tools_called()
     assert trace.selected_course_ids == ("paid-course",)
     assert "confirm" in trace.final_answer.lower()
+
+
+def test_ask_before_update_prediction_emits_update_check_not_apply() -> None:
+    """ask_before_update must emit logion_skills_updates (passive check)
+    and never logion_skills_update (auto-apply)."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather",
+        selected_course_ids="weather.basic",
+        requires_user_confirmation=True,
+        reason="Update available — user must confirm before applying.",
+    )
+    gold = SimpleNamespace(id="update-check")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    # Must use the passive check endpoint, not the apply endpoint.
+    assert "logion_skills_updates" in trace.tools_called()
+    assert "logion_skills_update" not in trace.tools_called()
+    assert trace.selected_course_ids == ("weather.basic",)
+    assert "confirm" in trace.final_answer.lower()
+
+
+def test_ask_before_update_prediction_emits_recall_search() -> None:
+    """ask_before_update is a recall action; query should trigger recall."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather forecast",
+        selected_course_ids="",
+        requires_user_confirmation=True,
+        reason="Checking for updates.",
+    )
+    gold = SimpleNamespace(id="update-recall")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    assert "logion_recall_search" in trace.tools_called()
+
+
+def test_ask_before_update_prediction_without_course_ids_uses_query() -> None:
+    """When selected_course_ids is empty, ask_before_update should still
+    emit an update check using the query as fallback."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="travel.planner",
+        selected_course_ids="",
+        requires_user_confirmation=True,
+        reason="Checking updates.",
+    )
+    gold = SimpleNamespace(id="update-no-ids")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    assert "logion_skills_updates" in trace.tools_called()
+    # The fallback should use query as course_id.
+    update_calls = [
+        c for c in trace.calls if c.tool == "logion_skills_updates"
+    ]
+    assert update_calls[0].args["course_id"] == "travel.planner"
+
+
+def test_ask_before_update_prediction_does_not_emit_listings_search() -> None:
+    """ask_before_update is not a marketplace listings action."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather",
+        selected_course_ids="weather.basic",
+        requires_user_confirmation=True,
+        reason="Update check.",
+    )
+    gold = SimpleNamespace(id="update-no-listings")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    assert "logion_listings_search" not in trace.tools_called()
+
+
+def test_ask_before_update_prediction_with_multiple_course_ids() -> None:
+    """ask_before_update should emit one update-check per selected course."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="",
+        selected_course_ids="weather.basic,data.spreadsheets",
+        requires_user_confirmation=True,
+        reason="Checking updates for all installed.",
+    )
+    gold = SimpleNamespace(id="update-multi")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    update_calls = [
+        c for c in trace.calls if c.tool == "logion_skills_updates"
+    ]
+    assert len(update_calls) == 2
+    assert {c.args["course_id"] for c in update_calls} == {
+        "weather.basic",
+        "data.spreadsheets",
+    }
+    assert "logion_skills_update" not in trace.tools_called()

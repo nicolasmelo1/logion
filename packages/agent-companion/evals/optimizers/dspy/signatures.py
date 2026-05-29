@@ -18,6 +18,7 @@ ActionKind = Literal[
     "inspect_course",
     "ask_before_install",
     "ask_before_checkout",
+    "ask_before_update",
     "load_existing_skill",
 ]
 
