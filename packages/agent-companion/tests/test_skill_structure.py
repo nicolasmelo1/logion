@@ -26,11 +26,13 @@ REQUIRED_FILES = [
     "SKILL.md",
     "course/capabilities.yaml",
     "README.md",
-    "references/companion-capabilities.md",
-    "references/marketplace-flows.md",
     "references/creator-course-management.md",
-    "references/safety-and-approval.md",
-    "references/low-context-loading.md",
+    "references/account-and-identity.md",
+    "references/notifications-and-reports.md",
+    "references/payments-and-checkout.md",
+    "references/bounties.md",
+    "references/course-review-queue.md",
+    "references/admin-operations.md",
     "references/troubleshooting.md",
     "scripts/package_skill.py",
 ]
@@ -76,8 +78,8 @@ IMPLEMENTED_COMMANDS = {
     ("logion courses capabilities validate --bundle-dir ./new-course --json"),
     "logion courses create --title ... --slug ... --json",
     "logion courses update COURSE_ID --json",
-    "logion courses reviews list --course-id COURSE_ID",
-    "logion courses reviews summary --course-id COURSE_ID",
+    "logion courses reviews list COURSE_ID --limit 5",
+    "logion courses reviews summary COURSE_ID",
     ("logion courses uploads create COURSE_ID --file ... --json"),
     (
         "logion courses uploads push COURSE_ID VERSION_ID "

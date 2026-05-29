@@ -1,44 +1,77 @@
 # Troubleshooting
 
-Common errors and recovery steps for the Logion Marketplace Companion.
+Diagnose CLI failures without guessing. The CLI emits a stable error
+envelope when `--json` is passed; the `code` field is the machine-readable
+category.
 
-## Installation errors
+## Error envelope
 
-- **Permission denied:** Ensure the Logion CLI is installed and configured.
-  Run `logion --version` to verify.
-- **Capability not found:** The course may have been removed or renamed. Try
-  `logion marketplace search <term>` to find the current name.
-- **Version conflict:** An installed capability may conflict with the new one.
-  Use `logion skill list` to inspect installed capabilities.
+```json
+{"version": "v1", "kind": "logion.error",
+ "data": {"code": "<code>", "message": "<human>", "exit_code": N}}
+```
 
-## Marketplace search errors
+Allowed `code` values:
 
-- **Network timeout:** Check internet connectivity and Logion API status.
-- **Authentication required:** Run `logion auth login` to authenticate.
-- **Rate limited:** Wait and retry. The companion implements exponential
-  backoff automatically.
+- `auth_missing` — no API key in env or config; run `logion identity --help`
+  if the user needs to provision an agent.
+- `entitlement_missing` — buyer attempted an action on a course they have
+  no entitlement for; route to `logion payments checkout` after
+  confirmation.
+- `entitlement_expired` — entitlement exists but expired; refresh via
+  `logion skills verify COURSE_ID --json` or guide the user to renew.
+- `unsafe_identifier` — the supplied id contains characters disallowed in
+  filesystem segments. Do NOT retry with a stripped version; ask the user
+  for the correct id.
+- `not_found` — the resource id does not exist (or the caller lacks
+  permission to see it). Re-check the id via `logion <group> list` /
+  `logion <group> get`.
+- `validation_failed` — arguments fail server-side validation; the message
+  identifies the failing field. Surface the message and fix locally.
+- `server_error` — transient backend failure. Surface and ask the user
+  whether to retry; do not silent-retry.
+- `confirmation_required` — local confirmation gate was not satisfied
+  (e.g. `--yes` missing on an interactive guard). Re-present the action
+  with full context and re-ask.
+- `order_timeout` — `payments orders wait` exceeded its `--wait-timeout`.
+  Try again with a longer timeout or call `payments orders get` directly.
 
-## Local recall errors
+## Exit codes
 
-- **Index not found:** Run `logion recall index` to build the initial local
-  recall index.
-- **Stale results:** Run `logion recall index --rebuild` to refresh.
-- Recall is read-only and cannot corrupt installed capabilities.
+- `0` — success.
+- `1` — backend / domain / runtime failure (most `server_error`,
+  `not_found`, `entitlement_*`).
+- `2` — user-input / validation / confirmation / timeout
+  (`unsafe_identifier`, `validation_failed`, `confirmation_required`,
+  `order_timeout`).
 
-## Packaging errors
+## Common failure patterns
 
-- **Manifest validation failed:** Check `course/capabilities.yaml` for required
-  fields. Run `python scripts/package_skill.py` for detailed errors.
-- **Missing references:** Ensure all files referenced in SKILL.md exist.
-- **Critical secrets detected:** The packaging check fails on
-  high-confidence patterns (PEM certificate headers, provider-specific
-  token prefixes, AWS access-key prefixes, and private key markers).
-  Remove actual secrets from package files. Low-confidence patterns
-  like generic words produce warnings but do not fail the check in
-  documentation files.
+**Skill install reports `entitlement_missing` on a free course.** Free
+courses still produce an entitlement; the local manifest may be stale. Run
+`logion skills verify COURSE_ID --json` and retry.
 
-## Confirmation gate failures
+**`courses uploads push` says the session expired.** Sessions expire after
+the `expires_at` returned by `uploads create`. Run `uploads create` again
+to start a fresh session; previously uploaded files do NOT need to be
+re-pushed — `push` resumes from `remaining`.
 
-- If the agent proceeds without confirmation on a gated action, file a bug.
-- If a gated action is confirmed but fails, check the error message and retry
-  after resolving the underlying issue.
+**`courses publication request` says "no version to review".** The course
+has no version with a completed upload. Run `courses uploads complete` for
+the most recent version first.
+
+**`payments orders wait` exits 2 even though Stripe shows the order paid.**
+The timeout fired before settlement reached the API. Re-run with a longer
+`--wait-timeout` or just call `payments orders get` once.
+
+**`bounties payout` says "no accepted submission".** `accept` and `payout`
+are separate steps. Use `bounties submissions accept` first, then `payout`.
+
+## What is NOT a CLI issue
+
+- Network errors are surfaced with `server_error`. Check connectivity
+  before assuming the API is down.
+- 401s become `auth_missing`. Verify the API key in env / config rather
+  than re-running the same command.
+- A "command not found" for `logion <group>` may mean the group is gated.
+  `admin` requires `LOGION_ENABLE_ADMIN=1`; see `admin-operations.md`.

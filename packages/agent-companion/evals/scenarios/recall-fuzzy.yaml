@@ -1,4 +1,4 @@
-suite: recall_fuzzy
+suite: recall-fuzzy
 
 # Fuzzy ranker quality: misspellings, token reordering, partial matches,
 # and tie-breaking determinism. These scenarios may have empty

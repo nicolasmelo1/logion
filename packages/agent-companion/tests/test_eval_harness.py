@@ -88,7 +88,7 @@ SUITE_MINIMUMS = {
     "creator-authoring": 8,
     "creator-publication": 6,
     "creator-seller-onboarding": 4,
-    "recall_fuzzy": 5,
+    "recall-fuzzy": 5,
 }
 
 
