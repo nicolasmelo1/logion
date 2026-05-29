@@ -209,6 +209,6 @@ def test_skills_inspect_unsafe_course_id_returns_unsafe_identifier_error(
     rc = handle_skills_inspect(
         _args(home, course_id="../evil", version_id=None, json_output=True)
     )
-    assert rc == 1
+    assert rc == 2
     payload = json.loads(capsys.readouterr().err)
     assert payload["data"]["code"] == "unsafe_identifier"

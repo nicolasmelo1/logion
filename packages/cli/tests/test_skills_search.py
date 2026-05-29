@@ -169,7 +169,7 @@ def test_skills_search_uses_config_json_output_when_args_flag_is_false(
 def test_skills_search_emits_entitlement_status_per_result(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Match installed manifest entitements annotate search results."""
+    """Matching installed manifest entitlements annotate search results."""
     items = [
         {
             "course_id": "course-active",

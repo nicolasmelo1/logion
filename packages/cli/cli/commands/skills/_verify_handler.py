@@ -64,7 +64,7 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
         try:
             _safe_segment(course_id, "course_id")
         except UnsafeIdentifierError as exc:
-            return _error(args, "unsafe_identifier", str(exc), 1)
+            return _error(args, "unsafe_identifier", str(exc), 2)
 
     installed = list_installed(home)
     if course_id is not None:
@@ -75,11 +75,14 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
     for manifest in installed:
         cid = str(manifest.get("course_id", "?"))
         vid = str(manifest.get("version_id", "?"))
-        manifest["entitlement_status"] = _local_verify_status(manifest)
-        write_manifest(manifest, cid, vid, home)
+        new_status = _local_verify_status(manifest)
+        old_status = manifest.get("entitlement_status")
+        manifest["entitlement_status"] = new_status
+        if new_status != old_status:
+            write_manifest(manifest, cid, vid, home)
         results.append({
             "course_id": cid,
-            "entitlement_status": manifest["entitlement_status"],
+            "entitlement_status": new_status,
             "last_verified_at": manifest.get("last_verified_at"),
             "source": manifest.get("source", "unknown"),
             "verification_mode": _verification_mode(manifest),

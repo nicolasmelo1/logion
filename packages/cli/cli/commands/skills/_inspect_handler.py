@@ -146,7 +146,7 @@ def handle_skills_inspect(args: argparse.Namespace) -> int:
         if version_id is not None:
             _safe_segment(version_id, "version_id")
     except UnsafeIdentifierError as exc:
-        return _error(args, "unsafe_identifier", str(exc), 1)
+        return _error(args, "unsafe_identifier", str(exc), 2)
 
     manifest = (
         read_manifest(course_id, version_id, home)

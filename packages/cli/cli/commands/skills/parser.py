@@ -59,6 +59,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Overwrite an existing install with different content",
     )
+    install.add_argument(
+        "--install-source",
+        default="manual",
+        choices=["manual", "logion-marketplace"],
+        help="Provenance of the install (default: manual)",
+    )
     install.set_defaults(handler=handle_skills_install)
 
     installed = sub.add_parser(

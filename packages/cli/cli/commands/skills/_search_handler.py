@@ -13,7 +13,7 @@ from typing import Any
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._local_state import list_installed
+from cli._local_state import VALID_ENTITLEMENT_STATUSES, list_installed
 from cli._output import emit_json, truncate_summary
 
 from ._install_helpers import resolve_target
@@ -66,7 +66,7 @@ def _annotate_entitlement(
             continue
         if course_id in entitlement_map:
             status = entitlement_map[course_id]
-            if status in ("active", "expired"):
+            if status in VALID_ENTITLEMENT_STATUSES:
                 item["entitlement_status"] = status
             else:
                 item["entitlement_status"] = "unknown"
