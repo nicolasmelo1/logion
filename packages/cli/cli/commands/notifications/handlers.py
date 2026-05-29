@@ -12,11 +12,21 @@ from cli._output import emit, emit_json, to_data
 
 def _extract_count(raw: object) -> int:
     """Extract an integer count from whatever the SDK returns."""
+
+    def _coerce(value: object) -> int:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            return int(value)
+        return 0
+
     if isinstance(raw, int):
         return raw
     if isinstance(raw, dict):
-        return int(raw.get("count", 0))
-    return int(getattr(raw, "count", 0))
+        return _coerce(raw.get("unread_count", raw.get("count", 0)))
+    return _coerce(getattr(raw, "unread_count", getattr(raw, "count", 0)))
 
 
 def handle_unread_count(args: argparse.Namespace) -> int:
@@ -25,7 +35,13 @@ def handle_unread_count(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.notifications.get_unread_count()
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json(
+                "logion.notifications.unread-count",
+                {"unread_count": _extract_count(result)},
+            )
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -45,7 +61,10 @@ def handle_list(args: argparse.Namespace) -> int:
             limit=args.limit,
             cursor=getattr(args, "cursor", None),
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.notifications.list", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

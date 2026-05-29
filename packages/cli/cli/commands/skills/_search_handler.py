@@ -60,9 +60,12 @@ def _annotate_entitlement(
         entitlement_map[cid] = m.get("entitlement_status", "unknown")
 
     for item in items:
-        cid = item.get("course_id", item.get("id", ""))
-        if cid in entitlement_map:
-            status = entitlement_map[cid]
+        course_id = item.get("course_id")
+        if not isinstance(course_id, str) or not course_id:
+            item["entitlement_status"] = "unknown"
+            continue
+        if course_id in entitlement_map:
+            status = entitlement_map[course_id]
             if status in ("active", "expired"):
                 item["entitlement_status"] = status
             else:

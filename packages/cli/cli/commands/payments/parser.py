@@ -77,17 +77,16 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     wait.add_argument("order_id", metavar="ORDER_ID")
     wait.add_argument(
-        "--poll-timeout",
+        "--wait-timeout",
+        dest="timeout",
         type=int,
         default=120,
-        dest="timeout",
         help="Max seconds to poll (capped at 600).",
     )
     wait.add_argument(
-        "--poll-interval",
+        "--interval",
         type=int,
         default=5,
-        dest="interval",
         help="Seconds between polls.",
     )
     wait.set_defaults(handler=handle_payments_orders_wait)

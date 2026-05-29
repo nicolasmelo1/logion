@@ -168,7 +168,7 @@ def register_reviews(subparsers: argparse._SubParsersAction) -> None:
     )
     list_parser.add_argument("course_id", metavar="COURSE_ID")
     list_parser.add_argument("--version")
-    list_parser.add_argument("--limit", type=int)
+    list_parser.add_argument("--limit", type=int, default=5)
     list_parser.add_argument("--cursor")
     list_parser.set_defaults(handler=handle_reviews_list)
 
@@ -204,5 +204,5 @@ def register_reviews(subparsers: argparse._SubParsersAction) -> None:
     )
     summary.add_argument("course_id", metavar="COURSE_ID")
     summary.add_argument("--version")
-    summary.add_argument("--limit", type=int)
+    summary.add_argument("--limit", type=int, default=5)
     summary.set_defaults(handler=handle_reviews_summary)

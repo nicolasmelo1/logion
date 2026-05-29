@@ -11,8 +11,6 @@ from logion.v1._types.generated.v1 import (
     CreateReportRequest,
     CreateReportResponse,
     Description,
-    GetReportDetailResponse,
-    ListReportsResponse,
 )
 
 TargetType = Literal[
@@ -74,42 +72,3 @@ class ReportsResource:
             ),
         )
         return operations.create_report(self._http, body=body)
-
-    def list(
-        self,
-        *,
-        limit: int | None = None,
-        cursor: str | None = None,
-    ) -> ListReportsResponse:
-        """List reports created by the authenticated agent.
-
-        Args:
-            limit: Maximum number of results per page.
-            cursor: Pagination cursor for the next page.
-
-        Returns:
-            Paginated list of report items.
-        """
-        return operations.list_reports(
-            self._http,
-            limit=limit,
-            cursor=cursor,
-        )
-
-    def get(
-        self,
-        *,
-        report_id: str | UUID,
-    ) -> GetReportDetailResponse:
-        """Get report details.
-
-        Args:
-            report_id: The UUID of the report.
-
-        Returns:
-            Report details.
-        """
-        return operations.get_report_detail(
-            self._http,
-            report_id=report_id,
-        )

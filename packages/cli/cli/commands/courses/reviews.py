@@ -19,6 +19,7 @@ from cli.commands.courses._capability_render import (
 )
 from cli.commands.courses._review_helpers import (
     collect_reviews,
+    compact_review,
     compute_summary,
     data_or_model_dump,
 )
@@ -30,12 +31,8 @@ REVIEW_SCORE_FIELDS = [
     ("token_efficiency", "--token-efficiency"),
 ]
 
-_AVG_SCORE_FIELDS = (
-    "reliability",
-    "usefulness",
-    "tool_safety",
-    "token_efficiency",
-)
+_DEFAULT_LIST_LIMIT = 5
+_MAX_LIST_LIMIT = 50
 
 
 def _validate_review_scores(args: argparse.Namespace) -> int | None:
@@ -58,16 +55,32 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        limit = min(
+            max(args.limit or _DEFAULT_LIST_LIMIT, 1),
+            _MAX_LIST_LIMIT,
+        )
         kwargs = only_not_none(
             {"course_id": args.course_id},
             version=args.version,
-            limit=args.limit,
+            limit=limit,
             cursor=args.cursor,
         )
         result = client.v1.courses.list_reviews(**kwargs)
         if config.json_output:
             data = data_or_model_dump(result)
-            emit_json("logion.courses.reviews.list", data)
+            reviews = [
+                compact_review(review)
+                for review in data.get("reviews", [])
+                if isinstance(review, dict)
+            ]
+            emit_json(
+                "logion.courses.reviews.list",
+                {
+                    "items": reviews,
+                    "limit": kwargs["limit"],
+                    "next_cursor": data.get("next_cursor"),
+                },
+            )
         else:
             emit(result, json_output=False)
     except Exception as exc:
@@ -157,11 +170,15 @@ def handle_reviews_summary(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        limit = min(
+            max(args.limit or _DEFAULT_LIST_LIMIT, 1),
+            _MAX_LIST_LIMIT,
+        )
         all_reviews = collect_reviews(
             client,
             args.course_id,
             version=getattr(args, "version", None),
-            limit=args.limit,
+            limit=limit,
         )
         summary = compute_summary(args.course_id, all_reviews)
         if config.json_output:
@@ -169,15 +186,10 @@ def handle_reviews_summary(args: argparse.Namespace) -> int:
         else:
             lines: list[str] = [
                 f"course_id: {summary['course_id']}",
-                f"total_reviews: {summary['total_reviews']}",
+                f"review_count: {summary['review_count']}",
+                f"rating_avg: {summary['rating_avg']}",
+                f"rating_histogram: {summary['rating_histogram']}",
             ]
-            avg_rating = summary.get("avg_rating")
-            if avg_rating is not None:
-                lines.append(f"avg_rating: {avg_rating}")
-            for field in _AVG_SCORE_FIELDS:
-                key = f"avg_{field}"
-                if key in summary:
-                    lines.append(f"{key}: {summary[key]}")
             sys.stdout.write("\n".join(lines))
             sys.stdout.write("\n")
     except Exception as exc:

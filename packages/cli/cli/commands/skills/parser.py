@@ -76,6 +76,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     inspect.add_argument("course_id", metavar="COURSE_ID")
     inspect.add_argument("--version-id", default=None)
+    inspect.add_argument("--verbose", action="store_true", default=False)
     inspect.add_argument("--target", type=Path, default=None)
     inspect.set_defaults(handler=handle_skills_inspect)
 

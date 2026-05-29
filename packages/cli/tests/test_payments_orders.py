@@ -17,8 +17,21 @@ from cli.commands.payments.handlers import (
 from logion.v1._types.generated.v1 import OrderResponse
 
 
+def _decode_json_stream(text: str) -> list[dict[str, object]]:
+    decoder = json.JSONDecoder()
+    index = 0
+    items: list[dict[str, object]] = []
+    while index < len(text):
+        while index < len(text) and text[index].isspace():
+            index += 1
+        if index >= len(text):
+            break
+        item, index = decoder.raw_decode(text, index)
+        items.append(item)
+    return items
+
+
 def _make_order_response(**overrides: object) -> OrderResponse:
-    """Create an OrderResponse with sensible defaults."""
     defaults: dict[str, object] = {
         "amount_cents": 5000,
         "buyer_agent_id": UUID("00000000-0000-0000-0000-000000000001"),
@@ -30,19 +43,20 @@ def _make_order_response(**overrides: object) -> OrderResponse:
         "seller_agent_id": UUID("00000000-0000-0000-0000-000000000004"),
         "seller_net_amount_cents": 4500,
         "status": "paid",
+        "paid_at": "2026-05-28T12:00:00Z",
     }
     defaults.update(overrides)
     return OrderResponse(**defaults)  # type: ignore[arg-type]
 
 
 def _make_args(**overrides: object) -> argparse.Namespace:
-    """Build a default args namespace for testing."""
     defaults: dict[str, object] = {
         "order_id": "880e8400-e29b-41d4-a716-446655440003",
         "json_output": True,
         "api_key": None,
         "base_url": None,
-        "timeout": None,
+        "timeout": 120,
+        "interval": 5,
         "max_retries": None,
     }
     defaults.update(overrides)
@@ -50,7 +64,6 @@ def _make_args(**overrides: object) -> argparse.Namespace:
 
 
 def _default_config(**overrides: object) -> CliConfig:
-    """Build a default CliConfig for testing."""
     defaults: dict[str, object] = {
         "api_key": None,
         "base_url": "https://api.logion.dev",
@@ -62,12 +75,9 @@ def _default_config(**overrides: object) -> CliConfig:
     return CliConfig(**defaults)  # type: ignore[arg-type]
 
 
-def _mock_client_with_order(
-    mock_result: MagicMock,
-) -> MagicMock:
-    """Build a mock client whose get_order returns *mock_result*."""
+def _mock_client_with_orders(sequence: list[object]) -> MagicMock:
     mock_payments = MagicMock()
-    mock_payments.get_order = MagicMock(return_value=mock_result)
+    mock_payments.get_order = MagicMock(side_effect=sequence)
     mock_v1 = MagicMock()
     mock_v1.payments = mock_payments
     mock_client = MagicMock()
@@ -76,20 +86,11 @@ def _mock_client_with_order(
     return mock_client
 
 
-# ── orders get envelope tests ─────────────────────────────────
-
-
 def test_orders_get_json_envelope_v1(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """When --json is active, orders get emits a v1 envelope."""
     order = _make_order_response()
-    mock_result = MagicMock()
-    mock_result.model_dump = MagicMock(
-        return_value=order.model_dump(mode="json")
-    )
-    mock_client = _mock_client_with_order(mock_result)
-    args = _make_args(json_output=True)
+    mock_client = _mock_client_with_orders([order])
 
     with (
         patch(
@@ -101,27 +102,23 @@ def test_orders_get_json_envelope_v1(
             return_value=_default_config(json_output=True),
         ),
     ):
-        rc = handle_orders_get(args)
+        rc = handle_orders_get(_make_args())
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["version"] == "v1"
     assert payload["kind"] == "logion.payments.orders.get"
-    assert "id" in payload["data"]
-    assert "status" in payload["data"]
+    assert (
+        payload["data"]["order_id"] == "880e8400-e29b-41d4-a716-446655440003"
+    )
 
 
 def test_orders_get_includes_status_field(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """The data section of orders get envelope has a status field."""
-    order = _make_order_response(status="paid")
-    mock_result = MagicMock()
-    mock_result.model_dump = MagicMock(
-        return_value=order.model_dump(mode="json")
-    )
-    mock_client = _mock_client_with_order(mock_result)
-    args = _make_args(json_output=True)
+    mock_client = _mock_client_with_orders([
+        _make_order_response(status="paid")
+    ])
 
     with (
         patch(
@@ -133,31 +130,23 @@ def test_orders_get_includes_status_field(
             return_value=_default_config(json_output=True),
         ),
     ):
-        rc = handle_orders_get(args)
+        rc = handle_orders_get(_make_args())
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["data"]["status"] == "paid"
 
 
-def test_orders_get_unsafe_order_id_returns_error() -> None:
-    """orders get with an invalid UUID returns exit code 2."""
-    args = _make_args(order_id="not-a-uuid")
-    rc = handle_orders_get(args)
-    assert rc == 2
-
-
-# ── orders wait tests ─────────────────────────────────────────
-
-
-def test_orders_wait_returns_zero_when_paid_immediately(
+def test_orders_get_includes_entitlement_id_when_paid(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Orders wait returns 0 when the order is paid immediately."""
-    mock_result = MagicMock()
-    mock_result.status = "paid"
-    mock_client = _mock_client_with_order(mock_result)
-    args = _make_args(interval=5, timeout=120)
+    order = _make_order_response(
+        entitlement_id="ent_123",
+        version_id="ver_456",
+        checkout_url="https://checkout.example.test",
+        created_at="2026-05-28T11:00:00Z",
+    )
+    mock_client = _mock_client_with_orders([order])
 
     with (
         patch(
@@ -168,27 +157,67 @@ def test_orders_wait_returns_zero_when_paid_immediately(
             "cli.commands.payments.handlers.resolve_config_from_args",
             return_value=_default_config(json_output=True),
         ),
-        patch(
-            "cli.commands.payments.handlers.time.sleep",
-        ),
     ):
-        rc = handle_payments_orders_wait(args)
+        rc = handle_orders_get(_make_args())
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["version"] == "v1"
-    assert payload["kind"] == "logion.payments.orders.wait"
-    assert payload["data"]["status"] == "paid"
+    assert payload["data"]["entitlement_id"] == "ent_123"
+    assert payload["data"]["version_id"] == "ver_456"
+    assert payload["data"]["checkout_url"] == "https://checkout.example.test"
+    assert payload["data"]["settled_at"] == "2026-05-28T12:00:00Z"
+
+
+def test_orders_get_unsafe_order_id_returns_unsafe_identifier_error(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    rc = handle_orders_get(_make_args(order_id="not-a-uuid"))
+    assert rc == 2
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["data"]["code"] == "unsafe_identifier"
+
+
+def test_orders_wait_returns_zero_when_paid_within_timeout(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    pending = _make_order_response(status="pending", paid_at=None)
+    paid = _make_order_response(status="paid")
+    mock_client = _mock_client_with_orders([pending, paid])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 0.0, 1.0, 1.0, 1.0]
+    fake_time.sleep = MagicMock()
+
+    with (
+        patch(
+            "cli.commands.payments.handlers.make_client",
+            return_value=mock_client,
+        ),
+        patch(
+            "cli.commands.payments.handlers.resolve_config_from_args",
+            return_value=_default_config(json_output=True),
+        ),
+        patch("cli.commands.payments.handlers.time", fake_time),
+    ):
+        rc = handle_payments_orders_wait(_make_args(timeout=120, interval=5))
+
+    assert rc == 0
+    outputs = [
+        json.loads(chunk)
+        for chunk in capsys.readouterr().out.strip().split("\n\n")
+    ]
+    assert outputs[-1]["data"]["status"] == "paid"
+    assert outputs[-1]["data"]["final"] is True
 
 
 def test_orders_wait_returns_one_when_failed(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Orders wait returns 1 when the order status is failed."""
-    mock_result = MagicMock()
-    mock_result.status = "failed"
-    mock_client = _mock_client_with_order(mock_result)
-    args = _make_args(interval=5, timeout=120)
+    mock_client = _mock_client_with_orders([
+        _make_order_response(status="failed", paid_at=None)
+    ])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 0.0, 0.0]
+    fake_time.sleep = MagicMock()
 
     with (
         patch(
@@ -199,37 +228,24 @@ def test_orders_wait_returns_one_when_failed(
             "cli.commands.payments.handlers.resolve_config_from_args",
             return_value=_default_config(json_output=True),
         ),
-        patch(
-            "cli.commands.payments.handlers.time.sleep",
-        ),
+        patch("cli.commands.payments.handlers.time", fake_time),
     ):
-        rc = handle_payments_orders_wait(args)
+        rc = handle_payments_orders_wait(_make_args(timeout=120, interval=5))
 
     assert rc == 1
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(capsys.readouterr().out.strip().split("\n\n")[-1])
     assert payload["data"]["status"] == "failed"
 
 
 def test_orders_wait_returns_two_on_timeout(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Orders wait returns 2 when order doesn't reach terminal state."""
-    mock_result = MagicMock()
-    mock_result.status = "pending"
-    mock_client = _mock_client_with_order(mock_result)
-    args = _make_args(interval=1, timeout=1)
-
-    monotonic_calls = [0]
-
-    def fake_monotonic() -> float:
-        monotonic_calls[0] += 1
-        if monotonic_calls[0] == 1:
-            return 0.0
-        return 2.0  # elapsed > timeout (1s)
-
-    mock_time = MagicMock()
-    mock_time.monotonic = fake_monotonic
-    mock_time.sleep = MagicMock()
+    mock_client = _mock_client_with_orders([
+        _make_order_response(status="pending", paid_at=None)
+    ])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 2.0, 2.0]
+    fake_time.sleep = MagicMock()
 
     with (
         patch(
@@ -240,50 +256,22 @@ def test_orders_wait_returns_two_on_timeout(
             "cli.commands.payments.handlers.resolve_config_from_args",
             return_value=_default_config(json_output=True),
         ),
-        patch(
-            "cli.commands.payments.handlers.time",
-            mock_time,
-        ),
+        patch("cli.commands.payments.handlers.time", fake_time),
     ):
-        rc = handle_payments_orders_wait(args)
+        rc = handle_payments_orders_wait(_make_args(timeout=1, interval=1))
 
     assert rc == 2
-    error_payload = json.loads(capsys.readouterr().err)
-    assert error_payload["data"]["code"] == "order_timeout"
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["data"]["code"] == "order_timeout"
 
 
-def test_orders_wait_caps_timeout_at_six_hundred() -> None:
-    """Orders wait caps timeout at 600s even with a larger value."""
-    mock_result_pending = MagicMock()
-    mock_result_pending.status = "pending"
-
-    mock_payments = MagicMock()
-    call_count = [0]
-
-    def get_order_pending(**_kwargs: object) -> MagicMock:
-        call_count[0] += 1
-        return mock_result_pending
-
-    mock_payments.get_order = get_order_pending
-    mock_v1 = MagicMock()
-    mock_v1.payments = mock_payments
-    mock_client = MagicMock()
-    mock_client.v1 = mock_v1
-    mock_client.close = MagicMock()
-
-    args = _make_args(timeout=9999, interval=1)
-
-    monotonic_calls = [0]
-
-    def fake_monotonic() -> float:
-        monotonic_calls[0] += 1
-        if monotonic_calls[0] == 1:
-            return 0.0
-        return 601.0
-
-    mock_time = MagicMock()
-    mock_time.monotonic = fake_monotonic
-    mock_time.sleep = MagicMock()
+def test_orders_wait_respects_timeout_cap_of_six_hundred() -> None:
+    mock_client = _mock_client_with_orders([
+        _make_order_response(status="pending", paid_at=None)
+    ])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 601.0, 601.0]
+    fake_time.sleep = MagicMock()
 
     with (
         patch(
@@ -294,57 +282,25 @@ def test_orders_wait_caps_timeout_at_six_hundred() -> None:
             "cli.commands.payments.handlers.resolve_config_from_args",
             return_value=_default_config(json_output=True),
         ),
+        patch("cli.commands.payments.handlers.time", fake_time),
         patch(
-            "cli.commands.payments.handlers.time",
-            mock_time,
-        ),
-        patch(
-            "cli.commands.payments.handlers.emit_error_json",
+            "cli.commands.payments.handlers.emit_error_json"
         ) as mock_emit_error,
     ):
-        rc = handle_payments_orders_wait(args)
+        rc = handle_payments_orders_wait(_make_args(timeout=9999, interval=1))
 
     assert rc == 2
     mock_emit_error.assert_called_once()
-    call_args = mock_emit_error.call_args
-    assert (
-        call_args[0][1] == "Order 880e8400-e29b-41d4-a716-446655440003 "
-        "did not reach terminal state within 600s"
-    )
+    assert "within 600s" in mock_emit_error.call_args[0][1]
 
 
-def test_orders_wait_respects_interval() -> None:
-    """Orders wait calls time.sleep with the specified interval."""
-    call_count = [0]
-
-    def get_order_polling(**_kwargs: object) -> MagicMock:
-        call_count[0] += 1
-        mock = MagicMock()
-        if call_count[0] < 3:
-            mock.status = "pending"
-        else:
-            mock.status = "paid"
-        return mock
-
-    mock_payments = MagicMock()
-    mock_payments.get_order = get_order_polling
-    mock_v1 = MagicMock()
-    mock_v1.payments = mock_payments
-    mock_client = MagicMock()
-    mock_client.v1 = mock_v1
-    mock_client.close = MagicMock()
-
-    args = _make_args(interval=3, timeout=120)
-
-    monotonic_calls = [0]
-
-    def fake_monotonic() -> float:
-        monotonic_calls[0] += 1
-        return float(monotonic_calls[0])
-
-    mock_time = MagicMock()
-    mock_time.monotonic = fake_monotonic
-    mock_time.sleep = MagicMock()
+def test_orders_wait_polls_at_configured_interval() -> None:
+    pending = _make_order_response(status="pending", paid_at=None)
+    paid = _make_order_response(status="paid")
+    mock_client = _mock_client_with_orders([pending, paid])
+    fake_time = MagicMock()
+    fake_time.monotonic.side_effect = [0.0, 0.0, 3.0, 3.0, 3.0]
+    fake_time.sleep = MagicMock()
 
     with (
         patch(
@@ -355,13 +311,9 @@ def test_orders_wait_respects_interval() -> None:
             "cli.commands.payments.handlers.resolve_config_from_args",
             return_value=_default_config(json_output=True),
         ),
-        patch(
-            "cli.commands.payments.handlers.time",
-            mock_time,
-        ),
+        patch("cli.commands.payments.handlers.time", fake_time),
     ):
-        rc = handle_payments_orders_wait(args)
+        rc = handle_payments_orders_wait(_make_args(timeout=120, interval=3))
 
     assert rc == 0
-    for call in mock_time.sleep.call_args_list:
-        assert call[0][0] == 3
+    fake_time.sleep.assert_called_once_with(3)

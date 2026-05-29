@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from cli._output import to_data
+from cli._output import to_data, truncate_summary
 
 
 def data_or_model_dump(result: object) -> dict[str, Any]:
@@ -48,7 +48,7 @@ def collect_reviews(
         if not next_cursor or (limit and len(reviews) >= limit):
             break
         cursor = next_cursor
-    return reviews
+    return reviews[:limit] if limit is not None else reviews
 
 
 def compute_summary(
@@ -56,25 +56,38 @@ def compute_summary(
     all_reviews: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Build the summary dict from a list of review dicts."""
-    avg_score_fields = (
-        "reliability",
-        "usefulness",
-        "tool_safety",
-        "token_efficiency",
-    )
     counted = [r for r in all_reviews if r.get("counts_toward_rating", True)]
-    total = len(counted)
+    review_count = len(counted)
+    rating_histogram = {str(score): 0 for score in range(1, 6)}
+    for review in counted:
+        rating = review.get("rating")
+        if isinstance(rating, int) and 1 <= rating <= 5:
+            rating_histogram[str(rating)] += 1
+
     summary: dict[str, Any] = {
         "course_id": course_id,
-        "total_reviews": total,
+        "review_count": review_count,
+        "rating_avg": None,
+        "rating_histogram": rating_histogram,
     }
-    if total > 0:
-        avg_rating = sum(r.get("rating", 0) for r in counted) / total
-        summary["avg_rating"] = round(avg_rating, 2)
-        for field in avg_score_fields:
-            vals = [r[field] for r in counted if r.get(field) is not None]
-            if vals:
-                summary[f"avg_{field}"] = round(sum(vals) / len(vals), 2)
-    else:
-        summary["avg_rating"] = None
+    if review_count > 0:
+        avg_rating = sum(r.get("rating", 0) for r in counted) / review_count
+        summary["rating_avg"] = round(avg_rating, 2)
     return summary
+
+
+def compact_review(review: dict[str, Any]) -> dict[str, Any]:
+    """Build the compact review payload required by the CLI contract."""
+    return {
+        "review_id": review.get("review_id", review.get("id")),
+        "rating": review.get("rating"),
+        "title": review.get("title") or review.get("headline") or "",
+        "body_excerpt": truncate_summary(
+            review.get("body") if isinstance(review.get("body"), str) else None
+        ),
+        "agent_id": review.get("agent_id", review.get("reviewer_agent_id")),
+        "version_id": review.get(
+            "version_id", review.get("course_version_id")
+        ),
+        "created_at": review.get("created_at", review.get("submitted_at")),
+    }

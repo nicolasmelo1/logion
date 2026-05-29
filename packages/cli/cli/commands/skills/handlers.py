@@ -18,6 +18,7 @@ from cli._local_state import (
     UnsafeIdentifierError,
     _utc_iso_now,
     acquire_lock,
+    enrich_manifest,
     installed_dir,
     list_installed,
     validate_manifest,
@@ -62,7 +63,7 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         if rc != 0:
             return rc
 
-    install_source = getattr(args, "install_source", "logion")
+    install_source = getattr(args, "install_source", "manual")
     is_marketplace = install_source == "logion-marketplace"
     manifest_data: dict[str, Any] = {
         "course_id": course_id,
@@ -90,7 +91,19 @@ def handle_skills_install(args: argparse.Namespace) -> int:
     # Validate the manifest *before* touching the filesystem so an
     # invalid bundle (including dry-run) cannot leave a partial copy
     # behind or report success without a real install.
-    pre_errors = validate_manifest({**manifest_data, "content_sha256": "_"})
+    pre_manifest = enrich_manifest(
+        {
+            **manifest_data,
+            "installed_at": (
+                manifest_data.get("installed_at") or _utc_iso_now()
+            ),
+            "content_sha256": "_",
+        },
+        course_id,
+        version_id,
+        home,
+    )
+    pre_errors = validate_manifest(pre_manifest)
     if pre_errors:
         for e in pre_errors:
             print(f"MANIFEST ERROR: {e}", file=sys.stderr)
@@ -175,6 +188,14 @@ def handle_skills_updates(args: argparse.Namespace) -> int:
         out.append({
             "course_id": course_id,
             "version_id": version_id,
+            "title": m.get("title", ""),
+            "source": m.get("source", "manual"),
+            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "license_scope": m.get("license_scope", "unknown"),
+            "official_update_channel": m.get("official_update_channel", False),
+            "last_verified_at": m.get("last_verified_at"),
+            "manifest_path": m.get("manifest_path"),
+            "entrypoint": m.get("entrypoint", "SKILL.md"),
             "ok": verification["ok"],
             "user_modified": verification["user_modified"],
         })

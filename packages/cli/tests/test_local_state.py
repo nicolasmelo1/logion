@@ -65,7 +65,7 @@ def _make_manifest(
         "course_id": course_id,
         "version_id": version_id,
         "title": title,
-        "source": "logion",
+        "source": "logion-marketplace",
         "installed_at": "2026-05-20T00:00:00Z",
         "price_cents_at_install": 0,
         "currency": "USD",
@@ -78,6 +78,9 @@ def _make_manifest(
         "license_scope": "unknown",
         "official_update_channel": False,
         "last_verified_at": None,
+        "manifest_path": (
+            "/tmp/logion-test/installed/weather.basic/2026.05.20/manifest.json"
+        ),
     }
 
 

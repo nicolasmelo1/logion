@@ -6,7 +6,7 @@ import argparse
 
 from cli._options import COMMON_PARSER
 
-from .handlers import handle_create, handle_get, handle_list
+from .handlers import handle_create
 
 TARGET_TYPES = [
     "agent",
@@ -49,20 +49,3 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     create.add_argument("--description")
     create.add_argument("--yes", action="store_true")
     create.set_defaults(handler=handle_create)
-
-    reports_list = sub.add_parser(
-        "list",
-        help="List reports",
-        parents=[COMMON_PARSER],
-    )
-    reports_list.add_argument("--limit", type=int, default=None)
-    reports_list.add_argument("--cursor", default=None)
-    reports_list.set_defaults(handler=handle_list)
-
-    reports_get = sub.add_parser(
-        "get",
-        help="Get report details",
-        parents=[COMMON_PARSER],
-    )
-    reports_get.add_argument("report_id", metavar="REPORT_ID")
-    reports_get.set_defaults(handler=handle_get)

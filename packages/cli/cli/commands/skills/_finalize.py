@@ -14,6 +14,7 @@ from typing import Any
 
 from cli._local_state import (
     build_index,
+    enrich_manifest,
     rebuild_recall,
     release_lock,
     state_lock,
@@ -65,6 +66,12 @@ def copy_and_finalize(
         manifest_data["installed_at"] = datetime.datetime.now(
             datetime.UTC
         ).isoformat()
+        manifest_data = enrich_manifest(
+            manifest_data,
+            course_id,
+            version_id,
+            home,
+        )
         errors = validate_manifest(manifest_data)
         if errors:
             for e in errors:

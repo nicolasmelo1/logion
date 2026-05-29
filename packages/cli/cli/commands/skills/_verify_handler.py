@@ -10,12 +10,13 @@ import argparse
 import sys
 from typing import Any
 
+from cli._errors import emit_error_json
 from cli._local_state import (
+    VALID_ENTITLEMENT_STATUSES,
     UnsafeIdentifierError,
     _safe_segment,
     _utc_iso_now,
     list_installed,
-    read_manifest,
     write_manifest,
 )
 from cli._output import emit_json
@@ -23,14 +24,36 @@ from cli._output import emit_json
 from ._install_helpers import resolve_target
 
 
-def handle_skills_verify(args: argparse.Namespace) -> int:
-    """Re-check entitlement status for installed skills.
+def _error(
+    args: argparse.Namespace, code: str, message: str, exit_code: int
+) -> int:
+    """Emit a compliant error in JSON or human form."""
+    if getattr(args, "json_output", False):
+        emit_error_json(code, message, exit_code)
+    else:
+        print(f"ERROR: {message}", file=sys.stderr)
+    return exit_code
 
-    For now this is a local-only check: the manifest exists means
-    ``entitlement_status`` is set to ``"active"``, otherwise ``"missing"``.
-    ``last_verified_at`` is always updated to the current UTC timestamp.
-    When a real entitlements API is available this handler will call it.
+
+def _local_verify_status(manifest: dict[str, Any]) -> str:
+    """Best-effort verification using only public SDK-local data.
+
+    The current public SDK exposes checkout/order state but no dedicated
+    entitlements endpoint, so verification cannot prove fresh ownership
+    server-side in this repository alone. We therefore preserve a known
+    marketplace entitlement state, while manual installs remain unknown.
     """
+    source = manifest.get("source")
+    current = manifest.get("entitlement_status")
+    if source != "logion-marketplace":
+        return "unknown"
+    if current in VALID_ENTITLEMENT_STATUSES:
+        return str(current)
+    return "unknown"
+
+
+def handle_skills_verify(args: argparse.Namespace) -> int:
+    """Refresh local entitlement metadata for installed skills."""
     home = resolve_target(args)
     course_id: str | None = getattr(args, "course_id", None)
 
@@ -38,8 +61,7 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
         try:
             _safe_segment(course_id, "course_id")
         except UnsafeIdentifierError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 1
+            return _error(args, "unsafe_identifier", str(exc), 1)
 
     installed = list_installed(home)
     if course_id is not None:
@@ -48,23 +70,16 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
     results: list[dict[str, Any]] = []
     now = _utc_iso_now()
 
-    for m in installed:
-        cid = m.get("course_id", "?")
-        vid = m.get("version_id", "?")
-        # Local verification: manifest present → "active",
-        # absent → "missing"
-        manifest = read_manifest(cid, vid, home)
-        if manifest is not None:
-            m["entitlement_status"] = "active"
-            m["last_verified_at"] = now
-            write_manifest(m, cid, vid, home)
-        else:
-            m["entitlement_status"] = "missing"
-            m["last_verified_at"] = now
+    for manifest in installed:
+        cid = str(manifest.get("course_id", "?"))
+        vid = str(manifest.get("version_id", "?"))
+        manifest["entitlement_status"] = _local_verify_status(manifest)
+        manifest["last_verified_at"] = now
+        write_manifest(manifest, cid, vid, home)
         results.append({
             "course_id": cid,
-            "entitlement_status": m["entitlement_status"],
-            "last_verified_at": m["last_verified_at"],
+            "entitlement_status": manifest["entitlement_status"],
+            "last_verified_at": manifest["last_verified_at"],
         })
 
     if getattr(args, "json_output", False):

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 
@@ -20,13 +21,12 @@ def _install_manifest(
     home: Path,
     overrides: dict[str, Any] | None = None,
 ) -> None:
-    """Write a minimal manifest into home/installed/course_id/version_id."""
     ensure_layout(home)
     manifest: dict[str, Any] = {
         "course_id": course_id,
         "version_id": version_id,
         "title": f"Test {course_id}",
-        "source": "logion",
+        "source": "logion-marketplace",
         "installed_at": "2025-01-01T00:00:00Z",
         "entrypoint": "SKILL.md",
         "capabilities": [],
@@ -37,6 +37,9 @@ def _install_manifest(
         "license_scope": "unknown",
         "official_update_channel": True,
         "last_verified_at": "2025-01-01T00:00:00Z",
+        "manifest_path": str(
+            home / "installed" / course_id / version_id / "manifest.json"
+        ),
     }
     if overrides:
         manifest.update(overrides)
@@ -44,13 +47,23 @@ def _install_manifest(
 
 
 class FakeCoursesResource:
-    """Fake courses.get resource."""
-
-    def __init__(self, data: dict[str, Any] | None = None) -> None:
-        self._data = data or {}
+    def __init__(
+        self,
+        course_data: dict[str, Any] | None = None,
+        version_data: dict[str, Any] | None = None,
+    ) -> None:
+        self._course_data = course_data
+        self._version_data = version_data
 
     def get(self, **_kwargs: Any) -> dict[str, Any]:
-        return self._data
+        if self._course_data is None:
+            raise RuntimeError("missing")
+        return self._course_data
+
+    def get_version(self, **_kwargs: Any) -> dict[str, Any]:
+        if self._version_data is None:
+            raise RuntimeError("missing")
+        return self._version_data
 
 
 class FakeV1Namespace:
@@ -66,122 +79,136 @@ class FakeClient:
         pass
 
 
+def _args(home: Path, **overrides: Any) -> argparse.Namespace:
+    defaults = {
+        "course_id": "test-course",
+        "version_id": "1.0.0",
+        "verbose": False,
+        "target": home,
+        "json_output": True,
+        "api_key": None,
+        "base_url": None,
+        "timeout": None,
+        "max_retries": None,
+    }
+    defaults.update(overrides)
+    return argparse.Namespace(**defaults)
+
+
 def test_skills_inspect_json_shape_matches_envelope(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """skills inspect --json emits v1 envelope, kind=logion.skills.inspect."""
     home = tmp_path / "home"
-    _install_manifest("test-course", "1.0", home)
-
-    remote_data = {
-        "id": "test-course",
-        "title": "Test Course (remote)",
-        "slug": "test-course",
-        "status": "published",
-        "description": "Remote description",
-    }
-    courses = FakeCoursesResource(remote_data)
-    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
-
-    args = argparse.Namespace(
-        course_id="test-course",
-        version_id="1.0",
-        target=home,
-        json_output=True,
-        api_key=None,
-        base_url=None,
-        timeout=None,
-        max_retries=None,
+    _install_manifest("test-course", "1.0.0", home)
+    fake = FakeClient(
+        v1=FakeV1Namespace(
+            FakeCoursesResource(
+                course_data={
+                    "id": "test-course",
+                    "title": "Remote Title",
+                    "description": "Remote description",
+                }
+            )
+        )
     )
+
     with (
-        patch(
-            "cli.commands.skills._inspect_handler.resolve_config_from_args"
-        ) as mock_cfg,
         patch(
             "cli.commands.skills._inspect_handler.make_client",
             return_value=fake,
         ),
+        patch("cli.commands.skills._inspect_handler.resolve_config_from_args"),
     ):
-        mock_cfg.return_value = argparse.Namespace(
-            json_output=True,
-            api_key=None,
-            base_url="https://api.logion.dev",
-            timeout=None,
-            max_retries=None,
-        )
-        rc = handle_skills_inspect(args)
+        rc = handle_skills_inspect(_args(home))
 
-    captured = capsys.readouterr()
     assert rc == 0
-    data = json.loads(captured.out)
-    assert data["version"] == "v1"
-    assert data["kind"] == "logion.skills.inspect"
-    assert data["data"]["course_id"] == "test-course"
-    assert data["data"]["description"] == "Remote description"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.skills.inspect"
+    assert payload["data"]["course_id"] == "test-course"
+    assert payload["data"]["manifest_path"].endswith("manifest.json")
+    assert payload["data"]["description"] == "Remote description"
 
 
 def test_skills_inspect_includes_entitlement_status(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """skills inspect includes entitlement_status from the local manifest."""
     home = tmp_path / "home"
     _install_manifest(
-        "ent-course", "2.0", home, {"entitlement_status": "active"}
+        "ent-course", "2.0.0", home, {"entitlement_status": "active"}
+    )
+    fake = FakeClient(
+        v1=FakeV1Namespace(
+            FakeCoursesResource(course_data={"id": "ent-course"})
+        )
     )
 
-    courses = FakeCoursesResource({"id": "ent-course"})
-    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
-
-    args = argparse.Namespace(
-        course_id="ent-course",
-        version_id="2.0",
-        target=home,
-        json_output=True,
-        api_key=None,
-        base_url=None,
-        timeout=None,
-        max_retries=None,
-    )
     with (
-        patch(
-            "cli.commands.skills._inspect_handler.resolve_config_from_args"
-        ) as mock_cfg,
         patch(
             "cli.commands.skills._inspect_handler.make_client",
             return_value=fake,
         ),
+        patch("cli.commands.skills._inspect_handler.resolve_config_from_args"),
     ):
-        mock_cfg.return_value = argparse.Namespace(
-            json_output=True,
-            api_key=None,
-            base_url="https://api.logion.dev",
-            timeout=None,
-            max_retries=None,
+        rc = handle_skills_inspect(
+            _args(home, course_id="ent-course", version_id="2.0.0")
         )
-        rc = handle_skills_inspect(args)
 
-    captured = capsys.readouterr()
     assert rc == 0
-    data = json.loads(captured.out)
-    assert data["data"]["entitlement_status"] == "active"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"]["entitlement_status"] == "active"
 
 
-def test_skills_inspect_unsafe_course_id_returns_error(
-    tmp_path: Path,
+def test_skills_inspect_with_version_id_returns_version_payload(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """skills inspect rejects an unsafe course_id."""
     home = tmp_path / "home"
-    ensure_layout(home)
-
-    args = argparse.Namespace(
-        course_id="../evil",
-        version_id=None,
-        target=home,
-        json_output=False,
-        api_key=None,
-        base_url=None,
-        timeout=None,
-        max_retries=None,
+    _install_manifest("versioned-course", "3.0.0", home)
+    fake = FakeClient(
+        v1=FakeV1Namespace(
+            FakeCoursesResource(
+                course_data={"id": "versioned-course", "title": "Course"},
+                version_data={
+                    "id": str(UUID("00000000-0000-0000-0000-000000000123")),
+                    "status": "published",
+                    "capabilities_manifest_path": "course/capabilities.yaml",
+                },
+            )
+        )
     )
-    rc = handle_skills_inspect(args)
-    assert rc != 0
+
+    with (
+        patch(
+            "cli.commands.skills._inspect_handler.make_client",
+            return_value=fake,
+        ),
+        patch("cli.commands.skills._inspect_handler.resolve_config_from_args"),
+    ):
+        rc = handle_skills_inspect(
+            _args(
+                home,
+                course_id="versioned-course",
+                version_id="3.0.0",
+                verbose=True,
+            )
+        )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["data"]["remote_version"]["status"] == "published"
+    assert (
+        payload["data"]["capabilities_manifest_path"]
+        == "course/capabilities.yaml"
+    )
+
+
+def test_skills_inspect_unsafe_course_id_returns_unsafe_identifier_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = tmp_path / "home"
+    rc = handle_skills_inspect(
+        _args(home, course_id="../evil", version_id=None, json_output=True)
+    )
+    assert rc == 1
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["data"]["code"] == "unsafe_identifier"

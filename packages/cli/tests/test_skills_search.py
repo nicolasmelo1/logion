@@ -185,6 +185,58 @@ def test_skills_search_emits_entitlement_status_per_result(
     assert missing_item["entitlement_status"] == "missing"
 
 
+def test_skills_search_result_without_course_id_stays_unknown(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Do not infer entitlement from listing IDs when course_id is absent."""
+    items = [
+        {
+            "id": "course-active",
+            "title": "Listing Only",
+            "short_summary": "Summary",
+        },
+    ]
+    installed_manifests = [
+        {"course_id": "course-active", "entitlement_status": "active"},
+    ]
+    listings = FakeListingsResource(items)
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+
+    args = _make_args(target=tmp_path)
+    with (
+        patch(
+            "cli.commands.skills._search_handler.make_client",
+            return_value=fake,
+        ),
+        patch(
+            "cli.commands.skills._search_handler.list_installed",
+            return_value=installed_manifests,
+        ),
+        patch(
+            "cli.commands.skills._search_handler.resolve_config_from_args"
+        ) as mock_cfg,
+        patch(
+            "cli.commands.skills._search_handler.resolve_target",
+            return_value=tmp_path,
+        ),
+    ):
+        mock_cfg.return_value = argparse.Namespace(
+            json_output=True,
+            api_key=None,
+            base_url="https://api.logion.dev",
+            timeout=None,
+            max_retries=None,
+        )
+        rc = handle_skills_search(args)
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    data = json.loads(captured.out)
+    result_item = data["data"]["items"][0]
+    assert result_item["id"] == "course-active"
+    assert result_item["entitlement_status"] == "unknown"
+
+
 def test_skills_search_compact_default_truncates_summary(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

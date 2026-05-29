@@ -21,7 +21,7 @@ def to_data(value: Any) -> Any:
 
 def emit_json(kind: str, data: Any) -> None:
     """Print a v1 JSON envelope with version, kind, and data."""
-    payload = {"version": "v1", "kind": kind, "data": data}
+    payload = {"version": "v1", "kind": kind, "data": to_data(data)}
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
