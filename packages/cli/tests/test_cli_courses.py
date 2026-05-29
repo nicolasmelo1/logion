@@ -389,6 +389,7 @@ def test_courses_uploads_complete(
 
 def test_courses_publication_request(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """courses publication request calls SDK."""
     courses = FakeCoursesResource()
@@ -407,10 +408,16 @@ def test_courses_publication_request(
     method, kwargs = courses.last_call
     assert method == "request_publication_review"
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    data = json.loads(capsys.readouterr().out)
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.courses.publication.request"
+    assert data["data"]["review_id"] == "r1"
+    assert data["data"]["status"] == "pending"
 
 
 def test_courses_publication_latest(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """courses publication latest calls SDK."""
     courses = FakeCoursesResource()
@@ -431,6 +438,10 @@ def test_courses_publication_latest(
     assert method == "get_latest_publication_review"
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["include_pass"] is True
+    data = json.loads(capsys.readouterr().out)
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.courses.publication.latest"
+    assert data["data"]["status"] == "approved"
 
 
 def test_courses_publication_latest_no_include_pass(

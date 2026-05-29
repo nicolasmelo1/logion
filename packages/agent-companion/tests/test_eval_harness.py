@@ -21,6 +21,7 @@ from typing import Any
 from urllib import error as urllib_error
 
 import pytest
+import yaml
 
 from evals import run_eval as run_eval_cli
 from evals.harness.graders import (
@@ -41,6 +42,7 @@ from evals.harness.graders import (
 )
 from evals.harness.providers.fake import FakeProvider, FakeProviderError
 from evals.harness.providers.llama_cpp import (
+    KNOWN_TOOL_NAMES,
     LlamaCppProviderError,
     load_llama_cpp_provider,
     parse_trace_json,
@@ -145,6 +147,15 @@ class TestCatalog:
             "travel.planner",
         }
         assert required.issubset(set(catalog.ids))
+
+    def test_seller_state_fixture_documents_readiness_states(self) -> None:
+        fixture = EVALS / "catalogs" / "fake-seller-state.yaml"
+        raw = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+        states = raw["states"]
+        assert states["not_ready"]["ready"] is False
+        assert states["not_ready"]["missing"] == ["stripe_onboarding"]
+        assert states["ready"]["ready"] is True
+        assert states["ready"]["missing"] == []
 
     def test_catalog_rejects_invalid_price(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"
@@ -428,6 +439,9 @@ class TestScenarioSchema:
         assert creator_tools.issubset(KNOWN_TOOLS), (
             f"Missing creator tools: {creator_tools - KNOWN_TOOLS}"
         )
+
+    def test_live_provider_tool_specs_match_schema_tools(self) -> None:
+        assert KNOWN_TOOL_NAMES == KNOWN_TOOLS
 
     def test_creator_scenarios_only_use_known_tools(self, scenarios) -> None:
 

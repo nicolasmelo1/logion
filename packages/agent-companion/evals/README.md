@@ -181,8 +181,9 @@ Three new eval suites cover the creator-authored marketplace path using
 - **creator-seller-onboarding** (4 scenarios) — seller readiness
   checks, paid-course gating, onboarding confirmation.
 
-Seller readiness is asserted via `local_recall` entries in scenarios
-rather than a separate catalog fixture.
+Seller readiness is asserted via `fake-seller-state.yaml` plus
+`local_recall` entries in scenarios so tests can cover both structured
+seller state and the companion's recall-first behavior.
 
 ## Release gates (target V1)
 

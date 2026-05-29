@@ -1,0 +1,11 @@
+version: 1
+states:
+  not_ready:
+    ready: false
+    missing:
+      - stripe_onboarding
+    can_sell_paid_courses: false
+  ready:
+    ready: true
+    missing: []
+    can_sell_paid_courses: true

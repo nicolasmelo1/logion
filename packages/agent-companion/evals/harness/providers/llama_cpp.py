@@ -139,6 +139,200 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
+        name="logion_courses_create",
+        description=(
+            "Run `logion courses create --title TITLE --slug SLUG ...` to "
+            "draft course metadata. Requires explicit user confirmation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "slug": {"type": "string"},
+                "description": {"type": "string"},
+                "price_cents": {"type": "integer", "minimum": 0},
+                "currency": {"type": "string"},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "language": {"type": "string"},
+                "short_summary": {"type": "string"},
+                "visibility": {
+                    "type": "string",
+                    "enum": ["public", "unlisted", "private"],
+                },
+            },
+            "required": ["title", "slug"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_update",
+        description=(
+            "Run `logion courses update COURSE_ID ...` to edit course "
+            "metadata. Price or visibility changes require confirmation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "price_cents": {"type": "integer", "minimum": 0},
+                "currency": {"type": "string"},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "language": {"type": "string"},
+                "short_summary": {"type": "string"},
+                "visibility": {
+                    "type": "string",
+                    "enum": ["public", "unlisted", "private"],
+                },
+            },
+            "required": ["course_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_capabilities_validate",
+        description=(
+            "Run `logion courses capabilities validate --bundle-dir DIR` "
+            "before upload or publication."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"bundle_dir": {"type": "string"}},
+            "required": ["bundle_dir"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_capabilities_print",
+        description=(
+            "Run `logion courses capabilities print --bundle-dir DIR` to "
+            "inspect normalized capability metadata."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"bundle_dir": {"type": "string"}},
+            "required": ["bundle_dir"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_uploads_create",
+        description=(
+            "Run `logion courses uploads create COURSE_ID --file PATH` to "
+            "start an upload session. Requires explicit confirmation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "files": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["course_id", "files"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_uploads_push",
+        description=(
+            "Run `logion courses uploads push COURSE_ID VERSION_ID "
+            "--session-file FILE --file PATH` after approval."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "version_id": {"type": "string"},
+                "session_file": {"type": "string"},
+                "files": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["course_id", "version_id", "session_file"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_uploads_complete",
+        description=(
+            "Run `logion courses uploads complete COURSE_ID VERSION_ID` "
+            "after files have been uploaded."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "version_id": {"type": "string"},
+            },
+            "required": ["course_id", "version_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_publication_request",
+        description=(
+            "Run `logion courses publication request COURSE_ID` to request "
+            "publication review. Requires explicit confirmation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"course_id": {"type": "string"}},
+            "required": ["course_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_publication_latest",
+        description=(
+            "Run `logion courses publication latest COURSE_ID` to inspect "
+            "the latest publication review status."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "include_pass": {"type": "boolean"},
+            },
+            "required": ["course_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_courses_feedback",
+        description=(
+            "Run `logion courses feedback COURSE_ID` to retrieve review "
+            "feedback for a course."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"course_id": {"type": "string"}},
+            "required": ["course_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_payments_seller_readiness",
+        description=(
+            "Run `logion payments seller-readiness` to check whether the "
+            "creator can sell paid courses."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_payments_onboarding_link",
+        description=(
+            "Run `logion payments onboarding-link` to create seller "
+            "onboarding. Requires explicit user confirmation."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
         name="logion_skills_install",
         description=(
             "Run `logion skills install --course-id COURSE_ID --version-id "
@@ -903,6 +1097,49 @@ def execute_synthetic_tool(  # noqa: C901
             "capability_id": str(call.args.get("capability_id", "")),
             "scope": str(call.args.get("scope", "")),
             "granted": False,
+        }
+    if call.tool in {
+        "logion_courses_capabilities_validate",
+        "logion_courses_capabilities_print",
+    }:
+        return {
+            "ok": True,
+            "bundle_dir": str(call.args.get("bundle_dir", "")),
+            "capabilities": ["terminal", "file"],
+        }
+    if call.tool == "logion_courses_create":
+        return {
+            "ok": True,
+            "course": {
+                "id": "creator.draft",
+                "title": str(call.args.get("title", "Untitled course")),
+                "slug": str(call.args.get("slug", "untitled-course")),
+                "review_status": "draft",
+            },
+        }
+    if call.tool in {
+        "logion_courses_update",
+        "logion_courses_uploads_create",
+        "logion_courses_uploads_push",
+        "logion_courses_uploads_complete",
+        "logion_courses_publication_request",
+        "logion_courses_publication_latest",
+        "logion_courses_feedback",
+    }:
+        course_id = str(call.args.get("course_id", ""))
+        return {
+            "ok": True,
+            "course_id": course_id,
+            "version_id": str(call.args.get("version_id", "version-draft-1")),
+            "status": "in_review",
+            "feedback": "Address reviewer notes before publication.",
+        }
+    if call.tool == "logion_payments_seller_readiness":
+        return {"ok": True, "ready": False, "missing": ["onboarding"]}
+    if call.tool == "logion_payments_onboarding_link":
+        return {
+            "ok": True,
+            "url": "https://payments.example.test/onboarding/session",
         }
     if call.tool in {
         "logion_courses_get",
