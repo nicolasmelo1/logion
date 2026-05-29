@@ -698,43 +698,49 @@ def search_recall(
     home: Path | None = None,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    """Search recall by case-insensitive keyword; ranked top-k matches."""
+    """Search recall with fuzzy ranking and confidence calibration."""
+    from cli._recall_calibration import (
+        band_for,
+        calibrate_installed_confidence,
+        calibrate_workflow_confidence,
+    )
+    from cli._recall_ranker import rank
+
     entries = read_recall(home)
     if not entries or not query:
         return []
 
-    q_lower = query.lower()
-    scored: list[tuple[float, dict[str, Any]]] = []
-
-    for entry in entries:
-        score = 0.0
-        title = (entry.get("title", "") or "").lower()
-        summary = (entry.get("summary", "") or "").lower()
-        eid = (entry.get("id", "") or "").lower()
-
-        if q_lower in title:
-            score += 0.5
-        if q_lower in summary:
-            score += 0.3
-        if q_lower in eid:
-            score += 0.2
-
-        if entry.get("type") == "workflow":
-            for cmd in entry.get("commands", []) or []:
-                if q_lower in cmd.lower():
-                    score += 0.4
-                    break
-
-        if score > 0:
-            adjusted = min(
-                float(entry.get("confidence", 0.5)) * (1 + score),
-                1.0,
+    ranked = rank(query, entries, limit=limit)
+    out: list[dict[str, Any]] = []
+    for similarity, entry in ranked:
+        entry_type = entry.get("type", "")
+        if entry_type == "installed_capability":
+            confidence = calibrate_installed_confidence(similarity)
+        elif entry_type == "workflow":
+            confidence = calibrate_workflow_confidence(
+                similarity,
+                entry.get("success_count", 0),
+                entry.get("last_success_at"),
             )
-            entry_copy = {**entry, "confidence": round(adjusted, 2)}
-            scored.append((score, entry_copy))
+        elif entry_type == "reference":
+            confidence = 0.8 * similarity
+        elif entry_type == "project_command":
+            confidence = 0.9 * similarity
+        else:
+            confidence = similarity
 
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [entry for _, entry in scored[:limit]]
+        band = band_for(confidence)
+        if band == "NONE":
+            continue
+
+        out.append({
+            **entry,
+            "confidence": round(confidence, 4),
+            "band": band,
+            "query_similarity": round(similarity, 4),
+        })
+
+    return out
 
 
 # ---------------------------------------------------------------------------

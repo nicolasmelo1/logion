@@ -20,7 +20,9 @@ evals/
 │   ├── updates.yaml             ← 10 scenarios
 │   ├── creator-authoring.yaml        ← 8 scenarios
 │   ├── creator-publication.yaml      ← 6 scenarios
-│   └── creator-seller-onboarding.yaml ← 4 scenarios
+│   ├── creator-seller-onboarding.yaml ← 4 scenarios
+│   ├── recall-fuzzy.yaml            ← 5 scenarios (fuzzy ranker quality)
+│   └── fake-seller-state.yaml       ← seller readiness fixture
 ├── harness/                   ← Python package (schemas, graders, runner)
 ├── providers/                 ← Pluggable provider configs (future LLMs)
 ├── graders/                   ← Reserved for grader-specific assets
@@ -184,6 +186,36 @@ Three new eval suites cover the creator-authored marketplace path using
 Seller readiness is asserted via `fake-seller-state.yaml` plus
 `local_recall` entries in scenarios so tests can cover both structured
 seller state and the companion's recall-first behavior.
+
+### Recall entry shape (§4.3)
+
+`local_recall` entries in scenario YAMLs follow this shape:
+
+```yaml
+local_recall:
+  - kind: workflow | installed_capability | reference | project_command
+    id: <string>
+    title: <string>
+    summary: <string>            # optional
+    confidence: <float 0..1>     # persisted prior; ranker may recompute
+    band: HIGH | MEDIUM | LOW    # optional; ranker recomputes
+    commands: [<string>, ...]     # required for workflow type
+    danger_flags: [<flag>, ...]   # closed enum from _local_state.DANGER_FLAGS
+    success_count: <int>          # optional, workflow only
+    last_success_at: <ISO 8601>   # optional, workflow only
+```
+
+The `confidence` value in a scenario is the **persisted prior** — the
+value stored in `recall.json`. The ranker recomputes final confidence at
+search time from `query_similarity` + calibration weights, and writes the
+computed value into the response. The `band` field is derived from the
+recomputed confidence.
+
+### recall_fuzzy suite
+
+The `recall-fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
+ranker's handling of misspellings, token reordering, partial matches,
+and tie-breaking determinism — not the full agent decision loop.
 
 ## Release gates (target V1)
 

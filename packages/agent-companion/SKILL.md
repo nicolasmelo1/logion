@@ -66,6 +66,8 @@ Recall is read-only fuzzy lookup over installed capabilities, prior successful
 workflows or commands, local companion references, and project-local known
 commands when available. If no recall command exists yet, manually inspect
 those same local sources only. Recall never implies automatic execution.
+Routing is band-based: HIGH suppresses marketplace; MEDIUM presents a
+candidate; LOW allows marketplace fallback; NONE proceeds to marketplace.
 
 ## Safe discovery commands
 

@@ -9,6 +9,9 @@ dependencies = [
     "pyyaml>=6.0,<7.0",
 ]
 
+[project.optional-dependencies]
+recall = ["rapidfuzz>=3.9,<4.0"]
+
 [tool.uv.sources]
 logion-client = { workspace = true }
 
@@ -19,6 +22,7 @@ lgn = "cli.main:main"
 [dependency-groups]
 dev = [
     "pytest>=9.0.3,<9.1.0",
+    "rapidfuzz>=3.9,<4.0",
     "ruff>=0.15.12,<0.16.0",
     "types-PyYAML>=6.0,<7.0",
 ]

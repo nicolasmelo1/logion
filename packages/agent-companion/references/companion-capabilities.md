@@ -19,7 +19,7 @@ The companion covers two audiences:
 
 | ID | Surface | Description |
 |---|---|---|
-| `logion.recall.search` | `logion recall search` | Find installed capabilities, local workflows, and proven commands before reaching for the marketplace. Read-only. |
+| `logion.recall.search` | `logion recall search` | Find installed capabilities, local workflows, and proven commands before reaching for the marketplace. Read-only. Returns ranked top-k matches with confidence band (HIGH/MEDIUM/LOW/NONE). |
 | `logion.marketplace.search` | `logion listings search` | Find candidate courses or capabilities when local recall is insufficient. |
 | `logion.course.inspect` | `logion courses get`, `logion courses versions get` | Review price, permissions, version metadata, and reviews before any install. |
 | `logion.skill.install` | `logion skills install` | Install one approved skill or course artifact after explicit user approval. |
@@ -48,3 +48,23 @@ happen, regardless of recall confidence:
 These are enforced by the agent following SKILL.md guidance and by
 `logion skills update` refusing to overwrite a locally modified
 installation without `--force`.
+
+## Local Recall semantics
+
+Recall is read-only and returns ranked top-k matches with a confidence
+band:
+
+- **HIGH (≥0.80)** — use the recalled artifact directly; do not search marketplace.
+- **MEDIUM (≥0.50, <0.80)** — present as a candidate; do not execute automatically.
+- **LOW (≥0.20, <0.50)** — context only; allow marketplace fallback.
+- **NONE (<0.20)** — no match; proceed to marketplace if needed.
+
+Recall results may carry `danger_flags`. For any non-empty danger_flags:
+
+- `fs_destructive`, `permission_change`, `privilege_escalation`:
+  confirmation required; reproduce the flag in the answer.
+- `network_exec`, `shell_eval`: refuse execution suggestion; surface
+  the flag.
+
+Recall never authorizes execution. Confidence and band influence
+routing only.
