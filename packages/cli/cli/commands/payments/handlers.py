@@ -9,7 +9,7 @@ import time
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json, handle_error
-from cli._output import emit, emit_json
+from cli._output import emit, emit_json, to_data
 from logion.v1._types.generated.v1 import CourseCheckoutResponse
 
 from ._orders_helpers import (
@@ -51,7 +51,10 @@ def handle_seller_readiness(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.payments.get_seller_readiness()
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.payments.seller-readiness", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -66,7 +69,10 @@ def handle_onboarding_link(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.payments.create_onboarding_link()
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.payments.onboarding-link", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

@@ -62,6 +62,7 @@ IMPLEMENTED_COMMANDS = {
     "logion skills installed",
     "logion skills inspect COURSE_ID",
     "logion skills updates",
+    'logion skills search "video cuts" --limit 5',
     (
         "logion skills install --source ./BUNDLE "
         "--course-id COURSE_ID --version-id VERSION_ID"
@@ -72,12 +73,26 @@ IMPLEMENTED_COMMANDS = {
     ),
     "logion recall record --id WORKFLOW_ID --title TITLE --command CMD",
     "logion courses capabilities scaffold --bundle-dir ./new-course",
-    "logion courses capabilities validate --bundle-dir ./new-course",
+    ("logion courses capabilities validate --bundle-dir ./new-course --json"),
+    "logion courses create --title ... --slug ... --json",
+    "logion courses update COURSE_ID --json",
+    "logion courses reviews list --course-id COURSE_ID",
+    "logion courses reviews summary --course-id COURSE_ID",
+    ("logion courses uploads create COURSE_ID --file ... --json"),
+    (
+        "logion courses uploads push COURSE_ID VERSION_ID "
+        "--session-file session.json --file ... --json"
+    ),
+    "logion courses uploads complete COURSE_ID VERSION_ID --json",
+    ("logion courses publication request COURSE_ID --json"),
+    ("logion courses publication latest COURSE_ID --json"),
+    ("logion courses feedback COURSE_ID --json"),
+    "logion payments seller-readiness --json",
+    "logion payments onboarding-link --json",
+    ("logion courses capabilities print --bundle-dir ./new-course --json"),
 }
 
-PLANNED_COMMANDS = {
-    'logion skills search "video cuts" --limit 5',
-}
+PLANNED_COMMANDS: set[str] = set()
 
 REQUIRED_CONFIRMATION_ACTIONS = {
     "paid_checkout",

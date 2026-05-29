@@ -8,7 +8,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit, to_data
+from cli._output import emit, emit_json, to_data
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
@@ -110,7 +110,10 @@ def handle_create(args: argparse.Namespace) -> int:
         if args.tags:
             kwargs["tags"] = args.tags
         result = client.v1.courses.create(**kwargs)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.courses.create", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -198,7 +201,10 @@ def handle_update(args: argparse.Namespace) -> int:
         )
         _apply_update_overrides(args, kwargs)
         result = client.v1.courses.update(**kwargs)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json("logion.courses.update", to_data(result))
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

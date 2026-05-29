@@ -8,12 +8,14 @@ import sys
 from importlib import resources
 from pathlib import Path
 
+from cli._config import resolve_config_from_args
 from cli._course_capabilities import (
     CAPABILITY_MANIFEST_PATH,
     CapabilityManifestError,
     load_and_validate_capability_manifest,
     summarize_capability_manifest,
 )
+from cli._output import emit_json
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
 )
@@ -30,10 +32,15 @@ def handle_courses_capabilities_validate(
     except CapabilityManifestError as exc:
         print(f"Invalid capability manifest: {exc}", file=sys.stderr)
         return 2
+    config = resolve_config_from_args(args)
     summary = summarize_capability_manifest(manifest)
-    lines = ["capabilities_status: declared"]
-    _append_summary_fields(lines, summary)
-    print("\n".join(lines))
+    if config.json_output:
+        payload = {"capabilities_status": "declared", **summary}
+        emit_json("logion.courses.capabilities.validate", payload)
+    else:
+        lines = ["capabilities_status: declared"]
+        _append_summary_fields(lines, summary)
+        print("\n".join(lines))
     return 0
 
 
@@ -46,7 +53,11 @@ def handle_courses_capabilities_print(
     except CapabilityManifestError as exc:
         print(f"Invalid capability manifest: {exc}", file=sys.stderr)
         return 2
-    print(json.dumps(manifest, indent=2, sort_keys=True))
+    config = resolve_config_from_args(args)
+    if config.json_output:
+        emit_json("logion.courses.capabilities.print", manifest)
+    else:
+        print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0
 
 

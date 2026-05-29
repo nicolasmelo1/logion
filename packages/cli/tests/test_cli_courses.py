@@ -127,7 +127,9 @@ def test_courses_create_calls_client(
     assert "description" not in kwargs
     assert "price_cents" not in kwargs
     data = json.loads(capsys.readouterr().out)
-    assert data["title"] == "RAG"
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.courses.create"
+    assert data["data"]["title"] == "RAG"
 
 
 def test_courses_create_all_options(
@@ -387,6 +389,7 @@ def test_courses_uploads_complete(
 
 def test_courses_publication_request(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """courses publication request calls SDK."""
     courses = FakeCoursesResource()
@@ -405,10 +408,16 @@ def test_courses_publication_request(
     method, kwargs = courses.last_call
     assert method == "request_publication_review"
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    data = json.loads(capsys.readouterr().out)
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.courses.publication.request"
+    assert data["data"]["review_id"] == "r1"
+    assert data["data"]["status"] == "pending"
 
 
 def test_courses_publication_latest(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """courses publication latest calls SDK."""
     courses = FakeCoursesResource()
@@ -429,6 +438,10 @@ def test_courses_publication_latest(
     assert method == "get_latest_publication_review"
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert kwargs["include_pass"] is True
+    data = json.loads(capsys.readouterr().out)
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.courses.publication.latest"
+    assert data["data"]["status"] == "approved"
 
 
 def test_courses_publication_latest_no_include_pass(
@@ -851,8 +864,10 @@ def test_courses_uploads_complete_json_preserves_capability_payload(
     assert code == 0
     output = capsys.readouterr().out
     payload = json.loads(output)
-    assert payload["capabilities_status"] == "declared"
-    assert payload["declared_capabilities"]["tools"] == ["terminal"]
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.courses.uploads.complete"
+    assert payload["data"]["capabilities_status"] == "declared"
+    assert payload["data"]["declared_capabilities"]["tools"] == ["terminal"]
 
 
 def test_courses_uploads_complete_human_prints_capability_summary(

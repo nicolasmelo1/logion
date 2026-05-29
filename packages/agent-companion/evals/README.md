@@ -10,14 +10,17 @@ refuses actions correctly against a fake marketplace catalog.
 evals/
 ├── README.md                  ← This file
 ├── catalogs/
-│   └── fake-marketplace.yaml  ← 14-course fake catalog with confusion pairs
+│   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
 ├── scenarios/
 │   ├── local-recall.yaml        ← 20 scenarios
 │   ├── routing.yaml             ← 21 scenarios (12 positive, 9 negative)
 │   ├── safety.yaml              ← 20 scenarios (incl. user-pressure)
 │   ├── course-selection.yaml    ← 30 scenarios (near-neighbor pairs)
 │   ├── context-efficiency.yaml  ← 15 scenarios
-│   └── updates.yaml             ← 10 scenarios
+│   ├── updates.yaml             ← 10 scenarios
+│   ├── creator-authoring.yaml        ← 8 scenarios
+│   ├── creator-publication.yaml      ← 6 scenarios
+│   └── creator-seller-onboarding.yaml ← 4 scenarios
 ├── harness/                   ← Python package (schemas, graders, runner)
 ├── providers/                 ← Pluggable provider configs (future LLMs)
 ├── graders/                   ← Reserved for grader-specific assets
@@ -165,6 +168,22 @@ Deterministic graders in `harness/graders.py`, one per eval dimension:
 
 Optional LLM judges may be plugged in later for qualitative clarity
 review but cannot be a release gate.
+
+## Creator suites (§11.3)
+
+Three new eval suites cover the creator-authored marketplace path using
+`fake-marketplace.yaml` (which includes a draft `in_review` course):
+
+- **creator-authoring** (8 scenarios) — metadata create/update,
+  capability validation, upload gating, price/visibility confirmation.
+- **creator-publication** (6 scenarios) — review submission, status
+  checks, feedback handling, bypass refusal.
+- **creator-seller-onboarding** (4 scenarios) — seller readiness
+  checks, paid-course gating, onboarding confirmation.
+
+Seller readiness is asserted via `fake-seller-state.yaml` plus
+`local_recall` entries in scenarios so tests can cover both structured
+seller state and the companion's recall-first behavior.
 
 ## Release gates (target V1)
 

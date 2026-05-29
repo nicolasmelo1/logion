@@ -125,7 +125,9 @@ def test_seller_readiness(
     method, _kwargs = payments.last_call
     assert method == "get_seller_readiness"
     data = json.loads(capsys.readouterr().out)
-    assert data["ready"] is True
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.payments.seller-readiness"
+    assert data["data"]["ready"] is True
 
 
 def test_onboarding_link(
@@ -140,7 +142,9 @@ def test_onboarding_link(
     method, _kwargs = payments.last_call
     assert method == "create_onboarding_link"
     data = json.loads(capsys.readouterr().out)
-    assert "url" in data
+    assert data["version"] == "v1"
+    assert data["kind"] == "logion.payments.onboarding-link"
+    assert "url" in data["data"]
 
 
 def test_checkout(

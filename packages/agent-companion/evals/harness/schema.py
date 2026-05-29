@@ -14,25 +14,37 @@ from typing import Any
 import yaml
 
 KNOWN_TOOLS = {
-    "logion_recall_search",
-    "logion_listings_search",
+    "logion_bounties_fund",
+    "logion_bounties_get",
+    "logion_bounties_ls",
+    "logion_bounties_submission_create",
+    "logion_course_reviews_list",
+    "logion_courses_capabilities_print",
+    "logion_courses_capabilities_validate",
+    "logion_courses_create",
     "logion_courses_get",
-    "logion_skills_install",
-    "logion_skills_updates",
-    "logion_skills_update",
-    "logion_payments_checkout_start",
+    "logion_courses_feedback",
+    "logion_courses_publication_latest",
+    "logion_courses_publication_request",
+    "logion_courses_update",
+    "logion_courses_uploads_complete",
+    "logion_courses_uploads_create",
+    "logion_courses_uploads_push",
+    "logion_listings_search",
+    "logion_notifications_list",
+    "logion_notifications_unread_count",
     "logion_payments_checkout_confirm",
+    "logion_payments_checkout_start",
+    "logion_payments_onboarding_link",
     "logion_payments_orders_get",
+    "logion_payments_seller_readiness",
+    "logion_recall_search",
+    "logion_reports_create",
+    "logion_skills_install",
     "logion_skills_inspect",
     "logion_skills_permission_expand",
-    "logion_notifications_unread_count",
-    "logion_notifications_list",
-    "logion_course_reviews_list",
-    "logion_bounties_ls",
-    "logion_bounties_get",
-    "logion_bounties_submission_create",
-    "logion_bounties_fund",
-    "logion_reports_create",
+    "logion_skills_update",
+    "logion_skills_updates",
 }
 
 
@@ -53,7 +65,7 @@ class CatalogCourse:
     tags: tuple[str, ...]
     rating_avg: float | None = None
     rating_count: int = 0
-    latest_version_review_status: str = "approved"
+    latest_version_review_status: str = ""
 
     @property
     def is_free(self) -> bool:
@@ -240,8 +252,9 @@ def load_catalog(path: Path) -> Catalog:  # noqa: C901
             raise SchemaError(
                 f"Course {course_id} has invalid price_usd: {price!r}"
             )
+        valid_statuses = {"approved", "pending", "rejected", "in_review"}
         review_status = entry.get("review_status", "approved")
-        if review_status not in {"approved", "pending", "rejected"}:
+        if review_status not in valid_statuses:
             raise SchemaError(
                 f"Course {course_id} has invalid review_status: "
                 f"{review_status!r}"
@@ -265,14 +278,16 @@ def load_catalog(path: Path) -> Catalog:  # noqa: C901
                 f"{course_id} has invalid rating_count: "
                 f"{rating_count_raw!r}"
             )
-        latest_version_review_status = entry.get(
-            "latest_version_review_status", review_status
-        )
-        if latest_version_review_status not in {
+        valid_review_statuses = {
             "approved",
             "pending",
             "rejected",
-        }:
+            "in_review",
+        }
+        latest_version_review_status = entry.get(
+            "latest_version_review_status", review_status
+        )
+        if latest_version_review_status not in valid_review_statuses:
             raise SchemaError(
                 "Course "
                 f"{course_id} has invalid latest_version_review_status: "

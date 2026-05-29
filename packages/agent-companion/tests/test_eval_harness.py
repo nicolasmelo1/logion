@@ -21,6 +21,7 @@ from typing import Any
 from urllib import error as urllib_error
 
 import pytest
+import yaml
 
 from evals import run_eval as run_eval_cli
 from evals.harness.graders import (
@@ -41,6 +42,8 @@ from evals.harness.graders import (
 )
 from evals.harness.providers.fake import FakeProvider, FakeProviderError
 from evals.harness.providers.llama_cpp import (
+    KNOWN_TOOL_NAMES,
+    TOOL_SPECS,
     LlamaCppProviderError,
     load_llama_cpp_provider,
     parse_trace_json,
@@ -54,6 +57,7 @@ from evals.harness.runner import (
     summarize,
 )
 from evals.harness.schema import (
+    KNOWN_TOOLS,
     Expected,
     FakeTrace,
     Scenario,
@@ -81,6 +85,9 @@ SUITE_MINIMUMS = {
     "notifications": 2,
     "bounties": 5,
     "reports": 3,
+    "creator-authoring": 8,
+    "creator-publication": 6,
+    "creator-seller-onboarding": 4,
 }
 
 
@@ -136,10 +143,20 @@ class TestCatalog:
             "data.spreadsheets",
             "browser.automation",
             "ocr.documents",
+            "ocr.documents.draft.v2",
             "email.triage",
             "travel.planner",
         }
         assert required.issubset(set(catalog.ids))
+
+    def test_seller_state_fixture_documents_readiness_states(self) -> None:
+        fixture = EVALS / "catalogs" / "fake-seller-state.yaml"
+        raw = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+        states = raw["states"]
+        assert states["not_ready"]["ready"] is False
+        assert states["not_ready"]["missing"] == ["stripe_onboarding"]
+        assert states["ready"]["ready"] is True
+        assert states["ready"]["missing"] == []
 
     def test_catalog_rejects_invalid_price(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"
@@ -383,6 +400,109 @@ class TestScenarioSchema:
             match=r"max_listings_limit must be a non-negative integer",
         ):
             load_scenarios_from_file(bad)
+
+    def test_creator_authoring_scenarios_parse_without_schema_error(
+        self, scenarios
+    ) -> None:
+        creator = [s for s in scenarios if s.suite == "creator-authoring"]
+        assert len(creator) >= 8
+
+    def test_creator_publication_scenarios_parse_without_schema_error(
+        self, scenarios
+    ) -> None:
+        creator = [s for s in scenarios if s.suite == "creator-publication"]
+        assert len(creator) >= 6
+
+    def test_creator_seller_onboarding_scenarios_parse(
+        self, scenarios
+    ) -> None:
+        onboarding = [
+            s for s in scenarios if s.suite == "creator-seller-onboarding"
+        ]
+        assert len(onboarding) >= 4
+
+    def test_new_known_tools_set_includes_creator_tools(self) -> None:
+
+        creator_tools = {
+            "logion_courses_create",
+            "logion_courses_update",
+            "logion_courses_capabilities_validate",
+            "logion_courses_capabilities_print",
+            "logion_courses_uploads_create",
+            "logion_courses_uploads_push",
+            "logion_courses_uploads_complete",
+            "logion_courses_publication_request",
+            "logion_courses_publication_latest",
+            "logion_courses_feedback",
+            "logion_payments_seller_readiness",
+            "logion_payments_onboarding_link",
+        }
+        assert creator_tools.issubset(KNOWN_TOOLS), (
+            f"Missing creator tools: {creator_tools - KNOWN_TOOLS}"
+        )
+
+    def test_live_provider_tool_specs_match_schema_tools(self) -> None:
+        assert KNOWN_TOOL_NAMES == KNOWN_TOOLS
+
+    def test_creator_scenarios_only_use_known_tools(self, scenarios) -> None:
+
+        creator_suites = {
+            "creator-authoring",
+            "creator-publication",
+            "creator-seller-onboarding",
+        }
+        for scenario in scenarios:
+            if scenario.suite not in creator_suites:
+                continue
+            if scenario.expected.required_tools:
+                unknown = set(scenario.expected.required_tools) - KNOWN_TOOLS
+                assert not unknown, (
+                    f"{scenario.id}: unknown required_tools: {unknown}"
+                )
+            if scenario.expected.forbidden_tools:
+                unknown = set(scenario.expected.forbidden_tools) - KNOWN_TOOLS
+                assert not unknown, (
+                    f"{scenario.id}: unknown forbidden_tools: {unknown}"
+                )
+            if scenario.fake_trace and scenario.fake_trace.calls:
+                for call in scenario.fake_trace.calls:
+                    assert call.tool in KNOWN_TOOLS, (
+                        f"{scenario.id}: unknown fake_trace tool: {call.tool}"
+                    )
+            if scenario.expected.required_tool_sequence:
+                seq = scenario.expected.required_tool_sequence
+                unknown = set(seq) - KNOWN_TOOLS
+                assert not unknown, (
+                    f"{scenario.id}: unknown required_tool_sequence: {unknown}"
+                )
+
+    def test_fake_traces_match_live_tool_argument_contracts(
+        self, scenarios
+    ) -> None:
+        tool_params = {spec.name: spec.parameters for spec in TOOL_SPECS}
+
+        for scenario in scenarios:
+            if scenario.fake_trace is None:
+                continue
+            for call in scenario.fake_trace.calls:
+                params = tool_params.get(call.tool)
+                if params is None:
+                    continue
+                required = set(params.get("required", []))
+                missing = required - set(call.args)
+                assert not missing, (
+                    f"{scenario.id}: {call.tool} missing required args: "
+                    f"{sorted(missing)}"
+                )
+
+                if params.get("additionalProperties") is not False:
+                    continue
+                properties = set(params.get("properties", {}))
+                extra = set(call.args) - properties
+                assert not extra, (
+                    f"{scenario.id}: {call.tool} has unknown args: "
+                    f"{sorted(extra)}"
+                )
 
 
 class TestFakeProvider:
