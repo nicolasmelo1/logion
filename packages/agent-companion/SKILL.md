@@ -99,8 +99,8 @@ logion skills installed
 logion skills inspect COURSE_ID
 logion skills updates
 logion skills search "video cuts" --limit 5
-logion courses reviews list --course-id COURSE_ID
-logion courses reviews summary --course-id COURSE_ID
+logion courses reviews list COURSE_ID --limit 5
+logion courses reviews summary COURSE_ID
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
@@ -130,9 +130,8 @@ logion payments onboarding-link --json
 ## Course inspection checklist
 
 Check course fit, version, price, permissions, required tools, execution
-policy, reviews, and whether a comparable free or local option already exists.
-Use `references/marketplace-flows.md` and `references/safety-and-approval.md`
-for detailed review steps.
+policy, and reviews; prefer a comparable free or local option when quality
+is similar.
 
 ## Install/update approval rules
 
@@ -143,12 +142,25 @@ price, permissions, required tools, or execution policy.
 ## Context budget rules
 
 Keep this file compact. Do not load the marketplace catalog. Load references
-only when needed: `references/marketplace-flows.md`,
-`references/low-context-loading.md`, `references/safety-and-approval.md`,
-`references/creator-course-management.md`, or `references/troubleshooting.md`.
+only on demand, never at bootstrap.
 
-## Troubleshooting
+## Reference index
 
-If recall is weak, refine the task and inspect candidates before recommending
-anything. If commands fail or metadata is unclear, use
-`references/troubleshooting.md`.
+Load each file only when the named condition is met:
+
+- `references/creator-course-management.md` — guiding a creator through
+  metadata, capability validation, upload, or publication.
+- `references/account-and-identity.md` — user wants to provision a user or
+  agent, or rotate an agent API key (`logion identity`).
+- `references/notifications-and-reports.md` — inspecting inbox or filing a
+  user-directed moderation report.
+- `references/payments-and-checkout.md` — buyer paid checkout, order
+  status/wait, or creator-side Stripe onboarding.
+- `references/bounties.md` — any bounty surface (discovery, create, fund,
+  submissions, payout, local workspace).
+- `references/course-review-queue.md` — reviewer-side approve/reject on the
+  publication queue (`logion course-reviews`).
+- `references/admin-operations.md` — gated admin commands
+  (`LOGION_ENABLE_ADMIN=1 logion admin …`).
+- `references/troubleshooting.md` — a CLI command returned an error envelope
+  and the agent needs to diagnose the `code` value.

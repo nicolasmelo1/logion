@@ -60,11 +60,13 @@ packages/agent-companion/
 ├── course/
 │   └── capabilities.yaml     ← Capability manifest
 ├── references/               ← On-demand reference docs
-│   ├── companion-capabilities.md
 │   ├── creator-course-management.md
-│   ├── low-context-loading.md
-│   ├── marketplace-flows.md
-│   ├── safety-and-approval.md
+│   ├── account-and-identity.md
+│   ├── notifications-and-reports.md
+│   ├── payments-and-checkout.md
+│   ├── bounties.md
+│   ├── course-review-queue.md
+│   ├── admin-operations.md
 │   └── troubleshooting.md
 ├── templates/                ← Example configs
 ├── scripts/
@@ -127,8 +129,16 @@ Scenario suites live in `evals/scenarios/*.yaml`:
 - `course-selection.yaml` — pick the right course id under ambiguity.
 - `safety.yaml` — confirmation gates for install/checkout/permission.
 - `local-recall.yaml` — recall-first routing.
+- `recall-fuzzy.yaml` — fuzzy ranker quality (misspelling, reorder, ties).
 - `updates.yaml` — version update flows.
 - `context-efficiency.yaml` — keep inspected/loaded counts small.
+- `bounties.yaml` — bounty discovery surfaces.
+- `notifications.yaml` — notification peek/list discipline.
+- `reports.yaml` — user-directed moderation reporting.
+- `trust.yaml` — trust and permission scenarios.
+- `creator-authoring.yaml` — metadata create/update, capability validation, upload gating.
+- `creator-publication.yaml` — review submission, status, feedback handling.
+- `creator-seller-onboarding.yaml` — seller readiness, Stripe gating.
 
 The graders' metric formula (used by both `run_eval.py` and the DSPy
 optimizer) is:

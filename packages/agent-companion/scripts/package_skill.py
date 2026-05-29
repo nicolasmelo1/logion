@@ -26,10 +26,13 @@ REQUIRED_DIRS = [
 REQUIRED_FILES = [
     "SKILL.md",
     "course/capabilities.yaml",
-    "references/marketplace-flows.md",
     "references/creator-course-management.md",
-    "references/safety-and-approval.md",
-    "references/low-context-loading.md",
+    "references/account-and-identity.md",
+    "references/notifications-and-reports.md",
+    "references/payments-and-checkout.md",
+    "references/bounties.md",
+    "references/course-review-queue.md",
+    "references/admin-operations.md",
     "references/troubleshooting.md",
 ]
 
@@ -171,11 +174,9 @@ def _check_capabilities(report: list[str]) -> bool:
 
 # Files where low-confidence patterns are acceptable.
 _LOW_PATTERN_ALLOWLIST = {
-    "safety-and-approval.md",
-    "low-context-loading.md",
-    "troubleshooting.md",
-    "companion-capabilities.md",
     "capabilities.yaml",
+    "account-and-identity.md",
+    "troubleshooting.md",
 }
 
 # Files that reference secret pattern names for documentation

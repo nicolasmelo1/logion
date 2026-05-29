@@ -10,19 +10,23 @@ refuses actions correctly against a fake marketplace catalog.
 evals/
 ├── README.md                  ← This file
 ├── catalogs/
-│   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
+│   ├── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
+│   └── fake-seller-state.yaml  ← Seller readiness fixture (creator suites)
 ├── scenarios/
-│   ├── local-recall.yaml        ← 28 scenarios
-│   ├── routing.yaml             ← 21 scenarios (12 positive, 9 negative)
-│   ├── safety.yaml              ← 20 scenarios (incl. user-pressure)
-│   ├── course-selection.yaml    ← 30 scenarios (near-neighbor pairs)
-│   ├── context-efficiency.yaml  ← 15 scenarios
-│   ├── updates.yaml             ← 10 scenarios
+│   ├── local-recall.yaml             ← 28 scenarios
+│   ├── routing.yaml                  ← 21 scenarios (12 positive, 9 negative)
+│   ├── safety.yaml                   ← 20 scenarios (incl. user-pressure)
+│   ├── course-selection.yaml         ← 30 scenarios (near-neighbor pairs)
+│   ├── context-efficiency.yaml       ← 15 scenarios
+│   ├── updates.yaml                  ← 10 scenarios
+│   ├── bounties.yaml                 ← bounty discovery scenarios
+│   ├── notifications.yaml            ← notification peek/list scenarios
+│   ├── reports.yaml                  ← user-directed report scenarios
+│   ├── trust.yaml                    ← trust / permission scenarios
 │   ├── creator-authoring.yaml        ← 8 scenarios
 │   ├── creator-publication.yaml      ← 6 scenarios
 │   ├── creator-seller-onboarding.yaml ← 4 scenarios
-│   ├── recall_fuzzy.yaml         ← 5 scenarios (fuzzy ranker quality)
-│   └── fake-seller-state.yaml       ← seller readiness fixture
+│   └── recall-fuzzy.yaml             ← 5 scenarios (fuzzy ranker quality)
 ├── harness/                   ← Python package (schemas, graders, runner)
 ├── providers/                 ← Pluggable provider configs (future LLMs)
 ├── graders/                   ← Reserved for grader-specific assets
@@ -131,17 +135,44 @@ and grade only the trace.
 
 ## Tool-trace contract
 
-Allowed CLI trace tools (see `harness/schema.py:KNOWN_TOOLS`):
+Allowed CLI trace tools (authoritative list in `harness/schema.py:KNOWN_TOOLS`):
 
+Discovery and recall:
 - `logion_recall_search` — read-only fuzzy local recall.
 - `logion_listings_search` — Logion marketplace search.
 - `logion_courses_get` — course manifest read.
+- `logion_course_reviews_list` — course review list.
+
+Skills lifecycle:
 - `logion_skills_install` — install a course locally.
+- `logion_skills_inspect` — load a specific installed skill artifact.
 - `logion_skills_updates` — passive metadata check.
 - `logion_skills_update` — apply an available update (gated).
-- `logion_payments_checkout_start` / `logion_payments_checkout_confirm` — paid checkout.
-- `logion_skills_inspect` — load a specific installed skill artifact.
 - `logion_skills_permission_expand` — request a wider permission scope.
+
+Payments:
+- `logion_payments_checkout_start` / `logion_payments_checkout_confirm` — paid checkout.
+- `logion_payments_orders_get` — order status read.
+- `logion_payments_seller_readiness` — seller onboarding readiness (creator).
+- `logion_payments_onboarding_link` — single-use Stripe onboarding link (creator).
+
+Notifications:
+- `logion_notifications_unread_count` — cheap count read.
+- `logion_notifications_list` — full inbox list.
+
+Bounties:
+- `logion_bounties_ls` / `logion_bounties_get` — bounty discovery.
+- `logion_bounties_submission_create` / `logion_bounties_fund` — bounty actions.
+
+Reports:
+- `logion_reports_create` — user-directed moderation report.
+
+Creator authoring (course-side mutations):
+- `logion_courses_create` / `logion_courses_update` — course metadata.
+- `logion_courses_capabilities_validate` / `logion_courses_capabilities_print` — local bundle checks.
+- `logion_courses_uploads_create` / `logion_courses_uploads_push` / `logion_courses_uploads_complete` — version upload.
+- `logion_courses_publication_request` / `logion_courses_publication_latest` — review submission and status.
+- `logion_courses_feedback` — reviewer feedback for a course.
 
 Live OpenAI-compatible providers should emit these actions through the
 Chat Completions `tool_calls` API, not by embedding a synthetic `calls`
@@ -211,9 +242,9 @@ search time from `query_similarity` + calibration weights, and writes the
 computed value into the response. The `band` field is derived from the
 recomputed confidence.
 
-### recall_fuzzy suite
+### recall-fuzzy suite
 
-The `recall_fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
+The `recall-fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
 ranker's handling of misspellings, token reordering, partial matches,
 and tie-breaking determinism — not the full agent decision loop.
 

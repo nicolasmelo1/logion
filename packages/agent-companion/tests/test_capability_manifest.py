@@ -3,9 +3,6 @@
 Verifies the manifest is a valid canonical Logion capability manifest
 (via the same validator the CLI and marketplace API use) and that the
 companion-specific expectations are met.
-
-Also asserts that the companion's semantic capability list lives in
-references/companion-capabilities.md, not in capabilities.yaml.
 """
 
 from __future__ import annotations
@@ -18,27 +15,6 @@ from cli._course_capabilities import (
 )
 
 ROOT = Path(__file__).resolve().parent.parent
-COMPANION_CAPABILITIES_REF = ROOT / "references" / "companion-capabilities.md"
-
-REQUIRED_SEMANTIC_CAPABILITIES = [
-    "logion.recall.search",
-    "logion.marketplace.search",
-    "logion.course.inspect",
-    "logion.skill.install",
-    "logion.skill.update",
-    "logion.course.author",
-    "logion.course.operate",
-]
-
-REQUIRED_CONFIRMATION_ACTIONS = [
-    "paid_checkout",
-    "install_new_capability",
-    "update_paid_capability",
-    "permission_expansion",
-    "publish_or_unpublish_course",
-    "upload_new_course_version",
-    "change_course_price",
-]
 
 
 class TestCanonicalManifest:
@@ -79,28 +55,3 @@ class TestCanonicalManifest:
     def test_no_environment_secrets(self) -> None:
         manifest = load_and_validate_capability_manifest(ROOT)
         assert manifest["secrets"]["env"] == []
-
-
-class TestSemanticCapabilitiesReference:
-    """The semantic capability list lives in markdown, not in YAML."""
-
-    def test_reference_file_exists(self) -> None:
-        assert COMPANION_CAPABILITIES_REF.is_file(), (
-            f"Missing reference: {COMPANION_CAPABILITIES_REF}"
-        )
-
-    def test_reference_lists_all_required_capability_ids(self) -> None:
-        content = COMPANION_CAPABILITIES_REF.read_text(encoding="utf-8")
-        for cap_id in REQUIRED_SEMANTIC_CAPABILITIES:
-            assert cap_id in content, (
-                f"companion-capabilities.md missing capability: {cap_id}"
-            )
-
-    def test_reference_lists_all_required_confirmation_actions(
-        self,
-    ) -> None:
-        content = COMPANION_CAPABILITIES_REF.read_text(encoding="utf-8")
-        for action in REQUIRED_CONFIRMATION_ACTIONS:
-            assert action in content, (
-                f"companion-capabilities.md missing action: {action}"
-            )
