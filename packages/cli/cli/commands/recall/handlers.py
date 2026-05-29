@@ -1,9 +1,11 @@
 """Handlers for the ``recall`` command group.
 
-Read-only fuzzy lookup over installed capabilities and prior successful
-workflows.  Recall never executes commands or installs anything; the
-output is meant to be inspected by an agent or user before any further
-action.
+Read-only fuzzy lookup over installed capabilities, prior successful
+workflows, and (future) local references.  Output carries
+``confidence`` (0..1), ``band`` (HIGH|MEDIUM|LOW|NONE), and
+``query_similarity``.  Confidence is recomputed per query; the on-disk
+index stores only the persisted prior.  Recall never executes anything;
+``danger_flags`` are surfaced for the agent's confirmation gating.
 """
 
 from __future__ import annotations
@@ -22,9 +24,28 @@ from cli._output import emit_json
 def handle_recall_search(args: argparse.Namespace) -> int:
     """Search the local recall index for *query*."""
     home = ensure_layout(getattr(args, "target", None))
-    results = search_recall(args.query, home, limit=args.limit)
+    query = args.query.strip()
+    payload = {
+        "query": args.query,
+        "matches": [],
+        "total": 0,
+        "limit": args.limit,
+    }
+    if not query:
+        if getattr(args, "json_output", False):
+            emit_json("logion.recall.search", payload)
+            return 0
+        print("Please clarify the recall query before searching.")
+        return 0
+    results = search_recall(query, home, limit=args.limit)
+    payload = {
+        "query": args.query,
+        "matches": results,
+        "total": len(results),
+        "limit": args.limit,
+    }
     if getattr(args, "json_output", False):
-        emit_json("logion.recall.search", results)
+        emit_json("logion.recall.search", payload)
         return 0
     if not results:
         print(f"No recall matches for {args.query!r}.")
@@ -33,7 +54,8 @@ def handle_recall_search(args: argparse.Namespace) -> int:
     for entry in results:
         line = (
             f"  [{entry['type']}] {entry.get('id', '?')} "
-            f"(confidence={entry.get('confidence', 0.0):.2f})"
+            f"(confidence={entry.get('confidence', 0.0):.2f}, "
+            f"band={entry.get('band', 'NONE')})"
         )
         if entry.get("danger_flags"):
             line += f" flags={','.join(entry['danger_flags'])}"

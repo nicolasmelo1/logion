@@ -1,7 +1,7 @@
 """Local capability manifest validator for the Logion CLI.
 
 Validates and normalizes ``course/capabilities.yaml`` WITHOUT calling the
-API.  Rules mirror the server-side Phase 2 validation closely enough for
+API.  Rules mirror the server-side validation closely enough for
 author feedback.
 """
 

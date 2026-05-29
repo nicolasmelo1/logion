@@ -26,7 +26,7 @@ def _build_remote_manifest(
 ) -> dict[str, Any]:
     """Synthesize a candidate manifest from a local source bundle.
 
-    The marketplace API is not in the loop for Phase 6.3 — the
+    The marketplace API is not in the loop for this flow — the
     "remote" manifest is the one we *would* write if this install
     proceeded.  ``evaluate_update`` diffs it against the installed
     manifest to decide whether the change requires approval.

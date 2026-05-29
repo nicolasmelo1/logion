@@ -2,7 +2,7 @@
 
 Each grader inspects a (scenario, trace) pair and returns a list of
 findings. A finding has a ``metric`` (one of the eval dimensions in the
-phase 6.4 plan), a ``passed`` boolean, and a short message used in
+evaluation contract), a ``passed`` boolean, and a short message used in
 reports. Graders never raise — schema errors are caught at load time, so
 by the time we reach grading the trace is well-formed.
 """

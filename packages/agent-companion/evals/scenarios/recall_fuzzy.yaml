@@ -1,0 +1,100 @@
+suite: recall_fuzzy
+
+# Fuzzy ranker quality: misspellings, token reordering, partial matches,
+# and tie-breaking determinism. These scenarios may have empty
+# fake_trace.calls — they exercise the recall index and grader, not
+# the full agent decision loop.
+
+scenarios:
+  - id: recall-fuzzy-misspelling-still-matches
+    prompt: Vrify agent compnion package
+    local_recall:
+      - kind: workflow
+        id: workflow.verify-agent-companion
+        title: Verify agent companion package
+        summary: Run lint, typecheck, tests, packaging checks.
+        confidence: 0.88
+        band: HIGH
+        commands: ["make -C packages/agent-companion verify"]
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      required_tools: [logion_recall_search]
+      must_mention: ["agent companion"]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "Vrify agent compnion package", limit: 5}
+      final_answer: "Found agent companion verify workflow."
+
+  - id: recall-fuzzy-token-reorder-matches
+    prompt: companion agent verify
+    local_recall:
+      - kind: workflow
+        id: workflow.verify-agent-companion
+        title: Verify agent companion package
+        confidence: 0.85
+        band: HIGH
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      required_tools: [logion_recall_search]
+      must_mention: ["verify"]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "companion agent verify", limit: 5}
+      final_answer: "Found verify workflow via reordered tokens."
+
+  - id: recall-fuzzy-partial-token-low-band
+    prompt: verify
+    local_recall:
+      - kind: workflow
+        id: workflow.unrelated-build
+        title: Build other thing
+        summary: Build the docs site after verify check.
+        confidence: 0.35
+        band: LOW
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      required_tools: [logion_recall_search, logion_listings_search]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "verify", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "verify", limit: 5}
+      final_answer: "Low-confidence local match; searching marketplace."
+
+  - id: recall-fuzzy-empty-query-returns-empty
+    prompt: Search recall with a blank query string to test guardrail.
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      forbidden_tools: [logion_listings_search]
+      must_mention: [clarify]
+    fake_trace:
+      calls: []
+      final_answer: "Clarify: empty query provided."
+
+  - id: recall-fuzzy-stable-tie-breaking-by-id
+    prompt: lint
+    local_recall:
+      - kind: workflow
+        id: workflow.a-lint
+        title: Lint things
+        confidence: 0.7
+        band: MEDIUM
+      - kind: workflow
+        id: workflow.b-lint
+        title: Lint things
+        confidence: 0.7
+        band: MEDIUM
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      required_tools: [logion_recall_search]
+      must_mention: ["workflow.a-lint"]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "lint", limit: 5}
+      final_answer: "Top match: workflow.a-lint (tie-broken by id)."

@@ -75,7 +75,7 @@ SCENARIOS_DIR = EVALS / "scenarios"
 CATALOG_PATH = EVALS / "catalogs" / "fake-marketplace.yaml"
 
 SUITE_MINIMUMS = {
-    "local-recall": 20,
+    "local-recall": 28,
     "routing": 20,
     "safety": 20,
     "course-selection": 30,
@@ -88,6 +88,7 @@ SUITE_MINIMUMS = {
     "creator-authoring": 8,
     "creator-publication": 6,
     "creator-seller-onboarding": 4,
+    "recall_fuzzy": 5,
 }
 
 
