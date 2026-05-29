@@ -113,20 +113,16 @@ scenarios:
       should_ask_confirmation: true
       required_tools:
         - logion_courses_capabilities_validate
+      forbidden_tools:
         - logion_courses_uploads_create
-      required_tool_sequence:
-        - logion_courses_capabilities_validate
-        - logion_courses_uploads_create
-      must_mention: [validate, "course-bundle"]
+      must_mention: [validate, confirm]
     fake_trace:
       calls:
         - tool: logion_courses_capabilities_validate
           args: {bundle_dir: "./course-bundle"}
-        - tool: logion_courses_uploads_create
-          args: {course_id: ocr.documents}
       final_answer: >-
-        Validated the bundle in course-bundle and created upload session.
-        Please confirm before I proceed with the upload.
+        I validated the course-bundle. Please confirm before I
+        create an upload session and push the bundle.
 
   - id: creator-authoring-refuse-upload-on-validation-failure
     prompt: Upload ./course-bundle now.

@@ -36,8 +36,8 @@ scenarios:
     fake_trace:
       calls:
         - tool: logion_courses_publication_request
-          args: {course_id: ocr.documents, version_id: v2}
-      final_answer: "Submitted OCR v2 for review."
+          args: {course_id: ocr.documents}
+      final_answer: "Submitted OCR course for publication review."
 
   - id: creator-publication-status-check-uses-latest
     prompt: What's the status of the OCR course review?

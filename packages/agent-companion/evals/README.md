@@ -10,7 +10,7 @@ refuses actions correctly against a fake marketplace catalog.
 evals/
 ├── README.md                  ← This file
 ├── catalogs/
-│   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses + 1 draft
+│   └── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
 ├── scenarios/
 │   ├── local-recall.yaml        ← 20 scenarios
 │   ├── routing.yaml             ← 21 scenarios (12 positive, 9 negative)

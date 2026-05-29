@@ -65,7 +65,7 @@ class CatalogCourse:
     tags: tuple[str, ...]
     rating_avg: float | None = None
     rating_count: int = 0
-    latest_version_review_status: str = "approved"
+    latest_version_review_status: str = ""
 
     @property
     def is_free(self) -> bool:
