@@ -229,7 +229,73 @@ REQUIRED_MANIFEST_KEYS = frozenset({
     "required_tools",
     "content_sha256",
     "review_status",
+    "entitlement_status",
+    "license_scope",
+    "official_update_channel",
+    "last_verified_at",
+    "manifest_path",
 })
+
+VALID_SOURCES = frozenset({"logion-marketplace", "mirror", "manual"})
+
+VALID_ENTITLEMENT_STATUSES = frozenset({
+    "active",
+    "missing",
+    "expired",
+    "unknown",
+})
+
+VALID_LICENSE_SCOPES = frozenset({
+    "single-buyer",
+    "team",
+    "open",
+    "unknown",
+})
+
+
+def normalize_source(value: Any) -> str:
+    """Normalize persisted source values to the public enum."""
+    if value == "logion":
+        return "logion-marketplace"
+    if isinstance(value, str) and value in VALID_SOURCES:
+        return value
+    return "manual"
+
+
+def normalize_license_scope(value: Any) -> str:
+    """Normalize persisted license scope values to the public enum."""
+    if value == "single_buyer":
+        return "single-buyer"
+    if isinstance(value, str) and value in VALID_LICENSE_SCOPES:
+        return value
+    return "unknown"
+
+
+def enrich_manifest(
+    manifest: dict[str, Any],
+    course_id: str,
+    version_id: str,
+    home: Path | None = None,
+) -> dict[str, Any]:
+    """Return *manifest* with normalized provenance and manifest_path."""
+    h = home or get_home()
+    path = (
+        installed_dir(course_id, version_id, h) / "manifest.json"
+    ).resolve()
+    data = dict(manifest)
+    source = normalize_source(data.get("source"))
+    data["course_id"] = course_id
+    data["version_id"] = version_id
+    data["source"] = source
+    data["entitlement_status"] = data.get("entitlement_status", "unknown")
+    data["license_scope"] = normalize_license_scope(data.get("license_scope"))
+    data["official_update_channel"] = bool(
+        data.get("official_update_channel", source == "logion-marketplace")
+    )
+    data.setdefault("entrypoint", "SKILL.md")
+    data.setdefault("last_verified_at", None)
+    data["manifest_path"] = str(path)
+    return data
 
 
 def validate_manifest(data: dict[str, Any]) -> list[str]:
@@ -248,6 +314,35 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
         data["required_tools"], list
     ):
         errors.append("required_tools must be a list")
+    if "source" in data and data["source"] not in VALID_SOURCES:
+        errors.append(f"source must be one of {sorted(VALID_SOURCES)}")
+    if (
+        "entitlement_status" in data
+        and data["entitlement_status"] not in VALID_ENTITLEMENT_STATUSES
+    ):
+        errors.append(
+            f"entitlement_status must be one of "
+            f"{sorted(VALID_ENTITLEMENT_STATUSES)}"
+        )
+    if (
+        "license_scope" in data
+        and data["license_scope"] not in VALID_LICENSE_SCOPES
+    ):
+        errors.append(
+            f"license_scope must be one of {sorted(VALID_LICENSE_SCOPES)}"
+        )
+    if "official_update_channel" in data and not isinstance(
+        data["official_update_channel"], bool
+    ):
+        errors.append("official_update_channel must be a bool")
+    if "manifest_path" in data and not isinstance(data["manifest_path"], str):
+        errors.append("manifest_path must be an absolute path string")
+    if (
+        "last_verified_at" in data
+        and data["last_verified_at"] is not None
+        and not isinstance(data["last_verified_at"], str)
+    ):
+        errors.append("last_verified_at must be an ISO 8601 string or null")
     return errors
 
 
@@ -333,9 +428,10 @@ def write_manifest(
     dest = installed_dir(course_id, version_id, h)
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / "manifest.json"
+    normalized_manifest = enrich_manifest(manifest, course_id, version_id, h)
     _atomic_write_text(
         path,
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(normalized_manifest, indent=2, ensure_ascii=False) + "\n",
     )
     return path
 
@@ -355,9 +451,10 @@ def read_manifest(
     if not path.is_file():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
+    return enrich_manifest(raw, course_id, version_id, h)
 
 
 def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
@@ -378,7 +475,9 @@ def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
                 data = json.loads(manifest_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
-            results.append(data)
+            results.append(
+                enrich_manifest(data, course_dir.name, version_dir.name, h)
+            )
     return results
 
 
@@ -437,10 +536,18 @@ def build_index(home: Path | None = None) -> list[dict[str, Any]]:
             "course_id": m.get("course_id", ""),
             "version_id": m.get("version_id", ""),
             "title": m.get("title", ""),
+            "source": normalize_source(m.get("source")),
             "entrypoint": m.get("entrypoint", "SKILL.md"),
             "capabilities": m.get("capabilities", []),
             "required_tools": m.get("required_tools", []),
             "review_status": m.get("review_status", ""),
+            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "license_scope": normalize_license_scope(
+                m.get("license_scope", "unknown")
+            ),
+            "official_update_channel": m.get("official_update_channel", False),
+            "last_verified_at": m.get("last_verified_at"),
+            "manifest_path": m.get("manifest_path", ""),
         })
     return index
 
@@ -529,6 +636,7 @@ def build_recall_entries(
                 f"{m.get('entrypoint', 'SKILL.md')}"
             ),
             "danger_flags": [],
+            "entitlement_status": m.get("entitlement_status", "unknown"),
         }
         entries.append(mask_secrets(entry))
 

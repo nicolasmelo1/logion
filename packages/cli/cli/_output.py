@@ -19,6 +19,19 @@ def to_data(value: Any) -> Any:
     return value
 
 
+def emit_json(kind: str, data: Any) -> None:
+    """Print a v1 JSON envelope with version, kind, and data."""
+    payload = {"version": "v1", "kind": kind, "data": to_data(data)}
+    print(json.dumps(payload, indent=2, sort_keys=True))
+
+
+def truncate_summary(text: str | None, max_len: int = 120) -> str:
+    """Truncate *text* to *max_len* chars, appending ``…`` if truncated."""
+    if not text:
+        return ""
+    return text if len(text) <= max_len else text[: max_len - 1] + "…"
+
+
 def emit(value: Any, *, json_output: bool) -> None:
     """Print *value* as JSON.
 

@@ -156,7 +156,7 @@ class TestSkillsInstalled:
         captured = capsys.readouterr()
         assert rc == 0
         data = json.loads(captured.out)
-        assert data[0]["course_id"] == "x"
+        assert data["data"][0]["course_id"] == "x"
 
 
 class TestSkillsUpdates:
@@ -284,8 +284,8 @@ class TestSkillsInspect:
             str(home),
         ])
         capsys.readouterr()
-        rc = main(["skills", "inspect", "x", "--target", str(home)])
+        rc = main(["skills", "inspect", "x", "--target", str(home), "--json"])
         captured = capsys.readouterr()
         assert rc == 0
         data = json.loads(captured.out)
-        assert data["course_id"] == "x"
+        assert data["data"]["course_id"] == "x"

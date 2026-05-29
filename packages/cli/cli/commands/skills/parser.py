@@ -7,12 +7,14 @@ from pathlib import Path
 
 from cli._options import COMMON_PARSER
 
+from ._search_handler import handle_skills_search
 from .handlers import (
     handle_skills_inspect,
     handle_skills_install,
     handle_skills_installed,
     handle_skills_update,
     handle_skills_updates,
+    handle_skills_verify,
 )
 
 
@@ -57,6 +59,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Overwrite an existing install with different content",
     )
+    install.add_argument(
+        "--install-source",
+        default="manual",
+        choices=["manual", "logion-marketplace"],
+        help="Provenance of the install (default: manual)",
+    )
     install.set_defaults(handler=handle_skills_install)
 
     installed = sub.add_parser(
@@ -74,6 +82,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     inspect.add_argument("course_id", metavar="COURSE_ID")
     inspect.add_argument("--version-id", default=None)
+    inspect.add_argument("--verbose", action="store_true", default=False)
     inspect.add_argument("--target", type=Path, default=None)
     inspect.set_defaults(handler=handle_skills_inspect)
 
@@ -106,3 +115,26 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Overwrite a locally modified installation",
     )
     update.set_defaults(handler=handle_skills_update)
+
+    verify = sub.add_parser(
+        "verify",
+        help="Re-state locally stored entitlement status for installed skills",
+        parents=[COMMON_PARSER],
+    )
+    verify.add_argument("course_id", nargs="?", default=None)
+    verify.add_argument("--target", type=Path, default=None)
+    verify.set_defaults(handler=handle_skills_verify)
+
+    search = sub.add_parser(
+        "search",
+        help=(
+            "Search marketplace listings"
+            " with installed/entitlement annotations"
+        ),
+        parents=[COMMON_PARSER],
+    )
+    search.add_argument("query", metavar="QUERY")
+    search.add_argument("--limit", type=int, default=5)
+    search.add_argument("--verbose", action="store_true", default=False)
+    search.add_argument("--target", type=Path, default=None)
+    search.set_defaults(handler=handle_skills_search)

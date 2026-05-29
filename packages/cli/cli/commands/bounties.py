@@ -16,7 +16,7 @@ from cli._errors import (
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
-from cli._output import emit
+from cli._output import emit, emit_json, to_data
 from cli._utils import only_not_none
 from cli.commands import workspace as _workspace
 
@@ -261,7 +261,15 @@ def handle_list(args: argparse.Namespace) -> int:
             scope=args.scope,
         )
         result = client.v1.bounties.list(**kwargs)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.list", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -279,7 +287,15 @@ def handle_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.bounties.get(bounty_id=args.bounty_id)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.get", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -337,7 +353,15 @@ def handle_submissions_list(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.bounties.list_submissions(bounty_id=args.bounty_id)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.submissions.list", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -361,7 +385,15 @@ def handle_submissions_get(args: argparse.Namespace) -> int:
             bounty_id=args.bounty_id,
             submission_id=args.submission_id,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.submissions.get", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -10,28 +11,30 @@ import pytest
 from cli.main import main
 
 
+@dataclass
+class CountModel:
+    unread_count: int
+
+
 class FakeNotificationsResource:
     """Fake notifications resource."""
 
     def __init__(
         self,
-        unread_count: Any = None,
-        list_response: Any = None,
+        unread_count: object = 0,
+        items: list[dict[str, Any]] | None = None,
     ) -> None:
         self._unread_count = unread_count
-        self._list_response = list_response
-        self.last_list_call: dict[str, Any] = {}
+        self._items = items or []
+        self.calls: list[tuple[str, dict[str, Any]]] = []
 
-    def get_unread_count(self) -> Any:
-        if self._unread_count is not None:
-            return self._unread_count
-        return {"unread_count": 5}
+    def get_unread_count(self) -> object:
+        self.calls.append(("get_unread_count", {}))
+        return self._unread_count
 
-    def list(self, **kwargs: Any) -> Any:
-        self.last_list_call = kwargs
-        if self._list_response is not None:
-            return self._list_response
-        return {"items": [], "next_cursor": None}
+    def list(self, **kwargs: Any) -> dict[str, Any]:
+        self.calls.append(("list", kwargs))
+        return {"items": self._items, "next_cursor": None}
 
 
 class FakeV1Namespace:
@@ -51,69 +54,121 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
     monkeypatch.setattr("cli._context.LogionClient", lambda **_: fake)
 
 
-def test_unread_count_json(
+def test_notifications_unread_count_v1_envelope(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """notifications unread-count --json emits count."""
-    notif = FakeNotificationsResource()
-    fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
+    notifications = FakeNotificationsResource(unread_count={"unread_count": 7})
+    fake = FakeClient(v1=FakeV1Namespace(notifications=notifications))
     _patch_client(monkeypatch, fake)
-    assert main(["notifications", "unread-count", "--json"]) == 0
-    data = json.loads(capsys.readouterr().out)
-    assert data["unread_count"] == 5
+
+    code = main(["notifications", "unread-count", "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "version": "v1",
+        "kind": "logion.notifications.unread-count",
+        "data": {"unread_count": 7},
+    }
 
 
-def test_unread_count_human(
+def test_notifications_list_v1_envelope(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """notifications unread-count without --json."""
-    notif = FakeNotificationsResource()
-    fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
+    items = [{"id": "n1", "title": "Course updated"}]
+    notifications = FakeNotificationsResource(unread_count=1, items=items)
+    fake = FakeClient(v1=FakeV1Namespace(notifications=notifications))
     _patch_client(monkeypatch, fake)
-    assert main(["notifications", "unread-count"]) == 0
-    data = json.loads(capsys.readouterr().out)
-    assert data["unread_count"] == 5
 
+    code = main([
+        "notifications",
+        "list",
+        "--unread-only",
+        "--limit",
+        "5",
+        "--json",
+    ])
 
-def test_notifications_list_basic(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """notifications list forwards params to SDK."""
-    notif = FakeNotificationsResource()
-    fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
-    _patch_client(monkeypatch, fake)
-    assert main(["notifications", "list", "--unread-only"]) == 0
-    assert notif.last_list_call["unread_only"] is True
-    data = json.loads(capsys.readouterr().out)
-    assert "items" in data
-
-
-def test_notifications_list_with_filters(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """notifications list forwards all filters."""
-    notif = FakeNotificationsResource()
-    fake = FakeClient(v1=FakeV1Namespace(notifications=notif))
-    _patch_client(monkeypatch, fake)
-    assert (
-        main([
-            "notifications",
-            "list",
-            "--limit",
-            "20",
-            "--cursor",
-            "abc",
-            "--notification-type",
-            "course_update",
-        ])
-        == 0
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.notifications.list"
+    assert payload["data"] == {"items": items, "next_cursor": None}
+    assert notifications.calls[-1] == (
+        "list",
+        {
+            "unread_only": True,
+            "notification_type": None,
+            "limit": 5,
+            "cursor": None,
+        },
     )
-    assert notif.last_list_call["limit"] == 20
-    assert notif.last_list_call["cursor"] == "abc"
-    assert notif.last_list_call["notification_type"] == "course_update"
-    data = json.loads(capsys.readouterr().out)
-    assert "items" in data
+
+
+def test_peek_when_count_zero_does_not_call_list(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    notifications = FakeNotificationsResource(
+        unread_count=CountModel(unread_count=0)
+    )
+    fake = FakeClient(v1=FakeV1Namespace(notifications=notifications))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["notifications", "peek", "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "version": "v1",
+        "kind": "logion.notifications.peek",
+        "data": {"unread_count": 0, "items": []},
+    }
+    assert notifications.calls == [("get_unread_count", {})]
+
+
+def test_peek_when_count_positive_calls_list_with_limit_five(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    items = [
+        {"id": "n1", "title": "Course updated"},
+        {"id": "n2", "title": "New review"},
+    ]
+    notifications = FakeNotificationsResource(
+        unread_count={"unread_count": 3},
+        items=items,
+    )
+    fake = FakeClient(v1=FakeV1Namespace(notifications=notifications))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["notifications", "peek", "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.notifications.peek"
+    assert payload["data"] == {"unread_count": 3, "items": items}
+    assert notifications.calls == [
+        ("get_unread_count", {}),
+        ("list", {"unread_only": True, "limit": 5}),
+    ]
+
+
+def test_peek_v1_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    notifications = FakeNotificationsResource(unread_count=1, items=[])
+    fake = FakeClient(v1=FakeV1Namespace(notifications=notifications))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["notifications", "peek", "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == "v1"
+    assert payload["kind"] == "logion.notifications.peek"
+    assert set(payload["data"].keys()) == {"unread_count", "items"}

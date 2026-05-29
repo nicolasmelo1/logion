@@ -6,7 +6,7 @@ import argparse
 
 from cli._options import COMMON_PARSER
 
-from .handlers import handle_list, handle_unread_count
+from .handlers import handle_list, handle_peek, handle_unread_count
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -39,3 +39,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     list_parser.add_argument("--limit", type=int)
     list_parser.add_argument("--cursor")
     list_parser.set_defaults(handler=handle_list)
+
+    peek = sub.add_parser(
+        "peek",
+        help="Quick check: show unread count, list recent if any",
+        parents=[COMMON_PARSER],
+    )
+    peek.set_defaults(handler=handle_peek)

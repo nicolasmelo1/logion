@@ -9,7 +9,6 @@ action.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 from cli._local_state import (
@@ -17,6 +16,7 @@ from cli._local_state import (
     record_workflow_success,
     search_recall,
 )
+from cli._output import emit_json
 
 
 def handle_recall_search(args: argparse.Namespace) -> int:
@@ -24,7 +24,7 @@ def handle_recall_search(args: argparse.Namespace) -> int:
     home = ensure_layout(getattr(args, "target", None))
     results = search_recall(args.query, home, limit=args.limit)
     if getattr(args, "json_output", False):
-        print(json.dumps(results, indent=2, sort_keys=True))
+        emit_json("logion.recall.search", results)
         return 0
     if not results:
         print(f"No recall matches for {args.query!r}.")
@@ -60,5 +60,5 @@ def handle_recall_record(args: argparse.Namespace) -> int:
         home=home,
         confidence=args.confidence,
     )
-    print(json.dumps(record, indent=2, sort_keys=True))
+    emit_json("logion.recall.record", record)
     return 0

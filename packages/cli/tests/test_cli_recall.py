@@ -72,7 +72,7 @@ class TestRecallSearch:
         captured = capsys.readouterr()
         assert rc == 0
         data = json.loads(captured.out)
-        assert any(e["id"] == "verify-companion" for e in data)
+        assert any(e["id"] == "verify-companion" for e in data["data"])
 
 
 class TestRecallRecord:
@@ -95,8 +95,8 @@ class TestRecallRecord:
         captured = capsys.readouterr()
         assert rc == 0
         record = json.loads(captured.out)
-        assert record["id"] == "deploy"
-        assert record["success_count"] == 1
+        assert record["data"]["id"] == "deploy"
+        assert record["data"]["success_count"] == 1
 
     def test_record_requires_command(
         self, tmp_path: Path, capsys: pytest.CaptureFixture
@@ -145,5 +145,5 @@ class TestRecallRecord:
         captured = capsys.readouterr()
         assert rc == 0
         data = json.loads(captured.out)
-        match = next(e for e in data if e["id"] == "x")
+        match = next(e for e in data["data"] if e["id"] == "x")
         assert match["success_count"] == 3

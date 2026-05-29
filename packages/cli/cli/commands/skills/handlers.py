@@ -10,22 +10,24 @@ rest of the CLI.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from typing import Any
 
 from cli._local_state import (
     LockHeldError,
     UnsafeIdentifierError,
+    _utc_iso_now,
     acquire_lock,
+    enrich_manifest,
     installed_dir,
     list_installed,
-    read_manifest,
     validate_manifest,
     verify_installed_content,
 )
+from cli._output import emit_json
 
 from ._finalize import copy_and_finalize
+from ._inspect_handler import handle_skills_inspect  # noqa: F401  (re-export)
 from ._install_helpers import (
     check_existing_install,
     copy_skill_files,
@@ -33,36 +35,41 @@ from ._install_helpers import (
     resolve_target,
 )
 from ._update_handler import handle_skills_update  # noqa: F401  (re-export)
+from ._verify_handler import handle_skills_verify  # noqa: F401  (re-export)
 
 
 def handle_skills_install(args: argparse.Namespace) -> int:
     """Install a skill bundle from a local source directory."""
     home = resolve_target(args)
-    source = args.source.resolve()
+    source_dir = args.source.resolve()
     course_id: str = args.course_id
     version_id: str = args.version_id
 
-    if not (source / "SKILL.md").is_file():
+    if not (source_dir / "SKILL.md").is_file():
         print(
-            f"ERROR: source directory must contain SKILL.md: {source}",
+            f"ERROR: source directory must contain SKILL.md: {source_dir}",
             file=sys.stderr,
         )
         return 1
 
     if not args.force:
         try:
-            rc = check_existing_install(course_id, version_id, source, home)
+            rc = check_existing_install(
+                course_id, version_id, source_dir, home
+            )
         except UnsafeIdentifierError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
         if rc != 0:
             return rc
 
+    install_source = getattr(args, "install_source", "manual")
+    is_marketplace = install_source == "logion-marketplace"
     manifest_data: dict[str, Any] = {
         "course_id": course_id,
         "version_id": version_id,
         "title": args.title or "",
-        "source": "logion",
+        "source": install_source,
         "installed_at": "",
         "entrypoint": "SKILL.md",
         "capabilities": [],
@@ -72,15 +79,31 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         "execution_policy": "approval-required",
         "content_sha256": "",
         "review_status": "approved",
+        "entitlement_status": "active" if is_marketplace else "unknown",
+        "license_scope": "unknown",
+        "official_update_channel": is_marketplace,
+        "last_verified_at": _utc_iso_now() if is_marketplace else None,
     }
     manifest_data = read_capabilities(
-        source / "course" / "capabilities.yaml", manifest_data
+        source_dir / "course" / "capabilities.yaml", manifest_data
     )
 
     # Validate the manifest *before* touching the filesystem so an
     # invalid bundle (including dry-run) cannot leave a partial copy
     # behind or report success without a real install.
-    pre_errors = validate_manifest({**manifest_data, "content_sha256": "_"})
+    pre_manifest = enrich_manifest(
+        {
+            **manifest_data,
+            "installed_at": (
+                manifest_data.get("installed_at") or _utc_iso_now()
+            ),
+            "content_sha256": "_",
+        },
+        course_id,
+        version_id,
+        home,
+    )
+    pre_errors = validate_manifest(pre_manifest)
     if pre_errors:
         for e in pre_errors:
             print(f"MANIFEST ERROR: {e}", file=sys.stderr)
@@ -93,7 +116,7 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         return 1
 
     if args.dry_run:
-        copied = copy_skill_files(source, dest, dry_run=True)
+        copied = copy_skill_files(source_dir, dest, dry_run=True)
         print(
             f"Would install: {course_id}/{version_id} "
             f"({len(copied)} files) -> {dest}"
@@ -112,7 +135,7 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         return 4
 
     rc, copied = copy_and_finalize(
-        source, dest, course_id, version_id, manifest_data, home
+        source_dir, dest, course_id, version_id, manifest_data, home
     )
     if rc != 0:
         return rc
@@ -128,7 +151,7 @@ def handle_skills_installed(args: argparse.Namespace) -> int:
     home = resolve_target(args)
     installed = list_installed(home)
     if getattr(args, "json_output", False):
-        print(json.dumps(installed, indent=2, sort_keys=True))
+        emit_json("logion.skills.installed", installed)
         return 0
     if not installed:
         print(f"No installed capabilities under {home / 'installed'}.")
@@ -150,34 +173,6 @@ def handle_skills_installed(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_skills_inspect(args: argparse.Namespace) -> int:
-    """Show the manifest for an installed skill."""
-    home = resolve_target(args)
-    course_id: str = args.course_id
-    version_id: str | None = getattr(args, "version_id", None)
-    if version_id is None:
-        candidates = [
-            m for m in list_installed(home) if m.get("course_id") == course_id
-        ]
-        if not candidates:
-            print(
-                f"No installation found for course {course_id}",
-                file=sys.stderr,
-            )
-            return 1
-        manifest = candidates[-1]
-    else:
-        manifest = read_manifest(course_id, version_id, home) or {}
-        if not manifest:
-            print(
-                f"No installation found for {course_id}/{version_id}",
-                file=sys.stderr,
-            )
-            return 1
-    print(json.dumps(manifest, indent=2, sort_keys=True))
-    return 0
-
-
 def handle_skills_updates(args: argparse.Namespace) -> int:
     """Report integrity of installed skills (local-only update status)."""
     home = resolve_target(args)
@@ -193,11 +188,19 @@ def handle_skills_updates(args: argparse.Namespace) -> int:
         out.append({
             "course_id": course_id,
             "version_id": version_id,
+            "title": m.get("title", ""),
+            "source": m.get("source", "manual"),
+            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "license_scope": m.get("license_scope", "unknown"),
+            "official_update_channel": m.get("official_update_channel", False),
+            "last_verified_at": m.get("last_verified_at"),
+            "manifest_path": m.get("manifest_path"),
+            "entrypoint": m.get("entrypoint", "SKILL.md"),
             "ok": verification["ok"],
             "user_modified": verification["user_modified"],
         })
     if getattr(args, "json_output", False):
-        print(json.dumps(out, indent=2, sort_keys=True))
+        emit_json("logion.skills.updates", out)
         return 0
     print(f"Update status ({len(out)} installed):")
     for entry in out:

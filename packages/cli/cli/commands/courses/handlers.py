@@ -17,6 +17,7 @@ from .reviews import (
     handle_feedback,
     handle_reviews_list,
     handle_reviews_mine,
+    handle_reviews_summary,
     handle_reviews_upsert,
 )
 from .uploads import (
@@ -35,6 +36,7 @@ __all__ = [
     "handle_publication_request",
     "handle_reviews_list",
     "handle_reviews_mine",
+    "handle_reviews_summary",
     "handle_reviews_upsert",
     "handle_update",
     "handle_uploads_complete",

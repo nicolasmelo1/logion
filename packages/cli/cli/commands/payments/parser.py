@@ -10,6 +10,7 @@ from .handlers import (
     handle_checkout,
     handle_onboarding_link,
     handle_orders_get,
+    handle_payments_orders_wait,
     handle_seller_readiness,
 )
 
@@ -68,3 +69,24 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     orders_get.add_argument("order_id", metavar="ORDER_ID")
     orders_get.set_defaults(handler=handle_orders_get)
+
+    wait = orders_sub.add_parser(
+        "wait",
+        help="Poll until an order reaches a terminal state",
+        parents=[COMMON_PARSER],
+    )
+    wait.add_argument("order_id", metavar="ORDER_ID")
+    wait.add_argument(
+        "--wait-timeout",
+        dest="timeout",
+        type=int,
+        default=120,
+        help="Max seconds to poll (capped at 600).",
+    )
+    wait.add_argument(
+        "--interval",
+        type=int,
+        default=5,
+        help="Seconds between polls.",
+    )
+    wait.set_defaults(handler=handle_payments_orders_wait)

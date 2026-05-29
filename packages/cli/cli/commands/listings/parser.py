@@ -37,6 +37,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     search.add_argument("--price-min", type=int)
     search.add_argument("--price-max", type=int)
     search.add_argument("--sort", choices=_SORT_CHOICES)
-    search.add_argument("--limit", type=int)
+    search.add_argument("--limit", type=int, default=5)
+    search.add_argument("--verbose", action="store_true", default=False)
     search.add_argument("--cursor")
     search.set_defaults(handler=handle_search)
