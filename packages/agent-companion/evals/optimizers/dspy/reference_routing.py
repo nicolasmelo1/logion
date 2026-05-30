@@ -46,6 +46,9 @@ class ReferenceRoutingSignature(dspy.Signature):
       context and the primary SKILL.md path already covers
       recall, listings, courses, skills install, and paid
       checkout.
+    - If ``installed_capabilities`` already covers the user's
+      task (e.g. ``email.summarize`` for an inbox-summary
+      intent), prefer ``none`` over loading a reference.
     - ``current_recall_band`` mirrors phase 6.9: HIGH means a
       local skill already covers this — almost always return
       ``none``.
