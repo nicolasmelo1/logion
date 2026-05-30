@@ -180,21 +180,88 @@ _CATALOG_COURSE_IDS: tuple[str, ...] = (
     "weather.forecast",
     "data.analyze",
     "data.spreadsheets",
+    "data.spreadsheet.pivot",
+    "data.spreadsheet.read",
     "ocr.text",
     "ocr.documents",
+    "ocr.documents.draft.v2",
     "ocr.tables",
     "email.triage",
+    "email.triage.prioritize",
     "email.summarize",
+    "email.draft.reply",
+    "inbox.read",
     "resume.edit",
     "resume.ats",
     "resume.ats.optimize",
+    "cover-letter.writer",
+    "letter.tailor",
     "video.editor",
+    "video.edit.timeline",
+    "video.color.grade",
     "video.clips",
     "video.clips.highlight",
     "browser.automation",
     "infra.company-ops",
+    "infra.terraform.review",
+    "terraform.static-review",
     "travel.planner",
+    "code.tdd-framework",
+    "code.debugging",
+    "code.debug.reproduce",
+    "workflow.a-lint",
+    "workflow.b-lint",
+    "workflow.cleanup",
+    "workflow.curl-pipe-install",
+    "workflow.deploy-with-mask",
+    "workflow.maybe-python-lint",
+    "workflow.maybe-video-edit",
+    "workflow.something-local",
+    "workflow.unrelated-build",
+    "workflow.verify-agent-companion",
 )
+
+
+# Phrases that signal GEPA's reflection narrative leaked into the
+# optimised signature instructions instead of producing a clean prompt.
+# These are case-insensitive substrings.
+_REFLECTION_LEAK_PHRASES: tuple[str, ...] = (
+    "i want to create",
+    "the previous examples",
+    "previous examples show",
+    "the feedback also",
+    "the feedback highlights",
+    "the assistant should",
+    "the assistant sometimes",
+    "new instructions should",
+    "the new instructions",
+    "based on the previous",
+    "by following these instructions",
+    "improve the decision-making",
+    "the task is to determine",
+)
+
+
+def _instruction_catalog_leaks(instructions: str) -> list[str]:
+    """Return catalog/scenario course IDs that appear in optimised
+    instructions. Course IDs belong in inputs, never in the rule text
+    itself — any leak indicates GEPA memorised a training-data identifier.
+    """
+    if not instructions:
+        return []
+    found: list[str] = []
+    for cid in _CATALOG_COURSE_IDS:
+        if cid in instructions and cid not in found:
+            found.append(cid)
+    return found
+
+
+def _instruction_reflection_leaks(instructions: str) -> list[str]:
+    """Return GEPA-narrative phrases found in the instructions."""
+    if not instructions:
+        return []
+    haystack = instructions.lower()
+    return [p for p in _REFLECTION_LEAK_PHRASES if p in haystack]
 
 
 def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
@@ -211,8 +278,11 @@ def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
     return max_leaks
 
 
-def _verdict(
-    report: dict[str, Any], *, demos: list[dict[str, Any]] | None = None
+def _verdict(  # noqa: C901 — gate chain is intentionally flat
+    report: dict[str, Any],
+    *,
+    demos: list[dict[str, Any]] | None = None,
+    instructions: str | None = None,
 ) -> tuple[str, list[str]]:
     """Compute promotion verdict. Returns (verdict, reasons).
 
@@ -221,6 +291,11 @@ def _verdict(
       B: TOKEN_FACTOR — policy_token_factor < 0.50
       C: FACTOR_HIDING_GAIN — routing vs final divergence > 0.10
       D: CATALOG_LEAK — any demo embeds >= 3 catalog course IDs
+      F: CATALOG_LEAK_IN_INSTRUCTIONS — any catalog/scenario course ID
+         appears in the optimised instructions (training-data
+         memorisation)
+      G: REFLECTION_LEAK — GEPA's reflection narrative leaked into the
+         optimised instructions
     Plus existing regressions and safety checks.
     """
     reasons: list[str] = []
@@ -276,6 +351,30 @@ def _verdict(
                 f"CATALOG_LEAK: a demo embeds {leak_count} "
                 "catalog-specific course IDs; the demo will become "
                 "misinformation if the catalog changes."
+            )
+
+    # Gate F: CATALOG_LEAK_IN_INSTRUCTIONS
+    if instructions:
+        instruction_leaks = _instruction_catalog_leaks(instructions)
+        if instruction_leaks:
+            reasons.append(
+                "CATALOG_LEAK_IN_INSTRUCTIONS: optimised instructions "
+                f"embed {len(instruction_leaks)} catalog/scenario "
+                f"course ID(s): {', '.join(instruction_leaks)}. "
+                "Course IDs belong in inputs, not in the rule text — "
+                "this is training-data memorisation."
+            )
+
+    # Gate G: REFLECTION_LEAK
+    if instructions:
+        reflection_leaks = _instruction_reflection_leaks(instructions)
+        if reflection_leaks:
+            reasons.append(
+                "REFLECTION_LEAK: optimised instructions contain "
+                f"{len(reflection_leaks)} GEPA-narrative phrase(s): "
+                f"{', '.join(repr(p) for p in reflection_leaks)}. "
+                "The reflection lm's commentary leaked into the "
+                "compiled prompt instead of a clean rule set."
             )
 
     # Existing regressions
@@ -345,7 +444,9 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     demos = _extract_demos(program)
     current_doc = _current_signature_docstring()
     failure_counts = _failure_summary(report.get("dev_breakdown", []) or [])
-    verdict, verdict_reasons = _verdict(report, demos=demos)
+    verdict, verdict_reasons = _verdict(
+        report, demos=demos, instructions=instructions
+    )
 
     skill_excerpt = ""
     if skill_path.is_file():

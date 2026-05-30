@@ -642,7 +642,7 @@ def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
 
 
 def test_action_to_calls_ask_before_update_emits_skills_updates_only() -> None:
-    """Phase 6.10 §4.2: ask_before_update emits exactly one
+    """Ask_before_update emits exactly one
     logion_skills_updates call (passive check); never the singular
     logion_skills_update (auto-apply)."""
     pred = SimpleNamespace(
@@ -667,7 +667,7 @@ def test_action_to_calls_ask_before_update_emits_skills_updates_only() -> None:
 
 
 def test_action_to_calls_ask_before_update_empty_ids_omits_arg() -> None:
-    """Phase 6.10 §4.2: when selected_course_ids is empty, emit the
+    """when selected_course_ids is empty, emit the
     single update-check call with an empty args dict (no fabricated
     course_id from the query)."""
     pred = SimpleNamespace(
@@ -705,7 +705,7 @@ def test_action_to_calls_ask_before_update_no_listings_search() -> None:
 
 
 def test_action_to_calls_ask_before_update_no_recall_search() -> None:
-    """Phase 6.10 §4.2: recall is not required for explicit update
+    """recall is not required for explicit update
     intents on already-installed skills."""
     pred = SimpleNamespace(
         action="ask_before_update",
@@ -742,13 +742,13 @@ class TestPolicyTokenEstimate:
 
 class TestPolicyTokenFactor:
     def test_at_target_returns_one(self) -> None:
-        assert _policy_token_factor(1500) == 1.0
+        assert _policy_token_factor(800) == 1.0
 
     def test_at_ceiling_returns_zero(self) -> None:
-        assert _policy_token_factor(3000) == 0.0
+        assert _policy_token_factor(1800) == 0.0
 
     def test_midpoint_returns_half(self) -> None:
-        assert _policy_token_factor(2250) == pytest.approx(0.5)
+        assert _policy_token_factor(1300) == pytest.approx(0.5)
 
     def test_below_target_is_one_point_zero(self) -> None:
         assert _policy_token_factor(0) == 1.0
@@ -768,7 +768,7 @@ class TestDecisionPolicyMetricTokenFactor:
         self,
     ) -> None:
         catalog = load_catalog(CATALOG_PATH)
-        # 20000 chars ~ 5000 tokens >> ceiling of 3000
+        # 20000 chars ~ 5000 tokens >> ceiling of 1800
         metric = DecisionPolicyMetric(
             catalog,
             program_instructions="x" * 20000,
@@ -779,7 +779,8 @@ class TestDecisionPolicyMetricTokenFactor:
         catalog = load_catalog(CATALOG_PATH)
         metric = DecisionPolicyMetric(
             catalog,
-            program_instructions="a" * 12000,  # 3000 tokens = ceiling
+            # 7200 chars / 4 = 1800 tokens = ceiling
+            program_instructions="a" * 7200,
         )
         assert metric._policy_token_factor == 0.0
 
@@ -867,6 +868,105 @@ class TestRendererGateCatalogLeak:
         report = {"delta": 0.1}
         _, reasons = _verdict(report, demos=demos)
         assert not any("CATALOG_LEAK" in r for r in reasons)
+
+
+class TestRendererGateCatalogLeakInInstructions:
+    def test_blocks_when_instructions_embed_a_course_id(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Pick the best action.  Always include the phrase "
+            "'workflow.a-lint' when relevant to the task."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+        assert any("workflow.a-lint" in r for r in reasons)
+
+    def test_blocks_on_catalog_id(self) -> None:
+        # ``weather.basic`` is in the catalog (not just scenarios).
+        report = {"delta": 0.1}
+        instructions = "When the user mentions weather, prefer weather.basic."
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_does_not_block_clean_instructions(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Decide which action to take based on the user prompt "
+            "and the marketplace search results."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_does_not_block_empty_instructions(self) -> None:
+        report = {"delta": 0.1}
+        _, reasons = _verdict(report, instructions="")
+        assert not any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_real_world_gepa_iter5_proposal_is_blocked(self) -> None:
+        """Regression: the iter-5 candidate from the May 2026 GEPA
+        run on qwen3-8b-q4km that motivated this gate."""
+        report = {"delta": 0.05}
+        instructions = (
+            "Always ensure that the `reason` field clearly explains "
+            "the rationale for the chosen action and includes the "
+            'phrase "workflow.a-lint" when relevant to the task.'
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+
+class TestRendererGateReflectionLeak:
+    def test_blocks_on_reflection_meta_narrative(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "I want to create a new instruction for the assistant "
+            "that improves the decision-making process."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_blocks_on_previous_examples_phrase(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "The previous examples show that the assistant should "
+            "always pick the cheapest matching course."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_is_case_insensitive(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "BY FOLLOWING THESE INSTRUCTIONS the agent will improve."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_does_not_block_clean_instructions(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Decide the action based on the user prompt and the "
+            "installed capabilities."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_real_world_gepa_iter15_proposal_is_blocked(self) -> None:
+        """Regression: the iter-15 candidate from the May 2026 GEPA
+        run on qwen3-8b-q4km that motivated this gate."""
+        report = {"delta": 0.05}
+        instructions = (
+            "I want to create a new instruction for the assistant "
+            "that improves the decision-making process for the "
+            "Logion bootstrap skill based on the previous examples "
+            "and feedback."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("REFLECTION_LEAK" in r for r in reasons)
 
 
 class TestRendererPromoteVerdict:

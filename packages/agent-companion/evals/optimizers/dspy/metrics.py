@@ -266,15 +266,20 @@ def _policy_token_estimate(
 def _policy_token_factor(
     tokens: int,
     *,
-    target: int = 1500,
-    ceiling: int = 3000,
+    target: int = 800,
+    ceiling: int = 1800,
 ) -> float:
     """Soft penalty: 1.0 at <=*target*, linearly to 0.0 at >=*ceiling*.
 
-    Calibration rationale (May 2026 optimizer runs):
-    - ``target=1500`` ≈ baseline signature docstring (~1200 chars) plus
-      headroom for one or two short demos.
-    - ``ceiling=3000`` ≈ 2x target; beyond this the policy bloats context.
+    Calibration rationale:
+    - ``target=800`` ≈ baseline signature docstring (~290 tok = 1160 chars)
+      plus headroom for two compact demos.
+    - ``ceiling=1800`` ≈ 2.25x target.  The May 2026 GEPA run on
+      qwen3-8b-q4km produced rollouts that, combined with demos and the
+      input fields, crossed the 8192-context cap of the runtime serving
+      provider.  The prior 1500/3000 calibration only kicked in *after*
+      that failure point; the tighter envelope penalises bloat while
+      GEPA is still iterating, not just at promotion time.
     - Linear interpolation between target and ceiling.  The optimizer can
       still trade routing gain for some bloat, but the trade has a price.
     Both values are defaulted keyword arguments so future calibration is a
