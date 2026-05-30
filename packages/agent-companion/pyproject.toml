@@ -100,8 +100,11 @@ ignore = [
 # and is a standalone script. Both inject sys.path before imports
 # (no-install evals/ is not a package on the wheel).
 "evals/optimizers/dspy/optimize_policy.py" = ["T201", "E402"]
+"evals/optimizers/dspy/optimize_references.py" = ["T201", "E402", "ARG002"]
+"evals/optimizers/dspy/reference_routing_metric.py" = ["ARG002"]
 "evals/optimizers/dspy/split_scenarios.py" = ["T201", "ERA001", "E402"]
 "evals/optimizers/dspy/render_candidate.py" = ["T201"]
+"tests/test_reference_routing.py" = ["FBT003", "ARG002"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]

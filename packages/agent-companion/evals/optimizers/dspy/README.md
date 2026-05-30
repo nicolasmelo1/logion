@@ -193,6 +193,39 @@ Any gate firing forces a "do not promote" verdict regardless of overall
 score.  The report also flags per-suite regressions on safety, dev, and test
 deltas.
 
+## Phase 6.11: reference-routing signature
+
+Second, independent optimisation target.  Same renderer machinery,
+different signature, different metric, different scenarios.
+
+- **Signature:** `ReferenceRoutingSignature` in `reference_routing.py`.
+  9-class classifier (`none` + 8 canonical references).
+- **Metric:** `ReferenceRoutingMetric` in `reference_routing_metric.py`.
+  Per-example score: exact match = 1.0, wrong-named = 0.2, false
+  positive on `none` = 0.0, false negative on named = 0.0.  Wrapped
+  with the existing `_policy_token_factor` from phase 6.10.
+- **Scenarios:** `evals/scenarios_reference_routing/scenarios.yaml`
+  (~40 hand-authored).  Kept outside `evals/scenarios/` so the
+  decision-policy `make eval` doesn't try to parse them against the
+  wrong schema.
+- **Runner:** `optimize_references.py` + `make optimize-references`
+  (fake provider) / `make optimize-references-llama-cpp` (live).
+
+### Phase 6.11 reference-routing gates
+
+These extend the phase-6.10 gates and fire only when
+`report.signature == "reference_routing"`:
+
+| Gate | Trigger |
+|------|---------|
+| H — NONE_FLOOR | `false_positive_rate_on_none_avg > 0.25` |
+| I — SPECIFICITY_REGRESSION | `fn_named_rate` grew > 0.10 over baseline |
+| J — REFERENCE_INVENTORY_MISMATCH | optimised classifier emitted a class outside the canonical 9 |
+
+All other gates (BLOAT, TOKEN_FACTOR, FACTOR_HIDING_GAIN,
+CATALOG_LEAK, CATALOG_LEAK_IN_INSTRUCTIONS, REFLECTION_LEAK,
+dev/test/safety regressions) apply unchanged.
+
 Gates F and G were added after the May 2026 qwen3-8b-q4km GEPA run produced
 candidates that (a) embedded the scenario course id `workflow.a-lint`
 directly into the proposed signature instructions, and (b) opened the

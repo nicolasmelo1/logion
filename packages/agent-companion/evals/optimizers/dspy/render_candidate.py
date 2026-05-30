@@ -296,6 +296,14 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
          memorisation)
       G: REFLECTION_LEAK — GEPA's reflection narrative leaked into the
          optimised instructions
+
+    Reference-routing-specific (only when ``signature ==
+    'reference_routing'``):
+      H: NONE_FLOOR — false_positive_rate_on_none > 0.25
+      I: SPECIFICITY_REGRESSION — fn_named_rate grew > 0.10 over baseline
+      J: REFERENCE_INVENTORY_MISMATCH — predicted class outside the
+         canonical 9-class inventory
+
     Plus existing regressions and safety checks.
     """
     reasons: list[str] = []
@@ -375,6 +383,52 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
                 f"{', '.join(repr(p) for p in reflection_leaks)}. "
                 "The reflection lm's commentary leaked into the "
                 "compiled prompt instead of a clean rule set."
+            )
+
+    # Reference-routing gates (phase 6.11).  Only fire when the
+    # report identifies as the reference-routing signature.
+    if report.get("signature") == "reference_routing":
+        fp_none = report.get("false_positive_rate_on_none_avg")
+        if isinstance(fp_none, (int, float)) and fp_none > 0.25:
+            reasons.append(
+                f"NONE_FLOOR: false_positive_rate_on_none={fp_none:.2f}"
+                " > 0.25.  The optimised classifier loads a reference "
+                "more than 25% of the time when the gold answer is "
+                "'none'.  Context waste."
+            )
+        fn_named = report.get("false_negative_rate_on_named_avg")
+        baseline_fn_named = report.get(
+            "baseline_false_negative_rate_on_named_avg"
+        )
+        if (
+            isinstance(fn_named, (int, float))
+            and isinstance(baseline_fn_named, (int, float))
+            and fn_named - baseline_fn_named > 0.10
+        ):
+            reasons.append(
+                f"SPECIFICITY_REGRESSION: fn_named={fn_named:.2f} vs "
+                f"baseline {baseline_fn_named:.2f} (delta "
+                f"{fn_named - baseline_fn_named:+.2f}).  The optimised "
+                "classifier stays on the primary path more often than "
+                "the baseline when a reference was needed."
+            )
+        canonical = set(report.get("canonical_reference_names", []) or [])
+        invalid = report.get("invalid_classes") or []
+        invalid_predictions = report.get("invalid_predictions", 0)
+        offending = [c for c in invalid if c not in canonical]
+        if offending or (
+            isinstance(invalid_predictions, int) and invalid_predictions > 0
+        ):
+            offending_repr = (
+                ", ".join(repr(c) for c in offending)
+                if offending
+                else f"{invalid_predictions} invalid prediction(s)"
+            )
+            reasons.append(
+                "REFERENCE_INVENTORY_MISMATCH: optimised classifier "
+                f"emitted class(es) outside canonical inventory: "
+                f"{offending_repr}.  Promotion blocked — invented "
+                "classes will crash the runtime agent."
             )
 
     # Existing regressions
