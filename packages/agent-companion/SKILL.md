@@ -38,13 +38,17 @@ workflow, or project-local command already covers the task well enough.
 
 ## Decision tree
 
+**Priority order (cheapest to most expensive context cost):**
+respond directly with an installed capability → recall → marketplace.
+Never invert this. Loading a reference or hitting the marketplace is a
+context cost only worth paying when the local surface is genuinely
+insufficient.
+
 0. Run the Local Recall Guardrail before marketplace search.
 1. Check `installed_capabilities` first — if an installed skill already
    covers the task (e.g. `email.summarize` for "summarise my inbox",
-   `video.clips.highlight` for "extract clips"), use it and stay on the
-   primary path. Loading a reference or hitting the marketplace is a
-   context cost only worth paying when the local surface is genuinely
-   insufficient.
+   `video.clips.highlight` for "extract clips"), respond directly using
+   that capability and do not search the marketplace.
 2. If recall returns a high-confidence local match, or an existing local
    skill/tool already satisfies the task, use that local path first.
 3. If recall returns a medium-confidence match, present it as a candidate or
@@ -57,13 +61,12 @@ workflow, or project-local command already covers the task well enough.
 6. Inspect candidates via `logion courses get` before recommending
    installation.
 7. Prefer free or local equivalents when quality is comparable.
-8. Ask for explicit user approval before `logion skills install`.
-9. Ask for explicit user approval before any paid checkout
-   (`logion payments checkout-start`).
-10. Ask for explicit user approval before `logion skills update` calls that
-    change price, permissions, required tools, or execution policy.
-11. Load only the selected skill artifact, never the whole catalog.
-12. Only call commands listed under "Implemented safe discovery commands",
+8. **Always ask for explicit user approval** before any paid action,
+   install, or update — specifically: `logion skills install`,
+   `logion payments checkout-start`, and `logion skills update` calls
+   that change price, permissions, required tools, or execution policy.
+9. Load only the selected skill artifact, never the whole catalog.
+10. Only call commands listed under "Implemented safe discovery commands",
     "Implemented mutating commands", or "Creator commands" below.
 
 ## Local Recall Guardrail
