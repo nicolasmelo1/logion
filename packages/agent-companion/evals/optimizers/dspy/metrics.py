@@ -63,12 +63,13 @@ _LISTINGS_SEARCH_ACTIONS = frozenset({
 
 # Actions that should be preceded by a local recall lookup. Includes
 # ``inspect_course`` so that picking a candidate from prior context is
-# still rooted in recall.
+# still rooted in recall. ``ask_before_update`` is intentionally
+# excluded per phase-6.10 §4.2: recall is not required for explicit
+# update intents on already-installed skills.
 _RECALL_ACTIONS = frozenset({
     "search_marketplace",
     "inspect_course",
     "ask_before_install",
-    "ask_before_update",
 })
 
 
@@ -78,6 +79,17 @@ def _action_to_calls(
     selected_course_ids: list[str],
 ) -> tuple[ToolCall, ...]:
     """Translate a DSPy prediction output into tool calls."""
+    if action == "ask_before_update":
+        # Phase 6.10 §4.2: emit exactly one passive update-check tool
+        # call — never an auto-apply (`logion_skills_update`), never a
+        # listings search, never a recall search.
+        course_id = selected_course_ids[0] if selected_course_ids else ""
+        return (
+            ToolCall(
+                tool="logion_skills_updates",
+                args={"course_id": course_id} if course_id else {},
+            ),
+        )
     calls: list[ToolCall] = []
     if query and action in _RECALL_ACTIONS:
         calls.append(
@@ -93,16 +105,6 @@ def _action_to_calls(
                 args={"query": query or "generic"},
             )
         )
-    if action == "ask_before_update":
-        # Emit a passive update-check for each selected course —
-        # never an auto-apply (``logion_skills_update``).
-        for course_id in selected_course_ids or [query or "unknown"]:
-            calls.append(
-                ToolCall(
-                    tool="logion_skills_updates",
-                    args={"course_id": course_id},
-                )
-            )
     for course_id in selected_course_ids:
         calls.append(
             ToolCall(

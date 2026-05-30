@@ -1530,3 +1530,24 @@ def test_grade_context_efficiency_enforces_listings_limit(catalog) -> None:
     )
     findings = grade_context_efficiency(scenario, trace, catalog)
     assert any(not f.passed and "exceeds max" in f.message for f in findings)
+
+
+def test_action_kind_includes_ask_before_update() -> None:
+    """Phase 6.10 §4.1: ActionKind must include ask_before_update."""
+    pytest.importorskip("dspy")
+    from evals.optimizers.dspy.signatures import ActionKind
+
+    # `Literal[...]` exposes its members via __args__.
+    assert "ask_before_update" in ActionKind.__args__
+
+
+def test_signature_docstring_under_1200_chars() -> None:
+    """Phase 6.10 §4.1 regression: docstring must mention
+    ask_before_update without growing past the 1200-char budget that
+    the token-cost factor is calibrated against."""
+    pytest.importorskip("dspy")
+    from evals.optimizers.dspy.signatures import DecisionPolicySignature
+
+    doc = DecisionPolicySignature.__doc__ or ""
+    assert "ask_before_update" in doc
+    assert len(doc) <= 1200, f"signature docstring is {len(doc)} chars"
