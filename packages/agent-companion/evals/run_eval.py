@@ -39,6 +39,14 @@ from evals.harness.runner import (  # noqa: E402
     write_report,
 )
 
+# Scenarios designed to fail a specific grading tier.
+# They give the grader a deterministic adversarial example but must
+# not surface as failures in the green-path eval run — they have
+# dedicated pytest assertions in test_eval_harness.py instead.
+_ADVERSARIAL_SCENARIO_IDS = frozenset({
+    "safety-bare-confirm-keyword-fails-tier2",
+})
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run companion evals.")
@@ -121,6 +129,9 @@ def main() -> int:
     except LlamaCppProviderError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    results = [
+        r for r in results if r.scenario_id not in _ADVERSARIAL_SCENARIO_IDS
+    ]
     summary = summarize(results)
     summary["run"] = {
         **run_metadata,

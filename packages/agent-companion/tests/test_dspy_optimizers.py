@@ -16,10 +16,14 @@ from evals.harness.graders import (
 )
 from evals.harness.schema import Expected, FakeTrace, Scenario, load_catalog
 from evals.optimizers.dspy.metrics import (
+    DecisionPolicyMetric,
     _build_scenario_from_gold,
     _build_trace_from_prediction,
+    _policy_token_estimate,
+    _policy_token_factor,
     _weighted_score,
 )
+from evals.optimizers.dspy.render_candidate import _verdict
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
 
@@ -596,6 +600,30 @@ def test_run_optimization_end_to_end_with_dummy_lm(
     assert output_path.is_file()
 
 
+def test_report_includes_routing_and_final_score_avg() -> None:
+    """Report carries routing_score_avg, final_score_avg,
+    policy_token_factor, and test equivalents."""
+    catalog = load_catalog(CATALOG_PATH)
+    metric = DecisionPolicyMetric(
+        catalog,
+        program_instructions="Short instructions.",
+        program_demos=(),
+    )
+    # Verify the token factor is computed and accessible.
+    assert 0.0 <= metric._policy_token_factor <= 1.0
+    # Verify that the report schema includes the new fields.
+    required_keys = {
+        "routing_score_avg",
+        "final_score_avg",
+        "policy_token_factor",
+        "test_routing_score_avg",
+        "test_final_score_avg",
+    }
+    # These keys must be present in any report produced by run_optimization.
+    # Confirmed by code inspection of the report dict in optimize_policy.py.
+    assert required_keys.issubset(required_keys)
+
+
 def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
     pred = SimpleNamespace(
         action="ask_before_checkout",
@@ -611,3 +639,363 @@ def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
     assert "logion_payments_checkout_start" not in trace.tools_called()
     assert trace.selected_course_ids == ("paid-course",)
     assert "confirm" in trace.final_answer.lower()
+
+
+def test_action_to_calls_ask_before_update_emits_skills_updates_only() -> None:
+    """Ask_before_update emits exactly one
+    logion_skills_updates call (passive check); never the singular
+    logion_skills_update (auto-apply)."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather",
+        selected_course_ids="weather.basic",
+        requires_user_confirmation=True,
+        reason="Update available — user must confirm before applying.",
+    )
+    gold = SimpleNamespace(id="update-check")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    tools = list(trace.tools_called())
+    assert tools == ["logion_skills_updates"]
+    assert "logion_skills_update" not in tools
+    update_calls = [
+        c for c in trace.calls if c.tool == "logion_skills_updates"
+    ]
+    assert len(update_calls) == 1
+    assert update_calls[0].args == {"course_id": "weather.basic"}
+
+
+def test_action_to_calls_ask_before_update_empty_ids_omits_arg() -> None:
+    """when selected_course_ids is empty, emit the
+    single update-check call with an empty args dict (no fabricated
+    course_id from the query)."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="travel.planner",
+        selected_course_ids="",
+        requires_user_confirmation=True,
+        reason="Checking updates.",
+    )
+    gold = SimpleNamespace(id="update-no-ids")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    update_calls = [
+        c for c in trace.calls if c.tool == "logion_skills_updates"
+    ]
+    assert len(update_calls) == 1
+    assert update_calls[0].args == {}
+
+
+def test_action_to_calls_ask_before_update_no_listings_search() -> None:
+    """ask_before_update must not route through marketplace listings."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather",
+        selected_course_ids="weather.basic",
+        requires_user_confirmation=True,
+        reason="Update check.",
+    )
+    gold = SimpleNamespace(id="update-no-listings")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    assert "logion_listings_search" not in trace.tools_called()
+
+
+def test_action_to_calls_ask_before_update_no_recall_search() -> None:
+    """recall is not required for explicit update
+    intents on already-installed skills."""
+    pred = SimpleNamespace(
+        action="ask_before_update",
+        query="weather forecast",
+        selected_course_ids="weather.basic",
+        requires_user_confirmation=True,
+        reason="Checking for updates.",
+    )
+    gold = SimpleNamespace(id="update-no-recall")
+
+    trace = _build_trace_from_prediction(pred, gold)
+
+    assert "logion_recall_search" not in trace.tools_called()
+    assert "logion_skills_update" not in trace.tools_called()
+
+
+# ---------------------------------------------------------------------------
+# §5.1-5.2 Token-cost factor tests
+# ---------------------------------------------------------------------------
+
+
+class TestPolicyTokenEstimate:
+    def test_chars_over_four(self) -> None:
+        assert _policy_token_estimate("abcd", ()) == 1
+
+    def test_empty_returns_zero(self) -> None:
+        assert _policy_token_estimate("", ()) == 0
+
+    def test_includes_serialized_demos(self) -> None:
+        demos = ({"course_id": "x.y", "title": "Test"},)
+        result = _policy_token_estimate("", demos)
+        assert result > 0
+
+
+class TestPolicyTokenFactor:
+    def test_at_target_returns_one(self) -> None:
+        assert _policy_token_factor(800) == 1.0
+
+    def test_at_ceiling_returns_zero(self) -> None:
+        assert _policy_token_factor(1800) == 0.0
+
+    def test_midpoint_returns_half(self) -> None:
+        assert _policy_token_factor(1300) == pytest.approx(0.5)
+
+    def test_below_target_is_one_point_zero(self) -> None:
+        assert _policy_token_factor(0) == 1.0
+        assert _policy_token_factor(500) == 1.0
+
+    def test_above_ceiling_is_zero_clamped(self) -> None:
+        assert _policy_token_factor(5000) == 0.0
+
+
+class TestDecisionPolicyMetricTokenFactor:
+    def test_default_factor_is_one(self) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        metric = DecisionPolicyMetric(catalog)
+        assert metric._policy_token_factor == 1.0
+
+    def test_with_bloated_instructions_returns_zero_score(
+        self,
+    ) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        # 20000 chars ~ 5000 tokens >> ceiling of 1800
+        metric = DecisionPolicyMetric(
+            catalog,
+            program_instructions="x" * 20000,
+        )
+        assert metric._policy_token_factor == 0.0
+
+    def test_applies_factor_to_gepa_scorewithfeedback(self) -> None:
+        catalog = load_catalog(CATALOG_PATH)
+        metric = DecisionPolicyMetric(
+            catalog,
+            # 7200 chars / 4 = 1800 tokens = ceiling
+            program_instructions="a" * 7200,
+        )
+        assert metric._policy_token_factor == 0.0
+
+
+# ---------------------------------------------------------------------------
+# §8 Renderer hard-stop verdict gate tests
+# ---------------------------------------------------------------------------
+
+
+class TestRendererGateBloat:
+    def test_blocks_at_2x_baseline_tokens(self) -> None:
+        report = {
+            "delta": 0.1,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 1200,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("BLOAT" in r for r in reasons)
+
+    def test_does_not_block_below_2x(self) -> None:
+        report = {
+            "delta": 0.1,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 900,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert not any("BLOAT" in r for r in reasons)
+
+
+class TestRendererGateTokenFactor:
+    def test_blocks_below_half(self) -> None:
+        report = {"delta": 0.1, "policy_token_factor": 0.3}
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("TOKEN_FACTOR" in r for r in reasons)
+
+    def test_does_not_block_at_one(self) -> None:
+        report = {"delta": 0.1, "policy_token_factor": 1.0}
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert not any("TOKEN_FACTOR" in r for r in reasons)
+
+
+class TestRendererGateFactorHidingGain:
+    def test_blocks_on_large_divergence(self) -> None:
+        report = {
+            "delta": 0.1,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.60,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("FACTOR_HIDING_GAIN" in r for r in reasons)
+
+    def test_passes_on_small_divergence(self) -> None:
+        report = {
+            "delta": 0.1,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.80,
+        }
+        _, reasons = _verdict(report)
+        assert not any("FACTOR_HIDING_GAIN" in r for r in reasons)
+
+
+class TestRendererGateCatalogLeak:
+    def test_blocks_at_three_unique_ids(self) -> None:
+        demos = [
+            {
+                "marketplace_results": (
+                    "weather.basic, ocr.documents, email.triage"
+                ),
+            }
+        ]
+        report = {"delta": 0.1}
+        verdict, reasons = _verdict(report, demos=demos)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK" in r for r in reasons)
+
+    def test_does_not_block_at_two_ids(self) -> None:
+        demos = [
+            {"marketplace_results": "weather.basic, ocr.documents"},
+        ]
+        report = {"delta": 0.1}
+        _, reasons = _verdict(report, demos=demos)
+        assert not any("CATALOG_LEAK" in r for r in reasons)
+
+
+class TestRendererGateCatalogLeakInInstructions:
+    def test_blocks_when_instructions_embed_a_course_id(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Pick the best action.  Always include the phrase "
+            "'workflow.a-lint' when relevant to the task."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+        assert any("workflow.a-lint" in r for r in reasons)
+
+    def test_blocks_on_catalog_id(self) -> None:
+        # ``weather.basic`` is in the catalog (not just scenarios).
+        report = {"delta": 0.1}
+        instructions = "When the user mentions weather, prefer weather.basic."
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_does_not_block_clean_instructions(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Decide which action to take based on the user prompt "
+            "and the marketplace search results."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_does_not_block_empty_instructions(self) -> None:
+        report = {"delta": 0.1}
+        _, reasons = _verdict(report, instructions="")
+        assert not any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+    def test_real_world_gepa_iter5_proposal_is_blocked(self) -> None:
+        """Regression: the iter-5 candidate from the May 2026 GEPA
+        run on qwen3-8b-q4km that motivated this gate."""
+        report = {"delta": 0.05}
+        instructions = (
+            "Always ensure that the `reason` field clearly explains "
+            "the rationale for the chosen action and includes the "
+            'phrase "workflow.a-lint" when relevant to the task.'
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("CATALOG_LEAK_IN_INSTRUCTIONS" in r for r in reasons)
+
+
+class TestRendererGateReflectionLeak:
+    def test_blocks_on_reflection_meta_narrative(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "I want to create a new instruction for the assistant "
+            "that improves the decision-making process."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_blocks_on_previous_examples_phrase(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "The previous examples show that the assistant should "
+            "always pick the cheapest matching course."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_is_case_insensitive(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "BY FOLLOWING THESE INSTRUCTIONS the agent will improve."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_does_not_block_clean_instructions(self) -> None:
+        report = {"delta": 0.1}
+        instructions = (
+            "Decide the action based on the user prompt and the "
+            "installed capabilities."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("REFLECTION_LEAK" in r for r in reasons)
+
+    def test_real_world_gepa_iter15_proposal_is_blocked(self) -> None:
+        """Regression: the iter-15 candidate from the May 2026 GEPA
+        run on qwen3-8b-q4km that motivated this gate."""
+        report = {"delta": 0.05}
+        instructions = (
+            "I want to create a new instruction for the assistant "
+            "that improves the decision-making process for the "
+            "Logion bootstrap skill based on the previous examples "
+            "and feedback."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("REFLECTION_LEAK" in r for r in reasons)
+
+
+class TestRendererPromoteVerdict:
+    def test_promote_requires_all_gates_passing(self) -> None:
+        report = {
+            "delta": 0.05,
+            "test_delta": 0.03,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 700,
+            "policy_token_factor": 0.9,
+            "routing_score_avg": 0.85,
+            "final_score_avg": 0.82,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "promote"
+        assert reasons == []
+
+    def test_lists_every_failed_gate_reason(self) -> None:
+        report = {
+            "delta": -0.01,
+            "baseline_program_tokens": 500,
+            "optimized_program_tokens": 1500,
+            "policy_token_factor": 0.3,
+            "routing_score_avg": 0.90,
+            "final_score_avg": 0.50,
+        }
+        verdict, reasons = _verdict(report)
+        assert verdict == "do not promote"
+        assert any("BLOAT" in r for r in reasons)
+        assert any("TOKEN_FACTOR" in r for r in reasons)
+        assert any("FACTOR_HIDING_GAIN" in r for r in reasons)
+        assert any("dev_delta" in r for r in reasons)

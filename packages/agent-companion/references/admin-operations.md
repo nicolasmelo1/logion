@@ -31,8 +31,8 @@ holding entitlements may be affected.
 
 ```bash
 LOGION_ENABLE_ADMIN=1 logion admin users get USER_ID --json
-LOGION_ENABLE_ADMIN=1 logion admin users billing-exemption USER_ID --exempt --yes --json
-LOGION_ENABLE_ADMIN=1 logion admin users suspend USER_ID --reason "TOS violation" --yes --json
+LOGION_ENABLE_ADMIN=1 logion admin users billing-exemption USER_ID --enabled true --yes --json
+LOGION_ENABLE_ADMIN=1 logion admin users suspend USER_ID --yes --json
 LOGION_ENABLE_ADMIN=1 logion admin users unsuspend USER_ID --yes --json
 ```
 

@@ -224,5 +224,9 @@ __marimo__/
 .models/
 *.gguf
 
-# DSPy optimizer generated candidates (keep .gitkeep only)
-evals/optimizers/dspy/generated_candidates/*.json
+# DSPy optimizer generated candidates (keep .gitkeep only).
+# Use `**` so the rule matches regardless of which workspace package
+# the candidates land in.
+**/evals/optimizers/dspy/generated_candidates/*.json
+**/evals/optimizers/dspy/generated_candidates/*.program.json
+**/evals/optimizers/dspy/generated_candidates/*.review.md

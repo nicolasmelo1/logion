@@ -21,7 +21,9 @@ models:
       - --port
       - "8080"
       - --ctx-size
-      - "8192"
+      - "16384"
+      - --parallel
+      - "2"
       - --jinja
       - --reasoning-budget
       - "0"
@@ -43,7 +45,9 @@ models:
       - --port
       - "8080"
       - --ctx-size
-      - "8192"
+      - "16384"
+      - --parallel
+      - "2"
       - --jinja
       - --reasoning-budget
       - "0"
@@ -63,7 +67,9 @@ models:
       - --port
       - "8080"
       - --ctx-size
-      - "8192"
+      - "16384"
+      - --parallel
+      - "2"
       - --jinja
       - --reasoning-budget
       - "0"

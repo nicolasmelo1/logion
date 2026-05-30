@@ -5,6 +5,14 @@
 # entry point exposed via `logion evals dspy ...`.
 set -euo pipefail
 
+# Long DSPy/GEPA runs accumulate hundreds of HTTP connections, asyncio
+# loops, and llama.cpp client sockets.  macOS defaults to soft fd
+# limit 256, which exhausts mid-run and crashes the final program
+# save (observed May 2026 on qwen3-8b-q4km GEPA, 520 rollouts).  Lift
+# to 4096 — well under the hard limit, well above any reasonable
+# real demand.
+ulimit -n 4096 2>/dev/null || true
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env}"
 

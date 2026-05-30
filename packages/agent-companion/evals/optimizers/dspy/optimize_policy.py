@@ -41,7 +41,9 @@ if str(ROOT) not in sys.path:
 import dspy
 
 from evals.harness.schema import Catalog, load_catalog, load_scenarios_from_dir
-from evals.optimizers.dspy.metrics import DecisionPolicyMetric
+from evals.optimizers.dspy.metrics import (
+    DecisionPolicyMetric,
+)
 from evals.optimizers.dspy.signatures import DecisionPolicyModule
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
@@ -197,9 +199,16 @@ def _evaluate_module(
     module: Any,
     dev_examples: list[dspy.Example],
     metric: DecisionPolicyMetric,
-) -> tuple[list[float], list[dict[str, Any]]]:
-    """Score ``module`` on dev examples; return per-scenario findings."""
-    scores: list[float] = []
+) -> tuple[list[float], list[dict[str, Any]], list[float]]:
+    """Score ``module`` on dev examples; return per-scenario findings.
+
+    Returns ``(final_scores, breakdown, routing_scores)`` where
+    ``routing_scores`` are the pre-token-factor scores and
+    ``final_scores`` are the routing scores multiplied by the metric's
+    ``_policy_token_factor``.
+    """
+    final_scores: list[float] = []
+    routing_scores: list[float] = []
     breakdown: list[dict[str, Any]] = []
     for ex in dev_examples:
         try:
@@ -211,7 +220,8 @@ def _evaluate_module(
                 marketplace_results=getattr(ex, "marketplace_results", ""),
                 current_policy_text=getattr(ex, "current_policy_text", ""),
             )
-            score, findings = metric.evaluate_with_findings(ex, pred)
+            routing_score, findings = metric.evaluate_with_findings(ex, pred)
+            final_score = routing_score * metric._policy_token_factor
             failures = [
                 {"metric": f.metric, "detail": f.message}
                 for f in findings
@@ -219,19 +229,24 @@ def _evaluate_module(
             ]
             error: str | None = None
         except Exception as exc:
-            score = 0.0
+            routing_score = 0.0
+            final_score = 0.0
             failures = []
             error = f"{type(exc).__name__}: {exc}"
 
-        scores.append(score)
+        final_scores.append(final_score)
+        routing_scores.append(routing_score)
         breakdown.append({
             "id": getattr(ex, "id", "unknown"),
             "suite": getattr(ex, "suite", "unknown"),
-            "score": round(score, 4),
+            "routing_score": round(routing_score, 4),
+            "final_score": round(final_score, 4),
+            "score": round(final_score, 4),
+            "policy_token_factor": round(metric._policy_token_factor, 4),
             "failures": failures,
             "error": error,
         })
-    return scores, breakdown
+    return final_scores, breakdown, routing_scores
 
 
 def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
@@ -361,9 +376,11 @@ def run_optimization(
     # the report carries a delta. Without this you cannot tell whether
     # the optimizer produced anything useful or just noise.
     baseline_module = DecisionPolicyModule()
-    baseline_scores, baseline_breakdown = _evaluate_module(
-        baseline_module, dev_examples, metric
-    )
+    (
+        baseline_scores,
+        baseline_breakdown,
+        _baseline_routing_scores,
+    ) = _evaluate_module(baseline_module, dev_examples, metric)
 
     optimizer_factory = OPTIMIZERS.get(optimizer_name)
     if optimizer_factory is None:
@@ -389,48 +406,76 @@ def run_optimization(
             trainset=train_examples,
         )
 
-    dev_scores, dev_breakdown = _evaluate_module(
-        optimized, dev_examples, metric
+    # Build a token-aware metric for the optimized program. Baseline
+    # evaluations keep the un-instrumented metric (factor 1.0).
+    predictor = getattr(optimized, "predictor", None)
+    program_instructions = (
+        getattr(predictor.signature, "instructions", "") if predictor else ""
+    )
+    program_demos = tuple(
+        _demo_to_dict(d) for d in (getattr(predictor, "demos", None) or ())
+    )
+    optimized_metric = DecisionPolicyMetric(
+        catalog,
+        program_instructions=program_instructions,
+        program_demos=program_demos,
+    )
+
+    dev_scores, dev_breakdown, dev_routing_scores = _evaluate_module(
+        optimized, dev_examples, optimized_metric
     )
 
     # Holdout test pass: never seen by the optimizer; this is the
-    # number that gates promotion per the phase-6.6 plan
-    # ("do not promote if regresses holdout").
+    # number that gates promotion.
     test_examples = _build_examples(
         split.get("test", []),
         catalog=catalog,
         current_policy_text=current_policy,
     )
     if test_examples:
-        baseline_test_scores, baseline_test_breakdown = _evaluate_module(
+        baseline_test_scores, baseline_test_breakdown, _ = _evaluate_module(
             DecisionPolicyModule(), test_examples, metric
         )
-        test_scores, test_breakdown = _evaluate_module(
-            optimized, test_examples, metric
+        test_scores, test_breakdown, test_routing_scores = _evaluate_module(
+            optimized, test_examples, optimized_metric
         )
     else:
         baseline_test_scores, baseline_test_breakdown = [], []
         test_scores, test_breakdown = [], []
+        test_routing_scores = []
 
     baseline_avg = (
         sum(baseline_scores) / len(baseline_scores) if baseline_scores else 0.0
     )
     avg_dev = sum(dev_scores) / len(dev_scores) if dev_scores else 0.0
+    avg_dev_routing = (
+        sum(dev_routing_scores) / len(dev_routing_scores)
+        if dev_routing_scores
+        else 0.0
+    )
     baseline_test_avg = (
         sum(baseline_test_scores) / len(baseline_test_scores)
         if baseline_test_scores
         else 0.0
     )
     avg_test = sum(test_scores) / len(test_scores) if test_scores else 0.0
-
-    program_path: Path | None = None
-    if output_path is not None:
-        program_path = output_path.with_suffix(".program.json")
-        program_path.parent.mkdir(parents=True, exist_ok=True)
-        optimized.save(str(program_path))
+    avg_test_routing = (
+        sum(test_routing_scores) / len(test_routing_scores)
+        if test_routing_scores
+        else 0.0
+    )
 
     baseline_program_tokens = _baseline_program_tokens()
     optimized_program_tokens = _optimized_program_tokens(optimized)
+
+    # Compute the program-path string up-front so the report can carry
+    # it even if the actual program-save fails (e.g. EMFILE on macOS
+    # after a long GEPA run leaks file descriptors).  We attempt the
+    # program save *after* the report write below so a save failure
+    # doesn't lose the eval data — see phase-6.10 follow-up note.
+    program_path: Path | None = None
+    if output_path is not None:
+        program_path = output_path.with_suffix(".program.json")
 
     report: dict[str, Any] = {
         "timestamp": datetime.now(UTC).isoformat(),
@@ -441,9 +486,14 @@ def run_optimization(
         "test_count": len(test_examples),
         "baseline_dev_score_avg": round(baseline_avg, 4),
         "dev_score_avg": round(avg_dev, 4),
+        "routing_score_avg": round(avg_dev_routing, 4),
+        "final_score_avg": round(avg_dev, 4),
+        "policy_token_factor": round(optimized_metric._policy_token_factor, 4),
         "delta": round(avg_dev - baseline_avg, 4),
         "baseline_test_score_avg": round(baseline_test_avg, 4),
         "test_score_avg": round(avg_test, 4),
+        "test_routing_score_avg": round(avg_test_routing, 4),
+        "test_final_score_avg": round(avg_test, 4),
         "test_delta": round(avg_test - baseline_test_avg, 4),
         "dev_scores": [round(s, 4) for s in dev_scores],
         "baseline_dev_scores": [round(s, 4) for s in baseline_scores],
@@ -478,6 +528,22 @@ def run_optimization(
             json.dumps(report, indent=2, sort_keys=False) + "\n",
             encoding="utf-8",
         )
+
+    # Program save is best-effort.  A failure here (e.g. EMFILE after a
+    # long-running DSPy session has leaked file descriptors) must not
+    # invalidate the already-written eval report.  The renderer falls
+    # back to the report alone when no program file exists.
+    if program_path is not None:
+        program_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            optimized.save(str(program_path))
+        except OSError as exc:
+            print(
+                f"warning: failed to save compiled program to "
+                f"{program_path}: {exc}",
+                file=sys.stderr,
+            )
+            report["program_path"] = None
 
     return report
 

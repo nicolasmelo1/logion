@@ -21,6 +21,8 @@ returns a float in [0, 1].
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable
 from typing import Any
 
 from evals.harness.graders import (
@@ -61,7 +63,9 @@ _LISTINGS_SEARCH_ACTIONS = frozenset({
 
 # Actions that should be preceded by a local recall lookup. Includes
 # ``inspect_course`` so that picking a candidate from prior context is
-# still rooted in recall.
+# still rooted in recall. ``ask_before_update`` is intentionally
+# excluded per phase-6.10 §4.2: recall is not required for explicit
+# update intents on already-installed skills.
 _RECALL_ACTIONS = frozenset({
     "search_marketplace",
     "inspect_course",
@@ -75,6 +79,17 @@ def _action_to_calls(
     selected_course_ids: list[str],
 ) -> tuple[ToolCall, ...]:
     """Translate a DSPy prediction output into tool calls."""
+    if action == "ask_before_update":
+        # Phase 6.10 §4.2: emit exactly one passive update-check tool
+        # call — never an auto-apply (`logion_skills_update`), never a
+        # listings search, never a recall search.
+        course_id = selected_course_ids[0] if selected_course_ids else ""
+        return (
+            ToolCall(
+                tool="logion_skills_updates",
+                args={"course_id": course_id} if course_id else {},
+            ),
+        )
     calls: list[ToolCall] = []
     if query and action in _RECALL_ACTIONS:
         calls.append(
@@ -231,11 +246,74 @@ def _safety_gate(findings: list[Finding]) -> float:
     return 1.0 if all(f.passed for f in safety_findings) else 0.0
 
 
-class DecisionPolicyMetric:
-    """Stateful metric that carries the catalog for grading."""
+def _policy_token_estimate(
+    instructions: str,
+    demos: Iterable[dict[str, Any]],
+) -> int:
+    """4-chars-per-token estimate of the compiled program's prompt cost.
 
-    def __init__(self, catalog: Catalog) -> None:
+    Uses a 4-chars-per-token heuristic matching the existing renderer
+    implementation.  ``target`` defaults to 1500 (roughly the current
+    baseline signature docstring size) and ``ceiling`` to 3000 (2x target).
+    Beyond ``ceiling`` the policy is meaningfully bloating context.
+    """
+    instr_chars = len(instructions or "")
+    demo_list = list(demos) if demos else []
+    demo_chars = sum(len(json.dumps(d, sort_keys=True)) for d in demo_list)
+    return (instr_chars + demo_chars) // 4
+
+
+def _policy_token_factor(
+    tokens: int,
+    *,
+    target: int = 800,
+    ceiling: int = 1800,
+) -> float:
+    """Soft penalty: 1.0 at <=*target*, linearly to 0.0 at >=*ceiling*.
+
+    Calibration rationale:
+    - ``target=800`` ≈ baseline signature docstring (~290 tok = 1160 chars)
+      plus headroom for two compact demos.
+    - ``ceiling=1800`` ≈ 2.25x target.  The May 2026 GEPA run on
+      qwen3-8b-q4km produced rollouts that, combined with demos and the
+      input fields, crossed the 8192-context cap of the runtime serving
+      provider.  The prior 1500/3000 calibration only kicked in *after*
+      that failure point; the tighter envelope penalises bloat while
+      GEPA is still iterating, not just at promotion time.
+    - Linear interpolation between target and ceiling.  The optimizer can
+      still trade routing gain for some bloat, but the trade has a price.
+    Both values are defaulted keyword arguments so future calibration is a
+    config change, not a code change.
+    """
+    if tokens <= target:
+        return 1.0
+    if tokens >= ceiling:
+        return 0.0
+    return 1.0 - (tokens - target) / (ceiling - target)
+
+
+class DecisionPolicyMetric:
+    """Stateful metric that carries the catalog for grading.
+
+    When *program_instructions* and/or *program_demos* are provided, the
+    routing score is multiplied by a policy-token-cost factor that penalises
+    instruction bloat.  Defaults (empty instructions, no demos) yield factor
+    1.0, preserving backward compatibility for compile-time metrics where the
+    program is not yet known.
+    """
+
+    def __init__(
+        self,
+        catalog: Catalog,
+        *,
+        program_instructions: str = "",
+        program_demos: tuple[dict[str, Any], ...] = (),
+    ) -> None:
         self.catalog = catalog
+        self._program_tokens = _policy_token_estimate(
+            program_instructions, program_demos
+        )
+        self._policy_token_factor = _policy_token_factor(self._program_tokens)
 
     def __call__(
         self,
@@ -259,7 +337,8 @@ class DecisionPolicyMetric:
         for backwards compatibility.
         """
         del trace
-        score, findings = self.evaluate_with_findings(gold, pred)
+        routing_score, findings = self.evaluate_with_findings(gold, pred)
+        final_score = routing_score * self._policy_token_factor
         # Heuristic: GEPA passes a non-None pred_name. Older optimizers
         # do not. Return rich feedback only on the GEPA path so we don't
         # break MIPROv2's scalar expectation.
@@ -272,15 +351,15 @@ class DecisionPolicyMetric:
                 if not failures
                 else "Failures:\n- " + "\n- ".join(failures)
             )
-            return {"score": score, "feedback": feedback}
-        return score
+            return {"score": final_score, "feedback": feedback}
+        return final_score
 
     def evaluate_with_findings(
         self,
         gold: Any,
         pred: Any,
     ) -> tuple[float, list[Finding]]:
-        """Return ``(score, findings)`` for richer per-scenario reporting."""
+        """Return ``(routing_score, findings)`` before the token factor."""
         scenario = _build_scenario_from_gold(gold)
         eval_trace = _build_trace_from_prediction(pred, gold)
         findings = grade(scenario, eval_trace, self.catalog)
@@ -292,9 +371,18 @@ class DecisionPolicyMetric:
         return gate * _weighted_score(findings), findings
 
 
-def load_metric(catalog_path: str) -> DecisionPolicyMetric:
+def load_metric(
+    catalog_path: str,
+    *,
+    program_instructions: str = "",
+    program_demos: tuple[dict[str, Any], ...] = (),
+) -> DecisionPolicyMetric:
     """Convenience: build the metric from a catalog YAML path."""
     from pathlib import Path
 
     catalog = load_catalog(Path(catalog_path))
-    return DecisionPolicyMetric(catalog)
+    return DecisionPolicyMetric(
+        catalog,
+        program_instructions=program_instructions,
+        program_demos=program_demos,
+    )

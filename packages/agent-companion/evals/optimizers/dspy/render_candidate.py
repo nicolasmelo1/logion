@@ -175,11 +175,209 @@ def _per_suite_regressions(
     return out
 
 
-def _verdict(report: dict[str, Any]) -> tuple[str, list[str]]:
-    """Compute promotion verdict. Returns (verdict, reasons)."""
+_CATALOG_COURSE_IDS: tuple[str, ...] = (
+    "weather.basic",
+    "weather.forecast",
+    "data.analyze",
+    "data.spreadsheets",
+    "data.spreadsheet.pivot",
+    "data.spreadsheet.read",
+    "ocr.text",
+    "ocr.documents",
+    "ocr.documents.draft.v2",
+    "ocr.tables",
+    "email.triage",
+    "email.triage.prioritize",
+    "email.summarize",
+    "email.draft.reply",
+    "inbox.read",
+    "resume.edit",
+    "resume.ats",
+    "resume.ats.optimize",
+    "cover-letter.writer",
+    "letter.tailor",
+    "video.editor",
+    "video.edit.timeline",
+    "video.color.grade",
+    "video.clips",
+    "video.clips.highlight",
+    "browser.automation",
+    "infra.company-ops",
+    "infra.terraform.review",
+    "terraform.static-review",
+    "travel.planner",
+    "code.tdd-framework",
+    "code.debugging",
+    "code.debug.reproduce",
+    "workflow.a-lint",
+    "workflow.b-lint",
+    "workflow.cleanup",
+    "workflow.curl-pipe-install",
+    "workflow.deploy-with-mask",
+    "workflow.maybe-python-lint",
+    "workflow.maybe-video-edit",
+    "workflow.something-local",
+    "workflow.unrelated-build",
+    "workflow.verify-agent-companion",
+)
+
+
+# Phrases that signal GEPA's reflection narrative leaked into the
+# optimised signature instructions instead of producing a clean prompt.
+# These are case-insensitive substrings.
+_REFLECTION_LEAK_PHRASES: tuple[str, ...] = (
+    "i want to create",
+    "the previous examples",
+    "previous examples show",
+    "the feedback also",
+    "the feedback highlights",
+    "the assistant should",
+    "the assistant sometimes",
+    "new instructions should",
+    "the new instructions",
+    "based on the previous",
+    "by following these instructions",
+    "improve the decision-making",
+    "the task is to determine",
+)
+
+
+def _instruction_catalog_leaks(instructions: str) -> list[str]:
+    """Return catalog/scenario course IDs that appear in optimised
+    instructions. Course IDs belong in inputs, never in the rule text
+    itself — any leak indicates GEPA memorised a training-data identifier.
+    """
+    if not instructions:
+        return []
+    found: list[str] = []
+    for cid in _CATALOG_COURSE_IDS:
+        if cid in instructions and cid not in found:
+            found.append(cid)
+    return found
+
+
+def _instruction_reflection_leaks(instructions: str) -> list[str]:
+    """Return GEPA-narrative phrases found in the instructions."""
+    if not instructions:
+        return []
+    haystack = instructions.lower()
+    return [p for p in _REFLECTION_LEAK_PHRASES if p in haystack]
+
+
+def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
+    """Count catalog course IDs in demo marketplace_results."""
+    max_leaks = 0
+    for demo in demos:
+        marketplace_results = demo.get("marketplace_results", "")
+        if not isinstance(marketplace_results, str):
+            marketplace_results = str(marketplace_results)
+        leaks = sum(
+            1 for cid in _CATALOG_COURSE_IDS if cid in marketplace_results
+        )
+        max_leaks = max(max_leaks, leaks)
+    return max_leaks
+
+
+def _verdict(  # noqa: C901 — gate chain is intentionally flat
+    report: dict[str, Any],
+    *,
+    demos: list[dict[str, Any]] | None = None,
+    instructions: str | None = None,
+) -> tuple[str, list[str]]:
+    """Compute promotion verdict. Returns (verdict, reasons).
+
+    Hard-stop gates force "do not promote" regardless of score:
+      A: BLOAT — optimized tokens >= 2x baseline
+      B: TOKEN_FACTOR — policy_token_factor < 0.50
+      C: FACTOR_HIDING_GAIN — routing vs final divergence > 0.10
+      D: CATALOG_LEAK — any demo embeds >= 3 catalog course IDs
+      F: CATALOG_LEAK_IN_INSTRUCTIONS — any catalog/scenario course ID
+         appears in the optimised instructions (training-data
+         memorisation)
+      G: REFLECTION_LEAK — GEPA's reflection narrative leaked into the
+         optimised instructions
+    Plus existing regressions and safety checks.
+    """
     reasons: list[str] = []
     dev_delta = report.get("delta")
     test_delta = report.get("test_delta")
+
+    # Gate A: BLOAT
+    baseline_tokens = report.get("baseline_program_tokens", 0)
+    optimized_tokens = report.get("optimized_program_tokens", 0)
+    if (
+        isinstance(baseline_tokens, (int, float))
+        and baseline_tokens > 0
+        and isinstance(optimized_tokens, (int, float))
+        and optimized_tokens >= 2 * baseline_tokens
+    ):
+        reasons.append(
+            f"BLOAT: optimized program ({int(optimized_tokens)} tok) "
+            f"is >=2x baseline ({int(baseline_tokens)} tok). "
+            "Promotion blocked. Reduce instruction length or accept "
+            "fewer demos."
+        )
+
+    # Gate B: TOKEN_FACTOR
+    factor = report.get("policy_token_factor", 1.0)
+    if isinstance(factor, (int, float)) and factor < 0.5:
+        reasons.append(
+            f"TOKEN_FACTOR: policy_token_factor={factor:.2f} < 0.50. "
+            "The token budget has eaten more than half the routing "
+            "gain."
+        )
+
+    # Gate C: FACTOR_HIDING_GAIN
+    routing_avg = report.get("routing_score_avg")
+    final_avg = report.get("final_score_avg")
+    if (
+        isinstance(routing_avg, (int, float))
+        and isinstance(final_avg, (int, float))
+        and routing_avg - final_avg > 0.10
+    ):
+        reasons.append(
+            f"FACTOR_HIDING_GAIN: routing {routing_avg:.4f} vs "
+            f"final {final_avg:.4f}; delta of "
+            f"{routing_avg - final_avg:.4f} attributable to "
+            "token-budget penalty. The apparent routing gain is "
+            "being absorbed by the token-cost factor."
+        )
+
+    # Gate D: CATALOG_LEAK
+    if demos is not None:
+        leak_count = _catalog_leak_count(demos)
+        if leak_count >= 3:
+            reasons.append(
+                f"CATALOG_LEAK: a demo embeds {leak_count} "
+                "catalog-specific course IDs; the demo will become "
+                "misinformation if the catalog changes."
+            )
+
+    # Gate F: CATALOG_LEAK_IN_INSTRUCTIONS
+    if instructions:
+        instruction_leaks = _instruction_catalog_leaks(instructions)
+        if instruction_leaks:
+            reasons.append(
+                "CATALOG_LEAK_IN_INSTRUCTIONS: optimised instructions "
+                f"embed {len(instruction_leaks)} catalog/scenario "
+                f"course ID(s): {', '.join(instruction_leaks)}. "
+                "Course IDs belong in inputs, not in the rule text — "
+                "this is training-data memorisation."
+            )
+
+    # Gate G: REFLECTION_LEAK
+    if instructions:
+        reflection_leaks = _instruction_reflection_leaks(instructions)
+        if reflection_leaks:
+            reasons.append(
+                "REFLECTION_LEAK: optimised instructions contain "
+                f"{len(reflection_leaks)} GEPA-narrative phrase(s): "
+                f"{', '.join(repr(p) for p in reflection_leaks)}. "
+                "The reflection lm's commentary leaked into the "
+                "compiled prompt instead of a clean rule set."
+            )
+
+    # Existing regressions
     if isinstance(dev_delta, (int, float)) and dev_delta <= 0:
         reasons.append(f"dev_delta {dev_delta:+.4f} did not beat baseline")
     if isinstance(test_delta, (int, float)) and test_delta < 0:
@@ -246,7 +444,9 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     demos = _extract_demos(program)
     current_doc = _current_signature_docstring()
     failure_counts = _failure_summary(report.get("dev_breakdown", []) or [])
-    verdict, verdict_reasons = _verdict(report)
+    verdict, verdict_reasons = _verdict(
+        report, demos=demos, instructions=instructions
+    )
 
     skill_excerpt = ""
     if skill_path.is_file():

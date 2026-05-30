@@ -18,6 +18,7 @@ ActionKind = Literal[
     "inspect_course",
     "ask_before_install",
     "ask_before_checkout",
+    "ask_before_update",
     "load_existing_skill",
 ]
 
@@ -42,6 +43,9 @@ class DecisionPolicySignature(dspy.Signature):
     - Marketplace search must go through `search_marketplace`
       (which corresponds to `logion listings search`), never through a
       planned/unimplemented command.
+    - Use `ask_before_update` when the user requests an update to an
+      installed capability and the new version's manifest changes
+      price, permissions, required tools, or execution policy.
     """
 
     user_prompt: str = dspy.InputField(
