@@ -43,6 +43,13 @@ SPLIT_OUTPUT ?= evals/optimizers/dspy/generated_candidates/split.json
 OPTIMIZER ?= bootstrap_few_shot
 OPTIMIZER_OUTPUT ?= evals/optimizers/dspy/generated_candidates/candidate-$(shell date +%Y%m%d-%H%M%S).json
 
+# Per-slot context size override forwarded to the llama_cpp runner
+# scripts (LOGION_DSPY_CTX_SIZE).  Default 16384 covers GEPA + most
+# MIPROv2 runs; bump to 32768 when the MIPROv2 proposer prompt
+# overflows because the signature carries large input fields (e.g.
+# `current_policy_text` shipping the full SKILL.md).
+CTX_SIZE ?= 16384
+
 split-scenarios:
 	uv run python evals/optimizers/dspy/split_scenarios.py \
 		--scenarios evals/scenarios \
@@ -67,6 +74,7 @@ optimize-policy-llama-cpp:
 	LOGION_DSPY_SPLIT="$(SPLIT_OUTPUT)" \
 	LOGION_DSPY_OUTPUT="$(OPTIMIZER_OUTPUT)" \
 	LOGION_DSPY_SEED="$(SPLIT_SEED)" \
+	LOGION_DSPY_CTX_SIZE="$(CTX_SIZE)" \
 	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
 		bash evals/scripts/run_llama_cpp_dspy_optimize.sh "$(CONFIG)" "$(MODEL)" "$(OPTIMIZER)"
 
@@ -89,6 +97,7 @@ optimize-references-llama-cpp:
 	LOGION_DSPY_OPTIMIZER="$(OPTIMIZER)" \
 	LOGION_DSPY_REF_OUTPUT="$(REF_ROUTING_OUTPUT)" \
 	LOGION_DSPY_SEED="$(SPLIT_SEED)" \
+	LOGION_DSPY_CTX_SIZE="$(CTX_SIZE)" \
 	LOGION_REF_ROUTING_SCENARIOS="$(REF_ROUTING_SCENARIOS)" \
 	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
 		bash evals/scripts/run_llama_cpp_dspy_optimize_references.sh "$(CONFIG)" "$(MODEL)" "$(OPTIMIZER)"
