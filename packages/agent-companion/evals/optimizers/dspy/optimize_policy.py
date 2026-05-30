@@ -465,14 +465,17 @@ def run_optimization(
         else 0.0
     )
 
+    baseline_program_tokens = _baseline_program_tokens()
+    optimized_program_tokens = _optimized_program_tokens(optimized)
+
+    # Compute the program-path string up-front so the report can carry
+    # it even if the actual program-save fails (e.g. EMFILE on macOS
+    # after a long GEPA run leaks file descriptors).  We attempt the
+    # program save *after* the report write below so a save failure
+    # doesn't lose the eval data — see phase-6.10 follow-up note.
     program_path: Path | None = None
     if output_path is not None:
         program_path = output_path.with_suffix(".program.json")
-        program_path.parent.mkdir(parents=True, exist_ok=True)
-        optimized.save(str(program_path))
-
-    baseline_program_tokens = _baseline_program_tokens()
-    optimized_program_tokens = _optimized_program_tokens(optimized)
 
     report: dict[str, Any] = {
         "timestamp": datetime.now(UTC).isoformat(),
@@ -525,6 +528,22 @@ def run_optimization(
             json.dumps(report, indent=2, sort_keys=False) + "\n",
             encoding="utf-8",
         )
+
+    # Program save is best-effort.  A failure here (e.g. EMFILE after a
+    # long-running DSPy session has leaked file descriptors) must not
+    # invalidate the already-written eval report.  The renderer falls
+    # back to the report alone when no program file exists.
+    if program_path is not None:
+        program_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            optimized.save(str(program_path))
+        except OSError as exc:
+            print(
+                f"warning: failed to save compiled program to "
+                f"{program_path}: {exc}",
+                file=sys.stderr,
+            )
+            report["program_path"] = None
 
     return report
 
