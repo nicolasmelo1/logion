@@ -39,25 +39,31 @@ workflow, or project-local command already covers the task well enough.
 ## Decision tree
 
 0. Run the Local Recall Guardrail before marketplace search.
-1. If recall returns a high-confidence local match, or an existing local
+1. Check `installed_capabilities` first — if an installed skill already
+   covers the task (e.g. `email.summarize` for "summarise my inbox",
+   `video.clips.highlight` for "extract clips"), use it and stay on the
+   primary path. Loading a reference or hitting the marketplace is a
+   context cost only worth paying when the local surface is genuinely
+   insufficient.
+2. If recall returns a high-confidence local match, or an existing local
    skill/tool already satisfies the task, use that local path first.
-2. If recall returns a medium-confidence match, present it as a candidate or
+3. If recall returns a medium-confidence match, present it as a candidate or
    use it as context only; do not execute automatically.
-3. If the user explicitly asks to browse/search/acquire from Logion, search
+4. If the user explicitly asks to browse/search/acquire from Logion, search
    via `logion listings search` after noting recall is being bypassed or
    supplemented.
-4. Search Logion via `logion listings search` only when local recall is
+5. Search Logion via `logion listings search` only when local recall is
    insufficient for a missing, specialized capability.
-5. Inspect candidates via `logion courses get` before recommending
+6. Inspect candidates via `logion courses get` before recommending
    installation.
-6. Prefer free or local equivalents when quality is comparable.
-7. Ask for explicit user approval before `logion skills install`.
-8. Ask for explicit user approval before any paid checkout
+7. Prefer free or local equivalents when quality is comparable.
+8. Ask for explicit user approval before `logion skills install`.
+9. Ask for explicit user approval before any paid checkout
    (`logion payments checkout-start`).
-9. Ask for explicit user approval before `logion skills update` calls that
-   change price, permissions, required tools, or execution policy.
-10. Load only the selected skill artifact, never the whole catalog.
-11. Only call commands listed under "Implemented safe discovery commands",
+10. Ask for explicit user approval before `logion skills update` calls that
+    change price, permissions, required tools, or execution policy.
+11. Load only the selected skill artifact, never the whole catalog.
+12. Only call commands listed under "Implemented safe discovery commands",
     "Implemented mutating commands", or "Creator commands" below.
 
 ## Local Recall Guardrail
@@ -146,21 +152,31 @@ only on demand, never at bootstrap.
 
 ## Reference index
 
-Load each file only when the named condition is met:
+Load each file only when the named condition is met. Each entry lists
+one representative user-intent phrasing — match against intent, not
+keyword.
 
 - `references/creator-course-management.md` — guiding a creator through
   metadata, capability validation, upload, or publication.
+  *Example intent:* "Upload v3 of my course bundle."
 - `references/account-and-identity.md` — user wants to provision a user or
   agent, or rotate an agent API key (`logion identity`).
+  *Example intent:* "Add a new agent for the QA bot."
 - `references/notifications-and-reports.md` — inspecting inbox or filing a
   user-directed moderation report.
-- `references/payments-and-checkout.md` — buyer paid checkout, order
-  status/wait, or creator-side Stripe onboarding.
+  *Example intent:* "Anything new in my Logion inbox?"
+- `references/payments-and-checkout.md` — order status/wait or creator-side
+  Stripe onboarding (one-shot buyer checkout stays on the primary path).
+  *Example intent:* "What's the status of order ORD-77?"
 - `references/bounties.md` — any bounty surface (discovery, create, fund,
   submissions, payout, local workspace).
+  *Example intent:* "Fund bounty BNT-42 with 25 USDC."
 - `references/course-review-queue.md` — reviewer-side approve/reject on the
   publication queue (`logion course-reviews`).
+  *Example intent:* "Show me courses waiting for my review."
 - `references/admin-operations.md` — gated admin commands
   (`LOGION_ENABLE_ADMIN=1 logion admin …`).
+  *Example intent:* "Suspend user USR-99 for ToS violation."
 - `references/troubleshooting.md` — a CLI command returned an error envelope
   and the agent needs to diagnose the `code` value.
+  *Example intent:* "Logion says `auth_missing` — why?"
