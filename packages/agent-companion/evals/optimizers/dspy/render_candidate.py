@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -264,6 +265,45 @@ def _instruction_reflection_leaks(instructions: str) -> list[str]:
     return [p for p in _REFLECTION_LEAK_PHRASES if p in haystack]
 
 
+# Patterns that capture a reference *claim* in instructions — a
+# backticked or quoted token positioned as if it were the name of a
+# loadable reference, or a literal ``references/<name>.md`` path.
+# Each pattern's first capture group must be the candidate name.
+_REFERENCE_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"``([a-z][a-z0-9-]+)``\s+references?\b", re.I),
+    re.compile(r"`([a-z][a-z0-9-]+)`\s+references?\b", re.I),
+    re.compile(r"\"([a-z][a-z0-9-]+)\"\s+references?\b", re.I),
+    re.compile(r"load\s+the\s+``([a-z][a-z0-9-]+)``", re.I),
+    re.compile(r"load\s+the\s+`([a-z][a-z0-9-]+)`", re.I),
+    re.compile(r"references/([a-z][a-z0-9-]+)\.md", re.I),
+)
+
+
+def _instruction_invented_references(
+    instructions: str, canonical: set[str]
+) -> list[str]:
+    """Return reference names claimed in instructions but absent from
+    the canonical inventory.  Catches the iter-N GEPA failure mode
+    where the reflection lm invents reference names (`email`, `video`)
+    that don't exist on disk.  ``canonical`` is the set of valid
+    reference names from the report; ``none`` is filtered out
+    automatically because it is not loadable.
+    """
+    if not instructions:
+        return []
+    skip = {n.lower() for n in canonical} | {"none"}
+    found: list[str] = []
+    seen: set[str] = set()
+    for pattern in _REFERENCE_CLAIM_PATTERNS:
+        for match in pattern.finditer(instructions):
+            name = match.group(1).lower()
+            if name in skip or name in seen:
+                continue
+            seen.add(name)
+            found.append(name)
+    return found
+
+
 def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
     """Count catalog course IDs in demo marketplace_results."""
     max_leaks = 0
@@ -303,6 +343,9 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
       I: SPECIFICITY_REGRESSION — fn_named_rate grew > 0.10 over baseline
       J: REFERENCE_INVENTORY_MISMATCH — predicted class outside the
          canonical 9-class inventory
+      K: INVENTED_REFERENCE_NAME — instructions claim a reference name
+         (e.g. \"the ``email`` reference\") not in the canonical
+         inventory
 
     Plus existing regressions and safety checks.
     """
@@ -413,6 +456,19 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
                 "the baseline when a reference was needed."
             )
         canonical = set(report.get("canonical_reference_names", []) or [])
+        if instructions:
+            invented = _instruction_invented_references(
+                instructions, canonical
+            )
+            if invented:
+                reasons.append(
+                    "INVENTED_REFERENCE_NAME: optimised instructions "
+                    f"name {len(invented)} reference(s) not in the "
+                    f"canonical inventory: "
+                    f"{', '.join(repr(n) for n in invented)}.  GEPA "
+                    "hallucinated a reference file that does not "
+                    "exist on disk."
+                )
         invalid = report.get("invalid_classes") or []
         invalid_predictions = report.get("invalid_predictions", 0)
         offending = [c for c in invalid if c not in canonical]

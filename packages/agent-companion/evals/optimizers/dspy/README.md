@@ -221,6 +221,7 @@ These extend the phase-6.10 gates and fire only when
 | H — NONE_FLOOR | `false_positive_rate_on_none_avg > 0.25` |
 | I — SPECIFICITY_REGRESSION | `fn_named_rate` grew > 0.10 over baseline |
 | J — REFERENCE_INVENTORY_MISMATCH | optimised classifier emitted a class outside the canonical 9 |
+| K — INVENTED_REFERENCE_NAME | optimised instructions claim a reference name not in the canonical inventory (e.g. `` ``email`` reference``) |
 
 All other gates (BLOAT, TOKEN_FACTOR, FACTOR_HIDING_GAIN,
 CATALOG_LEAK, CATALOG_LEAK_IN_INSTRUCTIONS, REFLECTION_LEAK,

@@ -393,3 +393,110 @@ class TestRendererPromoteVerdictForReferenceRouting:
         }
         verdict, reasons = _verdict(report)
         assert verdict == "promote", reasons
+
+
+class TestRendererGateInventedReferenceName:
+    """Gate K — instructions claim a reference that does not exist
+    in the canonical inventory.  Catches the iter-N May 2026 GEPA
+    failure where the proposal mentioned "the ``email`` reference"
+    and "the ``video`` reference" — neither of which is a file
+    under references/.
+    """
+
+    def test_blocks_on_backticked_invented_reference(self) -> None:
+        report = {
+            "signature": "reference_routing",
+            "delta": 0.1,
+            "canonical_reference_names": list(REFERENCE_NAMES),
+            "invalid_classes": [],
+            "invalid_predictions": 0,
+        }
+        instructions = (
+            "If the user is asking about inbox or emails, load the "
+            "``email`` reference if the primary path does not cover it."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        assert any("INVENTED_REFERENCE_NAME" in r for r in reasons)
+        assert any("'email'" in r for r in reasons)
+
+    def test_blocks_on_iter_n_real_world_email_and_video(self) -> None:
+        """Regression: the actual iter-N candidate text."""
+        report = {
+            "signature": "reference_routing",
+            "delta": 0.1,
+            "canonical_reference_names": list(REFERENCE_NAMES),
+            "invalid_classes": [],
+            "invalid_predictions": 0,
+        }
+        instructions = (
+            "If the request is about email management and the "
+            "installed capabilities include functions like reading, "
+            "sending, or organizing emails, the ``email`` reference "
+            "should be considered if the primary path does not "
+            "cover these functions.\n"
+            "If the request is about video editing or related "
+            "capabilities, check if the installed capabilities "
+            "include relevant functions. If they do, the primary "
+            "path likely covers it; otherwise, consider loading "
+            "the ``video`` reference."
+        )
+        verdict, reasons = _verdict(report, instructions=instructions)
+        assert verdict == "do not promote"
+        gate_reasons = [r for r in reasons if "INVENTED_REFERENCE_NAME" in r]
+        assert len(gate_reasons) == 1
+        # Both 'email' and 'video' should be reported.
+        assert "'email'" in gate_reasons[0]
+        assert "'video'" in gate_reasons[0]
+
+    def test_does_not_block_on_canonical_reference_name(self) -> None:
+        report = {
+            "signature": "reference_routing",
+            "delta": 0.1,
+            "canonical_reference_names": list(REFERENCE_NAMES),
+            "invalid_classes": [],
+            "invalid_predictions": 0,
+        }
+        instructions = (
+            "If the user asks about admin operations, load the "
+            "``admin-operations`` reference."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("INVENTED_REFERENCE_NAME" in r for r in reasons)
+
+    def test_handles_references_md_path(self) -> None:
+        report = {
+            "signature": "reference_routing",
+            "delta": 0.1,
+            "canonical_reference_names": list(REFERENCE_NAMES),
+            "invalid_classes": [],
+            "invalid_predictions": 0,
+        }
+        instructions = (
+            "Consider loading references/safety-and-approval.md "
+            "for confirmation flows."
+        )
+        _, reasons = _verdict(report, instructions=instructions)
+        assert any("INVENTED_REFERENCE_NAME" in r for r in reasons)
+        assert any("'safety-and-approval'" in r for r in reasons)
+
+    def test_does_not_fire_for_decision_policy_signature(self) -> None:
+        # The decision-policy signature doesn't carry a
+        # ``canonical_reference_names`` field; Gate K must not fire.
+        report = {
+            "delta": 0.1,
+        }
+        instructions = "Load the ``email`` reference when appropriate."
+        _, reasons = _verdict(report, instructions=instructions)
+        assert not any("INVENTED_REFERENCE_NAME" in r for r in reasons)
+
+    def test_does_not_block_when_instructions_empty(self) -> None:
+        report = {
+            "signature": "reference_routing",
+            "delta": 0.1,
+            "canonical_reference_names": list(REFERENCE_NAMES),
+            "invalid_classes": [],
+            "invalid_predictions": 0,
+        }
+        _, reasons = _verdict(report, instructions="")
+        assert not any("INVENTED_REFERENCE_NAME" in r for r in reasons)
