@@ -24,7 +24,11 @@ from evals.optimizers.dspy.render_candidate import _verdict
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS_PATH = (
-    PACKAGE_ROOT / "evals" / "scenarios_reference_routing" / "scenarios.yaml"
+    PACKAGE_ROOT
+    / "evals"
+    / "scenarios"
+    / "reference_routing"
+    / "scenarios.yaml"
 )
 
 
@@ -38,15 +42,17 @@ class TestSignatureInventory:
         assert len(REFERENCE_NAMES) == 9
         assert REFERENCE_NAMES[0] == "none"
 
-    def test_signature_docstring_under_900_chars(self) -> None:
+    def test_signature_docstring_under_250_chars(self) -> None:
+        """The ReferenceRoutingSignature docstring is a thin pointer to
+        SKILL.md.  It must stay under 250 chars."""
         pytest.importorskip("dspy")
         from evals.optimizers.dspy.reference_routing import (
             ReferenceRoutingSignature,
         )
 
         doc = ReferenceRoutingSignature.__doc__ or ""
-        assert "none" in doc
-        assert len(doc) <= 900, f"docstring is {len(doc)} chars"
+        assert "SKILL.md" in doc or "Reference" in doc
+        assert len(doc) <= 250, f"docstring is {len(doc)} chars"
 
     def test_canonical_inventory_matches_references_dir(self) -> None:
         refs_dir = PACKAGE_ROOT / "references"

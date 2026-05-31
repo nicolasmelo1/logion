@@ -1,9 +1,9 @@
 """Offline DSPy optimiser for the ReferenceRoutingSignature.
 
 Compiles a reference-routing classifier against the gold scenarios
-in ``evals/scenarios_reference_routing/scenarios.yaml``.  Produces a
+in ``evals/scenarios/reference_routing/scenarios.yaml``.  Produces a
 candidate report in the same shape as ``optimize_policy.py`` so the
-shared renderer machinery (phase-6.10 gates A-G + phase-6.11 gates
+shared renderer gates (decision-policy gates A-G + reference-routing
 H-J) can be reused unchanged.
 
 DSPy is an optional extra; install with ``pip install -e '.[dspy]'``.
@@ -11,7 +11,7 @@ DSPy is an optional extra; install with ``pip install -e '.[dspy]'``.
 Usage::
 
     python evals/optimizers/dspy/optimize_references.py \
-        --scenarios evals/scenarios_reference_routing/scenarios.yaml \
+        --scenarios evals/scenarios/reference_routing/scenarios.yaml \
         --optimizer bootstrap_few_shot \
         --output evals/optimizers/dspy/generated_candidates/ref-001.json
 
@@ -451,7 +451,7 @@ def run_optimization(
         "split_hash": _split_hash(split),
         "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
         "program_path": str(program_path) if program_path else None,
-        # Reference-routing-specific aggregates (phase 6.11).
+        # Reference-routing-specific aggregates.
         "false_positive_rate_on_none_avg": round(
             optimized_rates["false_positive_rate_on_none"], 4
         ),
@@ -512,7 +512,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--scenarios",
         type=Path,
-        default=Path("evals/scenarios_reference_routing/scenarios.yaml"),
+        default=Path("evals/scenarios/reference_routing/scenarios.yaml"),
         help="Path to the reference-routing scenarios YAML.",
     )
     parser.add_argument(

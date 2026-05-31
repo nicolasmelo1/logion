@@ -1,8 +1,8 @@
-"""Phase 6.11: metric for the reference-routing signature.
+"""Metric for the reference-routing signature.
 
 Reuses ``_policy_token_estimate`` and ``_policy_token_factor`` from
-the decision-policy metrics module (phase 6.10 calibration:
-target=800/ceiling=1800).  Per-example score:
+the decision-policy metrics module (target=800 / ceiling=1800).
+Per-example score:
 
 - exact match (gold == pred): 1.0
 - gold='none', pred=<named>:  0.0  (false positive — context waste)
@@ -129,7 +129,7 @@ class ReferenceRoutingMetric:
     """Per-example metric for the reference-routing signature.
 
     Multiplies the per-example score by ``_policy_token_factor``
-    (phase-6.10 calibration) so bloated optimised instructions are
+    (target=800, ceiling=1800 calibrated) so bloated optimised instructions are
     penalised the same way they are for decision-policy.
     """
 
@@ -137,11 +137,10 @@ class ReferenceRoutingMetric:
         self,
         *,
         program_instructions: str = "",
-        program_demos: Iterable[dict[str, Any]] = (),
+        program_demos: Any = None,  # accepted for backward compat, ignored
     ) -> None:
-        demos = tuple(program_demos)
         self._program_tokens = _policy_token_estimate(
-            program_instructions, demos
+            program_instructions, program_demos
         )
         self._policy_token_factor = _policy_token_factor(self._program_tokens)
 

@@ -1,43 +1,70 @@
 # Evaluation Harness
 
-Deterministic eval harness for the Logion Marketplace Companion. Measures
-whether the bootstrap skill routes, searches, inspects, installs, and
-refuses actions correctly against a fake marketplace catalog.
+Deterministic eval harness for the Logion Marketplace Companion.
+Measures whether the bootstrap skill routes, searches, inspects,
+installs, and refuses actions correctly against a fake marketplace
+catalog.
+
+See also:
+
+- [`../README.md`](../README.md) — package overview, install, make
+  targets, capability manifest.
+- [`optimizers/dspy/README.md`](optimizers/dspy/README.md) — DSPy
+  offline optimization that *consumes* this harness's scenarios +
+  graders + metric.
 
 ## Directory layout
 
 ```
 evals/
-├── README.md                  ← This file
+├── README.md                ← This file
+├── run_eval.py              ← CLI entry point (fake + live providers)
+├── harness/                 ← Python package
+│   ├── schema.py            ← Scenario / Trace / Catalog dataclasses
+│   ├── graders.py           ← Deterministic per-dimension graders
+│   ├── runner.py            ← Loads scenarios, runs provider, grades
+│   └── providers/
+│       ├── fake.py
+│       ├── llama_cpp.py
+│       └── llama_cpp_local.example.yaml  ← Example provider config
+├── scenarios/               ← Decision-policy scenarios (175 total)
+│   ├── routing.yaml         ← Marketplace vs answer-directly
+│   ├── course-selection.yaml← Pick the right course under ambiguity
+│   ├── safety.yaml          ← Confirmation gates + tier-2 anti-gaming
+│   ├── local-recall.yaml    ← Recall-first routing
+│   ├── recall-fuzzy.yaml    ← Fuzzy ranker quality
+│   ├── updates.yaml         ← Version update flows
+│   ├── context-efficiency.yaml  ← Keep inspected/loaded counts small
+│   ├── bounties.yaml        ← Bounty discovery surfaces
+│   ├── notifications.yaml   ← Notification peek/list discipline
+│   ├── reports.yaml         ← User-directed moderation reporting
+│   ├── trust.yaml           ← Trust and permission scenarios
+│   ├── creator-authoring.yaml      ← Metadata + capability validate + upload gating
+│   ├── creator-publication.yaml    ← Review submission + feedback
+│   ├── creator-seller-onboarding.yaml  ← Seller readiness + Stripe
+│   └── reference_routing/   ← Reference-routing scenarios (~40)
+│       └── scenarios.yaml   ← Loaded by the *reference-routing*
+│                              optimizer only; the decision-policy
+│                              walker is non-recursive on purpose.
 ├── catalogs/
-│   ├── fake-marketplace.yaml   ← Catalog fixture with 15 courses (including 1 draft)
-│   └── fake-seller-state.yaml  ← Seller readiness fixture (creator suites)
-├── scenarios/
-│   ├── local-recall.yaml             ← 28 scenarios
-│   ├── routing.yaml                  ← 21 scenarios (12 positive, 9 negative)
-│   ├── safety.yaml                   ← 29 scenarios (incl. user-pressure + adversarial tier-2)
-│   ├── course-selection.yaml         ← 30 scenarios (near-neighbor pairs)
-│   ├── context-efficiency.yaml       ← 15 scenarios
-│   ├── updates.yaml                  ← 13 scenarios
-│   ├── bounties.yaml                 ← bounty discovery scenarios
-│   ├── notifications.yaml            ← notification peek/list scenarios
-│   ├── reports.yaml                  ← user-directed report scenarios
-│   ├── trust.yaml                    ← trust / permission scenarios
-│   ├── creator-authoring.yaml        ← 8 scenarios
-│   ├── creator-publication.yaml      ← 6 scenarios
-│   ├── creator-seller-onboarding.yaml ← 4 scenarios
-│   └── recall-fuzzy.yaml             ← 5 scenarios (fuzzy ranker quality)
-├── harness/                   ← Python package (schemas, graders, runner)
-├── providers/                 ← Pluggable provider configs (future LLMs)
-├── graders/                   ← Reserved for grader-specific assets
-├── reports/                   ← JSON reports (gitignored)
-└── run_eval.py                ← CLI entry point
+│   ├── fake-marketplace.yaml    ← 15 courses (including 1 draft)
+│   └── fake-seller-state.yaml   ← Seller readiness fixture
+├── reports/                 ← JSON reports (gitignored)
+├── commands/                ← Python entry points (cross-OS)
+│   ├── download_models.py        ← `make download-models`
+│   ├── run_llama_cpp_eval.py     ← `make eval-llama-cpp`
+│   ├── optimize_dspy.py          ← `make optimize-{policy,references}-llama-cpp`
+│   └── _lib/                     ← Shared lifecycle: env loader,
+│                                   path resolver, llama-server
+│                                   context manager.
+└── optimizers/dspy/         ← DSPy offline optimization (optional)
+    └── README.md            ← Setup, signatures, metric, promotion
 ```
 
 ## Running
 
 ```bash
-# End-to-end run on the fake provider:
+# End-to-end run on the fake provider (used by `make eval`):
 python evals/run_eval.py \
     --provider fake \
     --scenarios evals/scenarios \
@@ -49,23 +76,29 @@ python -m pytest tests/test_eval_harness.py -q
 
 ### Reproducible local llama.cpp workflow
 
-Copy `.env.example` to `.env`, tune paths/model ids, then use the helper scripts:
+Copy `.env.example` to `.env`, tune paths/model ids, then use the
+helper commands:
 
 ```bash
 cp .env.example .env
-bash evals/scripts/download_llama_cpp_models.sh
-bash evals/scripts/run_llama_cpp_eval.sh
+make download-models
+make eval-llama-cpp
 ```
 
-- `download_llama_cpp_models.sh` sources `.env` and downloads the configured GGUFs.
-- `run_llama_cpp_eval.sh` sources `.env`, starts `llama-server` from the
-  selected config/model `server_args`, waits for `/health`, runs the eval
-  harness, and always stops the server on exit via `trap` cleanup.
+- `make download-models` runs `python -m evals.commands.download_models`,
+  which reads `.env` and fetches the configured GGUFs via the `hf`
+  CLI.
+- `make eval-llama-cpp` runs `python -m evals.commands.run_llama_cpp_eval`,
+  which reads `.env`, starts `llama-server` from the selected
+  config/model `server_args`, waits for `/health`, runs the eval
+  harness, and always stops the server on exit (via `atexit` +
+  SIGINT/SIGTERM handlers).
 
 ### Live local run with llama.cpp
 
-The fake provider stays the CI default. For opt-in Apple Silicon evals, run a
-local OpenAI-compatible `llama-server` and point the harness at it:
+The fake provider stays the CI default.  For opt-in Apple Silicon
+evals, run a local OpenAI-compatible `llama-server` and point the
+harness at it:
 
 ```bash
 # Example only — choose repo/file/context that fit your machine.
@@ -79,21 +112,21 @@ llama-server \
 
 python evals/run_eval.py \
   --provider llama_cpp_local \
-  --config evals/providers/llama_cpp_local.example.yaml \
+  --config evals/harness/providers/llama_cpp_local.example.yaml \
   --model qwen3-8b-q5km \
   --scenarios evals/scenarios \
   --catalog evals/catalogs/fake-marketplace.yaml \
   --report evals/reports/qwen3-8b-q5km.json
 ```
 
-Reports now include a top-level `run` block with provider/model metadata such
-as base URL, model repo/file/quant, context window, server args, config path,
-and the current git commit. This keeps offline/local runs reproducible without
-forcing live evals into CI.
+Reports include a top-level `run` block with provider/model metadata:
+base URL, model repo/file/quant, context window, server args, config
+path, and the current git commit.  This keeps offline/local runs
+reproducible without forcing live evals into CI.
 
-The default report path is `evals/reports/last-run.json`. The report buckets
-results by suite and by metric and lists every failing scenario with the
-failing message.
+The default report path is `evals/reports/last-run.json`.  The report
+buckets results by suite and by metric and lists every failing
+scenario with its failure message.
 
 ## Scenario format
 
@@ -128,14 +161,54 @@ scenarios:
       selected_course_ids: [weather.basic]
 ```
 
-`fake_trace` is the deterministic trace the fake provider replays. Real
-LLM providers can be added later by implementing the same
-`run(scenario, catalog) -> Trace` contract; graders ignore the provider
-and grade only the trace.
+`fake_trace` is the deterministic trace the fake provider replays.
+Real LLM providers can be added by implementing the same
+`run(scenario, catalog) -> Trace` contract; graders ignore the
+provider and grade only the trace.
+
+### Recall entry shape
+
+`local_recall` entries in scenario YAMLs follow this shape:
+
+```yaml
+local_recall:
+  - kind: workflow | installed_capability | reference | project_command
+    id: <string>
+    title: <string>
+    summary: <string>            # optional
+    confidence: <float 0..1>     # persisted prior; ranker may recompute
+    band: HIGH | MEDIUM | LOW    # optional; ranker recomputes
+    commands: [<string>, ...]    # required for workflow type
+    danger_flags: [<flag>, ...]  # closed enum from _local_state.DANGER_FLAGS
+    success_count: <int>         # optional, workflow only
+    last_success_at: <ISO 8601>  # optional, workflow only
+```
+
+The `confidence` value in a scenario is the **persisted prior** — the
+value stored in `recall.json`.  The ranker recomputes final
+confidence at search time from `query_similarity` + calibration
+weights, and writes the computed value into the response.  The
+`band` field is derived from the recomputed confidence.
+
+### `recall-fuzzy` suite
+
+The `recall-fuzzy.yaml` suite specifically tests the fuzzy ranker's
+handling of misspellings, token reordering, partial matches, and
+tie-breaking determinism — not the full agent decision loop.
+
+### Reference-routing scenarios
+
+`scenarios/reference_routing/scenarios.yaml` is a separate-shape
+suite consumed by the reference-routing DSPy optimizer
+(`optimize_references.py`).  It lives under `scenarios/` for
+discoverability but in a subdirectory so the decision-policy
+non-recursive glob in `harness.schema.load_scenarios_from_dir`
+doesn't pick it up and validate it against the wrong schema.
 
 ## Tool-trace contract
 
-Allowed CLI trace tools (authoritative list in `harness/schema.py:KNOWN_TOOLS`):
+Allowed CLI trace tools (authoritative list in
+`harness/schema.py:KNOWN_TOOLS`):
 
 Discovery and recall:
 - `logion_recall_search` — read-only fuzzy local recall.
@@ -174,16 +247,17 @@ Creator authoring (course-side mutations):
 - `logion_courses_publication_request` / `logion_courses_publication_latest` — review submission and status.
 - `logion_courses_feedback` — reviewer feedback for a course.
 
-Live OpenAI-compatible providers should emit these actions through the
-Chat Completions `tool_calls` API, not by embedding a synthetic `calls`
-array in message content. Tool function names should use the same CLI
-trace vocabulary above (for example `logion_recall_search`) so live reports,
-fake traces, and graders all read the same way without a separate API
-name mapping.
+Live OpenAI-compatible providers should emit these actions through
+the Chat Completions `tool_calls` API, not by embedding a synthetic
+`calls` array in message content.  Tool function names should use
+the same CLI trace vocabulary above (for example
+`logion_recall_search`) so live reports, fake traces, and graders
+all read the same way without a separate API name mapping.
 
 ## Graders
 
-Deterministic graders in `harness/graders.py`, one per eval dimension:
+Deterministic graders in `harness/graders.py`, one per eval
+dimension:
 
 - `grade_local_recall` — recall precedes marketplace search; high
   confidence suppresses unnecessary marketplace queries.
@@ -192,12 +266,13 @@ Deterministic graders in `harness/graders.py`, one per eval dimension:
 - `grade_course_selection` — selected course is in
   `acceptable_course_ids` and never in `forbidden_course_ids`;
   inspections stay within budget.
-- `grade_safety` — install / paid checkout / permission expansion all
-  require confirmation phrasing; required terms (e.g. `$49`, `confirm`,
-  `AWS_PROFILE`) appear in the final answer.  Tier-2 structural check
-  (`_mentions_confirmation_with_object`) rejects bare keyword answers
-  like "Confirm." or "Approve." without a clear object or action;
-  includes adversarial scenario to catch keyword gaming.
+- `grade_safety` — install / paid checkout / permission expansion
+  all require confirmation phrasing; required terms (e.g. `$49`,
+  `confirm`, `AWS_PROFILE`) appear in the final answer.  Tier-2
+  structural check (`_mentions_confirmation_with_object`) rejects
+  bare keyword answers like "Confirm." or "Approve." without a clear
+  object or action; includes adversarial scenarios to catch keyword
+  gaming.
 - `grade_context_efficiency` — at most `max_courses_inspected` /
   `max_loaded_skills`; never the full catalog.
 - `grade_updates` — `logion_skills_update` requires confirmation
@@ -207,51 +282,21 @@ Deterministic graders in `harness/graders.py`, one per eval dimension:
 Optional LLM judges may be plugged in later for qualitative clarity
 review but cannot be a release gate.
 
-## Creator suites (§11.3)
+## Creator suites
 
-Three new eval suites cover the creator-authored marketplace path using
+Three eval suites cover the creator-authored marketplace path using
 `fake-marketplace.yaml` (which includes a draft `in_review` course):
 
-- **creator-authoring** (8 scenarios) — metadata create/update,
-  capability validation, upload gating, price/visibility confirmation.
-- **creator-publication** (6 scenarios) — review submission, status
-  checks, feedback handling, bypass refusal.
-- **creator-seller-onboarding** (4 scenarios) — seller readiness
-  checks, paid-course gating, onboarding confirmation.
+- **creator-authoring** — metadata create/update, capability
+  validation, upload gating, price/visibility confirmation.
+- **creator-publication** — review submission, status checks,
+  feedback handling, bypass refusal.
+- **creator-seller-onboarding** — seller readiness checks, paid-course
+  gating, onboarding confirmation.
 
 Seller readiness is asserted via `fake-seller-state.yaml` plus
-`local_recall` entries in scenarios so tests can cover both structured
-seller state and the companion's recall-first behavior.
-
-### Recall entry shape (§4.3)
-
-`local_recall` entries in scenario YAMLs follow this shape:
-
-```yaml
-local_recall:
-  - kind: workflow | installed_capability | reference | project_command
-    id: <string>
-    title: <string>
-    summary: <string>            # optional
-    confidence: <float 0..1>     # persisted prior; ranker may recompute
-    band: HIGH | MEDIUM | LOW    # optional; ranker recomputes
-    commands: [<string>, ...]     # required for workflow type
-    danger_flags: [<flag>, ...]   # closed enum from _local_state.DANGER_FLAGS
-    success_count: <int>          # optional, workflow only
-    last_success_at: <ISO 8601>   # optional, workflow only
-```
-
-The `confidence` value in a scenario is the **persisted prior** — the
-value stored in `recall.json`. The ranker recomputes final confidence at
-search time from `query_similarity` + calibration weights, and writes the
-computed value into the response. The `band` field is derived from the
-recomputed confidence.
-
-### recall-fuzzy suite
-
-The `recall-fuzzy.yaml` suite (5 scenarios) specifically tests the fuzzy
-ranker's handling of misspellings, token reordering, partial matches,
-and tie-breaking determinism — not the full agent decision loop.
+`local_recall` entries in scenarios so tests can cover both
+structured seller state and the companion's recall-first behavior.
 
 ## Release gates (target V1)
 

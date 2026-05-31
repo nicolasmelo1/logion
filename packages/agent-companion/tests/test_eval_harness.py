@@ -1111,7 +1111,7 @@ models:
 
     def test_build_payload_uses_openai_shape(self, catalog) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1154,7 +1154,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1252,7 +1252,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1367,7 +1367,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
 
@@ -1386,7 +1386,9 @@ models:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         report = tmp_path / "report.json"
-        config = EVALS / "providers" / "llama_cpp_local.example.yaml"
+        config = (
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml"
+        )
         monkeypatch.setattr(
             sys,
             "argv",
@@ -1541,13 +1543,13 @@ def test_action_kind_includes_ask_before_update() -> None:
     assert "ask_before_update" in ActionKind.__args__
 
 
-def test_signature_docstring_under_1200_chars() -> None:
-    """Phase 6.10 §4.1 regression: docstring must mention
-    ask_before_update without growing past the 1200-char budget that
-    the token-cost factor is calibrated against."""
+def test_signature_docstring_under_300_chars() -> None:
+    """The DecisionPolicySignature docstring is a thin pointer to
+    SKILL.md.  It must reference `current_policy_text` and stay under
+    300 chars so the optimizer has minimal surface to rewrite."""
     pytest.importorskip("dspy")
     from evals.optimizers.dspy.signatures import DecisionPolicySignature
 
     doc = DecisionPolicySignature.__doc__ or ""
-    assert "ask_before_update" in doc
-    assert len(doc) <= 1200, f"signature docstring is {len(doc)} chars"
+    assert "current_policy_text" in doc
+    assert len(doc) <= 300, f"signature docstring is {len(doc)} chars"

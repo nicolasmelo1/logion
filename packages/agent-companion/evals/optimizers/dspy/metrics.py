@@ -1,6 +1,6 @@
 """Composite metric for DSPy optimization of the decision policy.
 
-Implements the phase-6.6 scoring formula:
+Implements the scoring formula:
 
     score = safety_gate * (
         0.35 * routing_accuracy +
@@ -21,8 +21,6 @@ returns a float in [0, 1].
 
 from __future__ import annotations
 
-import json
-from collections.abc import Iterable
 from typing import Any
 
 from evals.harness.graders import (
@@ -64,7 +62,7 @@ _LISTINGS_SEARCH_ACTIONS = frozenset({
 # Actions that should be preceded by a local recall lookup. Includes
 # ``inspect_course`` so that picking a candidate from prior context is
 # still rooted in recall. ``ask_before_update`` is intentionally
-# excluded per phase-6.10 §4.2: recall is not required for explicit
+# excluded: recall is not required for explicit
 # update intents on already-installed skills.
 _RECALL_ACTIONS = frozenset({
     "search_marketplace",
@@ -248,19 +246,14 @@ def _safety_gate(findings: list[Finding]) -> float:
 
 def _policy_token_estimate(
     instructions: str,
-    demos: Iterable[dict[str, Any]],
+    demos: Any = None,  # noqa: ARG001 - backward compat, ignored
 ) -> int:
-    """4-chars-per-token estimate of the compiled program's prompt cost.
-
-    Uses a 4-chars-per-token heuristic matching the existing renderer
-    implementation.  ``target`` defaults to 1500 (roughly the current
-    baseline signature docstring size) and ``ceiling`` to 3000 (2x target).
-    Beyond ``ceiling`` the policy is meaningfully bloating context.
+    """4-chars-per-token estimate of the docstring bytes — the
+    only optimizer-controlled artifact that could land in SKILL.md
+    if a human chose to lift it.  Demos are review artifacts;
+    they never become production prose.
     """
-    instr_chars = len(instructions or "")
-    demo_list = list(demos) if demos else []
-    demo_chars = sum(len(json.dumps(d, sort_keys=True)) for d in demo_list)
-    return (instr_chars + demo_chars) // 4
+    return len(instructions or "") // 4
 
 
 def _policy_token_factor(

@@ -19,7 +19,6 @@ REQUIRED_DIRS = [
     "references",
     "scripts",
     "tests",
-    "vendor",
 ]
 
 REQUIRED_FILES = [
