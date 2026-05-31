@@ -29,23 +29,29 @@ UNAVAILABLE_TOOLS: tuple[str, ...] = ("logion skills search",)
 class DecisionPolicySignature(dspy.Signature):
     """Decide which action the Logion bootstrap skill should take.
 
-    Given the user prompt, the set of installed capabilities, available
-    marketplace search results, and the current policy instructions,
-    produce a structured decision with action, optional search query,
-    selected courses, confirmation flag, and a short reason.
+    Given the user prompt, installed capabilities, marketplace
+    search results, and the current policy instructions, produce a
+    structured decision with action, optional query, selected
+    courses, confirmation flag, and a short reason.
+
+    Priority order:
+    - If an installed capability already satisfies the request,
+      pick `answer_directly` or `load_existing_skill` and stay on
+      the primary path — do not search the marketplace.
+    - Otherwise, route via `search_marketplace` (which maps to
+      `logion listings search`), inspect via `inspect_course`,
+      and gate any install / paid checkout behind a confirmation
+      ask.
 
     Constraints:
-    - Only emit actions from the `ActionKind` enum; do not invent new
-      action names or route through tools that are not yet implemented.
-    - Treat any command labeled "planned" in `current_policy_text` as
-      unavailable. Specifically, the following are NOT executable yet
-      and must not appear in the chosen routing: logion skills search.
-    - Marketplace search must go through `search_marketplace`
-      (which corresponds to `logion listings search`), never through a
-      planned/unimplemented command.
-    - Use `ask_before_update` when the user requests an update to an
-      installed capability and the new version's manifest changes
-      price, permissions, required tools, or execution policy.
+    - Only emit actions from the `ActionKind` enum; do not invent
+      new action names or route through tools that are not yet
+      implemented (e.g. `logion skills search` is planned, not
+      executable).
+    - Use `ask_before_update` when the user requests an update to
+      an installed capability and the new version's manifest
+      changes price, permissions, required tools, or execution
+      policy.
     """
 
     user_prompt: str = dspy.InputField(
