@@ -1,10 +1,16 @@
 # course/capabilities.yaml — Logion Marketplace Companion
 #
-# Canonical Logion capability manifest.  Validated by the same code path
-# the CLI and marketplace API use, so this file dogfoods the schema all
-# course authors must follow.  The semantic feature list (recall.search,
-# course.author, ...) lives in references/companion-capabilities.md and
-# is not part of this manifest.
+# Canonical Logion capability manifest.  Validated by the same code
+# path the CLI and marketplace API use, so this file dogfoods the
+# schema all course authors must follow (see
+# logion/packages/cli/cli/templates/course_capabilities.template.yaml).
+#
+# This package ships SKILL.md + references AND a developer-side eval
+# / DSPy optimizer / llama.cpp boot harness.  This manifest declares
+# the *combined* surface honestly: env vars the package code reads
+# from ``.env`` and via ``os.environ.get``, network hosts the
+# download + llama-server lifecycle actually contact, and the
+# filesystem paths reports/candidates/models are written under.
 
 version: 1
 
@@ -13,20 +19,131 @@ summary: >-
   updating, creating, and managing Logion courses without loading the
   whole marketplace into context.
 
+# tools — closed enum from the manifest schema.
+#   file      — reads SKILL.md, references, scenario YAMLs, provider
+#               configs, downloaded GGUFs, .env defaults.
+#   terminal  — boots ``llama-server``, invokes ``hf`` / ``uv`` /
+#               ``python`` as subprocesses, and shells out to the
+#               public ``logion`` CLI at agent runtime.
+#   web       — outbound HTTP from Python code: ``urllib.request``
+#               health-pings the local llama-server, and the
+#               ``hf download`` subprocess fetches GGUFs over HTTPS.
 tools:
   - file
   - terminal
+  - web
 
+# Outbound HTTP allow-list.  Plain hostnames only — no scheme, no
+# path, no wildcards.
+#   huggingface.co, cdn-lfs.huggingface.co, cdn-lfs-us-1.hf.co,
+#   xet-bridge.xethub.hf.co, cas-bridge.xethub.hf.co
+#     ``hf download`` pulls GGUFs (Qwen3-4B/8B, Gemma3-4B) from the
+#     Hub.  Newer / regional / Xet-backed routes need all five hosts;
+#     older repos serve from huggingface.co + cdn-lfs.huggingface.co
+#     alone.
+#   127.0.0.1, localhost — local llama-server boots on
+#     127.0.0.1:8080 by default (see
+#     evals/harness/providers/llama_cpp_local.example.yaml).  Both names are
+#     listed so a sandbox that resolves by hostname can still reach
+#     it.
+#   pypi.org, files.pythonhosted.org — ``uv sync`` (and ``pip`` under
+#     the hood) resolve the index at pypi.org and fetch the actual
+#     wheels/sdists from files.pythonhosted.org.  Required at install
+#     time for the dspy/optuna optional extra and the dev group.
+#   github.com, objects.githubusercontent.com — ``uv`` bootstraps a
+#     ``python-build-standalone`` interpreter from GitHub releases on
+#     first run when the sandbox lacks a Python ≥3.12.  GitHub
+#     releases redirect to objects.githubusercontent.com for the
+#     actual asset bytes.
 network:
-  allow_domains: []
+  allow_domains:
+    - huggingface.co
+    - cdn-lfs.huggingface.co
+    - cdn-lfs-us-1.hf.co
+    - xet-bridge.xethub.hf.co
+    - cas-bridge.xethub.hf.co
+    - 127.0.0.1
+    - localhost
+    - pypi.org
+    - files.pythonhosted.org
+    - github.com
+    - objects.githubusercontent.com
 
+# Filesystem allow-list.  Paths must be relative to the package root
+# (no absolute paths, no ``..``).
+#   read  — broad, since the harness, optimizer, and package_skill
+#           validator traverse the package looking for SKILL.md,
+#           references/, evals/, course/, .env, and .models/.
+#   write — the three locations the dev tooling actually writes to:
+#           downloaded GGUF cache, eval reports, and DSPy candidate
+#           reports / programs / review packets.
 filesystem:
   read:
     - .
-  write: []
+  write:
+    - .models
+    - evals/reports
+    - evals/optimizers/dspy/generated_candidates
 
+# Env vars the agent-companion code itself reads (via ``os.environ``
+# or sourced from ``.env``).  Downstream env vars consumed by the
+# ``logion`` CLI subprocess (``LOGION_API_KEY``, ``LOGION_BASE_URL``,
+# etc.) belong to the CLI's own manifest, not this one.
+#
+# Grouped here by purpose; the validator sorts and de-duplicates at
+# load time.
 secrets:
-  env: []
+  env:
+    # Model downloads (``evals/commands/download_models.py``).
+    - HF_TOKEN
+    - LOGION_MODEL_CACHE_DIR
+    - LOGION_DOWNLOAD_QWEN3_4B
+    - LOGION_DOWNLOAD_QWEN3_8B
+    - LOGION_DOWNLOAD_GEMMA3_4B
+    - QWEN3_4B_REPO
+    - QWEN3_4B_FILE
+    - QWEN3_8B_REPO
+    - QWEN3_8B_FILE
+    - GEMMA3_4B_REPO
+    - GEMMA3_4B_FILE
+    # llama.cpp eval runner (``evals/commands/run_llama_cpp_eval.py``).
+    - LOGION_LLAMACPP_CONFIG
+    - LOGION_LLAMACPP_MODEL_ID
+    - LOGION_EVAL_SCENARIOS
+    - LOGION_EVAL_CATALOG
+    - LOGION_EVAL_REPORT
+    - LLAMA_SERVER_BIN
+    - LLAMA_EXTRA_ARGS
+    # DSPy offline optimizer (``evals/commands/optimize_dspy.py`` +
+    # ``evals/optimizers/dspy/optimize_*.py``).
+    - LOGION_DSPY_OPTIMIZER
+    - LOGION_DSPY_SPLIT
+    - LOGION_DSPY_OUTPUT
+    - LOGION_DSPY_REF_OUTPUT
+    - LOGION_DSPY_SEED
+    - LOGION_DSPY_CTX_SIZE
+    - LOGION_DSPY_REUSE_SPLIT
+    - LOGION_REF_ROUTING_SCENARIOS
+    - LOGION_GEPA_AUTO
+    - MODEL_CACHE_DIR
+    # DSPy / litellm runtime knobs forwarded to optimize_policy.py
+    # and optimize_references.py.
+    - DSPY_LM
+    - DSPY_API_BASE
+    - DSPY_API_KEY
+    - DSPY_REFLECTION_LM
+    - DSPY_REFLECTION_API_BASE
+    - DSPY_REFLECTION_API_KEY
+    # Live-LLM test gate (``tests/test_eval_harness.py``).
+    - LOGION_RUN_LIVE_LLM_EVALS
 
+# Per-action approval lives in SKILL.md's
+# ``safety.requires_confirmation`` enum (paid_checkout,
+# install_new_capability, update_paid_capability,
+# permission_expansion, publish_or_unpublish_course,
+# upload_new_course_version, change_course_price).  A blanket
+# ``required: true`` here would force approval on every routine
+# recall lookup and listing search, which is the wrong UX for a
+# bootstrap skill that runs constantly in the background.
 human_approval:
-  required: true
+  required: false

@@ -85,4 +85,11 @@ exclude_dirs = [
     ".venv",
     "packages/client/src/logion/v1/_types/generated",
 ]
-skips = ["B101"]
+# B101: assert (we use it intentionally).
+# B404/B603/B607: subprocess module + shell=False launches + PATH-resolved
+#   binaries are the recommended pattern, not a vulnerability.  The
+#   agent-companion eval commands intentionally boot local binaries
+#   (llama-server, uv, hf, python) by PATH name.
+# B310: urlopen against URLs constructed from vetted YAML provider
+#   configs (local llama-server health check).
+skips = ["B101", "B404", "B603", "B607", "B310"]

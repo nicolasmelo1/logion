@@ -24,7 +24,11 @@ from evals.optimizers.dspy.render_candidate import _verdict
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS_PATH = (
-    PACKAGE_ROOT / "evals" / "scenarios_reference_routing" / "scenarios.yaml"
+    PACKAGE_ROOT
+    / "evals"
+    / "scenarios"
+    / "reference_routing"
+    / "scenarios.yaml"
 )
 
 

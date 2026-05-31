@@ -8,7 +8,7 @@ Examples:
 
     python evals/run_eval.py \
         --provider llama_cpp_local \
-        --config evals/providers/llama_cpp_local.example.yaml \
+        --config evals/harness/providers/llama_cpp_local.example.yaml \
         --model qwen3-8b-q5km \
         --scenarios evals/scenarios \
         --catalog evals/catalogs/fake-marketplace.yaml

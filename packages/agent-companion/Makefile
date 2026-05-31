@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 # Override defaults via env, e.g.:
 #   make eval-llama-cpp MODEL=qwen3-8b-q5km LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
-CONFIG ?= evals/providers/llama_cpp_local.example.yaml
+CONFIG ?= evals/harness/providers/llama_cpp_local.example.yaml
 MODEL ?= qwen3-8b-q5km
 LLAMA_EXTRA_ARGS ?=
 
@@ -30,11 +30,13 @@ eval:
 		--catalog evals/catalogs/fake-marketplace.yaml
 
 download-models:
-	bash evals/scripts/download_llama_cpp_models.sh
+	uv run python -m evals.commands.download_models
 
 eval-llama-cpp:
-	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
-		bash evals/scripts/run_llama_cpp_eval.sh "$(CONFIG)" "$(MODEL)"
+	uv run python -m evals.commands.run_llama_cpp_eval \
+		--config "$(CONFIG)" \
+		--model "$(MODEL)" \
+		--llama-extra-args "$(LLAMA_EXTRA_ARGS)"
 
 # --- DSPy offline optimization (requires [dspy] extra) ---
 
@@ -43,11 +45,10 @@ SPLIT_OUTPUT ?= evals/optimizers/dspy/generated_candidates/split.json
 OPTIMIZER ?= bootstrap_few_shot
 OPTIMIZER_OUTPUT ?= evals/optimizers/dspy/generated_candidates/candidate-$(shell date +%Y%m%d-%H%M%S).json
 
-# Per-slot context size override forwarded to the llama_cpp runner
-# scripts (LOGION_DSPY_CTX_SIZE).  Default 16384 covers GEPA + most
-# MIPROv2 runs; bump to 32768 when the MIPROv2 proposer prompt
-# overflows because the signature carries large input fields (e.g.
-# `current_policy_text` shipping the full SKILL.md).
+# Per-slot context size override forwarded to the llama-server boot.
+# Default 16384 covers GEPA + most MIPROv2 runs; bump to 32768 when the
+# MIPROv2 proposer prompt overflows because the signature carries large
+# input fields (e.g. ``current_policy_text`` shipping the full SKILL.md).
 CTX_SIZE ?= 16384
 
 split-scenarios:
@@ -66,21 +67,24 @@ optimize-policy: split-scenarios
 		--optimizer $(OPTIMIZER) \
 		--output $(OPTIMIZER_OUTPUT)
 
-# Boot llama-server for $(MODEL) from $(CONFIG) and run DSPy optimization
-# against it. Override OPTIMIZER, SPLIT_OUTPUT, OPTIMIZER_OUTPUT,
-# LLAMA_EXTRA_ARGS, LOGION_DSPY_REUSE_SPLIT as needed.
+# Boot llama-server for $(MODEL) from $(CONFIG) and run DSPy decision-policy
+# optimization against it. Override OPTIMIZER, SPLIT_OUTPUT, OPTIMIZER_OUTPUT,
+# LLAMA_EXTRA_ARGS as needed.
 optimize-policy-llama-cpp:
-	LOGION_DSPY_OPTIMIZER="$(OPTIMIZER)" \
-	LOGION_DSPY_SPLIT="$(SPLIT_OUTPUT)" \
-	LOGION_DSPY_OUTPUT="$(OPTIMIZER_OUTPUT)" \
-	LOGION_DSPY_SEED="$(SPLIT_SEED)" \
-	LOGION_DSPY_CTX_SIZE="$(CTX_SIZE)" \
-	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
-		bash evals/scripts/run_llama_cpp_dspy_optimize.sh "$(CONFIG)" "$(MODEL)" "$(OPTIMIZER)"
+	uv run --group dspy python -m evals.commands.optimize_dspy \
+		--target policy \
+		--config "$(CONFIG)" \
+		--model "$(MODEL)" \
+		--optimizer "$(OPTIMIZER)" \
+		--seed $(SPLIT_SEED) \
+		--ctx-size $(CTX_SIZE) \
+		--split "$(SPLIT_OUTPUT)" \
+		--output "$(OPTIMIZER_OUTPUT)" \
+		--llama-extra-args "$(LLAMA_EXTRA_ARGS)"
 
-# --- Phase 6.11: reference-routing optimization ---
+# --- Reference-routing optimization ---
 
-REF_ROUTING_SCENARIOS ?= evals/scenarios_reference_routing/scenarios.yaml
+REF_ROUTING_SCENARIOS ?= evals/scenarios/reference_routing/scenarios.yaml
 REF_ROUTING_OUTPUT ?= evals/optimizers/dspy/generated_candidates/ref-candidate-$(shell date +%Y%m%d-%H%M%S).json
 
 optimize-references:
@@ -92,14 +96,17 @@ optimize-references:
 
 # Boot llama-server for $(MODEL) from $(CONFIG) and run reference-routing
 # optimization against it.  Override OPTIMIZER, REF_ROUTING_OUTPUT,
-# LLAMA_EXTRA_ARGS, LOGION_DSPY_REF_OUTPUT as needed.
+# LLAMA_EXTRA_ARGS as needed.
 optimize-references-llama-cpp:
-	LOGION_DSPY_OPTIMIZER="$(OPTIMIZER)" \
-	LOGION_DSPY_REF_OUTPUT="$(REF_ROUTING_OUTPUT)" \
-	LOGION_DSPY_SEED="$(SPLIT_SEED)" \
-	LOGION_DSPY_CTX_SIZE="$(CTX_SIZE)" \
-	LOGION_REF_ROUTING_SCENARIOS="$(REF_ROUTING_SCENARIOS)" \
-	LLAMA_EXTRA_ARGS="$(LLAMA_EXTRA_ARGS)" \
-		bash evals/scripts/run_llama_cpp_dspy_optimize_references.sh "$(CONFIG)" "$(MODEL)" "$(OPTIMIZER)"
+	uv run --group dspy python -m evals.commands.optimize_dspy \
+		--target references \
+		--config "$(CONFIG)" \
+		--model "$(MODEL)" \
+		--optimizer "$(OPTIMIZER)" \
+		--seed $(SPLIT_SEED) \
+		--ctx-size $(CTX_SIZE) \
+		--scenarios "$(REF_ROUTING_SCENARIOS)" \
+		--output "$(REF_ROUTING_OUTPUT)" \
+		--llama-extra-args "$(LLAMA_EXTRA_ARGS)"
 
 verify: lint format-check typecheck test package-check eval

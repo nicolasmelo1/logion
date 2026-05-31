@@ -1,7 +1,7 @@
 """Offline DSPy optimiser for the ReferenceRoutingSignature.
 
 Compiles a reference-routing classifier against the gold scenarios
-in ``evals/scenarios_reference_routing/scenarios.yaml``.  Produces a
+in ``evals/scenarios/reference_routing/scenarios.yaml``.  Produces a
 candidate report in the same shape as ``optimize_policy.py`` so the
 shared renderer gates (decision-policy gates A-G + reference-routing
 H-J) can be reused unchanged.
@@ -11,7 +11,7 @@ DSPy is an optional extra; install with ``pip install -e '.[dspy]'``.
 Usage::
 
     python evals/optimizers/dspy/optimize_references.py \
-        --scenarios evals/scenarios_reference_routing/scenarios.yaml \
+        --scenarios evals/scenarios/reference_routing/scenarios.yaml \
         --optimizer bootstrap_few_shot \
         --output evals/optimizers/dspy/generated_candidates/ref-001.json
 
@@ -512,7 +512,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--scenarios",
         type=Path,
-        default=Path("evals/scenarios_reference_routing/scenarios.yaml"),
+        default=Path("evals/scenarios/reference_routing/scenarios.yaml"),
         help="Path to the reference-routing scenarios YAML.",
     )
     parser.add_argument(

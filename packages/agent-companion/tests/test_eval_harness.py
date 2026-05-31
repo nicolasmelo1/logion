@@ -1111,7 +1111,7 @@ models:
 
     def test_build_payload_uses_openai_shape(self, catalog) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1154,7 +1154,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1252,7 +1252,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
         scenario = Scenario(
@@ -1367,7 +1367,7 @@ models:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         provider = load_llama_cpp_provider(
-            EVALS / "providers" / "llama_cpp_local.example.yaml",
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml",
             "qwen3-8b-q5km",
         )
 
@@ -1386,7 +1386,9 @@ models:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         report = tmp_path / "report.json"
-        config = EVALS / "providers" / "llama_cpp_local.example.yaml"
+        config = (
+            EVALS / "harness" / "providers" / "llama_cpp_local.example.yaml"
+        )
         monkeypatch.setattr(
             sys,
             "argv",

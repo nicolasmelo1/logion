@@ -646,6 +646,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
         movements = []
         for entry in dev_breakdown:
             sid = entry.get("id", "?")
+            suite = entry.get("suite", "unknown") or "unknown"
             baseline_score = entry.get("baseline_score")
             opt_score = entry.get("score")
             if isinstance(baseline_score, (int, float)) and isinstance(
@@ -653,32 +654,38 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
             ):
                 movements.append((
                     sid,
+                    suite,
                     baseline_score,
                     opt_score,
                     opt_score - baseline_score,
                 ))
 
-        movements.sort(key=lambda m: m[3], reverse=True)
-        improved = movements[:5]
-        regressed = [m for m in movements if m[3] < 0][-5:]
-        regressed.sort(key=lambda m: m[3])
+        movements.sort(key=lambda m: m[4], reverse=True)
+        improved = [m for m in movements if m[4] > 0][:5]
+        regressed = sorted(
+            (m for m in movements if m[4] < 0), key=lambda m: m[4]
+        )[:5]
 
         if improved:
             lines.append("### Top improved scenarios")
             lines.append("")
-            lines.append("| Scenario | Baseline | Optimized | Δ |")
-            lines.append("|---|---:|---:|---:|")
-            for sid, b, o, d in improved:
-                lines.append(f"| `{sid}` | {b:.2f} | {o:.2f} | {d:+.2f} |")
+            lines.append("| Scenario | Suite | Baseline | Optimized | Δ |")
+            lines.append("|---|---|---:|---:|---:|")
+            for sid, suite, b, o, d in improved:
+                lines.append(
+                    f"| `{sid}` | `{suite}` | {b:.2f} | {o:.2f} | {d:+.2f} |"
+                )
             lines.append("")
 
         if regressed:
             lines.append("### Top regressed scenarios")
             lines.append("")
-            lines.append("| Scenario | Baseline | Optimized | Δ |")
-            lines.append("|---|---:|---:|---:|")
-            for sid, b, o, d in regressed:
-                lines.append(f"| `{sid}` | {b:.2f} | {o:.2f} | {d:+.2f} |")
+            lines.append("| Scenario | Suite | Baseline | Optimized | Δ |")
+            lines.append("|---|---|---:|---:|---:|")
+            for sid, suite, b, o, d in regressed:
+                lines.append(
+                    f"| `{sid}` | `{suite}` | {b:.2f} | {o:.2f} | {d:+.2f} |"
+                )
             lines.append("")
 
     # What's actually portable (heuristic)

@@ -20,7 +20,6 @@ REQUIRED_DIRS = [
     "references",
     "scripts",
     "tests",
-    "vendor",
 ]
 
 REQUIRED_FILES = [
@@ -180,12 +179,15 @@ _LOW_PATTERN_ALLOWLIST = {
 }
 
 # Files that reference secret pattern names for documentation
-# or test assertions — not actual secrets.
+# or test assertions — not actual secrets.  ``capabilities.yaml``
+# declares env var NAMES the course reads (e.g. ``DSPY_API_KEY``),
+# never their values, so the critical scan must not flag it.
 _SECRET_NAME_SKIP_FILES = {
     "package_skill.py",
     "test_package_skill.py",
     "test_skill_structure.py",
     "test_capability_manifest.py",
+    "capabilities.yaml",
 }
 
 

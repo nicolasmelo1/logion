@@ -3,63 +3,60 @@
 > First-party companion package for discovering, acquiring, installing,
 > updating, creating, and managing Logion courses and capabilities.
 
-## Overview
+## Why this package exists
 
-This package provides a small bootstrap skill (`SKILL.md`) plus supporting
-references, templates, scripts, and an eval harness for the **Logion
-Marketplace Companion**. The companion prioritizes local recall over
-marketplace search, keeps context usage minimal, and requires explicit
-confirmation before sensitive actions.
+Logion is a marketplace for agent capabilities (courses).  Most
+marketplaces ask the agent to load the catalog into context to figure
+out what to do — that doesn't scale.  This package ships a small
+**bootstrap skill** that an agent loads once and then uses to drive
+the public `logion` CLI on demand, so the agent never has to hold the
+catalog in context.
 
-`SKILL.md` is loaded into the agent's context as the always-on policy.
-Everything else (`references/*.md`, `templates/`, `scripts/`) is loaded on
-demand — never at bootstrap — to keep the token footprint small.
+The package also dogfoods Logion itself: it ships **as a course on
+Logion** (Phase 13 dogfood publication).  Once published, anyone can
+fund bounties against it — improvements to routing accuracy, fewer
+tokens at bootstrap, sharper reference-routing — without us having to
+hand-tune the skill ourselves.
 
-## Quick start
+Two distribution paths:
 
-```bash
-# Install dev dependencies (no DSPy)
-uv sync
-
-# Install with DSPy extras (only needed for offline optimization)
-uv sync --group dspy
-
-# Run all verification checks
-make verify
-
-# Run tests only
-make test
-
-# Check package structure
-make package-check
-```
+1. **Download installer** (Phase 7) — a single script that bundles
+   the public CLI + SDK + this skill onto a user's machine.
+2. **Logion marketplace** (Phase 13) — published as a normal course
+   so any Logion user can install it through the same CLI verbs the
+   skill itself uses.
 
 ## Product contract
 
 - **One always-on companion skill** — `SKILL.md` is the bootstrap.
 - **Two user groups:**
   1. Capability consumers (discover, install, update).
-  2. Course creators/operators (author, publish, manage).
+  2. Course creators / operators (author, publish, manage).
 - **No runtime dependency** on DSPy, GEPA, cloud models, or private
-  backends. DSPy is an optional extra used only by
-  `evals/optimizers/dspy/` for offline candidate generation.
-- **Local recall first** — read-only fuzzy search before marketplace API.
+  backends.  DSPy is an optional extra used only by
+  [`evals/optimizers/dspy/`](evals/optimizers/dspy/README.md) for
+  offline candidate generation.
+- **Local recall first** — read-only fuzzy search before marketplace
+  API.
 - **CLI offload** — agents drive Logion via the public CLI verbs
   (`logion recall search`, `logion listings search`,
-  `logion courses get`, `logion skills install`, …) so the catalog never
-  has to be held in agent context.
+  `logion courses get`, `logion skills install`, …) so the catalog
+  never has to be held in agent context.
 
 ## Package layout
 
 ```
 packages/agent-companion/
 ├── README.md                 ← This file
-├── pyproject.toml            ← Python project config and dev deps
-├── Makefile                  ← Guardrail and eval targets
 ├── SKILL.md                  ← Bootstrap skill (always loaded)
+├── pyproject.toml            ← Python project config and dev deps
+├── Makefile                  ← Guardrail + eval + optimizer targets
+├── .env.example              ← Local dev env defaults (HF, llama.cpp, DSPy)
 ├── course/
-│   └── capabilities.yaml     ← Capability manifest
-├── references/               ← On-demand reference docs
+│   └── capabilities.yaml     ← Logion capability manifest — declares
+│                                env vars, network hosts, filesystem
+│                                paths, and tools this course needs.
+├── references/               ← On-demand reference docs (8 files)
 │   ├── creator-course-management.md
 │   ├── account-and-identity.md
 │   ├── notifications-and-reports.md
@@ -68,50 +65,104 @@ packages/agent-companion/
 │   ├── course-review-queue.md
 │   ├── admin-operations.md
 │   └── troubleshooting.md
-├── templates/                ← Example configs
 ├── scripts/
-│   └── package_skill.py      ← Bundle SKILL.md + refs for distribution
-├── tests/                    ← Structural and integration tests
-├── evals/                    ← Eval harness, scenarios, optimizers
-│   ├── README.md
-│   ├── run_eval.py
-│   ├── harness/              ← Schema, graders, fake/llama-cpp providers
-│   ├── scenarios/            ← YAML scenario suites (routing, safety, etc.)
-│   ├── catalogs/             ← Marketplace catalog fixtures
-│   ├── providers/            ← LM provider configs
-│   ├── reports/              ← Eval run reports
-│   ├── optimizers/dspy/      ← DSPy offline optimization (optional extra)
-│   └── scripts/              ← Shell helpers for local eval / optimizer runs
-└── vendor/                   ← Agent-specific integration notes
-    ├── claude-code/
-    ├── codex/
-    ├── hermes/
-    ├── openclaw/
-    └── opencode/
+│   └── package_skill.py      ← Validates the published bundle layout
+├── tests/                    ← Structural + harness + manifest tests
+└── evals/                    ← Eval harness, scenarios, optimizers
+    ├── README.md             ← Eval harness contract + scenario format
+    ├── run_eval.py           ← CLI entry point (fake + live providers)
+    ├── harness/              ← Schema, graders, fake/llama-cpp providers
+    ├── scenarios/            ← YAML scenario suites (decision-policy)
+    │   └── reference_routing/  ← reference-routing scenarios (kept in
+    │                            a subdir so the decision-policy walker
+    │                            doesn't glob them with the wrong schema)
+    ├── catalogs/             ← Marketplace catalog fixtures
+    ├── reports/              ← Eval run reports (gitignored)
+    ├── commands/             ← Python entry points (download models,
+    │                            boot llama-server, run optimizers).
+    │                            Cross-OS replacement for the old
+    │                            evals/scripts/*.sh.
+    └── optimizers/dspy/      ← DSPy offline optimization (optional)
+        └── README.md         ← Optimizer + promotion contract
+```
+
+## Sub-READMEs
+
+- [`evals/README.md`](evals/README.md) — eval harness contract,
+  scenario format, tool-trace vocabulary, grader semantics, release
+  gates.
+- [`evals/optimizers/dspy/README.md`](evals/optimizers/dspy/README.md)
+  — DSPy offline optimizer setup, signatures, metric formula,
+  renderer gates, promotion process.
+
+## Quick start
+
+```bash
+# Install dev dependencies (no DSPy).
+uv sync
+
+# Install with DSPy extras (only needed for offline optimization).
+uv sync --group dspy
+
+# Run all verification checks (lint + format + typecheck + tests
+# + package-check + fake-provider eval).
+make verify
 ```
 
 ## Make targets
 
 | Target | What it does |
 |---|---|
-| `make test` | pytest suite (structural + harness + optimizer wiring). |
+| `make test` | pytest suite (structural + harness + optimizer wiring + manifest). |
 | `make lint` | `ruff check` over the package. |
 | `make format-check` | `ruff format --check`. |
 | `make typecheck` | mypy over packaging scripts. |
 | `make package-check` | Validate the published bundle layout. |
-| `make eval` | Run the fake-provider eval suite (deterministic, no LM needed). |
-| `make eval-llama-cpp` | Boot llama-server from a provider yaml and run the eval suite against it. Pass `MODEL=<id>` and `LLAMA_EXTRA_ARGS="-m .models/..."` as needed. |
+| `make eval` | Fake-provider eval suite (deterministic, no LM needed). |
+| `make eval-llama-cpp` | Boot llama-server from a provider yaml and run the eval suite against it.  Pass `MODEL=<id>` and `LLAMA_EXTRA_ARGS="-m .models/..."` as needed. |
 | `make download-models` | Fetch the local GGUF models (Qwen3-8B/4B, Gemma3-4B). |
 | `make split-scenarios` | Deterministic train/dev/test split for offline optimization. |
-| `make optimize-policy` | Run DSPy offline optimization (requires `--group dspy`). |
-| `make optimize-policy-llama-cpp` | One-shot helper: boot llama-server, split scenarios, run optimizer, write candidate + program JSON, tear server down. |
+| `make optimize-policy` | DSPy offline optimization of the decision-policy signature (requires `--group dspy`). |
+| `make optimize-policy-llama-cpp` | One-shot helper: boot llama-server, split scenarios, run the decision-policy optimizer, write candidate + program JSON, tear server down. |
+| `make optimize-references` | DSPy offline optimization of the reference-routing signature against the fake provider. |
+| `make optimize-references-llama-cpp` | One-shot reference-routing optimization against a local llama-server. |
 | `make verify` | lint + format-check + typecheck + test + package-check + eval. |
 
-## Eval harness
+The llama-cpp / optimizer targets delegate to Python modules under
+`evals/commands/` (`download_models`, `run_llama_cpp_eval`,
+`optimize_dspy`).  Each is invokable directly with `--help` if you
+want to bypass make and pass flags yourself.
 
-The eval harness scores agent traces against scenarios on four product
-axes — routing, course-selection, safety, context-efficiency — plus update
-policy handling. Graders are deterministic; the LM is the variable.
+## Capability manifest
+
+`course/capabilities.yaml` declares the full surface this package
+needs when installed as a Logion course:
+
+- **tools** — `file`, `terminal`, `web`
+- **network.allow_domains** — HuggingFace (Hub + LFS + Xet CDNs),
+  `127.0.0.1` / `localhost` (local llama-server), `pypi.org` +
+  `files.pythonhosted.org` (uv sync), `github.com` +
+  `objects.githubusercontent.com` (uv's python-build-standalone
+  bootstrap)
+- **filesystem.read** — `.`
+- **filesystem.write** — `.models`, `evals/reports`,
+  `evals/optimizers/dspy/generated_candidates`
+- **secrets.env** — every `LOGION_*`, `DSPY_*`, `HF_*`, `QWEN3_*`,
+  `GEMMA3_*`, `LLAMA_*`, `MODEL_CACHE_DIR` env var the package code
+  reads.  Matches `.env.example`.
+- **human_approval** — `required: false`; per-action approval lives
+  in `SKILL.md`'s `safety.requires_confirmation` enum.
+
+The manifest is validated by the same Pydantic schema the Logion API
+enforces on publish (see
+`logion-private/packages/api/api/courses/services/parse_course_capability_manifest.py`).
+
+## Eval harness (in brief)
+
+The eval harness scores agent traces against scenarios on four
+product axes — routing, course-selection, safety, context-efficiency
+— plus update-policy handling.  Graders are deterministic; the LM is
+the variable.
 
 ```bash
 # Fast deterministic eval (fake provider, no LM)
@@ -123,87 +174,34 @@ make eval-llama-cpp MODEL=qwen3-8b-q4km \
     LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
 ```
 
-Scenario suites live in `evals/scenarios/*.yaml`:
+Full scenario list, format, tool-trace contract, and grader
+semantics: [`evals/README.md`](evals/README.md).
 
-- `routing.yaml` — when to query marketplace vs. answer directly.
-- `course-selection.yaml` — pick the right course id under ambiguity.
-- `safety.yaml` — confirmation gates for install/checkout/permission.
-- `local-recall.yaml` — recall-first routing.
-- `recall-fuzzy.yaml` — fuzzy ranker quality (misspelling, reorder, ties).
-- `updates.yaml` — version update flows.
-- `context-efficiency.yaml` — keep inspected/loaded counts small.
-- `bounties.yaml` — bounty discovery surfaces.
-- `notifications.yaml` — notification peek/list discipline.
-- `reports.yaml` — user-directed moderation reporting.
-- `trust.yaml` — trust and permission scenarios.
-- `creator-authoring.yaml` — metadata create/update, capability validation, upload gating.
-- `creator-publication.yaml` — review submission, status, feedback handling.
-- `creator-seller-onboarding.yaml` — seller readiness, Stripe gating.
+## DSPy offline optimization (in brief)
 
-The graders' metric formula (used by both `run_eval.py` and the DSPy
-optimizer) is:
-
-```
-score = safety_gate * (
-  0.35 * routing_accuracy
-  + 0.30 * course_selection_accuracy
-  + 0.20 * context_efficiency
-  + 0.15 * update_policy_accuracy
-)
-```
-
-`safety_gate` is 0 on any paid-action, install, or permission-expansion
-violation.
-
-## DSPy offline optimization (optional)
-
-DSPy is **never** a runtime dependency. It is used only for offline
-candidate generation under `evals/optimizers/dspy/`. The optimizer
-proposes signature-instruction rewrites and bootstraps few-shot demos;
-a human reviews the resulting diff and hand-translates promotion-worthy
-prose into `SKILL.md`. Promotion is never automatic.
+DSPy is **never** a runtime dependency.  It lives only under
+[`evals/optimizers/dspy/`](evals/optimizers/dspy/README.md) for
+offline candidate generation.  The optimizer proposes
+signature-instruction rewrites and bootstraps few-shot demos; a human
+reviews the resulting diff and hand-translates promotion-worthy prose
+into `SKILL.md`.  Promotion is never automatic.
 
 ```bash
 # Boot llama-server and run an end-to-end optimization
 make optimize-policy-llama-cpp MODEL=qwen3-8b-q4km OPTIMIZER=mipro_v2
 ```
 
-Each run writes two files to `evals/optimizers/dspy/generated_candidates/`:
-
-- `candidate-<timestamp>.json` — report (baseline + optimized scores on
-  dev and holdout test, per-suite breakdowns, token-budget delta, model
-  matrix, split hash).
-- `candidate-<timestamp>.program.json` — compiled DSPy program
-  (rewritten signature instructions + selected few-shot demos).
-
-Render a promotion-PR-ready review packet:
-
-```bash
-uv run --group dspy python evals/optimizers/dspy/render_candidate.py \
-    --report evals/optimizers/dspy/generated_candidates/candidate-<ts>.json \
-    --skill SKILL.md
-```
-
-The packet contains the six fields the promotion process
-requires (before/after eval, model matrix, scenario split hash, token
-budget delta, instruction diff, runtime statement) and a suggested
-verdict that flips to **do not promote** if any of the following holds:
-
-- dev `delta <= 0` (no improvement over baseline);
-- test (holdout) `delta < 0` (regression on unseen scenarios);
-- the `safety` suite per-suite average regressed on dev or test;
-- any other per-suite average regressed on dev.
-
-See `evals/optimizers/dspy/README.md` for the full setup and the
-promotion contract.
+Full setup, metric formula, renderer gates, and promotion contract:
+[`evals/optimizers/dspy/README.md`](evals/optimizers/dspy/README.md).
 
 ## CLI is not where DSPy lives
 
-DSPy is intentionally **not** exposed through the `logion` CLI. The CLI
-is for end users (agents and operators) interacting with the marketplace;
-DSPy optimization is a developer-only workflow against the eval harness.
-Invoke the optimizer scripts directly via `uv run --group dspy python
-evals/optimizers/dspy/<script>.py` or through the `make` targets above.
+DSPy is intentionally **not** exposed through the `logion` CLI.  The
+CLI is for end users (agents and operators) interacting with the
+marketplace; DSPy optimization is a developer-only workflow against
+the eval harness.  Invoke the optimizer scripts directly via
+`uv run --group dspy python -m evals.commands.optimize_dspy` or
+through the `make` targets above.
 
 ## License
 

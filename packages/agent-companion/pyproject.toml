@@ -40,14 +40,13 @@ dspy = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# The companion ships as a skill bundle (SKILL.md + references + scripts)
+# through Logion's marketplace and through the workspace's download
+# installer — not as a pip-installable Python wheel.  The wheel target
+# below produces an empty distribution and exists only so uv recognises
+# this directory as a valid workspace member.
 [tool.hatch.build.targets.wheel]
-packages = ["src/logion_agent_companion"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"SKILL.md" = "logion_agent_companion/SKILL.md"
-"course" = "logion_agent_companion/course"
-"references" = "logion_agent_companion/references"
-"scripts" = "logion_agent_companion/scripts"
+bypass-selection = true
 
 [tool.ruff]
 line-length = 79
@@ -104,10 +103,12 @@ ignore = [
 "evals/optimizers/dspy/reference_routing_metric.py" = ["ARG002"]
 "evals/optimizers/dspy/split_scenarios.py" = ["T201", "ERA001", "E402"]
 "evals/optimizers/dspy/render_candidate.py" = ["T201"]
+# Operator commands are CLI entry points: printing is the UI.
+"evals/commands/*.py" = ["T201"]
 "tests/test_reference_routing.py" = ["FBT003", "ARG002"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion", "logion_agent_companion"]
+known-first-party = ["cli", "landing", "logion"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
