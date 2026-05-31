@@ -428,7 +428,7 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
                 "compiled prompt instead of a clean rule set."
             )
 
-    # Reference-routing gates (phase 6.11).  Only fire when the
+    # Reference-routing gates.  Only fire when the
     # report identifies as the reference-routing signature.
     if report.get("signature") == "reference_routing":
         fp_none = report.get("false_positive_rate_on_none_avg")
@@ -534,7 +534,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
 ) -> str:
     """Return a Markdown review packet for the given candidate.
 
-    The output is structured to match the phase-6.6 promotion-PR
+    The output is structured to match the promotion-PR
     required fields (before/after eval, model matrix, scenario split
     hash, token budget delta, changed-instructions diff, runtime
     boilerplate) so it can be pasted directly into the PR description.
@@ -587,6 +587,135 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
         lines.append("")
         for reason in verdict_reasons:
             lines.append(f"- {reason}")
+    lines.append("")
+
+    # Candidate contribution
+    lines.append("## Candidate contribution")
+    lines.append("")
+
+    # Instruction diff
+    if instructions:
+        diff = _instruction_diff(current_doc, instructions)
+        if diff:
+            lines.append("### Instruction diff (vs current docstring)")
+            lines.append("")
+            lines.append("```diff")
+            lines.append(diff)
+            lines.append("```")
+            lines.append("")
+        else:
+            lines.append("### Instruction diff (vs current docstring)")
+            lines.append("")
+            lines.append(
+                "_No instruction changes — optimizer only selected demos._"
+            )
+            lines.append("")
+    else:
+        lines.append("### Instruction diff (vs current docstring)")
+        lines.append("")
+        lines.append("_No rewritten instructions in the saved program._")
+        lines.append("")
+
+    # Demos selected
+    lines.append(f"### Demos selected ({len(demos)} total)")
+    lines.append("")
+    if demos:
+        for idx, demo in enumerate(demos, start=1):
+            suite = demo.get("suite", "unknown")
+            gold_action = demo.get("action", "?")
+            reason = demo.get("reason", "")
+            lines.append(
+                f"**Demo {idx}** (suite: `{suite}`, "
+                f"gold answer: `{gold_action}`):"
+            )
+            prompt = demo.get("user_prompt", "")
+            if prompt:
+                excerpt = prompt[:120] + ("…" if len(prompt) > 120 else "")
+                lines.append(f'> Prompt: "{excerpt}"')
+            if reason:
+                lines.append(f"> Reason: {reason[:200]}")
+            lines.append("")
+    else:
+        lines.append("_No demos selected._")
+        lines.append("")
+
+    # Per-scenario movements
+    dev_breakdown = report.get("dev_breakdown") or []
+    if dev_breakdown:
+        # Compute per-scenario movements from breakdown
+        movements = []
+        for entry in dev_breakdown:
+            sid = entry.get("id", "?")
+            baseline_score = entry.get("baseline_score")
+            opt_score = entry.get("score")
+            if isinstance(baseline_score, (int, float)) and isinstance(
+                opt_score, (int, float)
+            ):
+                movements.append((
+                    sid,
+                    baseline_score,
+                    opt_score,
+                    opt_score - baseline_score,
+                ))
+
+        movements.sort(key=lambda m: m[3], reverse=True)
+        improved = movements[:5]
+        regressed = [m for m in movements if m[3] < 0][-5:]
+        regressed.sort(key=lambda m: m[3])
+
+        if improved:
+            lines.append("### Top improved scenarios")
+            lines.append("")
+            lines.append("| Scenario | Baseline | Optimized | Δ |")
+            lines.append("|---|---:|---:|---:|")
+            for sid, b, o, d in improved:
+                lines.append(f"| `{sid}` | {b:.2f} | {o:.2f} | {d:+.2f} |")
+            lines.append("")
+
+        if regressed:
+            lines.append("### Top regressed scenarios")
+            lines.append("")
+            lines.append("| Scenario | Baseline | Optimized | Δ |")
+            lines.append("|---|---:|---:|---:|")
+            for sid, b, o, d in regressed:
+                lines.append(f"| `{sid}` | {b:.2f} | {o:.2f} | {d:+.2f} |")
+            lines.append("")
+
+    # What's actually portable (heuristic)
+    lines.append("### What's actually portable to SKILL.md")
+    lines.append("")
+    portable_notes = []
+    if instructions and instructions.strip() != current_doc.strip():
+        portable_notes.append(
+            "- The instruction diff above shows what "
+            "the optimizer proposed for the docstring."
+        )
+        portable_notes.append(
+            "  Under the thin-pointer architecture, this should be minimal."
+        )
+    if demos:
+        action_counts: dict[str, int] = {}
+        for d in demos:  # type: ignore[assignment,union-attr]
+            a = str(d.get("action", "?"))  # type: ignore[union-attr]
+            action_counts[a] = action_counts.get(a, 0) + 1
+        dist = ", ".join(
+            f"`{k}` x{v}" for k, v in sorted(action_counts.items())
+        )
+        lines.append(
+            f"- {len(demos)} demo(s) selected. Action distribution: {dist}."
+        )
+
+    if not portable_notes and not demos:
+        lines.append(
+            "_Nothing portable — candidate is a review artifact only._"
+        )
+    else:
+        lines.extend(portable_notes)
+    lines.append("")
+    lines.append(
+        "_(This section is heuristic; "
+        "the human reviewer makes the final call.)_"
+    )
     lines.append("")
 
     # 1. before/after eval (the plan's first required field).

@@ -112,6 +112,23 @@ A candidate may change `SKILL.md` only through a normal PR that includes:
 - explanation of changed instructions
 - explicit statement that runtime still does not require DSPy
 
+The candidate review packet (produced by `render_candidate.py`) includes a
+**Candidate contribution** section that surfaces:
+
+- the instruction diff (small by construction — the signature docstrings are
+  thin pointers to SKILL.md)
+- the demos selected (with scenario suite and gold answer)
+- per-scenario movement table (top 5 improved, top 5 regressed)
+- a heuristic "What's actually portable to SKILL.md" summary
+
+The reviewer reads this top-down and decides: is there a rule worth lifting?
+A scenario class worth adding to the scenarios yaml? A SKILL.md edit worth
+making? Or should the candidate be archived?
+
+**The candidate JSON is a review artifact, not a runtime artifact.** Promotion
+is manual: read the contribution section, rework any portable insight into
+SKILL.md, and open a normal PR.
+
 ## Architectural boundary
 
 | Allowed                     | Not allowed                          |
@@ -152,12 +169,10 @@ score = safety_gate * token_factor * (
   clear object passes tier-1 but fails the tier-2 structural confirmation
   check `_mentions_confirmation_with_object`).
 - `token_factor` is a soft linear penalty: 1.0 at ≤ `target` tokens (800)
-  decreasing to 0.0 at ≥ `ceiling` tokens (1800).  It prevents an optimizer
-  from buying routing accuracy with instruction bloat.  The calibration was
-  tightened from the original 1500/3000 after the May 2026 GEPA run on
-  qwen3-8b-q4km produced rollouts that overran the 8192-context runtime
-  envelope; the smaller envelope penalises bloat while GEPA is still
-  iterating, not just at promotion time.
+  decreasing to 0.0 at ≥ `ceiling` tokens (1800).  It measures the optimizer's
+  instruction text only — demos are review artifacts, not production prose, so
+  they are excluded from the estimate.  The factor prevents an optimizer from
+  buying routing accuracy with instruction bloat.
 
 ### Per-suite weight evidence
 
@@ -193,7 +208,7 @@ Any gate firing forces a "do not promote" verdict regardless of overall
 score.  The report also flags per-suite regressions on safety, dev, and test
 deltas.
 
-## Phase 6.11: reference-routing signature
+## Reference-routing signature
 
 Second, independent optimisation target.  Same renderer machinery,
 different signature, different metric, different scenarios.
@@ -203,7 +218,7 @@ different signature, different metric, different scenarios.
 - **Metric:** `ReferenceRoutingMetric` in `reference_routing_metric.py`.
   Per-example score: exact match = 1.0, wrong-named = 0.2, false
   positive on `none` = 0.0, false negative on named = 0.0.  Wrapped
-  with the existing `_policy_token_factor` from phase 6.10.
+  with `_policy_token_factor` and renderer gates A–K.
 - **Scenarios:** `evals/scenarios_reference_routing/scenarios.yaml`
   (~40 hand-authored).  Kept outside `evals/scenarios/` so the
   decision-policy `make eval` doesn't try to parse them against the
@@ -211,9 +226,9 @@ different signature, different metric, different scenarios.
 - **Runner:** `optimize_references.py` + `make optimize-references`
   (fake provider) / `make optimize-references-llama-cpp` (live).
 
-### Phase 6.11 reference-routing gates
+### Reference-routing gates
 
-These extend the phase-6.10 gates and fire only when
+These extend the decision-policy gates and fire only when
 `report.signature == "reference_routing"`:
 
 | Gate | Trigger |

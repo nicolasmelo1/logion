@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -489,6 +490,63 @@ def test_render_candidate_promotes_when_all_gates_pass(
     assert "Suggested verdict:** do not promote" not in packet
 
 
+def test_render_candidate_includes_contribution_section(
+    tmp_path: Path,
+) -> None:
+    """Candidate contribution section appears above the before/after eval."""
+    from evals.optimizers.dspy.render_candidate import render_candidate
+
+    report = {
+        "optimizer": "mipro_v2",
+        "baseline_dev_score_avg": 0.50,
+        "dev_score_avg": 0.70,
+        "delta": 0.20,
+        "baseline_test_score_avg": 0.50,
+        "test_score_avg": 0.65,
+        "test_delta": 0.15,
+        "baseline_dev_per_suite": {"safety": 0.80, "routing": 0.40},
+        "dev_per_suite": {"safety": 0.95, "routing": 0.80},
+        "train_count": 70,
+        "dev_count": 23,
+        "test_count": 23,
+        "split_hash": "abc",
+        "dev_breakdown": [
+            {"id": "s1", "score": 0.9, "baseline_score": 0.5, "failures": []},
+            {
+                "id": "s2",
+                "score": 0.3,
+                "baseline_score": 0.6,
+                "failures": [{"metric": "routing", "detail": "x"}],
+            },
+            {"id": "s3", "score": 0.8, "baseline_score": 0.7, "failures": []},
+        ],
+    }
+    report_path = tmp_path / "report.json"
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text("# tiny\n", encoding="utf-8")
+
+    packet = render_candidate(report_path=report_path, skill_path=skill_path)
+
+    # Section must appear before before/after eval
+    contrib_pos = packet.find("## Candidate contribution")
+    before_after_pos = packet.find("## 1. Before/after eval")
+    assert contrib_pos > 0, "Candidate contribution section missing"
+    assert before_after_pos > 0, "Before/after section missing"
+    assert contrib_pos < before_after_pos, (
+        "Candidate contribution must appear before before/after eval"
+    )
+
+    # Must show the instruction diff subsection
+    assert "### Instruction diff" in packet
+
+    # Must show demos selected subsection
+    assert "### Demos selected" in packet
+
+    # Must show portability heuristic
+    assert "What's actually portable" in packet
+
+
 def test_ask_before_install_prediction_does_not_install() -> None:
     pred = SimpleNamespace(
         action="ask_before_install",
@@ -729,15 +787,25 @@ def test_action_to_calls_ask_before_update_no_recall_search() -> None:
 
 class TestPolicyTokenEstimate:
     def test_chars_over_four(self) -> None:
-        assert _policy_token_estimate("abcd", ()) == 1
+        assert _policy_token_estimate("abcd") == 1
 
     def test_empty_returns_zero(self) -> None:
-        assert _policy_token_estimate("", ()) == 0
+        assert _policy_token_estimate("") == 0
 
-    def test_includes_serialized_demos(self) -> None:
+    def test_ignores_demos(self) -> None:
+        """Demos are review artifacts; they never become production prose."""
         demos = ({"course_id": "x.y", "title": "Test"},)
-        result = _policy_token_estimate("", demos)
-        assert result > 0
+        assert _policy_token_estimate("", demos) == 0
+
+    def test_backward_compat_demos_kwarg(self) -> None:
+        """Old call sites pass demos positionally; must not crash."""
+        assert _policy_token_estimate("abcd", ()) == 1
+        assert _policy_token_estimate("abcd", None) == 1
+
+    def test_includes_instructions_only(self) -> None:
+        """Only instructions count; demos are ignored."""
+        result = _policy_token_estimate("a" * 400)
+        assert result == 100
 
 
 class TestPolicyTokenFactor:

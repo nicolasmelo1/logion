@@ -1,10 +1,10 @@
-"""Phase 6.11: reference-routing DSPy signature.
+"""Reference-routing DSPy signature.
 
 Decides whether the agent needs to load an on-demand reference
 file (one of the 8 canonical files under ``references/``) or stay
 on the primary SKILL.md path.  This is *adjacent* to the
 decision-policy signature, not part of it — two independent
-optimisation targets sharing the phase-6.10 renderer machinery.
+optimisation targets sharing the renderer machinery.
 """
 
 from __future__ import annotations
@@ -36,24 +36,10 @@ assert set(REFERENCE_NAMES) == set(get_args(ReferenceName))
 
 
 class ReferenceRoutingSignature(dspy.Signature):
-    """Pick which on-demand reference file the agent should load
-    to fulfil the user's request, or ``none`` to stay on the
-    primary path.
-
-    Constraints:
-    - Only emit values from the ReferenceName enum.
-    - Prefer ``none`` when uncertain; loading a reference costs
-      context and the primary SKILL.md path already covers
-      recall, listings, courses, skills install, and paid
-      checkout.
-    - If ``installed_capabilities`` already covers the user's
-      task (e.g. ``email.summarize`` for an inbox-summary
-      intent), prefer ``none`` over loading a reference.
-    - ``current_recall_band`` mirrors phase 6.9: HIGH means a
-      local skill already covers this — almost always return
-      ``none``.
-    - Reference names refer to files under ``references/``;
-      never invent a new name.
+    """Pick which on-demand reference file to load (or `none` to
+    stay on the primary path) by applying SKILL.md's `## Reference
+    index` section.  Emit only `ReferenceName` enum values; never
+    invent a name.
     """
 
     user_prompt: str = dspy.InputField(desc="The raw user prompt.")

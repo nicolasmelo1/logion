@@ -477,7 +477,7 @@ def run_optimization(
     # it even if the actual program-save fails (e.g. EMFILE on macOS
     # after a long GEPA run leaks file descriptors).  We attempt the
     # program save *after* the report write below so a save failure
-    # doesn't lose the eval data — see phase-6.10 follow-up note.
+    # doesn't lose the eval data — see the token-factor follow-up note.
     program_path: Path | None = None
     if output_path is not None:
         program_path = output_path.with_suffix(".program.json")

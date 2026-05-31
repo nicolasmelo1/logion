@@ -3,7 +3,7 @@
 Compiles a reference-routing classifier against the gold scenarios
 in ``evals/scenarios_reference_routing/scenarios.yaml``.  Produces a
 candidate report in the same shape as ``optimize_policy.py`` so the
-shared renderer machinery (phase-6.10 gates A-G + phase-6.11 gates
+shared renderer gates (decision-policy gates A-G + reference-routing
 H-J) can be reused unchanged.
 
 DSPy is an optional extra; install with ``pip install -e '.[dspy]'``.
@@ -451,7 +451,7 @@ def run_optimization(
         "split_hash": _split_hash(split),
         "optimizer_config": dict(OPTIMIZER_CONFIGS.get(optimizer_name, {})),
         "program_path": str(program_path) if program_path else None,
-        # Reference-routing-specific aggregates (phase 6.11).
+        # Reference-routing-specific aggregates.
         "false_positive_rate_on_none_avg": round(
             optimized_rates["false_positive_rate_on_none"], 4
         ),
