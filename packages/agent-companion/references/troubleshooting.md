@@ -1,8 +1,12 @@
 # Troubleshooting
 
-Diagnose CLI failures without guessing. The CLI emits a stable error
-envelope when `--json` is passed; the `code` field is the machine-readable
-category.
+Diagnose CLI failures without guessing. Load this reference when the user
+asks why a `logion` command failed, mentions a specific error code, or
+the CLI returned an error envelope. Common triggers: `auth_missing` (no
+API key), `entitlement_expired` (renewal needed), `not_found` (wrong id
+or no permission), `confirmation_required` (`--yes` was missing). The
+CLI emits a stable error envelope when `--json` is passed; the `code`
+field is the machine-readable category.
 
 ## Error envelope
 

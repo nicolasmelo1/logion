@@ -57,8 +57,13 @@ _MIPRO_V2_CONFIG: dict[str, Any] = {
     "num_threads": 1,
 }
 
+# GEPA's ``auto`` budget knob (light / medium / heavy).  Override via
+# the ``LOGION_GEPA_AUTO`` env var without editing the file.  Default
+# stays at ``light`` because heavier budgets multiply rollout count
+# and we've seen reflection-bloat get worse, not better, with more
+# iterations on this signature.
 _GEPA_CONFIG: dict[str, Any] = {
-    "auto": "light",
+    "auto": os.environ.get("LOGION_GEPA_AUTO", "light"),
 }
 
 

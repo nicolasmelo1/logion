@@ -1,0 +1,337 @@
+# Phase 6.11: gold scenarios for the ReferenceRoutingSignature.
+#
+# Each scenario maps a user prompt + installed-capability inventory +
+# recall band to exactly one of the 9 canonical classes:
+#   none | creator-course-management | account-and-identity |
+#   notifications-and-reports | payments-and-checkout | bounties |
+#   course-review-queue | admin-operations | troubleshooting
+#
+# Distribution targets (see plan §6):
+#   none                          : 12
+#   creator-course-management     :  4
+#   account-and-identity          :  3
+#   notifications-and-reports     :  3
+#   payments-and-checkout         :  4
+#   bounties                      :  4
+#   course-review-queue           :  3
+#   admin-operations              :  4
+#   troubleshooting               :  3
+# total: 40
+
+scenarios:
+
+  # ----------------------------------------------------------------
+  # none — primary SKILL.md path covers it
+  # ----------------------------------------------------------------
+
+  - id: ref-route-none-recall-hit-email
+    prompt: "Summarise my unread mail."
+    installed_capabilities: [email.summarize, email.triage.prioritize]
+    current_recall_band: HIGH
+    gold_reference: none
+    why: "Local recall hits installed email skills; no reference needed."
+
+  - id: ref-route-none-recall-hit-resume
+    prompt: "Optimise this resume for the senior engineer posting."
+    installed_capabilities: [resume.edit, resume.ats.optimize]
+    current_recall_band: HIGH
+    gold_reference: none
+    why: "Installed resume skills cover this; recall is HIGH."
+
+  - id: ref-route-none-listings-search
+    prompt: "Find me a tool for OCR on receipts."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: none
+    why: "SKILL.md's listings search is the primary path."
+
+  - id: ref-route-none-courses-get
+    prompt: "Show me what weather.basic does."
+    installed_capabilities: []
+    current_recall_band: LOW
+    gold_reference: none
+    why: "`logion courses get` is documented in SKILL.md."
+
+  - id: ref-route-none-paid-checkout-simple
+    prompt: "Buy infra.company-ops."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: none
+    why: "Single-shot paid checkout is on SKILL.md's primary path."
+
+  - id: ref-route-none-skills-install
+    prompt: "Install weather.basic."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: none
+    why: "SKILL.md primary path covers `logion skills install`."
+
+  - id: ref-route-none-skills-updates-check
+    prompt: "Are any of my installed skills out of date?"
+    installed_capabilities: [resume.ats, weather.basic]
+    current_recall_band: NONE
+    gold_reference: none
+    why: "SKILL.md covers `logion skills updates` directly."
+
+  - id: ref-route-none-recall-search
+    prompt: "Do I already have something that can edit videos?"
+    installed_capabilities: [video.clips.highlight]
+    current_recall_band: MEDIUM
+    gold_reference: none
+    why: "Recall lookup is the primary path; no reference needed."
+
+  - id: ref-route-none-skills-installed-list
+    prompt: "What skills do I have installed right now?"
+    installed_capabilities: [resume.ats, weather.basic, ocr.text]
+    current_recall_band: HIGH
+    gold_reference: none
+    why: "`logion skills installed` is in SKILL.md primary commands."
+
+  - id: ref-route-none-help-discovery
+    prompt: "What can the logion CLI do?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: none
+    why: "Safe discovery `logion --help` block is in SKILL.md."
+
+  - id: ref-route-none-inspect-installed
+    prompt: "Show me the manifest for resume.ats."
+    installed_capabilities: [resume.ats]
+    current_recall_band: HIGH
+    gold_reference: none
+    why: "`logion skills inspect` is on SKILL.md primary path."
+
+  - id: ref-route-none-courses-search
+    prompt: "Search for video editing skills."
+    installed_capabilities: []
+    current_recall_band: LOW
+    gold_reference: none
+    why: "`logion listings search` is documented on the primary path."
+
+  # ----------------------------------------------------------------
+  # creator-course-management
+  # ----------------------------------------------------------------
+
+  - id: ref-route-creator-upload-new-version
+    prompt: "Upload v3 of my course bundle."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: creator-course-management
+    why: "Creator upload flow — not on primary path."
+
+  - id: ref-route-creator-validate-metadata
+    prompt: "Validate the capabilities.yaml in my course bundle."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: creator-course-management
+    why: "`logion courses capabilities validate` is creator-side."
+
+  - id: ref-route-creator-publication-request
+    prompt: "Request publication of my course COURSE-42."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: creator-course-management
+    why: "Creator publication request flow."
+
+  - id: ref-route-creator-list-own-reviews
+    prompt: "Show me reviewer feedback on my course."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: creator-course-management
+    why: "Creator-side review feedback inspection."
+
+  # ----------------------------------------------------------------
+  # account-and-identity
+  # ----------------------------------------------------------------
+
+  - id: ref-route-identity-provision-user
+    prompt: "Create a new user account for our team."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: account-and-identity
+    why: "`logion identity users-create`."
+
+  - id: ref-route-identity-add-agent
+    prompt: "Add a new agent for the QA bot."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: account-and-identity
+    why: "`logion identity agents-add` — agent provisioning."
+
+  - id: ref-route-identity-rotate-key
+    prompt: "Rotate the API key for agent QA-bot-01."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: account-and-identity
+    why: "`logion identity agents-rotate-key`."
+
+  # ----------------------------------------------------------------
+  # notifications-and-reports
+  # ----------------------------------------------------------------
+
+  - id: ref-route-notifications-unread
+    prompt: "Anything new in my Logion inbox?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: notifications-and-reports
+    why: "`logion notifications unread-count` / `list`."
+
+  - id: ref-route-notifications-filter
+    prompt: "Show me only COURSE_PUBLISHED notifications."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: notifications-and-reports
+    why: "Filtered notifications listing."
+
+  - id: ref-route-reports-file-moderation
+    prompt: "File a moderation report on course bad.actor.kit for tos violation."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: notifications-and-reports
+    why: "`logion reports create` — user-directed moderation."
+
+  # ----------------------------------------------------------------
+  # payments-and-checkout
+  # ----------------------------------------------------------------
+
+  - id: ref-route-payments-order-status-wait
+    prompt: "Wait until order ORD-77 settles."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: payments-and-checkout
+    why: "`logion payments orders wait` — not on primary path."
+
+  - id: ref-route-payments-order-status-get
+    prompt: "What's the status of order ORD-77?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: payments-and-checkout
+    why: "`logion payments orders get` — order inspection."
+
+  - id: ref-route-payments-seller-readiness
+    prompt: "Am I ready to start selling courses?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: payments-and-checkout
+    why: "`logion payments seller-readiness` — seller side."
+
+  - id: ref-route-payments-onboarding-link
+    prompt: "Get me the Stripe onboarding link for my seller account."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: payments-and-checkout
+    why: "`logion payments onboarding-link`."
+
+  # ----------------------------------------------------------------
+  # bounties
+  # ----------------------------------------------------------------
+
+  - id: ref-route-bounties-discover
+    prompt: "List open bounties I could work on."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: bounties
+    why: "`logion bounties list`."
+
+  - id: ref-route-bounties-create
+    prompt: "Create a bounty for an OCR receipts skill, 50 USDC."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: bounties
+    why: "`logion bounties create`."
+
+  - id: ref-route-bounties-fund
+    prompt: "Fund bounty BNT-42 with 25 USDC."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: bounties
+    why: "`logion bounties fund` — bounty financial action."
+
+  - id: ref-route-bounties-submission-accept
+    prompt: "Accept the submission on my bounty BNT-9."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: bounties
+    why: "`logion bounties submissions accept`."
+
+  # ----------------------------------------------------------------
+  # course-review-queue
+  # ----------------------------------------------------------------
+
+  - id: ref-route-review-queue-list
+    prompt: "Show me courses waiting for my review."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: course-review-queue
+    why: "`logion course-reviews list` — reviewer side."
+
+  - id: ref-route-review-queue-approve
+    prompt: "Approve review REV-12."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: course-review-queue
+    why: "`logion course-reviews approve`."
+
+  - id: ref-route-review-queue-reject
+    prompt: "Reject review REV-12 — manifest is invalid."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: course-review-queue
+    why: "`logion course-reviews reject`."
+
+  # ----------------------------------------------------------------
+  # admin-operations
+  # ----------------------------------------------------------------
+
+  - id: ref-route-admin-courses-block
+    prompt: "Block course bad.actor.kit from buyer discovery."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: admin-operations
+    why: "Admin-only `logion admin courses block`."
+
+  - id: ref-route-admin-users-suspend
+    prompt: "Suspend user USR-99 for ToS violation."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: admin-operations
+    why: "Admin-only `logion admin users suspend`."
+
+  - id: ref-route-admin-agents-suspend
+    prompt: "Suspend agent AGT-22 — abusive behaviour."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: admin-operations
+    why: "Admin-only `logion admin agents suspend`."
+
+  - id: ref-route-admin-reports-resolve
+    prompt: "Resolve moderation report REP-7 with action taken."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: admin-operations
+    why: "Admin moderation queue resolution."
+
+  # ----------------------------------------------------------------
+  # troubleshooting
+  # ----------------------------------------------------------------
+
+  - id: ref-route-troubleshoot-auth-missing
+    prompt: "Logion CLI says auth_missing — why?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: troubleshooting
+    why: "Error-envelope diagnosis."
+
+  - id: ref-route-troubleshoot-entitlement-expired
+    prompt: "Got entitlement_expired on resume.ats — how do I fix it?"
+    installed_capabilities: [resume.ats]
+    current_recall_band: LOW
+    gold_reference: troubleshooting
+    why: "Error code diagnosis — error envelope semantics."
+
+  - id: ref-route-troubleshoot-command-not-found
+    prompt: "Logion says `command not found` for `logion admin`."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: troubleshooting
+    why: "Gated-group discovery is documented in troubleshooting."
