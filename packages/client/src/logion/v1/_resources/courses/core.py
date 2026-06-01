@@ -92,7 +92,10 @@ class _CoursesCoreMixin(_CoursesResourceBase):
             fields["short_summary"] = normalize_short_summary(short_summary)
         if visibility is not SENTINEL:
             fields["visibility"] = visibility
-        body = UpdateCourseRequest.model_construct(**fields)
+        # Validate so raw scalars coerce into their RootModel wrappers
+        # (str -> Title, int -> PriceCents); model_construct would skip
+        # this and trip Pydantic's serializer warning on model_dump.
+        body = UpdateCourseRequest.model_validate(fields)
         return operations.update_course(
             self._http,
             course_id=course_id,

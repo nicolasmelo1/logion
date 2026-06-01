@@ -1,0 +1,13 @@
+# Allowlist for scripts/check_forbidden_imports.py
+# Format: <repo-relative-path>:<dotted.import.path>
+# Lines starting with # are comments.
+#
+# Each entry is a transitional debt: the import is permitted today but
+# should be replaced with a public-surface re-export from logion.v1.
+# When replacing, delete the matching line.
+
+# Payments handler still reaches into the generated response shape.
+# TODO: re-export CourseCheckoutResponse from logion.v1.
+packages/cli/cli/commands/payments/handlers.py:logion.v1._types.generated.v1
+packages/cli/tests/test_cli_payments.py:logion.v1._types.generated.v1
+packages/cli/tests/test_payments_orders.py:logion.v1._types.generated.v1

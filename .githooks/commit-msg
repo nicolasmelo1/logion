@@ -1,0 +1,47 @@
+#!/bin/sh
+# Validate that local commit messages follow Conventional Commits.
+# Matches the GitHub PR-title check so contributors get fast local
+# feedback instead of finding out at PR time.
+
+set -eu
+
+msg_file="$1"
+# First line only; ignore comment lines and trailing empties.
+first_line=$(grep -v '^[[:space:]]*#' "$msg_file" | sed '/./,$!d' | head -n 1)
+
+# Allow common automation prefixes that aren't user-authored.
+case "$first_line" in
+	"Merge "*|"Revert "*|"Reapply "*|"fixup! "*|"squash! "*|"amend! "*)
+		exit 0
+		;;
+esac
+
+# type(optional-scope)!: subject
+# - type: feat|fix|docs|refactor|test|chore|perf|build|ci|revert
+# - scope: any non-empty token (optional)
+# - !: optional breaking-change marker
+# - subject: starts with a letter, at least 1 char
+pattern='^(feat|fix|docs|refactor|test|chore|perf|build|ci|revert)(\([^)]+\))?!?: [A-Za-z].+'
+
+if printf '%s' "$first_line" | grep -Eq "$pattern"; then
+	exit 0
+fi
+
+cat >&2 <<EOF
+commit-msg: subject does not follow Conventional Commits.
+
+Got:
+  $first_line
+
+Expected:
+  <type>(<optional-scope>): <imperative summary>
+
+Allowed types: feat, fix, docs, refactor, test, chore, perf, build,
+ci, revert. Add ! before the colon for breaking changes.
+
+Examples:
+  feat(cli): add 'logion recall search' command
+  fix(client): retry on 503 from listings endpoint
+  docs: explain the OpenAPI sync flow
+EOF
+exit 1

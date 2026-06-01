@@ -1,0 +1,37 @@
+# Allowlist of names permitted at the repo root.
+# One entry per line. Lines starting with # are comments.
+# Anything checked in at the root that is NOT listed here will fail
+# `scripts/check_root_files.py` (and therefore CI + pre-commit).
+#
+# This guard exists to stop AI contributors from creating throwaway
+# discovery files at the root (NOTES.md, PLAN.md, SUMMARY.md,
+# RESEARCH.md, etc). If you need a new entry, justify it in the PR.
+
+# Required public-repo files
+AGENTS.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE
+Makefile
+README.md
+SECURITY.md
+
+# Build / config
+.gitignore
+.secrets.baseline
+pyproject.toml
+uv.lock
+
+# Lock files for the guardrails themselves
+.allowed-root-files
+.deps.lock.json
+.generated-files.lock
+
+# Directories
+.githooks
+.github
+contracts
+docs
+packages
+scripts
+tests

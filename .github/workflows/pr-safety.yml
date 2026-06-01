@@ -64,8 +64,8 @@ jobs:
       - name: Secret scan
         run: uv run detect-secrets scan --baseline .secrets.baseline
 
-  public-audit:
-    name: Public audit
+  public-guardrails:
+    name: Public guardrails
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -84,5 +84,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages --locked
 
-      - name: Run public-audit
+      - name: Forbidden patterns / vocabulary
         run: make public-audit
+
+      - name: Generated-file lock
+        run: make check-generated-lock
+
+      - name: Root-file allowlist
+        run: make check-root-files
+
+      - name: Dependency-change lock
+        run: make check-deps-lock
+
+      - name: Doc-link liveness
+        run: make check-doc-links
+
+      - name: Pytest skip / xfail reasons
+        run: make check-skip-reasons
+
+      - name: Forbidden SDK-internal imports
+        run: make check-forbidden-imports

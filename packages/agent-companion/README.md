@@ -12,19 +12,19 @@ out what to do — that doesn't scale.  This package ships a small
 the public `logion` CLI on demand, so the agent never has to hold the
 catalog in context.
 
-The package also dogfoods Logion itself: it ships **as a course on
-Logion** (Phase 13 dogfood publication).  Once published, anyone can
-fund bounties against it — improvements to routing accuracy, fewer
-tokens at bootstrap, sharper reference-routing — without us having to
-hand-tune the skill ourselves.
+The package also dogfoods Logion itself: it is intended to ship **as a
+course on Logion**.  Once published, anyone can fund bounties against
+it — improvements to routing accuracy, fewer tokens at bootstrap,
+sharper reference-routing — without us having to hand-tune the skill
+ourselves.
 
 Two distribution paths:
 
-1. **Download installer** (Phase 7) — a single script that bundles
-   the public CLI + SDK + this skill onto a user's machine.
-2. **Logion marketplace** (Phase 13) — published as a normal course
-   so any Logion user can install it through the same CLI verbs the
-   skill itself uses.
+1. **Download installer** — a single script that bundles the public
+   CLI + SDK + this skill onto a user's machine.
+2. **Logion marketplace** — published as a normal course so any Logion
+   user can install it through the same CLI verbs the skill itself
+   uses.
 
 ## Product contract
 
