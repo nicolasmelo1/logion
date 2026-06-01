@@ -1,0 +1,91 @@
+{
+  "packages/agent-companion/pyproject.toml": {
+    "dependencies": [
+      "pyyaml>=6.0,<7.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "logion-cli",
+        "mypy>=1.15,<2.0.0",
+        "pytest>=9.0.3,<9.1.0",
+        "pyyaml>=6.0,<7.0",
+        "ruff>=0.15.12,<0.16.0",
+        "types-PyYAML>=6.0,<7.0"
+      ],
+      "dspy": [
+        "dspy>=3.0.4,<4.0",
+        "optuna>=3.6,<5.0"
+      ]
+    },
+    "optional-dependencies": {
+      "dspy": [
+        "dspy>=3.0.4,<4.0",
+        "optuna>=3.6,<5.0"
+      ]
+    }
+  },
+  "packages/cli/pyproject.toml": {
+    "dependencies": [
+      "logion-client",
+      "pydantic>=2.7,<3.0.0",
+      "pyyaml>=6.0,<7.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "pytest>=9.0.3,<9.1.0",
+        "rapidfuzz>=3.9,<4.0",
+        "ruff>=0.15.12,<0.16.0",
+        "types-PyYAML>=6.0,<7.0"
+      ]
+    },
+    "optional-dependencies": {
+      "recall": [
+        "rapidfuzz>=3.9,<4.0"
+      ]
+    }
+  },
+  "packages/client/pyproject.toml": {
+    "dependencies": [
+      "email-validator>=2.1,<3.0.0",
+      "httpx>=0.27,<1.0.0",
+      "pydantic>=2.7,<3.0.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "datamodel-code-generator>=0.25,<0.26.0",
+        "mypy>=1.15,<2.0.0",
+        "pytest>=9.0.3,<9.1.0",
+        "python-semantic-release>=10.5.3,<10.6.0",
+        "ruff>=0.15.12,<0.16.0"
+      ]
+    },
+    "optional-dependencies": {}
+  },
+  "packages/landing/pyproject.toml": {
+    "dependencies": [
+      "fastapi[standard]>=0.136.1,<0.137.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "python-semantic-release>=10.5.3,<10.6.0",
+        "ruff>=0.15.12,<0.16.0"
+      ]
+    },
+    "optional-dependencies": {}
+  },
+  "pyproject.toml": {
+    "dependencies": [],
+    "dependency-groups": {
+      "dev": [
+        "bandit>=1.9.4,<1.10.0",
+        "detect-secrets>=1.5.0,<1.6.0",
+        "mypy>=1.15,<2.0.0",
+        "pip-audit>=2.10.0,<2.11.0",
+        "pytest>=9.0.3,<9.1.0",
+        "python-semantic-release>=10.5.3,<10.6.0",
+        "ruff>=0.15.12,<0.16.0"
+      ]
+    },
+    "optional-dependencies": {}
+  }
+}

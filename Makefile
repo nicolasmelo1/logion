@@ -1,7 +1,10 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit
+.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit \
+	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
+	check-skip-reasons check-forbidden-imports \
+	update-generated-lock update-deps-lock
 
 lint:
 	uv run ruff check packages/
@@ -36,6 +39,36 @@ mock-stop:
 
 public-audit:
 	uv run python scripts/audit_public_safe.py
+
+check-generated-lock:
+	uv run python scripts/check_generated_lock.py
+
+check-root-files:
+	uv run python scripts/check_root_files.py
+
+check-deps-lock:
+	uv run python scripts/check_deps_lock.py
+
+check-doc-links:
+	uv run python scripts/check_doc_links.py
+
+check-skip-reasons:
+	uv run python scripts/check_pytest_skip_reasons.py
+
+check-forbidden-imports:
+	uv run python scripts/check_forbidden_imports.py
+
+# Umbrella target: every static guardrail. Fast (<1s total). Runs in
+# CI and as part of the pre-commit hook. Slower checks (test, mypy,
+# ruff, security audit) stay separate so this stays cheap.
+ci-checks: public-audit check-generated-lock check-root-files check-deps-lock \
+	check-doc-links check-skip-reasons check-forbidden-imports
+
+update-generated-lock:
+	uv run python scripts/check_generated_lock.py --update
+
+update-deps-lock:
+	uv run python scripts/check_deps_lock.py --update
 
 companion-verify:
 	uv run make -C packages/agent-companion verify

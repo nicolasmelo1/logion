@@ -35,4 +35,7 @@ if [ -n "${staged_files}" ]; then
 	printf '%s\n' "${staged_files}" | xargs uv run detect-secrets-hook --baseline .secrets.baseline
 fi
 
+echo "Running public guardrails..."
+make ci-checks
+
 echo "All checks passed."

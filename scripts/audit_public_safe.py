@@ -37,12 +37,38 @@ FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
     ),
     ("OpenAI / Anthropic-style key", re.compile(r"sk-[A-Za-z0-9]{20,}")),
     ("hardcoded password", re.compile(r"""password\s*=\s*["'][^"']""")),
+    # Internal-planning vocabulary. Capitalized "Phase" / "Phases" is the
+    # milestone-numbering form used in private plans/ docs; lowercase
+    # "phase" (e.g. "phased rollout") is fine. "Roadmap" leaks forward-
+    # looking commitments; sister repo names and paths leak structure.
+    ("internal planning vocabulary", re.compile(r"\bPhases?\b")),
+    ("internal planning vocabulary", re.compile(r"\b[Rr]oadmap\b")),
+    ("internal coordination repo", re.compile(r"logion-workspace")),
+    ("internal docs path", re.compile(r"shared-docs/")),
+    ("internal plans path", re.compile(r"(^|[\s\"'`(])plans/")),
+    # LLM tells. The cheapest signal that prose was written by a model
+    # without being edited. Surgical set — common-in-AI, rare-in-humans.
+    (
+        "LLM tell",
+        re.compile(
+            r"\bas (shown|mentioned) (above|below|earlier|previously)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    ("LLM tell", re.compile(r"\bIt's important to note\b", re.IGNORECASE)),
+    ("LLM tell", re.compile(r"\bIn (summary|conclusion),", re.IGNORECASE)),
+    ("LLM tell", re.compile(r"\bdelve into\b", re.IGNORECASE)),
+    ("LLM tell", re.compile(r"\bseamlessly\b", re.IGNORECASE)),
 ]
 
 SKIP_DIRS = {".git", ".venv", "node_modules", "__pycache__", "tests"}
 SKIP_PREFIXES = (
     os.path.join(ROOT, "tests"),
     os.path.join(ROOT, ".git"),
+    # Machine-generated evaluation reports. Contain absolute local paths
+    # by design (sandbox roots emitted by llama.cpp / DSPy). Not human-
+    # edited; not part of the public surface.
+    os.path.join(ROOT, "packages", "agent-companion", "evals", "reports"),
 )
 SELF = os.path.abspath(__file__)
 

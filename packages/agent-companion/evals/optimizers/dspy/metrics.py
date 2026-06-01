@@ -79,9 +79,9 @@ def _action_to_calls(
 ) -> tuple[ToolCall, ...]:
     """Translate a DSPy prediction output into tool calls."""
     if action == "ask_before_update":
-        # Phase 6.10 §4.2: emit exactly one passive update-check tool
-        # call — never an auto-apply (`logion_skills_update`), never a
-        # listings search, never a recall search.
+        # Emit exactly one passive update-check tool call — never an
+        # auto-apply (`logion_skills_update`), never a listings search,
+        # never a recall search.
         course_id = selected_course_ids[0] if selected_course_ids else ""
         return (
             ToolCall(

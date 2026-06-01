@@ -125,6 +125,60 @@ def test_audit_public_safe_ignores_gitignored() -> None:
         )
 
 
+def test_audit_public_safe_capitalized_phase_detected() -> None:
+    """Capitalized 'Phase 7.1' should trip; lowercase 'phased' should not."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _write(
+            os.path.join(tmp, "docs", "internal-leak.md"),
+            "See Phase 7.1 for details.\n",
+        )
+        result = _run_audit(tmp)
+        assert result.returncode == 1
+        assert "internal planning vocabulary" in result.stdout
+
+
+def test_audit_public_safe_lowercase_phase_allowed() -> None:
+    """Lowercase usages like 'phased rollout' should NOT trip the guard."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _write(
+            os.path.join(tmp, "docs", "ok.md"),
+            "We use a phased rollout strategy.\n",
+        )
+        result = _run_audit(tmp)
+        assert result.returncode == 0, result.stdout
+
+
+def test_audit_public_safe_llm_tell_detected() -> None:
+    """LLM-tell phrases should trip the guard."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _write(
+            os.path.join(tmp, "docs", "ai-slop.md"),
+            "It's important to note that this seamlessly integrates.\n",
+        )
+        result = _run_audit(tmp)
+        assert result.returncode == 1
+        assert "LLM tell" in result.stdout
+
+
+def test_audit_public_safe_ignores_eval_reports() -> None:
+    """Machine-generated eval reports are skipped."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _write(
+            os.path.join(
+                tmp,
+                "packages",
+                "agent-companion",
+                "evals",
+                "reports",
+                "smoke.json",
+            ),
+            '{"sandbox": "/Users/runner/work"}\n',
+        )
+        _write(os.path.join(tmp, "packages", "client", "ok.py"), "# ok\n")
+        result = _run_audit(tmp)
+        assert result.returncode == 0, result.stdout
+
+
 def test_audit_public_safe_self_ignored() -> None:
     """The audit script should not trip on its own patterns."""
     result = subprocess.run(

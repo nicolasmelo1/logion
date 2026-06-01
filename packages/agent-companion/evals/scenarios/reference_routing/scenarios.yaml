@@ -1,4 +1,4 @@
-# Phase 6.11: gold scenarios for the ReferenceRoutingSignature.
+# Gold scenarios for the ReferenceRoutingSignature.
 #
 # Each scenario maps a user prompt + installed-capability inventory +
 # recall band to exactly one of the 9 canonical classes:
