@@ -48,7 +48,7 @@ jobs:
         run: uv run mypy packages/ --ignore-missing-imports
 
       - name: Tests
-        run: uv run pytest packages/ -m "not integration" --no-header -q
+        run: uv run pytest packages/ tests/ -m "not integration" --no-header -q
 
       - name: Check generated models
         run: |

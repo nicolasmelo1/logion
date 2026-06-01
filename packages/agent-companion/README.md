@@ -154,8 +154,8 @@ needs when installed as a Logion course:
   in `SKILL.md`'s `safety.requires_confirmation` enum.
 
 The manifest is validated by the same Pydantic schema the Logion API
-enforces on publish (see
-`See the capability-manifest schema in the Logion API source code.`
+enforces on publish. See the capability-manifest schema in the Logion API
+source code.
 
 ## Eval harness (in brief)
 

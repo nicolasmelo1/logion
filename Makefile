@@ -8,7 +8,7 @@ lint:
 	uv run ruff format --check packages/
 
 test:
-	uv run pytest packages/ --no-header -q -m "not integration"
+	uv run pytest packages/ tests/ --no-header -q -m "not integration"
 
 typecheck:
 	uv run mypy packages/cli/cli/ packages/client/src/ --ignore-missing-imports

@@ -133,10 +133,15 @@ def test_audit_public_safe_self_ignored() -> None:
         text=True,
         cwd=REPO_ROOT,
     )
-    # If there are hits, make sure none of them are from the
-    # audit script itself
-    if result.returncode != 0:
-        assert "audit_public_safe.py" not in result.stdout, (
-            "The audit script should skip itself but it appears in hits:\n"
-            f"{result.stdout}"
-        )
+    # The script must always succeed on the clean repo.
+    # This also implicitly verifies that the script's own regex
+    # patterns (written as string literals inside FORBIDDEN) do not
+    # cause false-positive hits on the script itself.
+    assert result.returncode == 0, (
+        f"Expected clean exit on the repo, got {result.returncode}.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert "audit_public_safe.py" not in result.stdout, (
+        "The audit script should skip itself but it appears in hits:\n"
+        f"{result.stdout}"
+    )

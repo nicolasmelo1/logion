@@ -113,13 +113,13 @@ When you open a PR, the template will ask you to confirm:
 into this repo on merges to `main`. You will see PRs labeled
 `automation/sync-openapi` — these are produced by CI.
 
-**Contributors cannot modify `contracts/openapi/v1.json` directly.** If you
+Contributors cannot modify `contracts/openapi/v1.json` directly. If you
 need a change to the API surface (new endpoint, changed schema, etc.), open a
 [Discussion](https://github.com/nicolasmelo1/logion/discussions) to propose
 it. The maintainers will evaluate and implement it upstream if accepted.
 
-The file header also contains a `<!-- generated, do not edit -->` marker as a
-reminder.
+See [docs/openapi-sync.md](docs/openapi-sync.md) for details on how the
+contract is synced and how to work with the mock server.
 
 ## Release process
 
