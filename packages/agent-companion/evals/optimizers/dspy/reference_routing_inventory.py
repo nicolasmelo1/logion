@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Phase 6.11: canonical inventory for the reference-routing
 signature.  Kept dspy-free so tests + scenario loaders can import
 it without the optional optimisation dependency.

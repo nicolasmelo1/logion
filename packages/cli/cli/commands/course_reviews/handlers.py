@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for course-reviews commands."""
 
 from __future__ import annotations

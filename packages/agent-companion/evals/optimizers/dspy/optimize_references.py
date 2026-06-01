@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Offline DSPy optimiser for the ReferenceRoutingSignature.
 
 Compiles a reference-routing classifier against the gold scenarios

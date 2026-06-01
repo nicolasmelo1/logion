@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """llama-server lifecycle helper.
 
 Context manager that boots a local ``llama-server``, waits for

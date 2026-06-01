@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for listings commands."""
 
 from __future__ import annotations

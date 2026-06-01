@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/nicolasmelo1/logion/discussions
+    about: Ask questions, share ideas, get help.
+  - name: Security vulnerability
+    url: https://github.com/nicolasmelo1/logion/security/advisories/new
+    about: Report a vulnerability privately.

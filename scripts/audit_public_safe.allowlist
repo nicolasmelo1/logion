@@ -1,0 +1,10 @@
+# scripts/audit_public_safe.allowlist
+# One entry per line: relative_path:line_number
+# Lines starting with # are comments.
+# Empty lines are ignored.
+#
+# Format: path/from/repo/root:line_number
+# These are known false positives — example code and test fixtures.
+
+# Example code in README showing how to use the SDK
+packages/client/README.md:36

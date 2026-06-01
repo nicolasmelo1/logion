@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Minimal .env loader.
 
 Reads ``KEY=value`` lines and merges them into ``os.environ`` without

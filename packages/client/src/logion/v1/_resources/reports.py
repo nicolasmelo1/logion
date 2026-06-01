@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Reports resource — user-facing report creation."""
 
 from __future__ import annotations

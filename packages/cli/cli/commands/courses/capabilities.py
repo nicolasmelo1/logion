@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for ``courses capabilities`` sub-commands."""
 
 from __future__ import annotations

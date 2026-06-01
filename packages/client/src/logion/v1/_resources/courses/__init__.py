@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Courses resource package."""
 
 from __future__ import annotations

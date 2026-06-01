@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Example-based tests for companion workflows and references."""
 
 from __future__ import annotations

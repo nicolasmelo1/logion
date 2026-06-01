@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Course-reviews command package."""
 
 from .parser import register

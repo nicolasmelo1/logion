@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the eval harness, schemas, fake provider, and graders.
 
 These tests cover three concerns:

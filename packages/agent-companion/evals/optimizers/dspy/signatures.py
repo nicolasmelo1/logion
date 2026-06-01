@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """DSPy Signature for the bootstrap decision policy.
 
 The signature defines the input/output contract that DSPy optimizers will

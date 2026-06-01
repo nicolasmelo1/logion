@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Client configuration."""
 
 from __future__ import annotations

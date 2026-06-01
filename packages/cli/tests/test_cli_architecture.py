@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Architectural constraints for CLI command modules."""
 
 from __future__ import annotations

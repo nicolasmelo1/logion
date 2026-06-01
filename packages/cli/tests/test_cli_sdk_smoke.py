@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Smoke tests — verify SDK resource class names exist and are importable.
 
 These tests catch typos and renames without constructing a ``LogionClient``,

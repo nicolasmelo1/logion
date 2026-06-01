@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Report moderation methods for the admin resource."""
 
 from __future__ import annotations

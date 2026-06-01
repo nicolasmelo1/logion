@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CLI context — builds a LogionClient from CliConfig."""
 
 from __future__ import annotations

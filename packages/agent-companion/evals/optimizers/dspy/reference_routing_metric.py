@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Metric for the reference-routing signature.
 
 Reuses ``_policy_token_estimate`` and ``_policy_token_factor`` from

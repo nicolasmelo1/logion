@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for logion._config module."""
 
 from __future__ import annotations

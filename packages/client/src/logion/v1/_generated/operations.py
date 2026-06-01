@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Generated internal operation functions for the v1 API."""
 
 from __future__ import annotations

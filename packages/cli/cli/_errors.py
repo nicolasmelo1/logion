@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CLI error handling — map SDK errors to exit codes."""
 
 from __future__ import annotations

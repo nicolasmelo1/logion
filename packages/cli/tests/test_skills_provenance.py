@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for provenance fields and the skills verify subcommand."""
 
 from __future__ import annotations

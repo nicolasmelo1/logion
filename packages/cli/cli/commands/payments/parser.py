@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Parser registration for payments commands."""
 
 from __future__ import annotations

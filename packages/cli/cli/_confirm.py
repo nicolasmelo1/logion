@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Confirmation helper — require --yes for destructive actions."""
 
 from __future__ import annotations

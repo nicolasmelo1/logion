@@ -230,3 +230,8 @@ __marimo__/
 **/evals/optimizers/dspy/generated_candidates/*.json
 **/evals/optimizers/dspy/generated_candidates/*.program.json
 **/evals/optimizers/dspy/generated_candidates/*.review.md
+
+# Secrets and credentials (never commit these)
+*.pem
+*.key
+.secrets.baseline.local

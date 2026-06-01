@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared admin resource types."""
 
 from __future__ import annotations

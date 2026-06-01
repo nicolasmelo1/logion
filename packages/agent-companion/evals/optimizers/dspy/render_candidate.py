@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Render a DSPy candidate report + saved program into a review packet.
 
 The packet is a single Markdown file a human reads before deciding

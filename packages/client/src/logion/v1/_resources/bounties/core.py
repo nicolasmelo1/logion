@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Core bounty methods."""
 
 from __future__ import annotations

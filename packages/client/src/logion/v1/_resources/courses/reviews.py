@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Review methods for course resources."""
 
 from __future__ import annotations

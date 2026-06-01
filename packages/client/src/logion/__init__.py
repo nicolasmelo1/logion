@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Logion Python client SDK."""
 
 from logion._client import LogionClient

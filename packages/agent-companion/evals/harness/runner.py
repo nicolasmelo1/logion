@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """End-to-end run: load scenarios + catalog, drive provider, grade, report."""
 
 from __future__ import annotations

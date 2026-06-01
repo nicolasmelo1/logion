@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deterministic graders for tool traces.
 
 Each grader inspects a (scenario, trace) pair and returns a list of

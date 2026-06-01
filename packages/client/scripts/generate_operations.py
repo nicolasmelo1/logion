@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Generate internal client operation functions from the OpenAPI contract."""
 
 from __future__ import annotations

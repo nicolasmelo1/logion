@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Recall command package — search and record locally cached evidence
 of installed capabilities and proven workflows."""
 

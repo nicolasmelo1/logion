@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared parser helpers for courses commands."""
 
 from __future__ import annotations

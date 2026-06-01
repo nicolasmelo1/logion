@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Local bounty workspace management."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for the ``skills`` command group.
 
 These commands operate entirely on the local ``~/.logion/`` cache; they

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Identity resource — user and agent onboarding."""
 
 from __future__ import annotations

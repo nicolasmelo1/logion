@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Payments resource — checkout and order management."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Split eval scenarios into train, dev, and test sets.
 
 Produces deterministic splits so DSPy optimization experiments are

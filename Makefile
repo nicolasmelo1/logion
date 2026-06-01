@@ -1,14 +1,14 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify
+.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit
 
 lint:
 	uv run ruff check packages/
 	uv run ruff format --check packages/
 
 test:
-	uv run pytest packages/ --no-header -q -m "not integration"
+	uv run pytest packages/ tests/ --no-header -q -m "not integration"
 
 typecheck:
 	uv run mypy packages/cli/cli/ packages/client/src/ --ignore-missing-imports
@@ -33,6 +33,9 @@ mock:
 
 mock-stop:
 	@if [ -f .prism.pid ]; then kill $$(cat .prism.pid) 2>/dev/null || true; rm -f .prism.pid; fi
+
+public-audit:
+	uv run python scripts/audit_public_safe.py
 
 companion-verify:
 	uv run make -C packages/agent-companion verify

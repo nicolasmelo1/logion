@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Parser registration for ``courses uploads`` subcommands.
 
 Lives in its own module so :mod:`parser_sections` stays under the

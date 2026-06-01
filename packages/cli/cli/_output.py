@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Output helpers — JSON and human-readable formatting."""
 
 from __future__ import annotations

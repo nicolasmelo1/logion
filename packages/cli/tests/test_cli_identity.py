@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the identity commands."""
 
 from __future__ import annotations

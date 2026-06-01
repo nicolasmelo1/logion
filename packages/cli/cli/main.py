@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Logion CLI entry point."""
 
 from __future__ import annotations

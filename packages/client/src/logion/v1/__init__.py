@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """V1 API namespace."""
 
 from __future__ import annotations

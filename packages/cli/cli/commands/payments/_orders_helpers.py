@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared helpers for payments order commands."""
 
 from __future__ import annotations

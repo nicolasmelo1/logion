@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deterministic fake provider.
 
 Replays the trace embedded in the scenario YAML so we can exercise graders

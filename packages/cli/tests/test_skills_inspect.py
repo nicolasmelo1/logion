@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the marketplace-aware ``logion skills inspect`` command."""
 
 from __future__ import annotations

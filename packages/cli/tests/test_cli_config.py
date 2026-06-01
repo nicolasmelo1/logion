@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for CLI config resolution."""
 
 from __future__ import annotations

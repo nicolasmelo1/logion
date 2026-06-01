@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Thin CLI wrapper hooks/agents call after a workflow succeeds.
 
 Exists as a standalone script (rather than only as

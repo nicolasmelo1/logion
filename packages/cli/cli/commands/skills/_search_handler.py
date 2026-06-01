@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handler for ``logion skills search``.
 
 Searches marketplace listings via the API and annotates each result

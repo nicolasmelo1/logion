@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for workspace commands — local bounty workspace."""
 
 from __future__ import annotations

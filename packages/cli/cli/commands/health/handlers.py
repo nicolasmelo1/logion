@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for the health command."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the ``logion skills search`` command."""
 
 from __future__ import annotations

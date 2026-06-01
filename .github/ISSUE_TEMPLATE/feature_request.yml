@@ -1,0 +1,39 @@
+name: Feature Request
+description: Propose a new feature or enhancement for Logion
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the user-facing problem this feature would address.
+      placeholder: "As a ____, I want ____ so that ____"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe your proposed solution or approach.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or features you have considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: would_you_implement
+    attributes:
+      label: Would you be willing to implement this?
+      options:
+        - "Yes"
+        - "Maybe"
+        - "No"
+    validations:
+      required: true

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Phase 6.10 §11.5: CLI-parity test for references.
 
 Extracts every ``logion ...`` invocation from each

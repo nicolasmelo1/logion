@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Offline DSPy optimizer for the bootstrap decision policy.
 
 Runs DSPy optimization (e.g. MIPROv2 or BootstrapFewShot) against the

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Push bytes to S3 for a previously created upload session.
 
 This is the missing primitive between ``courses uploads create`` (which

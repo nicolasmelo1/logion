@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Schemas for scenarios, catalogs, and tool traces.
 
 These are validated at load time so a malformed YAML fails fast instead of

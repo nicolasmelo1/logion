@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Path resolution helpers."""
 
 from __future__ import annotations

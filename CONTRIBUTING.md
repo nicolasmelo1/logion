@@ -1,202 +1,133 @@
 # Contributing to Logion
 
-Thanks for your interest in contributing to Logion! This guide covers how to
-set up your development environment and work with the project.
+Thanks for your interest in contributing! This guide covers everything you
+need to set up your environment, make changes, and open a pull request.
 
-## Prerequisites
+## Code of Conduct
 
-- **Python 3.12+**
-- **[uv](https://docs.astral.sh/uv/)** — package and virtualenv manager
-- **Node.js 18+** (only for mock server)
+This project follows the [Contributor Covenant v2.1](CODE_OF_CONDUCT.md).
+Please read it before participating.
 
-## Quick Start
+## Filing a bug
+
+Use the
+[Bug Report template](https://github.com/nicolasmelo1/logion/issues/new?template=bug_report.yml).
+Include the `logion --version` output, your platform, and clear steps to
+reproduce.
+
+## Proposing a feature
+
+Use the
+[Feature Request template](https://github.com/nicolasmelo1/logion/issues/new?template=feature_request.yml).
+Significant changes (new commands, API changes, architectural shifts) should
+start as a
+[Discussion](https://github.com/nicolasmelo1/logion/discussions) or RFC
+before turning into a PR.
+
+## Setting up your machine
 
 ```bash
-# Clone the repository
 git clone https://github.com/nicolasmelo1/logion.git
 cd logion
-
-# Install workspace dependencies
-uv sync --all-packages
-
-# Install repo Git hooks
+uv sync --all-packages --all-groups
 make install-hooks
-
-# Verify CLI works
-uv run logion --help
-```
-
-## Project Structure
-
-```
-logion/
-├── contracts/openapi/v1.json   # Public API contract (auto-synced from logion-private)
-├── packages/cli/               # Logion CLI agent tool
-├── packages/landing/           # Public landing application
-├── Makefile                    # Development task runner
-└── pyproject.toml              # Workspace root
-```
-
-The `contracts/openapi/v1.json` file is **auto-generated** — do not edit it
-manually. It is kept in sync by a CI pipeline in the private repository.
-
-## Mock Server
-
-Since external contributors don't have access to the private API, we provide a
-**mock server** powered by [Prism](https://github.com/stoplightio/prism) that
-serves realistic responses directly from the OpenAPI contract.
-
-### Starting the Mock Server
-
-```bash
-make mock
-```
-
-This starts Prism in the background on port 4010 and writes its PID to
-`.prism.pid` so it can be stopped cleanly:
-
-```bash
-npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 &
-```
-
-The mock server responds to every endpoint defined in the contract with example
-data or auto-generated values that conform to the schema.
-
-### Installing Git Hooks
-
-Run this once per clone to configure Git to use the committed hook scripts in
-`.githooks`:
-
-```bash
-make install-hooks
-```
-
-### Using the Mock Server with the CLI
-
-The CLI reads `LOGION_BASE_URL` from the environment, or you can pass
-`--base-url` directly to a subcommand. Point the CLI at the mock server like
-this:
-
-```bash
-uv run logion health --base-url http://localhost:4010
-```
-
-### Stopping the Mock Server
-
-```bash
-make mock-stop
-```
-
-This reads the PID from `.prism.pid` and kills only that process. If you
-started the mock server manually (without `make mock`), stop it with `Ctrl+C`
-or find it by port:
-
-```bash
-lsof -ti :4010 | xargs kill
-```
-
-### How the Mock Works
-
-Prism reads the OpenAPI spec and dynamically generates responses that conform
-to the schema definitions. If an endpoint defines response examples in the
-contract, Prism uses those. Otherwise, it generates realistic placeholder data
-that matches the schema types, required fields, and constraints.
-
-This means: **if the contract is correct, the mock server is correct**. If you
-find the mock returning unexpected data, the root cause is almost always a
-schema mismatch in the contract, not a Prism bug.
-
-## Development Workflow
-
-### Running Linters
-
-```bash
-make lint
-```
-
-### Running Tests
-
-```bash
 make test
 ```
 
-### Type Checking
+**Prerequisites:**
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) — package and workspace manager
+- Node.js 18+ (only needed for the Prism mock server)
+
+## Running the OpenAPI mock locally
+
+The Logion API contract is in `contracts/openapi/v1.json`. You can spin up a
+mock server that serves realistic responses directly from it:
 
 ```bash
-make typecheck
+make mock          # starts Prism on port 4010
+make mock-stop     # stops the mock server
 ```
 
-## API Contract
+See [docs/openapi-sync.md](docs/openapi-sync.md) for details on how the
+contract is synced and why contributors should not edit it directly.
 
-The `contracts/openapi/v1.json` file defines the public surface of the Logion
-API. It includes:
+## Submitting a PR
 
-- All endpoint paths and HTTP methods
-- Request parameters and request body schemas
-- Response schemas with status codes
-- Authentication requirements (API key header)
-- Error response shapes
+### Branch naming
 
-### Reading the Contract
+- `feat/<short-description>` — new features
+- `fix/<short-description>` — bug fixes
+- `docs/<short-description>` — documentation
+- `chore/<short-description>` — maintenance, tooling, dependencies
 
-You can explore it directly in JSON, or use any OpenAPI viewer. A quick way to
-see the endpoints:
+### Commit messages (required)
+
+This project uses **Conventional Commits** because the release automation
+(based on python-semantic-release) parses commit history to determine version
+bumps. Every commit message must follow the format:
+
+```
+type(scope)!: summary
+```
+
+Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
+`perf`, `ci`, `build`.
+
+The `!` (breaking change marker) and `(scope)` are optional.
+
+**Examples:**
+
+```
+feat(cli): add listings export command
+fix(client): handle 404 in course lookups
+docs: clarify mock-server setup in CONTRIBUTING
+chore(deps): bump ruff to 0.5.0
+```
+
+### Sign-off (DCO)
+
+Every commit must be signed off:
 
 ```bash
-cat contracts/openapi/v1.json | python3 -c "
-import json, sys
-spec = json.load(sys.stdin)
-for path, methods in sorted(spec['paths'].items()):
-    for method in methods:
-        op = spec['paths'][path][method]
-        summary = op.get('summary', '')
-        print(f'{method.upper():7s} {path:50s} {summary}')
-"
+git commit -s
 ```
 
-### Contract Updates
+This adds a `Signed-off-by:` trailer that certifies you wrote or have the
+right to submit the patch (Developer Certificate of Origin).
 
-The contract is automatically synced whenever the private API changes. You'll
-see PRs labeled `automation/sync-openapi` — these are generated by CI and should
-only be reviewed for accuracy, not edited manually.
+### PR checklist
 
-## Making Changes
+When you open a PR, the template will ask you to confirm:
 
-1. **Fork** the repository
-2. **Create a branch** from `main`:
-   ```bash
-   git checkout -b feat/my-feature
-   ```
-3. **Make your changes** and commit with clear messages
-4. **Run checks** before pushing:
-   ```bash
-   make lint test typecheck
-   ```
-5. **Open a Pull Request** against `main`
+- `make lint` passes
+- `make test` passes
+- Any area-specific checks (e.g. `make typecheck`)
+- Backwards compatibility (or a migration plan)
+- PR title follows Conventional Commits
 
-### Commit Style
+## Where the contract comes from
 
-Use conventional commit prefixes:
+`contracts/openapi/v1.json` is **generated by an internal service** and synced
+into this repo on merges to `main`. You will see PRs labeled
+`automation/sync-openapi` — these are produced by CI.
 
-- `feat:` — new feature
-- `fix:` — bug fix
-- `docs:` — documentation
-- `refactor:` — code restructure
-- `test:` — test additions or changes
-- `chore:` — maintenance, tooling, dependencies
+Contributors cannot modify `contracts/openapi/v1.json` directly. If you
+need a change to the API surface (new endpoint, changed schema, etc.), open a
+[Discussion](https://github.com/nicolasmelo1/logion/discussions) to propose
+it. The maintainers will evaluate and implement it upstream if accepted.
 
-## Code Style
+See [docs/openapi-sync.md](docs/openapi-sync.md) for details on how the
+contract is synced and how to work with the mock server.
 
-We use [Ruff](https://docs.astral.sh/ruff/) for linting and formatting. The
-config lives in `pyproject.toml`. Key rules:
+## Release process
 
-- Line length: **79**
-- Target Python: **3.12**
-- Import sorting enforced
-- Extended rules: unused arguments (`ARG`), simplified logic (`SIM`),  
-  comprehension refactors (`C4`), and others (see `pyproject.toml` for the  
-  full list)
+Releases are automated via python-semantic-release. See the release workflow
+documentation (planned: `RELEASING.md`) for details on how version bumps,
+changelog generation, and package publishing work.
 
-## Questions?
+---
 
-Open an issue or start a discussion on GitHub. We're happy to help.
+Questions? Open an [issue](https://github.com/nicolasmelo1/logion/issues) or
+start a [Discussion](https://github.com/nicolasmelo1/logion/discussions).

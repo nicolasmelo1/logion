@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for BountiesResource — bounty creation and management."""
 
 from __future__ import annotations

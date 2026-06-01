@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CLI utility helpers — generic kwarg building, etc."""
 
 from __future__ import annotations

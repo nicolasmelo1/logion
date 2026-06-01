@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Parser registration for notifications commands."""
 
 from __future__ import annotations

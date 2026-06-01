@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Mutation handlers for courses commands."""
 
 from __future__ import annotations

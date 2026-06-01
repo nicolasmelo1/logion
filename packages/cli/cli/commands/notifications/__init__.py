@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Notifications command package."""
 
 from .parser import register

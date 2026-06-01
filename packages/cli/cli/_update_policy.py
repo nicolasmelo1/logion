@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Update policy gates for ``logion skills update``.
 
 Compares the locally installed manifest against a candidate remote

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Course reviews resource — human review queue management."""
 
 from __future__ import annotations

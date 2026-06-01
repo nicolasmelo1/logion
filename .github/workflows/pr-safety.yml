@@ -48,7 +48,7 @@ jobs:
         run: uv run mypy packages/ --ignore-missing-imports
 
       - name: Tests
-        run: uv run pytest packages/ -m "not integration" --no-header -q
+        run: uv run pytest packages/ tests/ -m "not integration" --no-header -q
 
       - name: Check generated models
         run: |
@@ -63,3 +63,26 @@ jobs:
 
       - name: Secret scan
         run: uv run detect-secrets scan --baseline .secrets.baseline
+
+  public-audit:
+    name: Public audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --all-packages --locked
+
+      - name: Run public-audit
+        run: make public-audit

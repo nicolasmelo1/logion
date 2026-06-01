@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import os
 
 import uvicorn
@@ -56,8 +57,7 @@ def index() -> str:
             reviews, and marketplace integrations.
           </p>
           <p>
-            Public CLI and landing live here; the closed API lives in
-            logion-private.
+            Public CLI and landing page for Logion.
           </p>
           <p><a href="/health">App status</a></p>
         </main>

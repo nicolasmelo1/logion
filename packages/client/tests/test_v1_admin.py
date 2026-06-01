@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for AdminResource — moderation and administration."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the packaging check script.
 
 Invokes package_skill.py and verifies it passes for a
