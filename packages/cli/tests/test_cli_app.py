@@ -41,7 +41,7 @@ def test_version_uses_package_metadata(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """--version reads from importlib.metadata."""
-    monkeypatch.setattr("cli._version.version", lambda _: "1.2.3")
+    monkeypatch.setattr("cli._parser.__version__", "1.2.3")
     with pytest.raises(SystemExit) as exc_info:
         main(["--version"])
     assert exc_info.value.code == 0

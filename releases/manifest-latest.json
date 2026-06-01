@@ -1,0 +1,28 @@
+{
+  "channel": "latest",
+  "generated_at": "2026-06-01T15:42:58+00:00",
+  "git_commit": "c2c93b96888e2d9b1a2fd57e7e6da92f114a74bd",
+  "packages": {
+    "logion-cli": {
+      "minimum_client": "0.1.0",
+      "minimum_python": "3.12",
+      "npm_name": "@logion/cli",
+      "pypi_name": "logion-cli",
+      "tag": "logion-cli-v0.1.0",
+      "version": "0.1.0"
+    },
+    "logion-client": {
+      "minimum_python": "3.12",
+      "pypi_name": "logion-client",
+      "tag": "logion-client-v0.1.0",
+      "version": "0.1.0"
+    },
+    "logion-companion": {
+      "minimum_cli": "0.1.0",
+      "minimum_python": "3.12",
+      "tag": "logion-companion-v0.1.0",
+      "version": "0.1.0"
+    }
+  },
+  "schema_version": 1
+}
