@@ -13,6 +13,9 @@ and more — without building against raw HTTP endpoints.
 pipx install logion-cli
 ```
 
+<!-- NOTE: `logion.dev` is not yet owned. The installer URL below is a
+     placeholder; update it (and the matching addresses in SECURITY.md and
+     CODE_OF_CONDUCT.md) once the domain is registered. -->
 > **Coming soon:** `curl | sh` installer (`https://logion.dev/install.sh`) and
 > `npx logion` wrapper — these endpoints are placeholders and will be
 > available once the publishing pipeline is live.
