@@ -1,7 +1,7 @@
 {
   "channel": "stable",
-  "generated_at": "2026-06-01T15:42:47+00:00",
-  "git_commit": "c2c93b96888e2d9b1a2fd57e7e6da92f114a74bd",
+  "generated_at": "2026-06-01T18:03:39+00:00",
+  "git_commit": "8d345fe3c402a671bacecba1bdf6a057945db739",
   "packages": {
     "logion-cli": {
       "minimum_client": "0.1.0",

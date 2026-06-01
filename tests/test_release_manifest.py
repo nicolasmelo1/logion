@@ -138,7 +138,11 @@ def test_manifest_validates_against_schema() -> None:
 
 
 def test_manifest_build_deterministic() -> None:
-    """Running build twice produces byte-identical output."""
+    """Running build twice produces structurally identical output.
+
+    Volatile fields (generated_at, git_commit) differ between runs,
+    so we strip them and compare the remaining content.
+    """
     import tempfile
 
     with tempfile.NamedTemporaryFile(
@@ -150,19 +154,20 @@ def test_manifest_build_deterministic() -> None:
     ) as f2:
         path2 = f2.name
 
+    volatile = ("generated_at", "git_commit")
     try:
         r1 = _run(["build", "--channel", "stable", "--out", path1])
         r2 = _run(["build", "--channel", "stable", "--out", path2])
         assert r1.returncode == 0, f"Build 1 failed: {r1.stderr}"
         assert r2.returncode == 0, f"Build 2 failed: {r2.stderr}"
 
-        content1 = Path(path1).read_text(encoding="utf-8")
-        content2 = Path(path2).read_text(encoding="utf-8")
-        m1 = json.loads(content1)
-        m2 = json.loads(content2)
-        assert m1["packages"] == m2["packages"]
-        assert m1["schema_version"] == m2["schema_version"]
-        assert m1["channel"] == m2["channel"]
+        m1 = json.loads(Path(path1).read_text(encoding="utf-8"))
+        m2 = json.loads(Path(path2).read_text(encoding="utf-8"))
+        stable1 = {k: v for k, v in m1.items() if k not in volatile}
+        stable2 = {k: v for k, v in m2.items() if k not in volatile}
+        assert stable1 == stable2, (
+            "Manifests differ outside volatile fields"
+        )
     finally:
         os.unlink(path1)
         os.unlink(path2)
@@ -170,9 +175,11 @@ def test_manifest_build_deterministic() -> None:
 
 def test_manifest_check_passes_on_committed_manifest() -> None:
     """Running check on the committed manifest should exit 0."""
-    _run(["check", "--in", str(STABLE_MANIFEST)])
-    # The check may fail if manifest was generated with a different
-    # git sha; verify the structural match instead.
+    result = _run(["check", "--in", str(STABLE_MANIFEST)])
+    assert result.returncode == 0, (
+        f"check failed (exit {result.returncode}): {result.stderr}"
+    )
+    # Also verify the manifest validates against the schema.
     manifest = _load_json(STABLE_MANIFEST)
     schema = _load_json(SCHEMA_PATH)
     errors = _validate_manifest_against_schema(manifest, schema)
@@ -192,7 +199,6 @@ def test_manifest_check_fails_on_version_drift() -> None:
     try:
         data = tomllib.loads(original.decode("utf-8"))
         original_version = data["project"]["version"]
-        data["project"]["version"] = "99.99.99"
         cli_pyproject.write_text(
             cli_pyproject.read_text("utf-8").replace(
                 original_version, "99.99.99",
@@ -206,16 +212,29 @@ def test_manifest_check_fails_on_version_drift() -> None:
             tmp_path = f.name
 
         try:
-            _run([
+            # Build a manifest from the drifted state
+            build_result = _run([
                 "build", "--channel", "stable", "--out", tmp_path,
             ])
+            assert build_result.returncode == 0, (
+                f"build failed: {build_result.stderr}"
+            )
             rebuilt = json.loads(
-                Path(tmp_path).read_text(encoding="utf-8")
+                Path(tmp_path).read_text(encoding="utf-8"),
             )
             assert (
                 rebuilt["packages"]["logion-cli"]["version"]
                 == "99.99.99"
             ), "Build should pick up mutated version"
+
+            # Check against the committed (un-drifted) manifest
+            # — this should fail because versions differ.
+            check_result = _run([
+                "check", "--in", str(STABLE_MANIFEST),
+            ])
+            assert check_result.returncode != 0, (
+                "check should fail on version drift"
+            )
         finally:
             os.unlink(tmp_path)
     finally:

@@ -55,27 +55,6 @@ def _read_pyproject_version(pyproject_dir: str) -> str:
     return data["project"]["version"]
 
 
-def _git_latest_tag(tag_prefix: str) -> str | None:
-    """Return the latest git tag matching *tag_prefix*, or None."""
-    try:
-        result = subprocess.run(
-            [
-                "git", "tag", "--list",
-                f"{tag_prefix}*",
-                "--sort=-version:refname",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=str(REPO_ROOT),
-        )
-    except FileNotFoundError:
-        return None
-    if result.returncode != 0:
-        return None
-    tags = result.stdout.strip().splitlines()
-    return tags[0] if tags else None
-
-
 def _git_commit_sha() -> str:
     """Return the full SHA of HEAD."""
     result = subprocess.run(
@@ -128,8 +107,7 @@ def build_manifest(
     for name, cfg in PACKAGES.items():
         version = all_versions[name]
         tag_prefix = cfg["tag_prefix"]
-        latest_tag = _git_latest_tag(tag_prefix)
-        tag = latest_tag if latest_tag else f"{tag_prefix}{version}"
+        tag = f"{tag_prefix}{version}"
 
         entry: dict[str, str | dict] = {
             "version": version,
@@ -151,8 +129,11 @@ def build_manifest(
         # Attach release assets if available
         if release_assets_dir:
             assets_dir = Path(release_assets_dir)
+            # Wheel filenames normalise hyphens to underscores
+            # (PEP 427), so build the glob with underscores.
+            normalised_name = name.replace("-", "_")
             for asset_type, glob_pattern in [
-                ("wheel", f"{name}-{version}*none-any.whl"),
+                ("wheel", f"{normalised_name}-{version}*none-any.whl"),
                 ("sdist", f"{name}-{version}.tar.gz"),
                 (
                     "bundle",
@@ -160,7 +141,7 @@ def build_manifest(
                 ),
                 ("skill_md", f"{name}-skill-{version}.md"),
             ]:
-                matches = list(assets_dir.glob(glob_pattern))
+                matches = sorted(assets_dir.glob(glob_pattern))
                 if matches:
                     asset = matches[0]
                     entry[asset_type] = {
@@ -232,10 +213,18 @@ def cmd_check(args: argparse.Namespace) -> None:
     if rebuiltable_fields != on_disk_comparable:
         import difflib
 
-        expected_text = serialize_manifest(manifest)
+        # Diff only the non-volatile fields so the output is meaningful
+        on_disk_stripped = serialize_manifest(
+            {k: v for k, v in on_disk_manifest.items()
+             if k not in ("generated_at", "git_commit")},
+        )
+        rebuilt_stripped = serialize_manifest(
+            {k: v for k, v in manifest.items()
+             if k not in ("generated_at", "git_commit")},
+        )
         diff = difflib.unified_diff(
-            on_disk.splitlines(keepends=True),
-            expected_text.splitlines(keepends=True),
+            on_disk_stripped.splitlines(keepends=True),
+            rebuilt_stripped.splitlines(keepends=True),
             fromfile=str(on_disk_path),
             tofile="(rebuilt)",
         )
