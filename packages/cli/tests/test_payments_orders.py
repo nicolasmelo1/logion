@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for payments orders get envelope and orders wait subcommand."""
 
 from __future__ import annotations

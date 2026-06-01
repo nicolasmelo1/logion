@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the course-reviews commands."""
 
 from __future__ import annotations

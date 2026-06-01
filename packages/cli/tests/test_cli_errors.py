@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for CLI error handling utilities."""
 
 from __future__ import annotations

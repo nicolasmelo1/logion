@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Reference-routing DSPy signature.
 
 Decides whether the agent needs to load an on-demand reference

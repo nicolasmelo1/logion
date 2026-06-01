@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Listings resource — course marketplace search."""
 
 from __future__ import annotations

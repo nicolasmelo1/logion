@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for offline DSPy optimizer helpers."""
 
 from __future__ import annotations

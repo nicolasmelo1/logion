@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Local capability manifest validator for the Logion CLI.
 
 Validates and normalizes ``course/capabilities.yaml`` WITHOUT calling the

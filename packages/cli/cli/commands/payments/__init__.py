@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Payments command package."""
 
 from .parser import register

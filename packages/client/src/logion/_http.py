@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """HTTP transport wrapper with retry and auth."""
 
 from __future__ import annotations

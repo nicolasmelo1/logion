@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Architectural constraints for manual v1 resource code."""
 
 from __future__ import annotations

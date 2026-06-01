@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Capability evidence rendering for course-reviews CLI commands."""
 
 from __future__ import annotations

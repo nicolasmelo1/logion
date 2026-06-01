@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Stable handler exports for courses commands."""
 
 from .capabilities import (

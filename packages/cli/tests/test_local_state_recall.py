@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Unit tests for the recall fuzzy ranker and confidence calibration."""
 
 from __future__ import annotations

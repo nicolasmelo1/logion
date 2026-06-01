@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Dynamic CLI version from package metadata."""
 
 from __future__ import annotations

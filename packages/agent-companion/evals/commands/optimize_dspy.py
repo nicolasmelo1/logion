@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Boot a local llama-server and run DSPy offline optimization.
 
 Pick a signature with ``--target {policy,references}``:

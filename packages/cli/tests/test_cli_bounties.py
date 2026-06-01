@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the bounties commands."""
 
 from __future__ import annotations

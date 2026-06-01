@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Round-trip tests for the bundled capability manifest scaffold.
 
 The scaffold ships in ``cli/templates/`` and is exposed via

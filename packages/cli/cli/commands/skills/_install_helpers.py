@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Internal helpers shared by the ``skills install`` and ``update``
 handlers.  Kept separate so handlers.py stays under the CLI's per-file
 source-size budget."""

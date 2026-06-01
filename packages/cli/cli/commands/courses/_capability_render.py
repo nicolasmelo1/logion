@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared capability summary rendering for CLI commands."""
 
 from __future__ import annotations

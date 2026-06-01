@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for NotificationsResource — user notification management."""
 
 from __future__ import annotations

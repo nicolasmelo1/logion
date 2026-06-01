@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Confidence calibration helpers for local recall.
 
 Maps raw similarity scores to calibrated confidence values and

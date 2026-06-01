@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Core course lifecycle methods."""
 
 from __future__ import annotations

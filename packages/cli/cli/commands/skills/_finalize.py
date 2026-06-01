@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Finalisation step for ``logion skills install``.
 
 Kept separate from :mod:`_install_helpers` so each source file stays

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deterministic ranker for the local recall index.
 
 Pure function: given a query and a list of compact recall entries,

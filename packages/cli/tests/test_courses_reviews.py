@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for courses reviews v1 envelope and summary verb."""
 
 from __future__ import annotations

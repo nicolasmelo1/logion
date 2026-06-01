@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Logion client — entry point for the SDK."""
 
 from __future__ import annotations

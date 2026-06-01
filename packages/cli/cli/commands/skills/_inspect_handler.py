@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handler for ``logion skills inspect``.
 
 Kept separate from :mod:`handlers` so each file stays under the

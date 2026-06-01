@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the agent-companion course/capabilities.yaml manifest.
 
 The only contract worth enforcing here is "the manifest parses and

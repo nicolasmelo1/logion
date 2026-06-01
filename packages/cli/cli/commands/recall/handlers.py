@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Handlers for the ``recall`` command group.
 
 Read-only fuzzy lookup over installed capabilities, prior successful

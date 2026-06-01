@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for local_state module: layout, manifest, index, recall, lock,
 workflows, update policy, secret masking, danger flag enum, content
 verification, and schema envelope.

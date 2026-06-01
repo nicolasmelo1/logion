@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for extended CoursesResource methods — reviews and publication."""
 
 from __future__ import annotations

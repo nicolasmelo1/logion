@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the v1.health resource."""
 
 from __future__ import annotations

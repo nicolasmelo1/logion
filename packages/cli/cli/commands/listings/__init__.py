@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Listings command package."""
 
 from .parser import register

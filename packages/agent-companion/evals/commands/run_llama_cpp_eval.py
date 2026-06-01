@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Boot a local llama-server and run the eval harness against it."""
 
 from __future__ import annotations

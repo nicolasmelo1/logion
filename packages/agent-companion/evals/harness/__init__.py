@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Logion Marketplace Companion eval harness.
 
 Deterministic harness for grading whether the bootstrap skill routes,

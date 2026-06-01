@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for CLI app — help text, version, command registration."""
 
 from __future__ import annotations

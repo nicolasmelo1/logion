@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the v1 JSON output envelope helpers."""
 
 from __future__ import annotations

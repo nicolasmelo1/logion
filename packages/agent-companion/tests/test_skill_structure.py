@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Structural tests for the Logion Marketplace Companion.
 
 Verifies the companion package has the required structure,

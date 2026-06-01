@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Composite metric for DSPy optimization of the decision policy.
 
 Implements the scoring formula:

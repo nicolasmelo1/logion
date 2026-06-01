@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CLI configuration — env-var resolution and defaults."""
 
 from __future__ import annotations

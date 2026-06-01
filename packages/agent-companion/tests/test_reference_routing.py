@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Phase 6.11: tests for the reference-routing signature, metric,
 scenarios, and renderer gates."""
 

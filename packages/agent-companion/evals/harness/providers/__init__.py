@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Pluggable provider interface for the eval harness.
 
 Providers translate a (scenario, catalog) pair into a concrete Trace.

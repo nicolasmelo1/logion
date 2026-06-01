@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Admin commands — courses/users/agents/reports administration.
 
 Gated by ``LOGION_ENABLE_ADMIN``.  If the env var is not truthy the

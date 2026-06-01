@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the payments commands."""
 
 from __future__ import annotations

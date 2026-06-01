@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for ``logion courses uploads push``.
 
 Covers the happy path, validation failures (missing files, session

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """llama.cpp provider for live local evals.
 
 The provider loads ``SKILL.md`` as the system prompt and exposes the real

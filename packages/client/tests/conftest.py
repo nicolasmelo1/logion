@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared test fixtures for the Logion client SDK."""
 
 from __future__ import annotations

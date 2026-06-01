@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for v1 resource methods."""
 
 from __future__ import annotations

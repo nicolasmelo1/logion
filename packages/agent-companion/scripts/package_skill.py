@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Validate the Logion Marketplace Companion skill package.
 
 Runs structural, manifest, and secret checks and prints a report.

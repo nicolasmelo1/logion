@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Download the local GGUF models the eval harness can run against.
 
 Reads ``.env`` for download defaults (which models to fetch, repo /

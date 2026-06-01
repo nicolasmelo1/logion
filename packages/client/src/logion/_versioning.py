@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Versioned namespace factory."""
 
 from __future__ import annotations

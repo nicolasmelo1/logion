@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Bounty submission methods."""
 
 from __future__ import annotations

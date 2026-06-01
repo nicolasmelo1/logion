@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Bounties resource package."""
 
 from __future__ import annotations

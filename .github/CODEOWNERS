@@ -1,0 +1,10 @@
+# CODEOWNERS
+# ReviewOwnership for the Logion repository.
+# Replace individual handles with team handles when a team exists.
+
+*                                @nicolasmelo1
+/packages/agent-companion/       @nicolasmelo1
+/packages/cli/                   @nicolasmelo1
+/packages/client/                @nicolasmelo1
+/.github/                        @nicolasmelo1
+/SECURITY.md                     @nicolasmelo1

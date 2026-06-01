@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Local installation state layout and operations.
 
 Manages the ~/.logion/ directory structure, manifest files, compact

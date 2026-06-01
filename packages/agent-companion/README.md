@@ -155,7 +155,7 @@ needs when installed as a Logion course:
 
 The manifest is validated by the same Pydantic schema the Logion API
 enforces on publish (see
-`logion-private/packages/api/api/courses/services/parse_course_capability_manifest.py`).
+`See the capability-manifest schema in the Logion API source code.`
 
 ## Eval harness (in brief)
 

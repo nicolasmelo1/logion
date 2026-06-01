@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Error hierarchy for the Logion SDK."""
 
 from __future__ import annotations

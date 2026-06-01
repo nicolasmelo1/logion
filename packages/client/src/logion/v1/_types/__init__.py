@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """V1 API types.
 
 Generated Pydantic models will live in the ``generated`` sub-package.

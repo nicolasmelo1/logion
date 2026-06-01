@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Argparse parser factory for the Logion CLI."""
 
 from __future__ import annotations
