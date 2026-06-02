@@ -1433,7 +1433,7 @@ dspy = [
 
 [[package]]
 name = "logion-cli"
-version = "0.1.0"
+version = "99.99.99"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "logion-client" },
