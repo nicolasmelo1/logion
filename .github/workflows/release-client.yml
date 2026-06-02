@@ -28,10 +28,7 @@ jobs:
       - id: parse
         run: |
           tag="${GITHUB_REF_NAME#logion-client-v}"
-          py=$(uv run python -c "
-          import tomllib, pathlib
-          print(tomllib.loads(pathlib.Path('packages/client/pyproject.toml').read_text())['project']['version'])
-          ")
+          py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/client/pyproject.toml').read_text())['project']['version'])")
           test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
           echo "version=$tag" >> "$GITHUB_OUTPUT"
 
