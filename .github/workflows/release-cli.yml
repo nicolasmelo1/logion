@@ -2,8 +2,7 @@ name: Release logion-cli to PyPI
 
 on:
   push:
-    tags:
-      - 'logion-cli-v*'
+    tags: ["logion-cli-v*"]
 
 permissions:
   contents: read

@@ -128,3 +128,51 @@ SHA256SUMS to the GitHub Release.
 
 If the version already exists on PyPI, the publish step skips
 (`skip-existing: true`) rather than failing.
+
+## MVP release
+
+### Preconditions
+
+- `main` is green.
+- `make ci-checks` passes.
+- `make install-test` passes.
+- Package version has already been updated in the package metadata.
+
+### Publish one package
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only
+git tag logion-cli-vX.Y.Z
+git push origin logion-cli-vX.Y.Z
+```
+
+Watch the matching release workflow.
+
+### Regenerate manifests
+
+```bash
+make release-manifest
+make release-manifest-check
+git diff releases/
+```
+
+Open a PR with the manifest changes. Do not push manifest changes
+straight to `main`.
+
+### Smoke installer before announcement
+
+```bash
+TMP_HOME="$(mktemp -d)"
+HOME="$TMP_HOME" LOGION_INSTALL_MANIFEST_URL="<manifest-url>" sh scripts/install.sh --dry-run
+```
+
+For PowerShell, run the Pester suite and one manual `-DryRun` install.
+
+### Rollback
+
+- PyPI: yank the broken version; do not delete history.
+- npm: deprecate the broken version.
+- GitHub Release: keep tags immutable; publish a patch tag.
+- Manifest: update stable/latest through reviewed PR.
