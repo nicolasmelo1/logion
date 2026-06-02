@@ -67,8 +67,10 @@ SKIP_PREFIXES = (
     os.path.join(ROOT, ".git"),
     # Machine-generated evaluation reports. Contain absolute local paths
     # by design (sandbox roots emitted by llama.cpp / DSPy). Not human-
-    # edited; not part of the public surface.
     os.path.join(ROOT, "packages", "agent-companion", "evals", "reports"),
+    # Secrets baseline contains absolute paths from the CI runner
+    # (detect-secrets embeds scan roots). Not part of the public surface.
+    os.path.join(ROOT, ".secrets.baseline"),
 )
 SELF = os.path.abspath(__file__)
 

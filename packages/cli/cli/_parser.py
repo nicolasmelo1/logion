@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 
-from cli._version import get_cli_version
+from cli._version import __version__
 from cli.commands import (
     admin,
     bounties,
@@ -31,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {get_cli_version()}",
+        version=f"%(prog)s {__version__}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

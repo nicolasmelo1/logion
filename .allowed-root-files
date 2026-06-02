@@ -14,6 +14,7 @@ CONTRIBUTING.md
 LICENSE
 Makefile
 README.md
+RELEASING.md
 SECURITY.md
 
 # Build / config
@@ -33,5 +34,6 @@ uv.lock
 contracts
 docs
 packages
+releases
 scripts
 tests

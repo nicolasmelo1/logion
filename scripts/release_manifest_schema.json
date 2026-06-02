@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logion.dev/schemas/release-manifest/v1.json",
+  "title": "LogionReleaseManifest",
+  "description": "Machine-readable, deterministic manifest of released Logion packages.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "git_commit", "channel", "packages"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "git_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["stable", "latest"]
+    },
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^logion-": {
+          "type": "object",
+          "required": ["version", "tag", "minimum_python"],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?$" },
+            "tag": { "type": "string" },
+            "pypi_name": { "type": "string" },
+            "npm_name": { "type": "string" },
+            "minimum_python": { "type": "string", "pattern": "^3\\.[0-9]+$" },
+            "minimum_client": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+            "minimum_cli": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+            "wheel": {
+              "type": "object",
+              "required": ["url", "sha256"],
+              "additionalProperties": false,
+              "properties": {
+                "url": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            },
+            "sdist": {
+              "type": "object",
+              "required": ["url", "sha256"],
+              "additionalProperties": false,
+              "properties": {
+                "url": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            },
+            "bundle": {
+              "type": "object",
+              "required": ["url", "sha256"],
+              "additionalProperties": false,
+              "properties": {
+                "url": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            },
+            "skill_md": {
+              "type": "object",
+              "required": ["url", "sha256"],
+              "additionalProperties": false,
+              "properties": {
+                "url": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

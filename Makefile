@@ -4,7 +4,8 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 .PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
-	update-generated-lock update-deps-lock
+	update-generated-lock update-deps-lock \
+	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion
 
 lint:
 	uv run ruff check packages/
@@ -72,3 +73,18 @@ update-deps-lock:
 
 companion-verify:
 	uv run make -C packages/agent-companion verify
+
+release-manifest:
+	uv run python scripts/release_manifest.py build --channel stable
+
+release-manifest-check:
+	uv run python scripts/release_manifest.py check --in releases/manifest-stable.json
+
+version-bump-cli:
+	uv run semantic-release version -c packages/cli/pyproject.toml
+
+version-bump-client:
+	uv run semantic-release version -c packages/client/pyproject.toml
+
+version-bump-companion:
+	uv run semantic-release version -c packages/agent-companion/pyproject.toml
