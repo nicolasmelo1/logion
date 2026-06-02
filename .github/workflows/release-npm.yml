@@ -8,6 +8,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: release-npm-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -18,10 +22,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version-file: packages/npm-wrapper/.nvmrc
           registry-url: "https://registry.npmjs.org/"
           cache: "npm"
           cache-dependency-path: "packages/npm-wrapper/package-lock.json"
+      - name: Wait for PyPI CLI version to appear
+        run: |
+          version="${GITHUB_REF_NAME#logion-cli-v}"
+          for i in $(seq 1 30); do
+            python3 - <<PY
+          import json, urllib.request, sys
+          version = "$version"
+          data = json.load(urllib.request.urlopen("https://pypi.org/pypi/logion-cli/json", timeout=15))
+          sys.exit(0 if version in data.get("releases", {}) else 1)
+          PY
+            && exit 0
+            sleep 10
+          done
+          exit 1
       - name: Install dependencies
         working-directory: packages/npm-wrapper
         run: npm ci --ignore-scripts
@@ -32,10 +50,7 @@ jobs:
         run: node packages/npm-wrapper/dist/scripts/version-from-manifest.js
       - name: Pack and inspect
         working-directory: packages/npm-wrapper
-        run: |
-          npm pack --dry-run
-          npm pack
-          tar -tzf logion-cli-*.tgz | sort
+        run: npm pack --dry-run
       - name: Publish with provenance
         working-directory: packages/npm-wrapper
         env:

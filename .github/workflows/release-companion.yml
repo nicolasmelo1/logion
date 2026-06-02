@@ -5,7 +5,8 @@ on:
     tags: ["logion-companion-v*"]
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
 
 concurrency:
   group: release-companion-${{ github.ref }}
@@ -13,6 +14,7 @@ concurrency:
 
 jobs:
   verify:
+    name: Verify tag matches pyproject version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.parse.outputs.version }}
@@ -21,10 +23,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
       - id: parse
         run: |
           tag="${GITHUB_REF_NAME#logion-companion-v}"
-          py=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])")
+          py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])")
           test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
           echo "version=$tag" >> "$GITHUB_OUTPUT"
 
@@ -37,11 +40,19 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       - run: uv sync --package logion-agent-companion --frozen
       - name: Build bundle
-        run: uv run python packages/agent-companion/scripts/package_skill.py build --out dist/ --version ${{ needs.verify.outputs.version }} --release
+        run: >
+          uv run python packages/agent-companion/scripts/package_skill.py build
+          --out dist/
+          --version "${{ needs.verify.outputs.version }}"
+          --release
       - name: Verify bundle
-        run: uv run python packages/agent-companion/scripts/verify_bundle.py dist/logion-marketplace-companion-${{ needs.verify.outputs.version }}.tar.gz
+        run: >
+          uv run python packages/agent-companion/scripts/verify_bundle.py
+          "dist/logion-marketplace-companion-${{ needs.verify.outputs.version }}.tar.gz"
       - name: Compute SHA256SUMS
         run: |
           cd dist/
@@ -61,7 +72,8 @@ jobs:
         with:
           name: companion-bundle
           path: dist/
-      - uses: softprops/action-gh-release@v2
+      - name: Attach bundle + manifest + checksums to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: |
