@@ -1,0 +1,8 @@
+# Source and dev files — excluded from published tarball.
+src/
+test/
+tsconfig.json
+vitest.config.ts
+tsup.config.ts
+.nvmrc
+.editorconfig

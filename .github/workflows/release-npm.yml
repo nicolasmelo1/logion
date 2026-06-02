@@ -1,0 +1,43 @@
+name: Release @logion/cli to npm
+
+on:
+  push:
+    tags: ["logion-cli-v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@logion/cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: "https://registry.npmjs.org/"
+          cache: "npm"
+          cache-dependency-path: "packages/npm-wrapper/package-lock.json"
+      - name: Install dependencies
+        working-directory: packages/npm-wrapper
+        run: npm ci --ignore-scripts
+      - name: Build
+        working-directory: packages/npm-wrapper
+        run: npm run build
+      - name: Pin version from manifest
+        run: node packages/npm-wrapper/dist/scripts/version-from-manifest.js
+      - name: Pack and inspect
+        working-directory: packages/npm-wrapper
+        run: |
+          npm pack --dry-run
+          npm pack
+          tar -tzf logion-cli-*.tgz | sort
+      - name: Publish with provenance
+        working-directory: packages/npm-wrapper
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

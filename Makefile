@@ -5,7 +5,8 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
 	update-generated-lock update-deps-lock \
-	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check
+	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
+	npm-test npm-pack npm-build
 
 lint:
 	uv run ruff check packages/
@@ -79,6 +80,15 @@ release-manifest:
 
 release-manifest-check:
 	uv run python scripts/release_manifest.py check --in releases/manifest-stable.json
+
+npm-test:
+	cd packages/npm-wrapper && npm test
+
+npm-pack:
+	cd packages/npm-wrapper && npm pack
+
+npm-build:
+	cd packages/npm-wrapper && npm ci --ignore-scripts && npm run build && node dist/scripts/version-from-manifest.js && npm pack --dry-run && git checkout package.json
 
 version-bump-cli:
 	uv run semantic-release version -c packages/cli/pyproject.toml
