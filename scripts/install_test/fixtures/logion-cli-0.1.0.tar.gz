@@ -1,0 +1,3 @@
+Placeholder fake sdist for install_test fixtures.
+The harness.sh generates real fixture files at test time;
+this file exists so the fixtures/ directory is not empty.

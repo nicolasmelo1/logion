@@ -4,9 +4,11 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 .PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
+	check-installer-security \
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
-	npm-test npm-pack npm-build
+	npm-test npm-pack npm-build \
+	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test
 
 lint:
 	uv run ruff check packages/
@@ -60,11 +62,15 @@ check-skip-reasons:
 check-forbidden-imports:
 	uv run python scripts/check_forbidden_imports.py
 
+check-installer-security:
+	python3 scripts/check_installer_security.py
+
 # Umbrella target: every static guardrail. Fast (<1s total). Runs in
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
 ci-checks: public-audit check-generated-lock check-root-files check-deps-lock \
-	check-doc-links check-skip-reasons check-forbidden-imports
+	check-doc-links check-skip-reasons check-forbidden-imports \
+	check-installer-security
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update
@@ -105,3 +111,17 @@ build-check:
 	uv build --package logion-client --wheel --sdist
 	uv run twine check dist/*
 	@echo "✅ Build check passed"
+
+install-sh-lint: check-installer-security
+	shellcheck -s sh -x -e SC1091 scripts/install.sh scripts/install_lib.sh scripts/install_test/harness.sh
+
+install-sh-test: install-sh-lint
+	bats tests/install/test_install_sh.bats
+
+install-ps1-lint:
+	pwsh -NoLogo -NoProfile -Command '$$paths = @("scripts/install.ps1", "scripts/install_lib.ps1", "tests/install/test_install_ps1.Tests.ps1"); foreach ($$path in $$paths) { Invoke-ScriptAnalyzer -Path $$path -Severity Error -EnableExit; Invoke-ScriptAnalyzer -Path $$path -IncludeRule PSAvoidUsingInvokeExpression -EnableExit }'
+
+install-ps1-test: install-ps1-lint
+	pwsh -NoLogo -NoProfile -Command 'if (-not $$env:TEMP) { $$env:TEMP = if ($$env:TMPDIR) { $$env:TMPDIR } else { [System.IO.Path]::GetTempPath() } }; $$out = Join-Path $$env:TEMP "logion-pester-results.xml"; Invoke-Pester -Path tests/install/test_install_ps1.Tests.ps1 -EnableExit -OutputFile $$out -OutputFormat NUnitXml'
+
+install-test: install-sh-test install-ps1-test

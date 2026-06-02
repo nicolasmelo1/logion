@@ -38,6 +38,23 @@ fi
 echo "Running public guardrails..."
 make ci-checks
 
+# ── installer checks — mirror the installer job in pr-safety.yml.
+# The security scanner runs for every commit through make ci-checks.
+# Run the heavier installer linters/tests only when installer files change.
+installer_staged="$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^(scripts/install(\.sh|_lib\.sh|\.ps1|_lib\.ps1)|scripts/install_test/|tests/install/|scripts/check_installer_security\.py|Makefile|\.githooks/pre-commit|\.github/workflows/pr-safety\.yml)$' || true)"
+if [ -n "${installer_staged}" ]; then
+	echo "Installer files staged — running installer lint/security/tests..."
+	for tool in shellcheck bats pwsh; do
+		if ! command -v "${tool}" >/dev/null 2>&1; then
+			echo "Error: ${tool} is required to validate installer changes."
+			echo "Install shellcheck, bats, and PowerShell, then retry."
+			exit 1
+		fi
+	done
+	make install-test
+fi
+
 # ── npm-wrapper checks — mirror the npm-wrapper job in pr-safety.yml.
 # Only run when files under packages/npm-wrapper/** are staged, so the
 # hook stays fast for Python-only changes.
