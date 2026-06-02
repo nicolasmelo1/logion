@@ -175,7 +175,8 @@ _sha256_file() {
     elif command -v sha256sum >/dev/null 2>&1; then
         sha256sum "$1" | cut -d' ' -f1
     else
-        die "Neither shasum nor sha256sum available"
+        echo "ERROR: Neither shasum nor sha256sum available" >&2
+        return 1
     fi
 }
 

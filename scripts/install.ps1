@@ -159,36 +159,38 @@ if (-not $Opts.SkillOnly) {
     # SHA-256 verification of wheel if manifest includes it
     $wheelInfo = Manifest-GetField -Manifest $Manifest -Field "wheel" -Package "logion-cli"
     if ($wheelInfo -and -not ($wheelInfo.url -match "^release://")) {
-        $tmpWheel = [System.IO.Path]::Combine(
-            [System.IO.Path]::GetTempPath(),
-            "logion-cli-$cliVersion.whl"
-        )
-        Info -Message "Downloading wheel from $($wheelInfo.url)"
-        try {
-            Invoke-WebRequest -Uri $wheelInfo.url -OutFile $tmpWheel -UseBasicParsing -ErrorAction Stop
-        } catch {
-            Die -Message "Failed to download logion-cli wheel: $($_.Exception.Message)" -ExitCode $EXIT_DOWNLOAD_FAILED
-        }
+        if ($Opts.DryRun) {
+            Info -Message "[DRY RUN] Would download and verify wheel from $($wheelInfo.url)"
+        } else {
+            $tmpWheel = [System.IO.Path]::Combine(
+                [System.IO.Path]::GetTempPath(),
+                "logion-cli-$cliVersion.whl"
+            )
+            Info -Message "Downloading wheel from $($wheelInfo.url)"
+            try {
+                Invoke-WebRequest -Uri $wheelInfo.url -OutFile $tmpWheel -UseBasicParsing -ErrorAction Stop
+            } catch {
+                Die -Message "Failed to download logion-cli wheel: $($_.Exception.Message)" -ExitCode $EXIT_DOWNLOAD_FAILED
+            }
 
-        $hash = (Get-FileHash -Path $tmpWheel -Algorithm SHA256).Hash.ToLower()
-        if ($hash -ne $wheelInfo.sha256.ToLower()) {
-            Remove-Item $tmpWheel -Force -ErrorAction SilentlyContinue
-            Die -Message "SHA-256 mismatch for logion-cli wheel (expected $($wheelInfo.sha256), got $hash)" -ExitCode $EXIT_SHA256_MISMATCH
-        }
-        Info -Message "SHA-256 verified for logion-cli wheel"
+            $hash = (Get-FileHash -Path $tmpWheel -Algorithm SHA256).Hash.ToLower()
+            if ($hash -ne $wheelInfo.sha256.ToLower()) {
+                Remove-Item $tmpWheel -Force -ErrorAction SilentlyContinue
+                Die -Message "SHA-256 mismatch for logion-cli wheel (expected $($wheelInfo.sha256), got $hash)" -ExitCode $EXIT_SHA256_MISMATCH
+            }
+            Info -Message "SHA-256 verified for logion-cli wheel"
 
-        # Install from local wheel
-        if (-not $Opts.DryRun) {
+            # Install from local wheel
             switch ($Opts.Installer) {
                 "uv"   { & uv tool install --reinstall $tmpWheel; if ($LASTEXITCODE -ne 0) { Die -Message "uv wheel install failed" -ExitCode $EXIT_INSTALL_FAILED } }
                 "pipx" { & pipx install --force $tmpWheel; if ($LASTEXITCODE -ne 0) { Die -Message "pipx wheel install failed" -ExitCode $EXIT_INSTALL_FAILED } }
                 "venv" {
                     $logionDir = [System.IO.Path]::Combine($HOME, ".logion")
                     $venvDir   = [System.IO.Path]::Combine($logionDir, "installer-managed-venv")
-                    # Create the venv if it doesn't exist yet
+                    # Create the venv if it doesn't exist yet (#26: use $script:PythonCmd)
                     if (-not (Test-Path -Path $venvDir)) {
                         Info -Message "Creating managed venv at $venvDir"
-                        & $pythonCmd -m venv $venvDir
+                        & $script:PythonCmd @script:PythonArgs -m venv $venvDir
                         if ($LASTEXITCODE -ne 0) { Die -Message "Failed to create venv at $venvDir" -ExitCode $EXIT_INSTALL_FAILED }
                     }
                     if ($IsWindows -or ($env:OS -eq "Windows_NT")) {
@@ -201,8 +203,6 @@ if (-not $Opts.SkillOnly) {
                 }
             }
             Remove-Item $tmpWheel -Force -ErrorAction SilentlyContinue
-        } else {
-            Info -Message "[DRY RUN] Would install wheel $tmpWheel"
         }
     } else {
         # No wheel in manifest — install from PyPI

@@ -104,6 +104,8 @@ require_tools() {
         esac
         die 4 "Missing prerequisite tools. $_hint"
     fi
+
+    return 0
 }
 
 # --- Argument parsing -------------------------------------------------------
@@ -295,6 +297,8 @@ fetch_manifest() {
             die 5 "Failed to download manifest from $_manifest_url"
         fi
     fi
+
+    return 0
 }
 
 # --- Manifest field parser --------------------------------------------------
@@ -414,6 +418,13 @@ check_python() {
     _py_found=""
     _py_major=0
     _py_minor=0
+
+    # If LOGION_INSTALL_PYTHON is set, use it directly
+    if [ -n "${LOGION_INSTALL_PYTHON:-}" ] && command -v "${LOGION_INSTALL_PYTHON}" >/dev/null 2>&1; then
+        _py_found="${LOGION_INSTALL_PYTHON}"
+        printf '%s\n' "$_py_found"
+        return 0
+    fi
 
     for _py_cmd in python3 python py; do
         if command -v "$_py_cmd" >/dev/null 2>&1; then
@@ -656,8 +667,15 @@ update_path() {
         return 0
     fi
 
+    # Use the custom prefix bin dir if --prefix was set, otherwise default
+    if [ "$INSTALL_PREFIX_EXPLICIT" = 1 ]; then
+        _bin_dir="$INSTALL_PREFIX/bin"
+    else
+        _bin_dir="$HOME/.local/bin"
+    fi
+
     # shellcheck disable=SC2016  # intentional: literal $HOME and $PATH for rc file
-    _path_line='export PATH="$HOME/.local/bin:$PATH"'
+    _path_line="export PATH=\"$_bin_dir:\$PATH\""
     _shell_name=""
     _rc_file=""
 
@@ -701,7 +719,7 @@ update_path() {
     esac
 
     # Check for idempotency
-    if [ -f "$_rc_file" ] && grep -q 'HOME/.local/bin' "$_rc_file" 2>/dev/null; then
+    if [ -f "$_rc_file" ] && grep -q "$_bin_dir" "$_rc_file" 2>/dev/null; then
         info "PATH entry already present in $_rc_file"
         return 0
     fi
@@ -758,6 +776,8 @@ verify_install() {
             fi
         fi
     fi
+
+    return 0
 }
 
 # --- Next steps -------------------------------------------------------------

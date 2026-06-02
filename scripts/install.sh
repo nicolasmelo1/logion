@@ -82,10 +82,17 @@ if ! check_python; then
     die 7 "Python version check failed"
 fi
 
-# 7/12  Bootstrap uv (Python package runner)
-step_info "Bootstrapping uv"
-if ! bootstrap_uv; then
-    die 4 "uv bootstrap failed"
+# 7/12  Bootstrap uv (only when needed)
+if [ "$INSTALL_INSTALLER" = "uv" ]; then
+    step_info "Bootstrapping uv"
+    if ! bootstrap_uv; then
+        die 4 "uv bootstrap failed"
+    fi
+elif [ "$INSTALL_INSTALLER" = "pipx" ]; then
+    step_info "Verifying pipx is available"
+    if ! command -v pipx >/dev/null 2>&1; then
+        die 4 "pipx not found; use --installer uv or --installer venv, or install pipx"
+    fi
 fi
 
 # 8/12  Install the CLI

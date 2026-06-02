@@ -357,9 +357,10 @@ function Bootstrap-Uv {
         }
     } else {
         # Unix: shell out to the official curl installer
+        # Use single quotes around sh -c to prevent backtick command substitution
         try {
-            $shCmd = "sh -c '`curl -LsSf https://astral.sh/uv/install.sh | sh`'"
-            Invoke-Expression $shCmd
+            $installCmd = 'sh -c "curl -LsSf https://astral.sh/uv/install.sh | sh"'
+            Invoke-Expression $installCmd
             if ($LASTEXITCODE -ne 0) {
                 Die -Message "Failed to bootstrap uv (exit $LASTEXITCODE)" -ExitCode $script:EXIT_INSTALL_FAILED
             }
