@@ -79,11 +79,11 @@ the relevant package tag, **not** from its own tag.
 
 ## Threat model
 
-The manifest URL is bound to a tagged GitHub Release. The trust anchor
-is "GitHub knows the tag". The manifest's integrity is the chain anchor
-— every downloaded artifact is sha256-verified against the manifest.
-The manifest itself is not sha256-verified (it is the root of trust
-derived from the tag pointer).
+By default, channel installs fetch `https://logion.dev/releases/manifest-<channel>.json`.
+Version-pinned installs fetch the manifest from that package's tagged
+GitHub Release. The manifest is the chain anchor: every downloaded
+artifact is sha256-verified against it. The manifest itself is trusted
+through the selected HTTPS origin or GitHub release tag.
 
 ## Fallback
 

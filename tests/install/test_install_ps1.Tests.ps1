@@ -479,14 +479,12 @@ Describe "--NoModifyPath: skips PATH modification" {
     }
 
     It "Update-Path is not called when NoModifyPath is set" {
-        # Simulate the install.ps1 flow: when NoModifyPath, skip Update-Path
         Mock Update-Path {}
         Mock Print-NextSteps {}
         Mock Die {} -RemoveParameterValidation 'ExitCode'
 
         $opts = Parse-Args -ArgList @("--NoModifyPath")
-        # When NoModifyPath is true, install.ps1 skips Update-Path entirely.
-        # We verify by NOT calling Update-Path in our simulated flow:
+        # Mirror the production branch that gates Update-Path in install.ps1.
         if (-not $opts.NoModifyPath) {
             Update-Path -BinDir "/tmp/test-bin"
         }

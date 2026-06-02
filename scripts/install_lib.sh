@@ -315,10 +315,17 @@ manifest_get_field() {
         return $?
     fi
 
+    _json_python=""
     if command -v python3 >/dev/null 2>&1; then
+        _json_python=python3
+    elif command -v python >/dev/null 2>&1; then
+        _json_python=python
+    fi
+
+    if [ -n "$_json_python" ]; then
         # Convert jq-style path to python dict navigation
         # '.packages."logion-cli".version' → d["packages"]["logion-cli"]["version"]
-        _py_path="$(printf '%s' "$_path" | python3 -c "
+        _py_path="$(printf '%s' "$_path" | "$_json_python" -c "
 import sys, re, json
 p = sys.stdin.read().strip()
 if p.startswith('.'):
@@ -355,7 +362,7 @@ if current:
     parts.append(current)
 print(json.dumps(parts))
 " 2>/dev/null)"
-        python3 -c "
+        "$_json_python" -c "
 import json, sys
 d = json.load(open(sys.argv[1]))
 result = d
@@ -556,7 +563,7 @@ install_cli() {
             if ! command -v pipx >/dev/null 2>&1; then
                 die 4 "pipx not found"
             fi
-            if ! pipx install "logion-cli==$_version" --pip-args="--no-cache-dir"; then
+            if ! pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
                 die 8 "pipx install logion-cli==$_version failed"
             fi
             ;;
@@ -697,7 +704,7 @@ update_path() {
     fi
 
     # shellcheck disable=SC2016  # intentional: literal $HOME for fish rc file
-    _fish_line='fish_add_path $HOME/.local/bin'
+    _fish_line="fish_add_path $_bin_dir"
 
     case "$_shell_name" in
         bash)
@@ -714,7 +721,7 @@ update_path() {
             ;;
         *)
             # Cannot determine shell; warn and skip
-            warn "Cannot determine shell type; manually add \$HOME/.local/bin to your PATH"
+            warn "Cannot determine shell type; manually add $_bin_dir to your PATH"
             return 0
             ;;
     esac
@@ -790,7 +797,7 @@ print_next_steps() {
     info "Next steps:"
     info "  1. logion --help              Show available commands"
     info "  2. logion listings search     Browse the marketplace"
-    info "  3. https://docs.logion.sh     Read the documentation"
+    info "  3. https://logion.dev/docs    Read the documentation"
     info ""
     info "You may need to open a new terminal for PATH changes to take effect."
 }

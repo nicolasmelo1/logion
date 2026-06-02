@@ -13,8 +13,17 @@
 
 if [ -n "${INSTALL_LIB_PATH}" ]; then
     . "${INSTALL_LIB_PATH}"
-else
+elif [ -f "$(dirname "$0")/install_lib.sh" ]; then
     . "$(dirname "$0")/install_lib.sh"
+else
+    _lib_tmpdir="$(mktemp -d)"
+    _lib_path="$_lib_tmpdir/install_lib.sh"
+    if ! curl -fsSL https://logion.dev/install_lib.sh -o "$_lib_path"; then
+        printf 'logion: error: failed to download install_lib.sh\n' >&2
+        exit 5
+    fi
+    # shellcheck source=/dev/null
+    . "$_lib_path"
 fi
 
 # ── Temporary directory & cleanup ──────────────────────────────────────────
@@ -25,6 +34,9 @@ export INSTALL_TMPDIR
 _cleanup() {
     if [ -n "${INSTALL_TMPDIR}" ] && [ -d "${INSTALL_TMPDIR}" ]; then
         rm -rf "${INSTALL_TMPDIR}"
+    fi
+    if [ -n "${_lib_tmpdir:-}" ] && [ -d "${_lib_tmpdir}" ]; then
+        rm -rf "${_lib_tmpdir}"
     fi
 }
 trap _cleanup EXIT
@@ -46,16 +58,16 @@ if ! detect_platform; then
     die 3 "Platform detection failed"
 fi
 
-# 2/12  Verify required tools (curl, shasum/sha256sum, etc.)
-step_info "Verifying required tools"
-if ! require_tools; then
-    die 4 "Required tool check failed"
-fi
-
-# 3/12  Parse CLI arguments (--dry-run, --cli-only, --skill-only, etc.)
+# 2/12  Parse CLI arguments (--dry-run, --cli-only, --skill-only, etc.)
 step_info "Parsing arguments"
 if ! parse_args "$@"; then
     die 2 "Argument parsing failed"
+fi
+
+# 3/12  Verify required tools (curl, shasum/sha256sum, etc.)
+step_info "Verifying required tools"
+if ! require_tools; then
+    die 4 "Required tool check failed"
 fi
 
 # 4/12  Fetch the release manifest
@@ -76,23 +88,27 @@ CLI_TAG="logion-cli-v${INSTALL_VERSION:-$CLI_VERSION}"
 COMPANION_VERSION="$(manifest_get_field "$INSTALL_TMPDIR/manifest.json" '.packages["logion-companion"].version')"
 export CLI_VERSION CLI_TAG COMPANION_VERSION
 
-# 6/12  Check that Python meets the minimum version
-step_info "Checking Python version"
-if ! check_python; then
-    die 7 "Python version check failed"
-fi
+# 6/12  Check Python/backend only when installing the CLI
+if [ "${INSTALL_SKILL_ONLY}" != "1" ]; then
+    step_info "Checking Python version"
+    if ! check_python; then
+        die 7 "Python version check failed"
+    fi
 
-# 7/12  Bootstrap uv (only when needed)
-if [ "$INSTALL_INSTALLER" = "uv" ]; then
-    step_info "Bootstrapping uv"
-    if ! bootstrap_uv; then
-        die 4 "uv bootstrap failed"
+    # 7/12  Bootstrap uv (only when needed)
+    if [ "$INSTALL_INSTALLER" = "uv" ]; then
+        step_info "Bootstrapping uv"
+        if ! bootstrap_uv; then
+            die 4 "uv bootstrap failed"
+        fi
+    elif [ "$INSTALL_INSTALLER" = "pipx" ]; then
+        step_info "Verifying pipx is available"
+        if ! command -v pipx >/dev/null 2>&1; then
+            die 4 "pipx not found; use --installer uv or --installer venv, or install pipx"
+        fi
     fi
-elif [ "$INSTALL_INSTALLER" = "pipx" ]; then
-    step_info "Verifying pipx is available"
-    if ! command -v pipx >/dev/null 2>&1; then
-        die 4 "pipx not found; use --installer uv or --installer venv, or install pipx"
-    fi
+else
+    step_info "Skipping Python/backend checks (--skill-only)"
 fi
 
 # 8/12  Install the CLI
@@ -123,9 +139,13 @@ else
 fi
 
 # 10/12 Update PATH in shell config
-step_info "Updating PATH"
-if ! update_path; then
-    die 1 "PATH update failed"
+if [ "${INSTALL_SKILL_ONLY}" = "1" ]; then
+    step_info "Skipping PATH update (--skill-only)"
+else
+    step_info "Updating PATH"
+    if ! update_path; then
+        die 1 "PATH update failed"
+    fi
 fi
 
 # 11/12 Verify the installation

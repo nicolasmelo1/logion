@@ -10,7 +10,7 @@
 #   --Version VERSION        Pin a specific version
 #   --CliOnly                Install only the CLI
 #   --SkillOnly              Install only the companion skill bundle
-#   --Prefix PATH            Installation prefix (default: ~/.logion)
+#   --Prefix PATH            Installation prefix for PATH shims
 #   --Installer pipx|uv|venv Force a specific installer (default: uv)
 #   --DryRun                 Show what would be done without executing
 #   --NoModifyPath           Do not edit the user PATH
@@ -107,10 +107,14 @@ if ($Platform.Os -eq "unknown") {
 }
 
 # ── Step 3: Check prerequisites ─────────────────────────────────────────
-Require-Tools
+if (-not $Opts.SkillOnly) {
+    Require-Tools
+} else {
+    Info -Message "Skipping Python prerequisite checks (--SkillOnly)"
+}
 
 # ── Step 4: Bootstrap uv (if selected) ───────────────────────────────────
-if ($Opts.Installer -eq "uv") {
+if (-not $Opts.SkillOnly -and $Opts.Installer -eq "uv") {
     Bootstrap-Uv
 }
 
@@ -131,7 +135,7 @@ Info -Message "Target version: $($Opts.Version)"
 
 # ── Step 8: Verify Python meets minimum ─────────────────────────────────
 $minPython = Manifest-GetField -Manifest $Manifest -Field "minimum_python" -Package "logion-cli"
-if ($minPython) {
+if (-not $Opts.SkillOnly -and $minPython) {
     Info -Message "Manifest requires Python >= $minPython"
     # Check-Python already validated >= 3.12 during Require-Tools
     # If the manifest requires something higher, re-check
@@ -200,6 +204,7 @@ if (-not $Opts.SkillOnly) {
                     }
                     & $pipBin install $tmpWheel
                     if ($LASTEXITCODE -ne 0) { Die -Message "venv pip wheel install failed" -ExitCode $EXIT_INSTALL_FAILED }
+                    New-LogionShim -Opts $Opts -VenvDir $venvDir
                 }
             }
             Remove-Item $tmpWheel -Force -ErrorAction SilentlyContinue
@@ -221,7 +226,7 @@ if (-not $Opts.CliOnly) {
 }
 
 # ── Step 11: Update PATH ────────────────────────────────────────────────
-if (-not $Opts.NoModifyPath) {
+if (-not $Opts.NoModifyPath -and -not $Opts.SkillOnly) {
     $binDir = if ($Opts.Prefix) {
         [System.IO.Path]::Combine($Opts.Prefix, "bin")
     } else {

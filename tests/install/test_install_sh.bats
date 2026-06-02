@@ -171,6 +171,18 @@ run_installer() {
     [ -x "${HARNESS_BIN_DIR}/logion" ]
 }
 
+@test "real library: dry-run completes against fake manifest" {
+    unset INSTALL_LIB_PATH
+    _install_sh="${BATS_TEST_DIRNAME}/../../scripts/install.sh"
+    run env \
+        PATH="${HARNESS_BIN_DIR}:/usr/bin:/bin" \
+        HOME="${HARNESS_TMPDIR}" \
+        LOGION_INSTALL_MANIFEST_URL="${LOGION_INSTALL_MANIFEST_URL}" \
+        LOGION_INSTALL_BASE_URL="${LOGION_INSTALL_BASE_URL}" \
+        sh "${_install_sh}" --dry-run
+    [ "$status" -eq 0 ]
+}
+
 # ── 3. Refuses Python <3.12 ────────────────────────────────────────────────
 
 @test "refuses Python 3.11: exits with code 7" {

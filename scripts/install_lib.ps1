@@ -160,7 +160,21 @@ function Parse-Args {
             "^--Version$" {
                 $i++
                 if ($i -ge $ArgList.Count) { Die -Message "--Version requires a value" -ExitCode $script:EXIT_INVALID_ARGS }
-                $opts.Version = $ArgList[$i]
+                $opts.Version = $ArgList[$i] -replace "^v", ""
+            }
+            "^--Version=(.+)$" {
+                $opts.Version = $Matches[1] -replace "^v", ""
+            }
+            "^--Channel=(.+)$" {
+                if ($Matches[1] -notin @("stable","latest")) { Die -Message "--Channel must be stable or latest" -ExitCode $script:EXIT_INVALID_ARGS }
+                $opts.Channel = $Matches[1]
+            }
+            "^--Prefix=(.+)$" {
+                $opts.Prefix = $Matches[1]
+            }
+            "^--Installer=(.+)$" {
+                if ($Matches[1] -notin @("pipx","uv","venv")) { Die -Message "--Installer must be pipx, uv, or venv" -ExitCode $script:EXIT_INVALID_ARGS }
+                $opts.Installer = $Matches[1]
             }
             "^--CliOnly$"    { $opts.CliOnly = $true }
             "^--SkillOnly$"  { $opts.SkillOnly = $true }
@@ -194,6 +208,59 @@ function Parse-Args {
     }
 
     return $opts
+}
+
+# ── Shim helpers ────────────────────────────────────────────────────────
+function Get-ShimBinDir {
+    [CmdletBinding()]
+    param([hashtable]$Opts)
+
+    if ($Opts.Prefix) {
+        return [System.IO.Path]::Combine($Opts.Prefix, "bin")
+    }
+    return [System.IO.Path]::Combine($HOME, ".local", "bin")
+}
+
+function New-LogionShim {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][hashtable]$Opts,
+        [Parameter(Mandatory)][string]$VenvDir
+    )
+
+    $binDir = Get-ShimBinDir -Opts $Opts
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+
+    if ($IsWindows -or ($env:OS -eq "Windows_NT")) {
+        $target = [System.IO.Path]::Combine($VenvDir, "Scripts", "logion.exe")
+        $shim = [System.IO.Path]::Combine($binDir, "logion.cmd")
+        Set-Content -Path $shim -Value "@echo off`r`n`"$target`" %*`r`n" -NoNewline
+    } else {
+        $target = [System.IO.Path]::Combine($VenvDir, "bin", "logion")
+        $shim = [System.IO.Path]::Combine($binDir, "logion")
+        Set-Content -Path $shim -Value "#!/bin/sh`nexec `"$target`" `"$@`"`n" -NoNewline
+        chmod +x $shim 2>$null
+    }
+
+    Info -Message "Created logion shim in $binDir"
+}
+
+function Resolve-ReleaseUrl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Url,
+        [Parameter(Mandatory)][string]$Tag
+    )
+
+    if ($Url -notmatch "^release://") {
+        return $Url
+    }
+
+    $asset = $Url -replace "^release://", ""
+    if ($env:LOGION_INSTALL_BASE_URL) {
+        return "$($env:LOGION_INSTALL_BASE_URL.TrimEnd('/'))/$asset"
+    }
+    return "https://github.com/nicolasmelo1/logion/releases/download/$Tag/$asset"
 }
 
 # ── Manifest fetch ──────────────────────────────────────────────────────
@@ -454,6 +521,7 @@ function Install-Cli {
             if ($LASTEXITCODE -ne 0) {
                 Die -Message "venv pip install failed for $pkgSpec" -ExitCode $script:EXIT_INSTALL_FAILED
             }
+            New-LogionShim -Opts $Opts -VenvDir $venvDir
         }
         default {
             Die -Message "Unknown installer: $($Opts.Installer)" -ExitCode $script:EXIT_INVALID_ARGS
@@ -501,37 +569,37 @@ function Install-Companion {
     New-Item -ItemType Directory -Path $companionDir -Force | Out-Null
 
     if ($bundleInfo -and $bundleInfo.ContainsKey("url") -and $bundleInfo.ContainsKey("sha256")) {
-        $bundleUrl = $bundleInfo["url"]
+        $tag = if ($Manifest.packages["logion-companion"].ContainsKey("tag")) {
+            $Manifest.packages["logion-companion"]["tag"]
+        } else {
+            "logion-companion-v$Version"
+        }
+        $bundleUrl = Resolve-ReleaseUrl -Url $bundleInfo["url"] -Tag $tag
         $expectedSha = $bundleInfo["sha256"]
 
-        # If the URL is a release:// reference, skip download (local dev)
-        if ($bundleUrl -match "^release://") {
-            Info -Message "Bundle is a local release reference ($bundleUrl), skipping download"
-        } else {
-            $tmpFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "logion-companion-$Version.tar.gz")
-            Info -Message "Downloading companion bundle from $bundleUrl"
-            try {
-                Invoke-WebRequest -Uri $bundleUrl -OutFile $tmpFile -UseBasicParsing -ErrorAction Stop
-            } catch {
-                Die -Message "Failed to download companion bundle: $($_.Exception.Message)" -ExitCode $script:EXIT_DOWNLOAD_FAILED
-            }
-
-            # SHA-256 verification
-            $hash = (Get-FileHash -Path $tmpFile -Algorithm SHA256).Hash.ToLower()
-            if ($hash -ne $expectedSha.ToLower()) {
-                Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
-                Die -Message "SHA-256 mismatch for companion bundle (expected $expectedSha, got $hash)" -ExitCode $script:EXIT_SHA256_MISMATCH
-            }
-            Info -Message "SHA-256 verified for companion bundle"
-
-            # Extract
-            try {
-                tar -xzf $tmpFile -C $companionDir
-            } catch {
-                Die -Message "Failed to extract companion bundle: $($_.Exception.Message)" -ExitCode $script:EXIT_INSTALL_FAILED
-            }
-            Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+        $tmpFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "logion-companion-$Version.tar.gz")
+        Info -Message "Downloading companion bundle from $bundleUrl"
+        try {
+            Invoke-WebRequest -Uri $bundleUrl -OutFile $tmpFile -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Die -Message "Failed to download companion bundle: $($_.Exception.Message)" -ExitCode $script:EXIT_DOWNLOAD_FAILED
         }
+
+        # SHA-256 verification
+        $hash = (Get-FileHash -Path $tmpFile -Algorithm SHA256).Hash.ToLower()
+        if ($hash -ne $expectedSha.ToLower()) {
+            Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+            Die -Message "SHA-256 mismatch for companion bundle (expected $expectedSha, got $hash)" -ExitCode $script:EXIT_SHA256_MISMATCH
+        }
+        Info -Message "SHA-256 verified for companion bundle"
+
+        # Extract
+        try {
+            tar -xzf $tmpFile -C $companionDir
+        } catch {
+            Die -Message "Failed to extract companion bundle: $($_.Exception.Message)" -ExitCode $script:EXIT_INSTALL_FAILED
+        }
+        Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
     } else {
         # No bundle in manifest — install via pip as fallback
         $pkgSpec = "logion-companion==$Version"

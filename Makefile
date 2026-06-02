@@ -63,7 +63,7 @@ check-forbidden-imports:
 	uv run python scripts/check_forbidden_imports.py
 
 check-installer-security:
-	uv run python scripts/check_installer_security.py
+	python3 scripts/check_installer_security.py
 
 # Umbrella target: every static guardrail. Fast (<1s total). Runs in
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
