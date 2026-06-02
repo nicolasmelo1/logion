@@ -13,7 +13,7 @@ pip install logion-cli
 
 ```bash
 lgn --help
-lgn courses list
+lgn courses get <COURSE_ID>
 ```
 
 ## License
