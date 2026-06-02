@@ -94,3 +94,29 @@ twine yank logion-client X.Y.Z --reason "critical bug" --unyank
 
 After yanking, rebuild the manifest so the entry reflects the yanked state and
 commit the update.
+
+## 7. Publishing to PyPI (one-time setup)
+
+Each publishable package (`logion-cli`, `logion-client`) needs a Trusted
+Publisher configuration on PyPI before the CI workflow can upload.
+
+1. Go to https://pypi.org/manage/account/publishing/
+2. Add a new pending publisher:
+   - **PyPI Project Name:** `logion-cli` (or `logion-client`)
+   - **Owner:** `nicolasmelo1`
+   - **Repository:** `logion`
+   - **Workflow:** `publish.yml`
+   - **Environment:** leave blank (or create a named environment)
+3. Submit. PyPI will verify the OIDC claim on the next matching tag push.
+
+After the one-time setup, pushing a version tag triggers the publish
+workflow automatically:
+
+```bash
+git tag logion-cli-v0.1.0
+git push origin logion-cli-v0.1.0
+```
+
+The `publish.yml` workflow builds, validates with `twine check`, and
+uploads to PyPI.  If the version already exists on PyPI, it skips
+(`skip-existing: true`) rather than failing.
