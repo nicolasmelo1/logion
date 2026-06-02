@@ -7,7 +7,14 @@
 
 BeforeAll {
     # ── Test harness state ───────────────────────────────────────────────
-    $script:HarnTmpDir     = [System.IO.Path]::Combine($env:TEMP, "logion-ps1-test-$(Get-Random)")
+    $tempRoot = if ($env:TEMP) {
+        $env:TEMP
+    } elseif ($env:TMPDIR) {
+        $env:TMPDIR
+    } else {
+        [System.IO.Path]::GetTempPath()
+    }
+    $script:HarnTmpDir     = [System.IO.Path]::Combine($tempRoot, "logion-ps1-test-$(Get-Random)")
     $script:HarnBinDir     = [System.IO.Path]::Combine($script:HarnTmpDir, "bin")
     $script:HarnManDir     = [System.IO.Path]::Combine($script:HarnTmpDir, "manifest")
     $script:HarnRelDir     = [System.IO.Path]::Combine($script:HarnTmpDir, "release")
@@ -330,7 +337,8 @@ Describe "--SkillOnly: skips install_cli, requires logion already on PATH" {
     }
 
     It "CliOnly and SkillOnly are mutually exclusive" {
-        { Parse-Args -ArgList @("--CliOnly", "--SkillOnly") } | Should -Throw
+        Mock Die { throw "Die ExitCode=$ExitCode" } -RemoveParameterValidation 'ExitCode'
+        { Parse-Args -ArgList @("--CliOnly", "--SkillOnly") } | Should -Throw "*ExitCode*"
     }
 
     It "the installer skips Install-Cli when SkillOnly is set" {

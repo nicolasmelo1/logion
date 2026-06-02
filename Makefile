@@ -119,9 +119,9 @@ install-sh-test: install-sh-lint
 	bats tests/install/test_install_sh.bats
 
 install-ps1-lint:
-	pwsh -NoLogo -NoProfile -Command "Invoke-ScriptAnalyzer -Path scripts/install.ps1,scripts/install_lib.ps1,tests/install/test_install_ps1.Tests.ps1 -Severity Error -EnableExit; Invoke-ScriptAnalyzer -Path scripts/install.ps1,scripts/install_lib.ps1,tests/install/test_install_ps1.Tests.ps1 -IncludeRule PSAvoidUsingInvokeExpression -EnableExit"
+	pwsh -NoLogo -NoProfile -Command '$$paths = @("scripts/install.ps1", "scripts/install_lib.ps1", "tests/install/test_install_ps1.Tests.ps1"); foreach ($$path in $$paths) { Invoke-ScriptAnalyzer -Path $$path -Severity Error -EnableExit; Invoke-ScriptAnalyzer -Path $$path -IncludeRule PSAvoidUsingInvokeExpression -EnableExit }'
 
 install-ps1-test: install-ps1-lint
-	pwsh -NoLogo -NoProfile -Command "Invoke-Pester -Path tests/install/test_install_ps1.Tests.ps1 -CI"
+	pwsh -NoLogo -NoProfile -Command 'if (-not $$env:TEMP) { $$env:TEMP = if ($$env:TMPDIR) { $$env:TMPDIR } else { [System.IO.Path]::GetTempPath() } }; $$out = Join-Path $$env:TEMP "logion-pester-results.xml"; Invoke-Pester -Path tests/install/test_install_ps1.Tests.ps1 -EnableExit -OutputFile $$out -OutputFormat NUnitXml'
 
 install-test: install-sh-test install-ps1-test
