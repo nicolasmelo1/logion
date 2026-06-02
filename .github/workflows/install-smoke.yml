@@ -1,0 +1,65 @@
+name: Installer smoke
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/install*"
+      - "scripts/install_lib*"
+      - "scripts/install_test/**"
+      - "tests/install/**"
+      - "Makefile"
+      - ".github/workflows/install-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  posix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test tools
+        run: |
+          if command -v brew >/dev/null 2>&1; then
+            brew install shellcheck bats-core
+          else
+            sudo apt-get update
+            sudo apt-get install -y bats shellcheck
+          fi
+      - name: Run POSIX installer tests
+        run: |
+          python3 scripts/check_installer_security.py
+          shellcheck -s sh -x -e SC1091 scripts/install.sh scripts/install_lib.sh scripts/install_test/harness.sh
+          bats tests/install/test_install_sh.bats
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PowerShell test tools
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name Pester)) {
+            Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          }
+      - name: Run PowerShell installer tests
+        shell: pwsh
+        run: |
+          $paths = @("scripts/install.ps1", "scripts/install_lib.ps1", "tests/install/test_install_ps1.Tests.ps1")
+          foreach ($path in $paths) {
+            Invoke-ScriptAnalyzer -Path $path -Severity Error -EnableExit
+            Invoke-ScriptAnalyzer -Path $path -IncludeRule PSAvoidUsingInvokeExpression -EnableExit
+          }
+          $out = Join-Path ([System.IO.Path]::GetTempPath()) "logion-pester-results.xml"
+          Invoke-Pester -Path tests/install/test_install_ps1.Tests.ps1 -EnableExit -OutputFile $out -OutputFormat NUnitXml
