@@ -141,7 +141,7 @@ Schema (schema_version: 1):
 - `git_commit` — short SHA of the commit the bundle was built from.
 - `minimum_cli_version` — the earliest CLI version that can install
   this bundle. Computed from the workspace's
-  `packages/cli/cli/_version.py` at build time.
+  `packages/cli/pyproject.toml` at build time.
 - `skill_md_sha256` — sha256 of the `SKILL.md` file contents.
 - `references` — one entry per reference file, sorted by path.
   Each entry carries `path`, `sha256`, and `size` (in bytes).

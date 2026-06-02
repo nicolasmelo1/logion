@@ -18,6 +18,9 @@ jobs:
       version: ${{ steps.parse.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - id: parse
         run: |
           tag="${GITHUB_REF_NAME#logion-companion-v}"
@@ -42,7 +45,7 @@ jobs:
       - name: Compute SHA256SUMS
         run: |
           cd dist/
-          sha256sum * > SHA256SUMS.txt
+          sha256sum logion-marketplace-companion-*.tar.gz SKILL.md manifest.json > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: companion-bundle

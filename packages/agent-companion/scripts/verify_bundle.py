@@ -163,6 +163,11 @@ def _check_manifest_top_level(manifest: dict, errors: list[str]) -> None:
     """Check top-level manifest fields."""
     if "schema_version" not in manifest:
         errors.append("manifest.json missing 'schema_version'")
+    elif not isinstance(manifest["schema_version"], int):
+        errors.append(
+            f"manifest.json schema_version must be an integer, "
+            f"got {type(manifest['schema_version']).__name__}"
+        )
     elif manifest["schema_version"] not in MANIFEST_SCHEMA_VERSIONS:
         errors.append(
             f"manifest.json schema_version "
@@ -179,12 +184,32 @@ def _check_manifest_top_level(manifest: dict, errors: list[str]) -> None:
 
     if "version" not in manifest:
         errors.append("manifest.json missing 'version'")
+    elif not isinstance(manifest["version"], str):
+        errors.append(
+            f"manifest.json version must be a string, "
+            f"got {type(manifest['version']).__name__}"
+        )
 
     if "generated_at" not in manifest:
         errors.append("manifest.json missing 'generated_at'")
+    elif not isinstance(manifest["generated_at"], str):
+        errors.append(
+            f"manifest.json generated_at must be a string, "
+            f"got {type(manifest['generated_at']).__name__}"
+        )
+    elif not manifest["generated_at"].endswith("Z"):
+        errors.append(
+            "manifest.json generated_at must be an "
+            "ISO-8601 UTC timestamp ending with 'Z'"
+        )
 
     if "minimum_cli_version" not in manifest:
         errors.append("manifest.json missing 'minimum_cli_version'")
+    elif not isinstance(manifest["minimum_cli_version"], str):
+        errors.append(
+            f"manifest.json minimum_cli_version must be a string, "
+            f"got {type(manifest['minimum_cli_version']).__name__}"
+        )
 
     if manifest.get("skill_name") != BUNDLE_KIND:
         errors.append(
@@ -376,12 +401,12 @@ def verify_tarball(tarball_path: str) -> int:
     # Every member must live under the prefix directory — no
     # stray top-level entries allowed (RELEASE_BUNDLE_LAYOUT.md §3).
     prefix = f"{BUNDLE_KIND}-{version}"
-    for member in member_names:
-        if member == prefix:
+    for entry in member_names:
+        if entry == prefix:
             continue
-        if not member.startswith(prefix + "/"):
+        if not entry.startswith(prefix + "/"):
             errors.append(
-                f"Member outside bundle directory: {member} "
+                f"Member outside bundle directory: {entry} "
                 f"(must be under '{prefix}/')"
             )
 
@@ -425,13 +450,30 @@ def verify_tarball(tarball_path: str) -> int:
 
 
 def verify_directory(dir_path: str) -> int:
-    """Verify an extracted bundle directory."""
+    """Verify an extracted bundle directory.
+
+    The directory must be named
+    ``logion-marketplace-companion-<version>/`` and its manifest
+    version must match the directory name.
+    """
     errors: list[str] = []
     root = Path(dir_path).resolve()
 
     if not root.is_dir():
         print(f"ERROR: Directory not found: {root}")
         return 1
+
+    # Directory name must match the bundle kind pattern
+    dir_name = root.name
+    dir_version: str = ""
+    if not dir_name.startswith(BUNDLE_KIND + "-"):
+        errors.append(
+            f"Directory name must start with "
+            f"'{BUNDLE_KIND}-', got '{dir_name}'"
+        )
+    else:
+        # Cross-check version in directory name vs manifest
+        dir_version = dir_name[len(BUNDLE_KIND) + 1 :]
 
     # Check required dirs
     for d in REQUIRED_DIRS:
@@ -472,6 +514,19 @@ def verify_directory(dir_path: str) -> int:
             manifest = {}
         else:
             _verify_manifest_schema(manifest, errors)
+
+            # Cross-check: directory version must match manifest version
+            manifest_version = manifest.get("version", "")
+            if (
+                manifest_version
+                and dir_version
+                and manifest_version != dir_version
+            ):
+                errors.append(
+                    f"Version mismatch: directory name "
+                    f"says '{dir_version}', manifest.json "
+                    f"says '{manifest_version}'"
+                )
 
             if "skill_md_sha256" in manifest:
                 skill_bytes = (root / "SKILL.md").read_bytes()
