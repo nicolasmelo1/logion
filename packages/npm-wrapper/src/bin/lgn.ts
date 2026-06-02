@@ -3,7 +3,7 @@
 // Short alias shim: prefer `lgn` on PATH, fall back to `logion`.
 import { spawnSync } from "node:child_process";
 
-import { which } from "../lib/which.js";
+import { which } from "../lib/which";
 
 const target = which("lgn") ?? which("logion");
 if (!target) {

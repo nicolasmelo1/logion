@@ -5,7 +5,7 @@
 // callers can rely on `.cmd` / `.args`.
 import { spawnSync } from "node:child_process";
 
-import { which } from "./which.js";
+import { which } from "./which";
 
 export interface PythonInfo {
   /** Executable path (or short name resolvable via PATH). */
