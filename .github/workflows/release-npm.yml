@@ -30,10 +30,10 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#logion-cli-v}"
           for i in $(seq 1 30); do
-            python3 - <<'PY'
+            python3 - <<PY
           import json, urllib.request, sys
           version = "$version"
-          data = json.load(urllib.request.urlopen("https://pypi.org/pypi/logion-cli/json"))
+          data = json.load(urllib.request.urlopen("https://pypi.org/pypi/logion-cli/json", timeout=15))
           sys.exit(0 if version in data.get("releases", {}) else 1)
           PY
             && exit 0

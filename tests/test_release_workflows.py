@@ -18,7 +18,7 @@ WORKFLOWS_DIR = (
 
 
 def _load(name: str) -> Mapping:
-    text = (WORKFLOWS_DIR / name).read_text()
+    text = (WORKFLOWS_DIR / name).read_text(encoding="utf-8")
     return yaml.safe_load(text)
 
 
