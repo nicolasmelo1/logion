@@ -37,6 +37,8 @@ jobs:
       - run: uv sync --package logion-agent-companion --frozen
       - name: Build bundle
         run: uv run python packages/agent-companion/scripts/package_skill.py build --out dist/ --version ${{ needs.verify.outputs.version }} --release
+      - name: Verify bundle
+        run: uv run python packages/agent-companion/scripts/verify_bundle.py dist/logion-marketplace-companion-${{ needs.verify.outputs.version }}.tar.gz
       - name: Compute SHA256SUMS
         run: |
           cd dist/

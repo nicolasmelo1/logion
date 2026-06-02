@@ -136,8 +136,6 @@ def _verify_no_extra_files(
 ) -> None:
     """Check that no files outside the expected set exist."""
     expected = set(ALL_REQUIRED_FILES)
-    # Also allow manifest.json which is not in
-    # ALL_REQUIRED_FILES but is required by the layout
     expected.add("manifest.json")
     # Also allow the directories themselves
     expected_dirs = set(REQUIRED_DIRS)
@@ -200,11 +198,27 @@ def _check_manifest_top_level(manifest: dict, errors: list[str]) -> None:
 
 
 def _check_manifest_references(manifest: dict, errors: list[str]) -> None:
-    """Check references entries in the manifest."""
+    """Check references entries in the manifest.
+
+    Validates structure, completeness (exact count and paths), and
+    sort order per the RELEASE_BUNDLE_LAYOUT.md contract.
+    """
     refs = manifest.get("references")
     if not isinstance(refs, list):
         errors.append("manifest.json 'references' must be a list")
         return
+
+    # Check exact count
+    expected_count = len(REQUIRED_REFERENCES)
+    if len(refs) != expected_count:
+        errors.append(
+            f"manifest.json references has {len(refs)} entries, "
+            f"expected {expected_count}"
+        )
+
+    # Check exact paths and structure
+    expected_paths = set(REQUIRED_REFERENCES)
+    actual_paths = set()
     for i, ref in enumerate(refs):
         if not isinstance(ref, dict):
             errors.append(f"manifest.json references[{i}] is not a mapping")
@@ -212,6 +226,24 @@ def _check_manifest_references(manifest: dict, errors: list[str]) -> None:
         for key in ("path", "sha256", "size"):
             if key not in ref:
                 errors.append(f"manifest.json references[{i}] missing '{key}'")
+        path = ref.get("path", "")
+        actual_paths.add(path)
+
+    # Check for missing/extra paths
+    missing = expected_paths - actual_paths
+    if missing:
+        for m in sorted(missing):
+            errors.append(f"manifest.json references missing path: {m}")
+    extra = actual_paths - expected_paths
+    if extra:
+        for e in sorted(extra):
+            errors.append(f"manifest.json references has extra path: {e}")
+
+    # Check sort order (paths must be sorted lexicographically)
+    if len(refs) > 1:
+        paths = [r.get("path", "") for r in refs if isinstance(r, dict)]
+        if paths != sorted(paths):
+            errors.append("manifest.json references must be sorted by path")
 
 
 def _check_manifest_capability(manifest: dict, errors: list[str]) -> None:
@@ -269,12 +301,21 @@ def _verify_checksums(
         if full not in members:
             errors.append(f"Reference file not in tarball: {path}")
             continue
-        actual = _sha256_bytes(members[full])
+        actual_data = members[full]
+        actual = _sha256_bytes(actual_data)
         if actual != ref.get("sha256", ""):
             errors.append(
                 f"Reference sha256 mismatch for {path}: "
                 f"manifest={ref.get('sha256')}, "
                 f"actual={actual}"
+            )
+        # Validate size field (§4 schema contract)
+        expected_size = ref.get("size")
+        if expected_size is not None and len(actual_data) != expected_size:
+            errors.append(
+                f"Reference size mismatch for {path}: "
+                f"manifest={expected_size}, "
+                f"actual={len(actual_data)}"
             )
 
     cap = manifest.get("capability_manifest", {})
@@ -332,35 +373,46 @@ def verify_tarball(tarball_path: str) -> int:
             print(f"FAIL {e}")
         return 1
 
+    # Every member must live under the prefix directory — no
+    # stray top-level entries allowed (RELEASE_BUNDLE_LAYOUT.md §3).
+    prefix = f"{BUNDLE_KIND}-{version}"
+    for member in member_names:
+        if member == prefix:
+            continue
+        if not member.startswith(prefix + "/"):
+            errors.append(
+                f"Member outside bundle directory: {member} "
+                f"(must be under '{prefix}/')"
+            )
+
     # Verify layout
-    prefix = _verify_layout(member_names, version, errors)
+    _verify_layout(member_names, version, errors)
 
-    if prefix is not None:
-        _verify_no_forbidden(member_names, prefix, errors)
-        _verify_no_extra_files(member_names, prefix, errors)
+    _verify_no_forbidden(member_names, prefix, errors)
+    _verify_no_extra_files(member_names, prefix, errors)
 
-        # Read and verify manifest
-        manifest_key = f"{prefix}/manifest.json"
-        if manifest_key in file_contents:
-            try:
-                manifest = json.loads(file_contents[manifest_key])
-            except json.JSONDecodeError as exc:
-                errors.append(f"manifest.json is not valid JSON: {exc}")
-                manifest = {}
-            else:
-                # Cross-check: tarball directory version must match
-                # manifest version
-                manifest_version = manifest.get("version", "")
-                if manifest_version and manifest_version != version:
-                    errors.append(
-                        f"Version mismatch: tarball directory "
-                        f"says '{version}', manifest.json "
-                        f"says '{manifest_version}'"
-                    )
-                _verify_manifest_schema(manifest, errors)
-                _verify_checksums(file_contents, manifest, prefix, errors)
+    # Read and verify manifest
+    manifest_key = f"{prefix}/manifest.json"
+    if manifest_key in file_contents:
+        try:
+            manifest = json.loads(file_contents[manifest_key])
+        except json.JSONDecodeError as exc:
+            errors.append(f"manifest.json is not valid JSON: {exc}")
+            manifest = {}
         else:
-            errors.append("manifest.json not found in tarball")
+            # Cross-check: tarball directory version must match
+            # manifest version
+            manifest_version = manifest.get("version", "")
+            if manifest_version and manifest_version != version:
+                errors.append(
+                    f"Version mismatch: tarball directory "
+                    f"says '{version}', manifest.json "
+                    f"says '{manifest_version}'"
+                )
+            _verify_manifest_schema(manifest, errors)
+            _verify_checksums(file_contents, manifest, prefix, errors)
+    else:
+        errors.append("manifest.json not found in tarball")
 
     if errors:
         for e in errors:

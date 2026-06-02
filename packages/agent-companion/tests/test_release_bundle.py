@@ -18,7 +18,6 @@ from pathlib import Path
 COMPANION_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = COMPANION_ROOT.parent.parent
 SCRIPT = COMPANION_ROOT / "scripts" / "package_skill.py"
-CLI_VERSION_FILE = REPO_ROOT / "packages" / "cli" / "cli" / "_version.py"
 
 BUNDLE_KIND = "logion-marketplace-companion"
 VERSION = "0.1.0"

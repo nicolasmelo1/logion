@@ -16,7 +16,6 @@ import tarfile
 from pathlib import Path
 
 COMPANION_ROOT = Path(__file__).resolve().parent.parent
-REPO_ROOT = COMPANION_ROOT.parent.parent
 PACKAGE_SCRIPT = COMPANION_ROOT / "scripts" / "package_skill.py"
 VERIFY_SCRIPT = COMPANION_ROOT / "scripts" / "verify_bundle.py"
 
