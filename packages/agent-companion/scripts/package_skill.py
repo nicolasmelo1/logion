@@ -3,7 +3,7 @@
 """Validate and build the Logion Marketplace Companion skill package.
 
 Subcommands:
-  validate  — structural, manifest, and secret checks (default).
+  validate  — structural, manifest, and secret checks.
   build     — produce a deterministic release tarball + sidecar files.
 
 Exits 0 on success, 1 on failure.
@@ -340,25 +340,27 @@ def _parse_frontmatter_safety() -> list[str]:
 
 
 def _read_cli_version() -> str:
-    """Read the CLI version from packages/cli/cli/_version.py."""
+    """Read the CLI version from packages/cli/cli/_version.py.
+
+    Tries importing the module first; falls back to reading the
+    version directly from pyproject.toml (the canonical source).
+    """
     try:
         from cli._version import __version__
+
+        return __version__  # noqa: TRY300
     except ImportError:
         pass
-    else:
-        return __version__
-    version_file = REPO_ROOT / "packages" / "cli" / "cli" / "_version.py"
-    content = version_file.read_text(encoding="utf-8")
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("__version__"):
-            import re
+    # Fallback: read the canonical version from pyproject.toml.
+    import tomllib
 
-            match = re.search(r'"([^"]+)"', stripped)
-            if match:
-                return match.group(1)
-    print("ERROR: Cannot determine CLI version from _version.py")
-    sys.exit(1)
+    pyproject = REPO_ROOT / "packages" / "cli" / "pyproject.toml"
+    try:
+        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        return data["project"]["version"]
+    except (KeyError, FileNotFoundError, OSError) as exc:
+        print(f"ERROR: Cannot determine CLI version: {exc}")
+        sys.exit(1)
 
 
 def _git_short_sha() -> str:

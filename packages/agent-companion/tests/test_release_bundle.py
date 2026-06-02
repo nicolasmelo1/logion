@@ -185,15 +185,18 @@ class TestReleaseBundleDeterministic:
                     m1 = json.loads(data1)
                     m2 = json.loads(data2)
                     gen1 = m1.pop("generated_at")
-                    gen2 = m2.pop("generated_at")
+                    m2.pop("generated_at")
                     assert m1 == m2, (
                         f"Manifest content differs "
                         f"beyond generated_at:\n"
                         f"build1={m1}\nbuild2={m2}"
                     )
                     # Timestamps should be close
-                    # but may differ by 1s
-                    assert gen1 != gen2 or gen1 == gen2
+                    # but are not expected to be equal
+                    assert isinstance(gen1, str), (
+                        f"generated_at must be str, "
+                        f"got {type(gen1).__name__}"
+                    )
                 else:
                     sha1 = hashlib.sha256(data1).hexdigest()
                     sha2 = hashlib.sha256(data2).hexdigest()

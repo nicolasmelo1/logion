@@ -75,17 +75,42 @@ def _sha256_bytes(data: bytes) -> str:
 def _verify_layout(
     members: set[str], version: str, errors: list[str]
 ) -> str | None:
-    """Check required files and directories exist."""
+    """Check required files and directories exist.
+
+    Tarballs may or may not include explicit directory entries (e.g.
+    ``logion-marketplace-companion-0.1.0/course/``).  We accept both
+    forms: a file path like ``prefix/references/troubleshooting.md``
+    satisfies the ``references/`` directory requirement.
+    """
     prefix = f"{BUNDLE_KIND}-{version}"
 
-    if prefix not in members:
-        errors.append(f"Missing top-level directory: {prefix}")
-        return None
+    # The top-level directory need not be an explicit member — file
+    # paths starting with ``prefix/`` are sufficient proof it exists.
+    has_prefix_entry = prefix in members
+    has_prefix_files = any(
+        m.startswith(prefix + "/") for m in members
+    )
+    if not has_prefix_entry and not has_prefix_files:
+        errors.append(
+            f"Missing top-level directory: {prefix} "
+            f"(no members start with '{prefix}/')"
+        )
 
     for d in REQUIRED_DIRS:
         full = f"{prefix}/{d}"
-        if full not in members and f"{full}/" not in members:
-            errors.append(f"Missing directory: {full}")
+        # Accept: explicit dir entry (with or without trailing /),
+        # or any file under that directory.
+        dir_explicit = (
+            full in members or f"{full}/" in members
+        )
+        dir_implicit = any(
+            m.startswith(full + "/") for m in members
+        )
+        if not dir_explicit and not dir_implicit:
+            errors.append(
+                f"Missing directory: {full} (neither an entry nor "
+                f"any files underneath it)"
+            )
 
     for f in ALL_REQUIRED_FILES:
         full = f"{prefix}/{f}"
@@ -329,8 +354,22 @@ def verify_tarball(tarball_path: str) -> int:
                 errors.append(f"manifest.json is not valid JSON: {exc}")
                 manifest = {}
             else:
+                # Cross-check: tarball directory version must match
+                # manifest version
+                manifest_version = manifest.get("version", "")
+                if (
+                    manifest_version
+                    and manifest_version != version
+                ):
+                    errors.append(
+                        f"Version mismatch: tarball directory "
+                        f"says '{version}', manifest.json "
+                        f"says '{manifest_version}'"
+                    )
                 _verify_manifest_schema(manifest, errors)
-                _verify_checksums(file_contents, manifest, prefix, errors)
+                _verify_checksums(
+                    file_contents, manifest, prefix, errors
+                )
         else:
             errors.append("manifest.json not found in tarball")
 
@@ -370,14 +409,17 @@ def verify_directory(dir_path: str) -> int:
             if pattern in rel:
                 errors.append(f"Forbidden pattern '{pattern}' found in: {rel}")
 
-    # Check for unexpected files
+    # Check for unexpected files and directories
     _expected_files: set[str] = set(ALL_REQUIRED_FILES)
     _expected_files.add("manifest.json")
+    _expected_dirs: set[str] = set(REQUIRED_DIRS)
     for item in root.rglob("*"):
+        rel = str(item.relative_to(root))
         if item.is_file():
-            rel = str(item.relative_to(root))
             if rel not in _expected_files:
                 errors.append(f"Unexpected file in bundle: {rel}")
+        elif item.is_dir() and rel not in _expected_dirs:
+            errors.append(f"Unexpected directory in bundle: {rel}")
 
     # Verify manifest
     manifest_path = root / "manifest.json"
