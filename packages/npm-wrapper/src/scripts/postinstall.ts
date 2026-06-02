@@ -11,8 +11,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { detectPython, type PythonInfo } from "../lib/check-python";
-import { which } from "../lib/which";
+import { detectPython, type PythonInfo } from "../lib/check-python.js";
+import { which } from "../lib/which.js";
 
 type Installer = "pipx" | "uv" | "venv";
 

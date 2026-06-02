@@ -4,7 +4,7 @@
 // binary (placed on PATH by postinstall -> pipx/uv/venv).
 import { spawnSync } from "node:child_process";
 
-import { which } from "../lib/which";
+import { which } from "../lib/which.js";
 
 const target = which("logion");
 if (!target) {
