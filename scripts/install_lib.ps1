@@ -350,17 +350,19 @@ function Bootstrap-Uv {
     if ($IsWindows -or ($env:OS -eq "Windows_NT")) {
         # Windows: use the official PowerShell install script
         $installScript = "https://astral.sh/uv/install.ps1"
+        $installerPath = Join-Path ([System.IO.Path]::GetTempPath()) "uv-install.ps1"
         try {
-            Invoke-RestMethod $installScript | Invoke-Expression
+            Invoke-WebRequest -Uri $installScript -OutFile $installerPath
+            & $installerPath
         } catch {
             Die -Message "Failed to bootstrap uv: $($_.Exception.Message)" -ExitCode $script:EXIT_INSTALL_FAILED
+        } finally {
+            Remove-Item -Path $installerPath -Force -ErrorAction SilentlyContinue
         }
     } else {
         # Unix: shell out to the official curl installer
-        # Use single quotes around sh -c to prevent backtick command substitution
         try {
-            $installCmd = 'sh -c "curl -LsSf https://astral.sh/uv/install.sh | sh"'
-            Invoke-Expression $installCmd
+            & sh -c "curl -LsSf https://astral.sh/uv/install.sh | sh"
             if ($LASTEXITCODE -ne 0) {
                 Die -Message "Failed to bootstrap uv (exit $LASTEXITCODE)" -ExitCode $script:EXIT_INSTALL_FAILED
             }

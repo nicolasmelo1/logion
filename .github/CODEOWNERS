@@ -7,4 +7,10 @@
 /packages/cli/                   @nicolasmelo1
 /packages/client/                @nicolasmelo1
 /.github/                        @nicolasmelo1
+/scripts/install.sh              @nicolasmelo1
+/scripts/install_lib.sh          @nicolasmelo1
+/scripts/install.ps1             @nicolasmelo1
+/scripts/install_lib.ps1         @nicolasmelo1
+/scripts/install_test/           @nicolasmelo1
+/tests/install/                  @nicolasmelo1
 /SECURITY.md                     @nicolasmelo1

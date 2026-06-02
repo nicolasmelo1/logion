@@ -353,13 +353,14 @@ while i < len(p):
     i += 1
 if current:
     parts.append(current)
-nav = 'd' + ''.join(f'[{json.dumps(p)}]' for p in parts)
-print(nav)
+print(json.dumps(parts))
 " 2>/dev/null)"
         python3 -c "
 import json, sys
 d = json.load(open(sys.argv[1]))
-result = eval(sys.argv[2])
+result = d
+for key in json.loads(sys.argv[2]):
+    result = result[key]
 if result is None:
     print('null')
 else:
@@ -428,7 +429,7 @@ check_python() {
 
     for _py_cmd in python3 python py; do
         if command -v "$_py_cmd" >/dev/null 2>&1; then
-            _ver="$(eval "$_py_cmd --version" 2>/dev/null | head -1)"
+            _ver="$("$_py_cmd" --version 2>/dev/null | head -1)"
             # Parse "Python X.Y.Z"
             _py_major="$(printf '%s' "$_ver" | sed 's/Python \([0-9]*\)\..*/\1/' 2>/dev/null)"
             _py_minor="$(printf '%s' "$_ver" | sed 's/Python [0-9]*\.\([0-9]*\).*/\1/' 2>/dev/null)"
