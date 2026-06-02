@@ -3,11 +3,30 @@ name = "logion-client"
 version = "0.1.0"
 description = "Python client SDK for the Logion API"
 requires-python = ">=3.12"
+readme = "README.md"
 dependencies = [
     "email-validator>=2.1,<3.0.0",
     "httpx>=0.27,<1.0.0",
     "pydantic>=2.7,<3.0.0",
 ]
+
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/nicolasmelo1/logion"
+Repository = "https://github.com/nicolasmelo1/logion"
+Issues = "https://github.com/nicolasmelo1/logion/issues"
+Documentation = "https://github.com/nicolasmelo1/logion#readme"
+Changelog = "https://github.com/nicolasmelo1/logion/releases"
 
 [dependency-groups]
 dev = [
