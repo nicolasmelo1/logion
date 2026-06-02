@@ -26,8 +26,11 @@ function getPinnedVersion() {
     fs.readFileSync(path.join(__dirname, "..", "..", "package.json"), "utf8")
   );
   // At publish time, version-from-manifest writes the real version.
-  // For local dev, use the package version as fallback.
-  return pkg.logionCliVersion || pkg.version.replace(/^0\.0\.0-placeholder$/, "0.1.0");
+  // In repo, the version is "0.0.0-placeholder" — do not attempt install.
+  if (pkg.version === "0.0.0-placeholder" && !pkg.logionCliVersion) {
+    return null;
+  }
+  return pkg.logionCliVersion || pkg.version;
 }
 
 function hasCommand(cmd) {
@@ -143,6 +146,12 @@ function main() {
   }
 
   const version = getPinnedVersion();
+  if (!version) {
+    log("No pinned version found (package.json still has 0.0.0-placeholder). " +
+      "Run `node dist/scripts/version-from-manifest.js` first or set LOGION_NPM_SKIP_INSTALL=1.");
+    process.exit(1);
+  }
+
   const info = detectPython();
 
   if (!info) {

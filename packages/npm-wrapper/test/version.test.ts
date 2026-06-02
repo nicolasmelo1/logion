@@ -28,20 +28,23 @@ describe("version", () => {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     const cliVersion = manifest.packages["logion-cli"].version;
 
-    // Run built version-from-manifest
-    execSync("node " + path.join(DIST_DIR, "scripts", "version-from-manifest.js"), {
-      cwd: PKG_DIR,
-      stdio: "pipe",
-    });
+    // Read original package.json content so we can restore it
+    const original = fs.readFileSync(PKG_PATH, "utf8");
 
-    const updatedPkg = JSON.parse(fs.readFileSync(PKG_PATH, "utf8"));
-    expect(updatedPkg.version).toBe(cliVersion);
-    expect(updatedPkg.logionCliVersion).toBe(cliVersion);
+    try {
+      // Run built version-from-manifest
+      execSync("node " + path.join(DIST_DIR, "scripts", "version-from-manifest.js"), {
+        cwd: PKG_DIR,
+        stdio: "pipe",
+      });
 
-    // Restore original version
-    const originalPkg = { ...updatedPkg, version: "0.0.0-placeholder" };
-    delete originalPkg.logionCliVersion;
-    fs.writeFileSync(PKG_PATH, JSON.stringify(originalPkg, null, 2) + "\n");
+      const updatedPkg = JSON.parse(fs.readFileSync(PKG_PATH, "utf8"));
+      expect(updatedPkg.version).toBe(cliVersion);
+      expect(updatedPkg.logionCliVersion).toBe(cliVersion);
+    } finally {
+      // Always restore original package.json
+      fs.writeFileSync(PKG_PATH, original);
+    }
   });
 
   test("files array excludes tests", () => {

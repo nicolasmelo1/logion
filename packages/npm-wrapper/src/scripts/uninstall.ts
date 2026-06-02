@@ -35,9 +35,12 @@ function main() {
     }
   }
 
-  // Remove symlinks from ~/.local/bin
+  // Remove symlinks from ~/.local/bin (both Unix and Windows names)
   const binDir = path.join(os.homedir(), ".local", "bin");
-  for (const name of ["logion", "lgn"]) {
+  const names = process.platform === "win32"
+    ? ["logion", "logion.exe", "logion.cmd", "lgn", "lgn.exe", "lgn.cmd"]
+    : ["logion", "lgn"];
+  for (const name of names) {
     const link = path.join(binDir, name);
     try {
       if (fs.existsSync(link) && fs.lstatSync(link).isSymbolicLink()) {

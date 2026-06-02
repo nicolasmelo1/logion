@@ -88,7 +88,7 @@ npm-pack:
 	cd packages/npm-wrapper && npm pack
 
 npm-build:
-	cd packages/npm-wrapper && npm ci --ignore-scripts && npm run build && node dist/scripts/version-from-manifest.js && npm pack --dry-run
+	cd packages/npm-wrapper && npm ci --ignore-scripts && npm run build && node dist/scripts/version-from-manifest.js && npm pack --dry-run && git checkout package.json
 
 version-bump-cli:
 	uv run semantic-release version -c packages/cli/pyproject.toml
