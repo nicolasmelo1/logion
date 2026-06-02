@@ -128,3 +128,50 @@ SHA256SUMS to the GitHub Release.
 
 If the version already exists on PyPI, the publish step skips
 (`skip-existing: true`) rather than failing.
+
+## 8. Cutting a release end-to-end
+
+1. Confirm `main` is green: `gh run list --branch main --limit 3`.
+2. Run python-semantic-release locally to compute the next version
+   for the package you want to release:
+
+       uv run semantic-release version -c packages/cli/pyproject.toml --print
+
+3. Push the tag created locally:
+
+       uv run semantic-release version -c packages/cli/pyproject.toml
+       git push --follow-tags
+
+4. The `release-cli.yml` workflow runs.  Approve the `pypi`
+   environment gate when prompted.
+5. After `release-cli.yml` completes, `release-npm.yml` triggers
+   automatically (via workflow_run).  Approve the `npm` gate.
+6. `regenerate-manifest.yml` opens a PR with the new manifest.
+   Review and merge.
+7. `release-conformance.yml` runs after the manifest merge; if it
+   fails, see §emergency-rollback below.
+
+### Cutting a release candidate
+
+1. `git checkout -b rc/cli-0.3.0` (off `main`).
+2. `uv run semantic-release version -c packages/cli/pyproject.toml --prerelease`.
+3. `git push --follow-tags`.
+4. `release-testpypi.yml` publishes to TestPyPI only.
+
+### Emergency rollback
+
+If a release is broken (smoke tests failed; user reports breakage):
+
+1. PyPI: yank the broken version manually
+   (`pypi.org/manage/project/logion-cli/release/X.Y.Z/`); document
+   why in the project's PyPI page.
+2. npm: `npm deprecate @logion/cli@X.Y.Z "broken; use X.Y.W"`.
+3. GitHub Release: do NOT delete the tag.  Instead, push a
+   higher-version patch tag with the fix; the manifest regenerates
+   to point at the new latest.
+4. The installer redirect always reads the latest manifest, so a
+   re-released patch heals new installs automatically.
+
+Never `git push --force` a release tag.  If a tag was wrong, push a
+fresh patch tag; old installs survive because their pin still
+resolves.

@@ -1,0 +1,52 @@
+name: Regenerate release manifest
+
+on:
+  workflow_run:
+    workflows:
+      - "Release logion-cli to PyPI"
+      - "Release logion-client to PyPI"
+      - "Release logion-companion"
+      - "Release @logion/cli to npm"
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regenerate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - name: Regenerate manifests
+        run: |
+          uv run python scripts/release_manifest.py build \
+              --channel stable --out releases/manifest-stable.json
+          uv run python scripts/release_manifest.py build \
+              --channel latest --out releases/manifest-latest.json
+      - name: Open PR on diff
+        run: |
+          if git diff --quiet releases/manifest-*.json; then
+              echo "No manifest changes; skipping PR."; exit 0
+          fi
+          branch="chore/regenerate-manifest-$(date -u +%Y%m%d-%H%M%S)"
+          git checkout -b "$branch"
+          git add releases/manifest-*.json
+          git -c user.name="logion-release-bot" \
+              -c user.email="release-bot@users.noreply.github.com" \
+              commit -m "chore(release): regenerate release manifest"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+              --title "chore(release): regenerate manifest" \
+              --body "Automated regeneration after $(echo ${{ github.event.workflow_run.head_branch }})." \
+              --label "release-manifest"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,22 @@
+name: Release conformance
+
+on:
+  workflow_run:
+    workflows:
+      - "Release logion-cli to PyPI"
+      - "Release logion-client to PyPI"
+      - "Release logion-companion"
+      - "Release @logion/cli to npm"
+    types: [completed]
+
+jobs:
+  conform:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: astral-sh/setup-uv@v5
+      - name: Verify PyPI versions match manifest
+        run: uv run python scripts/release_conformance.py --channel stable

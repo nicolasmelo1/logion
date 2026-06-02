@@ -68,6 +68,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/release_manifest.py" = ["T201"]
+"scripts/regenerate_manifest.py" = ["T201"]
+"scripts/release_conformance.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion"]

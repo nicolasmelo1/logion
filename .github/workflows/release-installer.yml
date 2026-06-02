@@ -1,0 +1,28 @@
+name: Release installer
+
+on:
+  push:
+    tags: ["installer-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute hashes
+        run: |
+          (cd scripts && sha256sum install.sh > install.sh.sha256 && \
+                        sha256sum install.ps1 > install.ps1.sha256)
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            scripts/install.sh
+            scripts/install.sh.sha256
+            scripts/install.ps1
+            scripts/install.ps1.sha256
+            scripts/install_lib.sh
+            scripts/install_lib.ps1
