@@ -20,7 +20,7 @@ class TestPackageSkillCheck:
 
     def test_package_skill_check_passes(self) -> None:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT)],
+            [sys.executable, str(SCRIPT), "validate"],
             capture_output=True,
             text=True,
             cwd=str(ROOT),
@@ -35,7 +35,7 @@ class TestPackageSkillCheck:
         self,
     ) -> None:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT)],
+            [sys.executable, str(SCRIPT), "validate"],
             capture_output=True,
             text=True,
             cwd=str(ROOT),
@@ -46,7 +46,7 @@ class TestPackageSkillCheck:
 
     def test_package_skill_reports_passed(self) -> None:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT)],
+            [sys.executable, str(SCRIPT), "validate"],
             capture_output=True,
             text=True,
             cwd=str(ROOT),
@@ -58,7 +58,7 @@ class TestPackageSkillCheck:
     def test_package_skill_validates_structure(self) -> None:
         """Verify the check validates structure."""
         result = subprocess.run(
-            [sys.executable, str(SCRIPT)],
+            [sys.executable, str(SCRIPT), "validate"],
             capture_output=True,
             text=True,
             cwd=str(ROOT),
@@ -69,7 +69,7 @@ class TestPackageSkillCheck:
         self,
     ) -> None:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT)],
+            [sys.executable, str(SCRIPT), "validate"],
             capture_output=True,
             text=True,
             cwd=str(ROOT),

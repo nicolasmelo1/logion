@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify public-audit \
+.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
 	check-installer-security \
@@ -125,3 +125,9 @@ install-ps1-test: install-ps1-lint
 	pwsh -NoLogo -NoProfile -Command 'if (-not $$env:TEMP) { $$env:TEMP = if ($$env:TMPDIR) { $$env:TMPDIR } else { [System.IO.Path]::GetTempPath() } }; $$out = Join-Path $$env:TEMP "logion-pester-results.xml"; Invoke-Pester -Path tests/install/test_install_ps1.Tests.ps1 -EnableExit -OutputFile $$out -OutputFormat NUnitXml'
 
 install-test: install-sh-test install-ps1-test
+
+companion-bundle:
+	uv run python packages/agent-companion/scripts/package_skill.py build --out dist/ --version $(shell python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])") --release
+
+companion-bundle-verify:
+	uv run python packages/agent-companion/scripts/verify_bundle.py dist/logion-marketplace-companion-$(shell python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])").tar.gz

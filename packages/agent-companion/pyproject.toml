@@ -89,7 +89,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/package_skill.py" = ["T201"]
+"scripts/package_skill.py" = ["T201", "C901"]
+"scripts/verify_bundle.py" = ["T201", "C901"]
 # Graders are a flat list of rule checks; nested-if / complexity rules
 # would push them into a less readable shape. The CLI prints by design.
 "evals/harness/graders.py" = ["SIM102", "C901"]
