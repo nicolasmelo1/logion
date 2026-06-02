@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 //
 // Short alias shim: prefer `lgn` on PATH, fall back to `logion`.
-"use strict";
+import { spawnSync } from "node:child_process";
 
-const { spawnSync } = require("node:child_process");
-const { which } = require("../lib/which");
+import { which } from "../lib/which";
 
-const target = which("lgn") || which("logion");
+const target = which("lgn") ?? which("logion");
 if (!target) {
-  console.error(
-    "lgn/logion binary not found.  Reinstall with `npm install -g @logion/cli` " +
-      "or install directly via `pipx install logion-cli`."
+  process.stderr.write(
+    "lgn/logion binary not found. Reinstall with " +
+      "`npm install -g @logion/cli` or install directly via " +
+      "`pipx install logion-cli`.\n",
   );
   process.exit(127);
 }
 
 const r = spawnSync(target, process.argv.slice(2), { stdio: "inherit" });
 if (r.error) {
-  console.error(r.error.message);
+  process.stderr.write(`${r.error.message}\n`);
   process.exit(1);
 }
 process.exit(r.status ?? 1);

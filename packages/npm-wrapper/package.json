@@ -27,9 +27,14 @@
     "prepublishOnly": "node dist/scripts/version-from-manifest.js",
     "postinstall": "node dist/scripts/postinstall.js",
     "preuninstall": "node dist/scripts/uninstall.js",
+    "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"{src,test}/**/*.ts\" \"*.{ts,json,md}\"",
+    "format:check": "prettier --check \"{src,test}/**/*.ts\" \"*.{ts,json,md}\""
   },
   "engines": {
     "node": ">=22"
@@ -44,9 +49,21 @@
     "provenance": true
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@types/node": "^22.15.0",
+    "@vitest/eslint-plugin": "^1.1.25",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-n": "^17.15.1",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-sonarjs": "^3.0.1",
+    "eslint-plugin-unicorn": "^56.0.1",
+    "prettier": "^3.4.2",
     "tsup": "^8.4.0",
     "typescript": "^5.8.0",
+    "typescript-eslint": "^8.20.0",
     "vitest": "^3.2.0"
   }
 }

@@ -38,4 +38,38 @@ fi
 echo "Running public guardrails..."
 make ci-checks
 
+# ── npm-wrapper checks — mirror the npm-wrapper job in pr-safety.yml.
+# Only run when files under packages/npm-wrapper/** are staged, so the
+# hook stays fast for Python-only changes.
+npm_staged="$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^packages/npm-wrapper/' || true)"
+if [ -n "${npm_staged}" ]; then
+	echo "npm-wrapper files staged — running npm-wrapper checks..."
+	if ! command -v node >/dev/null 2>&1; then
+		echo "Error: node is required to validate npm-wrapper changes."
+		echo "Install Node ≥22 (see packages/npm-wrapper/.nvmrc)."
+		exit 1
+	fi
+	(
+		cd packages/npm-wrapper
+
+		if [ ! -d node_modules ]; then
+			echo "Installing npm-wrapper dependencies..."
+			npm ci --ignore-scripts
+		fi
+
+		echo "Running npm-wrapper lint (eslint)..."
+		npm run lint
+
+		echo "Running npm-wrapper format check (prettier)..."
+		npm run format:check
+
+		echo "Running npm-wrapper type check (tsc --noEmit)..."
+		npm run typecheck
+
+		echo "Running npm-wrapper tests (vitest)..."
+		npm test
+	)
+fi
+
 echo "All checks passed."

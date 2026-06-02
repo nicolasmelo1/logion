@@ -12,7 +12,7 @@ npx @logion/cli --help
 
 ## Requirements
 
-- Node ≥ 18
+- Node ≥ 22
 - Python ≥ 3.12 on the host (the wrapper auto-detects `python3` or `py`)
 - One of `pipx`, `uv`, or the wrapper falls back to a managed venv
 
@@ -38,10 +38,10 @@ think about Python package managers.
 
 ## Environment variables
 
-| Variable | Purpose |
-|---|---|
-| `LOGION_NPM_SKIP_INSTALL` | Set to `1` to skip postinstall (CI/test) |
-| `LOGION_NPM_FORCE_INSTALLER` | Force `pipx`, `uv`, or `venv` |
-| `LOGION_NPM_PYTHON` | Override Python binary path |
+| Variable                     | Purpose                                  |
+| ---------------------------- | ---------------------------------------- |
+| `LOGION_NPM_SKIP_INSTALL`    | Set to `1` to skip postinstall (CI/test) |
+| `LOGION_NPM_FORCE_INSTALLER` | Force `pipx`, `uv`, or `venv`            |
+| `LOGION_NPM_PYTHON`          | Override Python binary path              |
 
 See https://github.com/nicolasmelo1/logion for the full project.

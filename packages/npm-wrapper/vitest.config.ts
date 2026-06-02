@@ -2,8 +2,9 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    // Integration-style tests that spawn child processes — not unit-mockable.
-    // Each test file gets its own pool to avoid PATH/env pollution.
+    // Tests spawn child processes against the built dist/ artefacts;
+    // we keep a single forked worker so PATH/env mutations in one
+    // test file do not leak into another running in parallel.
     pool: "forks",
     poolOptions: {
       forks: {
