@@ -1,0 +1,4 @@
+# Exclude test files and source helpers from the published tarball.
+test/
+.gitignore
+.editorconfig

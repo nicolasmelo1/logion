@@ -1,0 +1,44 @@
+{
+  "name": "@logion/cli",
+  "version": "0.0.0-placeholder",
+  "description": "Logion CLI — installs and shims the canonical Python logion-cli from PyPI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolasmelo1/logion.git",
+    "directory": "packages/npm-wrapper"
+  },
+  "homepage": "https://github.com/nicolasmelo1/logion#readme",
+  "bugs": {
+    "url": "https://github.com/nicolasmelo1/logion/issues"
+  },
+  "keywords": [
+    "logion",
+    "cli",
+    "marketplace",
+    "agent"
+  ],
+  "bin": {
+    "logion": "bin/logion.js",
+    "lgn": "bin/lgn.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "preuninstall": "node scripts/uninstall.js",
+    "test": "node --test test/postinstall.test.js test/shim.test.js test/version.test.js",
+    "prepublishOnly": "node scripts/version_from_manifest.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
