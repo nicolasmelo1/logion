@@ -194,8 +194,7 @@ class TestReleaseBundleDeterministic:
                     # Timestamps should be close
                     # but are not expected to be equal
                     assert isinstance(gen1, str), (
-                        f"generated_at must be str, "
-                        f"got {type(gen1).__name__}"
+                        f"generated_at must be str, got {type(gen1).__name__}"
                     )
                 else:
                     sha1 = hashlib.sha256(data1).hexdigest()

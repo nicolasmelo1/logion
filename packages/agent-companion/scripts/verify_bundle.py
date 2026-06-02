@@ -87,9 +87,7 @@ def _verify_layout(
     # The top-level directory need not be an explicit member — file
     # paths starting with ``prefix/`` are sufficient proof it exists.
     has_prefix_entry = prefix in members
-    has_prefix_files = any(
-        m.startswith(prefix + "/") for m in members
-    )
+    has_prefix_files = any(m.startswith(prefix + "/") for m in members)
     if not has_prefix_entry and not has_prefix_files:
         errors.append(
             f"Missing top-level directory: {prefix} "
@@ -100,12 +98,8 @@ def _verify_layout(
         full = f"{prefix}/{d}"
         # Accept: explicit dir entry (with or without trailing /),
         # or any file under that directory.
-        dir_explicit = (
-            full in members or f"{full}/" in members
-        )
-        dir_implicit = any(
-            m.startswith(full + "/") for m in members
-        )
+        dir_explicit = full in members or f"{full}/" in members
+        dir_implicit = any(m.startswith(full + "/") for m in members)
         if not dir_explicit and not dir_implicit:
             errors.append(
                 f"Missing directory: {full} (neither an entry nor "
@@ -357,19 +351,14 @@ def verify_tarball(tarball_path: str) -> int:
                 # Cross-check: tarball directory version must match
                 # manifest version
                 manifest_version = manifest.get("version", "")
-                if (
-                    manifest_version
-                    and manifest_version != version
-                ):
+                if manifest_version and manifest_version != version:
                     errors.append(
                         f"Version mismatch: tarball directory "
                         f"says '{version}', manifest.json "
                         f"says '{manifest_version}'"
                     )
                 _verify_manifest_schema(manifest, errors)
-                _verify_checksums(
-                    file_contents, manifest, prefix, errors
-                )
+                _verify_checksums(file_contents, manifest, prefix, errors)
         else:
             errors.append("manifest.json not found in tarball")
 
