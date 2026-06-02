@@ -582,7 +582,12 @@ function Update-Path {
 
     # Persist to user environment (idempotent)
     $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-    $userPathParts = $userPath -split [System.IO.Path]::PathSeparator
+    # Guard against $null PATH on fresh profiles (#18)
+    if ($null -eq $userPath -or $userPath -eq "") {
+        $userPathParts = @()
+    } else {
+        $userPathParts = $userPath -split [System.IO.Path]::PathSeparator
+    }
     if ($userPathParts -notcontains $BinDir) {
         $newUserPath = "${BinDir}$([System.IO.Path]::PathSeparator)$userPath"
         [Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")

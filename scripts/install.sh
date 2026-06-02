@@ -34,8 +34,7 @@ trap _cleanup EXIT
 step=1
 
 step_info() {
-    # shellcheck disable=SC2153
-    if [ "${LOGION_INSTALL_QUIET}" != "1" ]; then
+    if [ "${INSTALL_QUIET}" != "1" ]; then
         info "Step ${step}/12: $1"
     fi
     step=$((step + 1))
@@ -67,9 +66,15 @@ fi
 
 # 5/12  Validate the manifest (schema, checksums)
 step_info "Validating manifest"
-if ! validate_manifest; then
+if ! validate_manifest "$INSTALL_TMPDIR/manifest.json"; then
     die 5 "Manifest validation failed"
 fi
+
+# Resolve CLI version and companion version from the manifest
+CLI_VERSION="$(manifest_get_field "$INSTALL_TMPDIR/manifest.json" '.packages["logion-cli"].version')"
+CLI_TAG="logion-cli-v${INSTALL_VERSION:-$CLI_VERSION}"
+COMPANION_VERSION="$(manifest_get_field "$INSTALL_TMPDIR/manifest.json" '.packages["logion-companion"].version')"
+export CLI_VERSION CLI_TAG COMPANION_VERSION
 
 # 6/12  Check that Python meets the minimum version
 step_info "Checking Python version"
@@ -84,7 +89,7 @@ if ! bootstrap_uv; then
 fi
 
 # 8/12  Install the CLI
-if [ "${LOGION_INSTALL_SKILL_ONLY}" = "1" ]; then
+if [ "${INSTALL_SKILL_ONLY}" = "1" ]; then
     # --skill-only: skip install_cli, just verify logion is on PATH
     step_info "Verifying logion is on PATH (--skill-only)"
     if ! command -v logion >/dev/null 2>&1; then
@@ -92,18 +97,20 @@ if [ "${LOGION_INSTALL_SKILL_ONLY}" = "1" ]; then
     fi
 else
     step_info "Installing logion CLI"
-    if ! install_cli; then
+    _install_ver="${INSTALL_VERSION:-$CLI_VERSION}"
+    if ! install_cli "$_install_ver" "$INSTALL_INSTALLER"; then
         die 8 "CLI installation failed"
     fi
 fi
 
 # 9/12  Install the companion skill bundle
-if [ "${LOGION_INSTALL_CLI_ONLY}" = "1" ]; then
+if [ "${INSTALL_CLI_ONLY}" = "1" ]; then
     # --cli-only: skip install_companion
     step_info "Skipping companion (--cli-only)"
 else
     step_info "Installing logion companion"
-    if ! install_companion; then
+    _comp_ver="${COMPANION_VERSION:-$_install_ver}"
+    if ! install_companion "$_comp_ver" "$CLI_TAG"; then
         die 8 "Companion installation failed"
     fi
 fi
@@ -116,7 +123,9 @@ fi
 
 # 11/12 Verify the installation
 step_info "Verifying installation"
-if ! verify_install; then
+_install_ver="${INSTALL_VERSION:-$CLI_VERSION}"
+_comp_ver="${COMPANION_VERSION:-}"
+if ! verify_install "$_install_ver" "$_comp_ver"; then
     die 9 "Installation verification failed"
 fi
 

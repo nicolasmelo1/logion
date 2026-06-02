@@ -222,7 +222,7 @@ Describe "fresh install: completes all 12 steps and installs logion" {
 Describe "refuses Python 3.11: exits non-zero when Python is too old" {
     It "Check-Python returns null when Python 3.11 is detected" {
         # Simulate Python 3.11 by mocking Check-Python to return null
-        Mock Check-Python { return $null } -ModuleName "install_lib"
+        Mock Check-Python { return $null }
 
         $result = Check-Python
         $result | Should -BeNullOrEmpty

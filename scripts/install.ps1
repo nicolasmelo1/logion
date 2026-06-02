@@ -185,6 +185,12 @@ if (-not $Opts.SkillOnly) {
                 "venv" {
                     $logionDir = [System.IO.Path]::Combine($HOME, ".logion")
                     $venvDir   = [System.IO.Path]::Combine($logionDir, "installer-managed-venv")
+                    # Create the venv if it doesn't exist yet
+                    if (-not (Test-Path -Path $venvDir)) {
+                        Info -Message "Creating managed venv at $venvDir"
+                        & $pythonCmd -m venv $venvDir
+                        if ($LASTEXITCODE -ne 0) { Die -Message "Failed to create venv at $venvDir" -ExitCode $EXIT_INSTALL_FAILED }
+                    }
                     if ($IsWindows -or ($env:OS -eq "Windows_NT")) {
                         $pipBin = [System.IO.Path]::Combine($venvDir, "Scripts", "pip.exe")
                     } else {

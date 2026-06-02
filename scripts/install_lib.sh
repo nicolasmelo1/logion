@@ -6,6 +6,8 @@
 # directly.
 
 # --- Logging helpers -------------------------------------------------------
+# All functions take simple arguments (no printf-style format strings).
+# Callers must interpolate variables before passing them.
 
 die() {
     _code="$1"
@@ -54,7 +56,7 @@ detect_platform() {
     export LIBC
 
     if [ "$OS" = "other" ] || [ "$ARCH" = "other" ]; then
-        die 3 "Unsupported platform: OS=%s ARCH=%s" "$OS" "$ARCH"
+        die 3 "Unsupported platform: OS=$OS ARCH=$ARCH"
     fi
 
     return 0
@@ -86,21 +88,21 @@ require_tools() {
         case "$OS" in
             linux)
                 if command -v apt >/dev/null 2>&1; then
-                    _hint="Try: sudo apt install curl sha256sum tar"
+                    _hint="Try: sudo apt install -y curl ca-certificates"
                 elif command -v apk >/dev/null 2>&1; then
-                    _hint="Try: sudo apk add curl sha256sum tar"
+                    _hint="Try: sudo apk add curl coreutils"
                 else
                     _hint="Install curl, sha256sum, and tar via your package manager."
                 fi
                 ;;
             darwin)
-                _hint="Try: brew install curl coreutils tar"
+                _hint="Try: brew install curl coreutils"
                 ;;
             *)
                 _hint="Install curl, a sha256 tool, and tar for your platform."
                 ;;
         esac
-        die 4 "Missing prerequisite tools. %s" "$_hint"
+        die 4 "Missing prerequisite tools. $_hint"
     fi
 }
 
@@ -113,6 +115,7 @@ parse_args() {
     INSTALL_CLI_ONLY=0
     INSTALL_SKILL_ONLY=0
     INSTALL_PREFIX=""
+    INSTALL_PREFIX_EXPLICIT=0
     INSTALL_INSTALLER=""
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
@@ -124,7 +127,7 @@ parse_args() {
             --channel)
                 shift
                 [ $# -gt 0 ] || die 2 "--channel requires an argument"
-                INSTALL_VERSION="$(printf '%s' "$1" | sed 's/^v//')"
+                INSTALL_CHANNEL="$1"
                 shift
                 ;;
             --channel=*)
@@ -153,10 +156,12 @@ parse_args() {
                 shift
                 [ $# -gt 0 ] || die 2 "--prefix requires an argument"
                 INSTALL_PREFIX="$1"
+                INSTALL_PREFIX_EXPLICIT=1
                 shift
                 ;;
             --prefix=*)
                 INSTALL_PREFIX="${1#--prefix=}"
+                INSTALL_PREFIX_EXPLICIT=1
                 shift
                 ;;
             --installer)
@@ -210,10 +215,15 @@ parse_args() {
                 exit 0
                 ;;
             *)
-                die 2 "Unknown argument: %s" "$1"
+                die 2 "Unknown argument: $1"
                 ;;
         esac
     done
+
+    # Mutual exclusivity: --cli-only and --skill-only
+    if [ "$INSTALL_CLI_ONLY" = 1 ] && [ "$INSTALL_SKILL_ONLY" = 1 ]; then
+        die 2 "--cli-only and --skill-only are mutually exclusive"
+    fi
 
     # Default prefix
     if [ -z "$INSTALL_PREFIX" ]; then
@@ -236,25 +246,53 @@ parse_args() {
     fi
 
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
-    export INSTALL_PREFIX INSTALL_INSTALLER INSTALL_DRY_RUN
+    export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
     export INSTALL_NO_MODIFY_PATH INSTALL_QUIET INSTALL_VERBOSE
+}
+
+# --- resolve_url helper -----------------------------------------------------
+
+# Translate release:// URLs to real download URLs.
+# release://<asset> → ${LOGION_INSTALL_BASE_URL}/<asset> (dev/test)
+#   or https://github.com/nicolasmelo1/logion/releases/download/<tag>/<asset> (prod)
+resolve_url() {
+    _raw_url="$1"
+    _tag="$2"
+
+    case "$_raw_url" in
+        release://*)
+            _asset="${_raw_url#release://}"
+            if [ -n "${LOGION_INSTALL_BASE_URL:-}" ]; then
+                printf '%s/%s' "$LOGION_INSTALL_BASE_URL" "$_asset"
+            else
+                printf 'https://github.com/nicolasmelo1/logion/releases/download/%s/%s' "$_tag" "$_asset"
+            fi
+            ;;
+        *)
+            # Already a full URL (file://, https://, etc.)
+            printf '%s' "$_raw_url"
+            ;;
+    esac
 }
 
 # --- Manifest fetching -----------------------------------------------------
 
 fetch_manifest() {
-    _manifest_url="${LOGION_INSTALL_MANIFEST_URL:-https://logion.sh/releases/manifest-${INSTALL_CHANNEL}.json}"
+    _manifest_url="${LOGION_INSTALL_MANIFEST_URL:-https://logion.dev/releases/manifest-${INSTALL_CHANNEL}.json}"
 
     if [ -n "$INSTALL_VERSION" ]; then
-        _tag_url="https://logion.sh/releases/manifest-${INSTALL_VERSION}.json"
-        info "Fetching manifest for version %s ..." "$INSTALL_VERSION"
+        _tag="logion-cli-v${INSTALL_VERSION}"
+        _tag_url="https://logion.dev/releases/manifest-${INSTALL_CHANNEL}.json"
+        # When --version is given, fetch the manifest from the version-specific tag
+        _tag_url="https://github.com/nicolasmelo1/logion/releases/download/${_tag}/manifest-${INSTALL_CHANNEL}.json"
+        info "Fetching manifest for version $INSTALL_VERSION ..."
         if ! curl -fsSL "$_tag_url" -o "$INSTALL_TMPDIR/manifest.json" 2>/dev/null; then
-            die 5 "Failed to download manifest for version %s from %s" "$INSTALL_VERSION" "$_tag_url"
+            die 5 "Failed to download manifest for version $INSTALL_VERSION from $_tag_url"
         fi
     else
-        info "Fetching %s manifest ..." "$INSTALL_CHANNEL"
+        info "Fetching $INSTALL_CHANNEL manifest ..."
         if ! curl -fsSL "$_manifest_url" -o "$INSTALL_TMPDIR/manifest.json" 2>/dev/null; then
-            die 5 "Failed to download manifest from %s" "$_manifest_url"
+            die 5 "Failed to download manifest from $_manifest_url"
         fi
     fi
 }
@@ -265,17 +303,17 @@ manifest_get_field() {
     _file="$1"
     _path="$2"
 
-    # Strip leading dot if present (e.g. '.packages' → 'packages')
-    _clean_path="$(printf '%s' "$_path" | sed 's/^\./')"
-
     if command -v jq >/dev/null 2>&1; then
-        jq -r "$_path" "$_file" 2>/dev/null
+        # jq requires quoting keys with hyphens:
+        # .packages.logion-cli.version → .packages["logion-cli"].version
+        _jq_path="$(printf '%s' "$_path" | sed 's/\.\([a-zA-Z0-9_]*-[a-zA-Z0-9_-]*\)/.["\1"]/g')"
+        jq -r "$_jq_path" "$_file" 2>/dev/null
         return $?
     fi
 
     if command -v python3 >/dev/null 2>&1; then
         # Convert jq-style path to python dict navigation
-        # '.packages."logion-cli".version' → 'd["packages"]["logion-cli"]["version"]'
+        # '.packages."logion-cli".version' → d["packages"]["logion-cli"]["version"]
         _py_path="$(printf '%s' "$_path" | python3 -c "
 import sys, re, json
 p = sys.stdin.read().strip()
@@ -327,8 +365,9 @@ else:
     fi
 
     # awk fallback: simple single-level field extraction
-    # This is a best-effort approach for dot-notation paths
-    _field_name="$(printf '%s' "$_clean_path" | sed 's/\./,/g; s/\"//g')"
+    # Best-effort for dot-notation paths on deterministic JSON
+    _clean_path="$(printf '%s' "$_path" | sed 's/^\.//')"
+    _field_name="$(printf '%s' "$_clean_path" | sed 's/\./,/g; s/"//g')"
     awk -v path="$_field_name" '
     BEGIN { depth = 0; target_depth = split(path, parts, ",") }
     /{/ { depth++ }
@@ -347,11 +386,12 @@ else:
 
 # --- Manifest validation ----------------------------------------------------
 
+# validate_manifest <file>
 validate_manifest() {
-    _mfile="$1"
+    _mfile="${1:-$INSTALL_TMPDIR/manifest.json}"
 
     if [ ! -f "$_mfile" ]; then
-        die 5 "Manifest file not found: %s" "$_mfile"
+        die 5 "Manifest file not found: $_mfile"
     fi
 
     _sv="$(manifest_get_field "$_mfile" '.schema_version')"
@@ -359,12 +399,13 @@ validate_manifest() {
         die 5 "Manifest missing required field: schema_version"
     fi
 
-    _cv="$(manifest_get_field "$_mfile" '.packages.logion-cli.version')"
+    # Use bracket notation for keys with hyphens (jq-compatible)
+    _cv="$(manifest_get_field "$_mfile" '.packages["logion-cli"].version')"
     if [ -z "$_cv" ] || [ "$_cv" = "null" ]; then
         die 5 "Manifest missing required field: packages.logion-cli.version"
     fi
 
-    info "Manifest validated: schema_version=%s cli_version=%s" "$_sv" "$_cv"
+    info "Manifest validated: schema_version=$_sv cli_version=$_cv"
 }
 
 # --- Python detection -------------------------------------------------------
@@ -413,15 +454,27 @@ check_python() {
             _hint="Install Python >= 3.12 for your platform."
             ;;
     esac
-    die 7 "Python >= 3.12 not found. %s" "$_hint"
+    die 7 "Python >= 3.12 not found. $_hint"
 }
 
 # --- Bootstrap uv -----------------------------------------------------------
 
 bootstrap_uv() {
-    if command -v pipx >/dev/null 2>&1; then
+    # If the requested installer is uv and pipx is present but uv is not,
+    # we must still install uv. Only short-circuit if the chosen installer
+    # can already run.
+    if [ "$INSTALL_INSTALLER" = "pipx" ] && command -v pipx >/dev/null 2>&1; then
         return 0
     fi
+    if [ "$INSTALL_INSTALLER" = "uv" ] && command -v uv >/dev/null 2>&1; then
+        return 0
+    fi
+    # For venv backend, we still need uv/pipx for the install step
+    if command -v pipx >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Need to install uv
     if command -v uv >/dev/null 2>&1; then
         return 0
     fi
@@ -466,22 +519,23 @@ sha256_verify() {
     fi
 
     if [ "$_actual" != "$_expected" ]; then
-        die 6 "SHA-256 mismatch for %s\n  expected: %s\n  actual:   %s" "$_file" "$_expected" "$_actual"
+        die 6 "SHA-256 mismatch for $_file: expected $_expected, got $_actual"
     fi
 
-    info "SHA-256 verified: %s" "$_file"
+    info "SHA-256 verified: $_file"
 }
 
 # --- CLI installation -------------------------------------------------------
 
+# install_cli <version> <installer>
 install_cli() {
     _version="$1"
     _installer="$2"
 
-    info "Installing logion-cli==%s via %s ..." "$_version" "$_installer"
+    info "Installing logion-cli==$_version via $_installer ..."
 
     if [ "$INSTALL_DRY_RUN" = 1 ]; then
-        info "[dry-run] Would install logion-cli==%s via %s" "$_version" "$_installer"
+        info "[dry-run] Would install logion-cli==$_version via $_installer"
         return 0
     fi
 
@@ -491,7 +545,7 @@ install_cli() {
                 die 4 "pipx not found"
             fi
             if ! pipx install "logion-cli==$_version" --pip-args="--no-cache-dir"; then
-                die 8 "pipx install logion-cli==%s failed" "$_version"
+                die 8 "pipx install logion-cli==$_version failed"
             fi
             ;;
         uv)
@@ -499,7 +553,7 @@ install_cli() {
                 die 4 "uv not found"
             fi
             if ! uv tool install "logion-cli==$_version" --force; then
-                die 8 "uv tool install logion-cli==%s failed" "$_version"
+                die 8 "uv tool install logion-cli==$_version failed"
             fi
             ;;
         venv)
@@ -507,70 +561,70 @@ install_cli() {
             _venv_dir="$INSTALL_PREFIX/logion-cli"
             mkdir -p "$_venv_dir" 2>/dev/null || true
             if ! "$_python" -m venv "$_venv_dir"; then
-                die 8 "Failed to create virtual environment at %s" "$_venv_dir"
+                die 8 "Failed to create virtual environment at $_venv_dir"
             fi
             # shellcheck disable=SC1091
             if ! . "$_venv_dir/bin/activate"; then
-                die 8 "Failed to activate virtual environment at %s" "$_venv_dir"
+                die 8 "Failed to activate virtual environment at $_venv_dir"
             fi
             if ! pip install --no-cache-dir "logion-cli==$_version"; then
-                die 8 "pip install logion-cli==%s failed" "$_version"
+                die 8 "pip install logion-cli==$_version failed"
             fi
             deactivate 2>/dev/null || true
             # Create wrapper script
             _bindir="$INSTALL_PREFIX/bin"
             mkdir -p "$_bindir" 2>/dev/null || true
-            cat > "$_bindir/logion" <<'VEOF'
-#!/bin/sh
-exec "$INSTALL_PREFIX/logion-cli/bin/logion" "$@"
-VEOF
-            sed -i.bak "s|\$INSTALL_PREFIX|$_INSTALL_PREFIX_FOR_SED|g" "$_bindir/logion" 2>/dev/null
-            # Fallback: rewrite properly
             printf '#!/bin/sh\nexec "%s/bin/logion" "$@"\n' "$_venv_dir" > "$_bindir/logion"
             chmod +x "$_bindir/logion"
             ;;
         *)
-            die 2 "Unknown installer: %s" "$_installer"
+            die 2 "Unknown installer: $_installer"
             ;;
     esac
 
-    info "logion-cli==%s installed successfully" "$_version"
+    info "logion-cli==$_version installed successfully"
 }
 
 # --- Companion installation -------------------------------------------------
 
+# install_companion <version> [<cli-tag>]
 install_companion() {
     _version="$1"
+    _cli_tag="${2:-logion-cli-v$_version}"
     _manifest="$INSTALL_TMPDIR/manifest.json"
 
-    _tarball_url="$(manifest_get_field "$_manifest" '.packages.logion-marketplace-companion.tarball_url')"
-    _sha256="$(manifest_get_field "$_manifest" '.packages.logion-marketplace-companion.sha256')"
+    # Read companion bundle URL and sha256 from manifest under "logion-companion"
+    _bundle_url="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.url')"
+    _bundle_sha="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.sha256')"
 
-    if [ -z "$_tarball_url" ] || [ "$_tarball_url" = "null" ]; then
+    # Translate release:// URLs
+    _bundle_url="$(resolve_url "$_bundle_url" "$_cli_tag")"
+
+    if [ -z "$_bundle_url" ] || [ "$_bundle_url" = "null" ]; then
         # Construct tarball URL from known pattern
-        _tarball_url="https://github.com/nicolasmelo1/logion/releases/download/v${_version}/logion-marketplace-companion-${_version}.tar.gz"
+        _bundle_url="https://github.com/nicolasmelo1/logion/releases/download/$_cli_tag/logion-marketplace-companion-$_version.tar.gz"
     fi
-    if [ -z "$_sha256" ] || [ "$_sha256" = "null" ]; then
-        warn "No SHA-256 found in manifest for companion; verification will be skipped if env set"
-        _sha256=""
+    if [ -z "$_bundle_sha" ] || [ "$_bundle_sha" = "null" ]; then
+        warn "No SHA-256 found in manifest for companion; verification will be skipped"
+        _bundle_sha=""
     fi
 
-    info "Installing logion-marketplace-companion==%s ..." "$_version"
+    info "Installing logion-marketplace-companion==$_version ..."
 
     if [ "$INSTALL_DRY_RUN" = 1 ]; then
-        info "[dry-run] Would download and install companion from %s" "$_tarball_url"
+        info "[dry-run] Would download and install companion from $_bundle_url"
         return 0
     fi
 
     _dest_dir="$HOME/.logion/installed/logion-marketplace-companion/$_version"
     _tarball="$INSTALL_TMPDIR/companion.tar.gz"
 
-    if ! curl -fsSL "$_tarball_url" -o "$_tarball"; then
-        die 5 "Failed to download companion tarball from %s" "$_tarball_url"
+    if ! curl -fsSL "$_bundle_url" -o "$_tarball"; then
+        die 5 "Failed to download companion tarball from $_bundle_url"
     fi
 
-    if [ -n "$_sha256" ]; then
-        sha256_verify "$_tarball" "$_sha256"
+    if [ -n "$_bundle_sha" ]; then
+        sha256_verify "$_tarball" "$_bundle_sha"
     fi
 
     mkdir -p "$_dest_dir" 2>/dev/null || true
@@ -581,13 +635,13 @@ install_companion() {
     # Register with logion CLI
     if command -v logion >/dev/null 2>&1; then
         if ! logion skills install --source "$_dest_dir"; then
-            warn "logion skills install --source %s failed (companion extracted but not registered)" "$_dest_dir"
+            warn "logion skills install --source $_dest_dir failed (companion extracted but not registered)"
         fi
     else
-        warn "logion CLI not on PATH; companion extracted to %s but not registered" "$_dest_dir"
+        warn "logion CLI not on PATH; companion extracted to $_dest_dir but not registered"
     fi
 
-    info "logion-marketplace-companion==%s installed to %s" "$_version" "$_dest_dir"
+    info "logion-marketplace-companion==$_version installed to $_dest_dir"
 }
 
 # --- PATH update ------------------------------------------------------------
@@ -598,7 +652,7 @@ update_path() {
     fi
 
     # Skip for root unless prefix was explicitly given
-    if [ "$(id -u)" = 0 ] && [ -z "${INSTALL_PREFIX_EXPLICIT:-}" ]; then
+    if [ "$(id -u)" = 0 ] && [ "$INSTALL_PREFIX_EXPLICIT" != 1 ]; then
         return 0
     fi
 
@@ -648,12 +702,12 @@ update_path() {
 
     # Check for idempotency
     if [ -f "$_rc_file" ] && grep -q 'HOME/.local/bin' "$_rc_file" 2>/dev/null; then
-        info "PATH entry already present in %s" "$_rc_file"
+        info "PATH entry already present in $_rc_file"
         return 0
     fi
 
     if [ "$INSTALL_DRY_RUN" = 1 ]; then
-        info "[dry-run] Would add PATH line to %s" "$_rc_file"
+        info "[dry-run] Would add PATH line to $_rc_file"
         return 0
     fi
 
@@ -664,11 +718,12 @@ update_path() {
     fi
 
     printf '\n%s\n' "$_add_line" >> "$_rc_file"
-    info "Added PATH entry to %s" "$_rc_file"
+    info "Added PATH entry to $_rc_file"
 }
 
 # --- Installation verification ----------------------------------------------
 
+# verify_install <cli_version> [<companion_version>]
 verify_install() {
     _cli_ver="$1"
     _comp_ver="${2:-}"
@@ -676,7 +731,7 @@ verify_install() {
     info "Verifying installation ..."
 
     if [ "$INSTALL_DRY_RUN" = 1 ]; then
-        info "[dry-run] Would verify logion --version == %s" "$_cli_ver"
+        info "[dry-run] Would verify logion --version == $_cli_ver"
         return 0
     fi
 
@@ -689,16 +744,17 @@ verify_install() {
         die 9 "logion --version returned empty output"
     fi
 
-    info "logion --version: %s" "$_got_ver"
+    info "logion --version: $_got_ver"
 
     # Optionally verify companion
-    if [ -n "$_comp_ver" ] && [ "$INSTALL_SKILL_ONLY" = 0 ]; then
+    if [ -n "$_comp_ver" ] && [ "$INSTALL_CLI_ONLY" != 1 ]; then
         if command -v logion >/dev/null 2>&1; then
             _installed="$(logion skills installed 2>/dev/null || true)"
             if [ -z "$_installed" ]; then
                 warn "logion skills installed returned no output"
             else
-                info "Installed skills:\n%s" "$_installed"
+                info "Installed skills:"
+                printf '%s\n' "$_installed"
             fi
         fi
     fi
