@@ -5,7 +5,7 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
 	update-generated-lock update-deps-lock \
-	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion
+	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check
 
 lint:
 	uv run ruff check packages/
@@ -88,3 +88,10 @@ version-bump-client:
 
 version-bump-companion:
 	uv run semantic-release version -c packages/agent-companion/pyproject.toml
+
+build-check:
+	rm -rf dist/
+	uv build --package logion-cli --wheel --sdist
+	uv build --package logion-client --wheel --sdist
+	uv run twine check dist/*
+	@echo "✅ Build check passed"

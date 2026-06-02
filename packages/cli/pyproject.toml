@@ -3,11 +3,32 @@ name = "logion-cli"
 version = "0.1.0"
 description = "Logion CLI for AI agents and marketplace operators."
 requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Logion contributors" }]
+keywords = ["logion", "marketplace", "agent", "skill", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "logion-client",
     "pydantic>=2.7,<3.0.0",
     "pyyaml>=6.0,<7.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nicolasmelo1/logion"
+Repository = "https://github.com/nicolasmelo1/logion"
+Issues = "https://github.com/nicolasmelo1/logion/issues"
+Documentation = "https://github.com/nicolasmelo1/logion#readme"
+Changelog = "https://github.com/nicolasmelo1/logion/releases"
 
 [project.optional-dependencies]
 recall = ["rapidfuzz>=3.9,<4.0"]
