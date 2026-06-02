@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-01-01T00:00:00+00:00",
+  "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "channel": "stable",
+  "packages": {
+    "logion-cli": {
+      "version": "0.1.0",
+      "tag": "logion-cli-v0.1.0",
+      "minimum_python": "3.12",
+      "pypi_name": "logion-cli",
+      "npm_name": "@logion/cli",
+      "minimum_client": "0.1.0",
+      "wheel": {
+        "url": "release://logion_cli-0.1.0-py3-none-any.whl",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sdist": {
+        "url": "release://logion-cli-0.1.0.tar.gz",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "logion-client": {
+      "version": "0.1.0",
+      "tag": "logion-client-v0.1.0",
+      "minimum_python": "3.12",
+      "pypi_name": "logion-client"
+    },
+    "logion-companion": {
+      "version": "0.1.0",
+      "tag": "logion-companion-v0.1.0",
+      "minimum_python": "3.12",
+      "minimum_cli": "0.1.0",
+      "bundle": {
+        "url": "release://logion-marketplace-companion-0.1.0.tar.gz",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "skill_md": {
+        "url": "release://logion-companion-skill-0.1.0.md",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    }
+  }
+}

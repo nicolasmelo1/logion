@@ -6,7 +6,8 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	check-skip-reasons check-forbidden-imports \
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
-	npm-test npm-pack npm-build
+	npm-test npm-pack npm-build \
+	install-sh-test install-ps1-test install-test
 
 lint:
 	uv run ruff check packages/
@@ -105,3 +106,12 @@ build-check:
 	uv build --package logion-client --wheel --sdist
 	uv run twine check dist/*
 	@echo "✅ Build check passed"
+
+install-sh-test:
+	shellcheck -s sh -x -e SC1091 scripts/install.sh scripts/install_lib.sh scripts/install_test/harness.sh
+	bats tests/install/test_install_sh.bats
+
+install-ps1-test:
+	@echo "Pester tests require PowerShell — run manually on Windows or via pwsh"
+
+install-test: install-sh-test install-ps1-test
