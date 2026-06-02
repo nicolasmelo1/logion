@@ -1,4 +1,8 @@
-# Exclude test files and source helpers from the published tarball.
+# Source and dev files — excluded from published tarball.
+src/
 test/
-.gitignore
+tsconfig.json
+vitest.config.ts
+tsup.config.ts
+.nvmrc
 .editorconfig

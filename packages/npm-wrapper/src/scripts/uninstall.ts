@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// uninstall.js — best-effort cleanup of logion-cli installed via
+// uninstall.ts — best-effort cleanup of logion-cli installed via
 // pipx, uv, or managed venv.  Never blocks npm uninstall on errors.
 "use strict";
 

@@ -1,16 +1,17 @@
-#!/usr/bin/env node
 // SPDX-License-Identifier: MIT
 //
-// Short alias shim: prefer `lgn` on PATH, fall back to `logion`.
+// Thin shim: forward all arguments to the user-installed `logion`
+// binary (placed on PATH by postinstall -> pipx/uv).  We do not
+// re-implement the CLI in Node; we just exec it.
 "use strict";
 
 const { spawnSync } = require("node:child_process");
-const which = require("./_which");
+const { which } = require("../lib/which");
 
-const target = which("lgn") || which("logion");
+const target = which("logion");
 if (!target) {
   console.error(
-    "lgn/logion binary not found.  Reinstall with `npm install -g @logion/cli` " +
+    "logion binary not found.  Reinstall with `npm install -g @logion/cli` " +
       "or install directly via `pipx install logion-cli`."
   );
   process.exit(127);

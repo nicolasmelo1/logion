@@ -1,43 +1,45 @@
 // SPDX-License-Identifier: MIT
 //
 // Tests for postinstall.js
-"use strict";
+import { describe, test, expect } from "vitest";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
-const { spawnSync } = require("node:child_process");
-const fs = require("node:fs");
-const path = require("node:path");
-const os = require("node:os");
-const { test, describe } = require("node:test");
-const assert = require("node:assert/strict");
+const DIST_DIR = path.join(__dirname, "..", "dist");
+const SCRIPTS_DIR = path.join(DIST_DIR, "scripts");
 
-const SCRIPT_DIR = path.join(__dirname, "..", "scripts");
-
-function makeFakeBin(dir, name, output) {
-  const binPath = path.join(dir, name + (process.platform === "win32" ? ".cmd" : ""));
+function makeFakeBin(dir: string, name: string, output: string): string {
+  const binPath = path.join(
+    dir,
+    name + (process.platform === "win32" ? ".cmd" : "")
+  );
   if (process.platform === "win32") {
     fs.writeFileSync(binPath, `@echo ${output}\r\n`);
   } else {
-    fs.writeFileSync(binPath, `#!/bin/sh\necho "${output}"\n`, { mode: 0o755 });
+    fs.writeFileSync(binPath, `#!/bin/sh\necho "${output}"\n`, {
+      mode: 0o755,
+    });
   }
   return binPath;
 }
 
 describe("postinstall", () => {
   test("skips when LOGION_NPM_SKIP_INSTALL=1", () => {
-    const r = spawnSync("node", [path.join(SCRIPT_DIR, "postinstall.js")], {
+    const r = spawnSync("node", [path.join(SCRIPTS_DIR, "postinstall.js")], {
       env: { ...process.env, LOGION_NPM_SKIP_INSTALL: "1" },
       stdio: "pipe",
-      timeout: 15000,
+      timeout: 15_000,
     });
-    assert.equal(r.status, 0);
+    expect(r.status).toBe(0);
     const stderr = (r.stderr || Buffer.alloc(0)).toString();
-    assert.ok(stderr.includes("skipping postinstall"));
+    expect(stderr).toContain("skipping postinstall");
   });
 
   test("exits with error when no Python is found", () => {
-    // Build a PATH that has node but no python3/python/py
     const nodeDir = path.dirname(process.execPath);
-    const r = spawnSync("node", [path.join(SCRIPT_DIR, "postinstall.js")], {
+    const r = spawnSync("node", [path.join(SCRIPTS_DIR, "postinstall.js")], {
       env: {
         HOME: process.env.HOME,
         PATH: nodeDir + ":/usr/bin:/bin",
@@ -45,21 +47,18 @@ describe("postinstall", () => {
         LOGION_NPM_PYTHON: "",
       },
       stdio: "pipe",
-      timeout: 15000,
+      timeout: 15_000,
     });
-    // The script may or may not find python3 on /usr/bin;
-    // if it does, we skip the assertion. If it doesn't, it exits 1.
     const stderr = (r.stderr || Buffer.alloc(0)).toString();
     if (r.status === 1) {
-      assert.ok(
-        stderr.includes("Python 3.12+ not found"),
-        "Should mention missing Python, got: " + stderr.slice(0, 300)
-      );
+      expect(stderr).toContain("Python 3.12+ not found");
     } else if (r.status === 0) {
-      // python3 was found on the system PATH — that's fine, the detection works
-      assert.ok(stderr.includes("Using Python"), "Should log detected Python");
+      // python3 was found on the system PATH — that's fine
+      expect(stderr).toContain("Using Python");
     } else {
-      assert.fail("Unexpected exit code: " + r.status + " stderr: " + stderr.slice(0, 200));
+      expect.fail(
+        "Unexpected exit code: " + r.status + " stderr: " + stderr.slice(0, 200)
+      );
     }
   });
 
@@ -72,7 +71,7 @@ describe("postinstall", () => {
     makeFakeBin(binDir, "pipx", "pipx 1.7.0");
     makeFakeBin(binDir, "logion", "logion-cli 0.1.0");
 
-    const r = spawnSync("node", [path.join(SCRIPT_DIR, "postinstall.js")], {
+    const r = spawnSync("node", [path.join(SCRIPTS_DIR, "postinstall.js")], {
       env: {
         ...process.env,
         LOGION_NPM_FORCE_INSTALLER: "pipx",
@@ -80,13 +79,13 @@ describe("postinstall", () => {
         PATH: binDir + path.delimiter + process.env.PATH,
       },
       stdio: "pipe",
-      timeout: 15000,
+      timeout: 15_000,
     });
 
     fs.rmSync(tmp, { recursive: true, force: true });
 
     const stderr = (r.stderr || Buffer.alloc(0)).toString();
-    assert.ok(stderr.includes("pipx"), "Should reference pipx in output: " + stderr.slice(0, 300));
+    expect(stderr).toContain("pipx");
   });
 
   test("falls back to uv when pipx is unavailable and LOGION_NPM_FORCE_INSTALLER=uv", () => {
@@ -98,7 +97,7 @@ describe("postinstall", () => {
     makeFakeBin(binDir, "uv", "uv 0.4.0");
     makeFakeBin(binDir, "logion", "logion-cli 0.1.0");
 
-    const r = spawnSync("node", [path.join(SCRIPT_DIR, "postinstall.js")], {
+    const r = spawnSync("node", [path.join(SCRIPTS_DIR, "postinstall.js")], {
       env: {
         ...process.env,
         LOGION_NPM_FORCE_INSTALLER: "uv",
@@ -106,12 +105,12 @@ describe("postinstall", () => {
         PATH: binDir + path.delimiter + process.env.PATH,
       },
       stdio: "pipe",
-      timeout: 15000,
+      timeout: 15_000,
     });
 
     fs.rmSync(tmp, { recursive: true, force: true });
 
     const stderr = (r.stderr || Buffer.alloc(0)).toString();
-    assert.ok(stderr.includes("uv"), "Should reference uv in output: " + stderr.slice(0, 300));
+    expect(stderr).toContain("uv");
   });
 });

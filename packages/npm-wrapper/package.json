@@ -19,26 +19,34 @@
     "agent"
   ],
   "bin": {
-    "logion": "bin/logion.js",
-    "lgn": "bin/lgn.js"
+    "logion": "dist/bin/logion.js",
+    "lgn": "dist/bin/lgn.js"
   },
   "scripts": {
-    "postinstall": "node scripts/postinstall.js",
-    "preuninstall": "node scripts/uninstall.js",
-    "test": "node --test test/postinstall.test.js test/shim.test.js test/version.test.js",
-    "prepublishOnly": "node scripts/version_from_manifest.js"
+    "build": "tsup",
+    "prepublishOnly": "node dist/scripts/version-from-manifest.js",
+    "postinstall": "node dist/scripts/postinstall.js",
+    "preuninstall": "node dist/scripts/uninstall.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "files": [
-    "bin/",
-    "scripts/",
+    "dist/",
     "README.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public",
     "provenance": true
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
   }
 }

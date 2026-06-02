@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// version_from_manifest.js — reads releases/manifest-stable.json and
+// version-from-manifest.ts — reads releases/manifest-stable.json and
 // writes the CLI version into package.json's "logionCliVersion" and
 // "version" fields.  Run as prepublishOnly.
 "use strict";
@@ -8,7 +8,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const PKG_DIR = path.join(__dirname, "..");
+// __dirname = dist/scripts → go up 2 levels for package root, 4 for repo root
+const PKG_DIR = path.join(__dirname, "..", "..");
 const MANIFEST_PATH = path.join(PKG_DIR, "..", "..", "releases", "manifest-stable.json");
 
 function main() {

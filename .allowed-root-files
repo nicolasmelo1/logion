@@ -19,6 +19,7 @@ SECURITY.md
 
 # Build / config
 .gitignore
+.nvmrc
 .secrets.baseline
 pyproject.toml
 uv.lock
