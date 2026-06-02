@@ -105,9 +105,12 @@ Publisher configuration on PyPI before the CI workflow can upload.
    - **PyPI Project Name:** `logion-cli` (or `logion-client`)
    - **Owner:** `nicolasmelo1`
    - **Repository:** `logion`
-   - **Workflow:** `publish.yml`
-   - **Environment:** leave blank (or create a named environment)
+   - **Workflow:** `release-cli.yml` (or `release-client.yml`)
+   - **Environment name:** `pypi`
 3. Submit. PyPI will verify the OIDC claim on the next matching tag push.
+4. In the GitHub repo settings, create an Environment named `pypi`
+   with required reviewers set to the maintainer team. This adds a
+   human-approval gate on every PyPI publish.
 
 After the one-time setup, pushing a version tag triggers the publish
 workflow automatically:
@@ -117,6 +120,11 @@ git tag logion-cli-v0.1.0
 git push origin logion-cli-v0.1.0
 ```
 
-The `publish.yml` workflow builds, validates with `twine check`, and
-uploads to PyPI.  If the version already exists on PyPI, it skips
+The release workflow (`.github/workflows/release-cli.yml` or
+`release-client.yml`) verifies the tag matches the pyproject version,
+builds sdist + wheel, validates with `twine check`, publishes to PyPI
+via OIDC Trusted Publishing, and attaches the wheel, sdist, and
+SHA256SUMS to the GitHub Release.
+
+If the version already exists on PyPI, the publish step skips
 (`skip-existing: true`) rather than failing.

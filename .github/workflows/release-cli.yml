@@ -1,0 +1,99 @@
+name: Release logion-cli to PyPI
+
+on:
+  push:
+    tags:
+      - 'logion-cli-v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify tag matches pyproject version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+      - id: parse
+        run: |
+          tag="${GITHUB_REF_NAME#logion-cli-v}"
+          py=$(uv run python -c "
+          import tomllib, pathlib
+          print(tomllib.loads(pathlib.Path('packages/cli/pyproject.toml').read_text())['project']['version'])
+          ")
+          test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Build sdist + wheel
+        run: uv build --package logion-cli --wheel --sdist
+      - name: Validate distributions
+        run: uv run twine check dist/*
+      - name: Hash artifacts
+        run: |
+          cd dist/
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-dist
+          path: dist/
+
+  publish-pypi:
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/logion-cli
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v3
+        with:
+          packages-dir: dist/
+          skip-existing: true
+
+  attach-assets:
+    needs: [verify, build, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: dist/
+      - name: Attach wheel + sdist + SHA256SUMS to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
