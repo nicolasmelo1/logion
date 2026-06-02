@@ -132,15 +132,20 @@ def build_manifest(
             # Wheel filenames normalise hyphens to underscores
             # (PEP 427), so build the glob with underscores.
             normalised_name = name.replace("-", "_")
-            for asset_type, glob_pattern in [
+            asset_patterns: list[tuple[str, str]] = [
                 ("wheel", f"{normalised_name}-{version}*none-any.whl"),
                 ("sdist", f"{name}-{version}.tar.gz"),
-                (
-                    "bundle",
-                    f"{name}-companion-{version}.zip",
-                ),
                 ("skill_md", f"{name}-skill-{version}.md"),
-            ]:
+            ]
+            # Only the companion package ships a bundle;
+            # use the "logion-marketplace-companion" distribution
+            # name to match the actual tarball filename.
+            if name == "logion-companion":
+                asset_patterns.append((
+                    "bundle",
+                    f"logion-marketplace-companion-{version}.tar.gz",
+                ))
+            for asset_type, glob_pattern in asset_patterns:
                 matches = sorted(assets_dir.glob(glob_pattern))
                 if matches:
                     asset = matches[0]
@@ -177,7 +182,10 @@ def cmd_build(args: argparse.Namespace) -> None:
         release_assets_dir=args.release_assets_dir,
     )
     output = serialize_manifest(manifest)
-    out_path = Path(args.out)
+    out_path = Path(
+        args.out
+        or f"releases/manifest-{args.channel}.json",
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(output, encoding="utf-8")
     print(f"Wrote manifest to {out_path}")
@@ -201,7 +209,7 @@ def cmd_check(args: argparse.Namespace) -> None:
 
     # Compare structurally, ignoring generated_at (which is always
     # "now") and git_commit (which changes on every commit).
-    rebuiltable_fields = {
+    rebuildable_fields = {
         k: v for k, v in manifest.items()
         if k not in ("generated_at", "git_commit")
     }
@@ -210,7 +218,7 @@ def cmd_check(args: argparse.Namespace) -> None:
         if k not in ("generated_at", "git_commit")
     }
 
-    if rebuiltable_fields != on_disk_comparable:
+    if rebuildable_fields != on_disk_comparable:
         import difflib
 
         # Diff only the non-volatile fields so the output is meaningful
@@ -254,8 +262,8 @@ def main() -> None:
     )
     build_p.add_argument(
         "--out",
-        default="releases/manifest-stable.json",
-        help="Output path",
+        default=None,
+        help="Output path (default: releases/manifest-{channel}.json)",
     )
     build_p.add_argument(
         "--release-assets-dir",

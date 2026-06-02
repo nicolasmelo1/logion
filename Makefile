@@ -75,7 +75,7 @@ companion-verify:
 	uv run make -C packages/agent-companion verify
 
 release-manifest:
-	uv run python scripts/release_manifest.py build --channel stable --out releases/manifest-stable.json
+	uv run python scripts/release_manifest.py build --channel stable
 
 release-manifest-check:
 	uv run python scripts/release_manifest.py check --in releases/manifest-stable.json
