@@ -46,8 +46,11 @@ def load_markdown(path: Path = MARKDOWN_PATH) -> str:
     return path.read_text(encoding="utf-8")
 
 
+_md_renderer = MarkdownIt("commonmark", {"html": False})
+
+
 def render_markdown(markdown: str) -> str:
-    return MarkdownIt("commonmark", {"html": False}).render(markdown)
+    return _md_renderer.render(markdown)
 
 
 def legal_page(slug: str) -> dict[str, str]:
@@ -55,7 +58,10 @@ def legal_page(slug: str) -> dict[str, str]:
     markdown_name = page.get("markdown")
     if not isinstance(markdown_name, str):
         raise TypeError(f"legal page {slug!r} must define a markdown file")
-    markdown = (CONTENT_DIR / markdown_name).read_text(encoding="utf-8")
+    resolved = (CONTENT_DIR / markdown_name).resolve()
+    if not str(resolved).startswith(str(CONTENT_DIR.resolve())):
+        raise ValueError(f"legal page {slug!r} path escapes content directory")
+    markdown = resolved.read_text(encoding="utf-8")
     return {
         "heading": str(page.get("heading", slug.title())),
         "markdown": markdown,

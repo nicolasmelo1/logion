@@ -113,3 +113,22 @@ def test_privacy_route_renders_real_mvp_privacy_policy() -> None:
     assert "Privacy Policy" in response.text
     assert "Stripe" in response.text
     assert "marketplace activity" in response.text
+
+
+def test_legal_page_rejects_path_traversal() -> None:
+    from unittest.mock import patch
+
+    import pytest
+
+    from landing.main import legal_page
+
+    malicious_config = {
+        "legal": {
+            "evil": {"markdown": "../../../etc/passwd", "heading": "Evil"},
+        },
+    }
+    with (
+        patch("landing.main.content", malicious_config),
+        pytest.raises(ValueError, match="escapes content directory"),
+    ):
+        legal_page("evil")
