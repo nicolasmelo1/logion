@@ -106,7 +106,7 @@ def test_skills_search_json_shape_matches_envelope(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -156,7 +156,7 @@ def test_skills_search_uses_config_json_output_when_args_flag_is_false(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -212,7 +212,7 @@ def test_skills_search_emits_entitlement_status_per_result(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -270,7 +270,7 @@ def test_skills_search_result_without_course_id_stays_unknown(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -321,7 +321,7 @@ def test_skills_search_compact_default_truncates_summary(
         mock_cfg.return_value = argparse.Namespace(
             json_output=False,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )

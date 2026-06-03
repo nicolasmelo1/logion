@@ -16,7 +16,7 @@ from cli._config import (
 
 
 def test_default_base_url() -> None:
-    assert DEFAULT_BASE_URL == "https://api.logion.dev"
+    assert DEFAULT_BASE_URL == "https://api.logion.sh"
 
 
 def test_is_truthy() -> None:

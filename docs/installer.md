@@ -3,7 +3,7 @@
 Run the one-liner to install the Logion CLI and companion bundle:
 
 ```bash
-curl -fsSL https://logion.dev/install.sh | sh
+curl -fsSL https://logion.sh/install.sh | sh
 ```
 
 For the paranoid path (inspect before running):
@@ -17,7 +17,7 @@ sh install.sh
 Windows (PowerShell):
 
 ```powershell
-irm https://logion.dev/install.ps1 | iex
+irm https://logion.sh/install.ps1 | iex
 ```
 
 ## Options
@@ -73,13 +73,13 @@ The installer is versioned independently via `installer-vN` tags
 - `install.ps1` + `install.ps1.sha256`
 - `release-notes.md`
 
-The redirect at `https://logion.dev/install.sh` points at the latest
+The redirect at `https://logion.sh/install.sh` points at the latest
 `installer-v*` release. The installer reads the package manifest from
 the relevant package tag, **not** from its own tag.
 
 ## Threat model
 
-By default, channel installs fetch `https://logion.dev/releases/manifest-<channel>.json`.
+By default, channel installs fetch `https://logion.sh/releases/manifest-<channel>.json`.
 Version-pinned installs fetch the manifest from that package's tagged
 GitHub Release. The manifest is the chain anchor: every downloaded
 artifact is sha256-verified against it. The manifest itself is trusted
@@ -87,7 +87,7 @@ through the selected HTTPS origin or GitHub release tag.
 
 ## Fallback
 
-If `logion.dev` is unreachable, use the direct GitHub Release URL:
+If `logion.sh` is unreachable, use the direct GitHub Release URL:
 
 ```bash
 curl -fsSL https://github.com/nicolasmelo1/logion/releases/latest/download/install.sh | sh
