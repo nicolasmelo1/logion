@@ -273,9 +273,14 @@ main {
   text-transform: uppercase;
   font-size: 12px;
   position: relative;
+  cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease,
     background 160ms ease;
   box-shadow: var(--hud-glow);
+}
+
+button.cta {
+  font-family: inherit;
 }
 
 .cta::before,
@@ -301,7 +306,8 @@ main {
   border-top: 0;
 }
 
-.cta:hover {
+.cta:hover,
+.cta:focus-visible {
   transform: translateY(-1px);
   background: linear-gradient(
     180deg,
@@ -312,10 +318,16 @@ main {
   color: var(--accent-bright);
 }
 
-.cta-arrow {
+.cta-icon {
+  width: 16px;
+  height: 16px;
   color: var(--accent-bright);
-  font-size: 16px;
-  line-height: 1;
+  fill: none;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .cta-cmd {
@@ -347,6 +359,15 @@ main {
   border-color: var(--accent);
   background: rgba(201, 167, 106, 0.06);
   box-shadow: var(--hud-glow);
+}
+
+.copy-status {
+  align-self: center;
+  min-width: 120px;
+  color: var(--accent-bright);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 540px) {

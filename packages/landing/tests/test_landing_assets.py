@@ -35,3 +35,10 @@ def test_app_js_has_frame_swap_logic() -> None:
     assert "LOGION_HERO_FRAMES" in text
     assert "setInterval" in text
     assert "prefers-reduced-motion" in text
+
+
+def test_app_js_has_clipboard_copy_logic() -> None:
+    text = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "data-copy-command" in text
+    assert "navigator.clipboard.writeText" in text
+    assert "Copied to clipboard" in text

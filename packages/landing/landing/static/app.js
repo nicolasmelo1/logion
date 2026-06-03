@@ -30,6 +30,53 @@
     window.setInterval(asciiTick, reduced.matches ? 4000 : 240);
   }
 
+  // ----- Copy install command -------------------------------------------
+  function copyWithFallback(value) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(value);
+    }
+    var textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "readonly");
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+
+  function initCopyButtons() {
+    var buttons = document.querySelectorAll("[data-copy-command]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var button = this;
+        var command = button.getAttribute("data-copy-command") || "";
+        var statusId = button.getAttribute("aria-describedby");
+        var status = statusId ? document.getElementById(statusId) : null;
+        copyWithFallback(command).then(
+          function () {
+            if (status) status.textContent = "Copied to clipboard";
+            button.setAttribute("data-copied", "true");
+            window.setTimeout(function () {
+              if (status) status.textContent = "";
+              button.removeAttribute("data-copied");
+            }, 2200);
+          },
+          function () {
+            if (status) status.textContent = "Copy failed";
+          }
+        );
+      });
+    }
+  }
+
   // ----- Shared utilities -----------------------------------------------
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   var GREEK = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ";
@@ -650,6 +697,7 @@
   }
 
   function start() {
+    initCopyButtons();
     initScene();
     initHero();
     loadSilhouette();
