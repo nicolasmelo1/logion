@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+"""Static-asset tests for the landing page."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+STATIC_DIR = Path(__file__).resolve().parents[1] / "landing" / "static"
+
+
+def test_styles_supports_color_scheme() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "prefers-color-scheme" in text
+
+
+def test_styles_supports_reduced_motion() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "prefers-reduced-motion" in text
+
+
+def test_hero_frames_exports_multiple_frames() -> None:
+    text = (STATIC_DIR / "ascii" / "hero_frames.js").read_text(
+        encoding="utf-8"
+    )
+    assert "LOGION_HERO_FRAMES" in text
+    # Each frame is a string entry; require at least 6, at most 16.
+    join_count = text.count('.join("\\n")')
+    assert 6 <= join_count <= 16, f"expected 6-16 frames, found {join_count}"
+
+
+def test_app_js_has_frame_swap_logic() -> None:
+    text = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "LOGION_HERO_FRAMES" in text
+    assert "setInterval" in text
+    assert "prefers-reduced-motion" in text

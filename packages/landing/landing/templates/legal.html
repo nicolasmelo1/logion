@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.heading }} — {{ site.name }}{% endblock %}
+
+{% block main %}
+  <article class="legal">
+    <h1>{{ page.heading }}</h1>
+    <p>{{ page.body }}</p>
+  </article>
+{% endblock %}

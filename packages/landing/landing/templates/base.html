@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site.name }}{% endblock %}</title>
+    <meta name="description" content="{{ site.tagline }}">
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="site-brand" href="/">{{ site.name }}</a>
+      <nav class="site-nav" aria-label="Primary">
+        {% for link in links.primary %}
+          <a href="{{ link.href }}">{{ link.label }}</a>
+        {% endfor %}
+      </nav>
+    </header>
+    <main id="main">
+      {% block main %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <nav aria-label="Legal">
+        {% for link in links.legal %}
+          <a href="{{ link.href }}">{{ link.label }}</a>
+        {% endfor %}
+      </nav>
+      <p class="site-contact">
+        <a href="mailto:{{ contact.general }}">{{ contact.general }}</a>
+      </p>
+    </footer>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

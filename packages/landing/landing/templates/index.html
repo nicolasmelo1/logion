@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block main %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>{{ hero.heading }}</h1>
+      <p class="hero-sub">{{ hero.subheading }}</p>
+      <p class="hero-body">{{ hero.body }}</p>
+    </div>
+    <pre
+      id="hero-ascii"
+      class="hero-ascii"
+      aria-hidden="true"
+    >loading</pre>
+  </section>
+
+  {% for section in sections %}
+    <section id="{{ section.id }}" class="content-section">
+      <h2>{{ section.title }}</h2>
+      {% if section.body %}
+        <p>{{ section.body }}</p>
+      {% endif %}
+      {% if section.get("items") %}
+        <ul class="content-list">
+          {% for item in section.get("items") %}
+            <li>
+              <strong>{{ item.role or item.title }}</strong>
+              <span>{{ item.body }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section id="cli" class="content-section">
+    <h2>{{ cli.heading }}</h2>
+    <p>{{ cli.body }}</p>
+    <div class="cli-install">
+      {% for entry in cli.install %}
+        <pre><code>{{ entry.command }}</code></pre>
+      {% endfor %}
+    </div>
+    <pre class="cli-quickstart"><code>{% for line in cli.quickstart %}{{ line }}
+{% endfor %}</code></pre>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/ascii/hero_frames.js"></script>
+  <script src="/static/app.js"></script>
+{% endblock %}
