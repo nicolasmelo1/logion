@@ -60,8 +60,6 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-<!-- NOTE: `logion.sh` is not yet owned. Update this address (and the
-     references in SECURITY.md and README.md) once the domain is registered. -->
 [security@logion.sh](mailto:security@logion.sh).
 All complaints will be reviewed and investigated promptly and fairly.
 
