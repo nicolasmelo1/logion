@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
+
 from fastapi.testclient import TestClient
 
 from landing.main import app
@@ -19,6 +21,47 @@ def test_health_returns_ok() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_robots_txt_allows_indexing_and_points_to_sitemap() -> None:
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "User-agent: *" in response.text
+    assert "Allow: /" in response.text
+    assert "User-agent: GPTBot" in response.text
+    assert "User-agent: ClaudeBot" in response.text
+    assert "Sitemap: https://logion.sh/sitemap.xml" in response.text
+
+
+def test_sitemap_xml_lists_public_routes() -> None:
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/xml")
+    root = ET.fromstring(response.text)
+    namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    locs = [loc.text for loc in root.findall("s:url/s:loc", namespace)]
+    assert locs == [
+        "https://logion.sh/",
+        "https://logion.sh/terms",
+        "https://logion.sh/privacy",
+        "https://logion.sh/llms.txt",
+    ]
+
+
+def test_llms_txt_lists_agent_readable_entrypoints() -> None:
+    response = client.get("/llms.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text.startswith("# logion.sh")
+    assert "agent-native marketplace" in response.text
+    assert "[Landing (markdown)](https://logion.sh/)" in response.text
+    assert "[Terms of Service](https://logion.sh/terms)" in response.text
+    assert "[Privacy Policy](https://logion.sh/privacy)" in response.text
+    assert (
+        "[GitHub repository](https://github.com/nicolasmelo1/logion)"
+        in response.text
+    )
 
 
 def test_homepage_includes_logion() -> None:

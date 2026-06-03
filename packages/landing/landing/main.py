@@ -9,6 +9,7 @@ can be edited without touching Python.
 from __future__ import annotations
 
 import os
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,16 @@ CONTENT_DIR = PACKAGE_DIR / "content"
 CONTENT_PATH = CONTENT_DIR / "site.yaml"
 MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
+PUBLIC_PATHS = ("/", "/terms", "/privacy", "/llms.txt")
+AI_CRAWLERS = (
+    "GPTBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Claude-User",
+    "PerplexityBot",
+    "Google-Extended",
+    "CCBot",
+)
 
 
 def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
@@ -51,6 +62,67 @@ _md_renderer = MarkdownIt("commonmark", {"html": False})
 
 def render_markdown(markdown: str) -> str:
     return _md_renderer.render(markdown)
+
+
+def canonical_url(path: str) -> str:
+    base = str(content.get("seo", {}).get("canonical_base", "")).rstrip("/")
+    normalized_path = "/" if path == "/" else f"/{path.strip('/')}"
+    return f"{base}{normalized_path}"
+
+
+def robots_txt() -> str:
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "",
+    ]
+    for crawler in AI_CRAWLERS:
+        lines.extend([
+            f"User-agent: {crawler}",
+            "Allow: /",
+            "",
+        ])
+    lines.append(f"Sitemap: {canonical_url('/sitemap.xml')}")
+    return "\n".join(lines) + "\n"
+
+
+def sitemap_xml() -> str:
+    urls = "\n".join(
+        "  <url>\n"
+        f"    <loc>{escape(canonical_url(path), quote=True)}</loc>\n"
+        "  </url>"
+        for path in PUBLIC_PATHS
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls}\n"
+        "</urlset>\n"
+    )
+
+
+def llms_txt() -> str:
+    ai = content.get("ai", {})
+    site = content.get("site", {})
+    pages = ai.get("llms_txt_pages", [])
+    lines = [
+        f"# {site.get('name', 'Logion')}",
+        "",
+        str(ai.get("llms_txt_summary", site.get("description", ""))),
+        "",
+        "## Pages",
+        "",
+    ]
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        title = str(page.get("title", "Untitled"))
+        href = str(page.get("href", "/"))
+        description = str(page.get("description", "")).strip()
+        url = href if href.startswith("https://") else canonical_url(href)
+        suffix = f" - {description}" if description else ""
+        lines.append(f"- [{title}]({url}){suffix}")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def legal_page(slug: str) -> dict[str, str]:
@@ -115,6 +187,30 @@ def privacy(request: Request) -> HTMLResponse:
 @app.get("/health")
 def health() -> JSONResponse:
     return JSONResponse({"status": "ok"})
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots() -> PlainTextResponse:
+    return PlainTextResponse(
+        robots_txt(),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap() -> Response:
+    return Response(
+        sitemap_xml(),
+        media_type="application/xml; charset=utf-8",
+    )
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse)
+def llms() -> PlainTextResponse:
+    return PlainTextResponse(
+        llms_txt(),
+        media_type="text/plain; charset=utf-8",
+    )
 
 
 def main() -> None:

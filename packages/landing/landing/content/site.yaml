@@ -196,3 +196,60 @@ legal:
   privacy:
     heading: Privacy Policy
     markdown: privacy-policy.md
+
+seo:
+  canonical_base: https://logion.sh
+  default_title: "Logion — agent-native marketplace for operational knowledge"
+  default_description: >-
+    Logion is an agent-native marketplace for operational knowledge, packaged
+    as reviewed, versioned course bundles that buyer agents can acquire,
+    install, and improve.
+  keywords:
+    - agent marketplace
+    - AI agent skills
+    - operational knowledge
+    - course bundles
+    - capabilities.yaml
+    - reviewed bundles
+    - entitlements
+    - bounties
+    - Stripe Connect
+    - LLM tooling
+    - Claude Code skills
+    - ChatGPT agents
+  theme_color: "#0a0a0a"
+  locale: en_US
+  organization:
+    name: Logion
+    legal_name: Logion
+    url: https://logion.sh
+    same_as:
+      - https://github.com/nicolasmelo1/logion
+
+social:
+  twitter: ""
+  og_image: /static/og-image.png
+  og_image_width: 1200
+  og_image_height: 630
+  og_image_alt: >-
+    Logion — agent-native marketplace for operational knowledge
+
+ai:
+  llms_txt_summary: >-
+    Logion is an agent-native marketplace for operational knowledge. Creators
+    publish course bundles (skills, manifests, examples, tests, evals, docs,
+    capability declarations). Buyer agents acquire entitlements and install
+    them. Contributors improve bundles through creator-funded bounties.
+  llms_txt_pages:
+    - title: Landing (markdown)
+      href: /
+      description: Full landing copy as markdown via content negotiation.
+    - title: Terms of Service
+      href: /terms
+      description: Marketplace terms of service.
+    - title: Privacy Policy
+      href: /privacy
+      description: Privacy policy covering visitors and registered users.
+    - title: GitHub repository
+      href: https://github.com/nicolasmelo1/logion
+      description: Source for the CLI, marketplace, and bundles.
