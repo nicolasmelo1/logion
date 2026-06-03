@@ -252,8 +252,16 @@ main {
 .cta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  align-items: flex-start;
+  gap: 12px;
   margin: 8px 0 28px;
+}
+
+.copy-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 100%;
 }
 
 .cta {
@@ -281,6 +289,10 @@ main {
 
 button.cta {
   font-family: inherit;
+}
+
+.cta--primary {
+  max-width: 100%;
 }
 
 .cta::before,
@@ -340,9 +352,14 @@ button.cta {
   border-left: 1px solid var(--panel-edge);
   margin-left: 6px;
   background: rgba(0, 0, 0, 0.25);
+  max-width: min(42vw, 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cta--ghost {
+  align-self: flex-start;
   border: 1px solid var(--rule-strong);
   background: transparent;
   color: var(--fg-dim);
@@ -362,12 +379,30 @@ button.cta {
 }
 
 .copy-status {
-  align-self: center;
-  min-width: 120px;
+  min-height: 16px;
   color: var(--accent-bright);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .cta-row {
+    flex-direction: column;
+  }
+
+  .copy-cta,
+  .cta {
+    width: 100%;
+  }
+
+  .cta {
+    justify-content: center;
+  }
+
+  .cta-cmd {
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 540px) {

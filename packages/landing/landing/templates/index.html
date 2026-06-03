@@ -11,25 +11,27 @@
       <p class="hero-sub">{{ hero.subheading }}</p>
 
       <div class="cta-row">
-        <button
-          class="cta cta--primary"
-          type="button"
-          data-copy-command="{{ hero.cta.primary.command }}"
-          aria-describedby="copy-status"
-        >
-          <svg
-            class="cta-icon"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
+        <div class="copy-cta">
+          <button
+            class="cta cta--primary"
+            type="button"
+            data-copy-command="{{ hero.cta.primary.command }}"
+            aria-describedby="copy-status"
           >
-            <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-            <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
-          </svg>
-          <span class="cta-label">{{ hero.cta.primary.label }}</span>
-          <code class="cta-cmd">{{ hero.cta.primary.command }}</code>
-        </button>
-        <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+            <svg
+              class="cta-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+              <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+            </svg>
+            <span class="cta-label">{{ hero.cta.primary.label }}</span>
+            <code class="cta-cmd">{{ hero.cta.primary.command }}</code>
+          </button>
+          <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+        </div>
         <a class="cta cta--ghost" href="{{ hero.cta.secondary.href }}">
           {{ hero.cta.secondary.label }}
         </a>
