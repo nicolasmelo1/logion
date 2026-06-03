@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
-/* Logion landing — dark sci-fi default with light fallback. */
+/* Logion landing — dark editorial default with light fallback. */
 
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
 
 :root {
   --bg: #050608;
@@ -17,6 +17,7 @@
   --panel: rgba(12, 16, 22, 0.72);
   --panel-edge: rgba(201, 167, 106, 0.32);
   --focus: #aed7ff;
+  --serif: "Libre Baskerville", "Times New Roman", Times, Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
   --max-width: 1080px;
@@ -192,6 +193,7 @@ a:hover {
 .site-nav {
   display: flex;
   gap: 22px;
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -218,6 +220,7 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -261,14 +264,14 @@ main {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  max-width: 100%;
+  width: min(100%, 900px);
 }
 
 .cta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 18px;
+  padding: 13px 18px;
   border: 1px solid var(--accent);
   background: linear-gradient(
     180deg,
@@ -277,6 +280,7 @@ main {
   );
   color: var(--accent-bright);
   text-decoration: none;
+  font-family: var(--mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-size: 12px;
@@ -292,7 +296,9 @@ button.cta {
 }
 
 .cta--primary {
+  width: 100%;
   max-width: 100%;
+  min-height: 58px;
 }
 
 .cta::before,
@@ -345,6 +351,7 @@ button.cta {
 .cta-cmd {
   font-family: var(--mono);
   font-size: 13px;
+  line-height: 1.45;
   letter-spacing: 0.04em;
   text-transform: none;
   color: var(--fg);
@@ -352,10 +359,10 @@ button.cta {
   border-left: 1px solid var(--panel-edge);
   margin-left: 6px;
   background: rgba(0, 0, 0, 0.25);
-  max-width: min(60vw, 520px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 620px;
+  overflow-wrap: anywhere;
   white-space: nowrap;
+  text-align: left;
 }
 
 .cta--ghost {
@@ -381,6 +388,7 @@ button.cta {
 .copy-status {
   min-height: 16px;
   color: var(--accent-bright);
+  font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -397,17 +405,26 @@ button.cta {
   }
 
   .cta {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .cta-cmd {
-    max-width: 100%;
+    max-width: none;
+    white-space: normal;
   }
 }
 
 @media (max-width: 540px) {
+  .cta--primary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .cta-cmd {
-    display: none;
+    width: 100%;
+    margin-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--panel-edge);
   }
 }
 
@@ -466,6 +483,7 @@ button.cta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 22px;
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -486,6 +504,7 @@ button.cta {
 
 .hero-readout {
   position: fixed;
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -510,8 +529,10 @@ button.cta {
 
 .content-section h2 {
   margin: 12px 0 16px;
+  font-family: var(--serif);
+  font-style: italic;
   font-size: clamp(22px, 3vw, 30px);
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0.06em;
   color: var(--fg);
 }
@@ -564,6 +585,7 @@ button.cta {
 .content-list strong {
   display: block;
   margin-bottom: 8px;
+  font-family: var(--mono);
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -674,6 +696,8 @@ pre code {
 }
 
 .legal h1 {
+  font-family: var(--serif);
+  font-style: italic;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-bright);
@@ -691,6 +715,7 @@ pre code {
   gap: 16px;
   flex-wrap: wrap;
   border-top: 1px solid var(--rule);
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;

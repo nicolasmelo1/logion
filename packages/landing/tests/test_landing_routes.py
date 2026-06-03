@@ -23,6 +23,15 @@ def test_health_returns_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_landing_app_does_not_support_legacy_brand_env() -> None:
+    import inspect
+
+    import landing.main
+
+    legacy_brand = "CLA" + "WSERA"
+    assert legacy_brand not in inspect.getsource(landing.main)
+
+
 def test_robots_txt_allows_indexing_and_points_to_sitemap() -> None:
     response = client.get("/robots.txt")
     assert response.status_code == 200

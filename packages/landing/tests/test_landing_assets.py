@@ -26,6 +26,43 @@ def test_styles_supports_reduced_motion() -> None:
     assert "prefers-reduced-motion" in text
 
 
+def test_styles_make_section_titles_serif_italic_only() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    section_title_block = text.split(".content-section h2 {", maxsplit=1)[
+        1
+    ].split("}", maxsplit=1)[0]
+    hero_title_block = text.split(".hero-copy h1 {", maxsplit=1)[1].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    assert "--serif:" in text
+    assert "Times New Roman" in text
+    assert "font-family: var(--serif)" in section_title_block
+    assert "font-style: italic" in section_title_block
+    assert "font-family: var(--mono)" in hero_title_block
+    assert "font-style: italic" not in hero_title_block
+
+
+def test_primary_copy_command_does_not_truncate() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    cta_cmd_block = text.split(".cta-cmd {", maxsplit=1)[1].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    copy_cta_block = text.split(".copy-cta {", maxsplit=1)[1].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    primary_cta_block = text.split(".cta--primary {", maxsplit=1)[1].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    assert "width: min(100%, 900px)" in copy_cta_block
+    assert "min-height: 58px" in primary_cta_block
+    assert "overflow-wrap: anywhere" in cta_cmd_block
+    assert "text-overflow: ellipsis" not in cta_cmd_block
+
+
 def test_hero_frames_exports_multiple_frames() -> None:
     text = (STATIC_DIR / "ascii" / "hero_frames.js").read_text(
         encoding="utf-8"

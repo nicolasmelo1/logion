@@ -32,7 +32,6 @@ Environment:
 
 - `LOGION_LANDING_HOST` (default `127.0.0.1`)
 - `LOGION_LANDING_PORT` (default `8001`)
-- `CLAWSERA_LANDING_HOST` / `CLAWSERA_LANDING_PORT` (legacy fallback)
 
 ## Test
 

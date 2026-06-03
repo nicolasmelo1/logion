@@ -215,10 +215,8 @@ def llms() -> PlainTextResponse:
 def main() -> None:
     import uvicorn
 
-    legacy_host = os.getenv("CLAWSERA_LANDING_HOST")
-    legacy_port = os.getenv("CLAWSERA_LANDING_PORT")
-    host = os.getenv("LOGION_LANDING_HOST", legacy_host or "127.0.0.1")
-    port = int(os.getenv("LOGION_LANDING_PORT", legacy_port or "8001"))
+    host = os.getenv("LOGION_LANDING_HOST", "127.0.0.1")
+    port = int(os.getenv("LOGION_LANDING_PORT", "8001"))
     uvicorn.run("landing.main:app", host=host, port=port, reload=True)
 
 
