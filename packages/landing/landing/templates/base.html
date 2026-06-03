@@ -1,13 +1,102 @@
+{%- set page_title -%}
+{%- block title %}{{ seo.default_title }}{% endblock -%}
+{%- endset -%}
+{%- set page_description -%}
+{%- block meta_description %}{{ seo.default_description }}{% endblock -%}
+{%- endset -%}
+{%- set og_type_value -%}
+{%- block og_type %}website{% endblock -%}
+{%- endset -%}
+{%- set canonical_url = seo.canonical_base ~ (request.url.path if request is defined else '/') -%}
+{%- set og_image_url = seo.canonical_base ~ social.og_image -%}
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ site.name }} — ΛΟΓΙΟΝ{% endblock %}</title>
-    <meta name="description" content="{{ site.tagline }}">
+
+    <title>{{ page_title }}</title>
+    <meta name="description" content="{{ page_description }}">
+    <meta name="keywords" content="{{ seo.keywords | join(', ') }}">
+    <meta name="author" content="{{ seo.organization.name }}">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="theme-color" content="{{ seo.theme_color }}">
+    <meta name="color-scheme" content="dark light">
+
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="alternate" type="text/markdown" href="{{ seo.canonical_base }}/" title="Landing as markdown">
+    <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms.txt" title="llms.txt index">
+    <link rel="sitemap" type="application/xml" href="{{ seo.canonical_base }}/sitemap.xml">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+
+    <meta property="og:type" content="{{ og_type_value }}">
+    <meta property="og:site_name" content="{{ seo.organization.name }}">
+    <meta property="og:title" content="{{ page_title }}">
+    <meta property="og:description" content="{{ page_description }}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:locale" content="{{ seo.locale }}">
+    <meta property="og:image" content="{{ og_image_url }}">
+    <meta property="og:image:secure_url" content="{{ og_image_url }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="{{ social.og_image_width }}">
+    <meta property="og:image:height" content="{{ social.og_image_height }}">
+    <meta property="og:image:alt" content="{{ social.og_image_alt }}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ page_title }}">
+    <meta name="twitter:description" content="{{ page_description }}">
+    <meta name="twitter:image" content="{{ og_image_url }}">
+    <meta name="twitter:image:alt" content="{{ social.og_image_alt }}">
+    {%- if social.twitter %}
+    <meta name="twitter:site" content="{{ social.twitter }}">
+    <meta name="twitter:creator" content="{{ social.twitter }}">
+    {%- endif %}
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "{{ seo.organization.url }}#organization",
+          "name": "{{ seo.organization.name }}",
+          "legalName": "{{ seo.organization.legal_name }}",
+          "url": "{{ seo.organization.url }}",
+          "logo": "{{ seo.canonical_base }}/static/favicon.svg",
+          "email": "{{ contact.general }}",
+          "sameAs": [
+            {%- for url in seo.organization.same_as %}
+            "{{ url }}"{% if not loop.last %},{% endif %}
+            {%- endfor %}
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "{{ seo.canonical_base }}#website",
+          "url": "{{ seo.canonical_base }}",
+          "name": "{{ seo.organization.name }}",
+          "description": {{ seo.default_description | tojson }},
+          "publisher": { "@id": "{{ seo.organization.url }}#organization" },
+          "inLanguage": "en"
+        },
+        {
+          "@type": "WebPage",
+          "@id": "{{ canonical_url }}#webpage",
+          "url": "{{ canonical_url }}",
+          "name": {{ page_title | tojson }},
+          "description": {{ page_description | tojson }},
+          "isPartOf": { "@id": "{{ seo.canonical_base }}#website" },
+          "inLanguage": "en"
+        }
+        {%- block jsonld_extra %}{% endblock %}
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="/static/styles.css">
+    {% block extra_head %}{% endblock %}
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>

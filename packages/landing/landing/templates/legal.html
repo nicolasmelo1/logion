@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block title %}{{ page.heading }} — {{ site.name }}{% endblock %}
+{% block meta_description %}{{ page.heading }} for {{ site.name }} — {{ seo.organization.name }}.{% endblock %}
+{% block og_type %}article{% endblock %}
 
 {% block main %}
   <article class="legal">
