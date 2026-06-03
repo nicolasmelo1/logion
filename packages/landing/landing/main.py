@@ -1,74 +1,86 @@
 # SPDX-License-Identifier: MIT
+"""Logion landing FastAPI app.
+
+Templates, static assets, and copy live under ``landing/``.
+The page content is loaded from ``landing/content/site.yaml`` so it
+can be edited without touching Python.
+"""
+
+from __future__ import annotations
+
 import os
+from pathlib import Path
+from typing import Any
 
 import uvicorn
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+import yaml
+from fastapi import FastAPI, Request
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    Response,
+)
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+PACKAGE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = PACKAGE_DIR / "static"
+TEMPLATES_DIR = PACKAGE_DIR / "templates"
+CONTENT_PATH = PACKAGE_DIR / "content" / "site.yaml"
+MARKDOWN_PATH = PACKAGE_DIR / "content" / "landing.md"
+
+
+def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as fh:
+        data = yaml.safe_load(fh)
+    if not isinstance(data, dict):
+        raise TypeError(f"site content at {path} must be a mapping")
+    return data
+
+
+def load_markdown(path: Path = MARKDOWN_PATH) -> str:
+    return path.read_text(encoding="utf-8")
+
 
 app = FastAPI(title="Logion")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+content = load_content()
+markdown_content = load_markdown()
+
+
+def _ctx(**extra: Any) -> dict[str, Any]:
+    ctx: dict[str, Any] = dict(content)
+    ctx.update(extra)
+    return ctx
 
 
 @app.get("/", response_class=HTMLResponse)
-def index() -> str:
-    return """
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Logion</title>
-        <style>
-          body {
-            margin: 0;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-              BlinkMacSystemFont, "Segoe UI", sans-serif;
-            color: #17202a;
-            background: #f7f2e8;
-          }
-          main {
-            min-height: 100vh;
-            display: grid;
-            align-content: center;
-            padding: 48px;
-            max-width: 980px;
-          }
-          h1 {
-            margin: 0 0 16px;
-            font-size: clamp(48px, 9vw, 108px);
-            line-height: 0.92;
-            letter-spacing: 0;
-          }
-          p {
-            max-width: 720px;
-            font-size: 22px;
-            line-height: 1.45;
-          }
-          a {
-            color: #0f766e;
-            font-weight: 700;
-          }
-        </style>
-      </head>
-      <body>
-        <main>
-          <h1>Logion</h1>
-          <p>
-            An agent-native marketplace for executable courses, skills,
-            reviews, and marketplace integrations.
-          </p>
-          <p>
-            Public CLI and landing page for Logion.
-          </p>
-          <p><a href="/health">App status</a></p>
-        </main>
-      </body>
-    </html>
-    """
+def index(request: Request) -> Response:
+    if "text/markdown" in request.headers.get("accept", ""):
+        return PlainTextResponse(
+            markdown_content,
+            media_type="text/markdown; charset=utf-8",
+        )
+    return templates.TemplateResponse(request, "index.html", _ctx())
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def terms(request: Request) -> HTMLResponse:
+    page = content.get("legal", {}).get("terms", {})
+    return templates.TemplateResponse(request, "legal.html", _ctx(page=page))
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy(request: Request) -> HTMLResponse:
+    page = content.get("legal", {}).get("privacy", {})
+    return templates.TemplateResponse(request, "legal.html", _ctx(page=page))
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> JSONResponse:
+    return JSONResponse({"status": "ok"})
 
 
 def main() -> None:

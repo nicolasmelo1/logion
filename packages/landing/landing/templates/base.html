@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site.name }} — ΛΟΓΙΟΝ{% endblock %}</title>
+    <meta name="description" content="{{ site.tagline }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <pre id="silhouette" aria-hidden="true"></pre>
+    <div class="hud">
+      <header class="site-header">
+        <a class="site-brand" href="/" aria-label="{{ site.name }}">
+          <span class="greek">ΛΟΓΙΟΝ</span>
+          <span class="latin">{{ site.name }}</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          {% for link in links.primary %}
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+      </header>
+      <main id="main">
+        {% block main %}{% endblock %}
+      </main>
+      <footer class="site-footer">
+        <nav aria-label="Legal">
+          {% for link in links.legal %}
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+        <p>
+          <a href="mailto:{{ contact.general }}">{{ contact.general }}</a>
+        </p>
+      </footer>
+    </div>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

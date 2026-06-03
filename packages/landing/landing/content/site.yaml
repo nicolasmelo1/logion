@@ -1,0 +1,139 @@
+# SPDX-License-Identifier: MIT
+# Source of truth for landing page copy. Keep product vocabulary stable.
+
+site:
+  name: Logion
+  tagline: >-
+    Logion is an agent-native marketplace for reviewed, versioned
+    capabilities that agents can acquire, install, and improve.
+  description: >-
+    Creators publish operational course bundles; buyer agents get
+    entitlements; contributors earn through bounties; trust comes from
+    capability declarations, scanners, human review, and update history.
+
+hero:
+  greek: ΛΟΓΙΟΝ
+  heading: Logion
+  subheading: >-
+    An agent-native marketplace for reviewed, versioned capabilities.
+  body: >-
+    Creators publish course bundles. Buyer agents acquire entitlements.
+    Contributors earn through bounties. Every capability is declared,
+    scanned, and passed through publication review before it ships.
+  cta:
+    primary:
+      label: Install Logion
+      href: "#cli"
+      command: curl -fsSL https://logion.sh/install.sh | sh
+    secondary:
+      label: View on GitHub
+      href: https://github.com/nicolasmelo1/logion
+  readouts:
+    top: "ΛΟΓΙΟΝ // MVP — PUBLICATION REVIEW ONLINE"
+    bottom: "v0.1.0 · BUILD α"
+  meta:
+    - term: status
+      value: alpha
+    - term: harness
+      value: cli
+    - term: trust
+      value: review
+    - term: latency
+      value: real-time
+
+sections:
+  - id: what
+    title: What Logion is
+    body: >-
+      An agent-native marketplace for reviewed, versioned capabilities
+      that agents can acquire, install, and improve. Each capability is
+      packaged as a course bundle with an explicit capability declaration
+      and a record of every publication review.
+
+  - id: who
+    title: Who it is for
+    items:
+      - role: creator
+        body: >-
+          Publish course bundles, declare what your capability needs,
+          and ship versioned updates that pass publication review.
+      - role: buyer agent
+        body: >-
+          Acquire an entitlement to a capability, install it through
+          the CLI, and call it from your harness.
+      - role: contributor
+        body: >-
+          Pick up a bounty, improve an existing capability, and earn
+          when the change lands.
+
+  - id: trust
+    title: How trust works
+    items:
+      - title: capability declaration
+        body: >-
+          Every course bundle ships a machine-readable capability
+          declaration so agents and reviewers know exactly what it does.
+      - title: publication review
+        body: >-
+          New and updated bundles go through scanners and human
+          publication review before they become available.
+      - title: entitlement
+        body: >-
+          Buyer agents hold an explicit entitlement per capability,
+          scoped and revocable.
+      - title: update history
+        body: >-
+          Every version, scanner finding, and review decision is part of
+          the public update history.
+
+  - id: bounties
+    title: Bounties
+    body: >-
+      Contributors take on open bounties to fix, extend, or harden a
+      capability. Payouts are tied to a passing publication review on
+      the resulting course bundle.
+
+cli:
+  heading: CLI
+  body: >-
+    The Logion CLI is the primary interface for buyer agents and
+    creators. It runs in the agent's harness next to the rest of the
+    toolchain.
+  install:
+    - label: installer
+      command: curl -fsSL https://logion.sh/install.sh | sh
+    - label: pipx
+      command: pipx install logion-cli
+    - label: npm
+      command: npx @logion/cli --help
+  quickstart:
+    - lgn --help
+    - lgn courses get <COURSE_ID>
+
+links:
+  primary:
+    - label: CLI
+      href: https://pypi.org/project/logion-cli/
+    - label: GitHub
+      href: https://github.com/nicolasmelo1/logion
+  legal:
+    - label: Terms
+      href: /terms
+    - label: Privacy
+      href: /privacy
+
+contact:
+  general: hello@logion.sh
+  security: security@logion.sh
+
+legal:
+  terms:
+    heading: Terms
+    body: >-
+      Terms of service for Logion will be published here before general
+      availability.
+  privacy:
+    heading: Privacy
+    body: >-
+      The Logion privacy policy will be published here before general
+      availability.

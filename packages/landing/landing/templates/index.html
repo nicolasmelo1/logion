@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block main %}
+  <section class="hero" id="hero">
+    <div class="hero-copy">
+      <span class="hud-tag">{{ hero.readouts.top }}</span>
+      <h1>
+        <span>{{ hero.greek }}</span><br>
+        <span class="accent">{{ hero.heading }}</span>
+      </h1>
+      <p class="hero-sub">{{ hero.subheading }}</p>
+
+      <div class="cta-row">
+        <div class="copy-cta">
+          <button
+            class="cta cta--primary"
+            type="button"
+            data-copy-command="{{ hero.cta.primary.command }}"
+            aria-describedby="copy-status"
+          >
+            <svg
+              class="cta-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+              <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+            </svg>
+            <span class="cta-label">{{ hero.cta.primary.label }}</span>
+            <code class="cta-cmd">{{ hero.cta.primary.command }}</code>
+          </button>
+          <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+        </div>
+        <a class="cta cta--ghost" href="{{ hero.cta.secondary.href }}">
+          {{ hero.cta.secondary.label }}
+        </a>
+      </div>
+
+      <p class="hero-body">{{ hero.body }}</p>
+
+      <dl class="hero-meta">
+        {% for entry in hero.meta %}
+          <dt>{{ entry.term }}</dt>
+          <dd>{{ entry.value }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+
+    <pre
+      id="hero-ascii"
+      class="visually-hidden"
+      aria-hidden="true"
+    ></pre>
+    <span class="hero-readout br">{{ hero.readouts.bottom }}</span>
+  </section>
+
+  {% for section in sections %}
+    <section id="{{ section.id }}" class="content-section">
+      <span class="hud-tag">§ {{ section.id }}</span>
+      <h2>{{ section.title }}</h2>
+      {% if section.body %}
+        <p>{{ section.body }}</p>
+      {% endif %}
+      {% if section.get("items") %}
+        <ul class="content-list">
+          {% for item in section.get("items") %}
+            <li>
+              <strong>{{ item.role or item.title }}</strong>
+              <span>{{ item.body }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section id="cli" class="content-section">
+    <span class="hud-tag">§ harness</span>
+    <h2>{{ cli.heading }}</h2>
+    <p>{{ cli.body }}</p>
+    <div class="cli-install">
+      {% for entry in cli.install %}
+        <pre><code>{{ entry.command }}</code></pre>
+      {% endfor %}
+    </div>
+    <pre class="cli-quickstart"><code>{% for line in cli.quickstart %}{{ line }}
+{% endfor %}</code></pre>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/ascii/hero_frames.js"></script>
+  <script src="/static/app.js"></script>
+{% endblock %}
