@@ -26,6 +26,21 @@ def test_homepage_includes_logion() -> None:
     assert "Logion" in response.text
 
 
+def test_homepage_includes_primary_curl_install_command() -> None:
+    response = client.get("/")
+    assert "curl -fsSL https://logion.dev/install.sh | sh" in response.text
+
+
+def test_index_returns_markdown_when_requested() -> None:
+    response = client.get("/", headers={"Accept": "text/markdown"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert "# Logion" in response.text
+    assert "curl -fsSL https://logion.dev/install.sh | sh" in response.text
+    assert "entitlement" in response.text
+    assert "publication review" in response.text
+
+
 def test_homepage_links_to_legal_routes() -> None:
     response = client.get("/")
     assert 'href="/terms"' in response.text

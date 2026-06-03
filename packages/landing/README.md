@@ -5,6 +5,10 @@ The public Logion landing page.
 FastAPI app serving the marketing site at `/`, plus `/terms`,
 `/privacy`, and a `/health` probe.
 
+`GET /` also supports `Accept: text/markdown` and returns the non-visual
+landing content as Markdown for agents, terminals, and lightweight docs
+ingestion.
+
 ## Layout
 
 ```
@@ -12,6 +16,7 @@ landing/
   main.py           FastAPI app, routes, env handling
   content/
     site.yaml       Source of truth for copy, links, contact
+    landing.md      Markdown projection served via Accept: text/markdown
   templates/        Jinja2 templates (base, index, legal)
   static/           CSS, JS, ASCII hero frames
 tests/              Route, content, and asset tests

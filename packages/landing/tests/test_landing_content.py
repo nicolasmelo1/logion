@@ -10,6 +10,9 @@ import yaml
 CONTENT_PATH = (
     Path(__file__).resolve().parents[1] / "landing" / "content" / "site.yaml"
 )
+MARKDOWN_PATH = (
+    Path(__file__).resolve().parents[1] / "landing" / "content" / "landing.md"
+)
 
 REQUIRED_ANCHORS = (
     "agent-native marketplace",
@@ -22,6 +25,7 @@ REQUIRED_ANCHORS = (
     "CLI",
     "Terms",
     "Privacy",
+    "curl -fsSL",
 )
 
 
@@ -31,6 +35,7 @@ def _content_text() -> str:
 
 def test_content_file_exists() -> None:
     assert CONTENT_PATH.exists()
+    assert MARKDOWN_PATH.exists()
 
 
 def test_content_parses_as_mapping() -> None:
@@ -43,5 +48,11 @@ def test_content_parses_as_mapping() -> None:
 
 def test_content_contains_required_anchors() -> None:
     text = _content_text()
+    missing = [a for a in REQUIRED_ANCHORS if a not in text]
+    assert not missing, f"missing anchors: {missing}"
+
+
+def test_markdown_content_contains_required_anchors() -> None:
+    text = MARKDOWN_PATH.read_text(encoding="utf-8")
     missing = [a for a in REQUIRED_ANCHORS if a not in text]
     assert not missing, f"missing anchors: {missing}"

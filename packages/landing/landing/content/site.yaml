@@ -22,9 +22,9 @@ hero:
     scanned, and passed through publication review before it ships.
   cta:
     primary:
-      label: Install the CLI
-      href: https://pypi.org/project/logion-cli/
-      command: pip install logion-cli
+      label: Install Logion
+      href: "#cli"
+      command: curl -fsSL https://logion.dev/install.sh | sh
     secondary:
       label: View on GitHub
       href: https://github.com/nicolasmelo1/logion
@@ -100,10 +100,12 @@ cli:
     creators. It runs in the agent's harness next to the rest of the
     toolchain.
   install:
-    - label: pip
-      command: pip install logion-cli
+    - label: installer
+      command: curl -fsSL https://logion.dev/install.sh | sh
+    - label: pipx
+      command: pipx install logion-cli
     - label: npm
-      command: npm install -g @logion/cli
+      command: npx @logion/cli --help
   quickstart:
     - lgn --help
     - lgn courses get <COURSE_ID>

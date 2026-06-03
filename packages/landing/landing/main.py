@@ -15,7 +15,12 @@ from typing import Any
 import uvicorn
 import yaml
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -23,6 +28,7 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
 CONTENT_PATH = PACKAGE_DIR / "content" / "site.yaml"
+MARKDOWN_PATH = PACKAGE_DIR / "content" / "landing.md"
 
 
 def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
@@ -33,10 +39,15 @@ def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
     return data
 
 
+def load_markdown(path: Path = MARKDOWN_PATH) -> str:
+    return path.read_text(encoding="utf-8")
+
+
 app = FastAPI(title="Logion")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 content = load_content()
+markdown_content = load_markdown()
 
 
 def _ctx(**extra: Any) -> dict[str, Any]:
@@ -46,7 +57,12 @@ def _ctx(**extra: Any) -> dict[str, Any]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request) -> HTMLResponse:
+def index(request: Request) -> Response:
+    if "text/markdown" in request.headers.get("accept", ""):
+        return PlainTextResponse(
+            markdown_content,
+            media_type="text/markdown; charset=utf-8",
+        )
     return templates.TemplateResponse(request, "index.html", _ctx())
 
 
