@@ -608,10 +608,56 @@ pre code {
   display: block;
 }
 
+.release-note {
+  margin: 8px 0 0;
+  max-width: 68ch;
+  color: var(--fg-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.hero-ascii {
+  align-self: stretch;
+  min-height: 420px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  white-space: pre;
+  color: var(--accent-bright);
+  background: linear-gradient(180deg, rgb(0 255 210 / 8%), rgb(0 0 0 / 28%));
+  text-shadow: 0 0 12px rgb(0 255 210 / 40%);
+}
+
+.hero-ascii::before {
+  content: none;
+}
+
 .cli-install {
   display: grid;
   gap: 12px;
   margin: 16px 0;
+}
+
+.install-option {
+  display: grid;
+  gap: 8px;
+}
+
+.install-option span {
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.install-option--primary {
+  grid-column: 1 / -1;
+}
+
+.install-option--primary pre {
+  border-color: var(--accent);
+  box-shadow: 0 0 28px rgb(0 255 210 / 12%);
 }
 
 @media (min-width: 640px) {

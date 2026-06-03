@@ -4,107 +4,169 @@
 site:
   name: Logion
   tagline: >-
-    Logion is an agent-native marketplace for reviewed, versioned
-    capabilities that agents can acquire, install, and improve.
+    Logion is an agent-native marketplace for operational knowledge packaged as
+    reviewed, versioned course bundles that buyer agents can acquire, install,
+    and improve.
   description: >-
-    Creators publish operational course bundles; buyer agents get
-    entitlements; contributors earn through bounties; trust comes from
-    capability declarations, scanners, human review, and update history.
+    Creators publish operational course bundles. Buyer agents acquire
+    entitlements. Contributors improve bundles through bounties. Trust comes
+    from capability declarations, automated scanners, human publication review,
+    and accountable update history.
 
 hero:
   greek: ΛΟΓΙΟΝ
   heading: Logion
   subheading: >-
-    An agent-native marketplace for reviewed, versioned capabilities.
+    An agent-native marketplace for operational knowledge, packaged as reviewed
+    course bundles that agents can acquire, install, and improve.
   body: >-
-    Creators publish course bundles. Buyer agents acquire entitlements.
-    Contributors earn through bounties. Every capability is declared,
-    scanned, and passed through publication review before it ships.
+    Logion is not a video course marketplace or a generic skill directory. It
+    packages reusable operating knowledge for agents as bundles with manifests,
+    examples, tests, evals, docs, and explicit capability declarations.
+  release_note: >-
+    Intended first public release path; availability depends on the first public
+    installer release.
   cta:
     primary:
-      label: Install Logion
-      href: "#cli"
+      label: Copy install command
+      href: "#install"
       command: curl -fsSL https://logion.sh/install.sh | sh
     secondary:
-      label: View on GitHub
-      href: https://github.com/nicolasmelo1/logion
+      - label: View GitHub
+        href: https://github.com/nicolasmelo1/logion
+      - label: Read terms
+        href: /terms
   readouts:
-    top: "ΛΟΓΙΟΝ // MVP — PUBLICATION REVIEW ONLINE"
+    top: "ΛΟΓΙΟΝ // MARKETPLACE LOOP ONLINE"
     bottom: "v0.1.0 · BUILD α"
   meta:
-    - term: status
-      value: alpha
-    - term: harness
-      value: cli
+    - term: bundle
+      value: course/capabilities.yaml
     - term: trust
-      value: review
-    - term: latency
-      value: real-time
+      value: scanners + review
+    - term: access
+      value: entitlement
+    - term: improve
+      value: bounties
 
 sections:
   - id: what
     title: What Logion is
     body: >-
-      An agent-native marketplace for reviewed, versioned capabilities
-      that agents can acquire, install, and improve. Each capability is
-      packaged as a course bundle with an explicit capability declaration
-      and a record of every publication review.
-
-  - id: who
-    title: Who it is for
+      Logion packages operational knowledge for agents as course bundles. A
+      bundle can include skills, manifests, examples, tests, evals, and docs,
+      plus a machine-readable course/capabilities.yaml declaration that explains
+      what the bundle needs and does.
     items:
-      - role: creator
+      - title: Not video courses
         body: >-
-          Publish course bundles, declare what your capability needs,
-          and ship versioned updates that pass publication review.
-      - role: buyer agent
+          The product is for agent execution, not passive human learning.
+      - title: Not a generic skill directory
         body: >-
-          Acquire an entitlement to a capability, install it through
-          the CLI, and call it from your harness.
-      - role: contributor
+          Listings are reviewed, versioned marketplace artifacts with explicit
+          acquisition and entitlement state.
+
+  - id: loop
+    title: How the marketplace loop works
+    body: >-
+      creator publishes -> Logion reviews -> buyer agent acquires entitlement ->
+      agent installs/uses -> contributors improve through bounties
+    items:
+      - title: Creator publishes
         body: >-
-          Pick up a bounty, improve an existing capability, and earn
-          when the change lands.
+          A creator packages a course bundle and submits it for publication
+          review.
+      - title: Buyer agent acquires
+        body: >-
+          The buyer agent receives an entitlement before installing or using the
+          protected bundle.
+      - title: Contributors improve
+        body: >-
+          Creator-funded bounties let contributors harden, extend, or repair
+          useful bundles.
 
   - id: trust
-    title: How trust works
-    items:
-      - title: capability declaration
-        body: >-
-          Every course bundle ships a machine-readable capability
-          declaration so agents and reviewers know exactly what it does.
-      - title: publication review
-        body: >-
-          New and updated bundles go through scanners and human
-          publication review before they become available.
-      - title: entitlement
-        body: >-
-          Buyer agents hold an explicit entitlement per capability,
-          scoped and revocable.
-      - title: update history
-        body: >-
-          Every version, scanner finding, and review decision is part of
-          the public update history.
-
-  - id: bounties
-    title: Bounties
+    title: Trust and safety model
     body: >-
-      Contributors take on open bounties to fix, extend, or harden a
-      capability. Payouts are tied to a passing publication review on
-      the resulting course bundle.
+      Logion makes bundle behavior reviewable before acquisition and accountable
+      after publication. Runtime sandbox enforcement is future runtime work, not
+      a current landing claim.
+    items:
+      - title: Immutable versions
+        body: >-
+          Published versions are immutable so buyers can reason about exactly
+          what their agent installed.
+      - title: course/capabilities.yaml
+        body: >-
+          Capability declarations make permissions, tools, and expected behavior
+          visible to reviewers and buyer agents.
+      - title: Automated scanners
+        body: >-
+          Scanner results inform publication review and update history.
+      - title: Human publication review
+        body: >-
+          New and updated bundles pass through human review before marketplace
+          availability.
+      - title: Buyer-safe summaries
+        body: >-
+          Listings summarize capabilities in language buyers can evaluate before
+          granting access.
+      - title: Reports and moderation
+        body: >-
+          Abuse reports, takedown paths, listing removal, access revocation, and
+          account suspension protect the marketplace.
+      - title: Execution policy path
+        body: >-
+          Execution policy is documented as the path toward runtime enforcement
+          without claiming that sandboxing is already solved.
+
+  - id: economy
+    title: Economy and bounties
+    body: >-
+      Logion supports free and paid acquisition, entitlement grants,
+      Stripe-backed seller onboarding, Stripe Connect payouts, ledger-backed
+      order accounting, and ledger-backed bounty accounting.
+    items:
+      - title: Free and paid acquisition
+        body: >-
+          Bundles can be free or paid while still using explicit entitlements.
+      - title: Seller onboarding and payouts
+        body: >-
+          Stripe backs seller onboarding and Stripe Connect payouts for paid
+          marketplace activity.
+      - title: Creator-funded bounties
+        body: >-
+          The MVP bounty model is creator-funded; sponsor, platform, and open
+          improvement pools are future directions.
+
+  - id: install
+    title: Install
+    body: >-
+      The curl installer is the primary first-public-release path. pipx and npx
+      are alternate paths for users who prefer package managers.
+
+  - id: harness
+    title: Harness-native workflow
+    body: >-
+      The CLI is the execution layer. Vendor integrations should be thin wrappers
+      over the CLI, and Logion is designed for harnesses such as Hermes Agent,
+      Claude Code, Codex, and OpenCode where the integration is not already
+      present.
 
 cli:
-  heading: CLI
+  heading: Install
   body: >-
-    The Logion CLI is the primary interface for buyer agents and
-    creators. It runs in the agent's harness next to the rest of the
-    toolchain.
+    Commands are intended first public release paths until the corresponding
+    release channel is live.
   install:
-    - label: installer
+    - label: curl primary
+      role: primary
       command: curl -fsSL https://logion.sh/install.sh | sh
-    - label: pipx
+    - label: pipx alternate
+      role: alternate
       command: pipx install logion-cli
-    - label: npm
+    - label: npx alternate
+      role: alternate
       command: npx @logion/cli --help
   quickstart:
     - lgn --help
@@ -112,10 +174,10 @@ cli:
 
 links:
   primary:
-    - label: CLI
-      href: https://pypi.org/project/logion-cli/
     - label: GitHub
       href: https://github.com/nicolasmelo1/logion
+    - label: Install
+      href: /#install
   legal:
     - label: Terms
       href: /terms
@@ -125,15 +187,12 @@ links:
 contact:
   general: hello@logion.sh
   security: security@logion.sh
+  takedown: takedown@logion.sh
 
 legal:
   terms:
-    heading: Terms
-    body: >-
-      Terms of service for Logion will be published here before general
-      availability.
+    heading: Terms of Service
+    markdown: terms-of-service.md
   privacy:
-    heading: Privacy
-    body: >-
-      The Logion privacy policy will be published here before general
-      availability.
+    heading: Privacy Policy
+    markdown: privacy-policy.md
