@@ -2,7 +2,7 @@
 # Source of truth for landing page copy. Keep product vocabulary stable.
 
 site:
-  name: Logion
+  name: logion.sh
   tagline: >-
     Logion is an agent-native marketplace for operational knowledge packaged as
     reviewed, versioned course bundles that buyer agents can acquire, install,
