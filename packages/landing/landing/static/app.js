@@ -490,21 +490,32 @@
 
   // ----- Loop & lifecycle -----------------------------------------------
   var last = performance.now();
+  var frameHandle = 0;
+  var running = false;
+
   function frame(now) {
+    if (!running) return;
     var dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     drawScene(dt, now);
     drawHero(dt, now);
     updateSilhouetteParallax(dt);
-    window.requestAnimationFrame(frame);
+    frameHandle = window.requestAnimationFrame(frame);
   }
 
-  function paintCurrentFrame() {
+  function startLoop() {
+    if (running) return;
+    running = true;
     last = performance.now();
-    drawScene(0, last);
-    drawHero(0, last);
-    updateSilhouetteParallax(1);
-    renderSilhouette();
+    frameHandle = window.requestAnimationFrame(frame);
+  }
+
+  function stopLoop() {
+    running = false;
+    if (frameHandle) {
+      window.cancelAnimationFrame(frameHandle);
+      frameHandle = 0;
+    }
   }
 
   // ----- Static full-screen ASCII silhouette ----------------------------
@@ -703,7 +714,9 @@
     initScene();
     initHero();
     loadSilhouette();
-    window.requestAnimationFrame(frame);
+    if (!document.hidden) {
+      startLoop();
+    }
   }
 
   if (document.readyState === "loading") {
@@ -729,17 +742,22 @@
       // re-init so steady-state honors new preference
       initScene();
       initHero();
-      paintCurrentFrame();
     });
   }
 
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") {
-      paintCurrentFrame();
+    if (document.hidden) {
+      stopLoop();
+    } else {
+      startLoop();
     }
   });
 
   window.addEventListener("pageshow", function () {
-    paintCurrentFrame();
+    startLoop();
+  });
+
+  window.addEventListener("pagehide", function () {
+    stopLoop();
   });
 })();

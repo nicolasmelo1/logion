@@ -44,9 +44,11 @@ def test_app_js_has_clipboard_copy_logic() -> None:
     assert "Copied to clipboard" in text
 
 
-def test_app_js_repaints_without_horizon_line_on_tab_return() -> None:
+def test_app_js_pauses_animation_without_horizon_line_on_tab_return() -> None:
     text = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
     assert "Horizon line" not in text
-    assert "paintCurrentFrame" in text
+    assert "startLoop" in text
+    assert "stopLoop" in text
+    assert "cancelAnimationFrame" in text
     assert "visibilitychange" in text
-    assert "pageshow" in text
+    assert "pagehide" in text
