@@ -1,8 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "landing/main.py": {
+    "api/index.py": {
       "excludeFiles": "{tests/**,**/test_*.py,**/*.test.py,CHANGELOG.md,README.md}"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ]
 }

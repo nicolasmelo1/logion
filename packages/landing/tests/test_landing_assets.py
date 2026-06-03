@@ -3,8 +3,15 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+from api.index import app as vercel_app
+
+from landing.main import app
+
+LANDING_DIR = Path(__file__).resolve().parents[1]
+VERCEL_CONFIG_PATH = LANDING_DIR / "vercel.json"
 STATIC_DIR = Path(__file__).resolve().parents[1] / "landing" / "static"
 
 
@@ -52,3 +59,18 @@ def test_app_js_pauses_animation_without_horizon_line_on_tab_return() -> None:
     assert "cancelAnimationFrame" in text
     assert "visibilitychange" in text
     assert "pagehide" in text
+
+
+def test_vercel_entrypoint_exports_landing_app() -> None:
+    assert vercel_app is app
+
+
+def test_vercel_config_points_to_api_function() -> None:
+    config = json.loads(VERCEL_CONFIG_PATH.read_text(encoding="utf-8"))
+    assert "api/index.py" in config["functions"]
+    assert config["rewrites"] == [
+        {
+            "source": "/(.*)",
+            "destination": "/api/index",
+        }
+    ]
