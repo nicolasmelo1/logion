@@ -265,14 +265,6 @@
       }
     }
 
-    // Horizon line.
-    ctx.strokeStyle = "rgba(201, 167, 106, 0.18)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.78);
-    ctx.lineTo(w, h * 0.78);
-    ctx.stroke();
-
     // Lightning.
     var elapsed = now - bgState.lastBolt;
     var nextIn = reduced.matches ? 20000 : 5200 + Math.sin(now * 0.0002) * 2000;
@@ -507,6 +499,14 @@
     window.requestAnimationFrame(frame);
   }
 
+  function paintCurrentFrame() {
+    last = performance.now();
+    drawScene(0, last);
+    drawHero(0, last);
+    updateSilhouetteParallax(1);
+    renderSilhouette();
+  }
+
   // ----- Static full-screen ASCII silhouette ----------------------------
   // The figure is a handcrafted ASCII piece served from static. We fetch
   // it once, then autoscale the font size so it fills the viewport.
@@ -540,7 +540,9 @@
   function renderSilhouette() {
     var el = document.getElementById("silhouette");
     if (!el || !silhouetteText) return;
-    el.textContent = silhouetteText;
+    if (el.textContent !== silhouetteText) {
+      el.textContent = silhouetteText;
+    }
     el.style.transform = "translateY(-50%)";
     var rows = silLines.length;
     var cols = 0;
@@ -727,6 +729,17 @@
       // re-init so steady-state honors new preference
       initScene();
       initHero();
+      paintCurrentFrame();
     });
   }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      paintCurrentFrame();
+    }
+  });
+
+  window.addEventListener("pageshow", function () {
+    paintCurrentFrame();
+  });
 })();
