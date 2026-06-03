@@ -280,11 +280,11 @@ resolve_url() {
 # --- Manifest fetching -----------------------------------------------------
 
 fetch_manifest() {
-    _manifest_url="${LOGION_INSTALL_MANIFEST_URL:-https://logion.dev/releases/manifest-${INSTALL_CHANNEL}.json}"
+    _manifest_url="${LOGION_INSTALL_MANIFEST_URL:-https://logion.sh/releases/manifest-${INSTALL_CHANNEL}.json}"
 
     if [ -n "$INSTALL_VERSION" ]; then
         _tag="logion-cli-v${INSTALL_VERSION}"
-        _tag_url="https://logion.dev/releases/manifest-${INSTALL_CHANNEL}.json"
+        _tag_url="https://logion.sh/releases/manifest-${INSTALL_CHANNEL}.json"
         # When --version is given, fetch the manifest from the version-specific tag
         _tag_url="https://github.com/nicolasmelo1/logion/releases/download/${_tag}/manifest-${INSTALL_CHANNEL}.json"
         info "Fetching manifest for version $INSTALL_VERSION ..."
@@ -797,7 +797,7 @@ print_next_steps() {
     info "Next steps:"
     info "  1. logion --help              Show available commands"
     info "  2. logion listings search     Browse the marketplace"
-    info "  3. https://logion.dev/docs    Read the documentation"
+    info "  3. https://logion.sh/docs    Read the documentation"
     info ""
     info "You may need to open a new terminal for PATH changes to take effect."
 }

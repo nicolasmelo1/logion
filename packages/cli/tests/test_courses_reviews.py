@@ -213,7 +213,7 @@ def test_reviews_summary_v1_envelope(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -245,7 +245,7 @@ def test_reviews_summary_histogram_keys_are_strings_one_to_five(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )
@@ -273,7 +273,7 @@ def test_reviews_summary_handles_zero_reviews(
         mock_cfg.return_value = argparse.Namespace(
             json_output=True,
             api_key=None,
-            base_url="https://api.logion.dev",
+            base_url="https://api.logion.sh",
             timeout=None,
             max_retries=None,
         )

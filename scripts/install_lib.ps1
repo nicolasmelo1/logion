@@ -19,7 +19,7 @@ $script:EXIT_INSTALL_FAILED  = 8
 $script:EXIT_VERIFY_FAILED   = 9
 
 # ── Global state (set by Parse-Args, consumed by callers) ───────────────
-$script:ManifestBaseUrl = "https://logion.dev/releases"
+$script:ManifestBaseUrl = "https://logion.sh/releases"
 $script:Manifest        = $null
 $script:PythonCmd       = $null
 $script:PythonArgs      = @()
@@ -727,7 +727,7 @@ function Print-NextSteps {
     Write-Host "If 'logion' is not found, open a new terminal or run:"
     Write-Host "  `$env:PATH = `"`$HOME\.local\bin`$([System.IO.Path]::PathSeparator)`$env:PATH`""
     Write-Host ""
-    Write-Host "Documentation: https://logion.dev/docs"
+    Write-Host "Documentation: https://logion.sh/docs"
     Write-Host "Report issues:  https://github.com/nicolasmelo1/logion/issues"
     Write-Host ""
 }

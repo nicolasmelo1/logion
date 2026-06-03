@@ -67,7 +67,7 @@ def _make_args(**overrides: object) -> argparse.Namespace:
 def _default_config(**overrides: object) -> CliConfig:
     defaults: dict[str, object] = {
         "api_key": None,
-        "base_url": "https://api.logion.dev",
+        "base_url": "https://api.logion.sh",
         "json_output": True,
         "timeout": None,
         "max_retries": None,
