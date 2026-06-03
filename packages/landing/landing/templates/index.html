@@ -32,10 +32,13 @@
           </button>
           <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
         </div>
-        <a class="cta cta--ghost" href="{{ hero.cta.secondary.href }}">
-          {{ hero.cta.secondary.label }}
-        </a>
+        {% for link in hero.cta.secondary %}
+          <a class="cta cta--ghost" href="{{ link.href }}">
+            {{ link.label }}
+          </a>
+        {% endfor %}
       </div>
+      <p class="release-note">{{ hero.release_note }}</p>
 
       <p class="hero-body">{{ hero.body }}</p>
 
@@ -49,9 +52,9 @@
 
     <pre
       id="hero-ascii"
-      class="visually-hidden"
-      aria-hidden="true"
-    ></pre>
+      class="hero-ascii"
+      aria-label="ASCII illustration of Zeus for Logion"
+    >{{ ascii_hero }}</pre>
     <span class="hero-readout br">{{ hero.readouts.bottom }}</span>
   </section>
 
@@ -61,6 +64,17 @@
       <h2>{{ section.title }}</h2>
       {% if section.body %}
         <p>{{ section.body }}</p>
+      {% endif %}
+      {% if section.id == "install" %}
+        <div class="cli-install" aria-label="Install commands">
+          {% for entry in cli.install %}
+            <div class="install-option install-option--{{ entry.role }}">
+              <span>{{ entry.label }}</span>
+              <pre><code>{{ entry.command }}</code></pre>
+            </div>
+          {% endfor %}
+        </div>
+        <p>{{ cli.body }}</p>
       {% endif %}
       {% if section.get("items") %}
         <ul class="content-list">
@@ -74,19 +88,6 @@
       {% endif %}
     </section>
   {% endfor %}
-
-  <section id="cli" class="content-section">
-    <span class="hud-tag">§ harness</span>
-    <h2>{{ cli.heading }}</h2>
-    <p>{{ cli.body }}</p>
-    <div class="cli-install">
-      {% for entry in cli.install %}
-        <pre><code>{{ entry.command }}</code></pre>
-      {% endfor %}
-    </div>
-    <pre class="cli-quickstart"><code>{% for line in cli.quickstart %}{{ line }}
-{% endfor %}</code></pre>
-  </section>
 {% endblock %}
 
 {% block scripts %}

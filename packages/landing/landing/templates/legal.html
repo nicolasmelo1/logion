@@ -4,7 +4,6 @@
 
 {% block main %}
   <article class="legal">
-    <h1>{{ page.heading }}</h1>
-    <p>{{ page.body }}</p>
+    {{ page.html | safe }}
   </article>
 {% endblock %}
