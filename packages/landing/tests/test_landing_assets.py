@@ -12,6 +12,7 @@ from landing.main import app
 
 LANDING_DIR = Path(__file__).resolve().parents[1]
 VERCEL_CONFIG_PATH = LANDING_DIR / "vercel.json"
+VERCEL_REQUIREMENTS_PATH = LANDING_DIR / "api" / "requirements.txt"
 STATIC_DIR = Path(__file__).resolve().parents[1] / "landing" / "static"
 
 
@@ -74,3 +75,14 @@ def test_vercel_config_points_to_api_function() -> None:
             "destination": "/api/index",
         }
     ]
+
+
+def test_vercel_api_requirements_include_runtime_deps() -> None:
+    text = VERCEL_REQUIREMENTS_PATH.read_text(encoding="utf-8")
+    for requirement in (
+        "fastapi==",
+        "jinja2==",
+        "markdown-it-py==",
+        "pyyaml==",
+    ):
+        assert requirement in text
