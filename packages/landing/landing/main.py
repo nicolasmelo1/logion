@@ -13,7 +13,6 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
-import uvicorn
 import yaml
 from fastapi import FastAPI, Request
 from fastapi.responses import (
@@ -214,6 +213,8 @@ def llms() -> PlainTextResponse:
 
 
 def main() -> None:
+    import uvicorn
+
     legacy_host = os.getenv("CLAWSERA_LANDING_HOST")
     legacy_port = os.getenv("CLAWSERA_LANDING_PORT")
     host = os.getenv("LOGION_LANDING_HOST", legacy_host or "127.0.0.1")
