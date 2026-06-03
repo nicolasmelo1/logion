@@ -23,9 +23,11 @@ def test_hero_frames_exports_multiple_frames() -> None:
         encoding="utf-8"
     )
     assert "LOGION_HERO_FRAMES" in text
-    # Each frame is a string entry; require at least 6, at most 16.
-    join_count = text.count('.join("\\n")')
-    assert 6 <= join_count <= 16, f"expected 6-16 frames, found {join_count}"
+    # Frames are produced via buildFrame(...); require 6-16.
+    frame_calls = text.count("buildFrame(")
+    # one call appears in the function definition; subtract it
+    frame_count = max(0, frame_calls - 1)
+    assert 6 <= frame_count <= 16, f"expected 6-16 frames, found {frame_count}"
 
 
 def test_app_js_has_frame_swap_logic() -> None:

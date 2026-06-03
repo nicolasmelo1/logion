@@ -1,21 +1,47 @@
 {% extends "base.html" %}
 
 {% block main %}
-  <section class="hero">
+  <section class="hero" id="hero">
     <div class="hero-copy">
-      <h1>{{ hero.heading }}</h1>
+      <span class="hud-tag">{{ hero.readouts.top }}</span>
+      <h1>
+        <span>{{ hero.greek }}</span><br>
+        <span class="accent">{{ hero.heading }}</span>
+      </h1>
       <p class="hero-sub">{{ hero.subheading }}</p>
+
+      <div class="cta-row">
+        <a class="cta cta--primary" href="{{ hero.cta.primary.href }}">
+          <span class="cta-arrow">›</span>
+          <span class="cta-label">{{ hero.cta.primary.label }}</span>
+          <code class="cta-cmd">{{ hero.cta.primary.command }}</code>
+        </a>
+        <a class="cta cta--ghost" href="{{ hero.cta.secondary.href }}">
+          {{ hero.cta.secondary.label }}
+        </a>
+      </div>
+
       <p class="hero-body">{{ hero.body }}</p>
+
+      <dl class="hero-meta">
+        {% for entry in hero.meta %}
+          <dt>{{ entry.term }}</dt>
+          <dd>{{ entry.value }}</dd>
+        {% endfor %}
+      </dl>
     </div>
+
     <pre
       id="hero-ascii"
-      class="hero-ascii"
+      class="visually-hidden"
       aria-hidden="true"
-    >loading</pre>
+    ></pre>
+    <span class="hero-readout br">{{ hero.readouts.bottom }}</span>
   </section>
 
   {% for section in sections %}
     <section id="{{ section.id }}" class="content-section">
+      <span class="hud-tag">§ {{ section.id }}</span>
       <h2>{{ section.title }}</h2>
       {% if section.body %}
         <p>{{ section.body }}</p>
@@ -34,6 +60,7 @@
   {% endfor %}
 
   <section id="cli" class="content-section">
+    <span class="hud-tag">§ harness</span>
     <h2>{{ cli.heading }}</h2>
     <p>{{ cli.body }}</p>
     <div class="cli-install">

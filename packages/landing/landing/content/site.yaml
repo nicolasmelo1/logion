@@ -12,6 +12,7 @@ site:
     capability declarations, scanners, human review, and update history.
 
 hero:
+  greek: ΛΟΓΙΟΝ
   heading: Logion
   subheading: >-
     An agent-native marketplace for reviewed, versioned capabilities.
@@ -19,6 +20,26 @@ hero:
     Creators publish course bundles. Buyer agents acquire entitlements.
     Contributors earn through bounties. Every capability is declared,
     scanned, and passed through publication review before it ships.
+  cta:
+    primary:
+      label: Install the CLI
+      href: https://pypi.org/project/logion-cli/
+      command: pip install logion-cli
+    secondary:
+      label: View on GitHub
+      href: https://github.com/nicolasmelo1/logion
+  readouts:
+    top: "ΛΟΓΙΟΝ // MVP — PUBLICATION REVIEW ONLINE"
+    bottom: "v0.1.0 · BUILD α"
+  meta:
+    - term: status
+      value: alpha
+    - term: harness
+      value: cli
+    - term: trust
+      value: review
+    - term: latency
+      value: real-time
 
 sections:
   - id: what
