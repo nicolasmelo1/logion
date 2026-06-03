@@ -131,7 +131,7 @@ a:hover {
   overflow: hidden;
   white-space: pre;
   font-family: var(--mono);
-  font-size: 6px; /* JS overrides with computed fit-to-viewport size */
+  font-size: 10px; /* JS overrides with computed fit-to-viewport size */
   line-height: 1;
   letter-spacing: 0;
   color: rgba(201, 167, 106, 0.78);
@@ -344,15 +344,15 @@ button.cta {
 
 .cta-cmd {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: none;
   color: var(--fg);
-  padding: 4px 10px;
+  padding: 10px 16px;
   border-left: 1px solid var(--panel-edge);
   margin-left: 6px;
   background: rgba(0, 0, 0, 0.25);
-  max-width: min(42vw, 360px);
+  max-width: min(60vw, 520px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -449,7 +449,7 @@ button.cta {
 .hero-sub {
   font-size: clamp(18px, 1.9vw, 22px);
   color: var(--fg);
-  margin: 0 0 28px;
+  margin: 24px 0 28px;
   max-width: 38ch;
   font-weight: 500;
 }
@@ -665,11 +665,53 @@ pre code {
   color: var(--accent-bright);
 }
 
+/* --- View transitions (cross-document) ---------------------------------- */
+/* https://developer.chrome.com/docs/web-platform/view-transitions
+ * TEMPORARILY DISABLED while investigating a Safari tab-switch repaint bug
+ * where the page goes blank for several seconds before recovering. */
+
+/* @view-transition {
+  navigation: auto;
+} */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: logion-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: logion-fade-in;
+}
+
+@keyframes logion-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes logion-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 /* --- Reduced motion ----------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

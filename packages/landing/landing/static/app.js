@@ -492,11 +492,37 @@
   var last = performance.now();
   var frameHandle = 0;
   var running = false;
+  var frameCount = 0;
+  var lastLogged = 0;
+  var LOG = function () {
+    try {
+      var args = ["[logion]"].concat(Array.prototype.slice.call(arguments));
+      console.log.apply(console, args);
+    } catch (e) {}
+  };
 
   function frame(now) {
-    if (!running) return;
+    if (!running) {
+      LOG("frame fired but running=false, exiting", { now: now });
+      return;
+    }
     var dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    frameCount++;
+    if (now - lastLogged > 2000) {
+      LOG("frame tick", {
+        now: now,
+        dt: dt,
+        frames: frameCount,
+        hidden: document.hidden,
+        running: running,
+        frameHandle: frameHandle,
+        bgBolts: bgState ? bgState.bolts.length : null,
+        heroBolts: heroState ? heroState.bolts.length : null,
+        heroParticles: heroState ? heroState.particles.length : null,
+      });
+      lastLogged = now;
+    }
     drawScene(dt, now);
     drawHero(dt, now);
     updateSilhouetteParallax(dt);
@@ -504,13 +530,19 @@
   }
 
   function startLoop() {
-    if (running) return;
+    LOG("startLoop called", { running: running, hidden: document.hidden, frameHandle: frameHandle });
+    if (running) {
+      LOG("startLoop: already running, no-op");
+      return;
+    }
     running = true;
     last = performance.now();
     frameHandle = window.requestAnimationFrame(frame);
+    LOG("startLoop: queued rAF", { frameHandle: frameHandle, last: last });
   }
 
   function stopLoop() {
+    LOG("stopLoop called", { running: running, frameHandle: frameHandle });
     running = false;
     if (frameHandle) {
       window.cancelAnimationFrame(frameHandle);
@@ -566,7 +598,7 @@
     var fitByH = vh / rows;
     var fitByW = vw / (cols * 0.6);
     var fontSize = Math.min(fitByH, fitByW) * 0.98;
-    fontSize = Math.max(2.4, Math.min(7, fontSize));
+    fontSize = Math.max(4, Math.min(14, fontSize));
     el.style.fontSize = fontSize.toFixed(2) + "px";
     el.style.lineHeight = "1";
     silCellW = fontSize * 0.6;
@@ -746,6 +778,12 @@
   }
 
   document.addEventListener("visibilitychange", function () {
+    LOG("visibilitychange", {
+      hidden: document.hidden,
+      visibilityState: document.visibilityState,
+      running: running,
+      frameHandle: frameHandle,
+    });
     if (document.hidden) {
       stopLoop();
     } else {
@@ -753,11 +791,27 @@
     }
   });
 
-  window.addEventListener("pageshow", function () {
+  window.addEventListener("pageshow", function (e) {
+    LOG("pageshow", { persisted: e.persisted, hidden: document.hidden, running: running });
     startLoop();
   });
 
-  window.addEventListener("pagehide", function () {
+  window.addEventListener("pagehide", function (e) {
+    LOG("pagehide", { persisted: e.persisted });
     stopLoop();
+  });
+
+  window.addEventListener("freeze", function () {
+    LOG("freeze event fired");
+  });
+
+  window.addEventListener("resume", function () {
+    LOG("resume event fired");
+  });
+
+  LOG("app.js loaded", {
+    readyState: document.readyState,
+    hidden: document.hidden,
+    visibilityState: document.visibilityState,
   });
 })();
