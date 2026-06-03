@@ -24,7 +24,7 @@ hero:
     primary:
       label: Install Logion
       href: "#cli"
-      command: curl -fsSL https://logion.dev/install.sh | sh
+      command: curl -fsSL https://logion.sh/install.sh | sh
     secondary:
       label: View on GitHub
       href: https://github.com/nicolasmelo1/logion
@@ -101,7 +101,7 @@ cli:
     toolchain.
   install:
     - label: installer
-      command: curl -fsSL https://logion.dev/install.sh | sh
+      command: curl -fsSL https://logion.sh/install.sh | sh
     - label: pipx
       command: pipx install logion-cli
     - label: npm

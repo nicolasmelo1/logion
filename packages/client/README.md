@@ -51,7 +51,7 @@ environment by default. Explicit constructor arguments take precedence.
 | Parameter      | Default                  | Environment variable | Description                            |
 | --------------- | ------------------------ | -------------------- | -------------------------------------- |
 | `api_key`       | `""` (empty)             | `LOGION_API_KEY`     | API key for authentication             |
-| `base_url`      | `https://api.logion.dev` | `LOGION_BASE_URL`    | API base URL                           |
+| `base_url`      | `https://api.logion.sh` | `LOGION_BASE_URL`    | API base URL                           |
 | `timeout`       | `30.0`                   | —                    | Request timeout in seconds             |
 | `max_retries`   | `3`                      | —                    | Max retry attempts (GET only)           |
 | `extra_headers` | `{}`                     | —                    | Additional headers per request         |
@@ -66,7 +66,7 @@ client = LogionClient()
 # Or passing explicitly
 client = LogionClient(
     api_key="lgk_...",
-    base_url="https://api.logion.dev",
+    base_url="https://api.logion.sh",
     timeout=60.0,
     max_retries=5,
 )

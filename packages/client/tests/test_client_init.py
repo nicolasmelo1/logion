@@ -14,7 +14,7 @@ def test_client_default_config(monkeypatch) -> None:
     monkeypatch.delenv("LOGION_API_KEY", raising=False)
     monkeypatch.delenv("LOGION_BASE_URL", raising=False)
     client = LogionClient(api_key="lgk_test")
-    assert client._http._client.base_url == httpx.URL("https://api.logion.dev")
+    assert client._http._client.base_url == httpx.URL("https://api.logion.sh")
     client.close()
 
 

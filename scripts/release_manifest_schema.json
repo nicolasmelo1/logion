@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://logion.dev/schemas/release-manifest/v1.json",
+  "$id": "https://logion.sh/schemas/release-manifest/v1.json",
   "title": "LogionReleaseManifest",
   "description": "Machine-readable, deterministic manifest of released Logion packages.",
   "type": "object",

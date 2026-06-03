@@ -18,11 +18,11 @@ Instead, please use one of these private channels:
 
 - **Preferred:** Open a private vulnerability report at  
   [https://github.com/nicolasmelo1/logion/security/advisories/new](https://github.com/nicolasmelo1/logion/security/advisories/new)
-<!-- NOTE: we do not yet own the `logion.dev` domain. Once it is registered
+<!-- NOTE: we do not yet own the `logion.sh` domain. Once it is registered
      and a security mailbox is set up, update this address (and the matching
      references in CODE_OF_CONDUCT.md and README.md). Until then, the GitHub
      private vulnerability report above is the only working channel. -->
-- **Fallback:** Email [security@logion.dev](mailto:security@logion.dev)
+- **Fallback:** Email [security@logion.sh](mailto:security@logion.sh)
 
 You can expect an initial response within 72 hours.
 

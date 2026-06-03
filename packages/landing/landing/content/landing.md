@@ -7,7 +7,7 @@ Creators publish operational course bundles; buyer agents get entitlements; cont
 ## Install
 
 ```bash
-curl -fsSL https://logion.dev/install.sh | sh
+curl -fsSL https://logion.sh/install.sh | sh
 ```
 
 Alternate first public release paths:

@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-DEFAULT_BASE_URL = "https://api.logion.dev"
+DEFAULT_BASE_URL = "https://api.logion.sh"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 3
 

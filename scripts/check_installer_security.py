@@ -89,7 +89,7 @@ RULES: tuple[Rule, ...] = (
 )
 
 ALLOWED_DOWNLOAD_ORIGINS = (
-    "https://logion.dev/",
+    "https://logion.sh/",
     "https://docs.logion.sh",
     "https://github.com/nicolasmelo1/logion/",
     "https://astral.sh/uv/",

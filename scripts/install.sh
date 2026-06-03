@@ -18,7 +18,7 @@ elif [ -f "$(dirname "$0")/install_lib.sh" ]; then
 else
     _lib_tmpdir="$(mktemp -d)"
     _lib_path="$_lib_tmpdir/install_lib.sh"
-    if ! curl -fsSL https://logion.dev/install_lib.sh -o "$_lib_path"; then
+    if ! curl -fsSL https://logion.sh/install_lib.sh -o "$_lib_path"; then
         printf 'logion: error: failed to download install_lib.sh\n' >&2
         exit 5
     fi
