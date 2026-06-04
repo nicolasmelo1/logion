@@ -6,9 +6,6 @@ name: Deploy landing to Vercel
     branches: [main]
     paths:
       - "packages/landing/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/deploy-landing-vercel.yml"
 
 permissions:
   contents: read
@@ -25,8 +22,8 @@ jobs:
       run:
         working-directory: packages/landing
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_LANDING_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_LANDING_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_LANDING_TOKEN }}
+      VERCEL_SCOPE: ${{ secrets.VERCEL_LANDING_SCOPE }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,15 +44,13 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel project settings
-        run: >-
-          vercel pull --yes --environment=production
-          --token="${{ secrets.VERCEL_LANDING_TOKEN }}"
+        run: vercel pull --yes --environment=production --scope "$VERCEL_SCOPE"
 
       - name: Deploy landing to production
         id: deploy
         run: |
           deployment_url="$(vercel deploy --prod \
-            --token="${{ secrets.VERCEL_LANDING_TOKEN }}" \
+            --scope "$VERCEL_SCOPE" \
             --meta githubDeployment=1 \
             --meta githubCommitRef="${GITHUB_REF_NAME}" \
             --meta githubCommitSha="${GITHUB_SHA}" \
