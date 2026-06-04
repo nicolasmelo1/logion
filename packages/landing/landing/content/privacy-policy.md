@@ -14,6 +14,10 @@ Logion may process logs and security data such as request metadata, IP-derived s
 
 If cookies or analytics are enabled, they are used to operate the site, understand product usage, protect the service, and improve marketplace reliability. Optional analytics will be described in the product surface where required.
 
+## Analytics
+
+The Logion landing page uses Vercel Web Analytics to count anonymous page views and basic traffic patterns (referrer, country, device type). Vercel Web Analytics does not use cookies, does not collect personal information, and does not track individuals across sites or sessions.
+
 ## Service providers
 
 Logion may use service providers for hosting, storage, payments, email, analytics, security scanning, observability, support, and other operations. These providers process data only as needed to provide their services to Logion.
