@@ -1,0 +1,65 @@
+name: Deploy landing to Vercel
+
+"on":
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "packages/landing/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/deploy-landing-vercel.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-landing-vercel-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.repository == 'nicolasmelo1/logion' && github.actor == 'nicolasmelo1'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/landing
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_LANDING_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_LANDING_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Run landing tests
+        run: uv run pytest tests -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings
+        run: >-
+          vercel pull --yes --environment=production
+          --token="${{ secrets.VERCEL_LANDING_TOKEN }}"
+
+      - name: Deploy landing to production
+        id: deploy
+        run: |
+          deployment_url="$(vercel deploy --prod \
+            --token="${{ secrets.VERCEL_LANDING_TOKEN }}" \
+            --meta githubDeployment=1 \
+            --meta githubCommitRef="${GITHUB_REF_NAME}" \
+            --meta githubCommitSha="${GITHUB_SHA}" \
+            --meta githubOrg="${GITHUB_REPOSITORY_OWNER}" \
+            --meta githubRepo="${GITHUB_REPOSITORY#*/}")"
+          echo "deployment_url=${deployment_url}" >> "$GITHUB_OUTPUT"
+          echo "Production deployment: ${deployment_url}" >> "$GITHUB_STEP_SUMMARY"
