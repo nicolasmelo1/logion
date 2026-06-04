@@ -184,3 +184,13 @@ def test_legal_page_rejects_path_traversal() -> None:
         pytest.raises(ValueError, match="escapes content directory"),
     ):
         legal_page("evil")
+
+
+def test_vercel_analytics_renders_on_every_public_page() -> None:
+    # The analytics tag must sit outside `{% block scripts %}` in base.html,
+    # otherwise child templates that override that block (e.g. index.html
+    # mounting its own app.js) silently drop the analytics script.
+    for path in ("/", "/terms", "/privacy"):
+        body = client.get(path).text
+        assert "/_vercel/insights/script.js" in body, path
+        assert "window.va = window.va" in body, path
