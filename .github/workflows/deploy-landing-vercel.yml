@@ -6,9 +6,6 @@ name: Deploy landing to Vercel
     branches: [main]
     paths:
       - "packages/landing/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/deploy-landing-vercel.yml"
 
 permissions:
   contents: read
@@ -26,7 +23,6 @@ jobs:
         working-directory: packages/landing
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_LANDING_TOKEN }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_LANDING_PROJECT_ID }}
       VERCEL_SCOPE: ${{ secrets.VERCEL_LANDING_SCOPE }}
     steps:
       - uses: actions/checkout@v4

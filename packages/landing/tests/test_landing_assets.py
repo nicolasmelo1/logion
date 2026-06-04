@@ -103,9 +103,9 @@ def test_vercel_entrypoint_exports_landing_app() -> None:
     assert vercel_app is app
 
 
-def test_vercel_config_points_to_api_function() -> None:
+def test_vercel_config_rewrites_to_api_function() -> None:
     config = json.loads(VERCEL_CONFIG_PATH.read_text(encoding="utf-8"))
-    assert "api/index.py" in config["functions"]
+    assert "functions" not in config
     assert config["rewrites"] == [
         {
             "source": "/(.*)",
