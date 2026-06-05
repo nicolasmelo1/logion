@@ -21,7 +21,6 @@ from logion.v1._types.generated.v1 import (
     ResolveReportResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
-    UpdateBillingExemptionResponse,
 )
 
 
@@ -107,28 +106,6 @@ class TestAdminResource:
             "/v1/admin/users/user-1",
             GetUserDetailResponse,
         )
-
-    def test_update_user_billing_exemption_with_body(
-        self,
-    ) -> None:
-        """update_user_billing_exemption() sends PATCH with body."""
-        http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(
-            spec=UpdateBillingExemptionResponse,
-        )
-        http.request_model.return_value = mock_resp
-        resource = AdminResource(http)
-        resource.update_user_billing_exemption(
-            user_id="user-1",
-            enabled=True,
-        )
-        http.request_model.assert_called_once()
-        call_args = http.request_model.call_args
-        assert call_args.args[0] == "PATCH"
-        assert call_args.args[1] == "/v1/admin/users/user-1/billing-exemption"
-        assert call_args.args[2] == (UpdateBillingExemptionResponse)
-        json_body = call_args.kwargs["json"]
-        assert json_body["enabled"] is True
 
     def test_suspend_user_calls_request_model(self) -> None:
         """suspend_user() sends PATCH .../suspension."""

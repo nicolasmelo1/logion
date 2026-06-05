@@ -9,6 +9,7 @@ import pytest
 
 from logion._http import HttpClient
 from logion.v1._resources.courses import CoursesResource
+from logion.v1._resources.credits import CreditsResource
 from logion.v1._resources.health import HealthResource
 from logion.v1._resources.identity import IdentityResource
 from logion.v1._resources.listings import ListingsResource
@@ -19,6 +20,8 @@ from logion.v1._types.generated.v1 import (
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
     CreateUserWithAgentResponse,
+    CreditBalanceResponse,
+    CreditTopUpResponse,
     GetCourseResponse,
     GetCourseVersionResponse,
     OnboardingLinkResponse,
@@ -28,6 +31,72 @@ from logion.v1._types.generated.v1 import (
     SellerReadinessResponse,
     UpdateCourseResponse,
 )
+
+# ---- CreditsResource ----
+
+
+class TestCreditsResource:
+    def test_get_balance_calls_request_model(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreditBalanceResponse)
+        http.request_model.return_value = mock_resp
+        resource = CreditsResource(http)
+
+        result = resource.get_balance()
+
+        assert result == mock_resp
+        http.request_model.assert_called_once_with(
+            "GET", "/v1/credits/balance", CreditBalanceResponse
+        )
+
+    def test_create_top_up_builds_request(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreditTopUpResponse)
+        http.request_model.return_value = mock_resp
+        resource = CreditsResource(http)
+
+        result = resource.create_top_up(pack_code="pack_1000")
+
+        assert result == mock_resp
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/credits/top-ups"
+        assert call_args.args[2] == CreditTopUpResponse
+        assert call_args.kwargs["json"] == {"pack_code": "pack_1000"}
+
+    def test_get_top_up_accepts_uuid_string(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreditTopUpResponse)
+        http.request_model.return_value = mock_resp
+        resource = CreditsResource(http)
+
+        result = resource.get_top_up(
+            top_up_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        assert result == mock_resp
+        http.request_model.assert_called_once_with(
+            "GET",
+            "/v1/credits/top-ups/11111111-1111-1111-1111-111111111111",
+            CreditTopUpResponse,
+        )
+
+    def test_list_packs_calls_request_list(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request_list.return_value = []
+        resource = CreditsResource(http)
+
+        assert resource.list_packs() == []
+        http.request_list.assert_called_once_with("GET", "/v1/credits/packs")
+
+    def test_list_ledger_calls_request_list(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request_list.return_value = []
+        resource = CreditsResource(http)
+
+        assert resource.list_ledger() == []
+        http.request_list.assert_called_once_with("GET", "/v1/credits/ledger")
+
 
 # ---- HealthResource ----
 

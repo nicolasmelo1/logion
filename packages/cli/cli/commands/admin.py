@@ -201,22 +201,6 @@ def _register_users(sub: argparse._SubParsersAction) -> None:
     ug.add_argument("user_id", metavar="USER_ID")
     ug.set_defaults(handler=handle_admin_users_get)
 
-    # users billing-exemption
-    ube = users_sub.add_parser(
-        "billing-exemption",
-        help="Update user billing exemption",
-        parents=[COMMON_PARSER],
-    )
-    ube.add_argument("user_id", metavar="USER_ID")
-    ube.add_argument(
-        "--enabled",
-        required=True,
-        choices=["true", "false"],
-        help="Enable or disable billing exemption",
-    )
-    ube.add_argument("--yes", action="store_true")
-    ube.set_defaults(handler=handle_admin_users_billing_exemption)
-
     # users suspend
     us = users_sub.add_parser(
         "suspend",
@@ -247,31 +231,6 @@ def handle_admin_users_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.admin.get_user(user_id=args.user_id)
-        emit(result, json_output=config.json_output)
-    except Exception as exc:
-        return handle_error(exc)
-    else:
-        return 0
-    finally:
-        client.close()
-
-
-def handle_admin_users_billing_exemption(args: argparse.Namespace) -> int:
-    """Execute the admin users billing-exemption command."""
-    bad_id = validate_uuid_id(args.user_id, "USER_ID")
-    if bad_id is not None:
-        return bad_id
-    refusal = require_yes(args.yes, "update billing exemption")
-    if refusal is not None:
-        return refusal
-    config = resolve_config_from_args(args)
-    client = make_client(config)
-    try:
-        enabled = args.enabled == "true"
-        result = client.v1.admin.update_user_billing_exemption(
-            user_id=args.user_id,
-            enabled=enabled,
-        )
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)

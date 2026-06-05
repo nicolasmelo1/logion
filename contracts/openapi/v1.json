@@ -184,6 +184,12 @@
       },
       "ApproveHumanReviewRequest": {
         "properties": {
+          "acknowledge_capability_mismatches": {
+            "default": false,
+            "description": "Required when the review has capability mismatches; confirms the reviewer consciously accepts them",
+            "title": "Acknowledge Capability Mismatches",
+            "type": "boolean"
+          },
           "reviewer_notes": {
             "anyOf": [
               {
@@ -227,6 +233,43 @@
           "reviewed_at"
         ],
         "title": "ApproveHumanReviewResponse",
+        "type": "object"
+      },
+      "ApprovedCapabilitySummaryResponse": {
+        "additionalProperties": false,
+        "description": "Buyer-safe capability summary exposed on published course/version reads.\n\nOnly includes the approved public contract \u2014 no raw declared/observed\ndata, no mismatches, no reviewer notes.",
+        "properties": {
+          "allowed_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Domains",
+            "type": "array"
+          },
+          "allows_network": {
+            "default": false,
+            "title": "Allows Network",
+            "type": "boolean"
+          },
+          "allows_shell": {
+            "default": false,
+            "title": "Allows Shell",
+            "type": "boolean"
+          },
+          "human_approval_required": {
+            "default": false,
+            "title": "Human Approval Required",
+            "type": "boolean"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "title": "ApprovedCapabilitySummaryResponse",
         "type": "object"
       },
       "AssetResponse": {
@@ -461,6 +504,52 @@
           "updated_at"
         ],
         "title": "CancelBountyResponse",
+        "type": "object"
+      },
+      "CapabilityFeedbackBlock": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "title": "CapabilityFeedbackBlock",
         "type": "object"
       },
       "CapabilitySummaryResponse": {
@@ -1419,6 +1508,19 @@
         "title": "CreateCourseVersionUploadSessionResponse",
         "type": "object"
       },
+      "CreateCreditTopUpRequest": {
+        "properties": {
+          "pack_code": {
+            "title": "Pack Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pack_code"
+        ],
+        "title": "CreateCreditTopUpRequest",
+        "type": "object"
+      },
       "CreateReportRequest": {
         "properties": {
           "description": {
@@ -1606,28 +1708,6 @@
             "title": "Api Key Prefix",
             "type": "string"
           },
-          "billing_checkout_session_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Billing Checkout Session Id"
-          },
-          "billing_checkout_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Billing Checkout Url"
-          },
           "user": {
             "$ref": "#/components/schemas/UserResponse"
           }
@@ -1639,6 +1719,170 @@
           "api_key_prefix"
         ],
         "title": "CreateUserWithAgentResponse",
+        "type": "object"
+      },
+      "CreditBalanceResponse": {
+        "properties": {
+          "balance_cents": {
+            "title": "Balance Cents",
+            "type": "integer"
+          },
+          "currency_code": {
+            "default": "USD_CREDIT",
+            "title": "Currency Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "balance_cents"
+        ],
+        "title": "CreditBalanceResponse",
+        "type": "object"
+      },
+      "CreditLedgerEntryResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "balance_after_cents": {
+            "title": "Balance After Cents",
+            "type": "integer"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "posted_at": {
+            "format": "date-time",
+            "title": "Posted At",
+            "type": "string"
+          },
+          "related_top_up_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Top Up Id"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "direction",
+          "amount_cents",
+          "balance_after_cents",
+          "related_top_up_id",
+          "posted_at"
+        ],
+        "title": "CreditLedgerEntryResponse",
+        "type": "object"
+      },
+      "CreditPackResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "credit_cents": {
+            "title": "Credit Cents",
+            "type": "integer"
+          },
+          "display_label": {
+            "title": "Display Label",
+            "type": "string"
+          },
+          "pack_code": {
+            "title": "Pack Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pack_code",
+          "amount_cents",
+          "credit_cents",
+          "display_label"
+        ],
+        "title": "CreditPackResponse",
+        "type": "object"
+      },
+      "CreditTopUpResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "checkout_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Url"
+          },
+          "credit_cents_granted": {
+            "title": "Credit Cents Granted",
+            "type": "integer"
+          },
+          "pack_code": {
+            "title": "Pack Code",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "expired",
+              "cancelled",
+              "disputed",
+              "reversed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stripe_checkout_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Checkout Session Id"
+          },
+          "top_up_id": {
+            "format": "uuid",
+            "title": "Top Up Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "top_up_id",
+          "status",
+          "pack_code",
+          "amount_cents",
+          "credit_cents_granted"
+        ],
+        "title": "CreditTopUpResponse",
         "type": "object"
       },
       "DismissReportRequest": {
@@ -2271,6 +2515,16 @@
       },
       "GetCourseResponse": {
         "properties": {
+          "approved_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedCapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2301,6 +2555,17 @@
               }
             ],
             "title": "Description"
+          },
+          "human_approval_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Approval Required"
           },
           "id": {
             "format": "uuid",
@@ -2335,8 +2600,7 @@
                 "enum": [
                   "missing",
                   "declared",
-                  "invalid",
-                  "mismatch_found"
+                  "invalid"
                 ],
                 "type": "string"
               },
@@ -2452,6 +2716,13 @@
       },
       "GetCourseReviewFeedbackResponse": {
         "properties": {
+          "capability_feedback": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityFeedbackBlock"
+            },
+            "title": "Capability Feedback",
+            "type": "array"
+          },
           "course_id": {
             "title": "Course Id",
             "type": "string"
@@ -2516,6 +2787,16 @@
       },
       "GetCourseVersionResponse": {
         "properties": {
+          "approved_capabilities_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedCapabilitySummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "assets": {
             "items": {
               "$ref": "#/components/schemas/AssetResponse"
@@ -2596,6 +2877,17 @@
               }
             ],
             "title": "Declared Capabilities"
+          },
+          "human_approval_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Approval Required"
           },
           "id": {
             "format": "uuid",
@@ -4496,6 +4788,20 @@
       },
       "RejectHumanReviewRequest": {
         "properties": {
+          "capability_reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Machine-stable reason code when rejection is capability-related (e.g. network_domain_not_declared)",
+            "title": "Capability Reason Code"
+          },
           "decision_reason": {
             "description": "Short reason for rejection",
             "maxLength": 255,
@@ -4975,38 +5281,6 @@
           "status"
         ],
         "title": "SuspendUserResponse",
-        "type": "object"
-      },
-      "UpdateBillingExemptionRequest": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ],
-        "title": "UpdateBillingExemptionRequest",
-        "type": "object"
-      },
-      "UpdateBillingExemptionResponse": {
-        "properties": {
-          "billing_exempt": {
-            "title": "Billing Exempt",
-            "type": "boolean"
-          },
-          "user_id": {
-            "format": "uuid",
-            "title": "User Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "user_id",
-          "billing_exempt"
-        ],
-        "title": "UpdateBillingExemptionResponse",
         "type": "object"
       },
       "UpdateCourseRequest": {
@@ -7005,105 +7279,6 @@
         ]
       }
     },
-    "/v1/admin/users/{user_id}/billing-exemption": {
-      "patch": {
-        "operationId": "update_billing_exemption",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "User Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateBillingExemptionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateBillingExemptionResponse"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Grant or revoke a user billing exemption.",
-        "tags": [
-          "admin-users"
-        ]
-      }
-    },
     "/v1/admin/users/{user_id}/suspension": {
       "delete": {
         "description": "Reactivate a suspended user and their agents.",
@@ -8757,11 +8932,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Capability mismatch acknowledgement required"
           }
         },
         "summary": "Approve a publication review \u2014 publish the course.",
@@ -8867,11 +9042,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unprocessable entity"
           }
         },
         "summary": "Reject a publication review with feedback.",
@@ -9994,6 +10169,279 @@
         ]
       }
     },
+    "/v1/credits/balance": {
+      "get": {
+        "operationId": "get_credit_balance",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Credit Balance",
+        "tags": [
+          "credits"
+        ]
+      }
+    },
+    "/v1/credits/ledger": {
+      "get": {
+        "operationId": "list_credit_ledger",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreditLedgerEntryResponse"
+                  },
+                  "title": "Response List Credit Ledger",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credit Ledger",
+        "tags": [
+          "credits"
+        ]
+      }
+    },
+    "/v1/credits/packs": {
+      "get": {
+        "operationId": "list_credit_packs",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreditPackResponse"
+                  },
+                  "title": "Response List Credit Packs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credit Packs",
+        "tags": [
+          "credits"
+        ]
+      }
+    },
+    "/v1/credits/top-ups": {
+      "post": {
+        "operationId": "create_credit_top_up",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditTopUpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditTopUpResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid pack"
+          }
+        },
+        "summary": "Create Credit Top Up",
+        "tags": [
+          "credits"
+        ]
+      }
+    },
+    "/v1/credits/top-ups/{top_up_id}": {
+      "get": {
+        "operationId": "get_credit_top_up",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "top_up_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Top Up Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditTopUpResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Credit Top Up",
+        "tags": [
+          "credits"
+        ]
+      }
+    },
     "/v1/identity/users": {
       "post": {
         "operationId": "create_user_with_agent",
@@ -10037,6 +10485,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests"
           }
         },
         "summary": "Create user with agent",
@@ -10120,6 +10578,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests"
           }
         },
         "summary": "Add agent to user",
@@ -10213,6 +10681,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests"
           }
         },
         "summary": "Rotate agent api key",
