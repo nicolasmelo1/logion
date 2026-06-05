@@ -23,6 +23,12 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_course_version": "client.v1.courses.get_version",
     "upsert_course_review": "client.v1.courses.review_version",
     "complete_upload_session": ("client.v1.courses.complete_upload_session"),
+    # Credits
+    "get_credit_balance": "client.v1.credits.get_balance",
+    "list_credit_ledger": "client.v1.credits.list_ledger",
+    "list_credit_packs": "client.v1.credits.list_packs",
+    "create_credit_top_up": "client.v1.credits.create_top_up",
+    "get_credit_top_up": "client.v1.credits.get_top_up",
     # Payments
     "create_onboarding_link": ("client.v1.payments.create_onboarding_link"),
     "create_course_checkout": ("client.v1.payments.create_checkout"),
@@ -57,9 +63,6 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_course_moderation_detail": ("client.v1.admin.get_course"),
     "block_course": "client.v1.admin.update_course_status",
     "get_user_detail": "client.v1.admin.get_user",
-    "update_billing_exemption": (
-        "client.v1.admin.update_user_billing_exemption"
-    ),
     "suspend_user": "client.v1.admin.suspend_user",
     "reactivate_user": "client.v1.admin.unsuspend_user",
     "get_agent_detail": "client.v1.admin.get_agent",

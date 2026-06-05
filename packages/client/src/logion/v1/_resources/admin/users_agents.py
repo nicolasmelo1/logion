@@ -13,8 +13,6 @@ from logion.v1._types.generated.v1 import (
     ReactivateUserResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
-    UpdateBillingExemptionRequest,
-    UpdateBillingExemptionResponse,
 )
 
 from .shared import _AdminResourceBase
@@ -27,20 +25,6 @@ class _AdminUsersAgentsMixin(_AdminResourceBase):
     ) -> GetUserDetailResponse:
         """Get user detail for moderation."""
         return operations.get_user_detail(self._http, user_id=user_id)
-
-    def update_user_billing_exemption(
-        self,
-        user_id: str | UUID,
-        *,
-        enabled: bool,
-    ) -> UpdateBillingExemptionResponse:
-        """Grant or revoke a user billing exemption."""
-        body = UpdateBillingExemptionRequest(enabled=enabled)
-        return operations.update_billing_exemption(
-            self._http,
-            user_id=user_id,
-            body=body,
-        )
 
     def suspend_user(
         self,

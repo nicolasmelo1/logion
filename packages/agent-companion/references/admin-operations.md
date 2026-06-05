@@ -31,7 +31,6 @@ holding entitlements may be affected.
 
 ```bash
 LOGION_ENABLE_ADMIN=1 logion admin users get USER_ID --json
-LOGION_ENABLE_ADMIN=1 logion admin users billing-exemption USER_ID --enabled true --yes --json
 LOGION_ENABLE_ADMIN=1 logion admin users suspend USER_ID --yes --json
 LOGION_ENABLE_ADMIN=1 logion admin users unsuspend USER_ID --yes --json
 ```
@@ -64,7 +63,7 @@ notes are part of the permanent record.
 ## Safety rules
 
 - Every mutating admin command (`block`, `suspend`, `unsuspend`,
-  `billing-exemption`, `resolve`, `dismiss`) requires explicit user
+  `resolve`, `dismiss`) requires explicit user
   confirmation before invocation. The `--yes` flag skips the local prompt
   — companion agents should leave it off and surface what is about to
   happen.

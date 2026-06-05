@@ -32,13 +32,6 @@ class FakeAdminResource:
         self.last_call = ("get_user", kwargs)
         return {"id": kwargs["user_id"], "email": "test@example.com"}
 
-    def update_user_billing_exemption(self, **kwargs: Any) -> dict[str, Any]:
-        self.last_call = ("update_user_billing_exemption", kwargs)
-        return {
-            "id": kwargs["user_id"],
-            "billing_exemption": kwargs["enabled"],
-        }
-
     def suspend_user(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("suspend_user", kwargs)
         return {"id": kwargs["user_id"], "status": "suspended"}
@@ -238,72 +231,6 @@ def test_admin_users_get_calls_client(
     method, kwargs = admin.last_call
     assert method == "get_user"
     assert kwargs["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
-
-
-def test_admin_users_billing_exemption_calls_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """admin users billing-exemption forwards args to SDK."""
-    monkeypatch.setenv("LOGION_ENABLE_ADMIN", "1")
-    admin = FakeAdminResource()
-    fake = FakeClient(v1=FakeV1Namespace(admin=admin))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "admin",
-        "users",
-        "billing-exemption",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "--enabled",
-        "true",
-        "--yes",
-        "--json",
-    ])
-    assert code == 0
-    method, kwargs = admin.last_call
-    assert method == "update_user_billing_exemption"
-    assert kwargs["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
-    assert kwargs["enabled"] is True
-
-
-def test_admin_users_billing_exemption_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """admin users billing-exemption --enabled false sends enabled=False."""
-    monkeypatch.setenv("LOGION_ENABLE_ADMIN", "1")
-    admin = FakeAdminResource()
-    fake = FakeClient(v1=FakeV1Namespace(admin=admin))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "admin",
-        "users",
-        "billing-exemption",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "--enabled",
-        "false",
-        "--yes",
-        "--json",
-    ])
-    assert code == 0
-    method, kwargs = admin.last_call
-    assert method == "update_user_billing_exemption"
-    assert kwargs["enabled"] is False
-
-
-def test_admin_users_billing_exemption_requires_yes(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """admin users billing-exemption rejects without --yes."""
-    monkeypatch.setenv("LOGION_ENABLE_ADMIN", "1")
-    code = main([
-        "admin",
-        "users",
-        "billing-exemption",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "--enabled",
-        "true",
-        "--json",
-    ])
-    assert code == 2
 
 
 def test_admin_users_suspend_requires_yes(

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Generated internal operation functions for the v1 API."""
 
 from __future__ import annotations
@@ -27,10 +26,15 @@ from logion.v1._types.generated.v1 import (
     CreateCourseResponse,
     CreateCourseVersionUploadSessionRequest,
     CreateCourseVersionUploadSessionResponse,
+    CreateCreditTopUpRequest,
     CreateReportRequest,
     CreateReportResponse,
     CreateUserWithAgentRequest,
     CreateUserWithAgentResponse,
+    CreditBalanceResponse,
+    CreditLedgerEntryResponse,
+    CreditPackResponse,
+    CreditTopUpResponse,
     DismissReportRequest,
     DismissReportResponse,
     FundBountyResponse,
@@ -71,8 +75,6 @@ from logion.v1._types.generated.v1 import (
     SellerReadinessResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
-    UpdateBillingExemptionRequest,
-    UpdateBillingExemptionResponse,
     UpdateCourseRequest,
     UpdateCourseResponse,
     UpsertCourseReviewRequest,
@@ -267,21 +269,6 @@ def get_user_detail(
         "GET",
         f"/v1/admin/users/{user_id}",
         GetUserDetailResponse,
-    )
-
-
-def update_billing_exemption(
-    http: HttpClient,
-    *,
-    user_id: str | UUID,
-    body: UpdateBillingExemptionRequest,
-) -> UpdateBillingExemptionResponse:
-    """Call the update_billing_exemption API operation."""
-    return http.request_model(
-        "PATCH",
-        f"/v1/admin/users/{user_id}/billing-exemption",
-        UpdateBillingExemptionResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 
@@ -742,6 +729,70 @@ def complete_upload_session(
         "PATCH",
         f"/v1/courses/{course_id}/versions/{version_id}/upload-session",
         CompleteCourseVersionUploadSessionResponse,
+    )
+
+
+def get_credit_balance(
+    http: HttpClient,
+) -> CreditBalanceResponse:
+    """Call the get_credit_balance API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/credits/balance",
+        CreditBalanceResponse,
+    )
+
+
+def list_credit_ledger(
+    http: HttpClient,
+) -> list[CreditLedgerEntryResponse]:
+    """Call the list_credit_ledger API operation."""
+    return [
+        CreditLedgerEntryResponse.model_validate(item)
+        for item in http.request_list(
+            "GET",
+            "/v1/credits/ledger",
+        )
+    ]
+
+
+def list_credit_packs(
+    http: HttpClient,
+) -> list[CreditPackResponse]:
+    """Call the list_credit_packs API operation."""
+    return [
+        CreditPackResponse.model_validate(item)
+        for item in http.request_list(
+            "GET",
+            "/v1/credits/packs",
+        )
+    ]
+
+
+def create_credit_top_up(
+    http: HttpClient,
+    *,
+    body: CreateCreditTopUpRequest,
+) -> CreditTopUpResponse:
+    """Call the create_credit_top_up API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/credits/top-ups",
+        CreditTopUpResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_credit_top_up(
+    http: HttpClient,
+    *,
+    top_up_id: str | UUID,
+) -> CreditTopUpResponse:
+    """Call the get_credit_top_up API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/credits/top-ups/{top_up_id}",
+        CreditTopUpResponse,
     )
 
 

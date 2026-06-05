@@ -8,6 +8,7 @@ from logion.v1._resources.admin import AdminResource
 from logion.v1._resources.bounties import BountiesResource
 from logion.v1._resources.course_reviews import CourseReviewsResource
 from logion.v1._resources.courses import CoursesResource
+from logion.v1._resources.credits import CreditsResource
 from logion.v1._resources.health import HealthResource
 from logion.v1._resources.identity import IdentityResource
 from logion.v1._resources.listings import ListingsResource
@@ -24,6 +25,7 @@ class V1Namespace:
         self.identity = IdentityResource(http)
         self.listings = ListingsResource(http)
         self.courses = CoursesResource(http)
+        self.credits = CreditsResource(http)
         self.payments = PaymentsResource(http)
         self.course_reviews = CourseReviewsResource(http)
         self.notifications = NotificationsResource(http)
