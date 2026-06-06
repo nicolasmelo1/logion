@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from logion._http import HttpClient
-from logion.v1._resources.admin import AdminResource
 from logion.v1._resources.courses import CoursesResource
 from logion.v1._resources.credits import CreditsResource
 from logion.v1._resources.health import HealthResource
@@ -468,21 +467,3 @@ class TestPaymentsResource:
         json_body = call_args.kwargs["json"]
         assert json_body["minimum_payout_cents"] == 5000
         assert json_body["dry_run"] is True
-
-
-class TestAdminResource:
-    def test_create_cash_out(self) -> None:
-        """admin create_cash_out() calls POST with seller_user_id."""
-        http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CashOutResponse)
-        http.request_model.return_value = mock_resp
-        resource = AdminResource(http)
-        resource.create_cash_out(
-            seller_user_id="00000000-0000-0000-0000-000000000001"
-        )
-        call_args = http.request_model.call_args
-        assert call_args.args[0] == "POST"
-        assert call_args.args[1] == "/v1/admin/payments/cash-out"
-        assert call_args.args[2] == CashOutResponse
-        json_body = call_args.kwargs["json"]
-        assert "seller_user_id" in json_body

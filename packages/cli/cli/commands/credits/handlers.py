@@ -109,14 +109,12 @@ def handle_credits_top_up(args: argparse.Namespace) -> int:
         else:
             emit_top_up_human(payload)
     except Exception as exc:
+        client.close()
         return handle_error(exc)
-    else:
-        if args.wait:
-            return _poll_top_up(args, config, client, payload)
-        return 0
-    finally:
-        if not args.wait:
-            client.close()
+    if args.wait:
+        return _poll_top_up(args, config, client, payload)
+    client.close()
+    return 0
 
 
 def _poll_top_up(
