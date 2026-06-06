@@ -34,14 +34,17 @@ def _make_order_response(**overrides: object) -> OrderResponse:
         "amount_cents": 5000,
         "buyer_agent_id": UUID("00000000-0000-0000-0000-000000000001"),
         "course_id": UUID("00000000-0000-0000-0000-000000000002"),
-        "currency": "USD",
+        "currency": "USD_CREDIT",
         "id": UUID("880e8400-e29b-41d4-a716-446655440003"),
         "marketplace_fee_cents": 500,
         "public_reference": "ord_123",
         "seller_agent_id": UUID("00000000-0000-0000-0000-000000000004"),
         "seller_net_amount_cents": 4500,
-        "status": "paid",
+        "status": "fulfilled",
         "paid_at": "2026-05-28T12:00:00Z",
+        "purchase_flow": "credits",
+        "balance_before_cents": 10000,
+        "balance_after_cents": 5000,
     }
     defaults.update(overrides)
     return OrderResponse(**defaults)  # type: ignore[arg-type]
@@ -115,7 +118,7 @@ def test_orders_get_includes_status_field(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     mock_client = _mock_client_with_orders([
-        _make_order_response(status="paid")
+        _make_order_response(status="fulfilled")
     ])
 
     with (
@@ -132,18 +135,13 @@ def test_orders_get_includes_status_field(
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["data"]["status"] == "paid"
+    assert payload["data"]["status"] == "fulfilled"
 
 
-def test_orders_get_includes_entitlement_id_when_paid(
+def test_orders_get_includes_credit_purchase_fields_when_fulfilled(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    order = _make_order_response(
-        entitlement_id="ent_123",
-        version_id="ver_456",
-        checkout_url="https://checkout.example.test",
-        created_at="2026-05-28T11:00:00Z",
-    )
+    order = _make_order_response()
     mock_client = _mock_client_with_orders([order])
 
     with (
@@ -160,9 +158,9 @@ def test_orders_get_includes_entitlement_id_when_paid(
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["data"]["entitlement_id"] == "ent_123"
-    assert payload["data"]["version_id"] == "ver_456"
-    assert payload["data"]["checkout_url"] == "https://checkout.example.test"
+    assert payload["data"]["purchase_flow"] == "credits"
+    assert payload["data"]["balance_before_cents"] == 10000
+    assert payload["data"]["balance_after_cents"] == 5000
     assert payload["data"]["settled_at"] == "2026-05-28T12:00:00Z"
 
 

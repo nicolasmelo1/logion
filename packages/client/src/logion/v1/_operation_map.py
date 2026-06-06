@@ -33,6 +33,10 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "create_onboarding_link": ("client.v1.payments.create_onboarding_link"),
     "get_order": "client.v1.payments.get_order",
     "get_seller_readiness": ("client.v1.payments.get_seller_readiness"),
+    "get_creator_earnings": "client.v1.payments.get_creator_earnings",
+    "create_cash_out": "client.v1.payments.create_cash_out",
+    # Courses — purchase
+    "purchase_course": "client.v1.courses.purchase",
     # Bounties
     "create_bounty": "client.v1.bounties.create",
     "list_bounties": "client.v1.bounties.list",
@@ -71,10 +75,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_report_detail": "client.v1.admin.get_report",
     "resolve_report": "client.v1.admin.resolve_report",
     "dismiss_report": "client.v1.admin.dismiss_report",
+    "admin_create_cash_out": "client.v1.admin.create_cash_out",
 }
 
-UNSUPPORTED_OPERATIONS: dict[str, str] = {
-    "create_course_checkout": (
-        "removed: per-course checkout flow decommissioned"
-    ),
-}
+UNSUPPORTED_OPERATIONS: dict[str, str] = {}

@@ -128,6 +128,36 @@
         "title": "AddAgentToUserResponse",
         "type": "object"
       },
+      "AdminCashOutRequest": {
+        "properties": {
+          "seller_user_id": {
+            "format": "uuid",
+            "title": "Seller User Id",
+            "type": "string"
+          },
+          "minimum_payout_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payout Cents"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "seller_user_id"
+        ],
+        "title": "AdminCashOutRequest",
+        "type": "object"
+      },
       "AgentResponse": {
         "properties": {
           "created_at": {
@@ -609,6 +639,106 @@
         "title": "CapabilitySummaryResponse",
         "type": "object"
       },
+      "CashOutRequest": {
+        "properties": {
+          "minimum_payout_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payout Cents"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "title": "CashOutRequest",
+        "type": "object"
+      },
+      "CashOutResponse": {
+        "properties": {
+          "cash_out_id": {
+            "format": "uuid",
+            "title": "Cash Out Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "below_minimum",
+              "not_ready",
+              "no_balance",
+              "dry_run"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "payable_count": {
+            "title": "Payable Count",
+            "type": "integer"
+          },
+          "gross_payout_cents": {
+            "title": "Gross Payout Cents",
+            "type": "integer"
+          },
+          "currency": {
+            "enum": [
+              "usd"
+            ],
+            "title": "Currency",
+            "type": "string"
+          },
+          "payment_transfer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Transfer Id"
+          },
+          "stripe_transfer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Transfer Id"
+          },
+          "seller_user_id": {
+            "format": "uuid",
+            "title": "Seller User Id",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cash_out_id",
+          "status",
+          "payable_count",
+          "gross_payout_cents",
+          "currency",
+          "seller_user_id",
+          "dry_run"
+        ],
+        "title": "CashOutResponse",
+        "type": "object"
+      },
       "CompleteCourseVersionUploadSessionResponse": {
         "properties": {
           "assets": {
@@ -700,14 +830,9 @@
         "title": "CompleteCourseVersionUploadSessionResponse",
         "type": "object"
       },
-      "CourseCheckoutRequest": {
+      "CoursePurchaseRequest": {
         "properties": {
-          "course_id": {
-            "format": "uuid",
-            "title": "Course Id",
-            "type": "string"
-          },
-          "price_cents": {
+          "expected_price_cents": {
             "anyOf": [
               {
                 "type": "integer"
@@ -716,60 +841,25 @@
                 "type": "null"
               }
             ],
-            "title": "Price Cents"
+            "title": "Expected Price Cents"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
           }
         },
-        "required": [
-          "course_id"
-        ],
-        "title": "CourseCheckoutRequest",
+        "title": "CoursePurchaseRequest",
         "type": "object"
       },
-      "CourseCheckoutResponse": {
+      "CoursePurchaseResponse": {
         "properties": {
-          "amount_cents": {
-            "title": "Amount Cents",
-            "type": "integer"
-          },
-          "checkout_required": {
-            "title": "Checkout Required",
-            "type": "boolean"
-          },
-          "checkout_session_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Checkout Session Id"
-          },
-          "checkout_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Checkout Url"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "entitlement_granted": {
-            "default": false,
-            "title": "Entitlement Granted",
-            "type": "boolean"
-          },
-          "marketplace_fee_cents": {
-            "title": "Marketplace Fee Cents",
-            "type": "integer"
-          },
           "order_id": {
             "format": "uuid",
             "title": "Order Id",
@@ -779,35 +869,70 @@
             "title": "Order Reference",
             "type": "string"
           },
-          "order_status": {
-            "title": "Order Status",
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
             "type": "string"
           },
           "purchase_flow": {
             "enum": [
               "free",
-              "stripe_checkout"
+              "credits"
             ],
             "title": "Purchase Flow",
             "type": "string"
           },
+          "order_status": {
+            "title": "Order Status",
+            "type": "string"
+          },
+          "entitlement_granted": {
+            "title": "Entitlement Granted",
+            "type": "boolean"
+          },
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "currency": {
+            "enum": [
+              "USD_CREDIT"
+            ],
+            "title": "Currency",
+            "type": "string"
+          },
+          "marketplace_fee_cents": {
+            "title": "Marketplace Fee Cents",
+            "type": "integer"
+          },
           "seller_net_amount_cents": {
             "title": "Seller Net Amount Cents",
+            "type": "integer"
+          },
+          "balance_before_cents": {
+            "title": "Balance Before Cents",
+            "type": "integer"
+          },
+          "balance_after_cents": {
+            "title": "Balance After Cents",
             "type": "integer"
           }
         },
         "required": [
           "order_id",
           "order_reference",
+          "course_id",
           "purchase_flow",
-          "checkout_required",
+          "order_status",
+          "entitlement_granted",
           "amount_cents",
           "currency",
           "marketplace_fee_cents",
           "seller_net_amount_cents",
-          "order_status"
+          "balance_before_cents",
+          "balance_after_cents"
         ],
-        "title": "CourseCheckoutResponse",
+        "title": "CoursePurchaseResponse",
         "type": "object"
       },
       "CreateBountyPayoutResponse": {
@@ -1719,6 +1844,52 @@
           "api_key_prefix"
         ],
         "title": "CreateUserWithAgentResponse",
+        "type": "object"
+      },
+      "CreatorEarningsResponse": {
+        "properties": {
+          "accrued_cents": {
+            "title": "Accrued Cents",
+            "type": "integer"
+          },
+          "pending_payout_cents": {
+            "title": "Pending Payout Cents",
+            "type": "integer"
+          },
+          "submitted_cents": {
+            "title": "Submitted Cents",
+            "type": "integer"
+          },
+          "paid_cents": {
+            "title": "Paid Cents",
+            "type": "integer"
+          },
+          "minimum_payout_cents": {
+            "title": "Minimum Payout Cents",
+            "type": "integer"
+          },
+          "currency": {
+            "enum": [
+              "usd"
+            ],
+            "title": "Currency",
+            "type": "string"
+          },
+          "is_connect_ready": {
+            "title": "Is Connect Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accrued_cents",
+          "pending_payout_cents",
+          "submitted_cents",
+          "paid_cents",
+          "minimum_payout_cents",
+          "currency",
+          "is_connect_ready"
+        ],
+        "title": "CreatorEarningsResponse",
         "type": "object"
       },
       "CreditBalanceResponse": {
@@ -4489,42 +4660,53 @@
             "type": "integer"
           },
           "status": {
+            "enum": [
+              "draft",
+              "fulfilled",
+              "refunded",
+              "disputed",
+              "cancelled",
+              "failed"
+            ],
             "title": "Status",
             "type": "string"
           },
-          "stripe_checkout_session_id": {
+          "purchase_flow": {
             "anyOf": [
               {
+                "enum": [
+                  "free",
+                  "credits"
+                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Stripe Checkout Session Id"
+            "title": "Purchase Flow"
           },
-          "stripe_payment_intent_id": {
+          "balance_before_cents": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Stripe Payment Intent Id"
+            "title": "Balance Before Cents"
           },
-          "transferred_at": {
+          "balance_after_cents": {
             "anyOf": [
               {
-                "format": "date-time",
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Transferred At"
+            "title": "Balance After Cents"
           }
         },
         "required": [
@@ -6729,6 +6911,75 @@
         "tags": [
           "admin-courses"
         ]
+      }
+    },
+    "/v1/admin/payments/cash-out": {
+      "post": {
+        "operationId": "admin_create_cash_out",
+        "summary": "Admin-triggered cash-out for a seller",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCashOutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashOutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/admin/reports": {
@@ -9586,6 +9837,85 @@
         ]
       }
     },
+    "/v1/courses/{course_id}/purchase": {
+      "post": {
+        "operationId": "purchase_course",
+        "summary": "Purchase a course using credits",
+        "tags": [
+          "courses"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Course Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoursePurchaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Purchased",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoursePurchaseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/courses/{course_id}/review-feedback": {
       "get": {
         "description": "Return the latest review feedback for this course (owner-only).",
@@ -11068,6 +11398,75 @@
         ]
       }
     },
+    "/v1/payments/cash-out": {
+      "post": {
+        "operationId": "create_cash_out",
+        "summary": "Request a cash-out of accrued creator earnings",
+        "tags": [
+          "payments"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashOutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashOutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/payments/connect-onboarding-sessions": {
       "post": {
         "description": "Create a Stripe Connect account and return an onboarding link.\n\nUses the authenticated agent's user for the Stripe Connect account.\nRefresh and return URLs come from server configuration.",
@@ -11148,9 +11547,13 @@
         ]
       }
     },
-    "/v1/payments/course-checkouts": {
-      "post": {
-        "operationId": "create_course_checkout",
+    "/v1/payments/creator-earnings": {
+      "get": {
+        "operationId": "get_creator_earnings",
+        "summary": "Get creator earnings summary",
+        "tags": [
+          "payments"
+        ],
         "parameters": [
           {
             "in": "header",
@@ -11169,52 +11572,38 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CourseCheckoutRequest"
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorEarningsResponse"
+                }
               }
             }
           },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CourseCheckoutResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
           "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            },
-            "description": "Unauthorized"
+            }
           },
           "422": {
+            "description": "Validation or domain error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            },
-            "description": "Validation or domain error"
+            }
           }
-        },
-        "summary": "Create course checkout",
-        "tags": [
-          "payments"
-        ]
+        }
       }
     },
     "/v1/payments/orders/{order_id}": {

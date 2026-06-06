@@ -9,6 +9,8 @@ from uuid import UUID
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
+    CoursePurchaseRequest,
+    CoursePurchaseResponse,
     CreateCourseRequest,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionRequest,
@@ -141,4 +143,34 @@ class _CoursesCoreMixin(_CoursesResourceBase):
             self._http,
             course_id=course_id,
             version_id=version_id,
+        )
+
+    def purchase(
+        self,
+        *,
+        course_id: str | UUID,
+        expected_price_cents: int | None = None,
+        idempotency_key: str | None = None,
+    ) -> CoursePurchaseResponse:
+        """Purchase a course using credits.
+
+        Args:
+            course_id: The course to purchase.
+            expected_price_cents: Optional price guard to reject
+                if the price changed since the caller last checked.
+            idempotency_key: Optional idempotency key for safe
+                retries.
+
+        Returns:
+            Purchase result with order, balance change, and
+            entitlement status.
+        """
+        body = CoursePurchaseRequest(
+            expected_price_cents=expected_price_cents,
+            idempotency_key=idempotency_key,
+        )
+        return operations.purchase_course(
+            self._http,
+            course_id=course_id,
+            body=body,
         )

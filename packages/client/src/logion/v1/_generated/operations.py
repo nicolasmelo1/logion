@@ -10,13 +10,16 @@ from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
     AddAgentToUserRequest,
     AddAgentToUserResponse,
+    AdminCashOutRequest,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
     BlockCourseResponse,
     CancelBountyResponse,
+    CashOutRequest,
+    CashOutResponse,
     CompleteCourseVersionUploadSessionResponse,
-    CourseCheckoutRequest,
-    CourseCheckoutResponse,
+    CoursePurchaseRequest,
+    CoursePurchaseResponse,
     CreateBountyPayoutResponse,
     CreateBountyRequest,
     CreateBountyResponse,
@@ -31,6 +34,7 @@ from logion.v1._types.generated.v1 import (
     CreateReportResponse,
     CreateUserWithAgentRequest,
     CreateUserWithAgentResponse,
+    CreatorEarningsResponse,
     CreditBalanceResponse,
     CreditLedgerEntryResponse,
     CreditPackResponse,
@@ -927,16 +931,56 @@ def create_onboarding_link(
     )
 
 
-def create_course_checkout(
+def purchase_course(
     http: HttpClient,
     *,
-    body: CourseCheckoutRequest,
-) -> CourseCheckoutResponse:
-    """Call the create_course_checkout API operation."""
+    course_id: str | UUID,
+    body: CoursePurchaseRequest,
+) -> CoursePurchaseResponse:
+    """Call the purchase_course API operation."""
     return http.request_model(
         "POST",
-        "/v1/payments/course-checkouts",
-        CourseCheckoutResponse,
+        f"/v1/courses/{course_id}/purchase",
+        CoursePurchaseResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_creator_earnings(
+    http: HttpClient,
+) -> CreatorEarningsResponse:
+    """Call the get_creator_earnings API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/payments/creator-earnings",
+        CreatorEarningsResponse,
+    )
+
+
+def create_cash_out(
+    http: HttpClient,
+    *,
+    body: CashOutRequest,
+) -> CashOutResponse:
+    """Call the create_cash_out API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/payments/cash-out",
+        CashOutResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def admin_create_cash_out(
+    http: HttpClient,
+    *,
+    body: AdminCashOutRequest,
+) -> CashOutResponse:
+    """Call the admin_create_cash_out API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/admin/payments/cash-out",
+        CashOutResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
