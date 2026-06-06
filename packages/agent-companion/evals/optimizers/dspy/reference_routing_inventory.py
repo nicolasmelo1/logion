@@ -7,7 +7,7 @@ optional optimisation dependency.
 
 from __future__ import annotations
 
-# Single source of truth for the 9-class output enum.  The Literal
+# Single source of truth for the 10-class output enum.  The Literal
 # in ``reference_routing.py`` (which requires dspy) MUST match this
 # tuple exactly; ``test_reference_routing.py`` asserts the parity.
 REFERENCE_NAMES: tuple[str, ...] = (
@@ -15,9 +15,10 @@ REFERENCE_NAMES: tuple[str, ...] = (
     "creator-course-management",
     "account-and-identity",
     "notifications-and-reports",
-    "payments-and-checkout",
+    "credits-and-payments",
     "bounties",
     "course-review-queue",
     "admin-operations",
     "troubleshooting",
+    "referrals",
 )

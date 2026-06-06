@@ -42,7 +42,7 @@ EXPECTED_REFERENCES = {
     f"{BUNDLE_KIND}-{VERSION}/references/course-review-queue.md",
     f"{BUNDLE_KIND}-{VERSION}/references/creator-course-management.md",
     f"{BUNDLE_KIND}-{VERSION}/references/notifications-and-reports.md",
-    f"{BUNDLE_KIND}-{VERSION}/references/payments-and-checkout.md",
+    f"{BUNDLE_KIND}-{VERSION}/references/credits-and-payments.md",
     f"{BUNDLE_KIND}-{VERSION}/references/troubleshooting.md",
 }
 

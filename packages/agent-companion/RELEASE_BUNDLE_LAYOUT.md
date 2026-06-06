@@ -119,7 +119,11 @@ Schema (schema_version: 1):
   },
   "safety": {
     "requires_confirmation": [
-      "paid_checkout",
+      "spend_credits",
+      "top_up_credits",
+      "fund_bounty",
+      "share_referral_link",
+      "creator_cash_out",
       "install_new_capability",
       "update_paid_capability",
       "permission_expansion",

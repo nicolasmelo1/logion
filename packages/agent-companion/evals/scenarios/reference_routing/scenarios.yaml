@@ -1,22 +1,24 @@
 # Gold scenarios for the ReferenceRoutingSignature.
 #
 # Each scenario maps a user prompt + installed-capability inventory +
-# recall band to exactly one of the 9 canonical classes:
+# recall band to exactly one of the 10 canonical classes:
 #   none | creator-course-management | account-and-identity |
-#   notifications-and-reports | payments-and-checkout | bounties |
-#   course-review-queue | admin-operations | troubleshooting
+#   notifications-and-reports | credits-and-payments | bounties |
+#   course-review-queue | admin-operations | troubleshooting |
+#   referrals
 #
 # Distribution targets (see plan §6):
 #   none                          : 12
 #   creator-course-management     :  4
 #   account-and-identity          :  3
 #   notifications-and-reports     :  3
-#   payments-and-checkout         :  4
+#   credits-and-payments          :  4
 #   bounties                      :  4
 #   course-review-queue           :  3
 #   admin-operations              :  4
-#   troubleshooting               :  3
-# total: 40
+#   troubleshooting                :  3
+#   referrals                     :  3
+# total: 43
 
 scenarios:
 
@@ -191,35 +193,35 @@ scenarios:
     why: "`logion reports create` — user-directed moderation."
 
   # ----------------------------------------------------------------
-  # payments-and-checkout
+  # credits-and-payments
   # ----------------------------------------------------------------
 
-  - id: ref-route-payments-order-status-wait
-    prompt: "Wait until order ORD-77 settles."
+  - id: ref-route-credits-top-up-wait
+    prompt: "Wait until top-up TOP-77 settles."
     installed_capabilities: []
     current_recall_band: NONE
-    gold_reference: payments-and-checkout
-    why: "`logion payments orders wait` — not on primary path."
+    gold_reference: credits-and-payments
+    why: "`logion credits top-ups wait` — not on primary path."
 
-  - id: ref-route-payments-order-status-get
-    prompt: "What's the status of order ORD-77?"
+  - id: ref-route-credits-top-up-get
+    prompt: "What's the status of top-up TOP-77?"
     installed_capabilities: []
     current_recall_band: NONE
-    gold_reference: payments-and-checkout
-    why: "`logion payments orders get` — order inspection."
+    gold_reference: credits-and-payments
+    why: "`logion credits top-ups get` — top-up inspection."
 
   - id: ref-route-payments-seller-readiness
     prompt: "Am I ready to start selling courses?"
     installed_capabilities: []
     current_recall_band: NONE
-    gold_reference: payments-and-checkout
+    gold_reference: credits-and-payments
     why: "`logion payments seller-readiness` — seller side."
 
   - id: ref-route-payments-onboarding-link
     prompt: "Get me the Stripe onboarding link for my seller account."
     installed_capabilities: []
     current_recall_band: NONE
-    gold_reference: payments-and-checkout
+    gold_reference: credits-and-payments
     why: "`logion payments onboarding-link`."
 
   # ----------------------------------------------------------------
@@ -335,3 +337,28 @@ scenarios:
     current_recall_band: NONE
     gold_reference: troubleshooting
     why: "Gated-group discovery is documented in troubleshooting."
+
+  # ----------------------------------------------------------------
+  # referrals — referral code, link, stats, attributions
+  # ----------------------------------------------------------------
+
+  - id: ref-route-referrals-show-code
+    prompt: "What's my referral code?"
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: referrals
+    why: "`logion referrals code` — referral code lookup."
+
+  - id: ref-route-referrals-generate-link
+    prompt: "Generate a referral link for course resume.ats."
+    installed_capabilities: [resume.ats]
+    current_recall_band: LOW
+    gold_reference: referrals
+    why: "`logion referrals link` — link generation for a course."
+
+  - id: ref-route-referrals-stats
+    prompt: "Show me my referral stats and attributions."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: referrals
+    why: "`logion referrals stats` / `logion referrals attributions` — referral analytics."

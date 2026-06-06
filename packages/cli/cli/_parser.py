@@ -20,6 +20,9 @@ from cli.commands import (
     reports,
     skills,
 )
+from cli.commands import (
+    credits as credits_mod,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     notifications.register(subparsers)
     courses.register(subparsers)
     payments.register(subparsers)
+    credits_mod.register(subparsers)
     reports.register(subparsers)
     course_reviews.register(subparsers)
     admin.register(subparsers)

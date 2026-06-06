@@ -1,15 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""Payments resource — checkout and order management."""
+"""Payments resource — seller onboarding and order management."""
 
 from __future__ import annotations
-
-from uuid import UUID
 
 from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
-    CourseCheckoutRequest,
-    CourseCheckoutResponse,
     OnboardingLinkResponse,
     OrderResponse,
     SellerReadinessResponse,
@@ -17,36 +13,10 @@ from logion.v1._types.generated.v1 import (
 
 
 class PaymentsResource:
-    """Manage payments, checkouts, and seller onboarding."""
+    """Manage payments, seller onboarding, and order retrieval."""
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
-
-    def create_checkout(
-        self,
-        *,
-        course_id: str | UUID,
-        price_cents: int | None = None,
-    ) -> CourseCheckoutResponse:
-        """Create a checkout session for a course purchase.
-
-        Args:
-            course_id: The course to purchase (UUID).
-            price_cents: Expected price in cents. Omit or pass None
-                to skip price validation and route based on the
-                course's stored price. Pass an explicit value to
-                verify it matches before proceeding.
-
-        Returns:
-            Checkout session details including payment URL.
-        """
-        body = CourseCheckoutRequest(
-            course_id=(
-                course_id if isinstance(course_id, UUID) else UUID(course_id)
-            ),
-            price_cents=price_cents,
-        )
-        return operations.create_course_checkout(self._http, body=body)
 
     def get_order(self, *, order_id: str) -> OrderResponse:
         """Get order details by ID.

@@ -153,7 +153,7 @@ evals/optimizers/dspy/
 ├── __init__.py
 ├── signatures.py                  ← DecisionPolicySignature (thin SKILL.md pointer)
 ├── metrics.py                     ← Composite decision-policy metric + token factor
-├── reference_routing.py           ← ReferenceRoutingSignature (9-class classifier)
+├── reference_routing.py           ← ReferenceRoutingSignature (10-class classifier)
 ├── reference_routing_inventory.py ← Canonical list of reference names (dspy-free)
 ├── reference_routing_metric.py    ← Per-example reference-routing metric
 ├── split_scenarios.py             ← Deterministic train/dev/test splitter

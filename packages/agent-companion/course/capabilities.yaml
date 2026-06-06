@@ -138,8 +138,9 @@ secrets:
     - LOGION_RUN_LIVE_LLM_EVALS
 
 # Per-action approval lives in SKILL.md's
-# ``safety.requires_confirmation`` enum (paid_checkout,
-# install_new_capability, update_paid_capability,
+# ``safety.requires_confirmation`` enum (spend_credits,
+# top_up_credits, fund_bounty, share_referral_link,
+# creator_cash_out, install_new_capability, update_paid_capability,
 # permission_expansion, publish_or_unpublish_course,
 # upload_new_course_version, change_course_price).  A blanket
 # ``required: true`` here would force approval on every routine

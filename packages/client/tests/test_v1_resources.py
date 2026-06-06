@@ -16,7 +16,6 @@ from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._types.generated.v1 import (
     AddAgentToUserResponse,
-    CourseCheckoutResponse,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
     CreateUserWithAgentResponse,
@@ -360,23 +359,6 @@ class TestIdentityResource:
 
 
 class TestPaymentsResource:
-    def test_create_checkout(self) -> None:
-        """create_checkout() builds CourseCheckoutRequest
-        with course_id."""
-        http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CourseCheckoutResponse)
-        http.request_model.return_value = mock_resp
-        resource = PaymentsResource(http)
-        resource.create_checkout(
-            course_id="123e4567-e89b-12d3-a456-426614174000"
-        )
-        http.request_model.assert_called_once()
-        call_args = http.request_model.call_args
-        assert call_args.args[0] == "POST"
-        assert "/v1/payments/course-checkouts" in call_args.args[1]
-        json_body = call_args.kwargs["json"]
-        assert json_body["course_id"] == "123e4567-e89b-12d3-a456-426614174000"
-
     def test_get_order(self) -> None:
         """get_order() calls GET."""
         http = MagicMock(spec=HttpClient)

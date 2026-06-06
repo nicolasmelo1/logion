@@ -8,10 +8,8 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import (
-    handle_checkout,
     handle_onboarding_link,
     handle_orders_get,
-    handle_payments_orders_wait,
     handle_seller_readiness,
 )
 
@@ -41,23 +39,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     onboarding_link.set_defaults(handler=handle_onboarding_link)
 
-    checkout = sub.add_parser(
-        "checkout",
-        help="Create a checkout session for a course",
-        parents=[COMMON_PARSER],
-    )
-    checkout.add_argument("course_id", metavar="COURSE_ID")
-    checkout.add_argument(
-        "--price-cents",
-        type=int,
-        default=None,
-        help=(
-            "Expected price in cents. Omit to skip price validation "
-            "and route based on the course's stored price."
-        ),
-    )
-    checkout.set_defaults(handler=handle_checkout)
-
     orders = sub.add_parser("orders", help="Manage orders")
     orders_sub = orders.add_subparsers(
         dest="payments_orders_command",
@@ -70,24 +51,3 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     orders_get.add_argument("order_id", metavar="ORDER_ID")
     orders_get.set_defaults(handler=handle_orders_get)
-
-    wait = orders_sub.add_parser(
-        "wait",
-        help="Poll until an order reaches a terminal state",
-        parents=[COMMON_PARSER],
-    )
-    wait.add_argument("order_id", metavar="ORDER_ID")
-    wait.add_argument(
-        "--wait-timeout",
-        dest="timeout",
-        type=int,
-        default=120,
-        help="Max seconds to poll (capped at 600).",
-    )
-    wait.add_argument(
-        "--interval",
-        type=int,
-        default=5,
-        help="Seconds between polls.",
-    )
-    wait.set_defaults(handler=handle_payments_orders_wait)

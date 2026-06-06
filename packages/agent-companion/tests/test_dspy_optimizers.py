@@ -695,7 +695,7 @@ def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
 
     trace = _build_trace_from_prediction(pred, gold)
 
-    assert "logion_payments_checkout_start" not in trace.tools_called()
+    assert "logion_credits_top_up" not in trace.tools_called()
     assert trace.selected_course_ids == ("paid-course",)
     assert "confirm" in trace.final_answer.lower()
 

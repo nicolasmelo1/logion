@@ -23,11 +23,12 @@ ReferenceName = Literal[
     "creator-course-management",
     "account-and-identity",
     "notifications-and-reports",
-    "payments-and-checkout",
+    "credits-and-payments",
     "bounties",
     "course-review-queue",
     "admin-operations",
     "troubleshooting",
+    "referrals",
 ]
 
 

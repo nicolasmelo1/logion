@@ -31,7 +31,6 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_credit_top_up": "client.v1.credits.get_top_up",
     # Payments
     "create_onboarding_link": ("client.v1.payments.create_onboarding_link"),
-    "create_course_checkout": ("client.v1.payments.create_checkout"),
     "get_order": "client.v1.payments.get_order",
     "get_seller_readiness": ("client.v1.payments.get_seller_readiness"),
     # Bounties
@@ -74,4 +73,8 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "dismiss_report": "client.v1.admin.dismiss_report",
 }
 
-UNSUPPORTED_OPERATIONS: dict[str, str] = {}
+UNSUPPORTED_OPERATIONS: dict[str, str] = {
+    "create_course_checkout": (
+        "removed: per-course checkout flow decommissioned"
+    ),
+}
