@@ -18,7 +18,7 @@ class _AdminPaymentsMixin(_AdminResourceBase):
     def create_cash_out(
         self,
         *,
-        seller_user_id: UUID,
+        seller_user_id: str | UUID,
         minimum_payout_cents: int | None = None,
         dry_run: bool = False,
     ) -> CashOutResponse:
@@ -33,7 +33,7 @@ class _AdminPaymentsMixin(_AdminResourceBase):
             Cash-out result with status and transfer details.
         """
         body = AdminCashOutRequest(
-            seller_user_id=seller_user_id,
+            seller_user_id=UUID(str(seller_user_id)),
             minimum_payout_cents=minimum_payout_cents,
             dry_run=dry_run,
         )

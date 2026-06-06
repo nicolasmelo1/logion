@@ -203,9 +203,7 @@ def handle_credits_top_ups_wait(args: argparse.Namespace) -> int:
         return handle_error(exc)
     finally:
         client.close()
-    return resolve_wait(
-        config, last_payload, time.monotonic(), args.top_up_id, timeout
-    )
+    return resolve_wait(config, last_payload, start, args.top_up_id, timeout)
 
 
 def _render_ledger(result: object) -> None:

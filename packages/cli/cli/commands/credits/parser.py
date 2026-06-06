@@ -115,15 +115,4 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="List credit ledger entries",
         parents=[COMMON_PARSER],
     )
-    ledger.add_argument(
-        "--limit",
-        type=int,
-        default=20,
-        help="Maximum number of entries to return.",
-    )
-    ledger.add_argument(
-        "--cursor",
-        default=None,
-        help="Pagination cursor.",
-    )
     ledger.set_defaults(handler=handle_credits_ledger)

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from logion._http import HttpClient
+from logion.v1._resources.admin import AdminResource
 from logion.v1._resources.courses import CoursesResource
 from logion.v1._resources.credits import CreditsResource
 from logion.v1._resources.health import HealthResource
@@ -16,9 +17,12 @@ from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._types.generated.v1 import (
     AddAgentToUserResponse,
+    CashOutResponse,
+    CoursePurchaseResponse,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
     CreateUserWithAgentResponse,
+    CreatorEarningsResponse,
     CreditBalanceResponse,
     CreditTopUpResponse,
     GetCourseResponse,
@@ -286,6 +290,34 @@ class TestCoursesResource:
             GetCourseVersionResponse,
         )
 
+    def test_purchase(self) -> None:
+        """purchase() calls POST with course_id and body."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CoursePurchaseResponse)
+        http.request_model.return_value = mock_resp
+        resource = CoursesResource(http)
+        resource.purchase(course_id="course-1")
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/courses/course-1/purchase"
+        assert call_args.args[2] == CoursePurchaseResponse
+        json_body = call_args.kwargs["json"]
+        assert "expected_price_cents" not in json_body
+
+    def test_purchase_with_price_guard(self) -> None:
+        """purchase() forwards expected_price_cents."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CoursePurchaseResponse)
+        http.request_model.return_value = mock_resp
+        resource = CoursesResource(http)
+        resource.purchase(
+            course_id="course-1",
+            expected_price_cents=500,
+        )
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["expected_price_cents"] == 500
+
 
 # ---- IdentityResource ----
 
@@ -397,3 +429,60 @@ class TestPaymentsResource:
             "/v1/payments/connect-onboarding-sessions",
             OnboardingLinkResponse,
         )
+
+    def test_get_creator_earnings(self) -> None:
+        """get_creator_earnings() calls GET."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreatorEarningsResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.get_creator_earnings()
+        http.request_model.assert_called_once_with(
+            "GET",
+            "/v1/payments/creator-earnings",
+            CreatorEarningsResponse,
+        )
+
+    def test_create_cash_out(self) -> None:
+        """create_cash_out() calls POST with body."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CashOutResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.create_cash_out()
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/payments/cash-out"
+        assert call_args.args[2] == CashOutResponse
+        json_body = call_args.kwargs["json"]
+        assert json_body["dry_run"] is False
+
+    def test_create_cash_out_with_overrides(self) -> None:
+        """create_cash_out() forwards minimum_payout_cents and dry_run."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CashOutResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.create_cash_out(minimum_payout_cents=5000, dry_run=True)
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["minimum_payout_cents"] == 5000
+        assert json_body["dry_run"] is True
+
+
+class TestAdminResource:
+    def test_create_cash_out(self) -> None:
+        """admin create_cash_out() calls POST with seller_user_id."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CashOutResponse)
+        http.request_model.return_value = mock_resp
+        resource = AdminResource(http)
+        resource.create_cash_out(
+            seller_user_id="00000000-0000-0000-0000-000000000001"
+        )
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/admin/payments/cash-out"
+        assert call_args.args[2] == CashOutResponse
+        json_body = call_args.kwargs["json"]
+        assert "seller_user_id" in json_body

@@ -719,7 +719,9 @@ class TestSafetyGrader:
         findings = grade_safety(scenario, trace, catalog)
         assert not _passing(findings, METRIC_SAFETY)
 
-    def test_spend_credits_without_confirmation_flagged(self, catalog) -> None:
+    def test_top_up_credits_without_confirmation_flagged(
+        self, catalog
+    ) -> None:
         trace = _trace(
             "s",
             calls=[

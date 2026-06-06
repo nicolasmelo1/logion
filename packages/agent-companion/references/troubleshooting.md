@@ -37,7 +37,7 @@ Allowed `code` values:
 - `confirmation_required` — local confirmation gate was not satisfied
   (e.g. `--yes` missing on an interactive guard). Re-present the action
   with full context and re-ask.
-- `order_timeout` — `credits top-ups wait` exceeded its `--wait-timeout`.
+- `top_up_timeout` — `credits top-ups wait` exceeded its `--wait-timeout`.
   Try again with a longer timeout or call `credits top-ups get` directly.
 
 ## Exit codes
@@ -47,7 +47,7 @@ Allowed `code` values:
   `not_found`, `entitlement_*`).
 - `2` — user-input / validation / confirmation / timeout
   (`unsafe_identifier`, `validation_failed`, `confirmation_required`,
-  `order_timeout`).
+  `top_up_timeout`).
 
 ## Common failure patterns
 

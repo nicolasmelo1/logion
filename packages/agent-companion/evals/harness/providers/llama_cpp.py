@@ -1132,11 +1132,19 @@ def execute_synthetic_tool(  # noqa: C901
             "ok": True,
             "url": "https://payments.example.test/onboarding/session",
         }
+    if call.tool == "logion_credits_top_up":
+        pack_code = str(call.args.get("pack_code", ""))
+        return {
+            "ok": True,
+            "top_up_id": "topup-synthetic-001",
+            "pack_code": pack_code,
+            "status": "pending",
+            "checkout_url": "https://checkout.stripe.test/session/topup-synthetic",
+        }
     if call.tool in {
         "logion_courses_get",
         "logion_skills_install",
         "logion_skills_update",
-        "logion_credits_top_up",
     }:
         course_id = str(call.args.get("course_id", ""))
         course = catalog.by_id(course_id)

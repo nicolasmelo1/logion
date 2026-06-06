@@ -19,6 +19,7 @@ TERMINAL_STATUSES = frozenset({
     "expired",
     "cancelled",
     "disputed",
+    "reversed",
 })
 
 

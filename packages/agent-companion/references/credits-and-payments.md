@@ -36,20 +36,20 @@ automatically.
 logion credits top-ups get TOP_UP_ID --json
 ```
 
-Returns top-up status (`pending` / `completed` / `failed` / `expired`).
+Returns top-up status (`pending` / `paid` / `failed` / `expired` / `cancelled` / `disputed` / `reversed`).
 
 ```bash
 logion credits top-ups wait TOP_UP_ID
 ```
 
-Polls until the top-up reaches a terminal state (`completed`, `failed`, or
-`expired`). Use this after the user completes checkout so you can confirm
+Polls until the top-up reaches a terminal state (`paid`, `failed`,
+`expired`, `cancelled`, `disputed`, or `reversed`). Use this after the user completes checkout so you can confirm
 the new balance.
 
 ## Credit ledger
 
 ```bash
-logion credits ledger --limit 20 --json
+logion credits ledger --json
 ```
 
 Returns recent ledger entries (credits in, credits out, running balance).
