@@ -56,7 +56,7 @@ def order_to_payload(result: Any) -> dict[str, Any]:
         or raw.get("transferred_at")
     )
     payload: dict[str, Any] = {
-        "order_id": raw.get("id"),
+        "order_id": raw.get("order_id") or raw.get("id"),
         "status": raw.get("status"),
         "course_id": raw.get("course_id"),
         "amount_cents": raw.get("amount_cents"),

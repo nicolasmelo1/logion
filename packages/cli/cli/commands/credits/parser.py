@@ -49,6 +49,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Amount in cents for the credit top-up.",
     )
     top_up.add_argument(
+        "--yes",
+        action="store_true",
+        help="Confirm creating a Stripe Checkout session for this top-up.",
+    )
+    top_up.add_argument(
         "--wait",
         action="store_true",
         default=False,

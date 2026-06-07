@@ -11,6 +11,7 @@ from uuid import UUID
 import pytest
 
 from cli._config import CliConfig
+from cli.commands.payments._orders_helpers import order_to_payload
 from cli.commands.payments.handlers import handle_orders_get
 from logion.v1._types.generated.v1 import OrderResponse
 
@@ -162,6 +163,17 @@ def test_orders_get_includes_credit_purchase_fields_when_fulfilled(
     assert payload["data"]["balance_before_cents"] == 10000
     assert payload["data"]["balance_after_cents"] == 5000
     assert payload["data"]["settled_at"] == "2026-05-28T12:00:00Z"
+
+
+def test_order_to_payload_prefers_legacy_order_id_when_present() -> None:
+    """order_to_payload keeps compatibility with order_id-only payloads."""
+    payload = order_to_payload({
+        "order_id": "legacy-order-id",
+        "id": None,
+        "status": "fulfilled",
+    })
+
+    assert payload["order_id"] == "legacy-order-id"
 
 
 def test_orders_get_unsafe_order_id_returns_unsafe_identifier_error(

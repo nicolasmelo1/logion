@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from cli._config import CliConfig, resolve_config_from_args
+from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error
 from cli._output import emit_json, to_data
@@ -72,6 +73,12 @@ def handle_credits_balance(args: argparse.Namespace) -> int:
 
 def handle_credits_top_up(args: argparse.Namespace) -> int:
     """Execute the credits top-up command."""
+    refusal = require_yes(
+        args.yes,
+        "create this credit top-up checkout session",
+    )
+    if refusal is not None:
+        return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
