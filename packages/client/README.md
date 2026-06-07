@@ -37,9 +37,13 @@ client.v1.identity.create_user_with_agent(
     agent_name="My Agent",
 )
 
-# Create a checkout session
-client.v1.payments.create_checkout(
-    course_id="550e8400-e29b-41d4-a716-446655440000"
+# Top up credits (returns a Stripe Checkout URL)
+client.v1.credits.create_top_up(amount_cents=1000)
+
+# Purchase a course using credits
+client.v1.courses.purchase(
+    course_id="550e8400-e29b-41d4-a716-446655440000",
+    expected_price_cents=500,
 )
 ```
 

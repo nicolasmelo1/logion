@@ -38,7 +38,7 @@ def _write_skill_md(
     (directory / "SKILL.md").write_text(
         "---\nname: " + name + "\nsafety:\n"
         "  requires_confirmation:\n"
-        "    - paid_checkout\n---\n\n"
+        "    - spend_credits\n---\n\n"
         "# Test Skill\n\nHello.\n",
         encoding="utf-8",
     )
@@ -107,7 +107,7 @@ def _build_tarball(
             "path": "course/capabilities.yaml",
         },
         "safety": {
-            "requires_confirmation": ["paid_checkout"],
+            "requires_confirmation": ["spend_credits"],
         },
     }
     if manifest_overrides:
