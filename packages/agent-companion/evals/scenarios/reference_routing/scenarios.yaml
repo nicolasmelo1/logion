@@ -54,12 +54,12 @@ scenarios:
     gold_reference: none
     why: "`logion courses get` is documented in SKILL.md."
 
-  - id: ref-route-none-paid-checkout-simple
+  - id: ref-route-none-credit-purchase-simple
     prompt: "Buy infra.company-ops."
     installed_capabilities: []
     current_recall_band: NONE
     gold_reference: none
-    why: "Single-shot paid checkout is on SKILL.md's primary path."
+    why: "Single-shot credit purchase is on SKILL.md's primary path."
 
   - id: ref-route-none-skills-install
     prompt: "Install weather.basic."

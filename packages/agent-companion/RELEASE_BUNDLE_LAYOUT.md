@@ -54,7 +54,8 @@ All paths are relative to the top-level directory
 | `references/course-review-queue.md` | stable |
 | `references/creator-course-management.md` | stable |
 | `references/notifications-and-reports.md` | stable |
-| `references/payments-and-checkout.md` | stable |
+| `references/credits-and-payments.md` | stable |
+| `references/referrals.md` | stable |
 | `references/troubleshooting.md` | stable |
 
 **Stability annotations:**

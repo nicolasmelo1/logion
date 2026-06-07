@@ -226,4 +226,16 @@ def register_purchase(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="Price guard: fail if the course price has changed.",
     )
+    purchase.add_argument(
+        "--idempotency-key",
+        dest="idempotency_key",
+        default=None,
+        help="Optional idempotency key to safely retry a purchase.",
+    )
+    purchase.add_argument(
+        "--yes",
+        dest="yes",
+        action="store_true",
+        help="Confirm spending credits to purchase this course.",
+    )
     purchase.set_defaults(handler=handle_purchase)

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Stable handler exports for courses commands."""
 
+from ._purchase import handle_purchase
 from .capabilities import (
     handle_courses_capabilities_print,
     handle_courses_capabilities_validate,
@@ -8,7 +9,6 @@ from .capabilities import (
 from .mutations import (
     handle_create,
     handle_get,
-    handle_purchase,
     handle_update,
 )
 from .publication import (

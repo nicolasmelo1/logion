@@ -135,9 +135,10 @@ logion courses uploads create COURSE_ID --file ... --json
 logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
-logion courses purchase COURSE_ID --expected-price-cents 500 --json
-logion credits top-up --amount 1000 --json
-logion payments cash-out --json
+logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion credits top-up --amount 1000 --yes --json
+logion payments cash-out --yes --json
+logion payments cash-out --dry-run --json
 ```
 
 Creator commands (require explicit approval for destructive actions):
@@ -145,6 +146,23 @@ Creator commands (require explicit approval for destructive actions):
 logion courses capabilities print --bundle-dir ./new-course --json
 logion payments onboarding-link --json
 ```
+
+## Paid course acquisition path
+
+The CLI does not auto-download a paid course after purchase. The concrete
+two-step flow, in order, is:
+
+```bash
+logion courses purchase COURSE_ID --expected-price-cents N --yes --json
+logion skills install --source ./BUNDLE --course-id COURSE_ID \
+  --version-id VERSION_ID --install-source logion-marketplace
+```
+
+Step 1 spends credits and grants entitlement on the server. Step 2 installs
+a local bundle the user has already acquired and marks
+`entitlement_status=active` because `--install-source` is
+`logion-marketplace`. Do not promise an automated search → purchase →
+download → install pipeline; one does not exist in this phase.
 
 ## Course inspection checklist
 

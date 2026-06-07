@@ -56,11 +56,12 @@ packages/agent-companion/
 │   └── capabilities.yaml     ← Logion capability manifest — declares
 │                                env vars, network hosts, filesystem
 │                                paths, and tools this course needs.
-├── references/               ← On-demand reference docs (8 files)
+├── references/               ← On-demand reference docs
 │   ├── creator-course-management.md
 │   ├── account-and-identity.md
 │   ├── notifications-and-reports.md
-│   ├── payments-and-checkout.md
+│   ├── credits-and-payments.md
+│   ├── referrals.md
 │   ├── bounties.md
 │   ├── course-review-queue.md
 │   ├── admin-operations.md

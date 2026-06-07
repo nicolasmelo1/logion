@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 
 from cli._config import resolve_config_from_args
+from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error
 from cli._output import emit, emit_json, to_data
@@ -94,6 +95,10 @@ def handle_creator_earnings(args: argparse.Namespace) -> int:
 
 def handle_cash_out(args: argparse.Namespace) -> int:
     """Execute the payments cash-out command."""
+    if not args.dry_run:
+        refusal = require_yes(args.yes, "initiate a cash-out transfer")
+        if refusal is not None:
+            return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

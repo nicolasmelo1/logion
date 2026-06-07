@@ -16,12 +16,12 @@ sufficient credits before any spend.
 ## Credit top-up
 
 ```bash
-logion credits top-up --amount AMOUNT_CENTS --json
+logion credits top-up --amount AMOUNT_CENTS --yes --json
 ```
 
 Creates a Stripe Checkout session for the given amount in cents. Returns a `top_up_id`
 and `checkout_url`. Surface the URL to the user — do not open or follow it
-automatically.
+automatically. `--yes` is required; the CLI refuses without it.
 
 ```bash
 logion credits top-ups get TOP_UP_ID --json
@@ -36,6 +36,29 @@ logion credits top-ups wait TOP_UP_ID
 Polls until the top-up reaches a terminal state (`paid`, `failed`,
 `expired`, `cancelled`, `disputed`, or `reversed`). Use this after the user completes checkout so you can confirm
 the new balance.
+
+## Spending credits on a course
+
+```bash
+logion courses purchase COURSE_ID --expected-price-cents N --yes --json
+```
+
+Synchronously deducts credits and grants entitlement. `--yes` is required;
+the CLI refuses without it. `--expected-price-cents` is a price guard — the
+purchase fails if the course price changed. Pass `--idempotency-key UUID`
+to make retries safe.
+
+Purchasing does not auto-download the course bundle. To install a course
+the user has already acquired locally, run a separate step:
+
+```bash
+logion skills install --source ./BUNDLE --course-id COURSE_ID \
+  --version-id VERSION_ID --install-source logion-marketplace
+```
+
+`--install-source logion-marketplace` marks the local install as
+entitlement-backed. The CLI does not fetch the bundle for you; never claim
+an end-to-end search → buy → install pipeline.
 
 ## Credit ledger
 
@@ -70,11 +93,14 @@ in conversation history.
 ## Cash out
 
 ```bash
-logion payments cash-out --json
+logion payments cash-out --yes --json
+logion payments cash-out --dry-run --json
 ```
 
 Requests a cash-out of available creator earnings. Optional flags:
-`--minimum-payout-cents N` and `--dry-run`.
+`--minimum-payout-cents N` and `--dry-run`. Non-dry-run cash-outs require
+`--yes`; the CLI refuses to initiate a transfer without it. `--dry-run` may
+run without `--yes`.
 
 ## Safety rules
 
