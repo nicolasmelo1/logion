@@ -47,6 +47,9 @@ jobs:
       - name: Type check
         run: uv run mypy packages/ --ignore-missing-imports
 
+      - name: Dead code
+        run: make dead-code
+
       - name: Tests
         run: uv run pytest packages/ tests/ -m "not integration" --no-header -q
 
