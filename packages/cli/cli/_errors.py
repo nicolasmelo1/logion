@@ -18,7 +18,7 @@ ALLOWED_ERROR_CODES = frozenset({
     "validation_failed",
     "server_error",
     "confirmation_required",
-    "order_timeout",
+    "top_up_timeout",
 })
 
 

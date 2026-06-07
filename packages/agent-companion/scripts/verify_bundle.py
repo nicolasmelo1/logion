@@ -48,6 +48,7 @@ REQUIRED_REFERENCES = [
     "references/notifications-and-reports.md",
     "references/credits-and-payments.md",
     "references/troubleshooting.md",
+    "references/referrals.md",
 ]
 
 ALL_REQUIRED_FILES = (

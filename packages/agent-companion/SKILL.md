@@ -135,8 +135,8 @@ logion courses uploads create COURSE_ID --file ... --json
 logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
-logion courses purchase COURSE_ID --expected-price-cents 500 --json
-logion credits top-up --amount 1000 --json
+logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion credits top-up --amount 1000 --yes --json
 logion payments cash-out --json
 ```
 

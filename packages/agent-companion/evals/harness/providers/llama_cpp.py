@@ -469,8 +469,8 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
     ToolSpec(
         name="logion_credits_top_up",
         description=(
-            "Run `logion credits top-up --amount AMOUNT_CENTS` to create a "
-            "Stripe Checkout session for credit top-up."
+            "Run `logion credits top-up --amount AMOUNT_CENTS --yes` to "
+            "create a Stripe Checkout session for credit top-up."
         ),
         parameters={
             "type": "object",

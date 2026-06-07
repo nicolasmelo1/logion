@@ -226,4 +226,10 @@ def register_purchase(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="Price guard: fail if the course price has changed.",
     )
+    purchase.add_argument(
+        "--yes",
+        action="store_true",
+        default=False,
+        help="Confirm the purchase without prompting.",
+    )
     purchase.set_defaults(handler=handle_purchase)

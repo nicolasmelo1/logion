@@ -7,6 +7,7 @@ import argparse
 import sys
 
 from cli._config import resolve_config_from_args
+from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
 from cli._output import emit, emit_json, to_data
@@ -179,6 +180,12 @@ def handle_purchase(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
     if bad_id is not None:
         return bad_id
+    refusal = require_yes(
+        args.yes,
+        "purchase this course (spends credits)",
+    )
+    if refusal is not None:
+        return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:

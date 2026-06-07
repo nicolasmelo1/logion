@@ -16,7 +16,7 @@ sufficient credits before any spend.
 ## Credit top-up
 
 ```bash
-logion credits top-up --amount AMOUNT_CENTS --json
+logion credits top-up --amount AMOUNT_CENTS --yes --json
 ```
 
 Creates a Stripe Checkout session for the given amount in cents. Returns a `top_up_id`

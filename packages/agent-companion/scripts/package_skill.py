@@ -50,6 +50,7 @@ REQUIRED_FILES = [
     "references/course-review-queue.md",
     "references/admin-operations.md",
     "references/troubleshooting.md",
+    "references/referrals.md",
 ]
 
 # High-confidence secret patterns: always FAIL the check.
@@ -88,6 +89,7 @@ BUNDLE_SKILL_REF_FILES = [
     "references/notifications-and-reports.md",
     "references/credits-and-payments.md",
     "references/troubleshooting.md",
+    "references/referrals.md",
 ]
 
 BUNDLE_FILES: list[tuple[str, Path]] = [

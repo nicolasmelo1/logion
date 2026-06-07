@@ -44,6 +44,7 @@ EXPECTED_REFERENCES = {
     f"{BUNDLE_KIND}-{VERSION}/references/notifications-and-reports.md",
     f"{BUNDLE_KIND}-{VERSION}/references/credits-and-payments.md",
     f"{BUNDLE_KIND}-{VERSION}/references/troubleshooting.md",
+    f"{BUNDLE_KIND}-{VERSION}/references/referrals.md",
 }
 
 FORBIDDEN_PATTERNS = [
@@ -357,7 +358,7 @@ class TestReleaseBundleManifestSchema:
         # references must be a list with correct structure
         refs = manifest["references"]
         assert isinstance(refs, list)
-        assert len(refs) == 8, f"Expected 8 references, got {len(refs)}"
+        assert len(refs) == 9, f"Expected 9 references, got {len(refs)}"
         for ref in refs:
             assert "path" in ref, f"Reference missing 'path': {ref}"
             assert "sha256" in ref, f"Reference missing 'sha256': {ref}"

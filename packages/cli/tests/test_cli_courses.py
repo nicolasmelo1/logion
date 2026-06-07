@@ -80,6 +80,10 @@ class FakeCoursesResource:
         self.last_call = ("get_review_feedback", kwargs)
         return {"feedback": "Looks good"}
 
+    def purchase(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("purchase", kwargs)
+        return {"order_id": "ord-1", "status": "completed"}
+
 
 class FakeV1Namespace:
     def __init__(self, courses: FakeCoursesResource) -> None:
@@ -1635,3 +1639,40 @@ def test_courses_feedback_capability_feedback_json(
     assert (
         inner["capability_feedback"][0]["reason_code"] == "tool_not_declared"
     )
+
+
+def test_courses_purchase_refuses_without_yes(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """courses purchase refuses to spend credits without --yes."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "purchase",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--json",
+    ])
+    assert code == 2
+    assert "--yes" in capsys.readouterr().err
+
+
+def test_courses_purchase_succeeds_with_yes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses purchase --yes forwards course_id and returns order."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "purchase",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "--yes",
+        "--json",
+    ])
+    assert code == 0
+    assert courses.last_call[0] == "purchase"
+    cid = courses.last_call[1]["course_id"]
+    assert cid == "550e8400-e29b-41d4-a716-446655440000"
