@@ -1715,6 +1715,8 @@ def test_courses_purchase_forwards_idempotency_key(
         "courses",
         "purchase",
         _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
         "--yes",
         "--idempotency-key",
         "idem-abc",
@@ -1724,6 +1726,41 @@ def test_courses_purchase_forwards_idempotency_key(
     assert code == 0
     assert courses.last_call[1]["idempotency_key"] == "idem-abc"
     capsys.readouterr()
+
+
+def test_courses_purchase_requires_expected_price(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Purchase cannot authorize an unknown course price."""
+    with pytest.raises(SystemExit) as exc_info:
+        main(["courses", "purchase", _PURCHASE_COURSE_ID, "--yes"])
+    assert exc_info.value.code == 2
+    assert "--expected-price-cents" in capsys.readouterr().err
+
+
+def test_courses_purchase_insufficient_credits_suggests_top_up(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Insufficient-credit failures include an actionable top-up hint."""
+    courses = FakeCoursesResource()
+    courses.purchase = lambda **_: (_ for _ in ()).throw(
+        APIError(422, "Insufficient credit balance")
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+        "--yes",
+    ])
+    assert code == 1
+    error = capsys.readouterr().err
+    assert "logion credits balance" in error
+    assert "logion credits top-up" in error
 
 
 def test_courses_purchase_human_renders_balance_transition(
@@ -1739,6 +1776,8 @@ def test_courses_purchase_human_renders_balance_transition(
         "courses",
         "purchase",
         _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
         "--yes",
     ])
 

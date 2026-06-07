@@ -74,6 +74,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Confirm initiating a non-dry-run cash-out transfer.",
     )
+    cash_out.add_argument(
+        "--expected-gross-payout-cents",
+        dest="expected_gross_payout_cents",
+        type=int,
+        default=None,
+        help="Required for execution; must match the server dry-run preview.",
+    )
     cash_out.set_defaults(handler=handle_cash_out)
 
     orders = sub.add_parser("orders", help="Manage orders")

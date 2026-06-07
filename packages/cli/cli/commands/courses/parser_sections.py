@@ -223,7 +223,7 @@ def register_purchase(subparsers: argparse._SubParsersAction) -> None:
         "--expected-price-cents",
         dest="expected_price_cents",
         type=int,
-        default=None,
+        required=True,
         help="Price guard: fail if the course price has changed.",
     )
     purchase.add_argument(

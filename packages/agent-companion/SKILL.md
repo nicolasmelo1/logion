@@ -137,8 +137,8 @@ logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
 logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
 logion credits top-up --amount 1000 --yes --json
-logion payments cash-out --yes --json
 logion payments cash-out --dry-run --json
+logion payments cash-out --expected-gross-payout-cents N --yes --json
 ```
 
 Creator commands (require explicit approval for destructive actions):

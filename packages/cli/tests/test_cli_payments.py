@@ -34,6 +34,7 @@ class FakePaymentsResource:
         return {
             "dry_run": kwargs.get("dry_run", False),
             "amount_cents": 1000,
+            "gross_payout_cents": 1000,
             "minimum_payout_cents": kwargs.get("minimum_payout_cents"),
         }
 
@@ -163,6 +164,42 @@ def test_cash_out_dry_run_does_not_require_yes(
     capsys.readouterr()
 
 
+def test_cash_out_yes_requires_expected_gross_payout(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    payments = FakePaymentsResource()
+    fake = FakeClient(v1=FakeV1Namespace(payments=payments))
+    _patch_client(monkeypatch, fake)
+    code = main(["payments", "cash-out", "--yes", "--json"])
+    assert code == 2
+    assert payments.last_call == ("", {})
+    assert "--expected-gross-payout-cents" in capsys.readouterr().err
+
+
+def test_cash_out_preview_mismatch_refuses_transfer(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    payments = FakePaymentsResource()
+    fake = FakeClient(v1=FakeV1Namespace(payments=payments))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "payments",
+        "cash-out",
+        "--expected-gross-payout-cents",
+        "900",
+        "--yes",
+        "--json",
+    ])
+    assert code == 2
+    assert payments.last_call == (
+        "request_cash_out",
+        {"minimum_payout_cents": None, "dry_run": True},
+    )
+    assert "preview changed" in capsys.readouterr().err
+
+
 def test_cash_out_yes_runs_non_dry_run(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -172,7 +209,14 @@ def test_cash_out_yes_runs_non_dry_run(
     fake = FakeClient(v1=FakeV1Namespace(payments=payments))
     _patch_client(monkeypatch, fake)
 
-    code = main(["payments", "cash-out", "--yes", "--json"])
+    code = main([
+        "payments",
+        "cash-out",
+        "--expected-gross-payout-cents",
+        "1000",
+        "--yes",
+        "--json",
+    ])
 
     assert code == 0
     method, kwargs = payments.last_call

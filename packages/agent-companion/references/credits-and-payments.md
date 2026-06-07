@@ -45,7 +45,7 @@ logion courses purchase COURSE_ID --expected-price-cents N --yes --json
 
 Synchronously deducts credits and grants entitlement. `--yes` is required;
 the CLI refuses without it. `--expected-price-cents` is a price guard — the
-purchase fails if the course price changed. Pass `--idempotency-key UUID`
+purchase fails if the course price changed. Pass `--idempotency-key KEY`
 to make retries safe.
 
 Purchasing does not auto-download the course bundle. To install a course
@@ -93,14 +93,15 @@ in conversation history.
 ## Cash out
 
 ```bash
-logion payments cash-out --yes --json
 logion payments cash-out --dry-run --json
+logion payments cash-out --expected-gross-payout-cents N --yes --json
 ```
 
 Requests a cash-out of available creator earnings. Optional flags:
-`--minimum-payout-cents N` and `--dry-run`. Non-dry-run cash-outs require
-`--yes`; the CLI refuses to initiate a transfer without it. `--dry-run` may
-run without `--yes`.
+`--minimum-payout-cents N` and `--dry-run`. First run the dry-run and show its
+`gross_payout_cents` to the creator. After approval, pass that exact value as
+`--expected-gross-payout-cents`; the CLI performs another dry-run and refuses
+if the amount changed. Non-dry-run cash-outs also require `--yes`.
 
 ## Safety rules
 

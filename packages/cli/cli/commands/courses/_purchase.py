@@ -9,7 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, validate_uuid_id
+from cli._errors import handle_error, print_err, validate_uuid_id
 from cli._output import emit, emit_json, to_data
 
 
@@ -35,11 +35,23 @@ def handle_purchase(args: argparse.Namespace) -> int:
         else:
             _emit_purchase_human(data)
     except Exception as exc:
+        if _is_insufficient_credit_error(exc):
+            print_err(
+                "Insufficient credits. Check `logion credits balance` and "
+                "create a user-approved top-up with `logion credits top-up`."
+            )
         return handle_error(exc)
     else:
         return 0
     finally:
         client.close()
+
+
+def _is_insufficient_credit_error(exc: Exception) -> bool:
+    """Return whether an API error reports an insufficient credit balance."""
+    detail = getattr(exc, "detail", "")
+    text = str(detail).lower()
+    return "insufficient" in text and "credit" in text
 
 
 def _emit_purchase_human(data: dict[str, object]) -> None:

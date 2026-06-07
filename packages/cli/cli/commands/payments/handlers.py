@@ -8,7 +8,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, print_err
 from cli._output import emit, emit_json, to_data
 
 from ._orders_helpers import (
@@ -99,9 +99,29 @@ def handle_cash_out(args: argparse.Namespace) -> int:
         refusal = require_yes(args.yes, "initiate a cash-out transfer")
         if refusal is not None:
             return refusal
+        if args.expected_gross_payout_cents is None:
+            print_err(
+                "Error: non-dry-run cash-out requires "
+                "--expected-gross-payout-cents from a prior preview."
+            )
+            return 2
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        if not args.dry_run:
+            preview = client.v1.payments.request_cash_out(
+                minimum_payout_cents=args.minimum_payout_cents,
+                dry_run=True,
+            )
+            preview_data = to_data(preview)
+            actual = preview_data.get("gross_payout_cents")
+            if actual != args.expected_gross_payout_cents:
+                print_err(
+                    "Error: cash-out preview changed: expected "
+                    f"{args.expected_gross_payout_cents} cents, got "
+                    f"{actual} cents. Review the new dry-run before retrying."
+                )
+                return 2
         result = client.v1.payments.request_cash_out(
             minimum_payout_cents=args.minimum_payout_cents,
             dry_run=args.dry_run,
