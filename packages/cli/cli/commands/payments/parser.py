@@ -8,6 +8,8 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import (
+    handle_cash_out,
+    handle_creator_earnings,
     handle_onboarding_link,
     handle_orders_get,
     handle_seller_readiness,
@@ -38,6 +40,35 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     onboarding_link.set_defaults(handler=handle_onboarding_link)
+
+    # payments creator-earnings
+    creator_earnings = sub.add_parser(
+        "creator-earnings",
+        help="Get creator earnings summary",
+        parents=[COMMON_PARSER],
+    )
+    creator_earnings.set_defaults(handler=handle_creator_earnings)
+
+    # payments cash-out
+    cash_out = sub.add_parser(
+        "cash-out",
+        help="Request a cash-out of accrued creator earnings",
+        parents=[COMMON_PARSER],
+    )
+    cash_out.add_argument(
+        "--minimum-payout-cents",
+        dest="minimum_payout_cents",
+        type=int,
+        default=None,
+        help="Override minimum payout threshold (in cents).",
+    )
+    cash_out.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Compute result without processing the transfer.",
+    )
+    cash_out.set_defaults(handler=handle_cash_out)
 
     orders = sub.add_parser("orders", help="Manage orders")
     orders_sub = orders.add_subparsers(

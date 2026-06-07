@@ -6,11 +6,11 @@ from __future__ import annotations
 from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
-    CashOutRequest,
-    CashOutResponse,
-    CreatorEarningsResponse,
+    GetCreatorEarningsResponse,
     OnboardingLinkResponse,
     OrderResponse,
+    RequestCashOutRequest,
+    RequestCashOutResponse,
     SellerReadinessResponse,
 )
 
@@ -49,7 +49,7 @@ class PaymentsResource:
         """
         return operations.create_onboarding_link(self._http)
 
-    def get_creator_earnings(self) -> CreatorEarningsResponse:
+    def get_creator_earnings(self) -> GetCreatorEarningsResponse:
         """Get creator earnings summary.
 
         Returns:
@@ -58,12 +58,12 @@ class PaymentsResource:
         """
         return operations.get_creator_earnings(self._http)
 
-    def create_cash_out(
+    def request_cash_out(
         self,
         *,
         minimum_payout_cents: int | None = None,
         dry_run: bool = False,
-    ) -> CashOutResponse:
+    ) -> RequestCashOutResponse:
         """Request a cash-out of accrued creator earnings.
 
         Args:
@@ -73,8 +73,8 @@ class PaymentsResource:
         Returns:
             Cash-out result with status and transfer details.
         """
-        body = CashOutRequest(
+        body = RequestCashOutRequest(
             minimum_payout_cents=minimum_payout_cents,
             dry_run=dry_run,
         )
-        return operations.create_cash_out(self._http, body=body)
+        return operations.request_cash_out(self._http, body=body)

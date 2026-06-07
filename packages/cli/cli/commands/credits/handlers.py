@@ -58,21 +58,6 @@ def _render_balance(result: object) -> None:
     sys.stdout.write("\n".join(lines) + "\n")
 
 
-def _render_packs(result: object) -> None:
-    items = to_data(result)
-    if not items:
-        sys.stdout.write("No credit packs available.\n")
-    else:
-        for item in items:
-            lines = [
-                f"pack_code: {item.get('pack_code')}",
-                f"display_label: {item.get('display_label')}",
-                f"amount_cents: {item.get('amount_cents')}",
-                f"credit_cents: {item.get('credit_cents')}",
-            ]
-            sys.stdout.write("\n".join(lines) + "\n---\n")
-
-
 def handle_credits_balance(args: argparse.Namespace) -> int:
     """Execute the credits balance command."""
     config = resolve_config_from_args(args)
@@ -85,24 +70,14 @@ def handle_credits_balance(args: argparse.Namespace) -> int:
     )
 
 
-def handle_credits_packs(args: argparse.Namespace) -> int:
-    """Execute the credits packs command."""
-    config = resolve_config_from_args(args)
-    return _run(
-        args,
-        lambda c: c.list_packs(),
-        "packs",
-        json_output=config.json_output,
-        render=_render_packs,
-    )
-
-
 def handle_credits_top_up(args: argparse.Namespace) -> int:
     """Execute the credits top-up command."""
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        result = client.v1.credits.create_top_up(pack_code=args.pack_code)
+        result = client.v1.credits.create_top_up(
+            amount_cents=args.amount_cents
+        )
         payload = top_up_to_payload(result)
         if config.json_output:
             emit_json("logion.credits.top-up", payload)

@@ -26,7 +26,6 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     # Credits
     "get_credit_balance": "client.v1.credits.get_balance",
     "list_credit_ledger": "client.v1.credits.list_ledger",
-    "list_credit_packs": "client.v1.credits.list_packs",
     "create_credit_top_up": "client.v1.credits.create_top_up",
     "get_credit_top_up": "client.v1.credits.get_top_up",
     # Payments
@@ -34,7 +33,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_order": "client.v1.payments.get_order",
     "get_seller_readiness": ("client.v1.payments.get_seller_readiness"),
     "get_creator_earnings": "client.v1.payments.get_creator_earnings",
-    "create_cash_out": "client.v1.payments.create_cash_out",
+    "request_cash_out": "client.v1.payments.request_cash_out",
     # Courses — purchase
     "purchase_course": "client.v1.courses.purchase",
     # Bounties
@@ -48,7 +47,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "list_bounty_submissions": ("client.v1.bounties.list_submissions"),
     "create_bounty_submission": ("client.v1.bounties.create_submission"),
     "withdraw_bounty_submission": ("client.v1.bounties.delete_submission"),
-    "get_bounty_submission": ("client.v1.bounties.get_submission"),
+    "get_bounty_submission": "client.v1.bounties.get_submission",
     "accept_bounty_submission": ("client.v1.bounties.accept_submission"),
     "reject_bounty_submission": ("client.v1.bounties.reject_submission"),
     # Course reviews
@@ -75,7 +74,6 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_report_detail": "client.v1.admin.get_report",
     "resolve_report": "client.v1.admin.resolve_report",
     "dismiss_report": "client.v1.admin.dismiss_report",
-    "admin_create_cash_out": "client.v1.admin.create_cash_out",
 }
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {}

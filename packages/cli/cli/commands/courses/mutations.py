@@ -174,6 +174,30 @@ def handle_get(args: argparse.Namespace) -> int:
         client.close()
 
 
+def handle_purchase(args: argparse.Namespace) -> int:
+    """Execute the courses purchase command."""
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
+    if bad_id is not None:
+        return bad_id
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.courses.purchase(
+            course_id=args.course_id,
+            expected_price_cents=args.expected_price_cents,
+        )
+        if config.json_output:
+            emit_json("logion.courses.purchase", to_data(result))
+        else:
+            emit(result, json_output=False)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
 def handle_update(args: argparse.Namespace) -> int:
     """Execute the courses update command."""
     bad_id = validate_uuid_id(args.course_id, "COURSE_ID")

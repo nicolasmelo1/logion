@@ -72,3 +72,42 @@ def handle_orders_get(args: argparse.Namespace) -> int:
         return 0
     finally:
         client.close()
+
+
+def handle_creator_earnings(args: argparse.Namespace) -> int:
+    """Execute the payments creator-earnings command."""
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.payments.get_creator_earnings()
+        if config.json_output:
+            emit_json("logion.payments.creator-earnings", to_data(result))
+        else:
+            emit(result, json_output=False)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_cash_out(args: argparse.Namespace) -> int:
+    """Execute the payments cash-out command."""
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.payments.request_cash_out(
+            minimum_payout_cents=args.minimum_payout_cents,
+            dry_run=args.dry_run,
+        )
+        if config.json_output:
+            emit_json("logion.payments.cash-out", to_data(result))
+        else:
+            emit(result, json_output=False)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()

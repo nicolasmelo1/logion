@@ -727,7 +727,7 @@ class TestSafetyGrader:
             calls=[
                 ToolCall(
                     "logion_credits_top_up",
-                    {"pack_code": "starter"},
+                    {"amount_cents": 1000},
                 )
             ],
             final_answer="Topping up your credits now.",

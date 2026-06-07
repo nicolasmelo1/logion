@@ -52,7 +52,7 @@ def validate_uuid_arg(
 
 
 def top_up_to_payload(result: Any) -> dict[str, Any]:
-    """Normalize a CreditTopUpResponse to the CLI shape."""
+    """Normalize a CreateCreditTopUpResponse to the CLI shape."""
     raw = (
         result.model_dump(mode="json")
         if hasattr(result, "model_dump")
@@ -61,7 +61,6 @@ def top_up_to_payload(result: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "top_up_id": raw.get("top_up_id"),
         "status": raw.get("status"),
-        "pack_code": raw.get("pack_code"),
         "amount_cents": raw.get("amount_cents"),
         "credit_cents_granted": raw.get("credit_cents_granted"),
         "checkout_url": raw.get("checkout_url"),
@@ -77,7 +76,6 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
     lines = [
         f"top_up_id: {payload.get('top_up_id')}",
         f"status: {payload.get('status')}",
-        f"pack_code: {payload.get('pack_code')}",
         f"amount_cents: {payload.get('amount_cents')}",
         f"credit_cents_granted: {payload.get('credit_cents_granted')}",
     ]
@@ -121,7 +119,6 @@ def timeout_payload(top_up_id: str) -> dict[str, Any]:
     return {
         "top_up_id": top_up_id,
         "status": "unknown",
-        "pack_code": None,
         "amount_cents": None,
         "credit_cents_granted": None,
         "checkout_url": None,

@@ -13,22 +13,13 @@ logion credits balance --json
 Returns the current credit balance and currency unit. Use this to confirm
 sufficient credits before any spend.
 
-## Available credit packs
-
-```bash
-logion credits packs --json
-```
-
-Lists pack codes, credit amounts, and prices. Show these to the user when
-suggesting a top-up.
-
 ## Credit top-up
 
 ```bash
-logion credits top-up --pack PACK_CODE --json
+logion credits top-up --amount AMOUNT_CENTS --json
 ```
 
-Creates a Stripe Checkout session for the given pack. Returns a `top_up_id`
+Creates a Stripe Checkout session for the given amount in cents. Returns a `top_up_id`
 and `checkout_url`. Surface the URL to the user — do not open or follow it
 automatically.
 
@@ -76,13 +67,22 @@ Returns a single-use `onboarding_url` plus the `connected_account_id`.
 Surface the URL to the user once; never persist it to recall or re-emit it
 in conversation history.
 
+## Cash out
+
+```bash
+logion payments cash-out --json
+```
+
+Requests a cash-out of available creator earnings. Optional flags:
+`--minimum-payout-cents N` and `--dry-run`.
+
 ## Safety rules
 
 - **NEVER spend credits without explicit user approval.** Before any
   credit-spending action, show the cost in credits and the resulting balance
   change, then wait for the user to confirm.
 - **NEVER top up credits without explicit user approval.** Always show the
-  pack details (credits, price) and ask before creating a checkout session.
+  amount and ask before creating a checkout session.
 - **NEVER cash out without explicit creator approval.** This applies to
   future cash-out commands as well — document this rule now.
 - **Do not auto-top-up on insufficient credits.** When a balance is too low
@@ -91,6 +91,6 @@ in conversation history.
 - **Before spending, always show the cost in credits and the resulting
   balance change** so the user can make an informed decision.
 - Never auto-retry a failed top-up. Surface the error and ask the user
-  whether to retry or pick a different pack.
+  whether to retry or select a different amount.
 - Never echo the Stripe onboarding URL in subsequent turns; it expires and
   contains user-bound identity.

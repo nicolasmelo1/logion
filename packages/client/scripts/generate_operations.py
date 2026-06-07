@@ -194,9 +194,14 @@ def parse_response(operation: dict[str, Any]) -> Response:
 def parse_ref(schema: dict[str, Any]) -> str | None:
     """Return the schema component name for a JSON schema $ref."""
     ref = schema.get("$ref")
-    if not isinstance(ref, str):
-        return None
-    return ref.rsplit("/", maxsplit=1)[-1]
+    if isinstance(ref, str):
+        return ref.rsplit("/", maxsplit=1)[-1]
+    # Handle anyOf: [{$ref}, {type: null}] — nullable request bodies.
+    for item in schema.get("anyOf", []):
+        name = parse_ref(item)
+        if name is not None:
+            return name
+    return None
 
 
 def schema_to_annotation(

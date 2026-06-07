@@ -9,8 +9,6 @@ from uuid import UUID
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
-    CoursePurchaseRequest,
-    CoursePurchaseResponse,
     CreateCourseRequest,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionRequest,
@@ -18,6 +16,8 @@ from logion.v1._types.generated.v1 import (
     FileUploadRequest,
     GetCourseResponse,
     GetCourseVersionResponse,
+    PurchaseCourseRequest,
+    PurchaseCourseResponse,
     UpdateCourseRequest,
     UpdateCourseResponse,
 )
@@ -151,7 +151,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         course_id: str | UUID,
         expected_price_cents: int | None = None,
         idempotency_key: str | None = None,
-    ) -> CoursePurchaseResponse:
+    ) -> PurchaseCourseResponse:
         """Purchase a course using credits.
 
         Args:
@@ -165,7 +165,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
             Purchase result with order, balance change, and
             entitlement status.
         """
-        body = CoursePurchaseRequest(
+        body = PurchaseCourseRequest(
             expected_price_cents=expected_price_cents,
             idempotency_key=idempotency_key,
         )

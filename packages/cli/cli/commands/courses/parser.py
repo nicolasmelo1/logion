@@ -14,6 +14,7 @@ from .parser_sections import (
     register_create,
     register_get,
     register_publication,
+    register_purchase,
     register_reviews,
     register_update,
     register_uploads,
@@ -33,6 +34,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     register_update(sub)
     register_uploads(sub)
     register_publication(sub)
+    register_purchase(sub)
     register_reviews(sub)
     register_capabilities(sub)
     feedback = sub.add_parser(

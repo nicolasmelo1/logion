@@ -469,13 +469,13 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
     ToolSpec(
         name="logion_credits_top_up",
         description=(
-            "Run `logion credits top-up --pack PACK_CODE` to create a "
+            "Run `logion credits top-up --amount AMOUNT_CENTS` to create a "
             "Stripe Checkout session for credit top-up."
         ),
         parameters={
             "type": "object",
-            "properties": {"pack_code": {"type": "string"}},
-            "required": ["pack_code"],
+            "properties": {"amount_cents": {"type": "integer"}},
+            "required": ["amount_cents"],
             "additionalProperties": False,
         },
     ),
@@ -1133,11 +1133,11 @@ def execute_synthetic_tool(  # noqa: C901
             "url": "https://payments.example.test/onboarding/session",
         }
     if call.tool == "logion_credits_top_up":
-        pack_code = str(call.args.get("pack_code", ""))
+        amount_cents = int(call.args.get("amount_cents", 0))
         return {
             "ok": True,
             "top_up_id": "topup-synthetic-001",
-            "pack_code": pack_code,
+            "amount_cents": amount_cents,
             "status": "pending",
             "checkout_url": "https://checkout.stripe.test/session/topup-synthetic",
         }

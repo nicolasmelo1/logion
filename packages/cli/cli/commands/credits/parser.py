@@ -10,7 +10,6 @@ from cli._options import COMMON_PARSER
 from .handlers import (
     handle_credits_balance,
     handle_credits_ledger,
-    handle_credits_packs,
     handle_credits_top_up,
     handle_credits_top_ups_get,
     handle_credits_top_ups_wait,
@@ -21,7 +20,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     """Register the ``credits`` subcommand group."""
     parser = subparsers.add_parser(
         "credits",
-        help="Manage credit balance, packs, top-ups, and ledger",
+        help="Manage credit balance, top-ups, and ledger",
     )
     sub = parser.add_subparsers(
         dest="credits_command",
@@ -36,14 +35,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     balance.set_defaults(handler=handle_credits_balance)
 
-    # credits packs
-    packs = sub.add_parser(
-        "packs",
-        help="List available credit packs",
-        parents=[COMMON_PARSER],
-    )
-    packs.set_defaults(handler=handle_credits_packs)
-
     # credits top-up
     top_up = sub.add_parser(
         "top-up",
@@ -51,10 +42,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     top_up.add_argument(
-        "--pack",
-        dest="pack_code",
+        "--amount",
+        dest="amount_cents",
         required=True,
-        help="Pack code for the credit top-up.",
+        type=int,
+        help="Amount in cents for the credit top-up.",
     )
     top_up.add_argument(
         "--wait",

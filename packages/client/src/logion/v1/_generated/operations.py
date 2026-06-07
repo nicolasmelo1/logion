@@ -10,16 +10,11 @@ from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
     AddAgentToUserRequest,
     AddAgentToUserResponse,
-    AdminCashOutRequest,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
     BlockCourseResponse,
     CancelBountyResponse,
-    CashOutRequest,
-    CashOutResponse,
     CompleteCourseVersionUploadSessionResponse,
-    CoursePurchaseRequest,
-    CoursePurchaseResponse,
     CreateBountyPayoutResponse,
     CreateBountyRequest,
     CreateBountyResponse,
@@ -30,15 +25,11 @@ from logion.v1._types.generated.v1 import (
     CreateCourseVersionUploadSessionRequest,
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpRequest,
+    CreateCreditTopUpResponse,
     CreateReportRequest,
     CreateReportResponse,
     CreateUserWithAgentRequest,
     CreateUserWithAgentResponse,
-    CreatorEarningsResponse,
-    CreditBalanceResponse,
-    CreditLedgerEntryResponse,
-    CreditPackResponse,
-    CreditTopUpResponse,
     DismissReportRequest,
     DismissReportResponse,
     FundBountyResponse,
@@ -49,6 +40,9 @@ from logion.v1._types.generated.v1 import (
     GetCourseResponse,
     GetCourseReviewFeedbackResponse,
     GetCourseVersionResponse,
+    GetCreatorEarningsResponse,
+    GetCreditBalanceResponse,
+    GetCreditTopUpResponse,
     GetHumanReviewDetailResponse,
     GetMyCourseReviewResponse,
     GetReportDetailResponse,
@@ -58,6 +52,7 @@ from logion.v1._types.generated.v1 import (
     ListBountiesResponse,
     ListBountySubmissionsResponse,
     ListCourseReviewsResponse,
+    ListCreditLedgerResponse,
     ListHumanReviewQueueResponse,
     ListModerationQueueResponse,
     ListNotificationsResponse,
@@ -65,11 +60,15 @@ from logion.v1._types.generated.v1 import (
     OnboardingLinkResponse,
     OpenBountyResponse,
     OrderResponse,
+    PurchaseCourseRequest,
+    PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
     RejectBountySubmissionResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
+    RequestCashOutRequest,
+    RequestCashOutResponse,
     RequestPublicationResponse,
     ResolveReportRequest,
     ResolveReportResponse,
@@ -640,6 +639,21 @@ def get_review_status(
     )
 
 
+def purchase_course(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+    body: PurchaseCourseRequest,
+) -> PurchaseCourseResponse:
+    """Call the purchase_course API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/courses/{course_id}/purchase",
+        PurchaseCourseResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
 def get_course_review_feedback(
     http: HttpClient,
     *,
@@ -738,37 +752,24 @@ def complete_upload_session(
 
 def get_credit_balance(
     http: HttpClient,
-) -> CreditBalanceResponse:
+) -> GetCreditBalanceResponse:
     """Call the get_credit_balance API operation."""
     return http.request_model(
         "GET",
         "/v1/credits/balance",
-        CreditBalanceResponse,
+        GetCreditBalanceResponse,
     )
 
 
 def list_credit_ledger(
     http: HttpClient,
-) -> list[CreditLedgerEntryResponse]:
+) -> list[ListCreditLedgerResponse]:
     """Call the list_credit_ledger API operation."""
     return [
-        CreditLedgerEntryResponse.model_validate(item)
+        ListCreditLedgerResponse.model_validate(item)
         for item in http.request_list(
             "GET",
             "/v1/credits/ledger",
-        )
-    ]
-
-
-def list_credit_packs(
-    http: HttpClient,
-) -> list[CreditPackResponse]:
-    """Call the list_credit_packs API operation."""
-    return [
-        CreditPackResponse.model_validate(item)
-        for item in http.request_list(
-            "GET",
-            "/v1/credits/packs",
         )
     ]
 
@@ -777,12 +778,12 @@ def create_credit_top_up(
     http: HttpClient,
     *,
     body: CreateCreditTopUpRequest,
-) -> CreditTopUpResponse:
+) -> CreateCreditTopUpResponse:
     """Call the create_credit_top_up API operation."""
     return http.request_model(
         "POST",
         "/v1/credits/top-ups",
-        CreditTopUpResponse,
+        CreateCreditTopUpResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
@@ -791,12 +792,12 @@ def get_credit_top_up(
     http: HttpClient,
     *,
     top_up_id: str | UUID,
-) -> CreditTopUpResponse:
+) -> GetCreditTopUpResponse:
     """Call the get_credit_top_up API operation."""
     return http.request_model(
         "GET",
         f"/v1/credits/top-ups/{top_up_id}",
-        CreditTopUpResponse,
+        GetCreditTopUpResponse,
     )
 
 
@@ -920,6 +921,20 @@ def get_unread_count(
     )
 
 
+def request_cash_out(
+    http: HttpClient,
+    *,
+    body: RequestCashOutRequest,
+) -> RequestCashOutResponse:
+    """Call the request_cash_out API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/payments/cash-out",
+        RequestCashOutResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
 def create_onboarding_link(
     http: HttpClient,
 ) -> OnboardingLinkResponse:
@@ -931,57 +946,14 @@ def create_onboarding_link(
     )
 
 
-def purchase_course(
-    http: HttpClient,
-    *,
-    course_id: str | UUID,
-    body: CoursePurchaseRequest,
-) -> CoursePurchaseResponse:
-    """Call the purchase_course API operation."""
-    return http.request_model(
-        "POST",
-        f"/v1/courses/{course_id}/purchase",
-        CoursePurchaseResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
-    )
-
-
 def get_creator_earnings(
     http: HttpClient,
-) -> CreatorEarningsResponse:
+) -> GetCreatorEarningsResponse:
     """Call the get_creator_earnings API operation."""
     return http.request_model(
         "GET",
         "/v1/payments/creator-earnings",
-        CreatorEarningsResponse,
-    )
-
-
-def create_cash_out(
-    http: HttpClient,
-    *,
-    body: CashOutRequest,
-) -> CashOutResponse:
-    """Call the create_cash_out API operation."""
-    return http.request_model(
-        "POST",
-        "/v1/payments/cash-out",
-        CashOutResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
-    )
-
-
-def admin_create_cash_out(
-    http: HttpClient,
-    *,
-    body: AdminCashOutRequest,
-) -> CashOutResponse:
-    """Call the admin_create_cash_out API operation."""
-    return http.request_model(
-        "POST",
-        "/v1/admin/payments/cash-out",
-        CashOutResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
+        GetCreatorEarningsResponse,
     )
 
 

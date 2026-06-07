@@ -118,8 +118,8 @@ logion courses reviews summary COURSE_ID
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
+logion payments creator-earnings --json
 logion credits balance --json
-logion credits packs --json
 ```
 
 Implemented mutating commands (require explicit approval):
@@ -135,7 +135,9 @@ logion courses uploads create COURSE_ID --file ... --json
 logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
-logion credits top-up --pack PACK_CODE --json
+logion courses purchase COURSE_ID --expected-price-cents 500 --json
+logion credits top-up --amount 1000 --json
+logion payments cash-out --json
 ```
 
 Creator commands (require explicit approval for destructive actions):

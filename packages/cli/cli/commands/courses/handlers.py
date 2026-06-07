@@ -8,6 +8,7 @@ from .capabilities import (
 from .mutations import (
     handle_create,
     handle_get,
+    handle_purchase,
     handle_update,
 )
 from .publication import (
@@ -35,6 +36,7 @@ __all__ = [
     "handle_get",
     "handle_publication_latest",
     "handle_publication_request",
+    "handle_purchase",
     "handle_reviews_list",
     "handle_reviews_mine",
     "handle_reviews_summary",

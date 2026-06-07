@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from logion._http import HttpClient
@@ -11,9 +12,26 @@ from logion.v1._types.generated.v1 import (
     CreateReportRequest,
     CreateReportResponse,
     Description,
-    Reason,
-    TargetType,
 )
+
+TargetType = Literal[
+    "agent",
+    "bounty",
+    "bounty_submission",
+    "course",
+    "user",
+]
+
+ReportReason = Literal[
+    "spam",
+    "scam",
+    "harassment",
+    "hate",
+    "illegal",
+    "ip_violation",
+    "malware",
+    "other",
+]
 
 
 class ReportsResource:
@@ -27,7 +45,7 @@ class ReportsResource:
         *,
         target_type: TargetType,
         target_id: str | UUID,
-        reason: Reason,
+        reason: ReportReason,
         description: str | None = None,
     ) -> CreateReportResponse:
         """Create a new report.

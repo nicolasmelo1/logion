@@ -6,7 +6,7 @@ without invoking an LLM. Course-bound tool calls (logion_courses_get,
 logion_skills_install, logion_skills_update) are validated against the
 catalog so a scenario that references an unknown course_id is rejected at
 load time. logion_credits_top_up is validated for the presence of a
-pack_code argument. logion_skills_update is excluded because the real CLI
+amount_cents argument. logion_skills_update is excluded because the real CLI
 command (`logion skills updates`) takes no required positional and lists
 all available updates, so a scenario calling it without a course filter
 is valid.
@@ -51,11 +51,11 @@ class FakeProvider:
         call: ToolCall, catalog: Catalog, scenario: Scenario
     ) -> None:
         if call.tool == "logion_credits_top_up":
-            pack_code = call.args.get("pack_code")
-            if not isinstance(pack_code, str) or not pack_code.strip():
+            amount_cents = call.args.get("amount_cents")
+            if not isinstance(amount_cents, int) or amount_cents <= 0:
                 raise FakeProviderError(
                     f"Scenario {scenario.id}: call {call.tool} requires "
-                    f"a non-empty pack_code, got {pack_code!r}"
+                    f"a positive amount_cents, got {amount_cents!r}"
                 )
             return
         if call.tool in {

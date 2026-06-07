@@ -128,36 +128,6 @@
         "title": "AddAgentToUserResponse",
         "type": "object"
       },
-      "AdminCashOutRequest": {
-        "properties": {
-          "seller_user_id": {
-            "format": "uuid",
-            "title": "Seller User Id",
-            "type": "string"
-          },
-          "minimum_payout_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Payout Cents"
-          },
-          "dry_run": {
-            "default": false,
-            "title": "Dry Run",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "seller_user_id"
-        ],
-        "title": "AdminCashOutRequest",
-        "type": "object"
-      },
       "AgentResponse": {
         "properties": {
           "created_at": {
@@ -639,106 +609,6 @@
         "title": "CapabilitySummaryResponse",
         "type": "object"
       },
-      "CashOutRequest": {
-        "properties": {
-          "minimum_payout_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Payout Cents"
-          },
-          "dry_run": {
-            "default": false,
-            "title": "Dry Run",
-            "type": "boolean"
-          }
-        },
-        "title": "CashOutRequest",
-        "type": "object"
-      },
-      "CashOutResponse": {
-        "properties": {
-          "cash_out_id": {
-            "format": "uuid",
-            "title": "Cash Out Id",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "submitted",
-              "below_minimum",
-              "not_ready",
-              "no_balance",
-              "dry_run"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "payable_count": {
-            "title": "Payable Count",
-            "type": "integer"
-          },
-          "gross_payout_cents": {
-            "title": "Gross Payout Cents",
-            "type": "integer"
-          },
-          "currency": {
-            "enum": [
-              "usd"
-            ],
-            "title": "Currency",
-            "type": "string"
-          },
-          "payment_transfer_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payment Transfer Id"
-          },
-          "stripe_transfer_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stripe Transfer Id"
-          },
-          "seller_user_id": {
-            "format": "uuid",
-            "title": "Seller User Id",
-            "type": "string"
-          },
-          "dry_run": {
-            "title": "Dry Run",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "cash_out_id",
-          "status",
-          "payable_count",
-          "gross_payout_cents",
-          "currency",
-          "seller_user_id",
-          "dry_run"
-        ],
-        "title": "CashOutResponse",
-        "type": "object"
-      },
       "CompleteCourseVersionUploadSessionResponse": {
         "properties": {
           "assets": {
@@ -828,111 +698,6 @@
           "capabilities_status"
         ],
         "title": "CompleteCourseVersionUploadSessionResponse",
-        "type": "object"
-      },
-      "CoursePurchaseRequest": {
-        "properties": {
-          "expected_price_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Price Cents"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "title": "CoursePurchaseRequest",
-        "type": "object"
-      },
-      "CoursePurchaseResponse": {
-        "properties": {
-          "order_id": {
-            "format": "uuid",
-            "title": "Order Id",
-            "type": "string"
-          },
-          "order_reference": {
-            "title": "Order Reference",
-            "type": "string"
-          },
-          "course_id": {
-            "format": "uuid",
-            "title": "Course Id",
-            "type": "string"
-          },
-          "purchase_flow": {
-            "enum": [
-              "free",
-              "credits"
-            ],
-            "title": "Purchase Flow",
-            "type": "string"
-          },
-          "order_status": {
-            "title": "Order Status",
-            "type": "string"
-          },
-          "entitlement_granted": {
-            "title": "Entitlement Granted",
-            "type": "boolean"
-          },
-          "amount_cents": {
-            "title": "Amount Cents",
-            "type": "integer"
-          },
-          "currency": {
-            "enum": [
-              "USD_CREDIT"
-            ],
-            "title": "Currency",
-            "type": "string"
-          },
-          "marketplace_fee_cents": {
-            "title": "Marketplace Fee Cents",
-            "type": "integer"
-          },
-          "seller_net_amount_cents": {
-            "title": "Seller Net Amount Cents",
-            "type": "integer"
-          },
-          "balance_before_cents": {
-            "title": "Balance Before Cents",
-            "type": "integer"
-          },
-          "balance_after_cents": {
-            "title": "Balance After Cents",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "order_id",
-          "order_reference",
-          "course_id",
-          "purchase_flow",
-          "order_status",
-          "entitlement_granted",
-          "amount_cents",
-          "currency",
-          "marketplace_fee_cents",
-          "seller_net_amount_cents",
-          "balance_before_cents",
-          "balance_after_cents"
-        ],
-        "title": "CoursePurchaseResponse",
         "type": "object"
       },
       "CreateBountyPayoutResponse": {
@@ -1635,15 +1400,75 @@
       },
       "CreateCreditTopUpRequest": {
         "properties": {
-          "pack_code": {
-            "title": "Pack Code",
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount_cents"
+        ],
+        "title": "CreateCreditTopUpRequest",
+        "type": "object"
+      },
+      "CreateCreditTopUpResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "checkout_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Url"
+          },
+          "credit_cents_granted": {
+            "title": "Credit Cents Granted",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "expired",
+              "cancelled",
+              "disputed",
+              "reversed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stripe_checkout_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Checkout Session Id"
+          },
+          "top_up_id": {
+            "format": "uuid",
+            "title": "Top Up Id",
             "type": "string"
           }
         },
         "required": [
-          "pack_code"
+          "top_up_id",
+          "status",
+          "amount_cents",
+          "credit_cents_granted"
         ],
-        "title": "CreateCreditTopUpRequest",
+        "title": "CreateCreditTopUpResponse",
         "type": "object"
       },
       "CreateReportRequest": {
@@ -1844,216 +1669,6 @@
           "api_key_prefix"
         ],
         "title": "CreateUserWithAgentResponse",
-        "type": "object"
-      },
-      "CreatorEarningsResponse": {
-        "properties": {
-          "accrued_cents": {
-            "title": "Accrued Cents",
-            "type": "integer"
-          },
-          "pending_payout_cents": {
-            "title": "Pending Payout Cents",
-            "type": "integer"
-          },
-          "submitted_cents": {
-            "title": "Submitted Cents",
-            "type": "integer"
-          },
-          "paid_cents": {
-            "title": "Paid Cents",
-            "type": "integer"
-          },
-          "minimum_payout_cents": {
-            "title": "Minimum Payout Cents",
-            "type": "integer"
-          },
-          "currency": {
-            "enum": [
-              "usd"
-            ],
-            "title": "Currency",
-            "type": "string"
-          },
-          "is_connect_ready": {
-            "title": "Is Connect Ready",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "accrued_cents",
-          "pending_payout_cents",
-          "submitted_cents",
-          "paid_cents",
-          "minimum_payout_cents",
-          "currency",
-          "is_connect_ready"
-        ],
-        "title": "CreatorEarningsResponse",
-        "type": "object"
-      },
-      "CreditBalanceResponse": {
-        "properties": {
-          "balance_cents": {
-            "title": "Balance Cents",
-            "type": "integer"
-          },
-          "currency_code": {
-            "default": "USD_CREDIT",
-            "title": "Currency Code",
-            "type": "string"
-          }
-        },
-        "required": [
-          "balance_cents"
-        ],
-        "title": "CreditBalanceResponse",
-        "type": "object"
-      },
-      "CreditLedgerEntryResponse": {
-        "properties": {
-          "amount_cents": {
-            "title": "Amount Cents",
-            "type": "integer"
-          },
-          "balance_after_cents": {
-            "title": "Balance After Cents",
-            "type": "integer"
-          },
-          "direction": {
-            "title": "Direction",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "posted_at": {
-            "format": "date-time",
-            "title": "Posted At",
-            "type": "string"
-          },
-          "related_top_up_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Related Top Up Id"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "direction",
-          "amount_cents",
-          "balance_after_cents",
-          "related_top_up_id",
-          "posted_at"
-        ],
-        "title": "CreditLedgerEntryResponse",
-        "type": "object"
-      },
-      "CreditPackResponse": {
-        "properties": {
-          "amount_cents": {
-            "title": "Amount Cents",
-            "type": "integer"
-          },
-          "credit_cents": {
-            "title": "Credit Cents",
-            "type": "integer"
-          },
-          "display_label": {
-            "title": "Display Label",
-            "type": "string"
-          },
-          "pack_code": {
-            "title": "Pack Code",
-            "type": "string"
-          }
-        },
-        "required": [
-          "pack_code",
-          "amount_cents",
-          "credit_cents",
-          "display_label"
-        ],
-        "title": "CreditPackResponse",
-        "type": "object"
-      },
-      "CreditTopUpResponse": {
-        "properties": {
-          "amount_cents": {
-            "title": "Amount Cents",
-            "type": "integer"
-          },
-          "checkout_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Checkout Url"
-          },
-          "credit_cents_granted": {
-            "title": "Credit Cents Granted",
-            "type": "integer"
-          },
-          "pack_code": {
-            "title": "Pack Code",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "pending",
-              "paid",
-              "failed",
-              "expired",
-              "cancelled",
-              "disputed",
-              "reversed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "stripe_checkout_session_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stripe Checkout Session Id"
-          },
-          "top_up_id": {
-            "format": "uuid",
-            "title": "Top Up Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "top_up_id",
-          "status",
-          "pack_code",
-          "amount_cents",
-          "credit_cents_granted"
-        ],
-        "title": "CreditTopUpResponse",
         "type": "object"
       },
       "DismissReportRequest": {
@@ -3125,6 +2740,127 @@
         "title": "GetCourseVersionResponse",
         "type": "object"
       },
+      "GetCreatorEarningsResponse": {
+        "properties": {
+          "accrued_cents": {
+            "title": "Accrued Cents",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "is_connect_ready": {
+            "title": "Is Connect Ready",
+            "type": "boolean"
+          },
+          "minimum_payout_cents": {
+            "title": "Minimum Payout Cents",
+            "type": "integer"
+          },
+          "paid_cents": {
+            "title": "Paid Cents",
+            "type": "integer"
+          },
+          "pending_payout_cents": {
+            "title": "Pending Payout Cents",
+            "type": "integer"
+          },
+          "submitted_cents": {
+            "title": "Submitted Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accrued_cents",
+          "pending_payout_cents",
+          "submitted_cents",
+          "paid_cents",
+          "minimum_payout_cents",
+          "currency",
+          "is_connect_ready"
+        ],
+        "title": "GetCreatorEarningsResponse",
+        "type": "object"
+      },
+      "GetCreditBalanceResponse": {
+        "properties": {
+          "balance_cents": {
+            "title": "Balance Cents",
+            "type": "integer"
+          },
+          "currency_code": {
+            "default": "USD_CREDIT",
+            "title": "Currency Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "balance_cents"
+        ],
+        "title": "GetCreditBalanceResponse",
+        "type": "object"
+      },
+      "GetCreditTopUpResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "checkout_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Url"
+          },
+          "credit_cents_granted": {
+            "title": "Credit Cents Granted",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "expired",
+              "cancelled",
+              "disputed",
+              "reversed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stripe_checkout_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Checkout Session Id"
+          },
+          "top_up_id": {
+            "format": "uuid",
+            "title": "Top Up Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "top_up_id",
+          "status",
+          "amount_cents",
+          "credit_cents_granted"
+        ],
+        "title": "GetCreditTopUpResponse",
+        "type": "object"
+      },
       "GetHumanReviewDetailResponse": {
         "properties": {
           "capabilities_status": {
@@ -3994,6 +3730,59 @@
         "title": "ListCourseReviewsResponse",
         "type": "object"
       },
+      "ListCreditLedgerResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "balance_after_cents": {
+            "title": "Balance After Cents",
+            "type": "integer"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "posted_at": {
+            "format": "date-time",
+            "title": "Posted At",
+            "type": "string"
+          },
+          "related_top_up_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Top Up Id"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "direction",
+          "amount_cents",
+          "balance_after_cents",
+          "related_top_up_id",
+          "posted_at"
+        ],
+        "title": "ListCreditLedgerResponse",
+        "type": "object"
+      },
       "ListHumanReviewQueueResponse": {
         "properties": {
           "items": {
@@ -4660,53 +4449,8 @@
             "type": "integer"
           },
           "status": {
-            "enum": [
-              "draft",
-              "fulfilled",
-              "refunded",
-              "disputed",
-              "cancelled",
-              "failed"
-            ],
             "title": "Status",
             "type": "string"
-          },
-          "purchase_flow": {
-            "anyOf": [
-              {
-                "enum": [
-                  "free",
-                  "credits"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Purchase Flow"
-          },
-          "balance_before_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Balance Before Cents"
-          },
-          "balance_after_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Balance After Cents"
           }
         },
         "required": [
@@ -4764,6 +4508,110 @@
           "required_headers"
         ],
         "title": "PresignedUploadResponse",
+        "type": "object"
+      },
+      "PurchaseCourseRequest": {
+        "properties": {
+          "expected_price_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Price Cents"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "title": "PurchaseCourseRequest",
+        "type": "object"
+      },
+      "PurchaseCourseResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "balance_after_cents": {
+            "title": "Balance After Cents",
+            "type": "integer"
+          },
+          "balance_before_cents": {
+            "title": "Balance Before Cents",
+            "type": "integer"
+          },
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "USD_CREDIT",
+            "title": "Currency",
+            "type": "string"
+          },
+          "entitlement_granted": {
+            "title": "Entitlement Granted",
+            "type": "boolean"
+          },
+          "marketplace_fee_cents": {
+            "title": "Marketplace Fee Cents",
+            "type": "integer"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "order_reference": {
+            "title": "Order Reference",
+            "type": "string"
+          },
+          "order_status": {
+            "const": "fulfilled",
+            "title": "Order Status",
+            "type": "string"
+          },
+          "purchase_flow": {
+            "enum": [
+              "free",
+              "credits"
+            ],
+            "title": "Purchase Flow",
+            "type": "string"
+          },
+          "seller_net_amount_cents": {
+            "title": "Seller Net Amount Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "order_reference",
+          "course_id",
+          "purchase_flow",
+          "order_status",
+          "entitlement_granted",
+          "amount_cents",
+          "currency",
+          "marketplace_fee_cents",
+          "seller_net_amount_cents",
+          "balance_before_cents",
+          "balance_after_cents"
+        ],
+        "title": "PurchaseCourseResponse",
         "type": "object"
       },
       "QueueItemResponse": {
@@ -5032,6 +4880,98 @@
           "reviewed_at"
         ],
         "title": "RejectHumanReviewResponse",
+        "type": "object"
+      },
+      "RequestCashOutRequest": {
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "minimum_payout_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Payout Cents"
+          }
+        },
+        "title": "RequestCashOutRequest",
+        "type": "object"
+      },
+      "RequestCashOutResponse": {
+        "properties": {
+          "cash_out_id": {
+            "format": "uuid",
+            "title": "Cash Out Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "gross_payout_cents": {
+            "title": "Gross Payout Cents",
+            "type": "integer"
+          },
+          "payable_count": {
+            "title": "Payable Count",
+            "type": "integer"
+          },
+          "payment_transfer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Transfer Id"
+          },
+          "seller_user_id": {
+            "format": "uuid",
+            "title": "Seller User Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stripe_transfer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Transfer Id"
+          }
+        },
+        "required": [
+          "cash_out_id",
+          "status",
+          "payable_count",
+          "gross_payout_cents",
+          "currency",
+          "payment_transfer_id",
+          "stripe_transfer_id",
+          "seller_user_id",
+          "dry_run"
+        ],
+        "title": "RequestCashOutResponse",
         "type": "object"
       },
       "RequestPublicationResponse": {
@@ -6911,75 +6851,6 @@
         "tags": [
           "admin-courses"
         ]
-      }
-    },
-    "/v1/admin/payments/cash-out": {
-      "post": {
-        "operationId": "admin_create_cash_out",
-        "summary": "Admin-triggered cash-out for a seller",
-        "tags": [
-          "admin"
-        ],
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminCashOutRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CashOutResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or domain error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/v1/admin/reports": {
@@ -9840,10 +9711,6 @@
     "/v1/courses/{course_id}/purchase": {
       "post": {
         "operationId": "purchase_course",
-        "summary": "Purchase a course using credits",
-        "tags": [
-          "courses"
-        ],
         "parameters": [
           {
             "in": "path",
@@ -9873,47 +9740,58 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CoursePurchaseRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PurchaseCourseRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Purchased",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CoursePurchaseResponse"
+                  "$ref": "#/components/schemas/PurchaseCourseResponse"
                 }
               }
-            }
+            },
+            "description": "Purchased"
           },
           "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unauthorized"
           },
           "422": {
-            "description": "Validation or domain error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Validation or domain error"
           }
-        }
+        },
+        "summary": "Purchase course with credits",
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/v1/courses/{course_id}/review-feedback": {
@@ -10525,11 +10403,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreditBalanceResponse"
+                  "$ref": "#/components/schemas/GetCreditBalanceResponse"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
           },
           "422": {
             "content": {
@@ -10542,7 +10430,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Credit Balance",
+        "summary": "Get credit balance",
         "tags": [
           "credits"
         ]
@@ -10575,14 +10463,24 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/CreditLedgerEntryResponse"
+                    "$ref": "#/components/schemas/ListCreditLedgerResponse"
                   },
                   "title": "Response List Credit Ledger",
                   "type": "array"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
           },
           "422": {
             "content": {
@@ -10595,60 +10493,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Credit Ledger",
-        "tags": [
-          "credits"
-        ]
-      }
-    },
-    "/v1/credits/packs": {
-      "get": {
-        "operationId": "list_credit_packs",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CreditPackResponse"
-                  },
-                  "title": "Response List Credit Packs",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Credit Packs",
+        "summary": "List credit ledger",
         "tags": [
           "credits"
         ]
@@ -10690,11 +10535,31 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreditTopUpResponse"
+                  "$ref": "#/components/schemas/CreateCreditTopUpResponse"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Credit top-up checkout created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "User not found"
           },
           "422": {
             "content": {
@@ -10704,10 +10569,20 @@
                 }
               }
             },
-            "description": "Invalid pack"
+            "description": "Invalid top-up amount"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Payment configuration unavailable"
           }
         },
-        "summary": "Create Credit Top Up",
+        "summary": "Create credit top-up",
         "tags": [
           "credits"
         ]
@@ -10749,11 +10624,31 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreditTopUpResponse"
+                  "$ref": "#/components/schemas/GetCreditTopUpResponse"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Top-up not found"
           },
           "422": {
             "content": {
@@ -10766,7 +10661,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Credit Top Up",
+        "summary": "Get credit top-up",
         "tags": [
           "credits"
         ]
@@ -11400,11 +11295,8 @@
     },
     "/v1/payments/cash-out": {
       "post": {
-        "operationId": "create_cash_out",
-        "summary": "Request a cash-out of accrued creator earnings",
-        "tags": [
-          "payments"
-        ],
+        "description": "Initiate a synchronous cash-out of accrued creator payables.",
+        "operationId": "request_cash_out",
         "parameters": [
           {
             "in": "header",
@@ -11424,47 +11316,78 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CashOutRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestCashOutRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CashOutResponse"
+                  "$ref": "#/components/schemas/RequestCashOutResponse"
                 }
               }
-            }
+            },
+            "description": "Cash-out submitted"
           },
           "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unauthorized"
           },
           "422": {
-            "description": "Validation or domain error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Validation or domain error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Stripe transfer creation failed"
           }
-        }
+        },
+        "summary": "Request a creator cash-out",
+        "tags": [
+          "payments"
+        ]
       }
     },
     "/v1/payments/connect-onboarding-sessions": {
@@ -11549,11 +11472,8 @@
     },
     "/v1/payments/creator-earnings": {
       "get": {
+        "description": "Return the authenticated seller's payable balance breakdown and Connect readiness.",
         "operationId": "get_creator_earnings",
-        "summary": "Get creator earnings summary",
-        "tags": [
-          "payments"
-        ],
         "parameters": [
           {
             "in": "header",
@@ -11574,36 +11494,40 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatorEarningsResponse"
+                  "$ref": "#/components/schemas/GetCreatorEarningsResponse"
                 }
               }
-            }
+            },
+            "description": "Earnings breakdown"
           },
           "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unauthorized"
           },
           "422": {
-            "description": "Validation or domain error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Get creator earnings breakdown",
+        "tags": [
+          "payments"
+        ]
       }
     },
     "/v1/payments/orders/{order_id}": {

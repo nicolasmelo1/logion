@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Credits resource — balance, packs, top-ups, and ledger."""
+"""Credits resource — balance, top-ups, and ledger."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CreateCreditTopUpRequest,
-    CreditBalanceResponse,
-    CreditLedgerEntryResponse,
-    CreditPackResponse,
-    CreditTopUpResponse,
+    CreateCreditTopUpResponse,
+    GetCreditBalanceResponse,
+    GetCreditTopUpResponse,
+    ListCreditLedgerResponse,
 )
 
 
@@ -22,23 +22,19 @@ class CreditsResource:
     def __init__(self, http: HttpClient) -> None:
         self._http = http
 
-    def get_balance(self) -> CreditBalanceResponse:
+    def get_balance(self) -> GetCreditBalanceResponse:
         """Get the current credit balance for the authenticated user."""
         return operations.get_credit_balance(self._http)
 
-    def list_packs(self) -> list[CreditPackResponse]:
-        """List server-defined credit top-up packs."""
-        return operations.list_credit_packs(self._http)
-
-    def create_top_up(self, *, pack_code: str) -> CreditTopUpResponse:
+    def create_top_up(self, *, amount_cents: int) -> CreateCreditTopUpResponse:
         """Create a Stripe Checkout Session for a credit top-up."""
-        body = CreateCreditTopUpRequest(pack_code=pack_code)
+        body = CreateCreditTopUpRequest(amount_cents=amount_cents)
         return operations.create_credit_top_up(self._http, body=body)
 
-    def get_top_up(self, *, top_up_id: str | UUID) -> CreditTopUpResponse:
+    def get_top_up(self, *, top_up_id: str | UUID) -> GetCreditTopUpResponse:
         """Get a credit top-up by ID."""
         return operations.get_credit_top_up(self._http, top_up_id=top_up_id)
 
-    def list_ledger(self) -> list[CreditLedgerEntryResponse]:
+    def list_ledger(self) -> list[ListCreditLedgerResponse]:
         """List credit ledger entries for the authenticated user."""
         return operations.list_credit_ledger(self._http)
