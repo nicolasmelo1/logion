@@ -134,6 +134,15 @@ commands:
   reports create:
     operations: [create_report]
 
+  referrals attributions:
+    operations: []
+  referrals code:
+    operations: []
+  referrals link:
+    operations: []
+  referrals stats:
+    operations: []
+
   skills inspect:
     operations: [get_course]
   skills search:
