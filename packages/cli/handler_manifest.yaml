@@ -1,0 +1,140 @@
+# Authoritative map of SDK-backed CLI leaves to the operations they invoke.
+#
+# Consumed by an external cross-repo contract auditor that emits findings
+# when:
+# - a leaf imports the SDK but has no entry here
+#   (CLI_SDK_BACKED_NO_HANDLER_MANIFEST)
+# - a declared operation isn't in IMPLEMENTED_OPERATIONS
+#   (CLI_SDK_BACKED_OP_NOT_IMPLEMENTED)
+# - a declared flag isn't in argparse or maps to a non-existent SDK kwarg
+#   (CLI_FLAG_NOT_IN_SDK_SIGNATURE)
+#
+# Entries with `operations: []` acknowledge the leaf is SDK-backed but their
+# concrete operation mapping is a follow-up. The structural check (entry
+# exists per leaf) passes; the op-not-implemented check is satisfied
+# vacuously. Flesh out operations/flags as you touch each handler.
+#
+# Test:
+#   logion/packages/cli/tests/test_handler_manifest.py asserts every
+#   build_parser() leaf with an SDK import has a manifest entry, and writes
+#   packages/cli/.artifacts/handler_manifest.json as a side effect.
+
+version: 1
+commands:
+  admin:
+    operations: []
+
+  bounties create:
+    operations: [create_bounty]
+  bounties cancel:
+    operations: [cancel_bounty]
+  bounties fund:
+    operations: [fund_bounty]
+  bounties get:
+    operations: [get_bounty]
+  bounties list:
+    operations: [list_bounties]
+  bounties open:
+    operations: []
+  bounties payout:
+    operations: [create_bounty_payout]
+  bounties submissions accept:
+    operations: [accept_bounty_submission]
+  bounties submissions create:
+    operations: [create_bounty_submission]
+  bounties submissions get:
+    operations: [get_bounty_submission]
+  bounties submissions list:
+    operations: [list_bounty_submissions]
+  bounties submissions reject:
+    operations: [reject_bounty_submission]
+  bounties submissions withdraw:
+    operations: [withdraw_bounty_submission]
+
+  course-reviews approve:
+    operations: [approve_human_review]
+  course-reviews get:
+    operations: [get_human_review_detail]
+  course-reviews list:
+    operations: [list_human_review_queue]
+  course-reviews reject:
+    operations: [reject_human_review]
+
+  courses create:
+    operations: [create_course]
+  courses feedback:
+    operations: [get_course_review_feedback]
+  courses get:
+    operations: [get_course]
+  courses publication latest:
+    operations: [get_review_status]
+  courses publication request:
+    operations: [request_publication]
+  courses purchase:
+    operations: []
+  courses reviews list:
+    operations: [list_course_reviews]
+  courses reviews mine:
+    operations: [get_my_course_review]
+  courses reviews summary:
+    operations: []
+  courses reviews upsert:
+    operations: [upsert_course_review]
+  courses update:
+    operations: [update_course]
+  courses uploads complete:
+    operations: [complete_upload_session]
+  courses uploads create:
+    operations: [create_upload_session]
+  courses versions get:
+    operations: [get_course_version]
+
+  credits balance:
+    operations: [get_credit_balance]
+  credits ledger:
+    operations: [list_credit_ledger]
+  credits top-up:
+    operations: [create_credit_top_up]
+  credits top-ups get:
+    operations: [get_credit_top_up]
+  credits top-ups wait:
+    operations: [get_credit_top_up]
+
+  health:
+    operations: [health_health_get]
+
+  identity agents-add:
+    operations: [add_agent_to_user]
+  identity agents-rotate-key:
+    operations: [rotate_agent_api_key]
+  identity users-create:
+    operations: [create_user_with_agent]
+
+  listings search:
+    operations: [search_listings]
+
+  notifications list:
+    operations: [list_notifications]
+  notifications peek:
+    operations: [list_notifications]
+  notifications unread-count:
+    operations: [get_unread_count]
+
+  payments cash-out:
+    operations: []
+  payments creator-earnings:
+    operations: [get_creator_earnings]
+  payments onboarding-link:
+    operations: []
+  payments orders get:
+    operations: []
+  payments seller-readiness:
+    operations: []
+
+  reports create:
+    operations: [create_report]
+
+  skills inspect:
+    operations: [get_course]
+  skills search:
+    operations: [search_listings]
