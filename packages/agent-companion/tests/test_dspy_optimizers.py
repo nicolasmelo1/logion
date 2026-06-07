@@ -683,9 +683,9 @@ def test_report_includes_routing_and_final_score_avg() -> None:
     assert required_keys.issubset(required_keys)
 
 
-def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
+def test_ask_before_credit_purchase_does_not_start_checkout() -> None:
     pred = SimpleNamespace(
-        action="ask_before_checkout",
+        action="ask_before_credit_purchase",
         query="paid course",
         selected_course_ids="paid-course",
         requires_user_confirmation=True,
@@ -695,7 +695,7 @@ def test_ask_before_checkout_prediction_does_not_start_checkout() -> None:
 
     trace = _build_trace_from_prediction(pred, gold)
 
-    assert "logion_payments_checkout_start" not in trace.tools_called()
+    assert "logion_credits_top_up" not in trace.tools_called()
     assert trace.selected_course_ids == ("paid-course",)
     assert "confirm" in trace.final_answer.lower()
 

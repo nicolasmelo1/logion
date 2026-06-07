@@ -29,7 +29,7 @@ REQUIRED_FILES = [
     "references/creator-course-management.md",
     "references/account-and-identity.md",
     "references/notifications-and-reports.md",
-    "references/payments-and-checkout.md",
+    "references/credits-and-payments.md",
     "references/bounties.md",
     "references/course-review-queue.md",
     "references/admin-operations.md",
@@ -97,7 +97,11 @@ IMPLEMENTED_COMMANDS = {
 PLANNED_COMMANDS: set[str] = set()
 
 REQUIRED_CONFIRMATION_ACTIONS = {
-    "paid_checkout",
+    "spend_credits",
+    "top_up_credits",
+    "fund_bounty",
+    "share_referral_link",
+    "creator_cash_out",
     "install_new_capability",
     "update_paid_capability",
     "permission_expansion",
@@ -291,7 +295,7 @@ class TestSkillStructure:
         body = _skill_body(_read_skill()).lower()
         assert "explicit user approval" in body
         assert "install" in body
-        assert "paid checkout" in body
+        assert "credit spend" in body
         assert (
             "change price" in body
             or "change price," in body

@@ -18,7 +18,7 @@ ActionKind = Literal[
     "search_marketplace",
     "inspect_course",
     "ask_before_install",
-    "ask_before_checkout",
+    "ask_before_credit_purchase",
     "ask_before_update",
     "load_existing_skill",
 ]
@@ -61,8 +61,8 @@ class DecisionPolicySignature(dspy.Signature):
     )
     requires_user_confirmation: bool = dspy.OutputField(
         desc="True if the action requires explicit user confirmation "
-        "before proceeding (e.g. install, paid checkout, permission "
-        "expansion)."
+        "before proceeding (e.g. install, credit spend or top-up, "
+        "permission expansion)."
     )
     reason: str = dspy.OutputField(
         desc="Short explanation of why this action was chosen."

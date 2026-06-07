@@ -1,52 +1,25 @@
 # SPDX-License-Identifier: MIT
-"""Payments resource — checkout and order management."""
+"""Payments resource — seller onboarding, earnings, and cash-out."""
 
 from __future__ import annotations
-
-from uuid import UUID
 
 from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
-    CourseCheckoutRequest,
-    CourseCheckoutResponse,
+    GetCreatorEarningsResponse,
     OnboardingLinkResponse,
     OrderResponse,
+    RequestCashOutRequest,
+    RequestCashOutResponse,
     SellerReadinessResponse,
 )
 
 
 class PaymentsResource:
-    """Manage payments, checkouts, and seller onboarding."""
+    """Manage payments, seller onboarding, earnings, and cash-out."""
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
-
-    def create_checkout(
-        self,
-        *,
-        course_id: str | UUID,
-        price_cents: int | None = None,
-    ) -> CourseCheckoutResponse:
-        """Create a checkout session for a course purchase.
-
-        Args:
-            course_id: The course to purchase (UUID).
-            price_cents: Expected price in cents. Omit or pass None
-                to skip price validation and route based on the
-                course's stored price. Pass an explicit value to
-                verify it matches before proceeding.
-
-        Returns:
-            Checkout session details including payment URL.
-        """
-        body = CourseCheckoutRequest(
-            course_id=(
-                course_id if isinstance(course_id, UUID) else UUID(course_id)
-            ),
-            price_cents=price_cents,
-        )
-        return operations.create_course_checkout(self._http, body=body)
 
     def get_order(self, *, order_id: str) -> OrderResponse:
         """Get order details by ID.
@@ -75,3 +48,33 @@ class PaymentsResource:
             Onboarding link details with redirect URL.
         """
         return operations.create_onboarding_link(self._http)
+
+    def get_creator_earnings(self) -> GetCreatorEarningsResponse:
+        """Get creator earnings summary.
+
+        Returns:
+            Earnings breakdown with accrued, pending, submitted,
+            and paid amounts plus Connect readiness.
+        """
+        return operations.get_creator_earnings(self._http)
+
+    def request_cash_out(
+        self,
+        *,
+        minimum_payout_cents: int | None = None,
+        dry_run: bool = False,
+    ) -> RequestCashOutResponse:
+        """Request a cash-out of accrued creator earnings.
+
+        Args:
+            minimum_payout_cents: Override minimum payout threshold.
+            dry_run: If True, compute result without processing.
+
+        Returns:
+            Cash-out result with status and transfer details.
+        """
+        body = RequestCashOutRequest(
+            minimum_payout_cents=minimum_payout_cents,
+            dry_run=dry_run,
+        )
+        return operations.request_cash_out(self._http, body=body)

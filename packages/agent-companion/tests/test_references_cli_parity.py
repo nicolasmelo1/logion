@@ -29,7 +29,7 @@ CANONICAL_REFERENCES = (
     "creator-course-management.md",
     "account-and-identity.md",
     "notifications-and-reports.md",
-    "payments-and-checkout.md",
+    "credits-and-payments.md",
     "bounties.md",
     "course-review-queue.md",
     "admin-operations.md",

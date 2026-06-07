@@ -40,7 +40,7 @@ SCENARIOS_PATH = (
 
 class TestSignatureInventory:
     def test_enum_has_nine_classes(self) -> None:
-        assert len(REFERENCE_NAMES) == 9
+        assert len(REFERENCE_NAMES) == 10
         assert REFERENCE_NAMES[0] == "none"
 
     def test_signature_docstring_under_250_chars(self) -> None:

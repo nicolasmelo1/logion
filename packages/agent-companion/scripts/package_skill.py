@@ -45,7 +45,7 @@ REQUIRED_FILES = [
     "references/creator-course-management.md",
     "references/account-and-identity.md",
     "references/notifications-and-reports.md",
-    "references/payments-and-checkout.md",
+    "references/credits-and-payments.md",
     "references/bounties.md",
     "references/course-review-queue.md",
     "references/admin-operations.md",
@@ -86,7 +86,7 @@ BUNDLE_SKILL_REF_FILES = [
     "references/course-review-queue.md",
     "references/creator-course-management.md",
     "references/notifications-and-reports.md",
-    "references/payments-and-checkout.md",
+    "references/credits-and-payments.md",
     "references/troubleshooting.md",
 ]
 

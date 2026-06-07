@@ -54,7 +54,8 @@ All paths are relative to the top-level directory
 | `references/course-review-queue.md` | stable |
 | `references/creator-course-management.md` | stable |
 | `references/notifications-and-reports.md` | stable |
-| `references/payments-and-checkout.md` | stable |
+| `references/credits-and-payments.md` | stable |
+| `references/referrals.md` | stable |
 | `references/troubleshooting.md` | stable |
 
 **Stability annotations:**
@@ -119,7 +120,11 @@ Schema (schema_version: 1):
   },
   "safety": {
     "requires_confirmation": [
-      "paid_checkout",
+      "spend_credits",
+      "top_up_credits",
+      "fund_bounty",
+      "share_referral_link",
+      "creator_cash_out",
       "install_new_capability",
       "update_paid_capability",
       "permission_expansion",

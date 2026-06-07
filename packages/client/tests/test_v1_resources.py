@@ -16,16 +16,19 @@ from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._types.generated.v1 import (
     AddAgentToUserResponse,
-    CourseCheckoutResponse,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
+    CreateCreditTopUpResponse,
     CreateUserWithAgentResponse,
-    CreditBalanceResponse,
-    CreditTopUpResponse,
     GetCourseResponse,
     GetCourseVersionResponse,
+    GetCreatorEarningsResponse,
+    GetCreditBalanceResponse,
+    GetCreditTopUpResponse,
     OnboardingLinkResponse,
     OrderResponse,
+    PurchaseCourseResponse,
+    RequestCashOutResponse,
     RotateAgentApiKeyResponse,
     SearchListingsResponse,
     SellerReadinessResponse,
@@ -38,7 +41,7 @@ from logion.v1._types.generated.v1 import (
 class TestCreditsResource:
     def test_get_balance_calls_request_model(self) -> None:
         http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CreditBalanceResponse)
+        mock_resp = MagicMock(spec=GetCreditBalanceResponse)
         http.request_model.return_value = mock_resp
         resource = CreditsResource(http)
 
@@ -46,27 +49,27 @@ class TestCreditsResource:
 
         assert result == mock_resp
         http.request_model.assert_called_once_with(
-            "GET", "/v1/credits/balance", CreditBalanceResponse
+            "GET", "/v1/credits/balance", GetCreditBalanceResponse
         )
 
     def test_create_top_up_builds_request(self) -> None:
         http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CreditTopUpResponse)
+        mock_resp = MagicMock(spec=CreateCreditTopUpResponse)
         http.request_model.return_value = mock_resp
         resource = CreditsResource(http)
 
-        result = resource.create_top_up(pack_code="pack_1000")
+        result = resource.create_top_up(amount_cents=1000)
 
         assert result == mock_resp
         call_args = http.request_model.call_args
         assert call_args.args[0] == "POST"
         assert call_args.args[1] == "/v1/credits/top-ups"
-        assert call_args.args[2] == CreditTopUpResponse
-        assert call_args.kwargs["json"] == {"pack_code": "pack_1000"}
+        assert call_args.args[2] == CreateCreditTopUpResponse
+        assert call_args.kwargs["json"]["amount_cents"] == 1000
 
     def test_get_top_up_accepts_uuid_string(self) -> None:
         http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CreditTopUpResponse)
+        mock_resp = MagicMock(spec=GetCreditTopUpResponse)
         http.request_model.return_value = mock_resp
         resource = CreditsResource(http)
 
@@ -78,16 +81,8 @@ class TestCreditsResource:
         http.request_model.assert_called_once_with(
             "GET",
             "/v1/credits/top-ups/11111111-1111-1111-1111-111111111111",
-            CreditTopUpResponse,
+            GetCreditTopUpResponse,
         )
-
-    def test_list_packs_calls_request_list(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request_list.return_value = []
-        resource = CreditsResource(http)
-
-        assert resource.list_packs() == []
-        http.request_list.assert_called_once_with("GET", "/v1/credits/packs")
 
     def test_list_ledger_calls_request_list(self) -> None:
         http = MagicMock(spec=HttpClient)
@@ -287,6 +282,34 @@ class TestCoursesResource:
             GetCourseVersionResponse,
         )
 
+    def test_purchase(self) -> None:
+        """purchase() calls POST with course_id and body."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=PurchaseCourseResponse)
+        http.request_model.return_value = mock_resp
+        resource = CoursesResource(http)
+        resource.purchase(course_id="course-1")
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/courses/course-1/purchase"
+        assert call_args.args[2] == PurchaseCourseResponse
+        json_body = call_args.kwargs["json"]
+        assert "expected_price_cents" not in json_body
+
+    def test_purchase_with_price_guard(self) -> None:
+        """purchase() forwards expected_price_cents."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=PurchaseCourseResponse)
+        http.request_model.return_value = mock_resp
+        resource = CoursesResource(http)
+        resource.purchase(
+            course_id="course-1",
+            expected_price_cents=500,
+        )
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["expected_price_cents"] == 500
+
 
 # ---- IdentityResource ----
 
@@ -360,23 +383,6 @@ class TestIdentityResource:
 
 
 class TestPaymentsResource:
-    def test_create_checkout(self) -> None:
-        """create_checkout() builds CourseCheckoutRequest
-        with course_id."""
-        http = MagicMock(spec=HttpClient)
-        mock_resp = MagicMock(spec=CourseCheckoutResponse)
-        http.request_model.return_value = mock_resp
-        resource = PaymentsResource(http)
-        resource.create_checkout(
-            course_id="123e4567-e89b-12d3-a456-426614174000"
-        )
-        http.request_model.assert_called_once()
-        call_args = http.request_model.call_args
-        assert call_args.args[0] == "POST"
-        assert "/v1/payments/course-checkouts" in call_args.args[1]
-        json_body = call_args.kwargs["json"]
-        assert json_body["course_id"] == "123e4567-e89b-12d3-a456-426614174000"
-
     def test_get_order(self) -> None:
         """get_order() calls GET."""
         http = MagicMock(spec=HttpClient)
@@ -415,3 +421,42 @@ class TestPaymentsResource:
             "/v1/payments/connect-onboarding-sessions",
             OnboardingLinkResponse,
         )
+
+    def test_get_creator_earnings(self) -> None:
+        """get_creator_earnings() calls GET."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=GetCreatorEarningsResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.get_creator_earnings()
+        http.request_model.assert_called_once_with(
+            "GET",
+            "/v1/payments/creator-earnings",
+            GetCreatorEarningsResponse,
+        )
+
+    def test_request_cash_out(self) -> None:
+        """request_cash_out() calls POST with body."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=RequestCashOutResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.request_cash_out()
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/payments/cash-out"
+        assert call_args.args[2] == RequestCashOutResponse
+        json_body = call_args.kwargs["json"]
+        assert json_body["dry_run"] is False
+
+    def test_request_cash_out_with_overrides(self) -> None:
+        """request_cash_out() forwards minimum_payout_cents and dry_run."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=RequestCashOutResponse)
+        http.request_model.return_value = mock_resp
+        resource = PaymentsResource(http)
+        resource.request_cash_out(minimum_payout_cents=5000, dry_run=True)
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["minimum_payout_cents"] == 5000
+        assert json_body["dry_run"] is True

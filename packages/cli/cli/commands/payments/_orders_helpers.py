@@ -12,7 +12,7 @@ from cli._config import CliConfig
 from cli._errors import emit_error_json
 from cli._output import emit_json
 
-TERMINAL_STATUSES = frozenset({"paid", "failed", "refunded"})
+TERMINAL_STATUSES = frozenset({"fulfilled", "failed", "refunded", "cancelled"})
 
 
 def invalid_identifier(
@@ -50,24 +50,23 @@ def order_to_payload(result: Any) -> dict[str, Any]:
         if hasattr(result, "model_dump")
         else dict(result)
     )
-    order_id = raw.get("order_id") or raw.get("id")
     settled_at = (
         raw.get("settled_at")
         or raw.get("paid_at")
         or raw.get("transferred_at")
     )
-    payload = {
-        "order_id": order_id,
+    payload: dict[str, Any] = {
+        "order_id": raw.get("order_id") or raw.get("id"),
         "status": raw.get("status"),
         "course_id": raw.get("course_id"),
-        "version_id": raw.get("version_id") or raw.get("course_version_id"),
-        "entitlement_id": raw.get("entitlement_id"),
-        "checkout_url": raw.get("checkout_url"),
         "amount_cents": raw.get("amount_cents"),
         "currency": raw.get("currency"),
-        "created_at": raw.get("created_at"),
         "settled_at": settled_at,
+        "purchase_flow": raw.get("purchase_flow"),
+        "balance_before_cents": raw.get("balance_before_cents"),
+        "balance_after_cents": raw.get("balance_after_cents"),
     }
+    # Fold through any extra fields the SDK exposes
     for key, value in raw.items():
         payload.setdefault(key, value)
     return payload
@@ -106,11 +105,10 @@ def timeout_payload(order_id: str) -> dict[str, Any]:
         "order_id": order_id,
         "status": "unknown",
         "course_id": None,
-        "version_id": None,
-        "entitlement_id": None,
-        "checkout_url": None,
         "amount_cents": None,
         "currency": None,
-        "created_at": None,
         "settled_at": None,
+        "purchase_flow": None,
+        "balance_before_cents": None,
+        "balance_after_cents": None,
     }

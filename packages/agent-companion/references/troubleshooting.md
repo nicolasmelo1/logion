@@ -20,8 +20,8 @@ Allowed `code` values:
 - `auth_missing` — no API key in env or config; run `logion identity --help`
   if the user needs to provision an agent.
 - `entitlement_missing` — buyer attempted an action on a course they have
-  no entitlement for; route to `logion payments checkout` after
-  confirmation.
+  no entitlement for; route to `logion courses purchase` after
+  confirmation, ensuring sufficient credit balance first.
 - `entitlement_expired` — entitlement exists but expired; refresh via
   `logion skills verify COURSE_ID --json` or guide the user to renew.
 - `unsafe_identifier` — the supplied id contains characters disallowed in
@@ -37,8 +37,8 @@ Allowed `code` values:
 - `confirmation_required` — local confirmation gate was not satisfied
   (e.g. `--yes` missing on an interactive guard). Re-present the action
   with full context and re-ask.
-- `order_timeout` — `payments orders wait` exceeded its `--wait-timeout`.
-  Try again with a longer timeout or call `payments orders get` directly.
+- `top_up_timeout` — `credits top-ups wait` exceeded its `--wait-timeout`.
+  Try again with a longer timeout or call `credits top-ups get` directly.
 
 ## Exit codes
 
@@ -47,7 +47,7 @@ Allowed `code` values:
   `not_found`, `entitlement_*`).
 - `2` — user-input / validation / confirmation / timeout
   (`unsafe_identifier`, `validation_failed`, `confirmation_required`,
-  `order_timeout`).
+  `top_up_timeout`).
 
 ## Common failure patterns
 
@@ -64,9 +64,9 @@ re-pushed — `push` resumes from `remaining`.
 has no version with a completed upload. Run `courses uploads complete` for
 the most recent version first.
 
-**`payments orders wait` exits 2 even though Stripe shows the order paid.**
+**`credits top-ups wait` exits 2 even though Stripe shows the payment completed.**
 The timeout fired before settlement reached the API. Re-run with a longer
-`--wait-timeout` or just call `payments orders get` once.
+`--wait-timeout` or just call `credits top-ups get` once.
 
 **`bounties payout` says "no accepted submission".** `accept` and `payout`
 are separate steps. Use `bounties submissions accept` first, then `payout`.

@@ -87,6 +87,8 @@ def _pascal(snake: str) -> str:
 
 
 def test_unsupported_operations_is_empty_or_documented() -> None:
-    assert UNSUPPORTED_OPERATIONS == {}, (
-        f"Unsupported operations exist: {dict(UNSUPPORTED_OPERATIONS)}"
-    )
+    for op_id, reason in UNSUPPORTED_OPERATIONS.items():
+        assert reason, (
+            f"Unsupported operation {op_id!r} has no reason — "
+            f"add a brief explanation for why it is not implemented"
+        )

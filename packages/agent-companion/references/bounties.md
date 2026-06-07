@@ -71,4 +71,4 @@ logion bounties workspace evidence --workspace ./bounty-work
 ## Safety
 
 `create`/`fund`/`accept`/`reject`/`payout`/`cancel` move real money via Stripe —
-treat them like `paid_checkout` for confirmation purposes.
+treat them like `spend_credits` / `top_up_credits` for confirmation purposes.

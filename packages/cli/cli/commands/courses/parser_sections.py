@@ -12,6 +12,7 @@ from .handlers import (
     handle_get,
     handle_publication_latest,
     handle_publication_request,
+    handle_purchase,
     handle_reviews_list,
     handle_reviews_mine,
     handle_reviews_summary,
@@ -28,6 +29,7 @@ register_uploads = _register_uploads
 CMD_HELP = {
     "create": "Create a new course",
     "get": "Get course details",
+    "purchase": "Purchase a course using credits",
     "update": "Update an existing course",
     "uploads": "Manage course version uploads",
     "publication": "Manage course publication review",
@@ -207,3 +209,33 @@ def register_reviews(subparsers: argparse._SubParsersAction) -> None:
     summary.add_argument("--version")
     summary.add_argument("--limit", type=int, default=5)
     summary.set_defaults(handler=handle_reviews_summary)
+
+
+def register_purchase(subparsers: argparse._SubParsersAction) -> None:
+    """Register the ``courses purchase`` subcommand."""
+    purchase = subparsers.add_parser(
+        "purchase",
+        help=CMD_HELP["purchase"],
+        parents=[COMMON_PARSER],
+    )
+    purchase.add_argument("course_id", metavar="COURSE_ID")
+    purchase.add_argument(
+        "--expected-price-cents",
+        dest="expected_price_cents",
+        type=int,
+        required=True,
+        help="Price guard: fail if the course price has changed.",
+    )
+    purchase.add_argument(
+        "--idempotency-key",
+        dest="idempotency_key",
+        default=None,
+        help="Optional idempotency key to safely retry a purchase.",
+    )
+    purchase.add_argument(
+        "--yes",
+        dest="yes",
+        action="store_true",
+        help="Confirm spending credits to purchase this course.",
+    )
+    purchase.set_defaults(handler=handle_purchase)

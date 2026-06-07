@@ -80,6 +80,16 @@ class FakeCoursesResource:
         self.last_call = ("get_review_feedback", kwargs)
         return {"feedback": "Looks good"}
 
+    def purchase(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("purchase", kwargs)
+        return {
+            "purchase_flow": "credits",
+            "amount_cents": 300,
+            "balance_before_cents": 1000,
+            "balance_after_cents": 700,
+            "entitlement_granted": True,
+        }
+
 
 class FakeV1Namespace:
     def __init__(self, courses: FakeCoursesResource) -> None:
@@ -1635,3 +1645,145 @@ def test_courses_feedback_capability_feedback_json(
     assert (
         inner["capability_feedback"][0]["reason_code"] == "tool_not_declared"
     )
+
+
+_PURCHASE_COURSE_ID = "550e8400-e29b-41d4-a716-446655440000"
+
+
+def test_courses_purchase_requires_yes(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses purchase refuses to spend credits without --yes."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+    ])
+
+    assert code == 2
+    assert courses.last_call == ("", {})
+    assert "--yes" in capsys.readouterr().err
+
+
+def test_courses_purchase_with_yes_forwards_args(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses purchase --yes forwards course_id and price guard."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+        "--yes",
+        "--json",
+    ])
+
+    assert code == 0
+    assert courses.last_call[0] == "purchase"
+    assert courses.last_call[1]["course_id"] == _PURCHASE_COURSE_ID
+    assert courses.last_call[1]["expected_price_cents"] == 300
+    assert courses.last_call[1]["idempotency_key"] is None
+    payload = json.loads(capsys.readouterr().out)
+    inner = payload.get("data", payload)
+    assert inner["amount_cents"] == 300
+    assert inner["balance_after_cents"] == 700
+
+
+def test_courses_purchase_forwards_idempotency_key(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses purchase --idempotency-key reaches the SDK."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+        "--yes",
+        "--idempotency-key",
+        "idem-abc",
+        "--json",
+    ])
+
+    assert code == 0
+    assert courses.last_call[1]["idempotency_key"] == "idem-abc"
+    capsys.readouterr()
+
+
+def test_courses_purchase_requires_expected_price(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Purchase cannot authorize an unknown course price."""
+    with pytest.raises(SystemExit) as exc_info:
+        main(["courses", "purchase", _PURCHASE_COURSE_ID, "--yes"])
+    assert exc_info.value.code == 2
+    assert "--expected-price-cents" in capsys.readouterr().err
+
+
+def test_courses_purchase_insufficient_credits_suggests_top_up(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Insufficient-credit failures include an actionable top-up hint."""
+    courses = FakeCoursesResource()
+    courses.purchase = lambda **_: (_ for _ in ()).throw(
+        APIError(422, "Insufficient credit balance")
+    )
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+        "--yes",
+    ])
+    assert code == 1
+    error = capsys.readouterr().err
+    assert "logion credits balance" in error
+    assert "logion credits top-up" in error
+
+
+def test_courses_purchase_human_renders_balance_transition(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Human output shows cost_cents and balance_cents transition."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--expected-price-cents",
+        "300",
+        "--yes",
+    ])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "cost_cents: 300" in out
+    assert "balance_cents: 1000 -> 700" in out
+    assert "purchase_flow: credits" in out
+    assert "entitlement_granted: True" in out

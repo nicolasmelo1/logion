@@ -11,7 +11,11 @@ required_tools:
 required_env: []
 safety:
   requires_confirmation:
-    - paid_checkout
+    - spend_credits
+    - top_up_credits
+    - fund_bounty
+    - share_referral_link
+    - creator_cash_out
     - install_new_capability
     - update_paid_capability
     - permission_expansion
@@ -63,7 +67,7 @@ insufficient.
 7. Prefer free or local equivalents when quality is comparable.
 8. **Always ask for explicit user approval** before any paid action,
    install, or update — specifically: `logion skills install`,
-   `logion payments checkout-start`, and `logion skills update` calls
+   `logion credits top-up`, `logion courses purchase`, and `logion skills update` calls
    that change price, permissions, required tools, or execution policy.
 9. Load only the selected skill artifact, never the whole catalog.
 10. Only call commands listed under "Implemented safe discovery commands",
@@ -89,6 +93,7 @@ logion listings --help
 logion notifications --help
 logion courses --help
 logion courses versions --help
+logion credits --help
 logion payments --help
 logion reports --help
 logion course-reviews --help
@@ -113,6 +118,8 @@ logion courses reviews summary COURSE_ID
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
+logion payments creator-earnings --json
+logion credits balance --json
 ```
 
 Implemented mutating commands (require explicit approval):
@@ -128,6 +135,10 @@ logion courses uploads create COURSE_ID --file ... --json
 logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
+logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion credits top-up --amount 1000 --yes --json
+logion payments cash-out --dry-run --json
+logion payments cash-out --expected-gross-payout-cents N --yes --json
 ```
 
 Creator commands (require explicit approval for destructive actions):
@@ -135,6 +146,23 @@ Creator commands (require explicit approval for destructive actions):
 logion courses capabilities print --bundle-dir ./new-course --json
 logion payments onboarding-link --json
 ```
+
+## Paid course acquisition path
+
+The CLI does not auto-download a paid course after purchase. The concrete
+two-step flow, in order, is:
+
+```bash
+logion courses purchase COURSE_ID --expected-price-cents N --yes --json
+logion skills install --source ./BUNDLE --course-id COURSE_ID \
+  --version-id VERSION_ID --install-source logion-marketplace
+```
+
+Step 1 spends credits and grants entitlement on the server. Step 2 installs
+a local bundle the user has already acquired and marks
+`entitlement_status=active` because `--install-source` is
+`logion-marketplace`. Do not promise an automated search → purchase →
+download → install pipeline; one does not exist in this phase.
 
 ## Course inspection checklist
 
@@ -145,8 +173,8 @@ is similar.
 ## Install/update approval rules
 
 Never install, purchase, or update on your own. Explicit user approval is
-required before install, before paid checkout, and before updates that change
-price, permissions, required tools, or execution policy.
+required before install, before credit spend or top-up, and before updates
+that change price, permissions, required tools, or execution policy.
 
 ## Context budget rules
 
@@ -168,12 +196,15 @@ keyword.
 - `references/notifications-and-reports.md` — inspecting inbox or filing a
   user-directed moderation report.
   *Example intent:* "Anything new in my Logion inbox?"
-- `references/payments-and-checkout.md` — order status/wait or creator-side
-  Stripe onboarding (one-shot buyer checkout stays on the primary path).
-  *Example intent:* "What's the status of order ORD-77?"
+- `references/credits-and-payments.md` — credit balance, top-ups, ledger,
+  and creator-side seller onboarding.
+  *Example intent:* "How many credits do I have?"
 - `references/bounties.md` — any bounty surface (discovery, create, fund,
   submissions, payout, local workspace).
   *Example intent:* "Fund bounty BNT-42 with 25 USDC."
+- `references/referrals.md` — referral codes, links, and attribution
+  (placeholder until program launch).
+  *Example intent:* "Show me my referral code."
 - `references/course-review-queue.md` — reviewer-side approve/reject on the
   publication queue (`logion course-reviews`).
   *Example intent:* "Show me courses waiting for my review."

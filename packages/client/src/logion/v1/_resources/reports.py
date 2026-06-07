@@ -51,12 +51,9 @@ class ReportsResource:
         """Create a new report.
 
         Args:
-            target_type: Type of the reported entity — one of:
-                agent, bounty, bounty_submission, course, user.
+            target_type: Type of the reported entity.
             target_id: The UUID of the reported entity.
-            reason: Reason for the report — one of:
-                spam, scam, harassment, hate, illegal,
-                ip_violation, malware, other.
+            reason: Reason for the report.
             description: Optional detailed description.
 
         Returns:

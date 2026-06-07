@@ -311,6 +311,21 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
+        name="logion_payments_orders_get",
+        description=(
+            "Run `logion payments orders get ORDER_ID` to retrieve "
+            "the status of a payment order."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "string"},
+            },
+            "required": ["order_id"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
         name="logion_payments_seller_readiness",
         description=(
             "Run `logion payments seller-readiness` to check whether the "
@@ -378,32 +393,6 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
                 "version_id": {"type": "string"},
                 "source": {"type": "string"},
             },
-            "required": ["course_id"],
-            "additionalProperties": False,
-        },
-    ),
-    ToolSpec(
-        name="logion_payments_checkout_start",
-        description=(
-            "Begin paid checkout via `logion payments` for a paid course. "
-            "Only call after the user has approved the purchase."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {"course_id": {"type": "string"}},
-            "required": ["course_id"],
-            "additionalProperties": False,
-        },
-    ),
-    ToolSpec(
-        name="logion_payments_checkout_confirm",
-        description=(
-            "Confirm a paid checkout. Requires explicit user confirmation in "
-            "the final answer."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {"course_id": {"type": "string"}},
             "required": ["course_id"],
             "additionalProperties": False,
         },
@@ -478,15 +467,15 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
-        name="logion_payments_orders_get",
+        name="logion_credits_top_up",
         description=(
-            "Run `logion payments orders get ORDER_ID` to verify order state "
-            "after checkout."
+            "Run `logion credits top-up --amount AMOUNT_CENTS` to create a "
+            "Stripe Checkout session for credit top-up."
         ),
         parameters={
             "type": "object",
-            "properties": {"order_id": {"type": "string"}},
-            "required": ["order_id"],
+            "properties": {"amount_cents": {"type": "integer"}},
+            "required": ["amount_cents"],
             "additionalProperties": False,
         },
     ),
@@ -1143,12 +1132,19 @@ def execute_synthetic_tool(  # noqa: C901
             "ok": True,
             "url": "https://payments.example.test/onboarding/session",
         }
+    if call.tool == "logion_credits_top_up":
+        amount_cents = int(call.args.get("amount_cents", 0))
+        return {
+            "ok": True,
+            "top_up_id": "topup-synthetic-001",
+            "amount_cents": amount_cents,
+            "status": "pending",
+            "checkout_url": "https://checkout.stripe.test/session/topup-synthetic",
+        }
     if call.tool in {
         "logion_courses_get",
         "logion_skills_install",
         "logion_skills_update",
-        "logion_payments_checkout_start",
-        "logion_payments_checkout_confirm",
     }:
         course_id = str(call.args.get("course_id", ""))
         course = catalog.by_id(course_id)

@@ -46,7 +46,7 @@ REQUIRED_REFERENCES = [
     "references/course-review-queue.md",
     "references/creator-course-management.md",
     "references/notifications-and-reports.md",
-    "references/payments-and-checkout.md",
+    "references/credits-and-payments.md",
     "references/troubleshooting.md",
 ]
 

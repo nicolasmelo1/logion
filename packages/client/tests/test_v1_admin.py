@@ -25,7 +25,7 @@ from logion.v1._types.generated.v1 import (
 
 
 class TestAdminResource:
-    """Tests for all 14 methods of AdminResource."""
+    """Tests for all methods of AdminResource."""
 
     # -- Courses --
 

@@ -8,10 +8,10 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import (
-    handle_checkout,
+    handle_cash_out,
+    handle_creator_earnings,
     handle_onboarding_link,
     handle_orders_get,
-    handle_payments_orders_wait,
     handle_seller_readiness,
 )
 
@@ -41,22 +41,47 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     onboarding_link.set_defaults(handler=handle_onboarding_link)
 
-    checkout = sub.add_parser(
-        "checkout",
-        help="Create a checkout session for a course",
+    # payments creator-earnings
+    creator_earnings = sub.add_parser(
+        "creator-earnings",
+        help="Get creator earnings summary",
         parents=[COMMON_PARSER],
     )
-    checkout.add_argument("course_id", metavar="COURSE_ID")
-    checkout.add_argument(
-        "--price-cents",
+    creator_earnings.set_defaults(handler=handle_creator_earnings)
+
+    # payments cash-out
+    cash_out = sub.add_parser(
+        "cash-out",
+        help="Request a cash-out of accrued creator earnings",
+        parents=[COMMON_PARSER],
+    )
+    cash_out.add_argument(
+        "--minimum-payout-cents",
+        dest="minimum_payout_cents",
         type=int,
         default=None,
-        help=(
-            "Expected price in cents. Omit to skip price validation "
-            "and route based on the course's stored price."
-        ),
+        help="Override minimum payout threshold (in cents).",
     )
-    checkout.set_defaults(handler=handle_checkout)
+    cash_out.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Compute result without processing the transfer.",
+    )
+    cash_out.add_argument(
+        "--yes",
+        dest="yes",
+        action="store_true",
+        help="Confirm initiating a non-dry-run cash-out transfer.",
+    )
+    cash_out.add_argument(
+        "--expected-gross-payout-cents",
+        dest="expected_gross_payout_cents",
+        type=int,
+        default=None,
+        help="Required for execution; must match the server dry-run preview.",
+    )
+    cash_out.set_defaults(handler=handle_cash_out)
 
     orders = sub.add_parser("orders", help="Manage orders")
     orders_sub = orders.add_subparsers(
@@ -70,24 +95,3 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     orders_get.add_argument("order_id", metavar="ORDER_ID")
     orders_get.set_defaults(handler=handle_orders_get)
-
-    wait = orders_sub.add_parser(
-        "wait",
-        help="Poll until an order reaches a terminal state",
-        parents=[COMMON_PARSER],
-    )
-    wait.add_argument("order_id", metavar="ORDER_ID")
-    wait.add_argument(
-        "--wait-timeout",
-        dest="timeout",
-        type=int,
-        default=120,
-        help="Max seconds to poll (capped at 600).",
-    )
-    wait.add_argument(
-        "--interval",
-        type=int,
-        default=5,
-        help="Seconds between polls.",
-    )
-    wait.set_defaults(handler=handle_payments_orders_wait)
