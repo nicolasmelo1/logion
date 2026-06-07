@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-.PHONY: lint test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
+.PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
 	check-skip-reasons check-forbidden-imports \
 	check-installer-security \
@@ -13,6 +13,12 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 lint:
 	uv run ruff check packages/
 	uv run ruff format --check packages/
+
+dead-code:
+	uv run vulture
+
+dead-code-advisory:
+	uv run vulture --min-confidence 60 || true
 
 test:
 	uv run pytest packages/ tests/ --no-header -q -m "not integration"

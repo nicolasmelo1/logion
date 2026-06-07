@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 from pathlib import Path
 
@@ -43,6 +44,26 @@ def test_command_packages_export_register() -> None:
         assert callable(getattr(module, "register", None)), (
             f"cli.commands.{path.name} must export register()"
         )
+
+
+def test_top_level_command_imports_are_registered() -> None:
+    """Every command imported by the parser must register its CLI surface."""
+    parser_path = COMMANDS_DIR.parent / "_parser.py"
+    tree = ast.parse(parser_path.read_text())
+    imported: set[str] = set()
+    registered: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "cli.commands":
+            imported.update(alias.asname or alias.name for alias in node.names)
+        if isinstance(node, ast.Call):
+            func = node.func
+            if (
+                isinstance(func, ast.Attribute)
+                and func.attr == "register"
+                and isinstance(func.value, ast.Name)
+            ):
+                registered.add(func.value.id)
+    assert registered == imported
 
 
 def test_command_package_source_files_stay_small() -> None:

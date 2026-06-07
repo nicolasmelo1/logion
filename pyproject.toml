@@ -24,6 +24,7 @@ dev = [
     "python-semantic-release>=10.5.3,<10.6.0",
     "ruff>=0.15.12,<0.16.0",
     "twine>=6.1,<7.0",
+    "vulture>=2.14,<3.0",
 ]
 
 [tool.ruff]
@@ -84,6 +85,20 @@ markers = [
 
 [tool.mypy]
 exclude = ["tests/"]
+
+[tool.vulture]
+min_confidence = 80
+paths = [
+    "packages/cli/cli",
+    "packages/client/src",
+    "packages/agent-companion",
+]
+exclude = [
+    "packages/client/src/logion/v1/_types/generated",
+    "packages/client/src/logion/v1/_generated",
+    "packages/*/tests",
+    "packages/agent-companion/evals",
+]
 
 [tool.bandit]
 exclude_dirs = [
