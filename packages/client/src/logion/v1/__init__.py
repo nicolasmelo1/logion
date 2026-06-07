@@ -14,6 +14,7 @@ from logion.v1._resources.identity import IdentityResource
 from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.notifications import NotificationsResource
 from logion.v1._resources.payments import PaymentsResource
+from logion.v1._resources.referrals import ReferralsResource
 from logion.v1._resources.reports import ReportsResource
 
 
@@ -32,3 +33,4 @@ class V1Namespace:
         self.reports = ReportsResource(http)
         self.admin = AdminResource(http)
         self.bounties = BountiesResource(http)
+        self.referrals = ReferralsResource(http)
