@@ -7,7 +7,7 @@ import argparse
 
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, validate_uuid_id
 from cli._output import emit_json, to_data
 
 from ._helpers import (
@@ -45,18 +45,20 @@ def _run(
 
 def handle_referrals_code(args: argparse.Namespace) -> int:
     """Execute the referrals code command."""
-    config = resolve_config_from_args(args)
     return _run(
         args,
         lambda r: r.get_code(),
         "code",
-        json_output=config.json_output,
+        json_output=getattr(args, "json_output", False),
         render=emit_code_human,
     )
 
 
 def handle_referrals_link(args: argparse.Namespace) -> int:
     """Execute the referrals link command."""
+    bad_id = validate_uuid_id(args.course_id, "COURSE_ID")
+    if bad_id is not None:
+        return bad_id
     refusal = require_yes(
         args.yes,
         "share this referral link",
@@ -83,24 +85,22 @@ def handle_referrals_link(args: argparse.Namespace) -> int:
 
 def handle_referrals_stats(args: argparse.Namespace) -> int:
     """Execute the referrals stats command."""
-    config = resolve_config_from_args(args)
     return _run(
         args,
         lambda r: r.get_stats(),
         "stats",
-        json_output=config.json_output,
+        json_output=getattr(args, "json_output", False),
         render=emit_stats_human,
     )
 
 
 def handle_referrals_attributions(args: argparse.Namespace) -> int:
     """Execute the referrals attributions command."""
-    config = resolve_config_from_args(args)
     return _run(
         args,
         lambda r: r.list_attributions(),
         "attributions",
-        json_output=config.json_output,
+        json_output=getattr(args, "json_output", False),
         render=emit_attributions_human,
     )
 

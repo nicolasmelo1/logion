@@ -1777,3 +1777,24 @@ def test_courses_purchase_human_renders_balance_transition(
     assert "balance_cents: 1000 -> 700" in out
     assert "purchase_flow: credits" in out
     assert "entitlement_granted: True" in out
+
+
+def test_courses_purchase_without_price_guard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Purchase without --expected-price-cents passes None as price guard."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "courses",
+        "purchase",
+        _PURCHASE_COURSE_ID,
+        "--yes",
+        "--json",
+    ])
+
+    assert code == 0
+    assert courses.last_call[0] == "purchase"
+    assert courses.last_call[1]["expected_price_cents"] is None

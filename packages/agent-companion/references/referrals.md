@@ -15,7 +15,7 @@ Show your default referral code. This code is embedded in every
 referral link you generate and identifies you as the referrer across
 both lanes.
 
-### `logion referrals link COURSE_ID [--json]`
+### `logion referrals link COURSE_ID --yes [--json]`
 
 Generate a referral link for a specific course. The link contains
 your referral code and the course identifier so that purchases through

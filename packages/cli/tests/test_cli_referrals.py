@@ -104,6 +104,20 @@ def test_referrals_link_requires_yes(
     assert "--yes" in capsys.readouterr().err
 
 
+def test_referrals_link_rejects_invalid_uuid(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """referrals link rejects a non-UUID course_id with exit code 2."""
+    referrals_resource = FakeReferralsResource()
+    _patch_client(monkeypatch, referrals_resource)
+
+    assert main(["referrals", "link", "not-a-uuid", "--yes"]) == 2
+
+    assert referrals_resource.last_call == ("", {})
+    assert "UUID" in capsys.readouterr().err
+
+
 def test_referrals_link_json_with_yes(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

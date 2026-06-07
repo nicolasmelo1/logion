@@ -34,7 +34,7 @@ CANONICAL_REFERENCES = (
     "course-review-queue.md",
     "admin-operations.md",
     "troubleshooting.md",
-    # "referrals.md" — add when the referrals CLI group lands (Phase 9.5/9.6)
+    "referrals.md",
 )
 
 
