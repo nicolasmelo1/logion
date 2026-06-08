@@ -66,6 +66,85 @@ sections:
           Listings are reviewed, versioned marketplace artifacts with explicit
           acquisition and entitlement state.
 
+  - id: agent-flow
+    title: Agent acquisition flow
+    body: >-
+      Target CLI flow. The transcript below shows what a buyer agent runs to
+      discover, acquire, and install a reviewed course bundle. CLI verbs are
+      stable in intent; exact command names may change before the first public
+      release.
+    transcript: |
+      > Find a reviewed course that helps write safer database migrations
+      lgn listings search "database migration safety"
+
+      FOUND migration-safety-review
+      price: 900 credits
+      version: immutable after publish
+      review: scanners + human publication review
+      capabilities: file, terminal
+
+      Install? yes
+      lgn courses acquire migration-safety-review
+      lgn courses install migration-safety-review
+
+      entitlement granted
+      course bundle installed
+
+  - id: security-authority
+    title: Security is the authority
+    body: >-
+      Security and review are the central authority surfaces of the marketplace,
+      not decorative claims. Listings are reviewable before acquisition and
+      accountable after publication.
+    proofs:
+      - course/capabilities.yaml declarations
+      - automated scanners
+      - human publication review
+      - immutable published versions
+      - buyer-safe capability summaries
+      - reports, takedowns, access revocation
+      - execution policy export path
+    caveat: >-
+      Runtime sandbox enforcement remains future runtime work; the landing must
+      not claim it is already solved.
+
+  - id: open-source-trust
+    title: Open-source trust layer
+    body: >-
+      The API implementation is private; the client and integration surface are
+      public for inspection. Anyone can audit what an agent runs locally and
+      what it sends to the marketplace.
+    proofs:
+      - CLI source
+      - Python SDK source
+      - npm wrapper source
+      - agent companion SKILL.md
+      - public OpenAPI contract
+      - release manifests
+      - CI and installer smoke tests
+    links:
+      - label: GitHub monorepo
+        href: https://github.com/nicolasmelo1/logion
+      - label: OpenAPI contract
+        href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
+      - label: Release manifests
+        href: https://github.com/nicolasmelo1/logion/tree/main/releases
+
+  - id: agent-readable-web
+    title: Agent-readable web surface
+    body: >-
+      The landing app itself is built for agent ingestion. Crawlers and agents
+      can read the same page as plain markdown without scraping HTML.
+    proofs:
+      - "Accept: text/markdown on /"
+      - /llms.txt
+      - /robots.txt
+      - /sitemap.xml
+      - public GitHub repo
+    caveat: >-
+      No MCP setup is required for the first workflow; MCP can remain a future
+      thin adapter over the public CLI and API contract.
+
   - id: loop
     title: How the marketplace loop works
     body: >-
@@ -120,24 +199,47 @@ sections:
           Execution policy is documented as the path toward runtime enforcement
           without claiming that sandboxing is already solved.
 
-  - id: economy
-    title: Economy and bounties
+  - id: credits-acquisition
+    title: Credits without packs
     body: >-
-      Logion supports free and paid acquisition, entitlement grants,
-      Stripe-backed seller onboarding, Stripe Connect payouts, ledger-backed
-      order accounting, and ledger-backed bounty accounting.
+      Logion uses credits as the wallet and spending-control mechanism for
+      agents. There is no platform subscription gate. Buyers top up credits and
+      agents spend them inside the marketplace.
+    proofs:
+      - minimum top-up exists to avoid Stripe fee damage
+      - custom amount is the core model
+      - preset amounts may be UI shortcuts, not packs
+      - credits are a wallet/spending-control mechanism for agents
+
+  - id: economy
+    title: Economy, referrals, and bounties
+    body: >-
+      No platform subscription gate. Buyers top up credits and pay for courses
+      in credits with no Stripe redirect per purchase. Free courses cost zero
+      credits. Creators keep 85% and the platform fee is 15%. Referrers can
+      earn credits through the referral program. Bounty funders fund with
+      credits; bounty contributors cash out through Stripe Connect after
+      acceptance.
     items:
+      - title: 100 credits = $1
+        body: >-
+          Credits are denominated at 100 credits per US dollar at top-up. All
+          marketplace pricing is shown in credits.
       - title: Free and paid acquisition
         body: >-
-          Bundles can be free or paid while still using explicit entitlements.
-      - title: Seller onboarding and payouts
+          Free courses cost zero credits. Paid course purchases spend credits
+          without a Stripe redirect.
+      - title: Creators keep 85%
         body: >-
-          Stripe backs seller onboarding and Stripe Connect payouts for paid
-          marketplace activity.
-      - title: Creator-funded bounties
+          Creators keep 85% of paid course revenue. The platform fee is 15%.
+      - title: Referral rewards
         body: >-
-          The MVP bounty model is creator-funded; sponsor, platform, and open
-          improvement pools are future directions.
+          Referrers can earn credits through the referral program subject to
+          attribution, qualifying purchase, and anti-abuse rules.
+      - title: Bounties
+        body: >-
+          Bounty funders fund bounties with credits. Contributors cash out
+          through Stripe Connect after acceptance.
 
   - id: install
     title: Install
@@ -172,10 +274,43 @@ cli:
     - lgn --help
     - lgn courses get <COURSE_ID>
 
+pricing:
+  heading: Pricing
+  intro: >-
+    Logion has no platform subscription gate. Buyers top up credits and agents
+    spend credits on paid course purchases. Free courses cost zero credits.
+  rows:
+    - label: Denomination
+      value: 100 credits = $1
+    - label: Platform fee
+      value: 15% (creators keep 85%)
+    - label: Buyer payment
+      value: top up credits with Stripe; spend credits in-marketplace
+    - label: Stripe redirect per purchase
+      value: none
+    - label: Free courses
+      value: zero credits
+    - label: Bounty funding
+      value: funded in credits
+    - label: Bounty cash-out
+      value: Stripe Connect after acceptance
+    - label: Referral rewards
+      value: credits awarded subject to attribution and anti-abuse rules
+
+referral:
+  heading: Referral landing
+  intro: >-
+    The /c/<course_slug>?ref=CODE route renders the install/purchase command
+    for the referred course with the referral code attached. The route sets
+    no cookies and loads no third-party tracking scripts in MVP.
+  command_template: "lgn courses acquire {slug} --referral-code {code}"
+
 links:
   primary:
     - label: GitHub
       href: https://github.com/nicolasmelo1/logion
+    - label: Pricing
+      href: /pricing
     - label: Install
       href: /#install
   legal:
@@ -183,6 +318,10 @@ links:
       href: /terms
     - label: Privacy
       href: /privacy
+    - label: Credits
+      href: /credits-terms
+    - label: Referrals
+      href: /referrals-terms
 
 contact:
   general: hello@logion.sh
@@ -192,10 +331,16 @@ contact:
 legal:
   terms:
     heading: Terms of Service
-    markdown: terms-of-service.md
+    markdown: legal/terms.md
   privacy:
     heading: Privacy Policy
-    markdown: privacy-policy.md
+    markdown: legal/privacy.md
+  credits:
+    heading: Credits Terms
+    markdown: legal/credits.md
+  referrals:
+    heading: Referral Program Terms
+    markdown: legal/referrals.md
 
 seo:
   canonical_base: https://logion.sh
@@ -244,12 +389,79 @@ ai:
     - title: Landing (markdown)
       href: /
       description: Full landing copy as markdown via content negotiation.
+    - title: Pricing
+      href: /pricing
+      description: Credits, 100 credits = $1, 85/15 split, bounty funding, referrals.
     - title: Terms of Service
       href: /terms
       description: Marketplace terms of service.
     - title: Privacy Policy
       href: /privacy
       description: Privacy policy covering visitors and registered users.
+    - title: Credits Terms
+      href: /credits-terms
+      description: Credits are non-cash, non-transferable usage rights.
+    - title: Referral Program Terms
+      href: /referrals-terms
+      description: Referral attribution, rewards, clawback, and anti-abuse rules.
     - title: GitHub repository
       href: https://github.com/nicolasmelo1/logion
       description: Source for the CLI, marketplace, and bundles.
+  llms_txt_sections:
+    - heading: Public Source
+      links:
+        - title: CLI package
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
+          description: Logion CLI source.
+        - title: Python SDK package
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+          description: Python SDK source.
+        - title: npm wrapper package
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper
+          description: npm wrapper around the CLI.
+        - title: Agent companion package
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/agent-companion
+          description: SKILL.md companion bundle for harnesses.
+        - title: OpenAPI contract
+          href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
+          description: Public marketplace API contract.
+        - title: Release manifests
+          href: https://github.com/nicolasmelo1/logion/tree/main/releases
+          description: Release manifests for published packages.
+    - heading: Agent Surfaces
+      links:
+        - title: "Accept: text/markdown on /"
+          href: /
+          description: The landing root returns plain markdown when requested.
+        - title: /llms.txt
+          href: /llms.txt
+          description: Curated agent-readable index of the public surface.
+        - title: /robots.txt
+          href: /robots.txt
+          description: Explicitly allows common AI crawlers.
+        - title: /sitemap.xml
+          href: /sitemap.xml
+          description: Public route sitemap.
+        - title: Target CLI install command
+          href: /#install
+          description: "curl -fsSL https://logion.sh/install.sh | sh"
+    - heading: Product Concepts
+      links:
+        - title: Course bundles
+          href: /#what
+          description: Reviewed, versioned operational knowledge packages.
+        - title: Capability declarations
+          href: /#security-authority
+          description: course/capabilities.yaml manifests scanned and reviewed.
+        - title: Entitlements
+          href: /#loop
+          description: Buyer-agent access to acquired bundles.
+        - title: Credits
+          href: /pricing
+          description: 100 credits = $1, wallet/spending-control for agents.
+        - title: Publication review
+          href: /#security-authority
+          description: Human review before marketplace availability.
+        - title: Bounties
+          href: /#economy
+          description: Creator-funded improvements; cash-out via Stripe Connect.

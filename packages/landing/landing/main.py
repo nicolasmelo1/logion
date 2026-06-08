@@ -9,12 +9,13 @@ can be edited without touching Python.
 from __future__ import annotations
 
 import os
+import re
 from html import escape
 from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
@@ -32,7 +33,15 @@ CONTENT_DIR = PACKAGE_DIR / "content"
 CONTENT_PATH = CONTENT_DIR / "site.yaml"
 MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
-PUBLIC_PATHS = ("/", "/terms", "/privacy", "/llms.txt")
+PUBLIC_PATHS = (
+    "/",
+    "/pricing",
+    "/terms",
+    "/privacy",
+    "/credits-terms",
+    "/referrals-terms",
+    "/llms.txt",
+)
 AI_CRAWLERS = (
     "GPTBot",
     "ChatGPT-User",
@@ -42,6 +51,8 @@ AI_CRAWLERS = (
     "Google-Extended",
     "CCBot",
 )
+SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+REFERRAL_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
@@ -100,10 +111,20 @@ def sitemap_xml() -> str:
     )
 
 
+def _format_llms_link(entry: dict[str, Any]) -> str:
+    title = str(entry.get("title", "Untitled"))
+    href = str(entry.get("href", "/"))
+    description = str(entry.get("description", "")).strip()
+    url = href if href.startswith("https://") else canonical_url(href)
+    suffix = f" - {description}" if description else ""
+    return f"- [{title}]({url}){suffix}"
+
+
 def llms_txt() -> str:
     ai = content.get("ai", {})
     site = content.get("site", {})
-    pages = ai.get("llms_txt_pages", [])
+    pages = ai.get("llms_txt_pages", []) or []
+    sections = ai.get("llms_txt_sections", []) or []
     lines = [
         f"# {site.get('name', 'Logion')}",
         "",
@@ -113,14 +134,18 @@ def llms_txt() -> str:
         "",
     ]
     for page in pages:
-        if not isinstance(page, dict):
+        if isinstance(page, dict):
+            lines.append(_format_llms_link(page))
+    for section in sections:
+        if not isinstance(section, dict):
             continue
-        title = str(page.get("title", "Untitled"))
-        href = str(page.get("href", "/"))
-        description = str(page.get("description", "")).strip()
-        url = href if href.startswith("https://") else canonical_url(href)
-        suffix = f" - {description}" if description else ""
-        lines.append(f"- [{title}]({url}){suffix}")
+        heading = str(section.get("heading", "")).strip()
+        if not heading:
+            continue
+        lines.extend(["", f"## {heading}", ""])
+        for link in section.get("links", []) or []:
+            if isinstance(link, dict):
+                lines.append(_format_llms_link(link))
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -165,6 +190,11 @@ def index(request: Request) -> Response:
     return templates.TemplateResponse(request, "index.html", _ctx())
 
 
+@app.get("/pricing", response_class=HTMLResponse)
+def pricing(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "pricing.html", _ctx())
+
+
 @app.get("/terms", response_class=HTMLResponse)
 def terms(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -180,6 +210,63 @@ def privacy(request: Request) -> HTMLResponse:
         request,
         "legal.html",
         _ctx(page=legal_page("privacy")),
+    )
+
+
+@app.get("/credits-terms", response_class=HTMLResponse)
+def credits_terms(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "legal.html",
+        _ctx(page=legal_page("credits")),
+    )
+
+
+@app.get("/referrals-terms", response_class=HTMLResponse)
+def referrals_terms(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "legal.html",
+        _ctx(page=legal_page("referrals")),
+    )
+
+
+@app.get("/c/{course_slug}", response_class=HTMLResponse)
+def referral_landing(
+    request: Request,
+    course_slug: str,
+    ref: str | None = None,
+) -> HTMLResponse:
+    if not SLUG_PATTERN.match(course_slug):
+        raise HTTPException(status_code=404, detail="course not found")
+    referral_code: str | None = None
+    if ref is not None:
+        if not REFERRAL_CODE_PATTERN.match(ref):
+            raise HTTPException(
+                status_code=400,
+                detail="invalid referral code",
+            )
+        referral_code = ref
+    referral_cfg = content.get("referral", {})
+    template = str(
+        referral_cfg.get(
+            "command_template",
+            "lgn courses acquire {slug} --referral-code {code}",
+        )
+    )
+    if referral_code:
+        command = template.format(slug=course_slug, code=referral_code)
+    else:
+        command = f"lgn courses acquire {course_slug}"
+    # MVP: no cookies, no third-party tracking on this route.
+    return templates.TemplateResponse(
+        request,
+        "referral.html",
+        _ctx(
+            course_slug=course_slug,
+            referral_code=referral_code,
+            command=command,
+        ),
     )
 
 

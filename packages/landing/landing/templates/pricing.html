@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing — {{ site.name }}{% endblock %}
+{% block meta_description %}Logion pricing: 100 credits = $1, 85/15 split, no platform subscription, free courses cost zero credits.{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block main %}
+  <section class="content-section" id="pricing">
+    <span class="hud-tag">§ pricing</span>
+    <h1>{{ pricing.heading }}</h1>
+    <p>{{ pricing.intro }}</p>
+    <dl class="pricing-table">
+      {% for row in pricing.rows %}
+        <dt>{{ row.label }}</dt>
+        <dd>{{ row.value }}</dd>
+      {% endfor %}
+    </dl>
+    <p class="section-caveat">
+      Credits are non-cash usage rights and are not redeemable for money. See
+      <a href="/credits-terms">Credits Terms</a> for the full rules.
+    </p>
+  </section>
+{% endblock %}

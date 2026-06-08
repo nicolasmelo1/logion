@@ -81,6 +81,26 @@
           {% endfor %}
         </ul>
       {% endif %}
+      {% if section.get("transcript") %}
+        <pre class="terminal-transcript"><code>{{ section.transcript }}</code></pre>
+      {% endif %}
+      {% if section.get("proofs") %}
+        <ul class="proof-list">
+          {% for proof in section.get("proofs") %}
+            <li>{{ proof }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if section.get("links") %}
+        <nav class="section-links" aria-label="{{ section.title }} links">
+          {% for link in section.get("links") %}
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+      {% endif %}
+      {% if section.get("caveat") %}
+        <p class="section-caveat">{{ section.caveat }}</p>
+      {% endif %}
     </section>
   {% endfor %}
 {% endblock %}
