@@ -80,6 +80,8 @@ from logion.v1._types.generated.v1 import (
     RotateAgentApiKeyResponse,
     SearchListingsResponse,
     SellerReadinessResponse,
+    SetReferralAttributionStatusRequest,
+    SetReferralAttributionStatusResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
     UpdateCourseRequest,
@@ -191,6 +193,21 @@ def block_course(
         "PATCH",
         f"/v1/admin/courses/{course_id}/status",
         BlockCourseResponse,
+    )
+
+
+def set_referral_attribution_status(
+    http: HttpClient,
+    *,
+    attribution_id: str | UUID,
+    body: SetReferralAttributionStatusRequest,
+) -> SetReferralAttributionStatusResponse:
+    """Call the set_referral_attribution_status API operation."""
+    return http.request_model(
+        "PATCH",
+        f"/v1/admin/referral-attributions/{attribution_id}/status",
+        SetReferralAttributionStatusResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

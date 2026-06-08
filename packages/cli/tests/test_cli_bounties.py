@@ -330,34 +330,18 @@ def test_cancel_bounty_calls_client(
     assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
 
 
-def test_payout_bounty_requires_yes() -> None:
-    """bounties payout returns 2 without --yes."""
-    code = main([
-        "bounties",
-        "payout",
-        "550e8400-e29b-41d4-a716-446655440000",
-    ])
-    assert code == 2
-
-
-def test_payout_bounty_calls_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """bounties payout calls create_payout."""
-    bounties = FakeBountiesResource()
-    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "bounties",
-        "payout",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "--yes",
-        "--json",
-    ])
-    assert code == 0
-    method, kwargs = bounties.last_call
-    assert method == "create_payout"
-    assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+def test_payout_command_removed() -> None:
+    """phase 9.7: `logion bounties payout` is gone — accept accrues
+    the payable directly and the contributor uses payments cash-out."""
+    # argparse raises SystemExit(2) when an unknown sub-command is supplied.
+    with pytest.raises(SystemExit) as excinfo:
+        main([
+            "bounties",
+            "payout",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "--yes",
+        ])
+    assert excinfo.value.code == 2
 
 
 # ── Submissions ──────────────────────────────────────────────────

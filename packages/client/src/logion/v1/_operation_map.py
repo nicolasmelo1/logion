@@ -79,6 +79,9 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_report_detail": "client.v1.admin.get_report",
     "resolve_report": "client.v1.admin.resolve_report",
     "dismiss_report": "client.v1.admin.dismiss_report",
+    "set_referral_attribution_status": (
+        "client.v1.admin.set_referral_attribution_status"
+    ),
 }
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {}

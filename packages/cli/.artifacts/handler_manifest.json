@@ -31,11 +31,6 @@
     "bounties open": {
       "operations": []
     },
-    "bounties payout": {
-      "operations": [
-        "create_bounty_payout"
-      ]
-    },
     "bounties submissions accept": {
       "operations": [
         "accept_bounty_submission"

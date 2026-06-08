@@ -812,7 +812,7 @@
             "type": "string"
           },
           "currency": {
-            "default": "USD",
+            "default": "USD_CREDIT",
             "title": "Currency",
             "type": "string"
           },
@@ -5490,6 +5490,54 @@
         "title": "SellerReadinessResponse",
         "type": "object"
       },
+      "SetReferralAttributionStatusRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "abuse_review",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SetReferralAttributionStatusRequest",
+        "type": "object"
+      },
+      "SetReferralAttributionStatusResponse": {
+        "properties": {
+          "attribution_id": {
+            "format": "uuid",
+            "title": "Attribution Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attribution_id",
+          "status"
+        ],
+        "title": "SetReferralAttributionStatusResponse",
+        "type": "object"
+      },
       "SuspendAgentResponse": {
         "properties": {
           "agent_id": {
@@ -6978,6 +7026,115 @@
         "summary": "Block a course by setting its status to blocked.",
         "tags": [
           "admin-courses"
+        ]
+      }
+    },
+    "/v1/admin/referral-attributions/{attribution_id}/status": {
+      "patch": {
+        "operationId": "set_referral_attribution_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attribution_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attribution Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetReferralAttributionStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetReferralAttributionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid transition"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark a referral attribution as under abuse review or blocked. Blocks all FUTURE rewards; existing rewards are not clawed back.",
+        "tags": [
+          "admin-referrals"
         ]
       }
     },
@@ -10823,11 +10980,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Self-referral or abusive referral blocked"
           },
           "429": {
             "content": {
