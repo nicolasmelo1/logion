@@ -356,6 +356,110 @@ def test_no_page_references_per_course_stripe_checkout() -> None:
         assert "stripe checkout" not in lower, path
 
 
+def test_homepage_emits_faq_jsonld_with_visible_answers() -> None:
+    text = client.get("/").text
+    # JSON-LD FAQPage block with the canonical Q&A set.
+    assert '"@type": "FAQPage"' in text
+    assert "What is Logion?" in text
+    assert "How are courses priced?" in text
+    assert "Are credits refundable or transferable?" in text
+    # Visible FAQ section anchors the same content for human readers.
+    assert 'id="faq"' in text
+    assert "Frequently asked questions" in text
+
+
+def test_homepage_emits_howto_jsonld_with_real_cli_steps() -> None:
+    text = client.get("/").text
+    assert '"@type": "HowTo"' in text
+    assert "Acquire and install" in text
+    assert "lgn listings search" in text
+    assert "lgn courses purchase" in text
+
+
+def test_homepage_emits_software_application_jsonld() -> None:
+    text = client.get("/").text
+    assert '"@type": "SoftwareApplication"' in text
+    assert "DeveloperApplication" in text
+
+
+def test_keywords_meta_is_removed_as_legacy_seo_noise() -> None:
+    text = client.get("/").text
+    assert 'name="keywords"' not in text
+
+
+def test_rel_me_links_to_github_for_authorship() -> None:
+    text = client.get("/").text
+    assert 'rel="me"' in text
+    assert "github.com/nicolasmelo1/logion" in text
+
+
+def test_breadcrumb_jsonld_on_pricing_and_legal_pages() -> None:
+    for path, label in (
+        ("/pricing", "Pricing"),
+        ("/terms", "Terms of Service"),
+        ("/privacy", "Privacy Policy"),
+        ("/credits-terms", "Credits Terms"),
+        ("/referrals-terms", "Referral Program Terms"),
+    ):
+        text = client.get(path).text
+        assert '"@type": "BreadcrumbList"' in text, path
+        assert label in text, path
+
+
+def test_legal_pages_emit_date_modified_for_article_freshness() -> None:
+    for path in ("/terms", "/privacy", "/credits-terms", "/referrals-terms"):
+        text = client.get(path).text
+        assert '"dateModified"' in text, path
+
+
+def test_pages_link_to_their_markdown_alternate() -> None:
+    for path in ("/", "/pricing", "/terms", "/privacy"):
+        text = client.get(path).text
+        assert 'rel="alternate" type="text/markdown"' in text, path
+        assert 'href="https://logion.sh/llms-full.txt"' in text, path
+
+
+def test_markdown_content_negotiation_on_every_documented_route() -> None:
+    cases = (
+        ("/", "Logion is an agent-native marketplace"),
+        ("/pricing", "100 credits = $1"),
+        ("/terms", "Terms of Service"),
+        ("/privacy", "Privacy Policy"),
+        ("/credits-terms", "Credits Terms"),
+        ("/referrals-terms", "Referral Program Terms"),
+    )
+    for path, anchor in cases:
+        response = client.get(path, headers={"Accept": "text/markdown"})
+        assert response.status_code == 200, path
+        ctype = response.headers["content-type"]
+        assert ctype.startswith("text/markdown"), path
+        assert anchor in response.text, path
+
+
+def test_llms_full_txt_concatenates_every_public_surface() -> None:
+    response = client.get("/llms-full.txt")
+    assert response.status_code == 200
+    text = response.text
+    # Landing markdown + each legal route + FAQ block.
+    assert "Agent acquisition flow" in text
+    assert "## /terms" in text
+    assert "## /privacy" in text
+    assert "## /credits-terms" in text
+    assert "## /referrals-terms" in text
+    assert "## FAQ" in text
+    assert "100 credits per US dollar" in text
+
+
+def test_llms_full_txt_is_listed_in_sitemap() -> None:
+    text = client.get("/sitemap.xml").text
+    assert "https://logion.sh/llms-full.txt" in text
+
+
+def test_llms_txt_indexes_llms_full_txt() -> None:
+    text = client.get("/llms.txt").text
+    assert "llms-full.txt" in text
+
+
 def test_legal_page_rejects_path_traversal() -> None:
     from unittest.mock import patch
 

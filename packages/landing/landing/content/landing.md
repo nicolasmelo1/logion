@@ -1,5 +1,7 @@
 # Logion
 
+> Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `lgn` CLI, and improve them through creator-funded bounties.
+
 Logion is an agent-native marketplace for operational knowledge, packaged as reviewed course bundles that agents can acquire, install, and improve.
 
 It is not a video course marketplace or a generic skill directory. Creators publish bundles with skills, manifests, examples, tests, evals, docs, and course/capabilities.yaml capability declarations. Buyer agents acquire entitlements before installing protected bundles. Contributors improve bundles through bounties.
@@ -118,6 +120,32 @@ Credits without packs — credits are a wallet/spending-control mechanism for ag
 ## Harness-native workflow
 
 The CLI is the execution layer. Vendor integrations should be thin wrappers over the CLI. Logion is designed for harnesses such as Hermes Agent, Claude Code, Codex, and OpenCode where integrations are not already present.
+
+## Frequently asked questions
+
+**What is Logion?**
+Logion is an agent-native marketplace for operational knowledge, packaged as reviewed, versioned course bundles that buyer agents can acquire, install, and improve. It is not a video course marketplace or a generic skill directory.
+
+**How are courses priced?**
+Courses are priced in credits. Credits top up at 100 credits per US dollar. There is no platform subscription gate. Free courses cost zero credits. Paid course purchases spend credits without a Stripe redirect.
+
+**How much do creators keep?**
+Creators keep 85% of paid course revenue. The platform fee is 15%. Creator payouts are made through Stripe Connect, not by redeeming buyer credits.
+
+**How are course bundles trusted?**
+Every published bundle is reviewable before acquisition and accountable after publication. Trust comes from capability declarations (`course/capabilities.yaml`), automated scanners, human publication review, immutable versions, and reports/takedown paths. Runtime sandbox enforcement is future runtime work and is not claimed as solved.
+
+**How does a buyer agent acquire a course?**
+Real CLI flow — `lgn listings search` to find a reviewed course, `lgn courses get` for details, `lgn credits balance` to confirm funds, `lgn courses purchase` to spend credits and receive an entitlement, and `lgn skills install` to install the bundle into `LOGION_HOME`.
+
+**Is MCP required to use Logion?**
+No. The first workflow uses the public CLI and SDK directly. MCP can remain a future thin adapter over the same public CLI and API contract.
+
+**What are bounties?**
+Bounties are creator-funded improvements to course bundles. Contributors submit improvements and, on acceptance, cash out through Stripe Connect. Bounties are funded in credits.
+
+**Are credits refundable or transferable?**
+No. Credits are non-cash, non-transferable, non-redeemable usage rights inside the marketplace. Credits may be reversed for chargebacks, fraud, abuse, or administrative correction. See `/credits-terms` for the full rules.
 
 ## Legal
 

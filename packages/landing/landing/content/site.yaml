@@ -12,6 +12,11 @@ site:
     entitlements. Contributors improve bundles through bounties. Trust comes
     from capability declarations, automated scanners, human publication review,
     and accountable update history.
+  # One-sentence definitional answer for LLM Overviews / AI assistants.
+  one_liner: >-
+    Logion is an agent-native marketplace where buyer agents acquire reviewed
+    course bundles by spending credits (100 credits = $1), install them via
+    the lgn CLI, and improve them through creator-funded bounties.
 
 hero:
   greek: ΛΟΓΙΟΝ
@@ -412,6 +417,9 @@ ai:
     - title: Landing (markdown)
       href: /
       description: Full landing copy as markdown via content negotiation.
+    - title: All site content (markdown)
+      href: /llms-full.txt
+      description: One-fetch concatenation of every public page plus FAQ for AI ingestion.
     - title: Pricing
       href: /pricing
       description: Credits, 100 credits = $1, 85/15 split, bounty funding, referrals.
@@ -488,3 +496,139 @@ ai:
         - title: Bounties
           href: /#economy
           description: Creator-funded improvements; cash-out via Stripe Connect.
+
+faq:
+  heading: Frequently asked questions
+  intro: >-
+    Short, quotable answers to the questions buyers, creators, and agents ask
+    most.
+  items:
+    - q: What is Logion?
+      a: >-
+        Logion is an agent-native marketplace for operational knowledge,
+        packaged as reviewed, versioned course bundles that buyer agents can
+        acquire, install, and improve. It is not a video course marketplace
+        or a generic skill directory.
+    - q: How are courses priced?
+      a: >-
+        Courses are priced in credits. Credits top up at 100 credits per US
+        dollar. There is no platform subscription gate. Free courses cost
+        zero credits. Paid course purchases spend credits without a Stripe
+        redirect.
+    - q: How much do creators keep?
+      a: >-
+        Creators keep 85% of paid course revenue. The platform fee is 15%.
+        Creator payouts are made through Stripe Connect, not by redeeming
+        buyer credits.
+    - q: How are course bundles trusted?
+      a: >-
+        Every published bundle is reviewable before acquisition and
+        accountable after publication. Trust comes from capability
+        declarations (course/capabilities.yaml), automated scanners, human
+        publication review, immutable versions, and reports/takedown paths.
+        Runtime sandbox enforcement is future runtime work and is not
+        claimed as solved.
+    - q: How does a buyer agent acquire a course?
+      a: >-
+        Real CLI flow - lgn listings search to find a reviewed course,
+        lgn courses get for details, lgn credits balance to confirm funds,
+        lgn courses purchase to spend credits and receive an entitlement,
+        and lgn skills install to install the bundle into LOGION_HOME.
+    - q: Is MCP required to use Logion?
+      a: >-
+        No. The first workflow uses the public CLI and SDK directly. MCP can
+        remain a future thin adapter over the same public CLI and API
+        contract; no MCP setup is required to get started.
+    - q: What are bounties?
+      a: >-
+        Bounties are creator-funded improvements to course bundles.
+        Contributors submit improvements and, on acceptance, cash out
+        through Stripe Connect. Bounties are funded in credits.
+    - q: Are credits refundable or transferable?
+      a: >-
+        No. Credits are non-cash, non-transferable, non-redeemable usage
+        rights inside the marketplace. Credits may be reversed for
+        chargebacks, fraud, abuse, or administrative correction. See
+        /credits-terms for the full rules.
+
+# Crawlable HowTo for the canonical buyer-agent acquisition flow.
+howto:
+  name: Acquire and install a reviewed Logion course bundle
+  description: >-
+    The canonical buyer-agent flow - search reviewed listings, confirm
+    credits, purchase the entitlement, install the bundle.
+  total_time: PT3M
+  estimated_credits: 900
+  steps:
+    - name: Search reviewed listings
+      text: >-
+        Run lgn listings search "<query>" to discover reviewed, versioned
+        course bundles relevant to the agent's task.
+      command: lgn listings search "database migrations"
+    - name: Inspect the course
+      text: >-
+        Run lgn courses get <COURSE_ID> to view price, publisher, review
+        status, and immutable version metadata before spending credits.
+      command: lgn courses get 7a2f...e0d4
+    - name: Confirm credit balance
+      text: >-
+        Run lgn credits balance to confirm sufficient credits. Top up with
+        lgn credits top-up if needed.
+      command: lgn credits balance
+    - name: Purchase the entitlement
+      text: >-
+        Run lgn courses purchase <COURSE_ID> --yes to spend credits and
+        receive an entitlement to the immutable version.
+      command: lgn courses purchase 7a2f...e0d4 --yes
+    - name: Install the bundle
+      text: >-
+        Run lgn skills install with the course id, version id, and source
+        path to install the bundle into LOGION_HOME under an
+        agent-readable layout.
+      command: |
+        lgn skills install \
+          --course-id 7a2f...e0d4 \
+          --version-id 3f9b...c1a8 \
+          --source ./migration-safety-review \
+          --install-source logion-marketplace
+
+# Lightweight breadcrumb labels per route, for BreadcrumbList JSON-LD.
+breadcrumbs:
+  "/":
+    - { label: Home, href: / }
+  "/pricing":
+    - { label: Home, href: / }
+    - { label: Pricing, href: /pricing }
+  "/terms":
+    - { label: Home, href: / }
+    - { label: Legal, href: /terms }
+    - { label: Terms of Service, href: /terms }
+  "/privacy":
+    - { label: Home, href: / }
+    - { label: Legal, href: /privacy }
+    - { label: Privacy Policy, href: /privacy }
+  "/credits-terms":
+    - { label: Home, href: / }
+    - { label: Legal, href: /credits-terms }
+    - { label: Credits Terms, href: /credits-terms }
+  "/referrals-terms":
+    - { label: Home, href: / }
+    - { label: Legal, href: /referrals-terms }
+    - { label: Referral Program Terms, href: /referrals-terms }
+
+# SoftwareApplication metadata for /. Lets Google understand the product
+# as a developer-facing application with credit-based monetization.
+software_application:
+  name: Logion
+  application_category: DeveloperApplication
+  operating_system: macOS, Linux, Windows
+  description: >-
+    Agent-native marketplace and CLI for acquiring reviewed, versioned
+    course bundles for AI agents. Credits top up at 100 credits per US
+    dollar; creators keep 85%; bounties fund creator-led improvements.
+  download_url: https://logion.sh/install.sh
+  url: https://logion.sh
+  offers:
+    price_model: "credits"
+    price_currency: USD
+    note: "Credits top up at 100 credits per US dollar; no subscription."

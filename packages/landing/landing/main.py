@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import UTC
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,14 @@ PUBLIC_PATHS = (
     "/credits-terms",
     "/referrals-terms",
     "/llms.txt",
+    "/llms-full.txt",
 )
+LEGAL_ROUTES = {
+    "/terms": "terms",
+    "/privacy": "privacy",
+    "/credits-terms": "credits",
+    "/referrals-terms": "referrals",
+}
 AI_CRAWLERS = (
     "GPTBot",
     "ChatGPT-User",
@@ -176,8 +184,69 @@ ascii_hero = ASCII_HERO_PATH.read_text(encoding="utf-8")
 def _ctx(**extra: Any) -> dict[str, Any]:
     ctx: dict[str, Any] = dict(content)
     ctx["ascii_hero"] = ascii_hero
+    ctx.setdefault("breadcrumbs", content.get("breadcrumbs", {}))
+    ctx.setdefault("page_date_modified", None)
     ctx.update(extra)
     return ctx
+
+
+def _legal_date_modified(slug: str) -> str | None:
+    page = content.get("legal", {}).get(slug, {})
+    markdown_name = page.get("markdown")
+    if not isinstance(markdown_name, str):
+        return None
+    resolved = (CONTENT_DIR / markdown_name).resolve()
+    if not resolved.is_relative_to(CONTENT_DIR.resolve()):
+        return None
+    try:
+        ts = resolved.stat().st_mtime
+    except OSError:
+        return None
+    from datetime import datetime
+
+    return datetime.fromtimestamp(ts, tz=UTC).date().isoformat()
+
+
+def _wants_markdown(request: Request) -> bool:
+    return "text/markdown" in request.headers.get("accept", "")
+
+
+def _legal_markdown_response(slug: str) -> PlainTextResponse:
+    page = legal_page(slug)
+    return PlainTextResponse(
+        page["markdown"],
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+def llms_full_txt() -> str:
+    """Concatenated full-site content for AI ingestion (one fetch)."""
+    site = content.get("site", {})
+    sections: list[str] = [f"# {site.get('name', 'Logion')} — full content\n"]
+    summary = site.get("one_liner") or content.get("ai", {}).get(
+        "llms_txt_summary", ""
+    )
+    if summary:
+        sections.append(str(summary).strip() + "\n")
+    sections.append("## /\n")
+    sections.append(markdown_content.strip() + "\n")
+    for path, slug in LEGAL_ROUTES.items():
+        try:
+            page = legal_page(slug)
+        except (OSError, TypeError, ValueError) as exc:
+            sections.append(f"## {path}\n\n_unavailable: {exc}_\n")
+            continue
+        sections.append(f"## {path}\n")
+        sections.append(page["markdown"].strip() + "\n")
+    faq_block = content.get("faq", {})
+    if faq_block.get("items"):
+        sections.append("## FAQ\n")
+        for item in faq_block["items"]:
+            q = str(item.get("q", "")).strip()
+            a = str(item.get("a", "")).strip()
+            if q and a:
+                sections.append(f"### {q}\n\n{a}\n")
+    return "\n".join(sections).rstrip() + "\n"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -191,43 +260,76 @@ def index(request: Request) -> Response:
 
 
 @app.get("/pricing", response_class=HTMLResponse)
-def pricing(request: Request) -> HTMLResponse:
+def pricing(request: Request) -> Response:
+    if _wants_markdown(request):
+        pricing_cfg = content.get("pricing", {})
+        lines = [
+            f"# {pricing_cfg.get('heading', 'Pricing')}",
+            "",
+            str(pricing_cfg.get("intro", "")),
+        ]
+        for row in pricing_cfg.get("rows", []):
+            lines.append(f"- **{row.get('label')}**: {row.get('value')}")
+        return PlainTextResponse(
+            "\n".join(lines).rstrip() + "\n",
+            media_type="text/markdown; charset=utf-8",
+        )
     return templates.TemplateResponse(request, "pricing.html", _ctx())
 
 
 @app.get("/terms", response_class=HTMLResponse)
-def terms(request: Request) -> HTMLResponse:
+def terms(request: Request) -> Response:
+    if _wants_markdown(request):
+        return _legal_markdown_response("terms")
     return templates.TemplateResponse(
         request,
         "legal.html",
-        _ctx(page=legal_page("terms")),
+        _ctx(
+            page=legal_page("terms"),
+            page_date_modified=_legal_date_modified("terms"),
+        ),
     )
 
 
 @app.get("/privacy", response_class=HTMLResponse)
-def privacy(request: Request) -> HTMLResponse:
+def privacy(request: Request) -> Response:
+    if _wants_markdown(request):
+        return _legal_markdown_response("privacy")
     return templates.TemplateResponse(
         request,
         "legal.html",
-        _ctx(page=legal_page("privacy")),
+        _ctx(
+            page=legal_page("privacy"),
+            page_date_modified=_legal_date_modified("privacy"),
+        ),
     )
 
 
 @app.get("/credits-terms", response_class=HTMLResponse)
-def credits_terms(request: Request) -> HTMLResponse:
+def credits_terms(request: Request) -> Response:
+    if _wants_markdown(request):
+        return _legal_markdown_response("credits")
     return templates.TemplateResponse(
         request,
         "legal.html",
-        _ctx(page=legal_page("credits")),
+        _ctx(
+            page=legal_page("credits"),
+            page_date_modified=_legal_date_modified("credits"),
+        ),
     )
 
 
 @app.get("/referrals-terms", response_class=HTMLResponse)
-def referrals_terms(request: Request) -> HTMLResponse:
+def referrals_terms(request: Request) -> Response:
+    if _wants_markdown(request):
+        return _legal_markdown_response("referrals")
     return templates.TemplateResponse(
         request,
         "legal.html",
-        _ctx(page=legal_page("referrals")),
+        _ctx(
+            page=legal_page("referrals"),
+            page_date_modified=_legal_date_modified("referrals"),
+        ),
     )
 
 
@@ -295,6 +397,14 @@ def sitemap() -> Response:
 def llms() -> PlainTextResponse:
     return PlainTextResponse(
         llms_txt(),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/llms-full.txt", response_class=PlainTextResponse)
+def llms_full() -> PlainTextResponse:
+    return PlainTextResponse(
+        llms_full_txt(),
         media_type="text/plain; charset=utf-8",
     )
 

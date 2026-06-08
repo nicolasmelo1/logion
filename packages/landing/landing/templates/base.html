@@ -17,16 +17,19 @@
 
     <title>{{ page_title }}</title>
     <meta name="description" content="{{ page_description }}">
-    <meta name="keywords" content="{{ seo.keywords | join(', ') }}">
     <meta name="author" content="{{ seo.organization.name }}">
+    <meta name="application-name" content="{{ seo.organization.name }}">
+    <meta name="apple-mobile-web-app-title" content="{{ seo.organization.name }}">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="{{ seo.theme_color }}">
     <meta name="color-scheme" content="dark light">
 
     <link rel="canonical" href="{{ canonical_url }}">
-    <link rel="alternate" type="text/markdown" href="{{ seo.canonical_base }}/" title="Landing as markdown">
+    <link rel="alternate" type="text/markdown" href="{{ canonical_url }}" title="This page as markdown">
     <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms.txt" title="llms.txt index">
+    <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms-full.txt" title="llms-full.txt (full content)">
     <link rel="sitemap" type="application/xml" href="{{ seo.canonical_base }}/sitemap.xml">
+    <link rel="me" href="https://github.com/nicolasmelo1/logion">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 
     <meta property="og:type" content="{{ og_type_value }}">
@@ -87,7 +90,27 @@
           "description": {{ page_description | tojson }},
           "isPartOf": { "@id": "{{ seo.canonical_base }}#website" },
           "inLanguage": "en"
+          {%- if page_date_modified %},
+          "dateModified": {{ page_date_modified | tojson }}
+          {%- endif %}
         }
+        {%- set crumb_trail = breadcrumbs.get(request.url.path) if (request is defined and breadcrumbs is defined) else None -%}
+        {%- if crumb_trail %}
+        ,{
+          "@type": "BreadcrumbList",
+          "@id": "{{ canonical_url }}#breadcrumb",
+          "itemListElement": [
+            {%- for crumb in crumb_trail %}
+            {
+              "@type": "ListItem",
+              "position": {{ loop.index }},
+              "name": {{ crumb.label | tojson }},
+              "item": "{{ seo.canonical_base }}{{ crumb.href }}"
+            }{% if not loop.last %},{% endif %}
+            {%- endfor %}
+          ]
+        }
+        {%- endif %}
         {%- block jsonld_extra %}{% endblock %}
       ]
     }

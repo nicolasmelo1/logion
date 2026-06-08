@@ -1,5 +1,70 @@
 {% extends "base.html" %}
 
+{% block jsonld_extra %}
+        ,{
+          "@type": "FAQPage",
+          "@id": "{{ canonical_url }}#faq",
+          "mainEntity": [
+            {%- for item in faq.get("items", []) %}
+            {
+              "@type": "Question",
+              "name": {{ item.q | tojson }},
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": {{ item.a | trim | tojson }}
+              }
+            }{% if not loop.last %},{% endif %}
+            {%- endfor %}
+          ]
+        }
+        ,{
+          "@type": "HowTo",
+          "@id": "{{ canonical_url }}#howto",
+          "name": {{ howto.name | tojson }},
+          "description": {{ howto.description | tojson }},
+          "totalTime": {{ howto.total_time | tojson }},
+          "estimatedCost": {
+            "@type": "MonetaryAmount",
+            "currency": "credits",
+            "value": "{{ howto.estimated_credits }}"
+          },
+          "step": [
+            {%- for s in howto.get("steps", []) %}
+            {
+              "@type": "HowToStep",
+              "position": {{ loop.index }},
+              "name": {{ s.name | tojson }},
+              "text": {{ s.text | tojson }}
+              {%- if s.command %},
+              "tool": {
+                "@type": "HowToTool",
+                "name": "lgn CLI",
+                "description": {{ s.command | trim | tojson }}
+              }
+              {%- endif %}
+            }{% if not loop.last %},{% endif %}
+            {%- endfor %}
+          ]
+        }
+        ,{
+          "@type": "SoftwareApplication",
+          "@id": "{{ seo.canonical_base }}#software",
+          "name": {{ software_application.name | tojson }},
+          "applicationCategory": {{ software_application.application_category | tojson }},
+          "operatingSystem": {{ software_application.operating_system | tojson }},
+          "description": {{ software_application.description | tojson }},
+          "url": {{ software_application.url | tojson }},
+          "downloadUrl": {{ software_application.download_url | tojson }},
+          "publisher": { "@id": "{{ seo.organization.url }}#organization" },
+          "offers": {
+            "@type": "Offer",
+            "priceCurrency": "USD",
+            "price": "0",
+            "description": {{ software_application.offers.note | tojson }}
+          }
+        }
+{% endblock %}
+
 {% block main %}
   <section class="hero" id="hero">
     <div class="hero-copy">
@@ -136,7 +201,10 @@
             {% if section.get("proofs") %}
               <ul class="proof-list">
                 {% for proof in section.get("proofs") %}
-                  <li>{{ proof }}</li>
+                  <li>
+                    <span class="proof-check" aria-hidden="true">✓</span>
+                    <span class="proof-text">{{ proof }}</span>
+                  </li>
                 {% endfor %}
               </ul>
             {% endif %}
@@ -162,6 +230,27 @@
       {% endif %}
     </section>
   {% endfor %}
+
+  {% if faq %}
+    <section id="faq" class="content-section content-section--stack">
+      <span class="hud-tag">§ faq</span>
+      <h2>{{ faq.heading }}</h2>
+      <p>{{ faq.intro }}</p>
+      <div class="faq-list">
+        {% for item in faq.get("items", []) %}
+          <details class="faq-item">
+            <summary>
+              <span class="faq-q">{{ item.q }}</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </summary>
+            <div class="faq-answer">
+              <p>{{ item.a | trim }}</p>
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
