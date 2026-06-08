@@ -20,7 +20,7 @@
   --serif: "Libre Baskerville", "Times New Roman", Times, Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
-  --max-width: 1280px;
+  --max-width: 1600px;
   --hud-glow: 0 0 18px rgba(201, 167, 106, 0.12);
 }
 
@@ -556,7 +556,7 @@ button.cta {
 
 .content-section > p,
 .content-section__copy > p {
-  max-width: 80ch;
+  max-width: 110ch;
   color: var(--fg);
   font-size: 16px;
 }
