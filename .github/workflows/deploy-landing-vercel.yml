@@ -18,9 +18,6 @@ jobs:
   deploy:
     if: github.repository == 'nicolasmelo1/logion' && github.actor == 'nicolasmelo1'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/landing
     env:
       # Vercel CLI uses these to know exactly which project to deploy to.
       # Without VERCEL_PROJECT_ID/VERCEL_ORG_ID the CLI falls back to
@@ -40,6 +37,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - name: Run landing tests
+        working-directory: packages/landing
         run: uv run pytest tests -q
 
       - uses: actions/setup-node@v4
@@ -49,6 +47,10 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      # Vercel commands run from the repo root because the project's
+      # configured Root Directory is "packages/landing". Running from
+      # packages/landing would have Vercel append that root on top of
+      # the CWD and look for packages/landing/packages/landing.
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
