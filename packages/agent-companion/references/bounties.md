@@ -56,9 +56,10 @@ logion bounties submissions reject BOUNTY_ID SUBMISSION_ID --yes --json
 logion bounties payout BOUNTY_ID --yes --json
 ```
 
-`accept` picks the winner and accrues a `CreatorPayableBalance` for the
-contributor (net of 15% marketplace fee); `payout` records the payout.
-Contributors cash out via `logion payments cash-out`.
+`accept` picks the winner and accrues creator earnings for the
+contributor (net of marketplace fee); `payout` records the payout.
+Contributors can inspect earnings with `logion payments creator-earnings`
+and cash out via `logion payments cash-out`.
 
 ## Local workspace
 
