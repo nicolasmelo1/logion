@@ -34,6 +34,7 @@ CONTENT_DIR = PACKAGE_DIR / "content"
 CONTENT_PATH = CONTENT_DIR / "site.yaml"
 MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
+FAVICON_PATH = STATIC_DIR / "favicon.svg"
 PUBLIC_PATHS = (
     "/",
     "/pricing",
@@ -179,6 +180,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 content = load_content()
 markdown_content = load_markdown()
 ascii_hero = ASCII_HERO_PATH.read_text(encoding="utf-8")
+FAVICON_BYTES = FAVICON_PATH.read_bytes()
 
 
 def _ctx(**extra: Any) -> dict[str, Any]:
@@ -375,6 +377,21 @@ def referral_landing(
 @app.get("/health")
 def health() -> JSONResponse:
     return JSONResponse({"status": "ok"})
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico() -> Response:
+    """Serve the SVG favicon at /favicon.ico for browsers that auto-request it.
+
+    Without this route Safari (and some Chrome configurations) treat the
+    missing /favicon.ico as a hard miss and show no tab icon even when
+    <link rel="icon" href="/static/favicon.svg"> is declared.
+    """
+    return Response(
+        FAVICON_BYTES,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
