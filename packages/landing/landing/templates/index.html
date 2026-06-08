@@ -50,57 +50,115 @@
       </dl>
     </div>
 
+    {% if hero.demo %}
+      <aside
+        class="hero-demo"
+        data-terminal-demo
+        aria-label="Logion CLI live demo"
+      >
+        <header class="hero-demo__bar">
+          <span class="hero-demo__title">{{ hero.demo.title }}</span>
+          <span class="hero-demo__dots" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </span>
+        </header>
+        <nav class="hero-demo__tabs" role="tablist">
+          {% for tab in hero.demo.tabs %}
+            <button
+              type="button"
+              role="tab"
+              class="hero-demo__tab{% if loop.first %} is-active{% endif %}"
+              data-tab="{{ tab.id }}"
+              aria-selected="{{ 'true' if loop.first else 'false' }}"
+              aria-controls="demo-panel-{{ tab.id }}"
+            >{{ tab.label }}</button>
+          {% endfor %}
+        </nav>
+        <div class="hero-demo__body">
+          {% for tab in hero.demo.tabs %}
+            <section
+              id="demo-panel-{{ tab.id }}"
+              role="tabpanel"
+              class="hero-demo__panel{% if loop.first %} is-active{% endif %}"
+              data-panel="{{ tab.id }}"
+              aria-hidden="{{ 'false' if loop.first else 'true' }}"
+            >
+              <pre class="hero-demo__pre"><code><span class="hero-demo__prompt">$</span> <span class="hero-demo__cmd" data-cmd>{{ tab.command }}</span><span class="hero-demo__cursor" aria-hidden="true">█</span>
+<span class="hero-demo__out" data-out>{{ tab.output }}</span></code></pre>
+              <noscript>
+                <pre class="hero-demo__pre"><code>$ {{ tab.command }}
+{{ tab.output }}</code></pre>
+              </noscript>
+            </section>
+          {% endfor %}
+        </div>
+        <p class="hero-demo__intro">{{ hero.demo.intro }}</p>
+      </aside>
+    {% endif %}
+
     <span class="hero-readout br">{{ hero.readouts.bottom }}</span>
   </section>
 
   {% for section in sections %}
-    <section id="{{ section.id }}" class="content-section">
+    {% set layout = section.get("layout", "stack") %}
+    <section
+      id="{{ section.id }}"
+      class="content-section content-section--{{ layout }}"
+    >
       <span class="hud-tag">§ {{ section.id }}</span>
       <h2>{{ section.title }}</h2>
-      {% if section.body %}
-        <p>{{ section.body }}</p>
-      {% endif %}
-      {% if section.id == "install" %}
-        <div class="cli-install" aria-label="Install commands">
-          {% for entry in cli.install %}
-            <div class="install-option install-option--{{ entry.role }}">
-              <span>{{ entry.label }}</span>
-              <pre><code>{{ entry.command }}</code></pre>
+      <div class="content-section__grid">
+        <div class="content-section__copy">
+          {% if section.body %}
+            <p>{{ section.body }}</p>
+          {% endif %}
+          {% if section.id == "install" %}
+            <div class="cli-install" aria-label="Install commands">
+              {% for entry in cli.install %}
+                <div class="install-option install-option--{{ entry.role }}">
+                  <span>{{ entry.label }}</span>
+                  <pre><code>{{ entry.command }}</code></pre>
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
+            <p>{{ cli.body }}</p>
+          {% endif %}
+          {% if section.get("items") %}
+            <ul class="content-list">
+              {% for item in section.get("items") %}
+                <li>
+                  <strong>{{ item.role or item.title }}</strong>
+                  <span>{{ item.body }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if section.get("caveat") %}
+            <p class="section-caveat">{{ section.caveat }}</p>
+          {% endif %}
         </div>
-        <p>{{ cli.body }}</p>
-      {% endif %}
-      {% if section.get("items") %}
-        <ul class="content-list">
-          {% for item in section.get("items") %}
-            <li>
-              <strong>{{ item.role or item.title }}</strong>
-              <span>{{ item.body }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if section.get("transcript") %}
-        <pre class="terminal-transcript"><code>{{ section.transcript }}</code></pre>
-      {% endif %}
-      {% if section.get("proofs") %}
-        <ul class="proof-list">
-          {% for proof in section.get("proofs") %}
-            <li>{{ proof }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if section.get("links") %}
-        <nav class="section-links" aria-label="{{ section.title }} links">
-          {% for link in section.get("links") %}
-            <a href="{{ link.href }}">{{ link.label }}</a>
-          {% endfor %}
-        </nav>
-      {% endif %}
-      {% if section.get("caveat") %}
-        <p class="section-caveat">{{ section.caveat }}</p>
-      {% endif %}
+        {% if section.get("transcript") or section.get("proofs") or section.get("links") %}
+          <div class="content-section__aside">
+            {% if section.get("transcript") %}
+              <pre class="terminal-transcript"><code>{{ section.transcript }}</code></pre>
+            {% endif %}
+            {% if section.get("proofs") %}
+              <ul class="proof-list">
+                {% for proof in section.get("proofs") %}
+                  <li>{{ proof }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            {% if section.get("links") %}
+              <nav class="section-links" aria-label="{{ section.title }} links">
+                {% for link in section.get("links") %}
+                  <a href="{{ link.href }}">{{ link.label }}</a>
+                {% endfor %}
+              </nav>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
     </section>
   {% endfor %}
 {% endblock %}
@@ -108,4 +166,5 @@
 {% block scripts %}
   <script src="/static/ascii/hero_frames.js"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/terminal-demo.js"></script>
 {% endblock %}

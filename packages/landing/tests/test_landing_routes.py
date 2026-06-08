@@ -140,7 +140,7 @@ def test_index_returns_markdown_when_requested() -> None:
     assert "Trust model" in response.text
     assert "Agent acquisition flow" in response.text
     assert "Open-source trust layer" in response.text
-    assert "Agent-readable web surface" in response.text
+    assert "lgn courses purchase" in response.text
 
 
 def test_markdown_response_is_agent_readable_without_visual_assets() -> None:
@@ -173,8 +173,21 @@ def test_homepage_renders_agent_acquisition_transcript() -> None:
     assert 'class="terminal-transcript"' in text
     assert "Agent acquisition flow" in text
     assert "lgn listings search" in text
-    assert "lgn courses acquire migration-safety-review" in text
-    assert "entitlement granted" in text
+    assert "lgn courses purchase" in text
+    assert "lgn skills install" in text
+    assert "--install-source logion-marketplace" in text
+    assert "entitlement:" in text
+
+
+def test_homepage_renders_animated_hero_demo() -> None:
+    text = client.get("/").text
+    assert "data-terminal-demo" in text
+    assert 'role="tablist"' in text
+    for tab_id in ("search", "purchase", "install"):
+        assert f'data-tab="{tab_id}"' in text
+        assert f'id="demo-panel-{tab_id}"' in text
+    # The animation script must be linked.
+    assert "/static/terminal-demo.js" in text
 
 
 def test_homepage_renders_security_authority_section() -> None:
@@ -190,8 +203,8 @@ def test_homepage_renders_open_source_trust_anchors() -> None:
     assert "Open-source trust layer" in text
     for anchor in (
         "CLI source",
-        "Python SDK source",
-        "npm wrapper source",
+        "Python SDK",
+        "npm wrapper",
         "agent companion SKILL.md",
         "public OpenAPI contract",
         "release manifests",
@@ -199,21 +212,16 @@ def test_homepage_renders_open_source_trust_anchors() -> None:
         assert anchor in text, anchor
 
 
-def test_homepage_renders_agent_readable_web_anchors() -> None:
+def test_homepage_does_not_render_redundant_checklist_sections() -> None:
+    # "Agent-readable web surface" was removed as a dedicated section —
+    # those surfaces are still real (and listed in llms.txt) but the page
+    # should not waste a band on a checklist that repeats the footer.
     text = client.get("/").text
-    assert "Agent-readable web surface" in text
-    assert "Accept: text/markdown" in text
-    assert "/llms.txt" in text
-    assert "/robots.txt" in text
-    assert "/sitemap.xml" in text
-    assert "MCP" in text
+    assert "Agent-readable web surface" not in text
 
 
-def test_homepage_renders_credits_without_packs() -> None:
+def test_homepage_does_not_sell_credit_packs() -> None:
     text = client.get("/").text
-    assert "Credits without packs" in text
-    assert "wallet/spending-control mechanism for agents" in text
-    # The product must not be sold as credit packs.
     assert "credit pack" not in text.lower()
 
 

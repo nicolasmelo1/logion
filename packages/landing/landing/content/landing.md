@@ -25,24 +25,33 @@ Logion packages operational knowledge for agents as course bundles. A course bun
 
 ## Agent acquisition flow
 
-Target CLI flow. Exact CLI verbs may change before the first public release.
+Real CLI verbs, end to end.
 
 ```text
-> Find a reviewed course that helps write safer database migrations
-lgn listings search "database migration safety"
+$ lgn listings search "database migrations"
+  migration-safety-review     900 credits   v1.0.2
+    capabilities: file, terminal
+    review:       scanners + human publication review
 
-FOUND migration-safety-review
-price: 900 credits
-version: immutable after publish
-review: scanners + human publication review
-capabilities: file, terminal
+$ lgn courses get 7a2f...e0d4
+  price:     900 credits
+  publisher: opentide
+  reviewed:  2026-04-12
 
-Install? yes
-lgn courses acquire migration-safety-review
-lgn courses install migration-safety-review
+$ lgn credits balance
+  1,200 credits
 
-entitlement granted
-course bundle installed
+$ lgn courses purchase 7a2f...e0d4 --yes
+  spent:        900 credits
+  remaining:    300 credits
+  entitlement:  granted
+
+$ lgn skills install \
+    --course-id 7a2f...e0d4 \
+    --version-id 3f9b...c1a8 \
+    --source ./migration-safety-review \
+    --install-source logion-marketplace
+  installed: migration-safety-review@v1.0.2
 ```
 
 ## Security is the authority
@@ -59,25 +68,14 @@ Runtime sandbox enforcement remains future runtime work; the landing does not cl
 
 ## Open-source trust layer
 
-The API implementation is private; the client and integration surface are public for inspection.
+The API implementation is private; the client and integration surface are public for inspection. No MCP setup is required for the first workflow.
 
-- CLI source
-- Python SDK source
-- npm wrapper source
-- agent companion SKILL.md
-- public OpenAPI contract
-- release manifests
-- CI and installer smoke tests
-
-## Agent-readable web surface
-
-- `Accept: text/markdown` on `/`
-- `/llms.txt`
-- `/robots.txt`
-- `/sitemap.xml`
-- public GitHub repo
-
-No MCP setup is required for the first workflow; MCP can remain a future thin adapter over the public CLI and API contract.
+- CLI source — `packages/cli`
+- Python SDK — `packages/sdk-python`
+- npm wrapper — `packages/npm-wrapper`
+- agent companion SKILL.md — `packages/agent-companion`
+- public OpenAPI contract — `contracts/openapi`
+- release manifests — `releases/`
 
 ## Marketplace loop
 
@@ -97,16 +95,9 @@ creator publishes -> Logion reviews -> buyer agent acquires entitlement -> agent
 
 Runtime sandbox enforcement is future runtime work, not a current landing claim.
 
-## Credits without packs
+## Credits, referrals, and bounties
 
-Credits are a wallet/spending-control mechanism for agents, not packs.
-
-- minimum top-up exists to avoid Stripe fee damage
-- custom amount is the core model
-- preset amounts may be UI shortcuts, not packs
-- credits are non-cash, non-transferable, and non-redeemable
-
-## Economy, referrals, and bounties
+Credits without packs — credits are a wallet/spending-control mechanism for agents, not packs.
 
 - no platform subscription gate
 - buyers top up credits
@@ -116,6 +107,13 @@ Credits are a wallet/spending-control mechanism for agents, not packs.
 - creators keep 85% and the platform fee is 15%
 - referrers can earn credits through the referral program
 - bounty funders fund with credits; bounty contributors cash out through Stripe Connect after acceptance
+
+## Agent-readable surfaces
+
+- `Accept: text/markdown` on `/`
+- `/llms.txt`
+- `/robots.txt`
+- `/sitemap.xml`
 
 ## Harness-native workflow
 

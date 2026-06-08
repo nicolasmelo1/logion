@@ -48,6 +48,46 @@ hero:
       value: entitlement
     - term: improve
       value: bounties
+  demo:
+    title: lgn // live cli
+    intro: From discovery to a reviewed install — real CLI verbs.
+    tabs:
+      - id: search
+        label: search
+        command: lgn listings search "database migrations"
+        output: |
+          migration-safety-review     900 credits   v1.0.2
+            capabilities: file, terminal
+            review:       scanners + human publication review
+            immutable:    true
+
+          ledger-migrations-audit     1,400 credits v0.4.1
+            capabilities: file
+            review:       scanners + human publication review
+            immutable:    true
+      - id: purchase
+        label: purchase
+        command: lgn courses purchase 7a2f...e0d4 --yes
+        output: |
+          confirming credit spend ........ ok
+          spent:        900 credits
+          remaining:    300 credits
+          entitlement:  granted
+          version:      v1.0.2 (immutable)
+      - id: install
+        label: install
+        command: |
+          lgn skills install \
+            --source ./migration-safety-review \
+            --course-id 7a2f...e0d4 \
+            --version-id 3f9b...c1a8 \
+            --install-source logion-marketplace
+        output: |
+          verifying capability declarations ........ ok
+          checking scanner findings ................ ok
+          writing bundle to $LOGION_HOME/skills .... ok
+
+          installed: migration-safety-review@v1.0.2
 
 sections:
   - id: what
@@ -68,30 +108,40 @@ sections:
 
   - id: agent-flow
     title: Agent acquisition flow
+    layout: split
     body: >-
-      Target CLI flow. The transcript below shows what a buyer agent runs to
-      discover, acquire, and install a reviewed course bundle. CLI verbs are
-      stable in intent; exact command names may change before the first public
-      release.
+      A buyer agent searches the marketplace, gets details on a reviewed
+      course, spends credits to purchase the entitlement, and installs the
+      bundle into LOGION_HOME. The same CLI verbs power vendor integrations.
     transcript: |
-      > Find a reviewed course that helps write safer database migrations
-      lgn listings search "database migration safety"
+      $ lgn listings search "database migrations"
+        migration-safety-review     900 credits   v1.0.2
+          capabilities: file, terminal
+          review:       scanners + human publication review
 
-      FOUND migration-safety-review
-      price: 900 credits
-      version: immutable after publish
-      review: scanners + human publication review
-      capabilities: file, terminal
+      $ lgn courses get 7a2f...e0d4
+        price:     900 credits
+        publisher: opentide
+        reviewed:  2026-04-12
 
-      Install? yes
-      lgn courses acquire migration-safety-review
-      lgn courses install migration-safety-review
+      $ lgn credits balance
+        1,200 credits
 
-      entitlement granted
-      course bundle installed
+      $ lgn courses purchase 7a2f...e0d4 --yes
+        spent:        900 credits
+        remaining:    300 credits
+        entitlement:  granted
+
+      $ lgn skills install \
+          --course-id 7a2f...e0d4 \
+          --version-id 3f9b...c1a8 \
+          --source ./migration-safety-review \
+          --install-source logion-marketplace
+        installed: migration-safety-review@v1.0.2
 
   - id: security-authority
     title: Security is the authority
+    layout: split
     body: >-
       Security and review are the central authority surfaces of the marketplace,
       not decorative claims. Listings are reviewable before acquisition and
@@ -111,39 +161,23 @@ sections:
   - id: open-source-trust
     title: Open-source trust layer
     body: >-
-      The API implementation is private; the client and integration surface are
-      public for inspection. Anyone can audit what an agent runs locally and
-      what it sends to the marketplace.
-    proofs:
-      - CLI source
-      - Python SDK source
-      - npm wrapper source
-      - agent companion SKILL.md
-      - public OpenAPI contract
-      - release manifests
-      - CI and installer smoke tests
+      The API implementation is private; the client and integration surface
+      are public for inspection. Audit what an agent runs locally and what it
+      sends to the marketplace. No MCP setup is required for the first
+      workflow.
     links:
-      - label: GitHub monorepo
-        href: https://github.com/nicolasmelo1/logion
-      - label: OpenAPI contract
+      - label: CLI source
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
+      - label: Python SDK
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+      - label: npm wrapper
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper
+      - label: agent companion SKILL.md
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/agent-companion
+      - label: public OpenAPI contract
         href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
-      - label: Release manifests
+      - label: release manifests
         href: https://github.com/nicolasmelo1/logion/tree/main/releases
-
-  - id: agent-readable-web
-    title: Agent-readable web surface
-    body: >-
-      The landing app itself is built for agent ingestion. Crawlers and agents
-      can read the same page as plain markdown without scraping HTML.
-    proofs:
-      - "Accept: text/markdown on /"
-      - /llms.txt
-      - /robots.txt
-      - /sitemap.xml
-      - public GitHub repo
-    caveat: >-
-      No MCP setup is required for the first workflow; MCP can remain a future
-      thin adapter over the public CLI and API contract.
 
   - id: loop
     title: How the marketplace loop works
@@ -199,20 +233,9 @@ sections:
           Execution policy is documented as the path toward runtime enforcement
           without claiming that sandboxing is already solved.
 
-  - id: credits-acquisition
-    title: Credits without packs
-    body: >-
-      Logion uses credits as the wallet and spending-control mechanism for
-      agents. There is no platform subscription gate. Buyers top up credits and
-      agents spend them inside the marketplace.
-    proofs:
-      - minimum top-up exists to avoid Stripe fee damage
-      - custom amount is the core model
-      - preset amounts may be UI shortcuts, not packs
-      - credits are a wallet/spending-control mechanism for agents
-
   - id: economy
-    title: Economy, referrals, and bounties
+    title: Credits, referrals, and bounties
+    layout: split
     body: >-
       No platform subscription gate. Buyers top up credits and pay for courses
       in credits with no Stripe redirect per purchase. Free courses cost zero

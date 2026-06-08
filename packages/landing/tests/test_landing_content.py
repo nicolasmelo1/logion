@@ -30,23 +30,29 @@ REQUIRED_ANCHORS = (
     "Terms",
     "Privacy",
     "curl -fsSL",
-    # 9.9 copy anchors
     "Security is the authority",
     "Agent acquisition flow",
     "Open-source trust layer",
-    "Agent-readable web surface",
-    "Credits without packs",
-    "Accept: text/markdown",
     "OpenAPI",
     "SKILL.md",
     "npm wrapper",
     "release manifests",
-    # 9.8 economy anchors
+    "lgn courses purchase",
+    "lgn skills install",
     "100 credits = $1",
     "85%",
     "15%",
     "referral",
     "Stripe Connect",
+)
+
+# Markdown projection still surfaces the agent-readable surface list and the
+# "Credits without packs" framing — the HTML page hides them as their own
+# checklist sections but the markdown remains comprehensive for agents.
+MARKDOWN_EXTRA_ANCHORS = (
+    "Credits without packs",
+    "Accept: text/markdown",
+    "Agent-readable surfaces",
 )
 
 NEGATIVE_ANCHORS = (
@@ -110,6 +116,8 @@ def test_markdown_content_contains_required_anchors() -> None:
     text = MARKDOWN_PATH.read_text(encoding="utf-8")
     missing = [a for a in REQUIRED_ANCHORS if a not in text]
     assert not missing, f"missing anchors in landing.md: {missing}"
+    extra_missing = [a for a in MARKDOWN_EXTRA_ANCHORS if a not in text]
+    assert not extra_missing, f"missing markdown-only anchors: {extra_missing}"
 
 
 def test_markdown_content_avoids_negative_anchors() -> None:
