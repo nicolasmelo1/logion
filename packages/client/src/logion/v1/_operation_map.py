@@ -55,6 +55,11 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_human_review_detail": ("client.v1.course_reviews.get"),
     "approve_human_review": ("client.v1.course_reviews.approve"),
     "reject_human_review": ("client.v1.course_reviews.reject"),
+    # Referrals
+    "get_referral_code": "client.v1.referrals.get_code",
+    "get_referral_link": "client.v1.referrals.get_link",
+    "get_referral_stats": "client.v1.referrals.get_stats",
+    "list_referral_attributions": "client.v1.referrals.list_attributions",
     # Notifications
     "list_notifications": "client.v1.notifications.list",
     "get_unread_count": ("client.v1.notifications.get_unread_count"),
