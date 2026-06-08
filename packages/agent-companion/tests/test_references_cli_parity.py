@@ -34,6 +34,7 @@ CANONICAL_REFERENCES = (
     "course-review-queue.md",
     "admin-operations.md",
     "troubleshooting.md",
+    "referrals.md",
 )
 
 

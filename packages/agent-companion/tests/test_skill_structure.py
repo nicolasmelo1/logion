@@ -34,6 +34,7 @@ REQUIRED_FILES = [
     "references/course-review-queue.md",
     "references/admin-operations.md",
     "references/troubleshooting.md",
+    "references/referrals.md",
     "scripts/package_skill.py",
 ]
 

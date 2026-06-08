@@ -223,8 +223,13 @@ def register_purchase(subparsers: argparse._SubParsersAction) -> None:
         "--expected-price-cents",
         dest="expected_price_cents",
         type=int,
-        required=True,
-        help="Price guard: fail if the course price has changed.",
+        default=None,
+        help=(
+            "Price guard: fail if the course price has"
+            " changed. Omit to skip the guard (the --yes"
+            " confirmation still protects against"
+            " accidental purchases)."
+        ),
     )
     purchase.add_argument(
         "--idempotency-key",
@@ -234,8 +239,8 @@ def register_purchase(subparsers: argparse._SubParsersAction) -> None:
     )
     purchase.add_argument(
         "--yes",
-        dest="yes",
         action="store_true",
-        help="Confirm spending credits to purchase this course.",
+        default=False,
+        help="Confirm the purchase without prompting.",
     )
     purchase.set_defaults(handler=handle_purchase)
