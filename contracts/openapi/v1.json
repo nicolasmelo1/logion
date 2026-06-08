@@ -1618,6 +1618,17 @@
             "title": "Email",
             "type": "string"
           },
+          "referral_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Code"
+          },
           "user_name": {
             "anyOf": [
               {
