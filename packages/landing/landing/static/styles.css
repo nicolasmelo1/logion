@@ -880,10 +880,11 @@ pre code {
 }
 
 .faq-list {
-  margin: 26px 0 0;
+  margin: 24px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
 }
 
 .faq-item {
@@ -901,7 +902,7 @@ pre code {
 .faq-item > summary {
   list-style: none;
   cursor: pointer;
-  padding: 16px 22px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -914,6 +915,10 @@ pre code {
   display: none;
 }
 
+.faq-item > summary::marker {
+  content: "";
+}
+
 .faq-item > summary:focus-visible {
   outline: 1px solid var(--focus);
   outline-offset: -2px;
@@ -921,8 +926,8 @@ pre code {
 
 .faq-q {
   font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-bright);
   flex: 1 1 auto;
@@ -932,7 +937,7 @@ pre code {
 .faq-toggle {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--accent);
   line-height: 1;
@@ -945,9 +950,9 @@ pre code {
 }
 
 .faq-answer {
-  padding: 0 22px 16px;
+  padding: 0 18px 14px;
   color: var(--fg);
-  font-size: 14px;
+  font-size: 12.5px;
   line-height: 1.65;
 }
 
