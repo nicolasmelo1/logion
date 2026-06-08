@@ -2,9 +2,10 @@
 // Animated CLI demo for the Logion landing hero.
 //
 // Each tab autoplays its command (typewriter) followed by its output
-// (line-by-line reveal), then pauses and advances to the next tab.
+// (line-by-line reveal), then pauses and advances to the NEXT tab.
+// Clicking a tab pauses auto-cycle, instantly switches to that tab's
+// final state, and resumes the cycle from the tab after it.
 // Honors prefers-reduced-motion by showing the final frame without typing.
-// Clicking a tab pauses the auto-cycle and switches immediately.
 
 (function () {
   "use strict";
@@ -16,13 +17,10 @@
   const panels = Array.from(root.querySelectorAll(".hero-demo__panel"));
   if (!tabs.length || !panels.length) return;
 
-  // Capture full command/output text once; we then render incrementally.
   const frames = panels.map((panel) => {
-    const id = panel.dataset.panel;
     const cmdEl = panel.querySelector("[data-cmd]");
     const outEl = panel.querySelector("[data-out]");
     return {
-      id,
       panel,
       cmdEl,
       outEl,
@@ -35,7 +33,22 @@
     "(prefers-reduced-motion: reduce)",
   ).matches;
 
-  // Show only the active panel.
+  let runToken = 0;
+  let currentIndex = 0;
+  let resumeTimer = null;
+  let advanceTimer = null;
+
+  function clearTimers() {
+    if (resumeTimer !== null) {
+      clearTimeout(resumeTimer);
+      resumeTimer = null;
+    }
+    if (advanceTimer !== null) {
+      clearTimeout(advanceTimer);
+      advanceTimer = null;
+    }
+  }
+
   function setActive(idx) {
     tabs.forEach((tab, i) => {
       const on = i === idx;
@@ -59,77 +72,80 @@
     if (frame.outEl) frame.outEl.textContent = "";
   }
 
-  let aborted = false;
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function typeText(el, text, msPerChar) {
+  async function typeText(el, text, msPerChar, myToken) {
     for (let i = 0; i < text.length; i += 1) {
-      if (aborted) return;
+      if (myToken !== runToken) return false;
       el.textContent += text[i];
-      // Slow down briefly at line breaks for rhythm.
       const wait = text[i] === "\n" ? msPerChar * 6 : msPerChar;
       await sleep(wait);
     }
+    return true;
   }
 
-  let currentIndex = 0;
-  let runToken = 0;
+  function scheduleAdvance(fromIdx, delayMs) {
+    clearTimers();
+    advanceTimer = setTimeout(() => {
+      advanceTimer = null;
+      currentIndex = (fromIdx + 1) % frames.length;
+      playFrame(currentIndex);
+    }, delayMs);
+  }
 
   async function playFrame(idx) {
+    clearTimers();
     const myToken = ++runToken;
-    aborted = false;
+    currentIndex = idx;
     setActive(idx);
     const frame = frames[idx];
     clearFrame(frame);
 
     if (reducedMotion) {
       renderStatic(frame);
-      await sleep(6500);
-      if (myToken !== runToken) return;
-      return advance();
+      scheduleAdvance(idx, 6500);
+      return;
     }
 
-    await typeText(frame.cmdEl, frame.command, 22);
-    if (myToken !== runToken) return;
+    const cmdOk = await typeText(frame.cmdEl, frame.command, 22, myToken);
+    if (!cmdOk) return;
     await sleep(550);
     if (myToken !== runToken) return;
-    await typeText(frame.outEl, frame.output, 5);
-    if (myToken !== runToken) return;
-    await sleep(3200);
-    if (myToken !== runToken) return;
-    advance();
+    const outOk = await typeText(frame.outEl, frame.output, 5, myToken);
+    if (!outOk) return;
+    scheduleAdvance(idx, 3500);
   }
 
-  function advance() {
-    currentIndex = (currentIndex + 1) % frames.length;
-    playFrame(currentIndex);
-  }
-
-  // Manual tab clicks: pause cycling, switch instantly, then resume.
   tabs.forEach((tab, idx) => {
     tab.addEventListener("click", () => {
-      aborted = true;
+      // Cancel anything in flight: bump the token, kill pending timers.
       runToken += 1;
+      clearTimers();
       currentIndex = idx;
-      // Show the chosen tab's final state immediately, then resume cycle.
-      renderStatic(frames[idx]);
       setActive(idx);
-      setTimeout(() => playFrame(idx), 4500);
+      // Show the clicked tab fully typed out — no re-animation.
+      renderStatic(frames[idx]);
+      // After a generous pause, advance to the NEXT tab so the cycle
+      // continues without re-typing the one the user just opened.
+      resumeTimer = setTimeout(() => {
+        resumeTimer = null;
+        const next = (idx + 1) % frames.length;
+        currentIndex = next;
+        playFrame(next);
+      }, 5000);
     });
   });
 
-  // Pause while the tab is hidden; restart when visible.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      aborted = true;
       runToken += 1;
+      clearTimers();
     } else {
       playFrame(currentIndex);
     }
   });
 
-  // Boot.
   playFrame(0);
 })();

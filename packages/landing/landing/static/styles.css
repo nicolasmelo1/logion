@@ -554,8 +554,9 @@ button.cta {
   color: var(--fg);
 }
 
-.content-section > p {
-  max-width: 60ch;
+.content-section > p,
+.content-section__copy > p {
+  max-width: 80ch;
   color: var(--fg);
   font-size: 16px;
 }
@@ -965,7 +966,7 @@ pre code {
 }
 
 .content-section--split .content-section__copy > p {
-  max-width: 52ch;
+  max-width: 56ch;
 }
 
 .content-section--split .terminal-transcript {
