@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course_slug }} — {{ site.name }}{% endblock %}
+{% block meta_description %}Install or purchase {{ course_slug }} on Logion.{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block main %}
+  <section class="content-section" id="referral">
+    <span class="hud-tag">§ course</span>
+    <h1>{{ course_slug }}</h1>
+    {% if referral_code %}
+      <p>
+        Referral code <code>{{ referral_code }}</code> will be attached when you
+        acquire this course.
+      </p>
+    {% else %}
+      <p>Acquire and install this course through the Logion CLI.</p>
+    {% endif %}
+    <pre class="terminal-transcript"><code>{{ command }}</code></pre>
+    <p class="section-caveat">
+      This page sets no cookies and loads no third-party tracking scripts.
+    </p>
+  </section>
+{% endblock %}

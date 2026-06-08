@@ -50,12 +50,13 @@ def test_sitemap_xml_lists_public_routes() -> None:
     root = ET.fromstring(response.text)
     namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [loc.text for loc in root.findall("s:url/s:loc", namespace)]
-    assert locs == [
-        "https://logion.sh/",
-        "https://logion.sh/terms",
-        "https://logion.sh/privacy",
-        "https://logion.sh/llms.txt",
-    ]
+    assert "https://logion.sh/" in locs
+    assert "https://logion.sh/pricing" in locs
+    assert "https://logion.sh/terms" in locs
+    assert "https://logion.sh/privacy" in locs
+    assert "https://logion.sh/credits-terms" in locs
+    assert "https://logion.sh/referrals-terms" in locs
+    assert "https://logion.sh/llms.txt" in locs
 
 
 def test_llms_txt_lists_agent_readable_entrypoints() -> None:
@@ -67,10 +68,32 @@ def test_llms_txt_lists_agent_readable_entrypoints() -> None:
     assert "[Landing (markdown)](https://logion.sh/)" in response.text
     assert "[Terms of Service](https://logion.sh/terms)" in response.text
     assert "[Privacy Policy](https://logion.sh/privacy)" in response.text
+    assert "[Credits Terms](https://logion.sh/credits-terms)" in response.text
+    assert (
+        "[Referral Program Terms](https://logion.sh/referrals-terms)"
+        in response.text
+    )
     assert (
         "[GitHub repository](https://github.com/nicolasmelo1/logion)"
         in response.text
     )
+
+
+def test_llms_txt_groups_public_source_and_agent_surfaces() -> None:
+    text = client.get("/llms.txt").text
+    assert "## Public Source" in text
+    assert "## Agent Surfaces" in text
+    assert "## Product Concepts" in text
+    assert "CLI package" in text
+    assert "Python SDK package" in text
+    assert "npm wrapper package" in text
+    assert "Agent companion package" in text
+    assert "OpenAPI contract" in text
+    assert "Release manifests" in text
+    assert "/llms.txt" in text
+    assert "/robots.txt" in text
+    assert "/sitemap.xml" in text
+    assert "Accept: text/markdown" in text
 
 
 def test_homepage_includes_logion() -> None:
@@ -115,6 +138,9 @@ def test_index_returns_markdown_when_requested() -> None:
     assert "curl -fsSL https://logion.sh/install.sh | sh" in response.text
     assert "Marketplace loop" in response.text
     assert "Trust model" in response.text
+    assert "Agent acquisition flow" in response.text
+    assert "Open-source trust layer" in response.text
+    assert "lgn courses purchase" in response.text
 
 
 def test_markdown_response_is_agent_readable_without_visual_assets() -> None:
@@ -142,11 +168,94 @@ def test_homepage_includes_marketplace_terms() -> None:
     assert "bounties" in text
 
 
+def test_homepage_renders_agent_acquisition_transcript() -> None:
+    text = client.get("/").text
+    assert 'class="terminal-transcript"' in text
+    assert "Agent acquisition flow" in text
+    assert "lgn listings search" in text
+    assert "lgn courses purchase" in text
+    assert "lgn skills install" in text
+    assert "--install-source logion-marketplace" in text
+    assert "entitlement:" in text
+
+
+def test_homepage_renders_animated_hero_demo() -> None:
+    text = client.get("/").text
+    assert "data-terminal-demo" in text
+    assert 'role="tablist"' in text
+    for tab_id in ("search", "purchase", "install"):
+        assert f'data-tab="{tab_id}"' in text
+        assert f'id="demo-panel-{tab_id}"' in text
+    # The animation script must be linked.
+    assert "/static/terminal-demo.js" in text
+
+
+def test_homepage_renders_security_authority_section() -> None:
+    text = client.get("/").text
+    assert "Security is the authority" in text
+    assert 'class="proof-list"' in text
+    assert "course/capabilities.yaml" in text
+    assert "immutable published versions" in text
+
+
+def test_homepage_renders_open_source_trust_anchors() -> None:
+    text = client.get("/").text
+    assert "Open-source trust layer" in text
+    for anchor in (
+        "CLI source",
+        "Python SDK",
+        "npm wrapper",
+        "agent companion SKILL.md",
+        "public OpenAPI contract",
+        "release manifests",
+    ):
+        assert anchor in text, anchor
+
+
+def test_homepage_does_not_render_redundant_checklist_sections() -> None:
+    # "Agent-readable web surface" was removed as a dedicated section —
+    # those surfaces are still real (and listed in llms.txt) but the page
+    # should not waste a band on a checklist that repeats the footer.
+    text = client.get("/").text
+    assert "Agent-readable web surface" not in text
+
+
+def test_homepage_does_not_sell_credit_packs() -> None:
+    text = client.get("/").text
+    assert "credit pack" not in text.lower()
+
+
+def test_homepage_states_credits_economy_facts() -> None:
+    text = client.get("/").text
+    assert "100 credits = $1" in text
+    assert "85%" in text
+    assert "15%" in text
+    assert "no platform subscription gate" in text.lower()
+    # No per-course Stripe Checkout redirect.
+    assert "Stripe redirect" in text
+
+
 def test_homepage_links_to_legal_routes() -> None:
     response = client.get("/")
     assert 'href="/terms"' in response.text
     assert 'href="/privacy"' in response.text
+    assert 'href="/credits-terms"' in response.text
+    assert 'href="/referrals-terms"' in response.text
     assert "Read terms" in response.text
+
+
+def test_pricing_route_renders_credits_and_split() -> None:
+    response = client.get("/pricing")
+    assert response.status_code == 200
+    text = response.text
+    assert "Pricing" in text
+    assert "100 credits = $1" in text
+    assert "85" in text
+    assert "15" in text
+    assert "no platform subscription gate" in text.lower()
+    # No subscription product offer.
+    assert "/month" not in text
+    assert "monthly subscription" not in text.lower()
 
 
 def test_terms_route_renders_real_mvp_terms() -> None:
@@ -157,6 +266,8 @@ def test_terms_route_renders_real_mvp_terms() -> None:
     assert "resell" in response.text
     assert "publicly mirror" in response.text
     assert "substitute marketplace" in response.text
+    assert "Stripe Connect" in response.text
+    assert "no guarantee" in response.text.lower()
 
 
 def test_privacy_route_renders_real_mvp_privacy_policy() -> None:
@@ -165,6 +276,188 @@ def test_privacy_route_renders_real_mvp_privacy_policy() -> None:
     assert "Privacy Policy" in response.text
     assert "Stripe" in response.text
     assert "marketplace activity" in response.text
+    assert "referral attribution" in response.text.lower()
+
+
+def test_credits_terms_route_renders_non_cash_rules() -> None:
+    response = client.get("/credits-terms")
+    assert response.status_code == 200
+    text = response.text
+    assert "Credits Terms" in text
+    assert "non-cash" in text
+    assert "not transferable" in text
+    assert "redeem credits for money" in text
+    assert "do not expire" in text
+    assert "100 credits per US dollar" in text
+
+
+def test_referrals_route_renders_clawback_and_self_referral_rule() -> None:
+    response = client.get("/referrals-terms")
+    assert response.status_code == 200
+    text = response.text
+    assert "Referral Program Terms" in text
+    assert "Self-referrals are prohibited" in text
+    assert "clawed back" in text
+    assert "Credits Terms" in text
+
+
+def test_referral_landing_renders_install_command_with_code() -> None:
+    response = client.get("/c/migration-safety-review?ref=ABCD1234")
+    assert response.status_code == 200
+    text = response.text
+    assert "migration-safety-review" in text
+    assert "--referral-code ABCD1234" in text
+    assert "lgn courses acquire migration-safety-review" in text
+
+
+def test_referral_landing_sets_no_cookies() -> None:
+    response = client.get("/c/migration-safety-review?ref=ABCD1234")
+    assert response.status_code == 200
+    # Critical: the referral landing must not set cookies in MVP.
+    assert "set-cookie" not in {k.lower() for k in response.headers}
+
+
+def test_referral_landing_has_no_third_party_tracking_in_mvp() -> None:
+    text = client.get("/c/migration-safety-review?ref=ABCD1234").text
+    # No Google Analytics, GTM, Segment, FB pixel, or generic tracker shims.
+    assert "googletagmanager" not in text.lower()
+    assert "google-analytics" not in text.lower()
+    assert "gtag(" not in text.lower()
+    assert "segment.com" not in text.lower()
+    assert "facebook.com/tr" not in text.lower()
+
+
+def test_referral_landing_without_code_renders_plain_command() -> None:
+    response = client.get("/c/migration-safety-review")
+    assert response.status_code == 200
+    text = response.text
+    assert "lgn courses acquire migration-safety-review" in text
+    assert "--referral-code" not in text
+
+
+def test_referral_landing_rejects_invalid_slug() -> None:
+    response = client.get("/c/..%2Fetc/passwd")
+    assert response.status_code in (400, 404)
+
+
+def test_referral_landing_rejects_invalid_referral_code() -> None:
+    response = client.get(
+        "/c/migration-safety-review",
+        params={"ref": "drop;table users"},
+    )
+    assert response.status_code == 400
+
+
+def test_no_page_references_per_course_stripe_checkout() -> None:
+    for path in ("/", "/pricing", "/credits-terms", "/referrals-terms"):
+        text = client.get(path).text
+        lower = text.lower()
+        assert "checkout.stripe.com" not in lower, path
+        assert "stripe checkout" not in lower, path
+
+
+def test_homepage_emits_faq_jsonld_with_visible_answers() -> None:
+    text = client.get("/").text
+    # JSON-LD FAQPage block with the canonical Q&A set.
+    assert '"@type": "FAQPage"' in text
+    assert "What is Logion?" in text
+    assert "How are courses priced?" in text
+    assert "Are credits refundable or transferable?" in text
+    # Visible FAQ section anchors the same content for human readers.
+    assert 'id="faq"' in text
+    assert "Frequently asked questions" in text
+
+
+def test_homepage_emits_howto_jsonld_with_real_cli_steps() -> None:
+    text = client.get("/").text
+    assert '"@type": "HowTo"' in text
+    assert "Acquire and install" in text
+    assert "lgn listings search" in text
+    assert "lgn courses purchase" in text
+
+
+def test_homepage_emits_software_application_jsonld() -> None:
+    text = client.get("/").text
+    assert '"@type": "SoftwareApplication"' in text
+    assert "DeveloperApplication" in text
+
+
+def test_keywords_meta_is_removed_as_legacy_seo_noise() -> None:
+    text = client.get("/").text
+    assert 'name="keywords"' not in text
+
+
+def test_rel_me_links_to_github_for_authorship() -> None:
+    text = client.get("/").text
+    assert 'rel="me"' in text
+    assert "github.com/nicolasmelo1/logion" in text
+
+
+def test_breadcrumb_jsonld_on_pricing_and_legal_pages() -> None:
+    for path, label in (
+        ("/pricing", "Pricing"),
+        ("/terms", "Terms of Service"),
+        ("/privacy", "Privacy Policy"),
+        ("/credits-terms", "Credits Terms"),
+        ("/referrals-terms", "Referral Program Terms"),
+    ):
+        text = client.get(path).text
+        assert '"@type": "BreadcrumbList"' in text, path
+        assert label in text, path
+
+
+def test_legal_pages_emit_date_modified_for_article_freshness() -> None:
+    for path in ("/terms", "/privacy", "/credits-terms", "/referrals-terms"):
+        text = client.get(path).text
+        assert '"dateModified"' in text, path
+
+
+def test_pages_link_to_their_markdown_alternate() -> None:
+    for path in ("/", "/pricing", "/terms", "/privacy"):
+        text = client.get(path).text
+        assert 'rel="alternate" type="text/markdown"' in text, path
+        assert 'href="https://logion.sh/llms-full.txt"' in text, path
+
+
+def test_markdown_content_negotiation_on_every_documented_route() -> None:
+    cases = (
+        ("/", "Logion is an agent-native marketplace"),
+        ("/pricing", "100 credits = $1"),
+        ("/terms", "Terms of Service"),
+        ("/privacy", "Privacy Policy"),
+        ("/credits-terms", "Credits Terms"),
+        ("/referrals-terms", "Referral Program Terms"),
+    )
+    for path, anchor in cases:
+        response = client.get(path, headers={"Accept": "text/markdown"})
+        assert response.status_code == 200, path
+        ctype = response.headers["content-type"]
+        assert ctype.startswith("text/markdown"), path
+        assert anchor in response.text, path
+
+
+def test_llms_full_txt_concatenates_every_public_surface() -> None:
+    response = client.get("/llms-full.txt")
+    assert response.status_code == 200
+    text = response.text
+    # Landing markdown + each legal route + FAQ block.
+    assert "Agent acquisition flow" in text
+    assert "## /terms" in text
+    assert "## /privacy" in text
+    assert "## /credits-terms" in text
+    assert "## /referrals-terms" in text
+    assert "## FAQ" in text
+    assert "100 credits per US dollar" in text
+
+
+def test_llms_full_txt_is_listed_in_sitemap() -> None:
+    text = client.get("/sitemap.xml").text
+    assert "https://logion.sh/llms-full.txt" in text
+
+
+def test_llms_txt_indexes_llms_full_txt() -> None:
+    text = client.get("/llms.txt").text
+    assert "llms-full.txt" in text
 
 
 def test_legal_page_rejects_path_traversal() -> None:
@@ -190,7 +483,14 @@ def test_vercel_analytics_renders_on_every_public_page() -> None:
     # The analytics tag must sit outside `{% block scripts %}` in base.html,
     # otherwise child templates that override that block (e.g. index.html
     # mounting its own app.js) silently drop the analytics script.
-    for path in ("/", "/terms", "/privacy"):
+    for path in (
+        "/",
+        "/pricing",
+        "/terms",
+        "/privacy",
+        "/credits-terms",
+        "/referrals-terms",
+    ):
         body = client.get(path).text
         assert "/_vercel/insights/script.js" in body, path
         assert "window.va = window.va" in body, path
