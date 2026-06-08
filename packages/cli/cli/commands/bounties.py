@@ -90,7 +90,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # ── lifecycle commands (open / fund / cancel / payout) ───────
     for cmd, sdk_method, action in [
         ("open", "update_status", "open this bounty"),
-        ("fund", "update_funding", "fund this bounty"),
+        (
+            "fund",
+            "update_funding",
+            "fund this bounty (credits will be debited)",
+        ),
         ("cancel", "delete", "cancel this bounty"),
         ("payout", "create_payout", "pay out this bounty"),
     ]:
