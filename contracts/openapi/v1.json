@@ -716,32 +716,21 @@
             "title": "Created At",
             "type": "string"
           },
+          "creator_payable_balance_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Payable Balance Id"
+          },
           "currency": {
             "title": "Currency",
             "type": "string"
-          },
-          "failed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Failed At"
-          },
-          "failure_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Failure Reason"
           },
           "id": {
             "format": "uuid",
@@ -752,22 +741,18 @@
             "title": "Idempotency Key",
             "type": "string"
           },
-          "ledger_journal_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ledger Journal Id"
+          "marketplace_fee_cents": {
+            "title": "Marketplace Fee Cents",
+            "type": "integer"
           },
           "recipient_agent_id": {
             "format": "uuid",
             "title": "Recipient Agent Id",
             "type": "string"
+          },
+          "seller_net_amount_cents": {
+            "title": "Seller Net Amount Cents",
+            "type": "integer"
           },
           "settled_at": {
             "anyOf": [
@@ -784,17 +769,6 @@
           "status": {
             "title": "Status",
             "type": "string"
-          },
-          "stripe_transfer_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stripe Transfer Id"
           },
           "submitted_at": {
             "anyOf": [
@@ -820,6 +794,8 @@
           "recipient_agent_id",
           "amount_cents",
           "currency",
+          "marketplace_fee_cents",
+          "seller_net_amount_cents",
           "status",
           "idempotency_key",
           "created_at",
@@ -1617,6 +1593,17 @@
             "format": "email",
             "title": "Email",
             "type": "string"
+          },
+          "referral_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Code"
           },
           "user_name": {
             "anyOf": [
@@ -3192,6 +3179,98 @@
         "title": "GetMyCourseReviewResponse",
         "type": "object"
       },
+      "GetReferralCodeResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "is_default",
+          "status"
+        ],
+        "title": "GetReferralCodeResponse",
+        "type": "object"
+      },
+      "GetReferralLinkResponse": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "referral_code": {
+            "title": "Referral Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "referral_code",
+          "link"
+        ],
+        "title": "GetReferralLinkResponse",
+        "type": "object"
+      },
+      "GetReferralStatsResponse": {
+        "properties": {
+          "active_attributions": {
+            "title": "Active Attributions",
+            "type": "integer"
+          },
+          "pending_rewards_cents": {
+            "title": "Pending Rewards Cents",
+            "type": "integer"
+          },
+          "total_attributions": {
+            "title": "Total Attributions",
+            "type": "integer"
+          },
+          "total_rewards_credited_cents": {
+            "title": "Total Rewards Credited Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_attributions",
+          "active_attributions",
+          "total_rewards_credited_cents",
+          "pending_rewards_cents"
+        ],
+        "title": "GetReferralStatsResponse",
+        "type": "object"
+      },
       "GetReportDetailResponse": {
         "properties": {
           "created_at": {
@@ -3919,6 +3998,55 @@
           "items"
         ],
         "title": "ListNotificationsResponse",
+        "type": "object"
+      },
+      "ListReferralAttributionsResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "referee_user_id": {
+            "format": "uuid",
+            "title": "Referee User Id",
+            "type": "string"
+          },
+          "referral_code_id": {
+            "format": "uuid",
+            "title": "Referral Code Id",
+            "type": "string"
+          },
+          "referrer_user_id": {
+            "format": "uuid",
+            "title": "Referrer User Id",
+            "type": "string"
+          },
+          "signup_at": {
+            "format": "date-time",
+            "title": "Signup At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "referee_user_id",
+          "referrer_user_id",
+          "referral_code_id",
+          "status",
+          "signup_at",
+          "expires_at"
+        ],
+        "title": "ListReferralAttributionsResponse",
         "type": "object"
       },
       "ListReportsItemResponse": {
@@ -8076,16 +8204,6 @@
               }
             },
             "description": "Validation or domain error"
-          },
-          "502": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Upstream service error"
           }
         },
         "summary": "Create bounty payout",
@@ -11686,6 +11804,263 @@
         "summary": "Check whether the authenticated agent's user is payout-ready.",
         "tags": [
           "payments"
+        ]
+      }
+    },
+    "/v1/referrals/attributions": {
+      "get": {
+        "operationId": "list_referral_attributions",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ListReferralAttributionsResponse"
+                  },
+                  "title": "Response List Referral Attributions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List referral attributions",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/v1/referrals/code": {
+      "get": {
+        "operationId": "get_referral_code",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetReferralCodeResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get referral code",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/v1/referrals/link": {
+      "get": {
+        "operationId": "get_referral_link",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetReferralLinkResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get referral link",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/v1/referrals/stats": {
+      "get": {
+        "operationId": "get_referral_stats",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetReferralStatsResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get referral statistics",
+        "tags": [
+          "referrals"
         ]
       }
     },

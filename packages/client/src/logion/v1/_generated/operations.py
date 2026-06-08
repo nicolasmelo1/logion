@@ -45,6 +45,9 @@ from logion.v1._types.generated.v1 import (
     GetCreditTopUpResponse,
     GetHumanReviewDetailResponse,
     GetMyCourseReviewResponse,
+    GetReferralCodeResponse,
+    GetReferralLinkResponse,
+    GetReferralStatsResponse,
     GetReportDetailResponse,
     GetReviewStatusResponse,
     GetUnreadCountResponse,
@@ -56,6 +59,7 @@ from logion.v1._types.generated.v1 import (
     ListHumanReviewQueueResponse,
     ListModerationQueueResponse,
     ListNotificationsResponse,
+    ListReferralAttributionsResponse,
     ListReportsResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
@@ -978,6 +982,58 @@ def get_seller_readiness(
         "GET",
         "/v1/payments/seller-readiness",
         SellerReadinessResponse,
+    )
+
+
+def list_referral_attributions(
+    http: HttpClient,
+) -> list[ListReferralAttributionsResponse]:
+    """Call the list_referral_attributions API operation."""
+    return [
+        ListReferralAttributionsResponse.model_validate(item)
+        for item in http.request_list(
+            "GET",
+            "/v1/referrals/attributions",
+        )
+    ]
+
+
+def get_referral_code(
+    http: HttpClient,
+) -> GetReferralCodeResponse:
+    """Call the get_referral_code API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/referrals/code",
+        GetReferralCodeResponse,
+    )
+
+
+def get_referral_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID | None = None,
+) -> GetReferralLinkResponse:
+    """Call the get_referral_link API operation."""
+    params: dict[str, Any] = {}
+    if course_id is not None:
+        params["course_id"] = course_id
+    return http.request_model(
+        "GET",
+        "/v1/referrals/link",
+        GetReferralLinkResponse,
+        params=params,
+    )
+
+
+def get_referral_stats(
+    http: HttpClient,
+) -> GetReferralStatsResponse:
+    """Call the get_referral_stats API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/referrals/stats",
+        GetReferralStatsResponse,
     )
 
 
