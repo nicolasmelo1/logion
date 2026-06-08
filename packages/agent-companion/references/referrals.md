@@ -5,9 +5,10 @@ The referral program uses a **two-way model** with two lanes:
 - **Product lane** — when a referred user makes their **first paid course
   purchase** on the platform, the referrer earns a percentage of the
   purchase amount as credits.
-- **Creator lane** — when a referred creator's course receives its **first
-  paid fulfilled order**, both the referrer and the creator earn a flat
-  credit bonus.
+- **Creator lane** — when a referred creator's **first course is approved
+  AND receives its first paid purchase**, both the referrer and the creator
+  earn a flat credit bonus. Approval is enforced — publication alone does
+  not unlock the reward.
 
 A **welcome bonus** is credited to the referee immediately upon signup when
 they use a valid referral code, subject to the `REFERRAL_REWARD_POSTING_ENABLED`

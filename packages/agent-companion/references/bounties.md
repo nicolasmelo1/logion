@@ -1,8 +1,11 @@
 # Bounties
 
-Three roles: **buyer** (post + fund), **creator** (submit work), **owner**
-(review and pay out). Workspaces are local checkout dirs for in-progress
-submissions.
+Three roles: **bounty creator** (posts the bounty and funds the reward),
+**contributor** (submits work for review), and **reviewer** (the bounty
+creator again, when accepting or rejecting submissions). In the MVP the
+bounty creator and reviewer are the same agent — only the course owner
+can create and review bounties on their own course. Workspaces are local
+checkout dirs for in-progress submissions.
 
 ## Discovery
 
@@ -15,12 +18,12 @@ logion bounties get BOUNTY_ID --json
 shows bounties accepting submissions, and `funded` shows bounties with a
 credit-funded reward.
 
-## Buyer lifecycle
+## Bounty creator lifecycle (post + fund + review)
 
 ```bash
 logion bounties create \
     --course-id COURSE_ID --title "..." --description "..." \
-    --reward-cents 50000 --currency USD \
+    --reward-cents 50000 --currency USD_CREDIT \
     --submission-deadline 2026-07-01T00:00:00Z --json
 
 logion bounties fund BOUNTY_ID --yes --json
@@ -28,13 +31,14 @@ logion bounties open BOUNTY_ID --yes --json
 logion bounties cancel BOUNTY_ID --yes --json
 ```
 
-`create` produces a draft; `fund` debits the buyer's credit balance;
-`open` accepts submissions; `cancel` credits the bounty amount back when
-no submission has been accepted. These commands mutate state; confirm
-before invoking. `--yes` skips the local prompt — agents should leave it
-off.
+`create` produces a draft; `fund` debits the bounty creator's credit
+balance (bounties are credit-native — `--currency` is `USD_CREDIT`);
+`open` accepts submissions; `cancel` credits the bounty amount back
+when no submission has been accepted. These commands mutate state;
+confirm before invoking. `--yes` skips the local prompt — agents
+should leave it off.
 
-## Creator: submit work
+## Contributor: submit work
 
 ```bash
 logion bounties submissions create BOUNTY_ID \
@@ -47,21 +51,21 @@ logion bounties submissions get BOUNTY_ID SUBMISSION_ID --json
 logion bounties submissions withdraw BOUNTY_ID SUBMISSION_ID --yes --json
 ```
 
-`--evidence-json` points at a local proof-of-work file the buyer
+`--evidence-json` points at a local proof-of-work file the reviewer
 reads during review.
 
-## Owner: review and payout
+## Reviewer: accept or reject submissions
 
 ```bash
 logion bounties submissions accept BOUNTY_ID SUBMISSION_ID --yes --json
 logion bounties submissions reject BOUNTY_ID SUBMISSION_ID --yes --json
-logion bounties payout BOUNTY_ID --yes --json
 ```
 
-`accept` picks the winner and accrues creator earnings for the
-contributor (net of marketplace fee); `payout` records the payout.
-Contributors can inspect earnings with `logion payments creator-earnings`
-and cash out via `logion payments cash-out`.
+`accept` picks the winner and accrues a payable balance for the
+contributor (net of the 15% marketplace fee). No separate payout step
+exists — the contributor inspects earnings with
+`logion payments creator-earnings` and cashes out via
+`logion payments cash-out`.
 
 ## Local workspace
 
@@ -78,8 +82,8 @@ output to `submissions create --evidence-json`.
 
 ## Safety
 
-`fund` debits credits from the buyer's balance; `cancel` credits them
-back. `accept` accrues a payable balance for the contributor.
-`payout` records the payout event. Treat `fund`, `cancel`, `accept`,
-and `payout` like `spend_credits` / `top_up_credits` for confirmation
-purposes — always confirm before invoking.
+`fund` debits credits from the bounty creator's balance; `cancel`
+credits them back. `accept` accrues a payable balance for the
+contributor. Treat `fund`, `cancel`, and `accept` like `spend_credits`
+/ `top_up_credits` for confirmation purposes — always confirm before
+invoking.

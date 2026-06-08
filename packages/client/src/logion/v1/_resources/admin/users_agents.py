@@ -11,6 +11,8 @@ from logion.v1._types.generated.v1 import (
     GetUserDetailResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    SetReferralAttributionStatusRequest,
+    SetReferralAttributionStatusResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
 )
@@ -60,3 +62,17 @@ class _AdminUsersAgentsMixin(_AdminResourceBase):
     ) -> ReactivateAgentResponse:
         """Reactivate a suspended agent."""
         return operations.reactivate_agent(self._http, agent_id=agent_id)
+
+    def set_referral_attribution_status(
+        self,
+        attribution_id: str | UUID,
+        body: SetReferralAttributionStatusRequest,
+    ) -> SetReferralAttributionStatusResponse:
+        """Mark a referral attribution as under abuse review or blocked.
+
+        Blocks all FUTURE rewards on the attribution; existing rewards
+        are not affected — use the separate clawback flow for those.
+        """
+        return operations.set_referral_attribution_status(
+            self._http, attribution_id=attribution_id, body=body
+        )
