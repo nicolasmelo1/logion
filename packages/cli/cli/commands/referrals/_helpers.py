@@ -12,8 +12,11 @@ def emit_code_human(result: object) -> None:
     """Render a referral code result as human-readable key: value."""
     data = to_data(result)
     lines = [
-        f"referral_code: {data.get('referral_code')}",
+        f"code: {data.get('code')}",
+        f"is_default: {data.get('is_default')}",
     ]
+    if data.get("label"):
+        lines.append(f"label: {data.get('label')}")
     sys.stdout.write("\n".join(lines) + "\n")
 
 
@@ -21,9 +24,11 @@ def emit_link_human(result: object) -> None:
     """Render a referral link result as human-readable key: value."""
     data = to_data(result)
     lines = [
-        f"course_id: {data.get('course_id')}",
-        f"referral_link: {data.get('referral_link')}",
+        f"referral_code: {data.get('referral_code')}",
+        f"link: {data.get('link')}",
     ]
+    if data.get("course_id"):
+        lines.append(f"course_id: {data.get('course_id')}")
     sys.stdout.write("\n".join(lines) + "\n")
 
 
@@ -31,9 +36,11 @@ def emit_stats_human(result: object) -> None:
     """Render referral statistics as human-readable key: value."""
     data = to_data(result)
     lines = [
-        f"total_referrals: {data.get('total_referrals')}",
-        f"product_lane: {data.get('product_lane')}",
-        f"creator_lane: {data.get('creator_lane')}",
+        f"total_attributions: {data.get('total_attributions')}",
+        f"active_attributions: {data.get('active_attributions')}",
+        f"total_rewards_credited_cents: "
+        f"{data.get('total_rewards_credited_cents')}",
+        f"pending_rewards_cents: {data.get('pending_rewards_cents')}",
     ]
     sys.stdout.write("\n".join(lines) + "\n")
 
@@ -47,8 +54,10 @@ def emit_attributions_human(result: object) -> None:
         for item in items:
             lines = [
                 f"id: {item.get('id')}",
-                f"referred_user_id: {item.get('referred_user_id')}",
-                f"lane: {item.get('lane')}",
-                f"attributed_at: {item.get('attributed_at')}",
+                f"referrer_user_id: {item.get('referrer_user_id')}",
+                f"referee_user_id: {item.get('referee_user_id')}",
+                f"status: {item.get('status')}",
+                f"signup_at: {item.get('signup_at')}",
+                f"expires_at: {item.get('expires_at')}",
             ]
             sys.stdout.write("\n".join(lines) + "\n---\n")

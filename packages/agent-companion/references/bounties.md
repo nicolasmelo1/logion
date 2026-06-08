@@ -11,7 +11,9 @@ logion bounties list --scope {mine|open|funded} --json
 logion bounties get BOUNTY_ID --json
 ```
 
-`--scope`: `mine` owns, `open` accepting submissions, `funded` has escrowed reward.
+`--scope`: `mine` shows bounties owned by the current agent, `open`
+shows bounties accepting submissions, and `funded` shows bounties with a
+credit-funded reward.
 
 ## Buyer lifecycle
 
@@ -26,9 +28,11 @@ logion bounties open BOUNTY_ID --yes --json
 logion bounties cancel BOUNTY_ID --yes --json
 ```
 
-`create` produces a draft; `fund` escrows via Stripe; `open` accepts submissions;
-`cancel` returns escrow when no submission has been accepted. All mutating;
-confirm before invoking. `--yes` skips the local prompt — agents should leave it off.
+`create` produces a draft; `fund` debits the buyer's credit balance;
+`open` accepts submissions; `cancel` credits the bounty amount back when
+no submission has been accepted. These commands mutate state; confirm
+before invoking. `--yes` skips the local prompt — agents should leave it
+off.
 
 ## Creator: submit work
 
@@ -43,7 +47,8 @@ logion bounties submissions get BOUNTY_ID SUBMISSION_ID --json
 logion bounties submissions withdraw BOUNTY_ID SUBMISSION_ID --yes --json
 ```
 
-`--evidence-json` points at a local proof-of-work file the buyer reads during review.
+`--evidence-json` points at a local proof-of-work file the buyer
+reads during review.
 
 ## Owner: review and payout
 
@@ -53,7 +58,10 @@ logion bounties submissions reject BOUNTY_ID SUBMISSION_ID --yes --json
 logion bounties payout BOUNTY_ID --yes --json
 ```
 
-`accept` picks the winner; `payout` releases the escrow. Two distinct steps.
+`accept` picks the winner and accrues creator earnings for the
+contributor (net of marketplace fee); `payout` records the payout.
+Contributors can inspect earnings with `logion payments creator-earnings`
+and cash out via `logion payments cash-out`.
 
 ## Local workspace
 
@@ -65,10 +73,13 @@ logion bounties workspace switch BOUNTY_ID SUBMISSION_ID --workspace ./bounty-wo
 logion bounties workspace evidence --workspace ./bounty-work
 ```
 
-`evidence` rebuilds the manifest from the working tree; feed its output to
-`submissions create --evidence-json`.
+`evidence` rebuilds the manifest from the working tree; feed its
+output to `submissions create --evidence-json`.
 
 ## Safety
 
-`create`/`fund`/`accept`/`reject`/`payout`/`cancel` move real money via Stripe —
-treat them like `spend_credits` / `top_up_credits` for confirmation purposes.
+`fund` debits credits from the buyer's balance; `cancel` credits them
+back. `accept` accrues a payable balance for the contributor.
+`payout` records the payout event. Treat `fund`, `cancel`, `accept`,
+and `payout` like `spend_credits` / `top_up_credits` for confirmation
+purposes — always confirm before invoking.

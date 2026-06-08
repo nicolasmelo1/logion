@@ -6,6 +6,13 @@ from __future__ import annotations
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion.v1._generated import operations
+from logion.v1._types.generated.v1 import (
+    GetReferralCodeResponse,
+    GetReferralLinkResponse,
+    GetReferralStatsResponse,
+    ListReferralAttributionsResponse,
+)
 
 
 class ReferralsResource:
@@ -14,46 +21,18 @@ class ReferralsResource:
     def __init__(self, http: HttpClient) -> None:
         self._http = http
 
-    def get_code(self) -> dict:
-        """Get the authenticated user's default referral code.
+    def get_code(self) -> GetReferralCodeResponse:
+        """Get the authenticated user's default referral code."""
+        return operations.get_referral_code(self._http)
 
-        TODO: Wire to operations.get_referral_code after OpenAPI
-        regeneration.
-        """
-        raise NotImplementedError(
-            "Referral API operations not yet available — "
-            "update the SDK after the backend contract is updated."
-        )
+    def get_link(self, *, course_id: str | UUID) -> GetReferralLinkResponse:
+        """Generate a referral link for a specific course."""
+        return operations.get_referral_link(self._http, course_id=course_id)
 
-    def get_link(self, *, course_id: str | UUID) -> dict:
-        """Generate a referral link for a specific course.
+    def get_stats(self) -> GetReferralStatsResponse:
+        """Get referral statistics for the authenticated user."""
+        return operations.get_referral_stats(self._http)
 
-        TODO: Wire to operations.get_referral_link after OpenAPI
-        regeneration.
-        """
-        raise NotImplementedError(
-            "Referral API operations not yet available — "
-            "update the SDK after the backend contract is updated."
-        )
-
-    def get_stats(self) -> dict:
-        """Get referral statistics for the authenticated user.
-
-        TODO: Wire to operations.get_referral_stats after OpenAPI
-        regeneration.
-        """
-        raise NotImplementedError(
-            "Referral API operations not yet available — "
-            "update the SDK after the backend contract is updated."
-        )
-
-    def list_attributions(self) -> list[dict]:
-        """List referral attributions for the authenticated user.
-
-        TODO: Wire to operations.list_referral_attributions after
-        OpenAPI regeneration.
-        """
-        raise NotImplementedError(
-            "Referral API operations not yet available — "
-            "update the SDK after the backend contract is updated."
-        )
+    def list_attributions(self) -> list[ListReferralAttributionsResponse]:
+        """List referral attributions for the authenticated user."""
+        return operations.list_referral_attributions(self._http)

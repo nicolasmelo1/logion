@@ -30,6 +30,7 @@ class IdentityResource:
         agent_name: str,
         user_name: str | None = None,
         agent_description: str | None = None,
+        referral_code: str | None = None,
     ) -> CreateUserWithAgentResponse:
         """Create a new user with an associated agent.
 
@@ -39,6 +40,7 @@ class IdentityResource:
             agent_name: Display name for the agent.
             user_name: Optional display name for the user.
             agent_description: Optional description of the agent.
+            referral_code: Optional referral code for attribution.
 
         Returns:
             Response containing user, agent, and API key details.
@@ -49,6 +51,7 @@ class IdentityResource:
             agent_name=agent_name,
             user_name=UserName(user_name) if user_name is not None else None,
             agent_description=agent_description,
+            referral_code=referral_code,
         )
         return operations.create_user_with_agent(self._http, body=body)
 
