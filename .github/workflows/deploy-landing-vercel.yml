@@ -22,8 +22,14 @@ jobs:
       run:
         working-directory: packages/landing
     env:
+      # Vercel CLI uses these to know exactly which project to deploy to.
+      # Without VERCEL_PROJECT_ID/VERCEL_ORG_ID the CLI falls back to
+      # creating a project named after the working directory (i.e.
+      # "landing"), which is why we previously ended up with a stray
+      # project. With both env vars set, --scope is redundant.
       VERCEL_TOKEN: ${{ secrets.VERCEL_LANDING_TOKEN }}
-      VERCEL_SCOPE: ${{ secrets.VERCEL_LANDING_SCOPE }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_LANDING_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_LANDING_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,13 +50,13 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production --scope "$VERCEL_SCOPE"
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
       - name: Deploy landing to production
         id: deploy
         run: |
           deployment_url="$(vercel deploy --prod \
-            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
             --meta githubDeployment=1 \
             --meta githubCommitRef="${GITHUB_REF_NAME}" \
             --meta githubCommitSha="${GITHUB_SHA}" \
