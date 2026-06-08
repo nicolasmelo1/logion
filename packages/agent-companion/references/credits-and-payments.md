@@ -93,7 +93,6 @@ in conversation history.
 ## Cash out
 
 ```bash
-logion payments cash-out --json
 logion payments cash-out --dry-run --json
 logion payments cash-out --expected-gross-payout-cents N --yes --json
 ```

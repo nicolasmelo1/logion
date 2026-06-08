@@ -65,22 +65,13 @@ def handle_referrals_link(args: argparse.Namespace) -> int:
     )
     if refusal is not None:
         return refusal
-    config = resolve_config_from_args(args)
-    client = make_client(config)
-    try:
-        result = client.v1.referrals.get_link(
-            course_id=args.course_id,
-        )
-        if config.json_output:
-            emit_json("logion.referrals.link", to_data(result))
-        else:
-            emit_link_human(result)
-    except Exception as exc:
-        return handle_error(exc)
-    else:
-        return 0
-    finally:
-        client.close()
+    return _run(
+        args,
+        lambda r: r.get_link(course_id=args.course_id),
+        "link",
+        json_output=getattr(args, "json_output", False),
+        render=emit_link_human,
+    )
 
 
 def handle_referrals_stats(args: argparse.Namespace) -> int:
