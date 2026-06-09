@@ -1,0 +1,25 @@
+# course/capabilities.yaml — example with references and scripts
+#
+# Declares a small terminal+file surface. The course runs one
+# bundled shell script and writes one log file under outputs/.
+# No network, no env vars, no human approval gate.
+
+version: 1
+
+summary: >-
+  Example Logion course that runs a bundled shell script and writes
+  a timestamped log under ./outputs/. Demonstrates the file +
+  terminal tool combination with a tight filesystem write allowlist.
+
+tools:
+  - file
+  - terminal
+
+filesystem:
+  read:
+    - .
+  write:
+    - ./outputs
+
+human_approval:
+  required: false

@@ -34,6 +34,7 @@ uv.lock
 .github
 contracts
 docs
+examples
 packages
 releases
 scripts
