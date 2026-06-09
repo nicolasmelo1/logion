@@ -211,10 +211,18 @@ function installCompanionBundle(): void {
   }
 
   // Validate that sourceDir is actually a directory.
-  const stat = fs.statSync(sourceDir);
-  if (!stat.isDirectory()) {
+  try {
+    const stat = fs.statSync(sourceDir);
+    if (!stat.isDirectory()) {
+      log(
+        `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} is not a directory — ` +
+          "skipping companion bundle copy.",
+      );
+      return;
+    }
+  } catch {
     log(
-      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} is not a directory — ` +
+      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} stat failed — ` +
         "skipping companion bundle copy.",
     );
     return;
@@ -247,9 +255,16 @@ function installCompanionBundle(): void {
   log(`Copied companion bundle to ${destPath}`);
 
   // Write sidecar marker with source path and SHA-256.
+  // Hash in chunks to avoid loading the entire tarball into memory.
   const hash = crypto.createHash("sha256");
-  const data = fs.readFileSync(destPath);
-  hash.update(data);
+  const fd = fs.openSync(destPath, "r");
+  const CHUNK = 64 * 1024;
+  const buf = Buffer.alloc(CHUNK);
+  let bytesRead: number;
+  while ((bytesRead = fs.readSync(fd, buf, 0, CHUNK, null)) > 0) {
+    hash.update(buf.subarray(0, bytesRead));
+  }
+  fs.closeSync(fd);
   const sha256 = hash.digest("hex");
 
   const sidecar = {
