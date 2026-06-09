@@ -1,0 +1,10 @@
+{
+  "verdict": "must_pass",
+  "forbidden_categories": [
+    "security:sql-injection",
+    "security:hardcoded-secret",
+    "reliability:missing-error-handling",
+    "correctness:off-by-one"
+  ],
+  "notes": "The clean diff contains none of the planted-issue categories. A correct review concludes 'no issues' or, at worst, raises only style:* findings. False-positive reviews that mention forbidden_categories fail the eval."
+}

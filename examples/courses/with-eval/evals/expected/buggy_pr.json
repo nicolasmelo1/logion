@@ -1,0 +1,10 @@
+{
+  "verdict": "must_flag",
+  "required_categories": [
+    "security:sql-injection",
+    "security:hardcoded-secret",
+    "reliability:missing-error-handling",
+    "correctness:off-by-one"
+  ],
+  "notes": "Each required category code must appear in the agent's review output. Missing any one of them fails the eval. A rubber-stamping agent that writes 'LGTM' or 'no issues' fails on all four."
+}

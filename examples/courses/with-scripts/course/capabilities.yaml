@@ -1,0 +1,32 @@
+# course/capabilities.yaml — with-scripts example
+#
+# Declares the surface the bundled Gmail CLI uses. The bundle is
+# self-contained: stdlib only, no pip install, no transitive deps.
+# Everything reviewed at publication is everything that runs.
+
+version: 1
+
+summary: >-
+  Bundled Gmail CLI example. Demonstrates the scripts/ entrypoint +
+  src/ implementation split. All code ships in the course — no
+  package-manager install at runtime. The course owns its codebase.
+
+tools:
+  - file
+  - terminal
+  - web
+
+network:
+  allow_domains:
+    - gmail.googleapis.com
+
+filesystem:
+  read:
+    - .
+
+secrets:
+  env:
+    - GMAIL_OAUTH_TOKEN
+
+human_approval:
+  required: false

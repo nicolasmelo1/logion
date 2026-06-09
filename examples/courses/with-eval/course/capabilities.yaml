@@ -1,0 +1,27 @@
+# course/capabilities.yaml — with-eval example
+#
+# PR review checklist with a bundled deterministic eval. Runs entirely
+# locally — no network, no secrets, no human approval. The eval is the
+# trust-clean pattern in action: bundled fixtures + bundled scorer +
+# stdlib only.
+
+version: 1
+
+summary: >-
+  PR review checklist with a deterministic eval that catches "faking"
+  agents. The agent reviews diffs against a bundled checklist; the
+  scorer mechanically checks whether planted issues were flagged.
+
+tools:
+  - file
+  - terminal
+
+filesystem:
+  read:
+    - .
+  write:
+    - ./evals/reviews
+    - ./evals/reports
+
+human_approval:
+  required: false

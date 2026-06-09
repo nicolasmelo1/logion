@@ -11,10 +11,12 @@ The Logion Marketplace Companion at `../packages/agent-companion/` is itself a c
 
 | Directory | When to copy this |
 |---|---|
-| `minimal/` | Smallest course that validates against both specs. Pure SKILL.md + a near-empty capability manifest. Use as a starting point when your skill needs no tools, no network, no filesystem writes. |
-| `with-references-and-scripts/` | Skill that bundles a `scripts/` helper and a `references/` doc. Declares `tools: [file, terminal]` and `filesystem.write: [./outputs]`. Use this when your skill executes a small subprocess and produces files. |
+| `minimal/` | Smallest course that validates against both specs. Pure SKILL.md + a near-empty capability manifest. Use when your skill needs no tools, no network, no filesystem writes. |
+| `with-references-and-scripts/` | Skill that bundles one `scripts/` helper and a `references/` doc. Declares `tools: [file, terminal]` and `filesystem.write: [./outputs]`. Use when your skill executes a small subprocess and produces files. |
+| `with-scripts/` | **The "course owns its codebase" pattern.** Bundled Gmail CLI with a `scripts/` entrypoint + `src/gmailcli/` real implementation (stdlib-only). Declares `tools: [file, terminal, web]`, `network.allow_domains: [gmail.googleapis.com]`, `secrets.env: [GMAIL_OAUTH_TOKEN]`. Use when your course ships non-trivial code that deserves organization into modules. This is the canonical replacement for the "tell the user to `npm install` my CLI" anti-pattern. |
+| `with-eval/` | PR review checklist + a bundled deterministic eval. The eval scores agent reviews against fixtures with planted issues — catches "faking" agents that rubber-stamp. Declares `tools: [file, terminal]`, no network, no secrets. Use as a template when your course has measurable behavior worth verifying locally before publication. Also previews the shape future eval-backed bounty work will plug into (same fixtures + same scorer become bounty-eval ground truth). |
 
-(A `with-network-and-secrets/` example — declaring `network.allow_domains` and `secrets.env` — is planned but not yet in this directory.)
+(A `with-network-and-secrets/` example — focused demonstration of `network.allow_domains` + `secrets.env` — is planned but not yet in this directory.)
 
 ## Validating a course before upload
 
