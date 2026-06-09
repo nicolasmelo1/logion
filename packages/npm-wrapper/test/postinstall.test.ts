@@ -179,7 +179,7 @@ describe("postinstall", () => {
       const logionHome = path.join(tmp, "logion-home");
       fs.mkdirSync(logionHome, { recursive: true });
 
-      const r = spawnSync(
+      const result = spawnSync(
         process.execPath,
         [path.join(SCRIPTS_DIR, "postinstall.js")],
         {
@@ -195,6 +195,7 @@ describe("postinstall", () => {
           timeout: 15_000,
         },
       );
+      expect(result.status).toBe(0);
 
       // Companion bundle should be copied to $LOGION_HOME/companion-bundles/
       const bundlesDir = path.join(logionHome, "companion-bundles");
@@ -234,7 +235,7 @@ describe("postinstall", () => {
       const logionHome = path.join(tmp, "logion-home");
       fs.mkdirSync(logionHome, { recursive: true });
 
-      const r = spawnSync(
+      const result = spawnSync(
         process.execPath,
         [path.join(SCRIPTS_DIR, "postinstall.js")],
         {
@@ -250,6 +251,7 @@ describe("postinstall", () => {
           timeout: 15_000,
         },
       );
+      expect(result.status).toBe(0);
 
       // No companion-bundles directory should be created.
       const bundlesDir = path.join(logionHome, "companion-bundles");
@@ -278,17 +280,19 @@ describe("postinstall", () => {
         "fake-content",
       );
 
-      // Override HOME to tmp so we don't pollute real ~/.logion.
+      // Override HOME (and USERPROFILE for Windows runners) so we don't
+      // pollute real ~/.logion.
       const fakeHome = path.join(tmp, "home");
       fs.mkdirSync(fakeHome, { recursive: true });
 
-      const r = spawnSync(
+      const result = spawnSync(
         process.execPath,
         [path.join(SCRIPTS_DIR, "postinstall.js")],
         {
           env: {
             ...process.env,
             HOME: fakeHome,
+            USERPROFILE: fakeHome,
             LOGION_NPM_FORCE_INSTALLER: "pipx",
             LOGION_NPM_PYTHON: pyPath,
             LOGION_COMPANION_BUNDLE_SOURCE: companionSource,
@@ -299,6 +303,7 @@ describe("postinstall", () => {
           timeout: 15_000,
         },
       );
+      expect(result.status).toBe(0);
 
       // Should fall back to $HOME/.logion/companion-bundles/
       const bundlesDir = path.join(fakeHome, ".logion", "companion-bundles");

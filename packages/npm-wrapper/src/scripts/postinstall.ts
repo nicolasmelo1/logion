@@ -191,8 +191,8 @@ function pickInstaller(forced: string | undefined): Installer | null {
  *   `logion-marketplace-companion-*.tar.gz` in that directory.
  * - Copy it to `$LOGION_HOME/companion-bundles/` (falling back to
  *   `~/.logion/companion-bundles/` when LOGION_HOME is unset).
- * - Write a sidecar `companion-bundle-source.json` with the source path
- *   and a SHA-256 of the tarball.
+ * - Write a per-tarball sidecar (replacing `.tar.gz` with `.source.json`)
+ *   containing the source path and a SHA-256 of the tarball.
  * - If LOGION_COMPANION_BUNDLE_SOURCE is unset, do nothing (existing
  *   release path stays unchanged for users installing from npm registry).
  */
@@ -210,8 +210,21 @@ function installCompanionBundle(): void {
     return;
   }
 
+  // Validate that sourceDir is actually a directory.
+  const stat = fs.statSync(sourceDir);
+  if (!stat.isDirectory()) {
+    log(
+      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} is not a directory — ` +
+        "skipping companion bundle copy.",
+    );
+    return;
+  }
+
   // Find the companion tarball in the source directory.
-  const entries = fs.readdirSync(sourceDir);
+  // Sort for deterministic selection when multiple tarballs exist.
+  const entries = fs.readdirSync(sourceDir).sort((a, b) =>
+    a.localeCompare(b),
+  );
   const tarball = entries.find((name) =>
     /^logion-marketplace-companion-.*\.tar\.gz$/.test(name),
   );
@@ -227,7 +240,7 @@ function installCompanionBundle(): void {
 
   // Determine destination: $LOGION_HOME/companion-bundles/ or
   // ~/.logion/companion-bundles/ if LOGION_HOME is unset.
-  const logionHome = process.env.LOGION_HOME || LOGION_DIR;
+  const logionHome = process.env.LOGION_HOME ?? LOGION_DIR;
   const bundlesDir = path.join(logionHome, "companion-bundles");
   fs.mkdirSync(bundlesDir, { recursive: true });
 
