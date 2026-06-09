@@ -1,0 +1,38 @@
+# course/capabilities.yaml — minimal Logion course example
+#
+# Declares the smallest valid capability surface: nothing is allowed.
+# This is the "deny by default" baseline. Add only what your real
+# course needs.
+#
+# Schema reference:
+#   packages/cli/cli/templates/course_capabilities.template.yaml
+
+version: 1
+
+summary: >-
+  A starting-point Logion course that declares no tools, no network,
+  no filesystem access, no env vars, and no human-approval gate.
+
+# tools — closed enum: browser, terminal, file, web, vision.
+# Omitted entirely here because this skill performs no action.
+# tools: []
+
+# network — outbound HTTP allowlist. Omitted = deny all.
+# network:
+#   allow_domains: []
+
+# filesystem — read/write allowlist of paths relative to course root.
+# Omitted = deny both.
+# filesystem:
+#   read: []
+#   write: []
+
+# secrets.env — env vars the course is allowed to read.
+# Omitted = none.
+# secrets:
+#   env: []
+
+# human_approval.required — when true, the agent must ask the user
+# before executing any step. Default false.
+human_approval:
+  required: false
