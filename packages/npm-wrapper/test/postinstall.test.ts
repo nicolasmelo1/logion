@@ -189,6 +189,8 @@ describe("postinstall", () => {
             LOGION_NPM_PYTHON: pyPath,
             LOGION_COMPANION_BUNDLE_SOURCE: companionSource,
             LOGION_HOME: logionHome,
+            HOME: tmp,
+            USERPROFILE: tmp,
             PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
           },
           stdio: "pipe",
@@ -203,18 +205,13 @@ describe("postinstall", () => {
       expect(fs.existsSync(destTarball)).toBe(true);
 
       // Sidecar marker should exist.
-      const sidecarName = tarballName.replace(
-        /\.tar\.gz$/,
-        ".source.json",
-      );
+      const sidecarName = tarballName.replace(/\.tar\.gz$/, ".source.json");
       const sidecarPath = path.join(bundlesDir, sidecarName);
       expect(fs.existsSync(sidecarPath)).toBe(true);
       const sidecar = JSON.parse(
         fs.readFileSync(sidecarPath, "utf8"),
       ) as Record<string, unknown>;
-      expect(sidecar.sourcePath).toBe(
-        path.join(companionSource, tarballName),
-      );
+      expect(sidecar.sourcePath).toBe(path.join(companionSource, tarballName));
       expect(typeof sidecar.sha256).toBe("string");
       expect(sidecar.sha256).toHaveLength(64);
 
@@ -245,6 +242,8 @@ describe("postinstall", () => {
             LOGION_NPM_PYTHON: pyPath,
             // Intentionally NOT setting LOGION_COMPANION_BUNDLE_SOURCE
             LOGION_HOME: logionHome,
+            HOME: tmp,
+            USERPROFILE: tmp,
             PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
           },
           stdio: "pipe",

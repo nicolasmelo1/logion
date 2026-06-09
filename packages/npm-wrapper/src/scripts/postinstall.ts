@@ -222,9 +222,7 @@ function installCompanionBundle(): void {
 
   // Find the companion tarball in the source directory.
   // Sort for deterministic selection when multiple tarballs exist.
-  const entries = fs.readdirSync(sourceDir).sort((a, b) =>
-    a.localeCompare(b),
-  );
+  const entries = fs.readdirSync(sourceDir).sort((a, b) => a.localeCompare(b));
   const tarball = entries.find((name) =>
     /^logion-marketplace-companion-.*\.tar\.gz$/.test(name),
   );
