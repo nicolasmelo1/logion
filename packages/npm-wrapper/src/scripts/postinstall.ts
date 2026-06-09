@@ -3,7 +3,7 @@
 // postinstall.ts — detect Python, install logion-cli via pipx/uv/venv.
 //
 // Environment variables:
-//   LOGION_NPM_SKIP_INSTALL=1   — skip postinstall entirely (CI/test)
+//   LOGION_NPM_SKIP_INSTALL=1   — skip CLI install only (still handles companion)
 //   LOGION_NPM_FORCE_INSTALLER  — force "pipx", "uv", or "venv"
 //   LOGION_NPM_PYTHON           — override Python binary path
 //   LOGION_COMPANION_BUNDLE_SOURCE — directory containing companion tarball
@@ -279,8 +279,13 @@ function installCompanionBundle(): void {
 }
 
 function main(): void {
+  // Companion bundle install runs even when the CLI install is skipped
+  // (dev rig sets LOGION_NPM_SKIP_INSTALL=1 but still needs the bundle
+  // copied into $LOGION_HOME/companion-bundles/).
+  installCompanionBundle();
+
   if (process.env.LOGION_NPM_SKIP_INSTALL === "1") {
-    log("LOGION_NPM_SKIP_INSTALL=1 — skipping postinstall.");
+    log("LOGION_NPM_SKIP_INSTALL=1 — skipping CLI install.");
     return;
   }
 
@@ -329,10 +334,6 @@ function main(): void {
   writeMarker(installer, version);
   verifyInstall(version);
   log(`Installed logion-cli ${version} via ${installer}.`);
-
-  // Companion bundle install (dev rig path — no-op when
-  // LOGION_COMPANION_BUNDLE_SOURCE is not set).
-  installCompanionBundle();
 }
 
 main();
