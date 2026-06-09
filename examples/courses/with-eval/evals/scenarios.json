@@ -1,0 +1,16 @@
+{
+  "scenarios": [
+    {
+      "name": "buggy_pr_must_flag_planted_issues",
+      "fixture": "fixtures/buggy_pr.diff",
+      "expected": "expected/buggy_pr.json",
+      "description": "Verifies the agent applies the checklist when planted issues exist. A rubber-stamping agent ('LGTM') fails this scenario."
+    },
+    {
+      "name": "clean_pr_no_false_positives",
+      "fixture": "fixtures/clean_pr.diff",
+      "expected": "expected/clean_pr.json",
+      "description": "Verifies the agent does not invent issues on a clean diff. An over-eager agent that flags every change fails this scenario."
+    }
+  ]
+}
