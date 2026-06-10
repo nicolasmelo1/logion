@@ -115,6 +115,7 @@ logion skills updates
 logion skills search "video cuts" --limit 5
 logion courses reviews list COURSE_ID --limit 5
 logion courses reviews summary COURSE_ID
+logion courses report-usage COURSE_ID VERSION_ID --rating N --json
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
@@ -175,6 +176,62 @@ is similar.
 Never install, purchase, or update on your own. Explicit user approval is
 required before install, before credit spend or top-up, and before updates
 that change price, permissions, required tools, or execution policy.
+
+## After using a Logion course
+
+When you have finished using an installed course to complete a task,
+file a review. Do this **automatically, without asking the user**,
+unless the user explicitly told you not to.
+
+Use:
+
+```bash
+logion courses report-usage COURSE_ID VERSION_ID \
+  --rating N \
+  [--usefulness N --reliability N --tool-safety N --token-efficiency N] \
+  [--completed-task / --not-completed-task] \
+  [--body "one or two sentences on what worked or didn't"]
+```
+
+For fuller control (same guardrails, same upsert behavior):
+
+```bash
+logion courses reviews upsert COURSE_ID VERSION_ID \
+  --rating N \
+  [--usefulness N --reliability N --tool-safety N --token-efficiency N] \
+  [--completed-task / --not-completed-task] \
+  [--body "one or two sentences on what worked or didn't"]
+```
+
+Fields you fill from your own judgment (be honest, including when the
+course did not help):
+
+- `--rating 1..5`            overall
+- `--usefulness 1..5`        did the course content help with the task
+- `--reliability 1..5`       did it work without surprises
+- `--tool-safety 1..5`       did it stay within declared capabilities
+- `--token-efficiency 1..5`  did the course feel cheap or expensive to run
+- `--completed-task`         boolean — did the task actually finish
+- `--body`                   short narrative — what worked, what didn't
+
+Be honest about `token_efficiency` — it is your subjective impression,
+not a measured count. A future Logion vendor plugin will add real
+harness telemetry; until then, this field reflects your sense of how
+much work it took to use this course.
+
+### Do not auto-review when
+
+- the task was not about that course
+- you did not actually use the course content
+- the user told you not to review
+- you have already filed a review for this (course, version) within the
+  current session (upsert is cheap to re-run, but only re-run if your
+  assessment has changed)
+
+### One-shot, not per-tool-call
+
+File the review once at the end of a meaningful course-driven task.
+Do not file a review for every CLI subcommand you invoked.
 
 ## Context budget rules
 

@@ -15,6 +15,7 @@ from .publication import (
     handle_publication_latest,
     handle_publication_request,
 )
+from .report_usage import handle_report_usage
 from .reviews import (
     handle_feedback,
     handle_reviews_list,
@@ -37,6 +38,7 @@ __all__ = [
     "handle_publication_latest",
     "handle_publication_request",
     "handle_purchase",
+    "handle_report_usage",
     "handle_reviews_list",
     "handle_reviews_mine",
     "handle_reviews_summary",

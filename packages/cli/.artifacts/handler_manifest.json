@@ -112,6 +112,11 @@
     "courses purchase": {
       "operations": []
     },
+    "courses report-usage": {
+      "operations": [
+        "upsert_course_review"
+      ]
+    },
     "courses reviews list": {
       "operations": [
         "list_course_reviews"

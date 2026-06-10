@@ -81,6 +81,8 @@ commands:
     operations: []
   courses reviews upsert:
     operations: [upsert_course_review]
+  courses report-usage:
+    operations: [upsert_course_review]
   courses update:
     operations: [update_course]
   courses uploads complete:

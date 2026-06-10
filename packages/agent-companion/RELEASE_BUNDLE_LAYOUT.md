@@ -58,6 +58,14 @@ All paths are relative to the top-level directory
 | `references/referrals.md` | stable |
 | `references/troubleshooting.md` | stable |
 
+**SKILL.md content sections:**
+
+The companion `SKILL.md` may gain content sections over time (e.g.
+the "After using a Logion course" auto-review prompt). Adding a new
+section is an additive change and does **not** require a major-version
+bump. Removing or renaming a section that an installed agent relies on
+for behavioral guidance would require a major-version bump.
+
 **Stability annotations:**
 
 - **stable** — the file may gain content but the path and purpose will
