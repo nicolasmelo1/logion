@@ -66,6 +66,19 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         choices=["manual", "logion-marketplace"],
         help="Provenance of the install (default: manual)",
     )
+    install.add_argument(
+        "--symlink-dir",
+        default=None,
+        help=(
+            "Symlink the installed skill into this directory "
+            "(e.g. ~/.claude/skills). Skip the interactive prompt."
+        ),
+    )
+    install.add_argument(
+        "--no-symlink",
+        action="store_true",
+        help="Skip the agent-symlink prompt entirely (canonical install only)",
+    )
     install.set_defaults(handler=handle_skills_install)
 
     installed = sub.add_parser(

@@ -300,9 +300,9 @@ def test_courses_uploads_create(
     assert kwargs["course_id"] == "550e8400-e29b-41d4-a716-446655440000"
     files = kwargs["files"]
     assert len(files) == 2
-    assert files[0]["path"] == f1.name
+    assert files[0]["filename"] == f1.name
     assert files[0]["size_bytes"] == f1.stat().st_size
-    assert files[1]["path"] == f2.name
+    assert files[1]["filename"] == f2.name
 
 
 def test_courses_uploads_create_with_custom_upload_paths(
@@ -334,7 +334,7 @@ def test_courses_uploads_create_with_custom_upload_paths(
     ])
     assert code == 0
     _method, kwargs = courses.last_call
-    assert [entry["path"] for entry in kwargs["files"]] == [
+    assert [entry["filename"] for entry in kwargs["files"]] == [
         "docs/first.txt",
         "docs/second.txt",
     ]

@@ -27,6 +27,10 @@ from cli._local_state import (
 )
 from cli._output import emit_json
 
+from ._agent_symlink import (
+    apply_post_install_symlink,
+    resolve_symlink_intent,
+)
 from ._finalize import copy_and_finalize
 from ._inspect_handler import handle_skills_inspect  # noqa: F401  (re-export)
 from ._install_helpers import (
@@ -52,6 +56,10 @@ def handle_skills_install(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+
+    # Ask about the symlink up-front, before any filesystem writes.
+    # The user's choice is captured here and applied after install.
+    skill_name, symlink_parent = resolve_symlink_intent(source_dir, args)
 
     if not args.force:
         try:
@@ -144,6 +152,9 @@ def handle_skills_install(args: argparse.Namespace) -> int:
     print(
         f"Installed: {course_id}/{version_id} ({len(copied)} files) -> {dest}"
     )
+
+    if symlink_parent and skill_name:
+        apply_post_install_symlink(symlink_parent, skill_name, dest)
     return 0
 
 
