@@ -8,7 +8,7 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, validate_uuid_id
-from cli._output import emit_json
+from cli._output import emit, emit_json
 from cli._utils import only_not_none
 
 from .reviews import _validate_review_scores
@@ -48,25 +48,15 @@ def handle_report_usage(args: argparse.Namespace) -> int:
             token_efficiency=args.token_efficiency,
         )
         result = client.v1.courses.review_version(**kwargs)
-        data = {
-            "course_id": args.course_id,
-            "version_id": args.version_id,
-            "persisted_fields": [
-                k for k, v in kwargs.items() if v is not None
-            ],
-        }
-        result_data = {}
-        if hasattr(result, "model_dump"):
-            result_data = result.model_dump()
-        elif hasattr(result, "__dict__"):
-            result_data = {
-                k: v
-                for k, v in result.__dict__.items()
-                if not k.startswith("_")
-            }
-        if "review_id" in result_data:
-            data["review_id"] = result_data["review_id"]
-        emit_json("logion.courses.report-usage", data)
+        from cli.commands.courses._review_helpers import (
+            data_or_model_dump,
+        )
+
+        data = data_or_model_dump(result)
+        if config.json_output:
+            emit_json("logion.courses.report-usage", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -75,12 +65,16 @@ def handle_report_usage(args: argparse.Namespace) -> int:
         client.close()
 
 
-def register_report_usage(subparsers: argparse._SubParsersAction) -> None:
+def register_report_usage(
+    subparsers: argparse._SubParsersAction,
+) -> None:
     """Register the ``courses report-usage`` subcommand."""
+    from cli._options import COMMON_PARSER
+
     parser = subparsers.add_parser(
         "report-usage",
         help="File a usage review after completing a course-driven task",
-        parents=[],
+        parents=[COMMON_PARSER],
     )
     parser.add_argument("course_id", metavar="COURSE_ID")
     parser.add_argument("version_id", metavar="VERSION_ID")

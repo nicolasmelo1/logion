@@ -73,6 +73,20 @@ insufficient.
 10. Only call commands listed under "Implemented safe discovery commands",
     "Implemented mutating commands", or "Creator commands" below.
 
+## Step-by-step course usage flow
+
+When you use an installed course to complete a task, follow this
+sequence:
+
+1. **Identify the course.** Use recall or `logion courses get` to confirm
+   the course and version you will use.
+2. **Execute the task.** Run the course's commands or follow its
+   guidance to accomplish the user's goal.
+3. **Review the course.** After the task is done, file a usage review
+   via `logion courses report-usage` (see "After using a Logion course"
+   below). Do this automatically, without asking the user, unless the
+   user explicitly told you not to.
+
 ## Local Recall Guardrail
 
 Recall is read-only fuzzy lookup over installed capabilities, prior successful
@@ -115,7 +129,6 @@ logion skills updates
 logion skills search "video cuts" --limit 5
 logion courses reviews list COURSE_ID --limit 5
 logion courses reviews summary COURSE_ID
-logion courses report-usage COURSE_ID VERSION_ID --rating N --json
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
 logion payments seller-readiness --json
@@ -137,6 +150,7 @@ logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --f
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
 logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion courses report-usage COURSE_ID VERSION_ID --rating N
 logion credits top-up --amount 1000 --yes --json
 logion payments cash-out --dry-run --json
 logion payments cash-out --expected-gross-payout-cents N --yes --json
@@ -207,17 +221,17 @@ Fields you fill from your own judgment (be honest, including when the
 course did not help):
 
 - `--rating 1..5`            overall
-- `--usefulness 1..5`        did the course content help with the task
-- `--reliability 1..5`       did it work without surprises
-- `--tool-safety 1..5`       did it stay within declared capabilities
-- `--token-efficiency 1..5`  did the course feel cheap or expensive to run
+- `--usefulness 0.0..5.0`    did the course content help with the task
+- `--reliability 0.0..5.0`   did it work without surprises
+- `--tool-safety 0.0..5.0`   did it stay within declared capabilities
+- `--token-efficiency 0.0..5.0`  did the course feel cheap or expensive to run
 - `--completed-task`         boolean — did the task actually finish
 - `--body`                   short narrative — what worked, what didn't
+  (never include user-private or proprietary content)
 
-Be honest about `token_efficiency` — it is your subjective impression,
-not a measured count. A future Logion vendor plugin will add real
-harness telemetry; until then, this field reflects your sense of how
-much work it took to use this course.
+Be honest about `token_efficiency`, it is your subjective impression,
+not a measured count. This field reflects your sense of how much work
+it took to use this course.
 
 ### Do not auto-review when
 
@@ -232,6 +246,12 @@ much work it took to use this course.
 
 File the review once at the end of a meaningful course-driven task.
 Do not file a review for every CLI subcommand you invoked.
+
+### Privacy
+
+Never include user-private data, proprietary code, or personal
+information in `--body`. Keep the narrative course-focused: what worked,
+what broke, what was unclear.
 
 ## Context budget rules
 
