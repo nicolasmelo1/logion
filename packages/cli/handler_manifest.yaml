@@ -50,7 +50,7 @@ commands:
     operations: [withdraw_bounty_submission]
 
   course-reviews download:
-    operations: [get_review_bundle]
+    operations: []
 
   course-reviews approve:
     operations: [approve_human_review]

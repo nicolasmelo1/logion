@@ -139,7 +139,8 @@ def resolve_symlink_intent(
     symlink_parent = prompt_symlink_dir(
         skill_name,
         explicit_dir=getattr(args, "symlink_dir", None),
-        no_symlink=getattr(args, "no_symlink", False),
+        no_symlink=getattr(args, "dry_run", False)
+        or getattr(args, "no_symlink", True),
     )
     return skill_name, symlink_parent
 

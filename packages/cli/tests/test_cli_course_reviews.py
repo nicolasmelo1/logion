@@ -4,11 +4,68 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 from cli.main import main
+
+
+class FakeDownloadResponse:
+    """Fake streamed HTTP response for bundle downloads."""
+
+    def __init__(self, body: bytes = b"bundle") -> None:
+        self.body = body
+
+    def __enter__(self) -> FakeDownloadResponse:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_bytes(self) -> Iterator[bytes]:
+        yield self.body
+
+
+class FakeBundleResponse:
+    """Fake bundle metadata response."""
+
+    def __init__(self, files: list[dict[str, str]]) -> None:
+        self.status_code = 200
+        self.text = ""
+        self._files = files
+
+    def json(self) -> dict[str, object]:
+        return {
+            "review_id": "770e8400-e29b-41d4-a716-446655440002",
+            "files": self._files,
+        }
+
+
+class FakeHttpClient:
+    """Fake httpx client for course-reviews download."""
+
+    def __init__(self, files: list[dict[str, str]]) -> None:
+        self.files = files
+
+    def __enter__(self) -> FakeHttpClient:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def get(self, _url: str, *, headers: dict[str, str]) -> FakeBundleResponse:
+        assert headers["Authorization"] == "Bearer test-key"
+        return FakeBundleResponse(self.files)
+
+    def stream(self, method: str, url: str) -> FakeDownloadResponse:
+        assert method == "GET"
+        return FakeDownloadResponse(f"downloaded:{url}".encode())
 
 
 class FakeCourseReviewsResource:
@@ -333,6 +390,78 @@ def test_course_reviews_get_invalid_uuid() -> None:
     """course-reviews get rejects an invalid UUID."""
     code = main(["course-reviews", "get", "not-a-uuid", "--json"])
     assert code == 2
+
+
+def test_course_reviews_download_writes_bundle_files(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews download streams files into the target directory."""
+    files = [
+        {"filename": "SKILL.md", "download_url": "https://files/SKILL.md"},
+        {
+            "filename": "references/guide.md",
+            "download_url": "https://files/guide.md",
+        },
+    ]
+    monkeypatch.setattr(
+        "cli.commands.course_reviews._download_handler.httpx.Client",
+        lambda **_: FakeHttpClient(files),
+    )
+
+    target = tmp_path / "review"
+    code = main([
+        "course-reviews",
+        "download",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--target",
+        str(target),
+        "--api-key",
+        "test-key",
+    ])
+
+    assert code == 0
+    assert (
+        target / "SKILL.md"
+    ).read_bytes() == b"downloaded:https://files/SKILL.md"
+    assert (target / "references" / "guide.md").read_bytes() == (
+        b"downloaded:https://files/guide.md"
+    )
+    assert "Downloaded 2 file(s)" in capsys.readouterr().out
+
+
+def test_course_reviews_download_refuses_path_escape(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """course-reviews download rejects bundle filenames outside target."""
+    files = [
+        {
+            "filename": "../escape.txt",
+            "download_url": "https://files/escape.txt",
+        },
+    ]
+    monkeypatch.setattr(
+        "cli.commands.course_reviews._download_handler.httpx.Client",
+        lambda **_: FakeHttpClient(files),
+    )
+
+    target = tmp_path / "review"
+    code = main([
+        "course-reviews",
+        "download",
+        "770e8400-e29b-41d4-a716-446655440002",
+        "--target",
+        str(target),
+        "--api-key",
+        "test-key",
+    ])
+
+    assert code == 1
+    assert not (tmp_path / "escape.txt").exists()
+    assert "refusing path escape" in capsys.readouterr().err
 
 
 def test_course_reviews_approve_invalid_uuid() -> None:

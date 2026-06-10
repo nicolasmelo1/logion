@@ -113,6 +113,8 @@ describe("postinstall", () => {
               ...process.env,
               LOGION_NPM_FORCE_INSTALLER: "pipx",
               LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
               PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
             },
             stdio: "pipe",
@@ -120,6 +122,7 @@ describe("postinstall", () => {
           },
         );
 
+        expect(r.status).toBe(0);
         expect(r.stderr.toString()).toContain("pipx");
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
@@ -146,6 +149,8 @@ describe("postinstall", () => {
               ...process.env,
               LOGION_NPM_FORCE_INSTALLER: "uv",
               LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
               PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
             },
             stdio: "pipe",
@@ -153,6 +158,7 @@ describe("postinstall", () => {
           },
         );
 
+        expect(r.status).toBe(0);
         expect(r.stderr.toString()).toContain("uv");
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });

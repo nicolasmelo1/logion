@@ -183,6 +183,69 @@ function pickInstaller(forced: string | undefined): Installer | null {
   return "venv";
 }
 
+function sortCodePoint(a: string, b: string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+}
+
+function listBundleSourceEntries(sourceDir: string): string[] | null {
+  try {
+    return fs.readdirSync(sourceDir).sort(sortCodePoint);
+  } catch {
+    log(
+      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} read failed — ` +
+        "skipping companion bundle copy.",
+    );
+    return null;
+  }
+}
+
+function findCompanionTarball(
+  sourceDir: string,
+  entries: string[],
+): { tarball: string; srcPath: string } | null {
+  for (const name of entries) {
+    if (!/^logion-marketplace-companion-.*\.tar\.gz$/.test(name)) {
+      continue;
+    }
+    const candidatePath = path.join(sourceDir, name);
+    try {
+      if (fs.statSync(candidatePath).isFile()) {
+        return { tarball: name, srcPath: candidatePath };
+      }
+    } catch {
+      log(`Could not stat companion tarball candidate ${candidatePath}.`);
+    }
+  }
+  return null;
+}
+
+function resolveLogionHome(): string {
+  const value = process.env.LOGION_HOME;
+  return value === undefined || value.length === 0 ? LOGION_DIR : value;
+}
+
+function sha256File(filePath: string): string {
+  const hash = crypto.createHash("sha256");
+  const fd = fs.openSync(filePath, "r");
+  const chunkSize = 64 * 1024;
+  const buf = Buffer.alloc(chunkSize);
+  let bytesRead: number;
+  try {
+    while ((bytesRead = fs.readSync(fd, buf, 0, chunkSize, null)) > 0) {
+      hash.update(buf.subarray(0, bytesRead));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest("hex");
+}
+
 /**
  * Copy the companion bundle from LOGION_COMPANION_BUNDLE_SOURCE into the
  * local companion-bundles directory.
@@ -228,13 +291,13 @@ function installCompanionBundle(): void {
     return;
   }
 
-  // Find the companion tarball in the source directory.
-  // Sort for deterministic selection when multiple tarballs exist.
-  const entries = fs.readdirSync(sourceDir).sort((a, b) => a.localeCompare(b));
-  const tarball = entries.find((name) =>
-    /^logion-marketplace-companion-.*\.tar\.gz$/.test(name),
-  );
-  if (!tarball) {
+  const entries = listBundleSourceEntries(sourceDir);
+  if (!entries) {
+    return;
+  }
+
+  const bundle = findCompanionTarball(sourceDir, entries);
+  if (!bundle) {
     log(
       `No companion tarball found in ${sourceDir} — ` +
         "skipping companion bundle copy.",
@@ -242,40 +305,34 @@ function installCompanionBundle(): void {
     return;
   }
 
-  const srcPath = path.join(sourceDir, tarball);
+  try {
+    // Determine destination: $LOGION_HOME/companion-bundles/ or
+    // ~/.logion/companion-bundles/ if LOGION_HOME is unset.
+    const logionHome = resolveLogionHome();
+    const bundlesDir = path.join(logionHome, "companion-bundles");
+    fs.mkdirSync(bundlesDir, { recursive: true });
 
-  // Determine destination: $LOGION_HOME/companion-bundles/ or
-  // ~/.logion/companion-bundles/ if LOGION_HOME is unset.
-  const logionHome = process.env.LOGION_HOME ?? LOGION_DIR;
-  const bundlesDir = path.join(logionHome, "companion-bundles");
-  fs.mkdirSync(bundlesDir, { recursive: true });
+    const destPath = path.join(bundlesDir, bundle.tarball);
+    fs.copyFileSync(bundle.srcPath, destPath);
+    log(`Copied companion bundle to ${destPath}`);
 
-  const destPath = path.join(bundlesDir, tarball);
-  fs.copyFileSync(srcPath, destPath);
-  log(`Copied companion bundle to ${destPath}`);
+    // Write sidecar marker with source path and SHA-256.
+    // Hash in chunks to avoid loading the entire tarball into memory.
+    const sha256 = sha256File(destPath);
 
-  // Write sidecar marker with source path and SHA-256.
-  // Hash in chunks to avoid loading the entire tarball into memory.
-  const hash = crypto.createHash("sha256");
-  const fd = fs.openSync(destPath, "r");
-  const CHUNK = 64 * 1024;
-  const buf = Buffer.alloc(CHUNK);
-  let bytesRead: number;
-  while ((bytesRead = fs.readSync(fd, buf, 0, CHUNK, null)) > 0) {
-    hash.update(buf.subarray(0, bytesRead));
+    const sidecar = {
+      sourcePath: bundle.srcPath,
+      sha256,
+      installedAt: new Date().toISOString(),
+    };
+    const sidecarName = bundle.tarball.replace(/\.tar\.gz$/, ".source.json");
+    const sidecarPath = path.join(bundlesDir, sidecarName);
+    fs.writeFileSync(sidecarPath, `${JSON.stringify(sidecar, null, 2)}\n`);
+    log(`Wrote companion marker ${sidecarPath}`);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log(`Warning: companion bundle copy failed: ${msg}.`);
   }
-  fs.closeSync(fd);
-  const sha256 = hash.digest("hex");
-
-  const sidecar = {
-    sourcePath: srcPath,
-    sha256,
-    installedAt: new Date().toISOString(),
-  };
-  const sidecarName = tarball.replace(/\.tar\.gz$/, ".source.json");
-  const sidecarPath = path.join(bundlesDir, sidecarName);
-  fs.writeFileSync(sidecarPath, `${JSON.stringify(sidecar, null, 2)}\n`);
-  log(`Wrote companion marker ${sidecarPath}`);
 }
 
 function main(): void {

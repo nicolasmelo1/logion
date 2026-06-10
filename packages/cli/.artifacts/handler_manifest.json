@@ -67,9 +67,7 @@
       ]
     },
     "course-reviews download": {
-      "operations": [
-        "get_review_bundle"
-      ]
+      "operations": []
     },
     "course-reviews get": {
       "operations": [

@@ -76,7 +76,7 @@ def _download_files(
     for f in files:
         filename = f["filename"]
         dest = target / filename
-        if not str(dest.resolve()).startswith(str(target)):
+        if not dest.resolve().is_relative_to(target):
             print_err(f"Error: refusing path escape: {filename}")
             return 1
         dest.parent.mkdir(parents=True, exist_ok=True)
