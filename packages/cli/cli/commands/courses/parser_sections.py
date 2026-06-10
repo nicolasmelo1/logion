@@ -37,6 +37,9 @@ CMD_HELP = {
     "feedback": "Get review feedback for a course",
     "versions": "Manage course versions",
     "capabilities": "Validate and inspect local capability manifests",
+    "report-usage": (
+        "File a usage review after completing a course-driven task"
+    ),
 }
 
 
