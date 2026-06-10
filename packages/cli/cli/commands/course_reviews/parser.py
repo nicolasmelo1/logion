@@ -9,6 +9,7 @@ from cli._options import COMMON_PARSER
 
 from .handlers import (
     handle_approve,
+    handle_download,
     handle_get,
     handle_list,
     handle_reject,
@@ -72,3 +73,21 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     reject.add_argument("--yes", action="store_true")
     reject.set_defaults(handler=handle_reject)
+
+    download = sub.add_parser(
+        "download",
+        help=(
+            "Download the bundle under review to a local directory "
+            "so SKILL.md and references can be read before deciding"
+        ),
+        parents=[COMMON_PARSER],
+    )
+    download.add_argument("review_id", metavar="REVIEW_ID")
+    download.add_argument(
+        "--target",
+        help=(
+            "Directory to write the bundle into "
+            "(default: ./review-bundles/<review-id>/)"
+        ),
+    )
+    download.set_defaults(handler=handle_download)

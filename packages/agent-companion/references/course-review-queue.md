@@ -24,6 +24,33 @@ Returns the full review state: course id, version id, capabilities
 declared by the creator vs. capabilities observed by the analyzer, risk
 score, findings by layer, and any prior reviewer notes.
 
+## Download the bundle and read it before deciding
+
+Scanner findings (trivy / osv / agent_scanner) only catch known-shape
+threats — library CVEs, hardcoded secrets, dangerous commands in scripts.
+They cannot catch prompt-injection language in `SKILL.md`, misleading
+frontmatter `description:` fields, or instructions in `references/*.md`
+that would induce an agent to misbehave. The reviewer's irreplaceable
+job is reading the *content* that another agent will load and act on.
+
+```bash
+logion course-reviews download REVIEW_ID --target ./inbox/REVIEW_ID/
+```
+
+This calls `GET /v1/course-reviews/{id}/bundle`, fetches presigned URLs
+for every asset, and reconstructs the bundle directory tree locally.
+Then read at minimum:
+
+- `SKILL.md` — the frontmatter `description:` is what makes Claude/Codex
+  decide to load this skill. Check for misleading scope.
+- `SKILL.md` body — the instructions Claude/Codex will execute when the
+  skill triggers. Check for prompt injection, harmful commands.
+- `references/*.md` — loaded on-demand by the skill. Same scrutiny.
+- `manifest.json` and `course/capabilities.yaml` — declared capabilities
+  must match what the SKILL.md actually instructs the agent to do.
+
+Only after reading these should you proceed to approve or reject.
+
 ## Approve a review
 
 ```bash

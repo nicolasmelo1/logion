@@ -66,6 +66,11 @@
         "approve_human_review"
       ]
     },
+    "course-reviews download": {
+      "operations": [
+        "get_review_bundle"
+      ]
+    },
     "course-reviews get": {
       "operations": [
         "get_human_review_detail"

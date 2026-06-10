@@ -78,7 +78,7 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
     try:
         files = [
             {
-                "path": upload_path,
+                "filename": upload_path,
                 "size_bytes": path.stat().st_size,
                 "content_type": mimetypes.guess_type(str(path))[0]
                 or "application/octet-stream",

@@ -188,3 +188,10 @@ def _render_get(result: object) -> None:
                     lines.append(f"      {desc}")
 
     sys.stdout.write("\n".join(lines) + "\n")
+
+
+# Re-export from _download_handler so cli.commands.course_reviews.parser
+# can keep importing handle_download from this module.
+from cli.commands.course_reviews._download_handler import (  # noqa: E402, F401
+    handle_download,
+)
