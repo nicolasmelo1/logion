@@ -1,0 +1,122 @@
+suite: review-loop
+
+# Agent-driven review loop (Tier B self-report). After finishing a
+# course-driven task the agent must file a usage review automatically —
+# without asking the user — via logion_courses_report_usage. The
+# carve-outs matter as much as the happy path: no review when the user
+# opted out, when the course content was not actually used, or when an
+# unchanged review was already filed this session. These negative
+# scenarios exist so prompt optimization cannot buy happy-path recall
+# by over-triggering reviews.
+
+scenarios:
+  - id: review-filed-automatically-after-use
+    prompt: "Use the installed code.debugging course to figure out why my pytest suite hangs, and tell me when you're done."
+    installed_capabilities: ["code.debugging"]
+    local_recall:
+      - kind: capability
+        capability_id: code.debugging
+        confidence: 0.94
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      should_ask_confirmation: false
+      required_tools: [logion_courses_report_usage]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "debugging pytest hang", limit: 5}
+        - tool: logion_courses_report_usage
+          args:
+            course_id: code.debugging
+            version_id: v1
+            rating: 4
+            usefulness: 4.5
+            reliability: 4.0
+            completed_task: true
+            body: "Bisect workflow isolated the hanging test quickly."
+      final_answer: "Done — the hang came from an unclosed event loop in test_streaming. I filed a usage review for code.debugging."
+      selected_course_ids: [code.debugging]
+
+  - id: review-honest-when-course-did-not-help
+    prompt: "Use the installed terraform.static-review course to check my Terraform plan, then report back."
+    installed_capabilities: ["terraform.static-review"]
+    local_recall:
+      - kind: capability
+        capability_id: terraform.static-review
+        confidence: 0.91
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      should_ask_confirmation: false
+      required_tools: [logion_courses_report_usage]
+      must_mention: ["did not"]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "terraform static review", limit: 5}
+        - tool: logion_courses_report_usage
+          args:
+            course_id: terraform.static-review
+            version_id: v1
+            rating: 2
+            usefulness: 1.5
+            reliability: 2.0
+            completed_task: false
+            body: "Checks were stale for the provider version; most rules false-positived."
+      final_answer: "The course's checks did not help — its rules target an older provider version, so I reviewed your plan manually instead. I filed an honest review (rating 2) for terraform.static-review."
+      selected_course_ids: [terraform.static-review]
+
+  - id: review-respects-user-opt-out
+    prompt: "Use the installed code.debugging course to find the flaky test. Don't file any review for it — I review courses myself."
+    installed_capabilities: ["code.debugging"]
+    local_recall:
+      - kind: capability
+        capability_id: code.debugging
+        confidence: 0.94
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [logion_courses_report_usage]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "flaky test debugging", limit: 5}
+      final_answer: "Found it — test_retry_backoff depends on wall-clock time. Per your request, I did not file a review."
+      selected_course_ids: [code.debugging]
+
+  - id: review-not-filed-when-course-unused
+    prompt: "Rename the variable `tmp` to `buffer` in src/parser.py."
+    installed_capabilities: ["code.debugging", "data.spreadsheets"]
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [logion_courses_report_usage]
+    fake_trace:
+      calls: []
+      final_answer: "Renamed `tmp` to `buffer` in src/parser.py — 4 occurrences updated."
+      selected_course_ids: []
+
+  - id: review-no-duplicate-when-assessment-unchanged
+    prompt: "Earlier this session you used code.debugging and already filed a review for it. Now use it once more to check the second test file — same approach, same result."
+    installed_capabilities: ["code.debugging"]
+    local_recall:
+      - kind: capability
+        capability_id: code.debugging
+        confidence: 0.94
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_install: false
+      forbidden_tools: [logion_courses_report_usage]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "debugging second test file", limit: 5}
+      final_answer: "Checked the second test file with the same workflow — clean. My assessment of code.debugging is unchanged, so I did not re-file the review."
+      selected_course_ids: [code.debugging]

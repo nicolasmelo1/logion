@@ -27,6 +27,7 @@ KNOWN_TOOLS = {
     "logion_courses_feedback",
     "logion_courses_publication_latest",
     "logion_courses_publication_request",
+    "logion_courses_report_usage",
     "logion_courses_update",
     "logion_courses_uploads_complete",
     "logion_courses_uploads_create",

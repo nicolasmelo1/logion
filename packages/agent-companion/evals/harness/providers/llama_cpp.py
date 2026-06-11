@@ -311,6 +311,31 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         },
     ),
     ToolSpec(
+        name="logion_courses_report_usage",
+        description=(
+            "Run `logion courses report-usage COURSE_ID VERSION_ID "
+            "--rating N ...` to file a usage review after completing a "
+            "course-driven task. Tier B self-report only; rating is "
+            "required, all other fields optional."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "version_id": {"type": "string"},
+                "rating": {"type": "integer", "minimum": 1, "maximum": 5},
+                "usefulness": {"type": "number"},
+                "reliability": {"type": "number"},
+                "tool_safety": {"type": "number"},
+                "token_efficiency": {"type": "number"},
+                "completed_task": {"type": "boolean"},
+                "body": {"type": "string"},
+            },
+            "required": ["course_id", "version_id", "rating"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
         name="logion_payments_orders_get",
         description=(
             "Run `logion payments orders get ORDER_ID` to retrieve "
@@ -1124,6 +1149,15 @@ def execute_synthetic_tool(  # noqa: C901
             "version_id": str(call.args.get("version_id", "version-draft-1")),
             "status": "in_review",
             "feedback": "Address reviewer notes before publication.",
+        }
+    if call.tool == "logion_courses_report_usage":
+        return {
+            "ok": True,
+            "review_id": "review-synthetic-001",
+            "course_id": str(call.args.get("course_id", "")),
+            "version_id": str(call.args.get("version_id", "")),
+            "rating": call.args.get("rating"),
+            "persisted_fields": sorted(call.args.keys()),
         }
     if call.tool == "logion_payments_seller_readiness":
         return {"ok": True, "ready": False, "missing": ["onboarding"]}
