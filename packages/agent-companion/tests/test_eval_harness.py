@@ -90,6 +90,7 @@ SUITE_MINIMUMS = {
     "creator-publication": 6,
     "creator-seller-onboarding": 4,
     "recall-fuzzy": 5,
+    "review-loop": 5,
 }
 
 

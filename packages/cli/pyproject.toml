@@ -110,8 +110,10 @@ ignore = [
 "cli/commands/skills/_inspect_handler.py" = ["T201"]
 "cli/commands/skills/_search_handler.py" = ["T201"]
 "cli/commands/courses/_uploads_push.py" = ["T201"]
+"cli/commands/docs/handlers.py" = ["T201"]
 "cli/commands/recall/handlers.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
+"scripts/sync_docs.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion"]
@@ -123,7 +125,7 @@ max-complexity = 12
 exclude = ["tests/"]
 
 [tool.semantic_release]
-build_command = "uv build"
+build_command = "uv run python packages/cli/scripts/sync_docs.py && uv build"
 commit_message = """\
 chore(release): logion-cli@{version} [skip ci]
 

@@ -246,6 +246,7 @@ Creator authoring (course-side mutations):
 - `logion_courses_uploads_create` / `logion_courses_uploads_push` / `logion_courses_uploads_complete` — version upload.
 - `logion_courses_publication_request` / `logion_courses_publication_latest` — review submission and status.
 - `logion_courses_feedback` — reviewer feedback for a course.
+- `logion_courses_report_usage` — file a Tier B usage review after a course-driven task.
 
 Live OpenAI-compatible providers should emit these actions through
 the Chat Completions `tool_calls` API, not by embedding a synthetic
