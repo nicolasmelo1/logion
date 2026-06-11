@@ -101,6 +101,8 @@ candidate; LOW allows marketplace fallback; NONE proceeds to marketplace.
 Start with CLI help so the agent can discover what exists before guessing:
 ```bash
 logion --help
+logion docs
+logion docs search "credits, reviews, permissions, or another question"
 logion health --help
 logion identity --help
 logion listings --help
@@ -114,6 +116,12 @@ logion course-reviews --help
 logion bounties --help
 LOGION_ENABLE_ADMIN=1 logion admin --help  # gated
 ```
+
+For questions about Logion concepts, safety rules, purchases, credits,
+reviews, creation, bounties, referrals, privacy, or terms, consult
+`logion docs` before answering from memory. Prefer `logion docs ARTICLE
+--json` when structured output is useful. The bundled articles match the
+installed CLI version and do not require network access.
 
 Implemented safe discovery commands:
 ```bash

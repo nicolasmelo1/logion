@@ -113,6 +113,7 @@ version-bump-companion:
 
 build-check:
 	rm -rf dist/
+	uv run python packages/cli/scripts/sync_docs.py
 	uv build --package logion-cli --wheel --sdist
 	uv build --package logion-client --wheel --sdist
 	uv run twine check dist/*

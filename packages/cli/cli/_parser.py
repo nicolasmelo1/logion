@@ -11,6 +11,7 @@ from cli.commands import (
     bounties,
     course_reviews,
     courses,
+    docs,
     health,
     identity,
     listings,
@@ -46,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     listings.register(subparsers)
     notifications.register(subparsers)
     courses.register(subparsers)
+    docs.register(subparsers)
     payments.register(subparsers)
     credits_mod.register(subparsers)
     referrals_mod.register(subparsers)
