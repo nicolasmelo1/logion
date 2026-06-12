@@ -4,6 +4,10 @@ Credit balance, top-ups, ledger, and creator-side seller onboarding.
 Paid and credit-spending actions are in `safety.requires_confirmation` — the
 agent must obtain explicit user approval before invoking any of them.
 
+Credits are denominated in US cents: **1 credit = 1 cent** (US$1 = 100
+credits). All `amount`/`*_cents` values below are credit units — "500
+credits" is `500`, not `50000`.
+
 ## Credit balance
 
 ```bash
@@ -19,7 +23,9 @@ sufficient credits before any spend.
 logion credits top-up --amount AMOUNT_CENTS --yes --json
 ```
 
-Creates a Stripe Checkout session for the given amount in cents. Returns a `top_up_id`
+Creates a Stripe Checkout session for the given amount in cents — which is
+the same number as credits granted (1:1, server-enforced; valid range
+500–50000). Returns a `top_up_id`
 and `checkout_url`. Surface the URL to the user — do not open or follow it
 automatically. `--yes` is required; the CLI refuses without it.
 
