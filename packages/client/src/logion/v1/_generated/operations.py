@@ -49,6 +49,7 @@ from logion.v1._types.generated.v1 import (
     GetReferralLinkResponse,
     GetReferralStatsResponse,
     GetReportDetailResponse,
+    GetReviewBundleResponse,
     GetReviewStatusResponse,
     GetUnreadCountResponse,
     GetUserDetailResponse,
@@ -551,6 +552,19 @@ def approve_human_review(
         f"/v1/course-reviews/{review_id}/approval",
         ApproveHumanReviewResponse,
         json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_review_bundle(
+    http: HttpClient,
+    *,
+    review_id: str | UUID,
+) -> GetReviewBundleResponse:
+    """Call the get_review_bundle API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/course-reviews/{review_id}/bundle",
+        GetReviewBundleResponse,
     )
 
 
