@@ -18,6 +18,19 @@ from logion_scanners.models import (
 logger = logging.getLogger(__name__)
 
 
+def _extract_cvss_base(vector: str) -> float | None:
+    """Extract the CVSS base score from a CVSS vector string.
+
+    OSV sometimes provides ``severity[].score`` as a CVSS vector
+    like ``"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"``
+    instead of a numeric value.  We cannot compute a score from
+    the vector without the full CVSS calculator, so we return
+    ``None`` and let the caller fall back to ``"low"``.
+    """
+    _ = vector  # acknowledged — no calculator available
+    return None
+
+
 class OsvScanner(BaseScanner):
     """Google OSV-Scanner running inside Docker."""
 
@@ -98,6 +111,20 @@ class OsvScanner(BaseScanner):
 
         combined = proc.stdout + "\n" + proc.stderr
 
+        # Docker exit 125 = daemon not running or not installed.
+        if proc.returncode == 125:
+            return ScannerResult(
+                layer=SCANNER_OSV,
+                passed=False,
+                findings=[],
+                raw_output=combined,
+                error=(
+                    "Docker is not available — "
+                    "OSV scan skipped. "
+                    "Install Docker or start the Docker daemon."
+                ),
+            )
+
         # osv-scanner v2 exit codes:
         #   0   — scan ran, no vulns
         #   1   — scan ran, vulns found (JSON is still valid)
@@ -151,6 +178,47 @@ class OsvScanner(BaseScanner):
         )
 
     @staticmethod
+    def _resolve_vuln_severity(
+        vuln: dict,
+        group_severity: dict[str, str],
+    ) -> str:
+        """Determine the severity for a single vulnerability."""
+        vuln_id = vuln.get("id", "")
+        cached = group_severity.get(vuln_id)
+        if cached is not None:
+            return cached
+
+        severity_field = vuln.get("severity")
+        if isinstance(severity_field, list):
+            scores = OsvScanner._extract_numeric_scores(severity_field)
+            if scores:
+                return OsvScanner._cvss_to_severity(max(scores))
+            return "low"
+        if isinstance(severity_field, str):
+            return OsvScanner._SEVERITY_MAP.get(severity_field.upper(), "low")
+        return "low"
+
+    @staticmethod
+    def _extract_numeric_scores(
+        severity_list: list[dict],
+    ) -> list[float]:
+        """Extract numeric CVSS scores from a severity array."""
+        numeric_scores: list[float] = []
+        for s in severity_list:
+            if not isinstance(s, dict):
+                continue
+            raw_score = s.get("score")
+            if raw_score is None:
+                continue
+            try:
+                numeric_scores.append(float(raw_score))
+            except (ValueError, TypeError):
+                cvss_base = _extract_cvss_base(str(raw_score))
+                if cvss_base is not None:
+                    numeric_scores.append(cvss_base)
+        return numeric_scores
+
+    @staticmethod
     def _parse_findings(
         report: dict,
     ) -> list[ScannerFinding]:
@@ -171,28 +239,9 @@ class OsvScanner(BaseScanner):
                 for vuln in pkg.get("vulnerabilities", []):
                     vuln_id = vuln.get("id", "UNKNOWN")
                     summary = vuln.get("summary", "")[:200]
-
-                    vuln_sev: str | None = group_severity.get(vuln_id)
-                    if vuln_sev is None:
-                        severity_field = vuln.get("severity")
-                        if isinstance(severity_field, list):
-                            numeric_scores = [
-                                float(s["score"])
-                                for s in severity_field
-                                if isinstance(s, dict) and "score" in s
-                            ]
-                            if numeric_scores:
-                                vuln_sev = OsvScanner._cvss_to_severity(
-                                    max(numeric_scores)
-                                )
-                            else:
-                                vuln_sev = "low"
-                        elif isinstance(severity_field, str):
-                            vuln_sev = OsvScanner._SEVERITY_MAP.get(
-                                severity_field.upper(), "low"
-                            )
-                        else:
-                            vuln_sev = "low"
+                    vuln_sev = OsvScanner._resolve_vuln_severity(
+                        vuln, group_severity
+                    )
 
                     findings.append(
                         ScannerFinding(

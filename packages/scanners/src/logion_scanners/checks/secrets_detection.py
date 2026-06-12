@@ -73,6 +73,17 @@ _SECRET_PATTERNS: list[Pattern] = [
 class SecretsDetectionCheck(BaseCheck):
     """Scan for hardcoded secrets and credentials."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-AWS-ACCESS-KEY",
+        "AGENT-HARDCODED-API-KEY",
+        "AGENT-PRIVATE-KEY-EXPOSED",
+        "AGENT-GITHUB-TOKEN",
+        "AGENT-DB-CONNECTION-STRING",
+        "AGENT-SLACK-TOKEN",
+        "AGENT-STRIPE-KEY",
+        "AGENT-HARDCODED-SECRET",
+    })
+
     name = "secrets-detection"
 
     def run(

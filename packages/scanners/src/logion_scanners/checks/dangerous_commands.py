@@ -82,6 +82,15 @@ _DANGEROUS_PATTERNS: list[tuple[str, str, str]] = [
 class DangerousCommandsCheck(BaseCheck):
     """Scan for dangerous shell commands in course bundles."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-DANGEROUS-RM-RF",
+        "AGENT-REMOTE-PIPE-SHELL",
+        "AGENT-SUDO-PRIVILEGE-ESCALATION",
+        "AGENT-INSECURE-PERMISSIONS",
+        "AGENT-FORK-BOMB",
+        "AGENT-DD-DESTRUCTIVE",
+    })
+
     name = "dangerous-commands"
 
     def run(

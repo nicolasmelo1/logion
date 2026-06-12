@@ -205,6 +205,37 @@ class RuntimeInstallAttemptCheck(BaseCheck):
     """Scan for runtime package-manager install attempts in course
     bundles (self-contained bundle rule)."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-RUNTIME-INSTALL-NPM",
+        "AGENT-RUNTIME-INSTALL-YARN-PNPM",
+        "AGENT-RUNTIME-INSTALL-BUN",
+        "AGENT-RUNTIME-INSTALL-DENO",
+        "AGENT-RUNTIME-INSTALL-NPX",
+        "AGENT-RUNTIME-INSTALL-PIP",
+        "AGENT-RUNTIME-INSTALL-PIPX",
+        "AGENT-RUNTIME-INSTALL-UV",
+        "AGENT-RUNTIME-INSTALL-POETRY",
+        "AGENT-RUNTIME-INSTALL-CONDA",
+        "AGENT-RUNTIME-INSTALL-BREW",
+        "AGENT-RUNTIME-INSTALL-APT",
+        "AGENT-RUNTIME-INSTALL-RPM",
+        "AGENT-RUNTIME-INSTALL-PACMAN",
+        "AGENT-RUNTIME-INSTALL-APK",
+        "AGENT-RUNTIME-INSTALL-ZYPPER",
+        "AGENT-RUNTIME-INSTALL-SNAP",
+        "AGENT-RUNTIME-INSTALL-FLATPAK",
+        "AGENT-RUNTIME-INSTALL-NIX",
+        "AGENT-RUNTIME-INSTALL-CHOCO",
+        "AGENT-RUNTIME-INSTALL-SCOOP",
+        "AGENT-RUNTIME-INSTALL-WINGET",
+        "AGENT-RUNTIME-INSTALL-CARGO",
+        "AGENT-RUNTIME-INSTALL-GO",
+        "AGENT-RUNTIME-INSTALL-GEM",
+        "AGENT-RUNTIME-INSTALL-COMPOSER",
+        "AGENT-RUNTIME-INSTALL-DOTNET",
+        "AGENT-RUNTIME-INSTALL-CPAN",
+    })
+
     name = "runtime-install-attempt"
 
     def run(

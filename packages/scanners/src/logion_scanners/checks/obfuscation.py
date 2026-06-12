@@ -56,6 +56,16 @@ _OBFUSCATION_PATTERNS: list[Pattern] = [
 class ObfuscationCheck(BaseCheck):
     """Scan for obfuscation patterns in course bundles."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-BASE64-PAYLOAD",
+        "AGENT-EVAL-EXEC",
+        "AGENT-DYNAMIC-IMPORT",
+        "AGENT-HEX-ESCAPE-CHAIN",
+        "AGENT-GETATTR-CONCAT",
+        "AGENT-COMPILE-EXEC",
+        "AGENT-CHR-CHAIN",
+    })
+
     name = "obfuscation"
 
     def run(

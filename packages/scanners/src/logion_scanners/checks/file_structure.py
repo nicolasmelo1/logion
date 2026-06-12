@@ -21,6 +21,12 @@ class FileStructureCheck(BaseCheck):
     """Validate bundle file structure: SKILL.md, file count,
     and oversized files."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-NO-SKILL-MD",
+        "AGENT-EXCESSIVE-FILE-COUNT",
+        "AGENT-OVERSIZED-FILE",
+    })
+
     name = "file-structure"
 
     def __init__(

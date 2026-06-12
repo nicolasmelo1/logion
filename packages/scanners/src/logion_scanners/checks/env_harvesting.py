@@ -66,6 +66,10 @@ _ENV_VAR_EXTRACTION = re.compile(
 class EnvHarvestingCheck(BaseCheck):
     """Scan for environment variable harvesting near network calls."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-ENV-HARVESTING",
+    })
+
     name = "env-harvesting"
 
     def run(

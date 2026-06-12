@@ -78,6 +78,18 @@ _INJECTION_PATTERNS: list[Pattern] = [
 class PromptInjectionCheck(BaseCheck):
     """Scan for prompt injection and data exfiltration patterns."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-IGNORE-INSTRUCTIONS",
+        "AGENT-ROLE-HIJACK",
+        "AGENT-DISREGARD-INSTRUCTIONS",
+        "AGENT-FORGET-INSTRUCTIONS",
+        "AGENT-OVERRIDE-SAFETY",
+        "AGENT-MARKDOWN-IMAGE-EXFIL",
+        "AGENT-MARKDOWN-LINK-EXFIL",
+        "AGENT-SYSTEM-PREFIX",
+        "AGENT-DATA-EXFILTRATION-CMD",
+    })
+
     name = "prompt-injection"
 
     def run(

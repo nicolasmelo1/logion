@@ -24,6 +24,12 @@ _SEVERITY_MAP: dict[str, str] = {
     "UNKNOWN": "low",
 }
 
+_DOCKER_UNAVAILABLE_MSG = (
+    "Docker is not available — "
+    "{scanner} scan skipped. "
+    "Install Docker or start the Docker daemon."
+)
+
 
 class TrivyScanner(BaseScanner):
     """Trivy filesystem scanner running inside Docker."""
@@ -67,11 +73,7 @@ class TrivyScanner(BaseScanner):
                 layer=SCANNER_TRIVY,
                 passed=False,
                 findings=[],
-                error=(
-                    "Docker is not available — "
-                    "Trivy scan skipped. "
-                    "Install Docker to run Trivy."
-                ),
+                error=_DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy"),
             )
         except subprocess.TimeoutExpired as exc:
             raw = exc.stdout if isinstance(exc.stdout, str) else None
@@ -84,6 +86,17 @@ class TrivyScanner(BaseScanner):
             )
 
         combined = proc.stdout + "\n" + proc.stderr
+
+        # Docker exit 125 = daemon not running or not installed.
+        # Treat as a prerequisite failure so the CLI exits 2.
+        if proc.returncode == 125:
+            return ScannerResult(
+                layer=SCANNER_TRIVY,
+                passed=False,
+                findings=[],
+                raw_output=combined,
+                error=_DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy"),
+            )
 
         if proc.returncode not in (0, 1):
             return ScannerResult(

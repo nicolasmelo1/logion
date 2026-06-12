@@ -8,7 +8,8 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
-	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test
+	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
+	scanners-lint scanners-test
 
 lint:
 	uv run ruff check packages/
@@ -138,3 +139,11 @@ companion-bundle:
 
 companion-bundle-verify:
 	uv run python packages/agent-companion/scripts/verify_bundle.py dist/logion-marketplace-companion-$(shell python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])").tar.gz
+
+# ── scanners package targets ──────────────────────────────────
+scanners-lint:
+	uv run ruff check packages/scanners/
+	uv run ruff format --check packages/scanners/
+
+scanners-test:
+	uv run pytest packages/scanners/tests/ -q --no-header -m "not docker"

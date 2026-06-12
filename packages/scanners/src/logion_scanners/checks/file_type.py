@@ -50,6 +50,11 @@ _SUSPICIOUS_EXTENSIONS: frozenset[str] = frozenset({
 class FileTypeCheck(BaseCheck):
     """Scan for blocked and suspicious file types."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-BLOCKED-FILE-TYPE",
+        "AGENT-SUSPICIOUS-FILE-TYPE",
+    })
+
     name = "file-type"
 
     def run(

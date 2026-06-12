@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -24,6 +25,13 @@ _SCANNER_MAP = {
     "agent": AgentScanner,
     "trivy": TrivyScanner,
     "osv": OsvScanner,
+}
+
+# CLI scanner name -> model layer constant used in required_scanners.
+_SCANNER_LAYER = {
+    "agent": "agent_scanner",
+    "trivy": "trivy",
+    "osv": "osv_scanner",
 }
 
 
@@ -145,6 +153,15 @@ def _cmd_scan(args: argparse.Namespace) -> None:
     scanner_names: list[str] = (
         args.scanner if args.scanner else ["agent", "trivy", "osv"]
     )
+    # When the user explicitly selects scanners via --scanner, scope the
+    # policy so only those scanners are considered required.  This avoids
+    # blocking on missing scanners that the user intentionally skipped.
+    if args.scanner:
+        requested_layers = tuple(_SCANNER_LAYER[n] for n in scanner_names)
+        policy = dataclasses.replace(
+            policy,
+            required_scanners=requested_layers,
+        )
     adapters = _build_adapters(scanner_names, policy)
     report = run_scan(bundle=bundle, policy=policy, adapters=adapters)
     _check_docker_unavailable(scanner_names, report)
@@ -154,7 +171,7 @@ def _cmd_scan(args: argparse.Namespace) -> None:
             json.dumps(report.to_dict(), indent=2)
         )
     else:
-        _print_human(report)
+        _print_human(report, policy)
 
     if report.execution_error:
         sys.exit(2)
@@ -164,7 +181,7 @@ def _cmd_scan(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
-def _print_human(report: ScanReport) -> None:
+def _print_human(report: ScanReport, policy: ScanPolicy) -> None:
     """Print human-readable scan report."""
     print(  # noqa: T201
         f"Policy: {report.policy_id} v{report.policy_version}"
@@ -178,12 +195,9 @@ def _print_human(report: ScanReport) -> None:
         print(f"[{result.layer}] {status}")  # noqa: T201
         if result.error:
             print(f"  Error: {result.error}")  # noqa: T201
+        blocking_sevs = set(policy.blocking_severities.get(result.layer, ()))
         for finding in result.findings:
-            marker = (
-                "BLOCKS"
-                if finding.severity in ("critical", "high")
-                else "info"
-            )
+            marker = "BLOCKS" if finding.severity in blocking_sevs else "info"
             loc = ""
             if finding.file_path:
                 loc = f" {finding.file_path}"

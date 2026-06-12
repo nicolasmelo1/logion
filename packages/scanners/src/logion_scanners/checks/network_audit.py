@@ -45,6 +45,11 @@ _URL_PATTERN = re.compile(r"""https?://[^\s'"<>)]+""")
 class NetworkAuditCheck(BaseCheck):
     """Scan for suspicious outbound URLs and domains."""
 
+    EXPECTED_RULE_IDS: frozenset[str] = frozenset({
+        "AGENT-SUSPICIOUS-TLD",
+        "AGENT-SUSPICIOUS-ENDPOINT",
+    })
+
     name = "network-audit"
 
     def run(
