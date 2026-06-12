@@ -79,9 +79,10 @@ known-first-party = ["cli", "landing", "logion", "logion_scanners"]
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners/src"]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners"]
 markers = [
     "integration: integration tests requiring a running mock server (deselect with '-m \"not integration\"')",
+    "docker: tests requiring Docker (deselect with '-m \"not docker\"')",
 ]
 
 [tool.mypy]
