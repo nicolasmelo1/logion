@@ -15,7 +15,7 @@ from .handlers import (
 
 _CREDENTIAL_HELP = (
     "User credential (passing it on the CLI is unsafe — "
-    "leaves shell history; prefer the LOGION_PASSWORD env var)"
+    "leaves shell history; omit to use a hidden interactive prompt)"
 )
 
 

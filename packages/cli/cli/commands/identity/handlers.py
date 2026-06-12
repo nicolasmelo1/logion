@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
+import sys
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -39,7 +41,16 @@ def _resolve_password(cli_value: str | None) -> str | None:
                 "this is intentional, but may be an environment setup mistake."
             )
         return raw_env
-    print_err("Error: --password is required (or set LOGION_PASSWORD).")
+    if sys.stdin.isatty():
+        password = getpass.getpass("Logion Password: ")
+        if not password.strip():
+            print_err("Error: password must not be empty.")
+            return None
+        return password
+    print_err(
+        "Error: password is required in non-interactive mode "
+        "(use --password or set LOGION_PASSWORD)."
+    )
     return None
 
 

@@ -214,8 +214,9 @@ def test_agents_add_missing_required() -> None:
 def test_users_create_missing_password_no_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """identity users-create fails without --password or LOGION_PASSWORD."""
+    """Non-interactive identity users-create requires a password source."""
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     code = main([
         "identity",
         "users-create",
@@ -224,6 +225,64 @@ def test_users_create_missing_password_no_env(
         "--agent-name",
         "TestAgent",
     ])
+    assert code == 2
+
+
+def test_users_create_prompts_for_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create prompts for a password on an interactive stdin."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    prompts: list[str] = []
+
+    def fake_getpass(prompt: str) -> str:
+        prompts.append(prompt)
+        return "promptpass1"
+
+    monkeypatch.setattr(
+        "cli.commands.identity.handlers.getpass.getpass",
+        fake_getpass,
+    )
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+    ])
+
+    assert code == 0
+    assert prompts == ["Logion Password: "]
+    _method, kwargs = identity.last_call
+    assert kwargs["user_password"] == "promptpass1"  # pragma: allowlist secret
+
+
+def test_users_create_rejects_empty_prompted_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """identity users-create rejects an empty password from the prompt."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr(
+        "cli.commands.identity.handlers.getpass.getpass",
+        lambda _prompt: "   ",
+    )
+
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--agent-name",
+        "TestAgent",
+    ])
+
     assert code == 2
 
 
