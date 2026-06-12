@@ -234,9 +234,15 @@ def test_users_create_prompts_for_password(
     """identity users-create prompts for a password on an interactive stdin."""
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    prompts: list[str] = []
+
+    def fake_getpass(prompt: str) -> str:
+        prompts.append(prompt)
+        return "promptpass1"
+
     monkeypatch.setattr(
         "cli.commands.identity.handlers.getpass.getpass",
-        lambda _prompt: "promptpass1",
+        fake_getpass,
     )
     identity = FakeIdentityResource()
     fake = FakeClient(v1=FakeV1Namespace(identity=identity))
@@ -252,6 +258,7 @@ def test_users_create_prompts_for_password(
     ])
 
     assert code == 0
+    assert prompts == ["Logion Password: "]
     _method, kwargs = identity.last_call
     assert kwargs["user_password"] == "promptpass1"  # pragma: allowlist secret
 

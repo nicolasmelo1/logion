@@ -42,7 +42,7 @@ def _resolve_password(cli_value: str | None) -> str | None:
             )
         return raw_env
     if sys.stdin.isatty():
-        password = getpass.getpass("Password: ")
+        password = getpass.getpass("Logion Password: ")
         if not password.strip():
             print_err("Error: password must not be empty.")
             return None
