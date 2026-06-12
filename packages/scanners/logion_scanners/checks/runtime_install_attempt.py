@@ -22,6 +22,7 @@ from logion_scanners.checks.base import (
     BaseCheck,
     FileContent,
     collect_text_files,
+    iter_command_lines,
 )
 from logion_scanners.models import SCANNER_AGENT, ScannerFinding
 
@@ -260,7 +261,7 @@ class RuntimeInstallAttemptCheck(BaseCheck):
             ):
                 continue
 
-            for line_no, line in enumerate(content.splitlines(), start=1):
+            for line_no, line in iter_command_lines(content, abs_path.suffix):
                 for pattern, rule_id, desc in _INSTALL_PATTERNS:
                     if re.search(pattern, line):
                         findings.append(
