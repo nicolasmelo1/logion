@@ -4,11 +4,22 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 from cli.main import main
+
+
+@pytest.fixture(autouse=True)
+def isolated_logion_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> Path:
+    """Keep credentials writes out of the real ~/.logion."""
+    monkeypatch.setenv("LOGION_HOME", str(tmp_path))
+    return tmp_path
 
 
 class FakeIdentityResource:
@@ -504,3 +515,127 @@ def test_users_create_cli_password_preserves_whitespace(
     assert kwargs["user_password"] == (  # pragma: allowlist secret
         "  testpass1  "
     )
+
+
+def test_users_create_saves_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_logion_home: Path,
+) -> None:
+    """identity users-create persists the user id to credentials.json."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "users-create",
+        "--email",
+        "user@example.com",
+        "--password",
+        "testpass1",
+        "--agent-name",
+        "TestAgent",
+        "--json",
+    ])
+    assert code == 0
+    creds = json.loads((isolated_logion_home / "credentials.json").read_text())
+    assert creds["user_id"] == "u1"
+    assert creds["email"] == "user@example.com"
+
+
+def test_agents_add_uses_stored_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_logion_home: Path,
+) -> None:
+    """identity agents-add falls back to the stored user id."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    (isolated_logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "stored-user"})
+    )
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "agents-add",
+        "--agent-name",
+        "Worker",
+        "--password",
+        "testpass1",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_id"] == "stored-user"
+
+
+def test_agents_add_explicit_user_id_wins(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_logion_home: Path,
+) -> None:
+    """--user-id overrides the stored credential."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    (isolated_logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "stored-user"})
+    )
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "agents-add",
+        "--user-id",
+        "explicit-user",
+        "--agent-name",
+        "Worker",
+        "--password",
+        "testpass1",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_id"] == "explicit-user"
+
+
+def test_agents_rotate_key_uses_stored_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_logion_home: Path,
+) -> None:
+    """identity agents-rotate-key falls back to the stored user id."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    (isolated_logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "stored-user"})
+    )
+    identity = FakeIdentityResource()
+    fake = FakeClient(v1=FakeV1Namespace(identity=identity))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "identity",
+        "agents-rotate-key",
+        "--agent-id",
+        "a1",
+        "--password",
+        "testpass1",
+        "--json",
+    ])
+    assert code == 0
+    _method, kwargs = identity.last_call
+    assert kwargs["user_id"] == "stored-user"
+
+
+def test_agents_add_no_user_id_no_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """identity agents-add errors when no user id is available anywhere."""
+    monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    code = main([
+        "identity",
+        "agents-add",
+        "--agent-name",
+        "Worker",
+        "--password",
+        "testpass1",
+    ])
+    assert code == 2
+    assert "--user-id is required" in capsys.readouterr().err

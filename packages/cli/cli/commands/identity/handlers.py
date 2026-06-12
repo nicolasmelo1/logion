@@ -10,6 +10,7 @@ import sys
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
+from cli._credentials import save_user_identity, stored_user_id
 from cli._errors import handle_error, print_err
 from cli._output import emit
 
@@ -54,6 +55,45 @@ def _resolve_password(cli_value: str | None) -> str | None:
     return None
 
 
+def _field(obj: object, name: str) -> object:
+    """Read *name* from a dict or attribute-style response object."""
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _save_user_identity_from_result(result: object) -> None:
+    """Persist the created user's id/email; never fail the command."""
+    user = _field(result, "user")
+    if user is None:
+        return
+    user_id = _field(user, "id")
+    if user_id is None:
+        return
+    email = _field(user, "email")
+    try:
+        save_user_identity(
+            str(user_id),
+            email=str(email) if email is not None else None,
+        )
+    except OSError as exc:
+        print_err(f"Warning: could not save credentials: {exc}")
+
+
+def _resolve_user_id(cli_value: str | None) -> str | None:
+    """Return ``--user-id`` or the stored credential, ``None`` if neither."""
+    if cli_value is not None:
+        return cli_value
+    stored = stored_user_id()
+    if stored is not None:
+        return stored
+    print_err(
+        "Error: --user-id is required (no stored user found — run "
+        "`logion identity users-create` or pass --user-id)."
+    )
+    return None
+
+
 def handle_users_create(args: argparse.Namespace) -> int:
     """Execute the identity users-create command."""
     password = _resolve_password(args.password)
@@ -69,6 +109,7 @@ def handle_users_create(args: argparse.Namespace) -> int:
             user_name=args.user_name,
             agent_description=args.agent_description,
         )
+        _save_user_identity_from_result(result)
         print_err(API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -81,6 +122,9 @@ def handle_users_create(args: argparse.Namespace) -> int:
 
 def handle_agents_add(args: argparse.Namespace) -> int:
     """Execute the identity agents-add command."""
+    user_id = _resolve_user_id(args.user_id)
+    if user_id is None:
+        return 2
     password = _resolve_password(args.password)
     if password is None:
         return 2
@@ -88,7 +132,7 @@ def handle_agents_add(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.identity.add_agent_to_user(
-            user_id=args.user_id,
+            user_id=user_id,
             agent_name=args.agent_name,
             user_password=password,
             agent_description=args.agent_description,
@@ -105,6 +149,9 @@ def handle_agents_add(args: argparse.Namespace) -> int:
 
 def handle_agents_rotate_key(args: argparse.Namespace) -> int:
     """Execute the identity agents-rotate-key command."""
+    user_id = _resolve_user_id(args.user_id)
+    if user_id is None:
+        return 2
     password = _resolve_password(args.password)
     if password is None:
         return 2
@@ -112,7 +159,7 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.identity.rotate_api_key(
-            user_id=args.user_id,
+            user_id=user_id,
             agent_id=args.agent_id,
             user_password=password,
         )
