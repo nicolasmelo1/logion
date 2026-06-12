@@ -13,6 +13,11 @@ from .handlers import (
     handle_users_create,
 )
 
+_USER_ID_HELP = (
+    "User id (defaults to the one saved in ~/.logion/credentials.json "
+    "by users-create)"
+)
+
 _CREDENTIAL_HELP = (
     "User credential (passing it on the CLI is unsafe — "
     "leaves shell history; omit to use a hidden interactive prompt)"
@@ -47,7 +52,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Add an agent to an existing user",
         parents=[COMMON_PARSER],
     )
-    agents_add.add_argument("--user-id", required=True)
+    agents_add.add_argument("--user-id", help=_USER_ID_HELP)
     agents_add.add_argument("--agent-name", required=True)
     agents_add.add_argument("--password", help=_CREDENTIAL_HELP)
     agents_add.add_argument("--agent-description")
@@ -58,7 +63,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Rotate an agent API key",
         parents=[COMMON_PARSER],
     )
-    rotate_key.add_argument("--user-id", required=True)
+    rotate_key.add_argument("--user-id", help=_USER_ID_HELP)
     rotate_key.add_argument("--agent-id", required=True)
     rotate_key.add_argument("--password", help=_CREDENTIAL_HELP)
     rotate_key.set_defaults(handler=handle_agents_rotate_key)
