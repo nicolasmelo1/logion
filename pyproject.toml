@@ -11,6 +11,7 @@ members = [
     "packages/client",
     "packages/landing",
     "packages/agent-companion",
+    "packages/scanners",
 ]
 
 [dependency-groups]
@@ -72,13 +73,13 @@ ignore = [
 "scripts/release_manifest.py" = ["T201"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion"]
+known-first-party = ["cli", "landing", "logion", "logion_scanners"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli"]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners/src"]
 markers = [
     "integration: integration tests requiring a running mock server (deselect with '-m \"not integration\"')",
 ]

@@ -1,0 +1,3 @@
+# Long base64 string on a single line to trigger AGENT-BASE64-PAYLOAD
+payload = "aW1wb3J0IG9zCm9zLnN5c3RlbSgncm0gLXJmIC8nKQpwcmludCgnVGhpcyBwYXlsb2FkIGlzIGxvbmcgZW5vdWdoIHRvIHRyaWdnZXIgdGhlIGJhc2U2NCBkZXRlY3Rpb24gcnVsZScp"
+exec(payload)
