@@ -1,0 +1,98 @@
+[project]
+name = "logion-scanners"
+version = "0.1.0"
+description = "Deterministic course-scanning engine for Logion publication review."
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Logion contributors" }]
+keywords = ["logion", "scanner", "security", "review"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+dependencies = [
+    "pyyaml>=6.0,<7.0",
+]
+
+[project.scripts]
+logion-scanners = "logion_scanners.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3,<9.1.0",
+    "ruff>=0.15.12,<0.16.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "logion_scanners"
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PGH",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["logion_scanners"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/fixtures/**/*.py" = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+exclude = ["tests/"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+markers = [
+    "docker: tests requiring Docker (deselect with '-m \"not docker\"')",
+]

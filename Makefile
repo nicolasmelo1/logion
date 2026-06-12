@@ -8,7 +8,8 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
-	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test
+	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
+	scanners-lint scanners-test
 
 lint:
 	uv run ruff check packages/
@@ -21,10 +22,10 @@ dead-code-advisory:
 	uv run vulture --min-confidence 60 || true
 
 test:
-	uv run pytest packages/ tests/ --no-header -q -m "not integration"
+	uv run pytest packages/ tests/ --no-header -q -m "not integration and not docker"
 
 typecheck:
-	uv run mypy packages/cli/cli/ packages/client/src/ --ignore-missing-imports
+	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/logion_scanners/ --ignore-missing-imports
 
 audit:
 	uv run pip-audit --skip-editable
@@ -138,3 +139,14 @@ companion-bundle:
 
 companion-bundle-verify:
 	uv run python packages/agent-companion/scripts/verify_bundle.py dist/logion-marketplace-companion-$(shell python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])").tar.gz
+
+# ── scanners package targets ──────────────────────────────────
+scanners-lint:
+	uv run ruff check packages/scanners/
+	uv run ruff format --check packages/scanners/
+
+scanners-test:
+	uv run pytest packages/scanners/tests/ -q --no-header -m "not docker"
+
+scanners-test-integration:
+	uv run pytest packages/scanners/tests/ -q --no-header -m docker

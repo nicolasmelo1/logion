@@ -1,0 +1,56 @@
+# Logion Publication Policy v1
+#
+# This policy encodes the deterministic blocking criteria for hosted
+# publication review. It is immutable once published — behavior
+# changes require a new policy file (publication-v2.yaml).
+#
+# Values are transcribed from the hosted review pipeline's
+# configuration and scanner orchestration service.
+
+policy_id: publication-v1
+policy_version: "1.0.0"
+
+# Which scanners must run. All three are required for a complete
+# review; missing scanners block if block_on_scanner_unavailable
+# is true.
+required_scanners:
+  - trivy
+  - osv_scanner
+  - agent_scanner
+
+# Which agent scanner checks are enabled. All checks are enabled
+# by default; this list is the authoritative registry.
+enabled_agent_checks:
+  - FileStructureCheck
+  - FileTypeCheck
+  - DangerousCommandsCheck
+  - RuntimeInstallAttemptCheck
+  - SecretsDetectionCheck
+  - EnvHarvestingCheck
+  - NetworkAuditCheck
+  - ObfuscationCheck
+  - PromptInjectionCheck
+
+# Per-scanner severity levels that block publication.
+blocking_severities:
+  trivy:
+    - critical
+    - high
+  osv_scanner:
+    - critical
+    - high
+  agent_scanner:
+    - critical
+    - high
+
+# Bundle limits (from config.py defaults).
+max_bundle_size_mb: 100
+max_file_count: 500
+max_file_size_mb: 10
+
+# Scanner timeout in seconds (from config.py defaults).
+scanner_timeout_seconds: 300
+
+# If a required scanner cannot run (e.g. Docker unavailable),
+# block publication rather than silently pass.
+block_on_scanner_unavailable: true
