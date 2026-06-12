@@ -25,7 +25,7 @@ test:
 	uv run pytest packages/ tests/ --no-header -q -m "not integration and not docker"
 
 typecheck:
-	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/src/ --ignore-missing-imports
+	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/logion_scanners/ --ignore-missing-imports
 
 audit:
 	uv run pip-audit --skip-editable
@@ -147,3 +147,6 @@ scanners-lint:
 
 scanners-test:
 	uv run pytest packages/scanners/tests/ -q --no-header -m "not docker"
+
+scanners-test-integration:
+	uv run pytest packages/scanners/tests/ -q --no-header -m docker

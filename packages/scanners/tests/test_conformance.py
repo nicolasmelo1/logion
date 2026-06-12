@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from logion_scanners.adapters.agent import AgentScanner
 from logion_scanners.checks.dangerous_commands import (
     DangerousCommandsCheck,
@@ -75,109 +77,73 @@ class TestAllRuleIdsDeclared:
         assert seen.keys() == ALL_RULE_IDS
 
 
-class TestCleanFixtureConformance:
-    """Clean course bundle must emit zero findings."""
+# Map fixture directory -> the EXACT set of rule IDs AgentScanner
+# (all checks enabled) must emit for it.  Equality, not subset: a new
+# or renamed rule ID firing on these fixtures is a behavioral change
+# and must be acknowledged here.
+FIXTURE_RULE_IDS: dict[str, frozenset[str]] = {
+    "clean_course": frozenset(),
+    "dangerous_commands": frozenset({
+        "AGENT-DANGEROUS-RM-RF",
+        "AGENT-INSECURE-PERMISSIONS",
+        "AGENT-REMOTE-PIPE-SHELL",
+        "AGENT-SUDO-PRIVILEGE-ESCALATION",
+    }),
+    "env_harvesting": frozenset({"AGENT-ENV-HARVESTING"}),
+    "file_structure": frozenset({"AGENT-NO-SKILL-MD"}),
+    "file_type": frozenset({"AGENT-BLOCKED-FILE-TYPE"}),
+    "network_audit": frozenset({
+        "AGENT-SUSPICIOUS-ENDPOINT",
+        "AGENT-SUSPICIOUS-TLD",
+    }),
+    "obfuscation": frozenset({
+        "AGENT-BASE64-PAYLOAD",
+        "AGENT-EVAL-EXEC",
+    }),
+    "prompt_injection": frozenset({
+        "AGENT-DISREGARD-INSTRUCTIONS",
+        "AGENT-FORGET-INSTRUCTIONS",
+        "AGENT-IGNORE-INSTRUCTIONS",
+        "AGENT-OVERRIDE-SAFETY",
+        "AGENT-ROLE-HIJACK",
+    }),
+    "runtime_install": frozenset({
+        "AGENT-RUNTIME-INSTALL-BREW",
+        "AGENT-RUNTIME-INSTALL-NPM",
+        "AGENT-RUNTIME-INSTALL-PIP",
+    }),
+    "secrets_detection": frozenset({
+        "AGENT-AWS-ACCESS-KEY",
+        "AGENT-DB-CONNECTION-STRING",
+        "AGENT-GITHUB-TOKEN",
+        "AGENT-HARDCODED-API-KEY",
+        "AGENT-HARDCODED-SECRET",
+        "AGENT-STRIPE-KEY",
+    }),
+}
 
-    def test_clean_course_no_findings(self) -> None:
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "clean_course")
+
+class TestFixtureConformance:
+    """Behavioral lock: exact rule-ID set per fixture bundle."""
+
+    @pytest.mark.parametrize(
+        ("fixture", "expected"),
+        sorted(FIXTURE_RULE_IDS.items()),
+    )
+    def test_exact_rule_ids(
+        self,
+        fixture: str,
+        expected: frozenset[str],
+    ) -> None:
+        result = AgentScanner().scan(FIXTURES / fixture)
         assert result.layer == SCANNER_AGENT
-        assert result.findings == [], (
-            f"Clean fixture should have zero findings, "
-            f"got: {[f.rule_id for f in result.findings]}"
+        actual = frozenset(f.rule_id for f in result.findings)
+        assert actual == expected, (
+            f"{fixture}: unexpected={sorted(actual - expected)} "
+            f"missing={sorted(expected - actual)}"
         )
 
-
-class TestMaliciousFixtureConformance:
-    """Malicious course must emit at least one finding per targeted rule."""
-
-    # Map fixture directory to the *exact* set of rule IDs it must
-    # produce when scanned with AgentScanner (all checks enabled).
-    # These are the behavioral locks — if a check changes its
-    # output for a given fixture, this test will catch it.
-
-    def test_dangerous_commands(self) -> None:
-        expected = frozenset({
-            "AGENT-DANGEROUS-RM-RF",
-            "AGENT-REMOTE-PIPE-SHELL",
-            "AGENT-SUDO-PRIVILEGE-ESCALATION",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "dangerous_commands")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_runtime_install(self) -> None:
-        expected = frozenset({
-            "AGENT-RUNTIME-INSTALL-NPM",
-            "AGENT-RUNTIME-INSTALL-PIP",
-            "AGENT-RUNTIME-INSTALL-BREW",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "runtime_install")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_secrets_detection(self) -> None:
-        expected = frozenset({
-            "AGENT-HARDCODED-SECRET",
-            "AGENT-DB-CONNECTION-STRING",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "secrets_detection")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_env_harvesting(self) -> None:
-        expected = frozenset({"AGENT-ENV-HARVESTING"})
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "env_harvesting")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_network_audit(self) -> None:
-        expected = frozenset({
-            "AGENT-SUSPICIOUS-TLD",
-            "AGENT-SUSPICIOUS-ENDPOINT",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "network_audit")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_obfuscation(self) -> None:
-        expected = frozenset({
-            "AGENT-EVAL-EXEC",
-            "AGENT-BASE64-PAYLOAD",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "obfuscation")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_prompt_injection(self) -> None:
-        expected = frozenset({
-            "AGENT-IGNORE-INSTRUCTIONS",
-            "AGENT-ROLE-HIJACK",
-            "AGENT-DISREGARD-INSTRUCTIONS",
-            "AGENT-FORGET-INSTRUCTIONS",
-            "AGENT-OVERRIDE-SAFETY",
-        })
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "prompt_injection")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_file_structure(self) -> None:
-        expected = frozenset({"AGENT-NO-SKILL-MD"})
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "file_structure")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
-
-    def test_file_type(self) -> None:
-        expected = frozenset({"AGENT-BLOCKED-FILE-TYPE"})
-        scanner = AgentScanner()
-        result = scanner.scan(FIXTURES / "file_type")
-        actual = frozenset(f.rule_id for f in result.findings)
-        assert expected <= actual, f"Missing rule IDs: {expected - actual}"
+    def test_every_fixture_dir_is_locked(self) -> None:
+        """A new fixture dir must get an entry in FIXTURE_RULE_IDS."""
+        on_disk = {d.name for d in FIXTURES.iterdir() if d.is_dir()}
+        assert on_disk == FIXTURE_RULE_IDS.keys()
