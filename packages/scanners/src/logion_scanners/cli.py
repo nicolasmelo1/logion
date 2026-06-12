@@ -133,7 +133,7 @@ def _check_docker_unavailable(
 
 
 def _cmd_scan(args: argparse.Namespace) -> None:
-    bundle: Path = args.path
+    bundle: Path = args.path.resolve()
     if not bundle.is_dir():
         print(  # noqa: T201
             f"Error: {bundle} is not a directory",

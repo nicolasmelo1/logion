@@ -46,12 +46,15 @@ class TrivyScanner(BaseScanner):
         self._timeout = timeout_seconds
 
     def scan(self, bundle_path: Path) -> ScannerResult:
+        # Resolve to absolute path — Docker -v requires it.
+        abs_bundle = bundle_path.resolve()
+
         cmd = [
             "docker",
             "run",
             "--rm",
             "-v",
-            f"{bundle_path}:/scan:ro",
+            f"{abs_bundle}:/scan:ro",
             self._image,
             "fs",
             "--format",
@@ -87,15 +90,24 @@ class TrivyScanner(BaseScanner):
 
         combined = proc.stdout + "\n" + proc.stderr
 
-        # Docker exit 125 = daemon not running or not installed.
-        # Treat as a prerequisite failure so the CLI exits 2.
+        # Docker exit 125 covers several failure modes.  We only
+        # treat it as "Docker not available" when the daemon is
+        # truly missing; mount / pull failures get a distinct message
+        # so the CLI can differentiate (exit 2 vs scan error).
         if proc.returncode == 125:
+            if "Is the docker daemon running" in combined.lower():
+                error = _DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy")
+            else:
+                error = (
+                    f"Trivy Docker container failed to start. "
+                    f"Exit 125: {combined[:500]}"
+                )
             return ScannerResult(
                 layer=SCANNER_TRIVY,
                 passed=False,
                 findings=[],
                 raw_output=combined,
-                error=_DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy"),
+                error=error,
             )
 
         if proc.returncode not in (0, 1):

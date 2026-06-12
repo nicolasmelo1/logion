@@ -3,6 +3,7 @@ agent-specific security issues."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from logion_scanners.adapters.base import BaseScanner
@@ -54,7 +55,7 @@ class AgentScanner(BaseScanner):
     def __init__(
         self,
         *,
-        enabled_checks: list[str] | None = None,
+        enabled_checks: Sequence[str] | None = None,
         max_file_count: int = 500,
         max_file_size_mb: int = 10,
     ) -> None:

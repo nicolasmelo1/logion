@@ -22,10 +22,10 @@ dead-code-advisory:
 	uv run vulture --min-confidence 60 || true
 
 test:
-	uv run pytest packages/ tests/ --no-header -q -m "not integration"
+	uv run pytest packages/ tests/ --no-header -q -m "not integration and not docker"
 
 typecheck:
-	uv run mypy packages/cli/cli/ packages/client/src/ --ignore-missing-imports
+	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/src/ --ignore-missing-imports
 
 audit:
 	uv run pip-audit --skip-editable

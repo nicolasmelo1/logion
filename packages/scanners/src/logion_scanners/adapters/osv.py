@@ -68,12 +68,15 @@ class OsvScanner(BaseScanner):
         self._timeout = timeout_seconds
 
     def scan(self, bundle_path: Path) -> ScannerResult:
+        # Resolve to absolute path — Docker -v requires it.
+        abs_bundle = bundle_path.resolve()
+
         cmd = [
             "docker",
             "run",
             "--rm",
             "-v",
-            f"{bundle_path}:/scan:ro",
+            f"{abs_bundle}:/scan:ro",
             self._image,
             "scan",
             "source",
@@ -111,18 +114,28 @@ class OsvScanner(BaseScanner):
 
         combined = proc.stdout + "\n" + proc.stderr
 
-        # Docker exit 125 = daemon not running or not installed.
+        # Docker exit 125 covers several failure modes.
+        # Only treat as "Docker not available" when the daemon
+        # is truly missing; mount/pull failures get a distinct
+        # message so the CLI can differentiate.
         if proc.returncode == 125:
+            if "is the docker daemon running" in combined.lower():
+                error = (
+                    "Docker is not available — "
+                    "OSV scan skipped. "
+                    "Install Docker or start the Docker daemon."
+                )
+            else:
+                error = (
+                    f"OSV Docker container failed to start. "
+                    f"Exit 125: {combined[:500]}"
+                )
             return ScannerResult(
                 layer=SCANNER_OSV,
                 passed=False,
                 findings=[],
                 raw_output=combined,
-                error=(
-                    "Docker is not available — "
-                    "OSV scan skipped. "
-                    "Install Docker or start the Docker daemon."
-                ),
+                error=error,
             )
 
         # osv-scanner v2 exit codes:

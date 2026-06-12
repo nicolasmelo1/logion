@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import ClassVar
@@ -40,15 +41,16 @@ def _env_without_docker() -> dict[str, str]:
     Keeps ``uv`` on PATH so the subprocess can still run.
     """
     env = dict(os.environ)
-    # Remove directories that contain the docker binary from PATH.
     original = env.get("PATH", "")
-    uv_dir = str(Path(os.environ.get("HOME", "/")) / ".local" / "bin")
     env["PATH"] = ":".join(
         p for p in original.split(":") if not _dir_has_docker(p)
     )
     # Ensure uv is still reachable.
-    if uv_dir not in env["PATH"]:
-        env["PATH"] = f"{uv_dir}:{env['PATH']}"
+    uv_path = shutil.which("uv")
+    if uv_path:
+        uv_dir = str(Path(uv_path).parent)
+        if uv_dir not in env["PATH"]:
+            env["PATH"] = f"{uv_dir}:{env['PATH']}"
     return env
 
 
