@@ -170,6 +170,13 @@ logion courses capabilities print --bundle-dir ./new-course --json
 logion payments onboarding-link --json
 ```
 
+## Credit denomination
+
+Credits are denominated in US cents: **1 credit = 1 cent** (US$1 = 100
+credits). `--amount` and every `*_cents` flag take credit units directly —
+"top up 500 credits" means `--amount 500` (US$5.00). Never convert as if
+1 credit were US$1.
+
 ## Paid course acquisition path
 
 The CLI does not auto-download a paid course after purchase. The concrete
