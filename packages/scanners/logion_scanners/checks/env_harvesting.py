@@ -54,6 +54,27 @@ _SENSITIVE_ENV_VARS: frozenset[str] = frozenset({
     "SLACK_TOKEN",
 })
 
+# Bulk enumeration of the environment — the actual "harvesting" shape.
+# A single named read (api_key = os.environ.get("X")) is how every
+# legitimate API client loads its declared config; iterating or dumping
+# the whole environment is how exfiltration loads its payload.
+_BULK_ENV_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"for\s+[\w,\s]+\s+in\s+os\.environ", re.IGNORECASE),
+    re.compile(r"dict\s*\(\s*os\.environ\s*\)", re.IGNORECASE),
+    re.compile(r"os\.environ\.(?:items|keys|values|copy)\s*\(", re.IGNORECASE),
+    re.compile(
+        r"(?:JSON\.stringify|Object\.(?:entries|keys|values))"
+        r"\s*\(\s*process\.env\s*\)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bprintenv\b"),
+    re.compile(r"\benv\s*\|\s*(?:curl|nc|base64|gzip)\b", re.IGNORECASE),
+]
+
+# Reading this many distinct named vars in one network-touching file
+# starts to look like collection rather than configuration.
+_MANY_VARS_THRESHOLD = 3
+
 _ENV_VAR_EXTRACTION = re.compile(
     r"""(?:os\.environ\.get\s*\(\s*['"](\w+)['"]|"""
     r"""os\.environ\[\s*['"](\w+)['"]\]|"""
@@ -82,7 +103,8 @@ class EnvHarvestingCheck(BaseCheck):
             files if files is not None else collect_text_files(bundle_path)
         )
         for _abs, rel, content in file_list:
-            has_env_read = any(
+            bulk = any(pat.search(content) for pat in _BULK_ENV_PATTERNS)
+            has_env_read = bulk or any(
                 pat.search(content) for pat in _ENV_READ_PATTERNS
             )
             has_network = any(pat.search(content) for pat in _NETWORK_PATTERNS)
@@ -97,21 +119,40 @@ class EnvHarvestingCheck(BaseCheck):
                         env_vars_read.add(group)
 
             sensitive = env_vars_read & _SENSITIVE_ENV_VARS
+            many = len(env_vars_read) >= _MANY_VARS_THRESHOLD
+            # Named reads were extracted and stayed narrow: that is the
+            # config-loading shape of every legitimate API client, not
+            # harvesting. Keep it visible but non-blocking. Unextracted
+            # reads (dynamic keys) stay high — we cannot prove they are
+            # narrow.
+            narrow = bool(env_vars_read) and not (sensitive or bulk or many)
+
+            if sensitive or bulk:
+                severity = "critical"
+            elif narrow:
+                severity = "low"
+            else:
+                severity = "high"
+
+            detail = ""
+            if sensitive:
+                detail = f" — sensitive vars: {', '.join(sorted(sensitive))}"
+            elif bulk:
+                detail = " — bulk environment enumeration"
+            elif narrow:
+                detail = (
+                    f" — narrow named read "
+                    f"({', '.join(sorted(env_vars_read))})"
+                )
 
             findings.append(
                 ScannerFinding(
                     layer=SCANNER_AGENT,
-                    severity=("critical" if sensitive else "high"),
+                    severity=severity,
                     rule_id="AGENT-ENV-HARVESTING",
                     description=(
                         f"Environment variable access near "
-                        f"network call in {rel}"
-                        + (
-                            f" — sensitive vars: "
-                            f"{', '.join(sorted(sensitive))}"
-                            if sensitive
-                            else ""
-                        )
+                        f"network call in {rel}{detail}"
                     ),
                     file_path=rel,
                 )

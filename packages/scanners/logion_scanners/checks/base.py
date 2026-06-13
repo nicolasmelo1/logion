@@ -105,6 +105,8 @@ MARKDOWN_EXTENSIONS: frozenset[str] = frozenset({".md", ".markdown"})
 
 _FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
 
+_HASH_COMMENT_RE = re.compile(r"^\s*#")
+
 
 def iter_command_lines(
     content: str,
@@ -112,21 +114,25 @@ def iter_command_lines(
 ) -> Iterator[tuple[int, str]]:
     """Yield ``(line_no, line)`` pairs eligible for command-pattern checks.
 
-    Markdown prose routinely *talks about* commands ("there is no
-    ``pip install`` step") without executing anything; only fenced code
-    blocks carry executable intent. For markdown files, yield only the
-    lines inside ``\\`\\`\\```/``~~~`` fences (line numbers preserved);
-    for every other file type, yield all lines.
+    Markdown prose and comments routinely *talk about* commands ("there
+    is no ``pip install`` step") without executing anything. For
+    markdown files, yield only the lines inside ``\\`\\`\\```/``~~~``
+    fences; for every other file type, yield all lines except full-line
+    ``#`` comments (shell, YAML, Python, TOML, ...). Line numbers are
+    preserved.
     """
     if suffix.lower() not in MARKDOWN_EXTENSIONS:
-        yield from enumerate(content.splitlines(), start=1)
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            if _HASH_COMMENT_RE.match(line):
+                continue
+            yield (line_no, line)
         return
     in_fence = False
     for line_no, line in enumerate(content.splitlines(), start=1):
         if _FENCE_RE.match(line):
             in_fence = not in_fence
             continue
-        if in_fence:
+        if in_fence and not _HASH_COMMENT_RE.match(line):
             yield (line_no, line)
 
 

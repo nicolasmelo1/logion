@@ -88,9 +88,21 @@ class TestIterCommandLines:
         content = "prose\n```\ncmd\n"
         assert list(iter_command_lines(content, ".md")) == [(3, "cmd")]
 
-    def test_non_markdown_yields_all_lines(self) -> None:
+    def test_non_markdown_yields_non_comment_lines(self) -> None:
         content = "a\nb\n"
         assert list(iter_command_lines(content, ".sh")) == [
             (1, "a"),
             (2, "b"),
+        ]
+
+    def test_hash_comment_lines_skipped_in_shell(self) -> None:
+        content = "# no pip install required\npip install x\n"
+        assert list(iter_command_lines(content, ".sh")) == [
+            (2, "pip install x"),
+        ]
+
+    def test_hash_comment_skipped_inside_markdown_fence(self) -> None:
+        content = "```\n# no pip install here\npip install x\n```\n"
+        assert list(iter_command_lines(content, ".md")) == [
+            (3, "pip install x"),
         ]
