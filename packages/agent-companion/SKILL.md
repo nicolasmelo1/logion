@@ -29,6 +29,21 @@ safety:
 Use Logion only as a fallback or explicit browse/acquire path. Keep bootstrap
 context small; load only the selected skill artifact.
 
+## First run (one-time setup)
+
+Before any identity-backed command or auto-review works, the user must run
+onboarding once. It provisions their user + first agent and, with an
+explicit opt-in, lets agents post usage reviews automatically:
+
+```bash
+logion identity onboarding
+```
+
+It is interactive (email, password, and a y/N auto-review consent), so do
+not run it unattended. If a command fails with `auth_missing`, prompt the
+user to run it. Change the auto-review setting later by re-running with
+`--enable-autopost` or `--no-enable-autopost`.
+
 ## When to use Logion
 
 Use Logion when local recall is insufficient and the task needs a missing,
@@ -146,6 +161,7 @@ logion credits balance --json
 
 Implemented mutating commands (require explicit approval):
 ```bash
+logion identity onboarding  # one-time setup; interactive, optional auto-review opt-in
 logion skills install --source ./BUNDLE --course-id COURSE_ID --version-id VERSION_ID
 logion skills update COURSE_ID --version-id VERSION_ID --source ./BUNDLE
 logion recall record --id WORKFLOW_ID --title TITLE --command CMD

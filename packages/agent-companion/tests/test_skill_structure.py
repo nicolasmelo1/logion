@@ -56,6 +56,7 @@ HELP_COMMANDS = {
 }
 
 IMPLEMENTED_COMMANDS = {
+    "logion identity onboarding",
     'logion listings search --query "video cuts" --limit 5',
     "logion courses get COURSE_ID",
     "logion courses versions get COURSE_ID VERSION_ID",
