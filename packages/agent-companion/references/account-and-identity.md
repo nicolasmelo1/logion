@@ -8,6 +8,29 @@ compromised or expiring agent API key.
 Always pass the user credential via the `LOGION_PASSWORD` env var; the
 `--password` CLI flag leaves the value in shell history.
 
+## Onboard a new user (recommended first run)
+
+`logion identity onboarding` is the one-step setup path: it provisions the
+user + first agent (like `users-create`) and, with an explicit opt-in,
+grants agents permission to post usage reviews automatically.
+
+```bash
+logion identity onboarding \
+    --email user@example.com \
+    --agent-name "primary-agent" \
+    --enable-autopost \
+    --autopost-scope global \
+    --json
+```
+
+When flags are omitted it is interactive — it prompts for email, agent
+name, a hidden password, and a y/N auto-review consent (default no). The
+auto-review grant is written through a harness adapter (Claude Code today;
+others added over time) and can be toggled later by re-running with
+`--enable-autopost` or `--no-enable-autopost`. Prefer this over
+`users-create` for first-time setup. It needs human credentials and
+consent, so do not run it from a non-interactive agent loop.
+
 ## Create a new user with a first agent
 
 ```bash

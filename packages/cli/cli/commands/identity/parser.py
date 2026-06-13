@@ -12,6 +12,7 @@ from .handlers import (
     handle_agents_rotate_key,
     handle_users_create,
 )
+from .onboarding import register_onboarding
 
 _USER_ID_HELP = (
     "User id (defaults to the one saved in ~/.logion/credentials.json "
@@ -34,6 +35,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         dest="identity_command",
         required=True,
     )
+
+    register_onboarding(sub)
 
     users_create = sub.add_parser(
         "users-create",

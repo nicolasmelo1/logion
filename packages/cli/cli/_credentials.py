@@ -42,6 +42,7 @@ def save_user_identity(
     user_id: str,
     email: str | None = None,
     home: Path | None = None,
+    agent_id: str | None = None,
 ) -> Path:
     """Persist the user identity, preserving unrelated keys."""
     path = credentials_path(home)
@@ -50,6 +51,8 @@ def save_user_identity(
     data["user_id"] = user_id
     if email is not None:
         data["email"] = email
+    if agent_id is not None:
+        data["agent_id"] = agent_id
     _atomic_write_text(
         path,
         json.dumps(data, indent=2, ensure_ascii=False) + "\n",
@@ -63,6 +66,14 @@ def save_user_identity(
 def stored_user_id(home: Path | None = None) -> str | None:
     """Return the stored user id, or ``None`` if not set."""
     value = read_credentials(home).get("user_id")
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def stored_agent_id(home: Path | None = None) -> str | None:
+    """Return the stored agent id, or ``None`` if not set."""
+    value = read_credentials(home).get("agent_id")
     if isinstance(value, str) and value.strip():
         return value
     return None
