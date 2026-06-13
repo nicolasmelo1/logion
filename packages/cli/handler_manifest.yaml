@@ -110,6 +110,8 @@ commands:
     operations: [add_agent_to_user]
   identity agents-rotate-key:
     operations: [rotate_agent_api_key]
+  identity onboarding:
+    operations: [create_user_with_agent]
   identity users-create:
     operations: [create_user_with_agent]
 
