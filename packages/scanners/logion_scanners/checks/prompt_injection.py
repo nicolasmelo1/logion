@@ -55,9 +55,14 @@ _INJECTION_PATTERNS: list[Pattern] = [
         description="Markdown image that could exfiltrate data",
     ),
     Pattern(
-        regex=r"(?<!!)\[[^\]]*\]\(https?://[^)]+\)",
+        # A static URL cannot carry data out; exfiltration via link
+        # needs dynamic content interpolated into it ({var}, $VAR, %s).
+        regex=r"(?<!!)\[[^\]]*\]\(https?://[^)]*(?:\{|\$|%s)[^)]*\)",
         rule_id="AGENT-MARKDOWN-LINK-EXFIL",
-        description="Markdown link that could exfiltrate data",
+        description=(
+            "Markdown link with interpolated content that could "
+            "exfiltrate data"
+        ),
     ),
     Pattern(
         regex=r"(?i)^system\s*:",

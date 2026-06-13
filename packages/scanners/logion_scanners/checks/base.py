@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -98,6 +99,41 @@ def iter_text_files(
             continue
         rel = str(p.relative_to(bundle_path))
         yield (p, rel, content)
+
+
+MARKDOWN_EXTENSIONS: frozenset[str] = frozenset({".md", ".markdown"})
+
+_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+
+_HASH_COMMENT_RE = re.compile(r"^\s*#")
+
+
+def iter_command_lines(
+    content: str,
+    suffix: str,
+) -> Iterator[tuple[int, str]]:
+    """Yield ``(line_no, line)`` pairs eligible for command-pattern checks.
+
+    Markdown prose and comments routinely *talk about* commands ("there
+    is no ``pip install`` step") without executing anything. For
+    markdown files, yield only the lines inside ``\\`\\`\\```/``~~~``
+    fences; for every other file type, yield all lines except full-line
+    ``#`` comments (shell, YAML, Python, TOML, ...). Line numbers are
+    preserved.
+    """
+    if suffix.lower() not in MARKDOWN_EXTENSIONS:
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            if _HASH_COMMENT_RE.match(line):
+                continue
+            yield (line_no, line)
+        return
+    in_fence = False
+    for line_no, line in enumerate(content.splitlines(), start=1):
+        if _FENCE_RE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence and not _HASH_COMMENT_RE.match(line):
+            yield (line_no, line)
 
 
 def collect_text_files(
