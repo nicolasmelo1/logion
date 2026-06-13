@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// Animated CLI demo for the Logion landing hero.
+// Animated agent-conversation demo for the Logion landing hero.
 //
-// Each tab autoplays its command (typewriter) followed by its output
-// (line-by-line reveal), then pauses and advances to the NEXT tab.
-// Clicking a tab pauses auto-cycle, instantly switches to that tab's
-// final state, and resumes the cycle from the tab after it.
+// Each tab autoplays a short conversation between the user and their
+// agent (typewriter, one turn at a time), then pauses and advances to
+// the NEXT tab. Clicking a tab pauses auto-cycle, instantly switches to
+// that tab's final state, and resumes the cycle from the tab after it.
 // Honors prefers-reduced-motion by showing the final frame without typing.
 
 (function () {
@@ -17,15 +17,21 @@
   const panels = Array.from(root.querySelectorAll(".hero-demo__panel"));
   if (!tabs.length || !panels.length) return;
 
+  // Typing speed (ms per character) per conversation role.
+  const SPEED = { you: 16, agent: 14, run: 11, out: 4 };
+  const DEFAULT_SPEED = 14;
+
   const frames = panels.map((panel) => {
-    const cmdEl = panel.querySelector("[data-cmd]");
-    const outEl = panel.querySelector("[data-out]");
+    const segEls = Array.from(panel.querySelectorAll("[data-seg]"));
+    const segments = segEls.map((el) => ({
+      el,
+      text: el.textContent,
+      role: el.getAttribute("data-role") || "",
+    }));
     return {
       panel,
-      cmdEl,
-      outEl,
-      command: cmdEl ? cmdEl.textContent : "",
-      output: outEl ? outEl.textContent : "",
+      segments,
+      cursor: panel.querySelector(".hero-demo__cursor"),
     };
   });
 
@@ -63,24 +69,29 @@
   }
 
   function renderStatic(frame) {
-    if (frame.cmdEl) frame.cmdEl.textContent = frame.command;
-    if (frame.outEl) frame.outEl.textContent = frame.output;
+    frame.segments.forEach((seg) => {
+      seg.el.textContent = seg.text;
+    });
+    // Park the cursor at the end of the conversation.
+    const chat = frame.panel.querySelector(".hero-demo__chat");
+    if (frame.cursor && chat) chat.appendChild(frame.cursor);
   }
 
   function clearFrame(frame) {
-    if (frame.cmdEl) frame.cmdEl.textContent = "";
-    if (frame.outEl) frame.outEl.textContent = "";
+    frame.segments.forEach((seg) => {
+      seg.el.textContent = "";
+    });
   }
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function typeText(el, text, msPerChar, myToken) {
+  async function typeInto(el, text, msPerChar, myToken) {
     for (let i = 0; i < text.length; i += 1) {
       if (myToken !== runToken) return false;
       el.textContent += text[i];
-      const wait = text[i] === "\n" ? msPerChar * 6 : msPerChar;
+      const wait = text[i] === "\n" ? msPerChar * 5 : msPerChar;
       await sleep(wait);
     }
     return true;
@@ -105,17 +116,21 @@
 
     if (reducedMotion) {
       renderStatic(frame);
-      scheduleAdvance(idx, 6500);
+      scheduleAdvance(idx, 7000);
       return;
     }
 
-    const cmdOk = await typeText(frame.cmdEl, frame.command, 22, myToken);
-    if (!cmdOk) return;
-    await sleep(550);
-    if (myToken !== runToken) return;
-    const outOk = await typeText(frame.outEl, frame.output, 5, myToken);
-    if (!outOk) return;
-    scheduleAdvance(idx, 3500);
+    for (const seg of frame.segments) {
+      if (myToken !== runToken) return;
+      // Cursor trails the turn currently being typed.
+      if (frame.cursor) seg.el.parentNode.appendChild(frame.cursor);
+      const speed = SPEED[seg.role] || DEFAULT_SPEED;
+      const ok = await typeInto(seg.el, seg.text, speed, myToken);
+      if (!ok) return;
+      await sleep(420);
+      if (myToken !== runToken) return;
+    }
+    scheduleAdvance(idx, 4200);
   }
 
   tabs.forEach((tab, idx) => {
@@ -134,7 +149,7 @@
         const next = (idx + 1) % frames.length;
         currentIndex = next;
         playFrame(next);
-      }, 5000);
+      }, 5500);
     });
   });
 

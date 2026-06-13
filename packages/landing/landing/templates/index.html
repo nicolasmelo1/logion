@@ -119,7 +119,7 @@
       <aside
         class="hero-demo"
         data-terminal-demo
-        aria-label="Logion CLI live demo"
+        aria-label="Logion agent conversation demo"
       >
         <header class="hero-demo__bar">
           <span class="hero-demo__title">{{ hero.demo.title }}</span>
@@ -148,11 +148,28 @@
               data-panel="{{ tab.id }}"
               aria-hidden="{{ 'false' if loop.first else 'true' }}"
             >
-              <pre class="hero-demo__pre"><code><span class="hero-demo__prompt">$</span> <span class="hero-demo__cmd" data-cmd>{{ tab.command }}</span><span class="hero-demo__cursor" aria-hidden="true">█</span>
-<span class="hero-demo__out" data-out>{{ tab.output }}</span></code></pre>
+              <div class="hero-demo__chat">
+                {% for turn in tab.turns %}
+                  <div class="hero-demo__turn hero-demo__turn--{{ turn.role }}">
+                    {% if turn.role == 'you' %}
+                      <span class="hero-demo__who">you</span>
+                    {% elif turn.role == 'agent' %}
+                      <span class="hero-demo__who hero-demo__who--agent">agent</span>
+                    {% elif turn.role == 'run' %}
+                      <span class="hero-demo__who hero-demo__who--run">$</span>
+                    {% endif %}
+                    <span
+                      class="hero-demo__seg"
+                      data-seg
+                      data-role="{{ turn.role }}"
+                    >{{ turn.text }}</span>
+                  </div>
+                {% endfor %}
+                <span class="hero-demo__cursor" aria-hidden="true">█</span>
+              </div>
               <noscript>
-                <pre class="hero-demo__pre"><code>$ {{ tab.command }}
-{{ tab.output }}</code></pre>
+                <pre class="hero-demo__pre"><code>{% for turn in tab.turns %}{% if turn.role == 'you' %}you: {% elif turn.role == 'agent' %}agent: {% elif turn.role == 'run' %}$ {% endif %}{{ turn.text }}
+{% endfor %}</code></pre>
               </noscript>
             </section>
           {% endfor %}

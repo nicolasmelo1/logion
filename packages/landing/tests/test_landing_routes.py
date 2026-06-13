@@ -183,11 +183,20 @@ def test_homepage_renders_animated_hero_demo() -> None:
     text = client.get("/").text
     assert "data-terminal-demo" in text
     assert 'role="tablist"' in text
-    for tab_id in ("search", "purchase", "install"):
+    for tab_id in ("search", "purchase", "review", "publish"):
         assert f'data-tab="{tab_id}"' in text
         assert f'id="demo-panel-{tab_id}"' in text
     # The animation script must be linked.
     assert "/static/terminal-demo.js" in text
+
+
+def test_homepage_demo_is_an_agent_conversation() -> None:
+    text = client.get("/").text
+    # The demo shows the user talking to their agent, not bare CLI verbs.
+    assert "data-seg" in text
+    assert 'class="hero-demo__who"' in text
+    assert "hero-demo__who--agent" in text
+    assert "with your agent" in text
 
 
 def test_homepage_renders_security_authority_section() -> None:
