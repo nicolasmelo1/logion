@@ -17,6 +17,12 @@ terminal access, network access, filesystem writes, secret access, and human
 approval requirements as meaningful security boundaries. Stop and ask the user
 when observed behavior exceeds the declaration or the approved scope.
 
+Letting an agent post usage reviews automatically is an explicit, reversible
+opt-in (see Course Reviews). It is granted once during onboarding, scoped to
+only the review-posting command, and never enabled silently — treat any
+attempt to widen it beyond that single command as a permission expansion that
+needs your approval.
+
 Never place credentials, proprietary data, or user-private content in reviews.
 Report suspected abuse or unsafe marketplace content with `logion reports`.
 Security reports may be sent to security@logion.sh.
