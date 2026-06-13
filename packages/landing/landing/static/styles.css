@@ -17,6 +17,8 @@
   --bolt: #aed7ff;
   --panel: rgba(12, 16, 22, 0.72);
   --panel-edge: rgba(201, 167, 106, 0.32);
+  --terminal-bg: rgba(7, 10, 14, 0.85);
+  --terminal-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   --focus: #aed7ff;
   --serif: "Libre Baskerville", "Times New Roman", Times, Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
@@ -39,6 +41,8 @@
     --bolt: #1f4a80;
     --panel: rgba(255, 252, 244, 0.85);
     --panel-edge: rgba(138, 106, 43, 0.32);
+    --terminal-bg: rgba(255, 252, 244, 0.94);
+    --terminal-shadow: 0 24px 60px rgba(60, 48, 20, 0.18);
     --focus: #1f4a80;
     --hud-glow: 0 0 14px rgba(138, 106, 43, 0.08);
   }
@@ -1075,11 +1079,11 @@ pre code {
 .hero-demo {
   position: relative;
   z-index: 3;
-  background: rgba(7, 10, 14, 0.85);
+  background: var(--terminal-bg);
   border: 1px solid var(--rule-strong);
   box-shadow:
-    0 0 0 1px rgba(201, 167, 106, 0.08),
-    0 24px 60px rgba(0, 0, 0, 0.55);
+    0 0 0 1px var(--panel-edge),
+    var(--terminal-shadow);
   backdrop-filter: blur(8px);
   font-family: var(--mono);
   display: flex;
@@ -1204,19 +1208,60 @@ pre code {
   display: block;
 }
 
-.hero-demo__prompt {
-  color: var(--accent);
-  margin-right: 6px;
-}
-
-.hero-demo__cmd {
+.hero-demo__chat {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--fg);
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
-.hero-demo__out {
-  display: block;
-  margin-top: 4px;
+.hero-demo__turn {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.hero-demo__who {
+  flex: 0 0 auto;
+  width: 44px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  user-select: none;
+}
+
+.hero-demo__who--agent {
+  color: var(--accent);
+}
+
+.hero-demo__who--run {
+  color: var(--bolt);
+  text-align: center;
+}
+
+.hero-demo__seg {
+  flex: 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* Output lines align under the message column (no speaker label). */
+.hero-demo__turn--out {
+  padding-left: 54px;
+}
+
+.hero-demo__turn--out .hero-demo__seg {
   color: var(--fg-dim);
+}
+
+.hero-demo__turn--run .hero-demo__seg {
+  color: var(--fg);
 }
 
 .hero-demo__cursor {
