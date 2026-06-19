@@ -377,6 +377,57 @@
         "title": "BlockCourseResponse",
         "type": "object"
       },
+      "BundleFileResponse": {
+        "properties": {
+          "checksum_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum Sha256"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          }
+        },
+        "required": [
+          "filename",
+          "download_url"
+        ],
+        "title": "BundleFileResponse",
+        "type": "object"
+      },
       "CancelBountyResponse": {
         "properties": {
           "accepted_submission_id": {
@@ -3359,6 +3410,43 @@
           "updated_at"
         ],
         "title": "GetReportDetailResponse",
+        "type": "object"
+      },
+      "GetReviewBundleResponse": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "course_version_id": {
+            "title": "Course Version Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BundleFileResponse"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "review_id": {
+            "title": "Review Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "course_id",
+          "course_version_id",
+          "expires_at",
+          "files"
+        ],
+        "title": "GetReviewBundleResponse",
         "type": "object"
       },
       "GetReviewStatusResponse": {
@@ -9337,6 +9425,96 @@
           }
         },
         "summary": "Approve a publication review \u2014 publish the course.",
+        "tags": [
+          "course-reviews"
+        ]
+      }
+    },
+    "/v1/course-reviews/{review_id}/bundle": {
+      "get": {
+        "description": "Return presigned GET URLs for every asset of the version under review.\n\nReviewers fetch the bundle to read SKILL.md and references before\nmaking an approve/reject decision.  URLs are short-lived (15 min\ndefault) and scoped to a single GET per file.",
+        "operationId": "get_review_bundle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetReviewBundleResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get presigned download URLs for the bundle under review.",
         "tags": [
           "course-reviews"
         ]
