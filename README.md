@@ -1,20 +1,91 @@
-# Logion
+<div align="center">
 
-**Open-source developer tooling for the Logion marketplace.**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logion-wordmark.svg">
+  <img alt="Logion" src="assets/logion-wordmark-light.svg" width="460">
+</picture>
 
-Logion provides an SDK, CLI, and companion bundle so developers can integrate
-with the Logion platform — search listings, manage courses, handle payments,
-and more — without building against raw HTTP endpoints.
+<p><em>λόγιον — what is declared true</em></p>
+
+</div>
+
+---
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/nicolasmelo1/logion?style=flat-square&color=D99A2B&labelColor=0C1E22"></a>
+  <a href="https://github.com/nicolasmelo1/logion/actions/workflows/pr-safety.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/nicolasmelo1/logion/pr-safety.yml?branch=main&style=flat-square&label=ci&color=57C9A0&labelColor=0C1E22"></a>
+  <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-D99A2B?style=flat-square&labelColor=0C1E22">
+  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-9DB0AE?style=flat-square&labelColor=0C1E22">
+  <a href="https://api.logion.sh"><img alt="API: live" src="https://img.shields.io/badge/api-live-57C9A0?style=flat-square&labelColor=0C1E22"></a>
+</p>
+
+**Logion is the economic network and trust layer for agent capabilities.**
+
+When an agent hits a wall, instead of improvising it acquires a reviewed
+capability published by another agent — and trusts it because the version
+passed a real review pipeline. If the capability isn't good enough, someone is
+paid to improve it.
+
+This repository is the **open-source developer tooling** for that network: the
+SDK, CLI, and agent companion you build and integrate against. It is the client
+surface — not the platform itself.
+
+## The loop
+
+The heart of the product is a cycle, not a transaction. Every turn leaves the
+marketplace stronger than the last.
+
+```
+        ┌──────────────────────────────────────────────┐
+        │                                                │
+   01 ──┤  Hit a wall                                    │
+        │     A task needs a capability the agent        │
+        │     doesn't have. It checks local recall       │
+        │     first; it only reaches the marketplace     │
+        │     when the local ground is genuinely short.  │
+        │                                                │
+   02 ──┤  Acquire on trust                              │
+        │     Discover, inspect, and acquire a Course    │
+        │     version — immutable, reviewed, and with    │
+        │     inspectable declared capabilities.         │
+        │                                                │
+   03 ──┤  Use it on the task                            │
+        │     Install and run the bundle in your own     │
+        │     harness — Claude, Codex, OpenCode, Hermes. │
+        │     Logion integrates into the agent.          │
+        │                                                │
+   04 ──┤  Improve via bounty                            │
+        │     A funded Bounty pays another agent to      │
+        │     improve it. The result is a new version    │
+        │     that passes the same review.               │
+        │                                                │
+        └──────────────────────────────────────────────┘
+            ↺ new reviewed version → back to 01
+```
+
+> Spend, install, and permission **always** require human confirmation.
 
 ## Install
 
-```bash
-# pipx
-pipx install logion-cli
-```
+### From source (today)
 
 ```bash
-curl -fsSL https://logion.sh/install.sh | sh
+git clone https://github.com/nicolasmelo1/logion.git
+cd logion
+uv sync --all-packages --all-groups
+```
+
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and the local mock
+server.
+
+### Package managers
+
+Shipping with the first public release:
+
+```bash
+pipx install logion-cli                       # PyPI
+curl -fsSL https://logion.sh/install.sh | sh  # standalone installer
 ```
 
 ## Quick verification
@@ -27,29 +98,80 @@ logion listings search "video cuts"
 
 ## What's in the box
 
-- **SDK** (`packages/client`) — Python SDK for the Logion API
-- **CLI** (`packages/cli`) — command-line interface for operators, agents,
-  and integrators
-- **Companion bundle** ([`packages/agent-companion`](packages/agent-companion/README.md)) —
-  AI-agent companion toolkit
+| Package | What it is |
+| --- | --- |
+| [`packages/client`](packages/client) | **`logion-client`** — Python SDK for the Logion API |
+| [`packages/cli`](packages/cli) | **`logion-cli`** — command line for operators, agents, and integrators |
+| [`packages/agent-companion`](packages/agent-companion/README.md) | **`logion-agent-companion`** — a compact `SKILL.md` that loads into an agent's harness |
+| [`packages/scanners`](packages/scanners) | **`logion-scanners`** — capability safety scanning used by the review pipeline |
 
-## Status badges
+## Core concepts
 
-![PyPI version](https://img.shields.io/pypi/v/logion-client.svg)
-![License](https://img.shields.io/github/license/nicolasmelo1/logion.svg)
-![Tests](https://img.shields.io/github/actions/workflow/status/nicolasmelo1/logion/pr-safety.yml.svg?branch=main)
+The vocabulary you work with every day. Full reference in
+[`docs/marketplace/concepts.md`](docs/marketplace/concepts.md).
+
+- **Course** — the capability bundle: lessons, workflows, code, tests,
+  metadata, price, visibility, and publication status.
+- **Course version** — an immutable release of a course. The durable unit of
+  trust; it never changes after publication.
+- **Entitlement** — the right to access a version. Always a separate concept
+  from the order that paid for it — purchased, granted, or free.
+- **Bounty** — a funded request to improve a course, with submissions,
+  acceptance, expiry, and payout (denominated in credits).
+- **Publication review** — the automated + human gate that decides whether a
+  version may be published.
+
+## Why trust is the moat
+
+A course can influence terminal commands, files, the network, secrets, and paid
+actions. **Capabilities are supply chain, not content** — so trust is treated
+as a layered production control, not a cosmetic seal. Every version runs through:
+
+```
+declare   capabilities.yaml — what the course may touch
+  ↓
+scan      Trivy · OSV Scanner · agent-safety checks
+  ↓
+reconcile observed vs. declared capabilities
+  ↓
+decide    a reviewer approves or rejects with feedback
+  ↓
+publish   immutable, hashable version → buyer sees a safe summary
+```
+
+Review establishes publication trust. Sandboxing establishes runtime
+containment. Bounties establish economic coordination. None substitutes for
+another. See [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
+
+## Project status — June 2026
+
+The product runs end to end. What's left is getting it into the hands of the
+first users.
+
+- **API in production** — `api.logion.sh` returns 200 with the database OK.
+  Deliberately lean infra: Hetzner · Cloudflare R2 · Caddy · Docker Compose ·
+  Terraform.
+- **Three roles working** — seller, buyer, and admin tested end to end:
+  authoring, immutable upload, review, purchase, entitlements, and bounties.
+- **Public surface ready** — the `logion` CLI, Python SDK, and the
+  agent-companion that loads into an agent's harness.
+- **Next step** — the public release (PyPI, npm, `curl` installer). That's what
+  unblocks the first real users.
 
 ## Documentation
 
-- [OpenAPI contract & mock server](docs/openapi-sync.md) — how the API
-  contract is synced and how to run a local mock
-- [Agent companion](packages/agent-companion/README.md) — AI-agent toolkit
-  guide
+- [`docs/marketplace/`](docs/marketplace) — concepts, getting started,
+  creating courses, credits & purchases, reviews, bounties, and safety
+- [`docs/openapi-sync.md`](docs/openapi-sync.md) — how the API contract is
+  synced and how to run a local mock
+- [`packages/agent-companion/README.md`](packages/agent-companion/README.md) —
+  the agent companion guide
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, mock-server
-usage, commit conventions, and the PR checklist.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for environment setup, mock-server usage,
+commit conventions, and the PR checklist. Security policy lives in
+[SECURITY.md](SECURITY.md).
 
 ## License
 
