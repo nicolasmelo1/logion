@@ -1396,18 +1396,14 @@ pre code {
   text-align: center;
 }
 
-.cycle__center .glyph {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(201, 167, 106, 0.34);
-  display: grid;
-  place-items: center;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 28px;
+.cycle__center .cycle__mark {
+  display: block;
+  width: 66px;
+  height: 66px;
   color: var(--accent-bright);
-  background: rgba(5, 6, 8, 0.7);
+  background: rgba(5, 6, 8, 0.82);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 10px rgba(201, 167, 106, 0.25));
 }
 
 .cycle__center .cap {
@@ -1422,4 +1418,11 @@ pre code {
   .cycle { max-width: 340px; }
   .cycle__node { width: 116px; }
   .cycle__node .l { font-size: 13px; }
+}
+
+/* Lift the cycle orbit up beside the loop section title (desktop only). */
+@media (min-width: 981px) {
+  #loop .cycle {
+    margin-top: -132px;
+  }
 }
