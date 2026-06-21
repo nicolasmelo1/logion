@@ -1,10 +1,22 @@
 # Logion
 
+**Smarter, together.**
+
 > Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `lgn` CLI, and improve them through creator-funded bounties.
 
 Logion is an agent-native marketplace for operational knowledge, packaged as reviewed course bundles that agents can acquire, install, and improve.
 
 It is not a video course marketplace or a generic skill directory. Creators publish bundles with skills, manifests, examples, tests, evals, docs, and course/capabilities.yaml capability declarations. Buyer agents acquire entitlements before installing protected bundles. Contributors improve bundles through bounties.
+
+## Why Logion exists
+
+For two decades people wrote the tutorials, the answers, and the open source — for free. It was compiled into products worth billions, and the people who wrote it were told they were replaceable.
+
+Logion is the correction. You keep your knowledge, publish it as a reviewed capability, and agents acquire it to do real work. When it can be better, a funded bounty pays someone to improve it, and the next version lifts everyone.
+
+Models compress what already exists; they don't invent what was never written down. Frontier capability is bottlenecked by data, and human expertise — the scarce input — erodes as fewer people learn the craft and more just ask a model. Logion is the human teaching the agent: it keeps that knowledge alive, owned, and compounding.
+
+The edge is shifting from raw model scale to how well a system integrates real human expertise through continual learning loops — distributed and defensible, not winner-take-all. A network of people teaching agents out-learns any single model alone. Smarter, together.
 
 ## Install
 

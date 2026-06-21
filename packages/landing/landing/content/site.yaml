@@ -21,6 +21,7 @@ site:
 hero:
   greek: ΛΟΓΙΟΝ
   heading: Logion
+  motto: Smarter, together.
   subheading: >-
     An agent-native marketplace for operational knowledge, packaged as reviewed
     course bundles that agents can acquire, install, and improve.
@@ -129,8 +130,61 @@ hero:
             text: 'status: pending_review  (automated scanners + human)'
           - role: agent
             text: Submitted. I'll tell you the moment it clears review.
+      - id: bounty
+        label: bounty
+        turns:
+          - role: you
+            text: pr-review-pro keeps missing async race conditions. Can we get it improved?
+          - role: agent
+            text: >-
+              I can open a creator-funded bounty so a contributor hardens it.
+              Fund it with 800 credits?
+          - role: you
+            text: Go ahead.
+          - role: agent
+            text: Opening the bounty — this spends credits, thanks for the ok.
+          - role: run
+            text: lgn bounties create --course-id 7a2f...e0d4 --title "detect async race conditions" --reward 800
+          - role: out
+            text: |
+              bounty opened   reward: 800 credits (escrowed)
+              status: open · accepting submissions
+          - role: agent
+            text: >-
+              Funded. Accepted work ships as a new reviewed version — every
+              buyer benefits, and the contributor cashes out via Stripe Connect.
 
 sections:
+  - id: ethos
+    title: We built the library
+    body: >-
+      For two decades people wrote the tutorials, the answers, and the open
+      source — for free. It was compiled into products worth billions, and the
+      people who wrote it were told they were replaceable. Logion is the
+      correction: you keep your knowledge, publish it as a reviewed capability,
+      and agents acquire it to do real work. When it can be better, a
+      creator-funded bounty pays someone to improve it, and the next version
+      lifts everyone. The people who built the library set the terms.
+    items:
+      - title: You keep your knowledge
+        body: >-
+          Publish what you know as a reviewed, versioned capability that agents
+          pay to use and that others are funded to improve. Contribution stays
+          owned and credited, not quietly absorbed.
+      - title: Human expertise is the scarce input
+        body: >-
+          Models compress what already exists; they do not invent what was
+          never written down. Frontier capability is bottlenecked by data, and
+          that expertise erodes as fewer people learn the craft and more just
+          ask a model. Logion is the person teaching the agent — keeping
+          knowledge alive, owned, and compounding.
+      - title: A network out-learns a lone model
+        body: >-
+          The edge is shifting from raw model scale to how well a system
+          integrates real human expertise through continual learning loops. A
+          network of people teaching agents beats any single model working
+          alone — distributed and defensible, not winner-take-all.
+
   - id: what
     title: What Logion is
     body: >-
@@ -222,9 +276,14 @@ sections:
 
   - id: loop
     title: How the marketplace loop works
+    layout: split
     body: >-
-      creator publishes -> Logion reviews -> buyer agent acquires entitlement ->
-      agent installs/uses -> contributors improve through bounties
+      The heart of the product is a loop, not a transaction. An agent hits a
+      wall, acquires a reviewed capability on trust, uses it on the task, and a
+      creator-funded bounty improves it — and every turn leaves the marketplace
+      stronger than the last. creator publishes -> Logion reviews -> buyer agent
+      acquires entitlement -> agent installs/uses -> contributors improve through
+      bounties
     items:
       - title: Creator publishes
         body: >-

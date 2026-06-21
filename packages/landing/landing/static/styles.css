@@ -183,6 +183,15 @@ a:hover {
   color: var(--fg);
 }
 
+.site-brand__mark {
+  width: 30px;
+  height: 30px;
+  align-self: center;
+  color: var(--accent-bright);
+  filter: drop-shadow(0 0 8px rgba(201, 167, 106, 0.28));
+  flex: none;
+}
+
 .site-brand .greek {
   font-size: 22px;
   color: var(--accent-bright);
@@ -483,6 +492,16 @@ button.cta {
 .hero-copy h1 .accent {
   color: var(--fg);
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hero-motto {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(22px, 2.6vw, 30px);
+  line-height: 1.2;
+  color: var(--accent-bright);
+  margin: 0 0 18px;
+  letter-spacing: 0.01em;
 }
 
 .hero-sub {
@@ -1291,4 +1310,119 @@ pre code {
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--fg-dim);
+}
+
+/* ---- scroll reveal (JS-gated so no-JS keeps content visible) ---- */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.js .reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ---- marketplace cycle (orbit animation) ---- */
+.cycle {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 1 / 1;
+  margin: 8px auto 0;
+}
+
+.cycle canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cycle__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 132px;
+}
+
+.cycle__node .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 0 auto 8px;
+  box-shadow: 0 0 0 5px rgba(201, 167, 106, 0.14);
+}
+
+.cycle__node .k {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--fg-dim);
+  margin-bottom: 3px;
+}
+
+.cycle__node .l {
+  font-size: 14px;
+  color: var(--fg);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.cycle__node.n-top { left: 50%; top: 3%; }
+.cycle__node.n-right { left: 85%; top: 50%; }
+.cycle__node.n-bottom { left: 50%; top: 97%; }
+.cycle__node.n-left { left: 15%; top: 50%; }
+
+.cycle__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.cycle__center .cycle__mark {
+  display: block;
+  width: 66px;
+  height: 66px;
+  color: var(--accent-bright);
+  background: rgba(5, 6, 8, 0.82);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 10px rgba(201, 167, 106, 0.25));
+}
+
+.cycle__center .cap {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+@media (max-width: 980px) {
+  .cycle { max-width: 340px; }
+  .cycle__node { width: 116px; }
+  .cycle__node .l { font-size: 13px; }
+}
+
+/* Lift the cycle orbit up beside the loop section title (desktop only). */
+@media (min-width: 981px) {
+  #loop .cycle {
+    margin-top: -132px;
+  }
 }

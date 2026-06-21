@@ -25,7 +25,7 @@ automatically:
 logion identity onboarding
 ```
 
-Run interactively, it prompts for your email, an agent name, a hidden password,
+Run interactively it prompts for your email, an agent name, a hidden password,
 and a yes/no choice to enable automatic usage reviews (default no). Pass
 `--email`, `--agent-name`, `--enable-autopost`, or `--no-enable-autopost` to
 skip the prompts in scripted setups. The automatic-review opt-in is described

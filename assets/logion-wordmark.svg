@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 505 160" role="img" aria-labelledby="title desc">
+  <title id="title">Logion</title>
+  <desc id="desc">Logion wordmark with a gold Greek lambda seal and the word logion in Greek.</desc>
+  <circle cx="80" cy="80" r="60" fill="none" stroke="#e0a93a" stroke-width="15"/>
+  <circle cx="80" cy="80" r="48" fill="none" stroke="#e0a93a" stroke-width="2"/>
+  <path
+    transform="translate(80 80) scale(0.05372 -0.05372) translate(-514 -702.5)"
+    fill="#e0a93a"
+    d="M967 288H1003Q1003 130 951.5 58.0Q900 -14 823 -14Q760 -14 702.0 33.5Q644 81 598 288L512 676L214 0H25L453 922Q419 1101 371.0 1187.0Q323 1273 252 1273Q195 1273 152.5 1229.5Q110 1186 105 1095H69Q72 1242 128.0 1330.5Q184 1419 268 1419Q322 1419 370.5 1374.5Q419 1330 454.5 1222.5Q490 1115 565 777L636 460Q679 263 726.5 196.5Q774 130 840 130Q952 130 967 288Z"/>
+  <text
+    x="174"
+    y="91"
+    fill="#ece6d8"
+    font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    font-size="31"
+    letter-spacing="15">LOGION</text>
+  <text
+    x="384"
+    y="91"
+    fill="#9db0ae"
+    fill-opacity=".72"
+    font-family="ui-serif, Georgia, Cambria, 'Times New Roman', serif"
+    font-size="34"
+    font-style="italic">λόγιον</text>
+</svg>

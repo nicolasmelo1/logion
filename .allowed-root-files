@@ -32,6 +32,7 @@ uv.lock
 # Directories
 .githooks
 .github
+assets
 contracts
 docs
 examples

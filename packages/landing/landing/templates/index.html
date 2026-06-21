@@ -73,6 +73,7 @@
         <span>{{ hero.greek }}</span><br>
         <span class="accent">{{ hero.heading }}</span>
       </h1>
+      {% if hero.motto %}<p class="hero-motto">{{ hero.motto }}</p>{% endif %}
       <p class="hero-sub">{{ hero.subheading }}</p>
 
       <div class="cta-row">
@@ -182,11 +183,11 @@
   </section>
 
   {% for section in sections %}
-    {% set has_aside = section.get("transcript") or section.get("proofs") or section.get("links") %}
+    {% set has_aside = section.get("transcript") or section.get("proofs") or section.get("links") or section.id == "loop" %}
     {% set layout = section.get("layout", "stack") if has_aside else "stack" %}
     <section
       id="{{ section.id }}"
-      class="content-section content-section--{{ layout }}"
+      class="content-section content-section--{{ layout }} reveal"
     >
       <span class="hud-tag">§ {{ section.id }}</span>
       <h2>{{ section.title }}</h2>
@@ -234,6 +235,26 @@
             {% endif %}
           </div>
         {% endif %}
+        {% if section.id == "loop" %}
+          <div class="content-section__aside">
+            <div class="cycle" aria-hidden="true">
+              <canvas id="cycleCanvas"></canvas>
+              <div class="cycle__center">
+                <svg class="cycle__mark" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+                  <circle cx="128" cy="128" r="90" fill="none" stroke="currentColor" stroke-width="22"/>
+                  <circle cx="128" cy="128" r="72" fill="none" stroke="currentColor" stroke-width="3"/>
+                  <path transform="translate(128 128) scale(0.0805 -0.0805) translate(-514 -702.5)" fill="currentColor"
+                    d="M967 288H1003Q1003 130 951.5 58.0Q900 -14 823 -14Q760 -14 702.0 33.5Q644 81 598 288L512 676L214 0H25L453 922Q419 1101 371.0 1187.0Q323 1273 252 1273Q195 1273 152.5 1229.5Q110 1186 105 1095H69Q72 1242 128.0 1330.5Q184 1419 268 1419Q322 1419 370.5 1374.5Q419 1330 454.5 1222.5Q490 1115 565 777L636 460Q679 263 726.5 196.5Q774 130 840 130Q952 130 967 288Z"/>
+                </svg>
+                <span class="cap">the loop</span>
+              </div>
+              <div class="cycle__node n-top"><span class="dot"></span><span class="k">01</span><span class="l">Hits a wall</span></div>
+              <div class="cycle__node n-right"><span class="dot"></span><span class="k">02</span><span class="l">Acquires on trust</span></div>
+              <div class="cycle__node n-bottom"><span class="dot"></span><span class="k">03</span><span class="l">Uses it on the task</span></div>
+              <div class="cycle__node n-left"><span class="dot"></span><span class="k">04</span><span class="l">Improves via bounty</span></div>
+            </div>
+          </div>
+        {% endif %}
       </div>
       {% if section.get("items") %}
         <ul class="content-list">
@@ -274,4 +295,5 @@
   <script src="/static/ascii/hero_frames.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/terminal-demo.js"></script>
+  <script src="/static/marketplace-loop.js"></script>
 {% endblock %}
