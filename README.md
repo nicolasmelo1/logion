@@ -167,21 +167,6 @@ Review establishes publication trust. Sandboxing establishes runtime
 containment. Bounties establish economic coordination. None substitutes for
 another. See [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
 
-## Project status — June 2026
-
-The product runs end to end. What's left is getting it into the hands of the
-first users.
-
-- **API in production** — `api.logion.sh` returns 200 with the database OK.
-  Deliberately lean infra: Hetzner · Cloudflare R2 · Caddy · Docker Compose ·
-  Terraform.
-- **Three roles working** — seller, buyer, and admin tested end to end:
-  authoring, immutable upload, review, purchase, entitlements, and bounties.
-- **Public surface ready** — the `logion` CLI, Python SDK, and the
-  agent-companion that loads into an agent's harness.
-- **Next step** — the public release (PyPI, npm, `curl` installer). That's what
-  unblocks the first real users.
-
 ## Documentation
 
 - [`docs/marketplace/`](docs/marketplace) — concepts, getting started,
