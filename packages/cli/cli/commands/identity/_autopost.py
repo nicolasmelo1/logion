@@ -32,9 +32,11 @@ def _prompt_yes_no(question: str, *, default: bool = False) -> bool:
 
 def resolve_optin(args: argparse.Namespace) -> bool:
     """Decide whether to enable autopost: flag, prompt, or safe default."""
+    from cli._credentials import save_autoreview_consent
+
     if args.enable_autopost is not None:
-        return bool(args.enable_autopost)
-    if sys.stdin.isatty():
+        decision = bool(args.enable_autopost)
+    elif sys.stdin.isatty():
         print_err(
             "\nAuto-review lets agents post a usage review (rating 1-5, "
             "editable and removable, under your agent's identity, only "
@@ -42,8 +44,13 @@ def resolve_optin(args: argparse.Namespace) -> bool:
             "prompting each time. Undo any time with "
             "`logion identity onboarding --no-enable-autopost`."
         )
-        return _prompt_yes_no("Enable automatic usage reviews?", default=False)
-    return False
+        decision = _prompt_yes_no(
+            "Enable automatic usage reviews?", default=False
+        )
+    else:
+        decision = False
+    save_autoreview_consent(decision)
+    return decision
 
 
 def _target_adapters(args: argparse.Namespace) -> list[HarnessAdapter] | None:

@@ -1,17 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""``logion identity onboarding`` — one command from zero to ready.
-
-Provisions a user + first agent (or reuses an existing identity), then
-optionally — and only with an explicit yes — grants agents permission to
-post usage reviews automatically.  The permission step is delegated to a
-:class:`~cli._harness.base.HarnessAdapter`, so supporting a new agent
-harness later is a new adapter, not a change here.
-"""
+"""``logion identity onboarding`` — one command from zero to ready."""
 
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -20,7 +14,8 @@ from cli._errors import handle_error, print_err
 from cli._harness import adapter_names
 from cli._output import emit_json
 
-from . import _autopost
+from . import _autopost, _companion
+from ._companion import CLOSING_COPY, resolve_target_adapter
 from .handlers import API_KEY_WARNING, _field, _resolve_password
 
 
@@ -141,6 +136,37 @@ def handle_onboarding(args: argparse.Namespace) -> int:
         )
         summary["autopost"] = {"enabled": False}
 
+    # Companion step: install the companion bundle into the harness skill dir.
+    if getattr(args, "no_companion", False):
+        summary["companion"] = {
+            "installed": False, "skill_dir": None,
+            "course_id": None, "version_id": None, "already": False,
+        }
+    else:
+        adapter = resolve_target_adapter(args)
+        if adapter is None:
+            print_err(
+                "No supported agent harness detected, so the companion "
+                "bundle was not installed. Re-run with --harness <name> "
+                "or --agent-dir <path>."
+            )
+            summary["companion"] = {
+                "installed": False, "skill_dir": None,
+                "course_id": None, "version_id": None, "already": False,
+            }
+        else:
+            try:
+                companion = _companion.install_companion(args, adapter)
+            except _companion.CompanionNotFoundError as exc:
+                print_err(f"Warning: companion not installed: {exc}")
+                companion = _companion.CompanionResult(
+                    installed=False, skill_dir=None, course_id=None,
+                    version_id=None, already=False,
+                )
+            summary["companion"] = companion.to_dict()
+
+    print_err(CLOSING_COPY)
+
     if config.json_output:
         emit_json("logion.identity.onboarding", summary)
     return 0
@@ -194,5 +220,27 @@ def register_onboarding(sub: argparse._SubParsersAction) -> None:
             "Target a specific harness (default: auto-detect). "
             f"Supported: {', '.join(adapter_names())}."
         ),
+    )
+    parser.add_argument(
+        "--agent-dir",
+        default=None,
+        help="Write the companion into this skill dir (a CustomPathHarness). "
+        "Overrides --harness detection for the companion step.",
+    )
+    parser.add_argument(
+        "--companion-source",
+        type=Path,
+        default=None,
+        help="Companion bundle source directory (default: auto-locate).",
+    )
+    parser.add_argument(
+        "--no-companion",
+        action="store_true",
+        help="Skip the companion install/sync step.",
+    )
+    parser.add_argument(
+        "--no-onboarding",
+        action="store_true",
+        help="No-op here; honored by the first-run trigger.",
     )
     parser.set_defaults(handler=handle_onboarding)

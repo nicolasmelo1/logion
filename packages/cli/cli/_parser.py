@@ -40,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
+    parser.add_argument(
+        "--no-onboarding",
+        action="store_true",
+        default=False,
+        help="Never run first-run onboarding for this invocation.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     health.register(subparsers)
@@ -57,5 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
     bounties.register(subparsers)
     skills.register(subparsers)
     recall.register(subparsers)
+
+    # Top-level `logion onboarding` alias — same handler as
+    # `logion identity onboarding`.
+    from cli.commands.identity.onboarding import register_onboarding
+
+    register_onboarding(subparsers)
 
     return parser

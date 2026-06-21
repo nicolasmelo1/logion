@@ -95,3 +95,12 @@ class HarnessAdapter(ABC):
     def revoke(self, scope: str) -> GrantResult:
         """Remove the autopost permission at *scope*.  Idempotent."""
         ...
+
+    @abstractmethod
+    def skill_dir(self) -> Path:
+        """Absolute dir this harness loads skills from.
+
+        e.g. Claude Code → ``~/.claude/skills``.  The onboarding
+        companion step writes/symlinks the companion SKILL bundle here.
+        """
+        ...

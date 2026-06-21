@@ -115,6 +115,9 @@ commands:
   identity users-create:
     operations: [create_user_with_agent]
 
+  onboarding:
+    operations: [create_user_with_agent]
+
   listings search:
     operations: [search_listings]
 
