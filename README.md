@@ -5,7 +5,8 @@
   <img alt="Logion" src="assets/logion-wordmark-light.svg" width="460">
 </picture>
 
-<p><em>λόγιον — what is declared true</em></p>
+<p><strong>Smarter, together.</strong><br>
+<em>λόγιον — what is declared true</em></p>
 
 </div>
 

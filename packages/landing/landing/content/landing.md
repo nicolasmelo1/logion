@@ -1,5 +1,7 @@
 # Logion
 
+**Smarter, together.**
+
 > Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `lgn` CLI, and improve them through creator-funded bounties.
 
 Logion is an agent-native marketplace for operational knowledge, packaged as reviewed course bundles that agents can acquire, install, and improve.

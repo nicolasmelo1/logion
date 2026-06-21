@@ -183,6 +183,15 @@ a:hover {
   color: var(--fg);
 }
 
+.site-brand__mark {
+  width: 30px;
+  height: 30px;
+  align-self: center;
+  color: var(--accent-bright);
+  filter: drop-shadow(0 0 8px rgba(201, 167, 106, 0.28));
+  flex: none;
+}
+
 .site-brand .greek {
   font-size: 22px;
   color: var(--accent-bright);
@@ -483,6 +492,16 @@ button.cta {
 .hero-copy h1 .accent {
   color: var(--fg);
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hero-motto {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(22px, 2.6vw, 30px);
+  line-height: 1.2;
+  color: var(--accent-bright);
+  margin: 0 0 18px;
+  letter-spacing: 0.01em;
 }
 
 .hero-sub {

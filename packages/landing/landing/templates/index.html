@@ -73,6 +73,7 @@
         <span>{{ hero.greek }}</span><br>
         <span class="accent">{{ hero.heading }}</span>
       </h1>
+      {% if hero.motto %}<p class="hero-motto">{{ hero.motto }}</p>{% endif %}
       <p class="hero-sub">{{ hero.subheading }}</p>
 
       <div class="cta-row">
