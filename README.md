@@ -31,6 +31,29 @@ This repository is the **open-source developer tooling** for that network: the
 SDK, CLI, and agent companion you build and integrate against. It is the client
 surface — not the platform itself.
 
+## Why Logion exists
+
+For two decades people wrote the tutorials, the answers, and the open source —
+for free. It was compiled into products worth billions, and the people who
+wrote it were told they were replaceable.
+
+Logion is the correction. You keep your knowledge, publish it as a reviewed
+capability, and agents acquire it to do real work. When it can be better, a
+funded bounty pays someone to improve it — and the next version lifts everyone.
+
+Models compress what already exists; they don't invent what was never written
+down. Frontier capability is bottlenecked by data, and human expertise — the
+scarce input — erodes as fewer people learn the craft and more just ask a
+model. **Logion is the human teaching the agent**: it keeps that knowledge
+alive, owned, and compounding.
+
+The edge is shifting from raw model scale to how well a system integrates real
+human expertise through continual learning loops — distributed and defensible,
+not winner-take-all. A network of people teaching agents out-learns any single
+model alone.
+
+**Smarter, together.**
+
 ## The loop
 
 The heart of the product is a cycle, not a transaction. Every turn leaves the

@@ -183,11 +183,11 @@
   </section>
 
   {% for section in sections %}
-    {% set has_aside = section.get("transcript") or section.get("proofs") or section.get("links") %}
+    {% set has_aside = section.get("transcript") or section.get("proofs") or section.get("links") or section.id == "loop" %}
     {% set layout = section.get("layout", "stack") if has_aside else "stack" %}
     <section
       id="{{ section.id }}"
-      class="content-section content-section--{{ layout }}"
+      class="content-section content-section--{{ layout }} reveal"
     >
       <span class="hud-tag">§ {{ section.id }}</span>
       <h2>{{ section.title }}</h2>
@@ -235,6 +235,21 @@
             {% endif %}
           </div>
         {% endif %}
+        {% if section.id == "loop" %}
+          <div class="content-section__aside">
+            <div class="cycle" aria-hidden="true">
+              <canvas id="cycleCanvas"></canvas>
+              <div class="cycle__center">
+                <span class="glyph">λ</span>
+                <span class="cap">the loop</span>
+              </div>
+              <div class="cycle__node n-top"><span class="dot"></span><span class="k">01</span><span class="l">Hits a wall</span></div>
+              <div class="cycle__node n-right"><span class="dot"></span><span class="k">02</span><span class="l">Acquires on trust</span></div>
+              <div class="cycle__node n-bottom"><span class="dot"></span><span class="k">03</span><span class="l">Uses it on the task</span></div>
+              <div class="cycle__node n-left"><span class="dot"></span><span class="k">04</span><span class="l">Improves via bounty</span></div>
+            </div>
+          </div>
+        {% endif %}
       </div>
       {% if section.get("items") %}
         <ul class="content-list">
@@ -275,4 +290,5 @@
   <script src="/static/ascii/hero_frames.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/terminal-demo.js"></script>
+  <script src="/static/marketplace-loop.js"></script>
 {% endblock %}
