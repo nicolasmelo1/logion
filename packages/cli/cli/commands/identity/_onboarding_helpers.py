@@ -37,13 +37,17 @@ def empty_companion_summary() -> dict[str, object]:
 
 
 def validate_explicit_harness(args: argparse.Namespace) -> int | None:
-    """Return an exit code if an explicit ``--harness`` is invalid."""
+    """Return an exit code if an explicit ``--harness`` is invalid.
+
+    Validated whenever ``--harness`` is set, *regardless of*
+    ``--agent-dir``: ``--agent-dir`` only overrides the companion
+    target, but ``--harness`` still drives the autopost grant.  Skipping
+    this when ``--agent-dir`` is present let an unknown ``--harness``
+    slip through to ``_autopost.apply`` (which returns ``None`` →
+    exit 2) with no clear message.
+    """
     requested = getattr(args, "harness", None)
-    if (
-        requested
-        and not getattr(args, "agent_dir", None)
-        and get_adapter(requested) is None
-    ):
+    if requested and get_adapter(requested) is None:
         print_err(
             f"Error: unknown harness '{requested}'. "
             f"Supported: {', '.join(adapter_names())}."

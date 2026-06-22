@@ -75,16 +75,19 @@ class OpenCodeAdapter(HarnessAdapter):
     def _home(self) -> Path:
         return self._home_dir if self._home_dir is not None else Path.home()
 
-    def _config_basename(self) -> Path:
-        return Path("opencode.json")
-
     def config_path(self, scope: str) -> Path:
         from cli._harness.base import VALID_SCOPES
 
         if scope not in VALID_SCOPES:
             raise ValueError(f"unknown scope: {scope!r}")
-        base = self._home() if scope == "global" else self._project()
-        return base / self._config_basename()
+        # Global config lives under ~/.config/opencode/ (matching
+        # skill_dir()/is_present()); the project config is opencode.json
+        # at the project root.  A bare ~/opencode.json (the old global
+        # path) is not where OpenCode reads its settings, so the grant
+        # would have been written to a file OpenCode never loads.
+        if scope == "global":
+            return self._home() / ".config" / "opencode" / "opencode.json"
+        return self._project() / "opencode.json"
 
     def skill_dir(self) -> Path:
         return self._home() / ".config" / "opencode" / "skills"

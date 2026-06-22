@@ -187,6 +187,33 @@ def test_onboarding_unknown_harness_with_no_autopost_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
+def test_onboarding_unknown_harness_with_agent_dir_still_errors(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An unknown --harness is a hard error even with --agent-dir set.
+
+    --agent-dir only overrides the companion target; --harness still
+    drives the autopost grant, so an unknown value must not slip through
+    to _autopost.apply (which would exit 2 with no clear message).
+    """
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--harness",
+        "bogus",
+        "--agent-dir",
+        str(tmp_path / "custom"),
+    ])
+    assert code == 2
+    assert "unknown harness" in capsys.readouterr().err
+
+
 @pytest.mark.usefixtures("env")
 def test_onboarding_noninteractive_missing_email_errors(
     monkeypatch: pytest.MonkeyPatch,

@@ -102,22 +102,29 @@ def locate_bundle_dir(args: argparse.Namespace) -> Path | None:
     if not bundles_root.is_dir():
         return None
 
-    candidates = sorted(
-        (p for p in bundles_root.iterdir() if p.is_dir()),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    return candidates[0] if candidates else None
+    # Newest dir by mtime; skip entries that can't be stat'ed (perms,
+    # broken mounts, transient FS errors) so onboarding never crashes.
+    newest: tuple[float, Path] | None = None
+    for entry in bundles_root.iterdir():
+        try:
+            if not entry.is_dir():
+                continue
+            mtime = entry.stat().st_mtime
+        except OSError:
+            continue
+        if newest is None or mtime > newest[0]:
+            newest = (mtime, entry)
+    return newest[1] if newest else None
 
 
 def _already_installed(course_id: str, version_id: str) -> Path | None:
     """Return the installed dir if the companion is already installed."""
-    from cli._local_state import installed_dir
+    from cli._local_state import UnsafeIdentifierError, installed_dir
 
     try:
         dest = installed_dir(course_id, version_id, get_home())
-    except Exception:
-        return None
+    except UnsafeIdentifierError:
+        return None  # invalid course/version segment → not installed
     return dest if dest.is_dir() else None
 
 

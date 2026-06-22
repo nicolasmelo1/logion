@@ -27,7 +27,9 @@ def test_pattern_is_rendered_from_autopost_command() -> None:
 def test_config_path_scopes(tmp_path: Path) -> None:
     a = _adapter(tmp_path)
     assert a.config_path("project") == (tmp_path / "proj" / "opencode.json")
-    assert a.config_path("global") == (tmp_path / "home" / "opencode.json")
+    assert a.config_path("global") == (
+        tmp_path / "home" / ".config" / "opencode" / "opencode.json"
+    )
     with pytest.raises(ValueError, match="unknown scope"):
         a.config_path("bogus")
 
