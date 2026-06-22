@@ -38,12 +38,18 @@ class CustomPathHarness(HarnessAdapter):
 
     def grant(self, scope: str) -> GrantResult:
         return GrantResult(
-            self.name, scope, self.config_path(scope),
-            changed=False, already=True,
+            self.name,
+            scope,
+            self.config_path(scope),
+            changed=False,
+            already=True,
         )
 
     def revoke(self, scope: str) -> GrantResult:
         return GrantResult(
-            self.name, scope, self.config_path(scope),
-            changed=False, already=True,
+            self.name,
+            scope,
+            self.config_path(scope),
+            changed=False,
+            already=True,
         )

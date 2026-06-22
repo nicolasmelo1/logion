@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import argparse
+
 import pytest
 
 from cli._first_run import decide, is_noninteractive
@@ -37,7 +39,21 @@ def test_trigger_skips_when_onboarded(
     assert d.reason == "already-onboarded"
 
 
-def test_trigger_skips_help(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trigger_skips_help_via_decide(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``decide`` returns ``help-version`` without requiring parse_args."""
+    monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
+    args = argparse.Namespace(command="listings", no_onboarding=False)
+    d = decide(["listings", "--help"], args)
+    assert d.should_run is False
+    assert d.reason == "help-version"
+
+
+def test_trigger_skips_help_parse_exits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--help`` makes argparse exit; ``decide`` is never reached."""
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
     with pytest.raises(SystemExit):
         _parse(["listings", "--help"])
@@ -47,8 +63,6 @@ def test_trigger_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
     # --version exits before parse_args returns, so we test the raw
     # argv check directly.
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
-    # Use a simple namespace since --version won't parse normally
-    import argparse
     args = argparse.Namespace(command=None, no_onboarding=False)
     d = decide(["--version"], args)
     assert d.should_run is False
@@ -97,7 +111,7 @@ def test_trigger_skips_no_tty(monkeypatch: pytest.MonkeyPatch) -> None:
     assert d.reason == "noninteractive-env"
 
 
-def test_trigger_skips_no_onboarding_flag(
+def test_trigger_skips_no_onboarding_flag_before_subcommand(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
@@ -109,6 +123,21 @@ def test_trigger_skips_no_onboarding_flag(
     assert d.reason == "no-onboarding-flag"
 
 
+def test_trigger_skips_no_onboarding_flag_after_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--no-onboarding`` after the subcommand is honoured via raw argv."""
+    monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+    # argparse does not populate ``args.no_onboarding`` when the flag
+    # appears after the subcommand, so ``decide`` must check raw argv.
+    args = _parse(["listings", "search", "--query", "x"])
+    d = decide(["listings", "search", "--query", "x", "--no-onboarding"], args)
+    assert d.should_run is False
+    assert d.reason == "no-onboarding-flag"
+
+
 def test_trigger_skips_non_setup_command(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -116,7 +145,7 @@ def test_trigger_skips_non_setup_command(
     args = _parse(["health"])
     d = decide(["health"], args)
     assert d.should_run is False
-    assert d.reason == "skip-command"
+    assert d.reason == "unknown-command"
 
 
 def test_is_noninteractive_env_var(

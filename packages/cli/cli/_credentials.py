@@ -79,9 +79,7 @@ def stored_agent_id(home: Path | None = None) -> str | None:
     return None
 
 
-def save_autoreview_consent(
-    enabled: bool, home: Path | None = None
-) -> Path:
+def save_autoreview_consent(enabled: bool, home: Path | None = None) -> Path:
     """Persist the auto-review consent decision (non-secret)."""
     path = credentials_path(home)
     data = read_credentials(home)

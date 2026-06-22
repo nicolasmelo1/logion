@@ -53,9 +53,7 @@ class SettingsJsonAdapter(HarnessAdapter):
 
     def _project(self) -> Path:
         return (
-            self._project_dir
-            if self._project_dir is not None
-            else Path.cwd()
+            self._project_dir if self._project_dir is not None else Path.cwd()
         )
 
     def _home(self) -> Path:
@@ -87,9 +85,7 @@ class SettingsJsonAdapter(HarnessAdapter):
     def is_present(self) -> bool:
         if any(d.is_dir() for d in self._detect_dirs()):
             return True
-        return any(
-            shutil.which(b) is not None for b in self._detect_bins()
-        )
+        return any(shutil.which(b) is not None for b in self._detect_bins())
 
     # -- config read/write -------------------------------------------------
 

@@ -14,8 +14,9 @@ from cli._errors import handle_error, print_err
 from cli._harness import adapter_names
 from cli._output import emit_json
 
-from . import _autopost, _companion
-from ._companion import CLOSING_COPY, resolve_target_adapter
+from . import _autopost
+from ._companion import CLOSING_COPY
+from ._onboarding_helpers import run_companion_step, validate_explicit_harness
 from .handlers import API_KEY_WARNING, _field, _resolve_password
 
 
@@ -136,34 +137,17 @@ def handle_onboarding(args: argparse.Namespace) -> int:
         )
         summary["autopost"] = {"enabled": False}
 
-    # Companion step: install the companion bundle into the harness skill dir.
-    if getattr(args, "no_companion", False):
-        summary["companion"] = {
-            "installed": False, "skill_dir": None,
-            "course_id": None, "version_id": None, "already": False,
-        }
-    else:
-        adapter = resolve_target_adapter(args)
-        if adapter is None:
-            print_err(
-                "No supported agent harness detected, so the companion "
-                "bundle was not installed. Re-run with --harness <name> "
-                "or --agent-dir <path>."
-            )
-            summary["companion"] = {
-                "installed": False, "skill_dir": None,
-                "course_id": None, "version_id": None, "already": False,
-            }
-        else:
-            try:
-                companion = _companion.install_companion(args, adapter)
-            except _companion.CompanionNotFoundError as exc:
-                print_err(f"Warning: companion not installed: {exc}")
-                companion = _companion.CompanionResult(
-                    installed=False, skill_dir=None, course_id=None,
-                    version_id=None, already=False,
-                )
-            summary["companion"] = companion.to_dict()
+    # Validate an explicitly-requested harness up-front so an unknown
+    # name is a hard error even when autopost is disabled or the
+    # companion step is skipped.
+    rc = validate_explicit_harness(args)
+    if rc is not None:
+        return rc
+
+    companion_summary, rc = run_companion_step(args)
+    if rc is not None:
+        return rc
+    summary["companion"] = companion_summary
 
     print_err(CLOSING_COPY)
 

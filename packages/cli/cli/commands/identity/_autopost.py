@@ -49,7 +49,13 @@ def resolve_optin(args: argparse.Namespace) -> bool:
         )
     else:
         decision = False
-    save_autoreview_consent(decision)
+    # Persist consent best-effort: a write failure (read-only home,
+    # permissions) must not abort onboarding.  Identity saving follows
+    # the same warn-and-continue pattern.
+    try:
+        save_autoreview_consent(decision)
+    except OSError as exc:
+        print_err(f"Warning: could not save consent: {exc}")
     return decision
 
 

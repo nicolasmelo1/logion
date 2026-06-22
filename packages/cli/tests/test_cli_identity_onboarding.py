@@ -167,6 +167,26 @@ def test_onboarding_unknown_harness_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
+def test_onboarding_unknown_harness_with_no_autopost_errors(
+    env: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An explicit but unknown --harness is a hard error even when
+    autopost is disabled, so the companion step never silently skips."""
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--harness",
+        "bogus",
+        "--no-companion",
+    ])
+    assert code == 2
+    assert "unknown harness" in capsys.readouterr().err
+
+
 @pytest.mark.usefixtures("env")
 def test_onboarding_noninteractive_missing_email_errors(
     monkeypatch: pytest.MonkeyPatch,
@@ -230,6 +250,7 @@ def test_onboarding_prompt_enables_autopost(
 # Companion + consent tests (phase 14.1)
 # ---------------------------------------------------------------------------
 
+
 def _make_bundle(tmp_path: Path) -> Path:
     """Create a minimal companion bundle dir with a SKILL.md."""
     bundle = tmp_path / "bundle"
@@ -264,8 +285,7 @@ def test_onboarding_installs_companion_into_skill_dir(
     ])
     assert code == 0
     skill_link = (
-        env.home / ".claude" / "skills"
-        / "logion-marketplace-companion"
+        env.home / ".claude" / "skills" / "logion-marketplace-companion"
     )
     assert skill_link.is_symlink()
     data = _stdout_data(capsys)
