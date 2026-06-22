@@ -220,3 +220,21 @@ def test_main_no_onboarding_after_subcommand_does_not_trigger(
     main(["courses", "purchase", "abc", "--no-onboarding"])
     # The command handler may fail (no API), but onboarding must not run.
     assert called == []
+
+
+def test_onboarding_args_leaves_autopost_unset_to_prompt() -> None:
+    """First-run onboarding must inherit ``enable_autopost=None`` so it
+    prompts for auto-review consent rather than silently disabling it.
+
+    Auto-review opt-in is a core product decision; the trigger-driven
+    flow must ask, not decide for the user.
+    """
+    from cli.main import _onboarding_args_from
+
+    # A setup command's namespace has no autopost fields of its own.
+    cmd_args = build_parser().parse_args(["courses", "purchase", "abc"])
+    onboarding_args = _onboarding_args_from(cmd_args)
+
+    assert onboarding_args.enable_autopost is None  # tri-state → prompt
+    assert onboarding_args.autopost_scope == "global"
+    assert onboarding_args.no_companion is False

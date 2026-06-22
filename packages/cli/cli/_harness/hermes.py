@@ -2,17 +2,30 @@
 """Hermes Agent harness adapter.
 
 Hermes stores its configuration in ``~/.hermes/config.yaml`` (YAML, not
-JSON) and loads skills from ``~/.hermes/skills/``.  Permission gating
-in Hermes is controlled by ``approvals.mode`` in config.yaml (``manual``,
-``smart``, or ``off``) — there is no per-command allow list like Claude
-Code's ``permissions.allow``.  The ``--yolo`` flag bypasses all approval
-prompts globally, but Logion cannot pre-authorise a single command.
+JSON) and loads skills from ``~/.hermes/skills/``.  Permission gating is
+controlled by ``approvals.mode`` (``manual`` / ``smart`` / ``off``), and
+Hermes *does* keep a per-command allow list — ``command_allowlist`` in
+config.yaml — that bypasses approval in future sessions:
+
+    command_allowlist:
+      - rm
+      - systemctl
+
+Crucially, those entries are keyed on the **command name** (approving
+``rm -rf`` "always" stores ``rm``), not a full command line.  Logion's
+autopost grant is deliberately sub-command-scoped — *exactly*
+``logion courses report-usage``, nothing broader (see ``base.py``).
+That scope is not expressible in ``command_allowlist``: the only entry
+we could add is ``logion``, which would pre-approve **every** ``logion``
+command.  Over-granting like that defeats the point of the grant.
 
 Therefore the autopost grant is a **no-op** for Hermes: ``grant`` and
 ``revoke`` report ``already=True`` without writing anything, and
-``is_granted`` always returns ``False`` (the permission model does not
-support per-command grants).  The companion skill directory is still
-correct so the symlink step works.
+``is_granted`` always returns ``False`` — not because Hermes lacks an
+allow list, but because its allow list cannot express a least-privilege,
+sub-command-scoped grant.  The companion skill directory is still
+correct so the symlink step works.  (``--yolo`` / ``HERMES_YOLO_MODE``
+exist but bypass *all* approvals globally — never something Logion sets.)
 """
 
 from __future__ import annotations
@@ -26,8 +39,9 @@ class HermesAdapter(HarnessAdapter):
     """Hermes agent harness.
 
     Companion install is supported (symlink into ``~/.hermes/skills``);
-    autopost grant is a no-op because Hermes has no per-command
-    permission list.
+    autopost grant is a no-op because Hermes's ``command_allowlist`` is
+    keyed on command name and cannot express a sub-command-scoped grant
+    without over-granting all ``logion`` commands (see module docstring).
     """
 
     name = "hermes"

@@ -25,20 +25,23 @@ def _onboarding_args_from(args):
     Defaults are derived from the onboarding subparser itself so a new
     argument added to ``register_onboarding`` propagates automatically
     without a manual mirror list here.
+
+    ``enable_autopost`` is deliberately left at its declared default of
+    ``None`` (the tri-state "unset") so first-run onboarding *prompts*
+    the user for auto-review consent on a TTY rather than silently
+    defaulting it off — auto-review opt-in is a core product decision
+    the user must make explicitly, not have made for them.
     """
     import argparse
 
     from cli._parser import build_parser
 
     # Build a throwaway parser to harvest the onboarding subparser's
-    # defaults.  We parse ``["onboarding", "--no-enable-autopost"]``
-    # so mutually-exclusive groups and store_true/store_false actions
-    # resolve to their declared defaults rather than ``SUPPRESS``.
+    # declared defaults.  Parse only the subcommand (no overriding
+    # flags) so ``enable_autopost`` stays ``None`` → resolve_optin
+    # prompts for consent instead of silently disabling auto-review.
     defaults_parser = build_parser()
-    base_defaults = defaults_parser.parse_args([
-        "onboarding",
-        "--no-enable-autopost",
-    ])
+    base_defaults = defaults_parser.parse_args(["onboarding"])
 
     namespace = argparse.Namespace()
     for attr in vars(base_defaults):
