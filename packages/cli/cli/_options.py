@@ -23,6 +23,12 @@ def build_common_parser() -> argparse.ArgumentParser:
     )
     parent.add_argument("--timeout", type=float)
     parent.add_argument("--max-retries", type=int)
+    parent.add_argument(
+        "--no-onboarding",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help="Never run first-run onboarding for this invocation.",
+    )
     return parent
 
 

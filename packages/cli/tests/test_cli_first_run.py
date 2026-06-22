@@ -148,6 +148,20 @@ def test_trigger_skips_non_setup_command(
     assert d.reason == "unknown-command"
 
 
+def test_trigger_skips_json_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--json`` is treated as non-interactive: never hijack stdout."""
+    monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+    monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
+    args = _parse(["listings", "search", "--query", "x", "--json"])
+    d = decide(["listings", "search", "--query", "x", "--json"], args)
+    assert d.should_run is False
+    assert d.reason == "json-output"
+
+
 def test_is_noninteractive_env_var(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -169,3 +183,26 @@ def test_is_noninteractive_with_tty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     assert is_noninteractive() is False
+
+
+def test_main_no_onboarding_after_subcommand_does_not_trigger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--no-onboarding`` after the subcommand must be accepted by
+    argparse and prevent the first-run trigger from firing."""
+    from cli.main import main
+
+    monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+    monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
+    # Patch the onboarding handler so we can assert it was NOT called.
+    called: list[bool] = []
+    monkeypatch.setattr(
+        "cli.commands.identity.onboarding.handle_onboarding",
+        lambda _args: called.append(True) or 0,
+    )
+    # Use a setup command to isolate the flag's effect.
+    main(["listings", "search", "--query", "x", "--no-onboarding"])
+    # The command handler may fail (no API), but onboarding must not run.
+    assert called == []

@@ -11,15 +11,17 @@ companion-install primitives.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from cli._errors import print_err
+from cli._harness import detect_present, get_adapter
+from cli._harness.base import HarnessAdapter
 
 from ._companion import (
     CompanionInstallError,
     CompanionNotFoundError,
     CompanionResult,
     install_companion,
-    resolve_target_adapter,
 )
 
 
@@ -87,3 +89,45 @@ def run_companion_step(
         print_err(f"Error: companion install failed: {exc}")
         return empty_companion_summary(), 2
     return companion.to_dict(), None
+
+
+def ensure_symlink(adapter: HarnessAdapter, install_dest: Path) -> None:
+    """Symlink ``install_dest`` into ``adapter.skill_dir()``.
+
+    Uses the existing ``create_symlink`` helper so we share the same
+    replace-prior-link/refuse-real-directory behaviour as
+    ``logion skills install --symlink-dir``.
+    """
+    from cli.commands.skills._agent_symlink import create_symlink
+
+    skill_name = "logion-marketplace-companion"
+    target_skill_dir = adapter.skill_dir()
+    create_symlink(target_skill_dir, skill_name, install_dest)
+
+
+def resolve_target_adapter(
+    args: argparse.Namespace,
+) -> HarnessAdapter | None:
+    """Resolve the adapter for the companion step.
+
+    Returns ``None`` only when no harness is auto-detected and neither
+    ``--harness`` nor ``--agent-dir`` was given.  An explicit but
+    unknown ``--harness`` is a hard error (raised below), not a silent
+    skip.
+    """
+    from cli._harness.custom import CustomPathHarness
+
+    agent_dir = getattr(args, "agent_dir", None)
+    if agent_dir:
+        return CustomPathHarness(Path(agent_dir).expanduser())
+
+    harness = getattr(args, "harness", None)
+    if harness:
+        adapter = get_adapter(harness)
+        if adapter is None:
+            print_err(f"Error: unknown harness '{harness}'.")
+            raise CompanionNotFoundError(f"unknown harness: {harness}")
+        return adapter
+
+    present = detect_present()
+    return present[0] if present else None

@@ -16,25 +16,31 @@ def _onboarding_args_from(args):
     → ``base_url``, ``--json`` → ``json_output``, ``--max-retries`` →
     ``max_retries``) so first-run onboarding honours the same
     API/output configuration the user passed to the original command.
+
+    Onboarding-specific fields that are absent from the original
+    command's parser (e.g. ``autopost_scope``, ``no_companion``) are
+    filled with the *onboarding* defaults, not ``None``, so the handler
+    never sees an invalid scope or tri-state boolean.
     """
     import argparse
 
     namespace = argparse.Namespace()
-    # Onboarding-specific fields.
-    for key in (
-        "email",
-        "agent_name",
-        "user_name",
-        "password",
-        "enable_autopost",
-        "autopost_scope",
-        "harness",
-        "agent_dir",
-        "companion_source",
-        "no_companion",
-        "no_onboarding",
-    ):
-        setattr(namespace, key, getattr(args, key, None))
+    # Onboarding-specific fields with their real defaults.
+    _defaults: dict[str, object] = {
+        "email": None,
+        "agent_name": None,
+        "user_name": None,
+        "password": None,
+        "enable_autopost": None,
+        "autopost_scope": "global",
+        "harness": None,
+        "agent_dir": None,
+        "companion_source": None,
+        "no_companion": False,
+        "no_onboarding": False,
+    }
+    for key, default in _defaults.items():
+        setattr(namespace, key, getattr(args, key, default))
     # Common options — dest names from cli._options.COMMON_PARSER.
     namespace.api_key = getattr(args, "api_key", None)
     namespace.base_url = getattr(args, "base_url", None)

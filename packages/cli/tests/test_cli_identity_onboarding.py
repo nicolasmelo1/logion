@@ -257,6 +257,7 @@ def _make_bundle(tmp_path: Path) -> Path:
     bundle.mkdir()
     (bundle / "SKILL.md").write_text(
         "---\nname: logion-marketplace-companion\n"
+        "version: 0.1.0\n"
         "description: First-party companion.\n---\n# Companion\n"
     )
     return bundle

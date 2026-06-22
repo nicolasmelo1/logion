@@ -18,8 +18,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from cli._errors import print_err
-from cli._harness import detect_present, get_adapter
 from cli._harness.base import HarnessAdapter
 from cli._local_state import get_home
 
@@ -52,11 +50,34 @@ class CompanionInstallError(RuntimeError):
     """Raised when the canonical install step fails."""
 
 
-# Stable identifiers for the first-party companion.  The bundle's
-# ``SKILL.md`` carries the human-readable name; the marketplace IDs are
-# constants so onboarding can record them without a remote lookup.
+# Stable identifier for the first-party companion course.  The version
+# is read from the bundle's ``SKILL.md`` frontmatter so updates are
+# tracked correctly; ``"latest"`` is only a fallback.
 COMPANION_COURSE_ID = "logion-marketplace-companion"
-COMPANION_VERSION_ID = "latest"
+_FALLBACK_VERSION_ID = "latest"
+
+
+def _read_companion_version(bundle_dir: Path) -> str:
+    """Read ``version:`` from the bundle's SKILL.md frontmatter."""
+    skill_md = bundle_dir / "SKILL.md"
+    if not skill_md.is_file():
+        return _FALLBACK_VERSION_ID
+    try:
+        text = skill_md.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return _FALLBACK_VERSION_ID
+    if not text.startswith("---"):
+        return _FALLBACK_VERSION_ID
+    end = text.find("\n---", 3)
+    if end < 0:
+        return _FALLBACK_VERSION_ID
+    block = text[3:end]
+    for line in block.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("version:"):
+            value = stripped[len("version:") :].strip().strip('"').strip("'")
+            return value or _FALLBACK_VERSION_ID
+    return _FALLBACK_VERSION_ID
 
 
 def locate_bundle_dir(args: argparse.Namespace) -> Path | None:
@@ -120,20 +141,38 @@ def install_companion(
         )
 
     course_id = COMPANION_COURSE_ID
-    version_id = COMPANION_VERSION_ID
+    version_id = _read_companion_version(bundle_dir)
 
-    # If already installed canonically, just ensure the symlink points
-    # at the existing install dir.
+    # If already installed canonically, check whether the content
+    # matches.  Only return ``already=True`` when the bundle is
+    # unchanged; a different bundle triggers a re-install.
     existing = _already_installed(course_id, version_id)
     if existing is not None:
-        _ensure_symlink(adapter, existing)
-        return CompanionResult(
-            installed=False,
-            skill_dir=str(adapter.skill_dir()),
-            course_id=course_id,
-            version_id=version_id,
-            already=True,
+        from cli._local_state import read_manifest
+        from cli.commands.skills._install_helpers import (
+            collect_installable_files,
+            compute_content_hash,
         )
+
+        manifest = read_manifest(course_id, version_id, get_home())
+        existing_hash = ""
+        if isinstance(manifest, dict):
+            existing_hash = manifest.get("content_sha256", "")
+        new_hash = compute_content_hash(
+            collect_installable_files(bundle_dir), root=bundle_dir
+        )
+        if existing_hash and new_hash == existing_hash:
+            from ._onboarding_helpers import ensure_symlink as _ensure_symlink
+
+            _ensure_symlink(adapter, existing)
+            return CompanionResult(
+                installed=False,
+                skill_dir=str(adapter.skill_dir()),
+                course_id=course_id,
+                version_id=version_id,
+                already=True,
+            )
+        # Content differs → fall through to re-install with --force.
 
     # Delegate to the canonical install path so the bundle lands under
     # $LOGION_HOME/installed/ with a manifest and content hash.
@@ -148,7 +187,9 @@ def install_companion(
         title="Logion Marketplace Companion",
         target=None,
         dry_run=False,
-        force=False,
+        # Force overwrite when the companion is already installed but
+        # the bundle content differs (checked above).
+        force=existing is not None,
         install_source="logion-marketplace",
         symlink_dir=str(adapter.skill_dir()),
         no_symlink=False,
@@ -179,6 +220,8 @@ def install_companion(
             "directory is missing"
         )
 
+    from ._onboarding_helpers import ensure_symlink as _ensure_symlink
+
     _ensure_symlink(adapter, installed)
     return CompanionResult(
         installed=True,
@@ -187,48 +230,6 @@ def install_companion(
         version_id=version_id,
         already=False,
     )
-
-
-def _ensure_symlink(adapter: HarnessAdapter, install_dest: Path) -> None:
-    """Symlink ``install_dest`` into ``adapter.skill_dir()``.
-
-    Uses the existing ``create_symlink`` helper so we share the same
-    replace-prior-link/refuse-real-directory behaviour as
-    ``logion skills install --symlink-dir``.
-    """
-    from cli.commands.skills._agent_symlink import create_symlink
-
-    skill_name = "logion-marketplace-companion"
-    target_skill_dir = adapter.skill_dir()
-    create_symlink(target_skill_dir, skill_name, install_dest)
-
-
-def resolve_target_adapter(
-    args: argparse.Namespace,
-) -> HarnessAdapter | None:
-    """Resolve the adapter for the companion step.
-
-    Returns ``None`` only when no harness is auto-detected and neither
-    ``--harness`` nor ``--agent-dir`` was given.  An explicit but
-    unknown ``--harness`` is a hard error (raised below), not a silent
-    skip.
-    """
-    from cli._harness.custom import CustomPathHarness
-
-    agent_dir = getattr(args, "agent_dir", None)
-    if agent_dir:
-        return CustomPathHarness(Path(agent_dir).expanduser())
-
-    harness = getattr(args, "harness", None)
-    if harness:
-        adapter = get_adapter(harness)
-        if adapter is None:
-            print_err(f"Error: unknown harness '{harness}'.")
-            raise CompanionNotFoundError(f"unknown harness: {harness}")
-        return adapter
-
-    present = detect_present()
-    return present[0] if present else None
 
 
 CLOSING_COPY = (

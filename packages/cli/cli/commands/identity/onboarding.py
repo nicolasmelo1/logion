@@ -222,9 +222,6 @@ def register_onboarding(sub: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Skip the companion install/sync step.",
     )
-    parser.add_argument(
-        "--no-onboarding",
-        action="store_true",
-        help="No-op here; honored by the first-run trigger.",
-    )
+    # ``--no-onboarding`` is inherited from COMMON_PARSER; no need to
+    # re-declare it here.
     parser.set_defaults(handler=handle_onboarding)

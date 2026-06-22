@@ -43,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-onboarding",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Never run first-run onboarding for this invocation.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)

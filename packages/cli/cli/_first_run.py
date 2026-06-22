@@ -70,4 +70,8 @@ def decide(argv: list[str], args: argparse.Namespace) -> TriggerDecision:
         return TriggerDecision(should_run=False, reason="already-onboarded")
     if is_noninteractive():
         return TriggerDecision(should_run=False, reason="noninteractive-env")
+    # ``--json`` means a machine consumer is piping stdout; never
+    # hijack it with onboarding prompts or JSON of our own.
+    if getattr(args, "json_output", False):
+        return TriggerDecision(should_run=False, reason="json-output")
     return TriggerDecision(should_run=True, reason="command-needs-setup")
