@@ -1,9 +1,16 @@
 # SPDX-License-Identifier: MIT
-"""Shared base for harnesses that store permissions in a ``settings.json``.
+"""Shared base for harnesses that store permissions in a ``settings.json``
+with a ``permissions.allow`` list.
 
-Claude Code, Codex, and OpenCode all use a JSON settings file with a
-``permissions.allow`` list.  This base factors out the common
-read/write/grant/revoke logic so each adapter only parameterizes the
+Currently only Claude Code uses this format.  Other harnesses have their
+own adapter implementations with their native config formats:
+
+- Codex → ``~/.codex/config.toml`` (TOML, no per-command allow list)
+- OpenCode → ``opencode.json`` (JSON, ``permission.bash`` patterns)
+- Hermes → ``~/.hermes/config.yaml`` (YAML, no per-command allow list)
+
+This base factors out the common read/write/grant/revoke logic for the
+``permissions.allow`` JSON shape so Claude Code only parameterizes the
 config path and skill directory.
 """
 

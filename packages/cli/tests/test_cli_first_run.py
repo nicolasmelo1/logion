@@ -23,8 +23,8 @@ def test_trigger_fires_when_unonboarded_and_tty(
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
-    args = _parse(["listings", "search", "--query", "x"])
-    d = decide(["listings", "search", "--query", "x"], args)
+    args = _parse(["courses", "purchase", "abc"])
+    d = decide(["courses", "purchase", "abc"], args)
     assert d.should_run is True
     assert d.reason == "command-needs-setup"
 
@@ -33,8 +33,8 @@ def test_trigger_skips_when_onboarded(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: True)
-    args = _parse(["listings", "search", "--query", "x"])
-    d = decide(["listings", "search", "--query", "x"], args)
+    args = _parse(["courses", "purchase", "abc"])
+    d = decide(["courses", "purchase", "abc"], args)
     assert d.should_run is False
     assert d.reason == "already-onboarded"
 
@@ -44,8 +44,8 @@ def test_trigger_skips_help_via_decide(
 ) -> None:
     """``decide`` returns ``help-version`` without requiring parse_args."""
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
-    args = argparse.Namespace(command="listings", no_onboarding=False)
-    d = decide(["listings", "--help"], args)
+    args = argparse.Namespace(command="courses", no_onboarding=False)
+    d = decide(["courses", "--help"], args)
     assert d.should_run is False
     assert d.reason == "help-version"
 
@@ -56,7 +56,7 @@ def test_trigger_skips_help_parse_exits(
     """``--help`` makes argparse exit; ``decide`` is never reached."""
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
     with pytest.raises(SystemExit):
-        _parse(["listings", "--help"])
+        _parse(["courses", "--help"])
 
 
 def test_trigger_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,8 +94,8 @@ def test_trigger_skips_noninteractive_env(
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     monkeypatch.setenv("LOGION_NONINTERACTIVE", "1")
-    args = _parse(["listings", "search", "--query", "x"])
-    d = decide(["listings", "search", "--query", "x"], args)
+    args = _parse(["courses", "purchase", "abc"])
+    d = decide(["courses", "purchase", "abc"], args)
     assert d.should_run is False
     assert d.reason == "noninteractive-env"
 
@@ -105,8 +105,8 @@ def test_trigger_skips_no_tty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
-    args = _parse(["listings", "search", "--query", "x"])
-    d = decide(["listings", "search", "--query", "x"], args)
+    args = _parse(["courses", "purchase", "abc"])
+    d = decide(["courses", "purchase", "abc"], args)
     assert d.should_run is False
     assert d.reason == "noninteractive-env"
 
@@ -117,8 +117,8 @@ def test_trigger_skips_no_onboarding_flag_before_subcommand(
     monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
-    args = _parse(["--no-onboarding", "listings", "search", "--query", "x"])
-    d = decide(["--no-onboarding", "listings", "search", "--query", "x"], args)
+    args = _parse(["--no-onboarding", "courses", "purchase", "abc"])
+    d = decide(["--no-onboarding", "courses", "purchase", "abc"], args)
     assert d.should_run is False
     assert d.reason == "no-onboarding-flag"
 
@@ -132,8 +132,8 @@ def test_trigger_skips_no_onboarding_flag_after_subcommand(
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     # argparse does not populate ``args.no_onboarding`` when the flag
     # appears after the subcommand, so ``decide`` must check raw argv.
-    args = _parse(["listings", "search", "--query", "x"])
-    d = decide(["listings", "search", "--query", "x", "--no-onboarding"], args)
+    args = _parse(["courses", "purchase", "abc"])
+    d = decide(["courses", "purchase", "abc", "--no-onboarding"], args)
     assert d.should_run is False
     assert d.reason == "no-onboarding-flag"
 
@@ -148,6 +148,20 @@ def test_trigger_skips_non_setup_command(
     assert d.reason == "unknown-command"
 
 
+def test_trigger_skips_listings_browse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``listings`` is public/read-only — must not force onboarding."""
+    monkeypatch.setattr("cli._first_run.is_onboarded", lambda: False)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+    monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
+    args = _parse(["listings", "search", "--query", "x"])
+    d = decide(["listings", "search", "--query", "x"], args)
+    assert d.should_run is False
+    assert d.reason == "unknown-command"
+
+
 def test_trigger_skips_json_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -156,8 +170,8 @@ def test_trigger_skips_json_output(
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
     monkeypatch.delenv("LOGION_NONINTERACTIVE", raising=False)
-    args = _parse(["listings", "search", "--query", "x", "--json"])
-    d = decide(["listings", "search", "--query", "x", "--json"], args)
+    args = _parse(["courses", "purchase", "abc", "--json"])
+    d = decide(["courses", "purchase", "abc", "--json"], args)
     assert d.should_run is False
     assert d.reason == "json-output"
 
@@ -203,6 +217,6 @@ def test_main_no_onboarding_after_subcommand_does_not_trigger(
         lambda _args: called.append(True) or 0,
     )
     # Use a setup command to isolate the flag's effect.
-    main(["listings", "search", "--query", "x", "--no-onboarding"])
+    main(["courses", "purchase", "abc", "--no-onboarding"])
     # The command handler may fail (no API), but onboarding must not run.
     assert called == []

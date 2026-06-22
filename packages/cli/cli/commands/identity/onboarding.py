@@ -125,6 +125,12 @@ def handle_onboarding(args: argparse.Namespace) -> int:
         print_err(f"Already onboarded (user {existing}).")
         summary.update({"user_id": existing, "created": False})
 
+    # Validate an explicitly-requested harness up-front so an unknown
+    # name is a hard error before autopost or the companion step runs.
+    rc = validate_explicit_harness(args)
+    if rc is not None:
+        return rc
+
     if _autopost.resolve_optin(args):
         autopost = _autopost.apply(args)
         if autopost is None:
@@ -136,13 +142,6 @@ def handle_onboarding(args: argparse.Namespace) -> int:
             "`logion identity onboarding --enable-autopost`."
         )
         summary["autopost"] = {"enabled": False}
-
-    # Validate an explicitly-requested harness up-front so an unknown
-    # name is a hard error even when autopost is disabled or the
-    # companion step is skipped.
-    rc = validate_explicit_harness(args)
-    if rc is not None:
-        return rc
 
     companion_summary, rc = run_companion_step(args)
     if rc is not None:

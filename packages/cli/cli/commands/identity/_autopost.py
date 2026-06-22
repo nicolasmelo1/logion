@@ -60,14 +60,16 @@ def resolve_optin(args: argparse.Namespace) -> bool:
 
 
 def _target_adapters(args: argparse.Namespace) -> list[HarnessAdapter] | None:
-    """Resolve which harnesses to grant: ``--harness`` or auto-detected."""
+    """Resolve which harnesses to grant: ``--harness`` or auto-detected.
+
+    Returns ``None`` only when an explicit ``--harness`` is unknown —
+    the error message is printed by ``validate_explicit_harness``
+    before this function is reached, so we return ``None`` silently
+    to signal the hard error without duplicating the message.
+    """
     if args.harness:
         adapter = get_adapter(args.harness)
         if adapter is None:
-            print_err(
-                f"Error: unknown harness {args.harness!r}. "
-                f"Supported: {', '.join(adapter_names())}."
-            )
             return None
         return [adapter]
     present = detect_present()

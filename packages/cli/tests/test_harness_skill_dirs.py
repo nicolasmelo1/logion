@@ -24,7 +24,7 @@ def _make(adapter_cls, tmp_path: Path):
     ("adapter_cls", "expected_suffix"),
     [
         (ClaudeCodeAdapter, ".claude/skills"),
-        (CodexAdapter, ".agents/skills"),
+        (CodexAdapter, ".codex/skills"),
         (OpenCodeAdapter, ".config/opencode/skills"),
         (HermesAdapter, ".hermes/skills"),
     ],
@@ -63,7 +63,7 @@ def test_detect_present_per_harness(tmp_path: Path) -> None:
     original_which = shutil.which
     shutil.which = lambda _name: None  # type: ignore[assignment]
     try:
-        (tmp_path / "home" / ".agents").mkdir(parents=True)
+        (tmp_path / "home" / ".codex").mkdir(parents=True)
         present = detect_present()
         names = [a.name for a in present]
         assert names == ["codex"]

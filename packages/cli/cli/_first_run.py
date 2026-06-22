@@ -19,6 +19,9 @@ from cli._credentials import is_onboarded
 SKIP_COMMANDS: frozenset[str] = frozenset({"docs", "onboarding"})
 
 # Commands that need identity/companion/local-state to be useful.
+# ``listings`` is excluded because search/browse is public and read-only —
+# forcing onboarding before a prospective user can explore the marketplace
+# adds friction without value.
 NEEDS_SETUP_COMMANDS: frozenset[str] = frozenset({
     "courses",
     "credits",
@@ -27,7 +30,6 @@ NEEDS_SETUP_COMMANDS: frozenset[str] = frozenset({
     "reports",
     "course-reviews",
     "bounties",
-    "listings",
     "skills",
     "recall",
 })
@@ -48,9 +50,20 @@ def is_noninteractive() -> bool:
     return not sys.stdin.isatty() or not sys.stdout.isatty()
 
 
+def _is_help_or_version(argv: list[str]) -> bool:
+    """True if argv contains a flag-level ``--help``/``-h``/``--version``.
+
+    Only tokens that start with ``-`` are considered, so a positional
+    value (e.g. a search query literally equal to ``--help``) does not
+    trigger a false positive.
+    """
+    help_flags = {"--help", "-h", "--version"}
+    return any(tok in help_flags for tok in argv if tok.startswith("-"))
+
+
 def decide(argv: list[str], args: argparse.Namespace) -> TriggerDecision:
     """Pure decision: given parsed args + raw argv, run onboarding?"""
-    if "--help" in argv or "-h" in argv or "--version" in argv:
+    if _is_help_or_version(argv):
         return TriggerDecision(should_run=False, reason="help-version")
     # ``--no-onboarding`` may appear before or after the subcommand;
     # argparse only populates ``args.no_onboarding`` when it precedes
