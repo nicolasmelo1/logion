@@ -187,6 +187,31 @@ def test_onboarding_unknown_harness_with_no_autopost_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
+def test_ensure_symlink_warns_and_does_not_raise_on_real_dir(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A real directory at the symlink target must warn, not crash.
+
+    Onboarding must follow skills-install's warn-and-continue: a failed
+    symlink is non-fatal and never raises a traceback (which would also
+    corrupt --json).
+    """
+    from cli._harness.custom import CustomPathHarness
+    from cli.commands.identity._companion import COMPANION_COURSE_ID
+    from cli.commands.identity._onboarding_helpers import ensure_symlink
+
+    skill_dir = tmp_path / "skills"
+    # Pre-place a *real* directory where the symlink would go.
+    (skill_dir / COMPANION_COURSE_ID).mkdir(parents=True)
+    install_dest = tmp_path / "installed"
+    install_dest.mkdir()
+
+    # Must not raise.
+    ensure_symlink(CustomPathHarness(skill_dir), install_dest)
+
+    assert "symlink skipped" in capsys.readouterr().err
+
+
 def test_onboarding_unknown_harness_with_agent_dir_still_errors(
     env: SimpleNamespace,
     tmp_path: Path,

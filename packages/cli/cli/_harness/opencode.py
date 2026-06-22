@@ -18,8 +18,12 @@ For the autopost grant, this adapter writes a bash permission rule:
 ```
 
 Config file locations (precedence: project > global):
-- ``project`` → ``<cwd>/opencode.json`` (or ``.opencode/opencode.json``)
+- ``project`` → ``<cwd>/opencode.json``
 - ``global``  → ``~/.config/opencode/opencode.json``
+
+(OpenCode also reads a project ``.opencode/opencode.json``, but this
+adapter writes the top-level ``<cwd>/opencode.json`` only; document the
+path actually used to avoid drift with :meth:`config_path`.)
 """
 
 from __future__ import annotations

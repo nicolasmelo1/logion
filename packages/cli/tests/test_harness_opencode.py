@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from cli._harness.base import HarnessConfigError
 from cli._harness.opencode import OpenCodeAdapter, _autopost_pattern
 
 PATTERN = "logion courses report-usage*"
@@ -118,7 +119,7 @@ def test_malformed_json_refuses_to_clobber(tmp_path: Path) -> None:
     path = a.config_path("global")
     path.parent.mkdir(parents=True)
     path.write_text("{not valid json")
-    with pytest.raises(Exception, match="cannot parse"):
+    with pytest.raises(HarnessConfigError, match="cannot parse"):
         a.grant("global")
     assert path.read_text() == "{not valid json"
 

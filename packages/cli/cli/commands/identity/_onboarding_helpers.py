@@ -125,12 +125,27 @@ def ensure_symlink(adapter: HarnessAdapter, install_dest: Path) -> None:
     Uses the existing ``create_symlink`` helper so we share the same
     replace-prior-link/refuse-real-directory behaviour as
     ``logion skills install --symlink-dir``.
+
+    A symlink failure is **non-fatal and never raises**: it is surfaced
+    as a warning on stderr (mirroring ``apply_post_install_symlink``),
+    so onboarding does not crash — or corrupt ``--json`` with a
+    traceback — when the target is a real directory or otherwise
+    unwritable.  The canonical install under ``$LOGION_HOME/installed/``
+    is valid regardless.
     """
     from cli.commands.skills._agent_symlink import create_symlink
 
     skill_name = COMPANION_COURSE_ID
     target_skill_dir = adapter.skill_dir()
-    create_symlink(target_skill_dir, skill_name, install_dest)
+    try:
+        create_symlink(target_skill_dir, skill_name, install_dest)
+    except FileExistsError as exc:
+        print_err(f"Warning: companion symlink skipped: {exc}")
+    except OSError as exc:
+        print_err(
+            f"Warning: companion symlink failed ({exc}); "
+            "canonical install is fine."
+        )
 
 
 def resolve_target_adapters(
