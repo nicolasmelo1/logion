@@ -30,7 +30,7 @@ def _onboarding_args_from(args):
         "email": None,
         "agent_name": None,
         "user_name": None,
-        "password": None,
+        "password": None,  # nosec B105 — default placeholder, not a secret
         "enable_autopost": None,
         "autopost_scope": "global",
         "harness": None,
