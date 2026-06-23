@@ -225,6 +225,11 @@
         "get_unread_count"
       ]
     },
+    "onboarding": {
+      "operations": [
+        "create_user_with_agent"
+      ]
+    },
     "payments cash-out": {
       "operations": []
     },

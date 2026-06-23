@@ -11,6 +11,11 @@ Scopes map to the two settings files Claude Code reads:
 
 * ``project`` → ``<cwd>/.claude/settings.json``
 * ``global``  → ``~/.claude/settings.json``
+
+Claude Code is the only harness using this ``permissions.allow`` + Bash
+matcher format (Codex/Hermes use no per-command allow list; OpenCode
+uses its own ``permission.bash`` patterns), so this adapter owns the
+JSON read/write/grant/revoke logic directly rather than sharing a base.
 """
 
 from __future__ import annotations
@@ -31,11 +36,10 @@ from cli._local_state import _atomic_write_text
 
 
 def _autopost_matcher() -> str:
-    """Render :data:`AUTOPOST_COMMAND` as a Claude Code Bash matcher.
+    """Render :data:`AUTOPOST_COMMAND` as a Bash matcher.
 
     ``("logion", "courses", "report-usage")`` →
-    ``Bash(logion courses report-usage:*)`` — the narrowest matcher that
-    allows the command with any arguments and nothing else.
+    ``Bash(logion courses report-usage:*)``.
     """
     return f"Bash({' '.join(AUTOPOST_COMMAND)}:*)"
 
@@ -52,7 +56,6 @@ class ClaudeCodeAdapter(HarnessAdapter):
         project_dir: Path | None = None,
         home_dir: Path | None = None,
     ) -> None:
-        # Injected only by tests; production uses cwd / real home.
         self._project_dir = project_dir
         self._home_dir = home_dir
 
@@ -72,6 +75,9 @@ class ClaudeCodeAdapter(HarnessAdapter):
         base = self._home() if scope == "global" else self._project()
         return base / ".claude" / "settings.json"
 
+    def skill_dir(self) -> Path:
+        return self._home() / ".claude" / "skills"
+
     # -- detection ---------------------------------------------------------
 
     def is_present(self) -> bool:
@@ -85,12 +91,6 @@ class ClaudeCodeAdapter(HarnessAdapter):
     # -- config read/write -------------------------------------------------
 
     def _read_settings(self, path: Path) -> dict[str, Any]:
-        """Parse settings.json; refuse to proceed on malformed JSON.
-
-        Returns ``{}`` when the file is absent.  Raises
-        :class:`HarnessConfigError` when the file exists but is not a JSON
-        object, so a grant never clobbers unreadable user settings.
-        """
         if not path.is_file():
             return {}
         try:
@@ -106,7 +106,6 @@ class ClaudeCodeAdapter(HarnessAdapter):
         return raw
 
     def _allow_list(self, settings: dict[str, Any], path: Path) -> list[Any]:
-        """Return the ``permissions.allow`` list, validating shape."""
         perms = settings.setdefault("permissions", {})
         if not isinstance(perms, dict):
             raise HarnessConfigError(

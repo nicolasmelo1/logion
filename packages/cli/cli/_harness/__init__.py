@@ -16,9 +16,17 @@ from cli._harness.base import (
     HarnessConfigError,
 )
 from cli._harness.claude_code import ClaudeCodeAdapter
+from cli._harness.codex import CodexAdapter
+from cli._harness.hermes import HermesAdapter
+from cli._harness.opencode import OpenCodeAdapter
 
 # Ordered registry of known adapter types.  Append new harnesses here.
-_ADAPTER_TYPES: tuple[type[HarnessAdapter], ...] = (ClaudeCodeAdapter,)
+_ADAPTER_TYPES: tuple[type[HarnessAdapter], ...] = (
+    ClaudeCodeAdapter,
+    CodexAdapter,
+    OpenCodeAdapter,
+    HermesAdapter,
+)
 
 
 def all_adapters() -> list[HarnessAdapter]:
@@ -47,9 +55,12 @@ def detect_present() -> list[HarnessAdapter]:
 __all__ = [
     "AUTOPOST_COMMAND",
     "ClaudeCodeAdapter",
+    "CodexAdapter",
     "GrantResult",
     "HarnessAdapter",
     "HarnessConfigError",
+    "HermesAdapter",
+    "OpenCodeAdapter",
     "adapter_names",
     "all_adapters",
     "detect_present",

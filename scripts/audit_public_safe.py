@@ -5,6 +5,11 @@
 Exit 0 if clean, exit 1 if any forbidden pattern is found (after printing
 every offending file:line with the pattern name).
 
+Scans only git-tracked files (via ``git ls-files``) so gitignored local
+artifacts — DSPy candidate dumps, eval scratch, editor cruft — are never
+audited: the public surface is exactly what git would push, nothing more.
+Falls back to a filesystem walk if run outside a git working tree.
+
 Skips:
   - tests/            (test fixtures legitimately contain patterns)
   - .git/             (VCS metadata)
@@ -15,6 +20,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -97,50 +103,78 @@ def should_skip(rel_path: str) -> bool:
     full = os.path.join(ROOT, rel_path)
     if full == SELF:
         return True
+    # Skip any file under a never-audited directory (tests/, .venv,
+    # node_modules, __pycache__) at *any* depth.  With git ls-files this
+    # replaces the os.walk dir-pruning so nested tracked tests/ dirs
+    # (e.g. packages/*/tests/) stay excluded.
+    components = rel_path.replace("\\", "/").split("/")
+    if SKIP_DIRS.intersection(components):
+        return True
     for prefix in SKIP_PREFIXES:
         if full.startswith(prefix):
             return True
     return False
 
 
+def _tracked_files(root: str) -> list[str] | None:
+    """Return repo-relative paths of git-tracked files under *root*.
+
+    Returns ``None`` when *root* is not a git working tree (git missing
+    or not a repo) so the caller can fall back to a filesystem walk.
+    Auditing only tracked files keeps gitignored local artifacts out of
+    the scan — the audited surface is exactly what git would push.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", root, "ls-files", "-z"],
+            capture_output=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    raw = result.stdout.decode("utf-8", "replace")
+    return [p for p in raw.split("\0") if p]
+
+
+def _walk_files(root: str) -> list[str]:
+    """Filesystem-walk fallback: repo-relative paths, pruning SKIP_DIRS."""
+    rel_paths: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for fname in filenames:
+            full = os.path.join(dirpath, fname)
+            rel_paths.append(os.path.relpath(full, root))
+    return rel_paths
+
+
 def audit() -> list[tuple[str, int, str]]:
-    """Walk the repo and return [(rel_path, line_no, pattern_name), ...]."""
+    """Scan git-tracked files and return [(rel_path, line_no, pattern), ...].
+
+    Falls back to a filesystem walk if ROOT is not a git working tree.
+    """
     hits: list[tuple[str, int, str]] = []
     allowlist = load_allowlist()
 
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        # Prune directories we never want to descend into
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+    tracked = _tracked_files(ROOT)
+    rel_paths = tracked if tracked is not None else _walk_files(ROOT)
 
-        # Skip .git and tests directories entirely
-        abs_dir = os.path.abspath(dirpath)
-        skip = False
-        for prefix in SKIP_PREFIXES:
-            if abs_dir.startswith(prefix):
-                skip = True
-                break
-        if skip:
+    for rel in rel_paths:
+        if should_skip(rel):
             continue
 
-        for fname in filenames:
-            full = os.path.join(dirpath, fname)
-            rel = os.path.relpath(full, ROOT)
+        full = os.path.join(ROOT, rel)
+        # Skip binary / unreadable / since-deleted files.
+        try:
+            with open(full, encoding="utf-8", errors="strict") as fh:
+                lines = fh.readlines()
+        except (UnicodeDecodeError, PermissionError, OSError):
+            continue
 
-            if should_skip(rel):
-                continue
-
-            # Skip binary files
-            try:
-                with open(full, encoding="utf-8", errors="strict") as fh:
-                    lines = fh.readlines()
-            except (UnicodeDecodeError, PermissionError, OSError):
-                continue
-
-            for lineno, line in enumerate(lines, start=1):
-                for tag, pattern in FORBIDDEN:
-                    if pattern.search(line) and (rel, lineno) not in allowlist:
-                        hits.append((rel, lineno, tag))
-                        break  # one hit per line is enough
+        for lineno, line in enumerate(lines, start=1):
+            for tag, pattern in FORBIDDEN:
+                if pattern.search(line) and (rel, lineno) not in allowlist:
+                    hits.append((rel, lineno, tag))
+                    break  # one hit per line is enough
 
     return hits
 

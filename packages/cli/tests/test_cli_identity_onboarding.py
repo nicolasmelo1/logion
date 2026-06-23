@@ -167,6 +167,78 @@ def test_onboarding_unknown_harness_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
+def test_onboarding_unknown_harness_with_no_autopost_errors(
+    env: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An explicit but unknown --harness is a hard error even when
+    autopost is disabled, so the companion step never silently skips."""
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--harness",
+        "bogus",
+        "--no-companion",
+    ])
+    assert code == 2
+    assert "unknown harness" in capsys.readouterr().err
+
+
+def test_ensure_symlink_warns_and_does_not_raise_on_real_dir(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A real directory at the symlink target must warn, not crash.
+
+    Onboarding must follow skills-install's warn-and-continue: a failed
+    symlink is non-fatal and never raises a traceback (which would also
+    corrupt --json).
+    """
+    from cli._harness.custom import CustomPathHarness
+    from cli.commands.identity._companion import COMPANION_COURSE_ID
+    from cli.commands.identity._onboarding_helpers import ensure_symlink
+
+    skill_dir = tmp_path / "skills"
+    # Pre-place a *real* directory where the symlink would go.
+    (skill_dir / COMPANION_COURSE_ID).mkdir(parents=True)
+    install_dest = tmp_path / "installed"
+    install_dest.mkdir()
+
+    # Must not raise.
+    ensure_symlink(CustomPathHarness(skill_dir), install_dest)
+
+    assert "symlink skipped" in capsys.readouterr().err
+
+
+def test_onboarding_unknown_harness_with_agent_dir_still_errors(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An unknown --harness is a hard error even with --agent-dir set.
+
+    --agent-dir only overrides the companion target; --harness still
+    drives the autopost grant, so an unknown value must not slip through
+    to _autopost.apply (which would exit 2 with no clear message).
+    """
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--harness",
+        "bogus",
+        "--agent-dir",
+        str(tmp_path / "custom"),
+    ])
+    assert code == 2
+    assert "unknown harness" in capsys.readouterr().err
+
+
 @pytest.mark.usefixtures("env")
 def test_onboarding_noninteractive_missing_email_errors(
     monkeypatch: pytest.MonkeyPatch,
@@ -224,3 +296,191 @@ def test_onboarding_prompt_enables_autopost(
     assert code == 0
     settings = json.loads((env.home / ".claude" / "settings.json").read_text())
     assert MATCHER in settings["permissions"]["allow"]
+
+
+# ---------------------------------------------------------------------------
+# Companion + consent tests (phase 14.1)
+# ---------------------------------------------------------------------------
+
+
+def _make_bundle(tmp_path: Path) -> Path:
+    """Create a minimal companion bundle dir with a SKILL.md."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "SKILL.md").write_text(
+        "---\nname: logion-marketplace-companion\n"
+        "version: 0.1.0\n"
+        "description: First-party companion.\n---\n# Companion\n"
+    )
+    return bundle
+
+
+def test_onboarding_installs_companion_into_skill_dir(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+    assert code == 0
+    skill_link = (
+        env.home / ".claude" / "skills" / "logion-marketplace-companion"
+    )
+    assert skill_link.is_symlink()
+    data = _stdout_data(capsys)
+    assert data["companion"]["installed"] is True
+
+
+def test_onboarding_companion_idempotent(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+    capsys.readouterr()  # discard first run output
+    main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+    data = _stdout_data(capsys)
+    assert data["companion"]["already"] is True
+    assert data["companion"]["installed"] is False
+
+
+def test_onboarding_no_companion_flag_skips(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+        "--json",
+    ])
+    assert code == 0
+    data = _stdout_data(capsys)
+    assert data["companion"]["installed"] is False
+
+
+def test_onboarding_agent_dir_custom_path(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _make_bundle(tmp_path)
+    custom_dir = tmp_path / "custom-agent"
+    custom_dir.mkdir()
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--agent-dir",
+        str(custom_dir),
+        "--json",
+    ])
+    assert code == 0
+    skill_link = custom_dir / "logion-marketplace-companion"
+    assert skill_link.is_symlink()
+
+
+def test_onboarding_persists_autoreview_consent_true(
+    env: SimpleNamespace,
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--harness",
+        "claude-code",
+        "--no-companion",
+    ])
+    assert code == 0
+    creds = json.loads((env.logion_home / "credentials.json").read_text())
+    assert creds["autoreview_consent"] is True
+
+
+def test_onboarding_persists_autoreview_consent_false(
+    env: SimpleNamespace,
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+    ])
+    assert code == 0
+    creds = json.loads((env.logion_home / "credentials.json").read_text())
+    assert creds["autoreview_consent"] is False
+
+
+def test_onboarding_closing_copy_mentions_agent(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+    ])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "use Logion with your agent" in err

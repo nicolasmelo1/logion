@@ -1,17 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""``logion identity onboarding`` — one command from zero to ready.
-
-Provisions a user + first agent (or reuses an existing identity), then
-optionally — and only with an explicit yes — grants agents permission to
-post usage reviews automatically.  The permission step is delegated to a
-:class:`~cli._harness.base.HarnessAdapter`, so supporting a new agent
-harness later is a new adapter, not a change here.
-"""
+"""``logion identity onboarding`` — one command from zero to ready."""
 
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -21,6 +15,8 @@ from cli._harness import adapter_names
 from cli._output import emit_json
 
 from . import _autopost
+from ._companion import CLOSING_COPY
+from ._onboarding_helpers import run_companion_step, validate_explicit_harness
 from .handlers import API_KEY_WARNING, _field, _resolve_password
 
 
@@ -129,6 +125,12 @@ def handle_onboarding(args: argparse.Namespace) -> int:
         print_err(f"Already onboarded (user {existing}).")
         summary.update({"user_id": existing, "created": False})
 
+    # Validate an explicitly-requested harness up-front so an unknown
+    # name is a hard error before autopost or the companion step runs.
+    rc = validate_explicit_harness(args)
+    if rc is not None:
+        return rc
+
     if _autopost.resolve_optin(args):
         autopost = _autopost.apply(args)
         if autopost is None:
@@ -140,6 +142,13 @@ def handle_onboarding(args: argparse.Namespace) -> int:
             "`logion identity onboarding --enable-autopost`."
         )
         summary["autopost"] = {"enabled": False}
+
+    companion_summary, rc = run_companion_step(args)
+    if rc is not None:
+        return rc
+    summary["companion"] = companion_summary
+
+    print_err(CLOSING_COPY)
 
     if config.json_output:
         emit_json("logion.identity.onboarding", summary)
@@ -195,4 +204,23 @@ def register_onboarding(sub: argparse._SubParsersAction) -> None:
             f"Supported: {', '.join(adapter_names())}."
         ),
     )
+    parser.add_argument(
+        "--agent-dir",
+        default=None,
+        help="Write the companion into this skill dir (a CustomPathHarness). "
+        "Overrides --harness detection for the companion step.",
+    )
+    parser.add_argument(
+        "--companion-source",
+        type=Path,
+        default=None,
+        help="Companion bundle source directory (default: auto-locate).",
+    )
+    parser.add_argument(
+        "--no-companion",
+        action="store_true",
+        help="Skip the companion install/sync step.",
+    )
+    # ``--no-onboarding`` is inherited from COMMON_PARSER; no need to
+    # re-declare it here.
     parser.set_defaults(handler=handle_onboarding)

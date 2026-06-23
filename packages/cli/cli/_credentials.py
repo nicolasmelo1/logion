@@ -77,3 +77,28 @@ def stored_agent_id(home: Path | None = None) -> str | None:
     if isinstance(value, str) and value.strip():
         return value
     return None
+
+
+def save_autoreview_consent(enabled: bool, home: Path | None = None) -> Path:
+    """Persist the auto-review consent decision (non-secret)."""
+    path = credentials_path(home)
+    data = read_credentials(home)
+    data["schema_version"] = SCHEMA_VERSION
+    data["autoreview_consent"] = bool(enabled)
+    _atomic_write_text(
+        path, json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    )
+    with contextlib.suppress(OSError):
+        os.chmod(path, 0o600)
+    return path
+
+
+def stored_autoreview_consent(home: Path | None = None) -> bool | None:
+    """Return the recorded consent, or ``None`` if never asked."""
+    value = read_credentials(home).get("autoreview_consent")
+    return bool(value) if isinstance(value, bool) else None
+
+
+def is_onboarded(home: Path | None = None) -> bool:
+    """True once a user id has been stored (drives the first-run trigger)."""
+    return stored_user_id(home) is not None
