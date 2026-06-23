@@ -39,6 +39,12 @@ files: it composes its own brand lockup in `base.html` from an inline,
 theme-adaptive mark (`currentColor`) plus the `ΛΟΓΙΟΝ` ornament and the
 `logion.sh` latin label. See Wordmark treatment and the reconciliation note.
 
+The canonical source for these three files is the repo-root `assets/` dir; the
+landing app also serves byte-identical copies under
+`packages/landing/landing/static/brand/` so `/design.txt` can hand agents raw,
+fetchable SVG URLs (`https://logion.sh/static/brand/…`) rather than an HTML
+repo page. A test keeps the served copies in sync with `assets/`.
+
 The favicon is a separate asset:
 `packages/landing/landing/static/favicon.svg` — `viewBox 0 0 64 64`, a rounded
 `#0a0a0a` tile (`rx="13"`) with the seal + lambda rendered in the accent
@@ -199,7 +205,9 @@ with a terminal / ASCII aesthetic:
 [`logion.sh/design.txt`](https://logion.sh/design.txt) mirrors this guide for
 agents and humans in a compact, parseable plain-text form. It is generated from
 the `design:` block in `site.yaml` so it cannot drift from the page, and is
-discoverable via `sitemap.xml` and `/llms.txt`.
+discoverable via `sitemap.xml` and `/llms.txt`. Its logo URLs resolve to raw
+SVGs served by `logion.sh` (`/static/brand/…`, `/static/favicon.svg`), so a tool
+can fetch the bytes directly without parsing an HTML page.
 
 ## Related docs
 

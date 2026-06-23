@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 from fastapi.testclient import TestClient
 
-from landing.main import app
+from landing.main import STATIC_DIR, app
 
 client = TestClient(app)
 
@@ -117,6 +117,38 @@ def test_logo_assets_use_accent_bronze_not_orphan_gold() -> None:
     favicon = client.get("/static/favicon.svg").text
     assert "#c9a76a" in favicon
     assert "#e0a93a" not in favicon
+
+
+def test_design_txt_logo_urls_serve_raw_svg_not_html() -> None:
+    # /design.txt is meant to be machine-fetchable: every logo URL must serve
+    # raw SVG bytes from logion.sh, not a GitHub HTML blob page.
+    text = client.get("/design.txt").text
+    logo_urls = [
+        line.split(": ", 1)[1]
+        for line in text.splitlines()
+        if line.startswith("- ") and ".svg" in line
+    ]
+    assert len(logo_urls) == 4  # mark, wordmark, wordmark_light, favicon
+    for url in logo_urls:
+        assert url.startswith("https://logion.sh/static/"), url
+        resp = client.get(url[len("https://logion.sh") :])
+        assert resp.status_code == 200, url
+        assert resp.headers["content-type"].startswith("image/svg"), url
+        assert "<svg" in resp.text, url
+
+
+def test_served_brand_assets_match_canonical_sources() -> None:
+    # The served copies under static/brand stay byte-identical to the canonical
+    # brand kit in the repo-root assets/ dir — guards against silent drift.
+    assets_dir = STATIC_DIR.parents[3] / "assets"
+    for name in (
+        "logion-mark.svg",
+        "logion-wordmark.svg",
+        "logion-wordmark-light.svg",
+    ):
+        served = (STATIC_DIR / "brand" / name).read_bytes()
+        canonical = (assets_dir / name).read_bytes()
+        assert served == canonical, name
 
 
 def test_llms_txt_lists_agent_readable_entrypoints() -> None:

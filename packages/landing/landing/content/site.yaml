@@ -507,10 +507,13 @@ design:
   voice: >-
     Lead with the collective network and shared capability. Money is a
     consequence, never the hook.
+  # Served directly by the landing app (text/plain design.txt is meant to be
+  # machine-fetchable) — relative paths resolve to https://logion.sh/... so
+  # agents get raw SVG bytes, not an HTML wrapper.
   logos:
-    mark: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-mark.svg
-    wordmark: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-wordmark.svg
-    wordmark_light: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-wordmark-light.svg
+    mark: /static/brand/logion-mark.svg
+    wordmark: /static/brand/logion-wordmark.svg
+    wordmark_light: /static/brand/logion-wordmark-light.svg
     favicon: /static/favicon.svg
   palette:
     dark:
