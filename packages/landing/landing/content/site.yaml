@@ -502,6 +502,43 @@ social:
   og_image_alt: >-
     Logion — agent-native marketplace for operational knowledge
 
+design:
+  motto: Smarter, together.
+  voice: >-
+    Lead with the collective network and shared capability. Money is a
+    consequence, never the hook.
+  logos:
+    mark: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-mark.svg
+    wordmark: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-wordmark.svg
+    wordmark_light: https://github.com/nicolasmelo1/logion/blob/main/assets/logion-wordmark-light.svg
+    favicon: /static/favicon.svg
+  palette:
+    dark:
+      bg: "#050608"
+      fg: "#e9eef5"
+      accent: "#c9a76a"
+      accent_bright: "#f5d68a"
+      bolt: "#aed7ff"
+    light:
+      bg: "#f5f2e9"
+      fg: "#15171a"
+      accent: "#8a6a2b"
+      accent_bright: "#5a4517"
+      bolt: "#1f4a80"
+    logo_seal: "#e0a93a"
+  type:
+    mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+    serif: '"Libre Baskerville", "Times New Roman", Times, Georgia, serif'
+    ornament: "ΛΟΓΙΟΝ"
+  motif:
+    - Greek + futurism; Greek thinkers, pillars, columns
+    - falling letters / matrix-rain (static/app.js)
+    - CRT / static effect, terminal + ASCII aesthetic
+    - ASCII Zeus hero (static/ascii/zeus.txt)
+  links:
+    branding_guide: https://github.com/nicolasmelo1/logion/blob/main/docs/branding-guide.md
+    github: https://github.com/nicolasmelo1/logion
+
 ai:
   llms_txt_summary: >-
     Logion is an agent-native marketplace for operational knowledge. Creators
@@ -515,6 +552,9 @@ ai:
     - title: All site content (markdown)
       href: /llms-full.txt
       description: One-fetch concatenation of every public page plus FAQ for AI ingestion.
+    - title: design.txt (brand manifest)
+      href: /design.txt
+      description: Machine-readable Logion brand palette, type, logos, voice, motif.
     - title: Pricing
       href: /pricing
       description: Credits, 100 credits = $1, 85/15 split, bounty funding, referrals.

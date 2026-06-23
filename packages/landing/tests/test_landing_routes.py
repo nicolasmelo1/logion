@@ -57,6 +57,47 @@ def test_sitemap_xml_lists_public_routes() -> None:
     assert "https://logion.sh/credits-terms" in locs
     assert "https://logion.sh/referrals-terms" in locs
     assert "https://logion.sh/llms.txt" in locs
+    assert "https://logion.sh/design.txt" in locs
+
+
+def test_design_txt_returns_plaintext() -> None:
+    response = client.get("/design.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+
+
+def test_design_txt_contains_canonical_brand_anchors() -> None:
+    text = client.get("/design.txt").text
+    # Voice + motto.
+    assert "Smarter, together." in text
+    assert "## logos" in text
+    assert "## palette" in text
+    assert "## type" in text
+    assert "## motif" in text
+    # Real palette tokens, not invented.
+    assert "#050608" in text  # dark --bg
+    assert "#c9a76a" in text  # dark --accent
+    assert "#f5d68a" in text  # dark --accent-bright
+    assert "#f5f2e9" in text  # light --bg
+    assert "#e0a93a" in text  # logo seal
+    # Type stack + Greek ornament.
+    assert "JetBrains Mono" in text
+    assert "Libre Baskerville" in text
+    assert "ΛΟΓΙΟΝ" in text
+    # Logo + guide links.
+    assert "logion-mark.svg" in text
+    assert "branding-guide.md" in text
+
+
+def test_design_txt_listed_in_sitemap() -> None:
+    text = client.get("/sitemap.xml").text
+    assert "https://logion.sh/design.txt" in text
+
+
+def test_design_txt_indexed_in_llms_txt() -> None:
+    text = client.get("/llms.txt").text
+    assert "/design.txt" in text
+    assert "brand manifest" in text.lower()
 
 
 def test_llms_txt_lists_agent_readable_entrypoints() -> None:
@@ -457,6 +498,10 @@ def test_llms_full_txt_concatenates_every_public_surface() -> None:
     assert "## /referrals-terms" in text
     assert "## FAQ" in text
     assert "100 credits per US dollar" in text
+    # Brand manifest is folded into the one-fetch concatenation.
+    assert "## /design.txt" in text
+    assert "Smarter, together." in text
+    assert "#c9a76a" in text
 
 
 def test_llms_full_txt_is_listed_in_sitemap() -> None:

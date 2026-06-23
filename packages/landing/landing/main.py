@@ -44,6 +44,7 @@ PUBLIC_PATHS = (
     "/referrals-terms",
     "/llms.txt",
     "/llms-full.txt",
+    "/design.txt",
 )
 LEGAL_ROUTES = {
     "/terms": "terms",
@@ -248,7 +249,67 @@ def llms_full_txt() -> str:
             a = str(item.get("a", "")).strip()
             if q and a:
                 sections.append(f"### {q}\n\n{a}\n")
+    if content.get("design"):
+        # Drop design.txt's own "# ... — design.txt" title line so the brand
+        # manifest nests cleanly under the llms-full "## /design.txt" heading.
+        design_body = design_txt().split("\n", 2)[-1]
+        sections.append("## /design.txt\n")
+        sections.append(design_body.strip() + "\n")
     return "\n".join(sections).rstrip() + "\n"
+
+
+def design_txt() -> str:
+    """Plain-text brand manifest for agents and humans (logion.sh/design.txt).
+
+    Generated from the ``design:`` block in site.yaml so it cannot drift from
+    the page. Mirrors docs/branding-guide.md in a compact, parseable form
+    (one ``key: value`` or ``key:`` + indented list per stanza).
+    """
+    design = content.get("design", {})
+    site = content.get("site", {})
+    palette = design.get("palette", {})
+    type_cfg = design.get("type", {})
+    logos = design.get("logos", {})
+    links = design.get("links", {})
+    base = str(content.get("seo", {}).get("canonical_base", "")).rstrip("/")
+
+    def _abs(href: str) -> str:
+        return href if href.startswith("https://") else f"{base}{href}"
+
+    lines: list[str] = [
+        f"# {site.get('name', 'Logion')} — design.txt",
+        "",
+        f"motto: {design.get('motto', '')}",
+        f"voice: {str(design.get('voice', '')).strip()}",
+        "",
+        "## logos",
+    ]
+    for key in ("mark", "wordmark", "wordmark_light", "favicon"):
+        if key in logos:
+            lines.append(f"- {key}: {_abs(str(logos[key]))}")
+    lines += ["", "## palette"]
+    for theme in ("dark", "light"):
+        block = palette.get(theme, {})
+        if block:
+            tokens = "  ".join(f"{k}={v}" for k, v in block.items())
+            lines.append(f"- {theme}: {tokens}")
+    if palette.get("logo_seal"):
+        lines.append(f"- logo_seal: {palette['logo_seal']}")
+    lines += [
+        "",
+        "## type",
+        f"- mono: {type_cfg.get('mono', '')}",
+        f"- serif: {type_cfg.get('serif', '')}",
+        f"- ornament: {type_cfg.get('ornament', '')}",
+        "",
+        "## motif",
+    ]
+    for item in design.get("motif", []) or []:
+        lines.append(f"- {item}")
+    lines += ["", "## links"]
+    for key, href in links.items():
+        lines.append(f"- {key}: {_abs(str(href))}")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -422,6 +483,14 @@ def llms() -> PlainTextResponse:
 def llms_full() -> PlainTextResponse:
     return PlainTextResponse(
         llms_full_txt(),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/design.txt", response_class=PlainTextResponse)
+def design() -> PlainTextResponse:
+    return PlainTextResponse(
+        design_txt(),
         media_type="text/plain; charset=utf-8",
     )
 

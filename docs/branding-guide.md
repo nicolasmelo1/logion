@@ -1,0 +1,201 @@
+<!-- SPDX-License-Identifier: MIT -->
+# Logion Branding Guide
+
+Canonical source of truth for Logion's visual identity: logo, palette,
+typography, voice, and motif. Every value here traces to a real source file in
+this repo (`packages/landing/landing/static/styles.css`,
+`packages/landing/landing/content/site.yaml`, and `assets/*.svg`) — nothing is
+invented. The machine-readable mirror is served at
+[`/design.txt`](https://logion.sh/design.txt), generated from the `design:`
+block in `site.yaml` so it cannot drift from the page.
+
+## Brand in one line
+
+**Smarter, together.**
+
+Lead with the collective network and the shared capability it creates — a
+network of people teaching agents out-learns any lone model. Money is a
+consequence of that network, not the hook. This framing carries through the
+landing copy in `packages/landing/landing/content/site.yaml`.
+
+## Logo
+
+### The three marks
+
+- **`assets/logion-mark.svg`** — the square seal mark: a gold Greek lambda (λ)
+  inside a double circular seal. `viewBox 0 0 256 256`. Use for square /
+  avatar / favicon contexts.
+- **`assets/logion-wordmark.svg`** — the dark-background wordmark. `viewBox 0 0
+  505 160`. The seal at left, "LOGION" set in the mono stack, and the italic
+  Greek `λόγιον` to its right.
+- **`assets/logion-wordmark-light.svg`** — the light-background wordmark. Same
+  `viewBox 0 0 505 160`; swaps the seal to `#c2851f`, the "LOGION" text to dark
+  ink `#0c1e22`, and `λόγιον` to `#5b6f6b`.
+
+The favicon is a separate asset:
+`packages/landing/landing/static/favicon.svg` — `viewBox 0 0 64 64`, a rounded
+`#0a0a0a` tile (`rx="13"`) with the seal + lambda rendered in `#e0a93a`.
+
+### When to use each
+
+- **Mark** (`logion-mark.svg`) — square, avatar, and favicon contexts where the
+  wordmark would be illegible.
+- **Wordmark** (`logion-wordmark.svg`) — on dark surfaces (the default theme).
+- **Wordmark, light variant** (`logion-wordmark-light.svg`) — on light surfaces.
+  It swaps the `λόγιον` and "LOGION" text to dark ink and the seal to `#c2851f`
+  so the mark stays legible against a light background. Never place the dark
+  wordmark on a light background.
+
+### Clear-space and minimum sizes
+
+- **Clear-space:** keep clear space equal to the height of the seal's inner
+  circle on all sides of the logo.
+- **Mark minimum:** 24px. The favicon renders the seal at roughly `r=24` inside
+  a 64px tile, which is the smallest size at which the double-circle + lambda
+  stays readable.
+- **Wordmark minimum:** 120px wide, so "LOGION" stays legible at its
+  `font-size="31"` / `letter-spacing="15"` SVG metrics.
+
+### What not to do
+
+- Do not recolor the seal outside the bronze family (see Palette → Logo asset
+  hexes).
+- Do not set the wordmark on a busy photo or low-contrast texture.
+- Do not stretch or distort — preserve the SVG `viewBox` aspect ratio.
+- Do not place the dark wordmark on a light background; use
+  `logion-wordmark-light.svg` instead.
+
+## Palette
+
+All tokens are CSS custom properties defined in
+`packages/landing/landing/static/styles.css`.
+
+### Dark theme (default)
+
+Defined in `:root` (styles.css lines 6-28):
+
+```text
+--bg            #050608
+--bg-soft       #0a0d12
+--fg            #e9eef5
+--fg-dim        #7d8794
+--muted         #4a525e
+--rule          #1b2129
+--rule-strong   #2b333d
+--accent        #c9a76a   /* aged-bronze (comment in CSS) */
+--accent-bright #f5d68a
+--bolt          #aed7ff
+--focus         #aed7ff
+```
+
+### Light theme (prefers-color-scheme: light)
+
+Defined in the `@media (prefers-color-scheme: light)` block (styles.css lines
+30-49):
+
+```text
+--bg            #f5f2e9
+--bg-soft       #ece8db
+--fg            #15171a
+--fg-dim        #4d5460
+--accent        #8a6a2b
+--accent-bright #5a4517
+--bolt          #1f4a80
+--focus         #1f4a80
+```
+
+`seo.theme_color` in `site.yaml` is `#0a0a0a` (the favicon tile color), used for
+the browser chrome / PWA theme color.
+
+### Logo asset hexes
+
+The standalone SVG asset files bake their own fills (they do not read CSS
+variables):
+
+```text
+logion-mark.svg            seal + lambda fill  #e0a93a  (viewBox 0 0 256 256)
+logion-wordmark.svg        seal + lambda       #e0a93a; "LOGION" text #ece6d8; "λόγιον" #9db0ae @ .72 opacity
+logion-wordmark-light.svg  seal + lambda       #c2851f; "LOGION" text #0c1e22; "λόγιον" #5b6f6b
+favicon.svg                rounded #0a0a0a tile, seal + lambda #e0a93a  (viewBox 0 0 64 64)
+```
+
+### Accent reconciliation note
+
+The standalone mark/wordmark/favicon SVGs bake `#e0a93a`, while the CSS
+`--accent` is `#c9a76a` and `--accent-bright` is `#f5d68a`. The inline
+header/footer marks in `packages/landing/landing/templates/base.html` use
+`fill="currentColor"` and inherit `--accent-bright`, so the **rendered on-page
+gold is `#f5d68a`** while the **standalone asset files bake `#e0a93a`**. All
+three are members of the same bronze family. This divergence is intentional to
+record here; a future visual pass reconciles `#e0a93a` against `#c9a76a` /
+`#f5d68a`.
+
+## Typography
+
+### Type stack
+
+From styles.css (lines 23-25):
+
+```text
+--serif  "Libre Baskerville", "Times New Roman", Times, Georgia, serif
+--mono   "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+```
+
+This guide documents the *intended* system-font-first stacks above.
+
+**Open issue:** the landing intends a system-font-first stack with no external
+font dependency, but styles.css currently `@import`s Google Fonts (line 4:
+`@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono...")`) and
+`base.html` `preconnect`s to `fonts.googleapis.com` and `fonts.gstatic.com`
+(lines 123-124). A future visual pass removes the external font fetch; the guide
+documents the intended system-font-first stack.
+
+### Wordmark treatment
+
+"LOGION" is set in the mono stack, uppercase, with wide tracking — roughly
+`0.18em` for the header brand and `letter-spacing="15"` in the SVG wordmark
+(`font-size="31"`). It is paired with the italic Greek `λόγιον` set in the serif
+stack (`font-size="34"`, `#9db0ae` at `.72` opacity on the dark variant).
+
+### The ΛΟΓΙΟΝ ornament
+
+The all-caps Greek `ΛΟΓΙΟΝ` is used as an ornament in the hero (`hero.greek` in
+`site.yaml`) and in the header brand (`.site-brand .greek` in `base.html`,
+colored `--accent-bright`, `letter-spacing: 0.34em`). It is a decorative
+spelling of the name in Greek capitals, distinct from the italic lowercase
+`λόγιον` in the wordmark.
+
+## Voice
+
+Brand voice is **network over money**. Lead copy with the collective network and
+the shared capability it creates; money is a consequence, not the hook. The
+canonical phrasing lives in `site.yaml` `hero.motto` ("Smarter, together.") and
+carries through the section copy and FAQ.
+
+## Motif
+
+Greek + futurism. The visual language pairs Greek thinkers, pillars, and columns
+with a terminal / ASCII aesthetic:
+
+- Greek + futurism; Greek thinkers, pillars, columns.
+- Falling letters / matrix-rain — the `drawScene` effect in
+  `packages/landing/landing/static/app.js`.
+- CRT / static effect and a terminal + ASCII aesthetic throughout.
+- The ASCII Zeus hero (`packages/landing/landing/static/ascii/zeus.txt`, driven
+  by `static/ascii/hero_frames.js`).
+- Lightning bolts, expressed through the `--bolt` color token.
+
+## Machine-readable surface (design.txt)
+
+[`logion.sh/design.txt`](https://logion.sh/design.txt) mirrors this guide for
+agents and humans in a compact, parseable plain-text form. It is generated from
+the `design:` block in `site.yaml` so it cannot drift from the page, and is
+discoverable via `sitemap.xml` and `/llms.txt`.
+
+## Related docs
+
+- [`/design.txt`](https://logion.sh/design.txt) — machine-readable mirror of
+  this guide.
+- [`README.md`](../README.md) — what Logion is and how the pieces fit.
+- [`docs/marketplace/concepts.md`](marketplace/concepts.md) — core marketplace
+  concepts.
