@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Logion landing — dark editorial default with light fallback. */
-
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
+/* System-font-first: the --serif/--mono stacks fall back to platform fonts; */
+/* no external font fetch (see docs/branding-guide.md). */
 
 :root {
   interpolate-size: allow-keywords;

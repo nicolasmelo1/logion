@@ -29,12 +29,20 @@ landing copy in `packages/landing/landing/content/site.yaml`.
   505 160`. The seal at left, "LOGION" set in the mono stack, and the italic
   Greek `λόγιον` to its right.
 - **`assets/logion-wordmark-light.svg`** — the light-background wordmark. Same
-  `viewBox 0 0 505 160`; swaps the seal to `#c2851f`, the "LOGION" text to dark
-  ink `#0c1e22`, and `λόγιον` to `#5b6f6b`.
+  `viewBox 0 0 505 160`; swaps the seal to the light-theme accent `#8a6a2b`, the
+  "LOGION" text to dark ink `#0c1e22`, and `λόγιον` to `#5b6f6b`.
+
+The standalone `*.svg` wordmark/mark assets are for **external / off-site**
+contexts (GitHub README, social, slide decks) where a fixed-color, theme-
+agnostic file is needed. The landing page itself does **not** embed these
+files: it composes its own brand lockup in `base.html` from an inline,
+theme-adaptive mark (`currentColor`) plus the `ΛΟΓΙΟΝ` ornament and the
+`logion.sh` latin label. See Wordmark treatment and the reconciliation note.
 
 The favicon is a separate asset:
 `packages/landing/landing/static/favicon.svg` — `viewBox 0 0 64 64`, a rounded
-`#0a0a0a` tile (`rx="13"`) with the seal + lambda rendered in `#e0a93a`.
+`#0a0a0a` tile (`rx="13"`) with the seal + lambda rendered in the accent
+`#c9a76a`.
 
 ### When to use each
 
@@ -42,9 +50,9 @@ The favicon is a separate asset:
   wordmark would be illegible.
 - **Wordmark** (`logion-wordmark.svg`) — on dark surfaces (the default theme).
 - **Wordmark, light variant** (`logion-wordmark-light.svg`) — on light surfaces.
-  It swaps the `λόγιον` and "LOGION" text to dark ink and the seal to `#c2851f`
-  so the mark stays legible against a light background. Never place the dark
-  wordmark on a light background.
+  It swaps the `λόγιον` and "LOGION" text to dark ink and the seal to the
+  light-theme accent `#8a6a2b` so the mark stays legible against a light
+  background. Never place the dark wordmark on a light background.
 
 ### Clear-space and minimum sizes
 
@@ -110,25 +118,29 @@ the browser chrome / PWA theme color.
 ### Logo asset hexes
 
 The standalone SVG asset files bake their own fills (they do not read CSS
-variables):
+variables), but every fill is now drawn from the `--accent` family above:
 
 ```text
-logion-mark.svg            seal + lambda fill  #e0a93a  (viewBox 0 0 256 256)
-logion-wordmark.svg        seal + lambda       #e0a93a; "LOGION" text #ece6d8; "λόγιον" #9db0ae @ .72 opacity
-logion-wordmark-light.svg  seal + lambda       #c2851f; "LOGION" text #0c1e22; "λόγιον" #5b6f6b
-favicon.svg                rounded #0a0a0a tile, seal + lambda #e0a93a  (viewBox 0 0 64 64)
+logion-mark.svg            seal + lambda fill  #c9a76a  (viewBox 0 0 256 256)
+logion-wordmark.svg        seal + lambda       #c9a76a; "LOGION" text #ece6d8; "λόγιον" #9db0ae @ .72 opacity
+logion-wordmark-light.svg  seal + lambda       #8a6a2b; "LOGION" text #0c1e22; "λόγιον" #5b6f6b
+favicon.svg                rounded #0a0a0a tile, seal + lambda #c9a76a  (viewBox 0 0 64 64)
 ```
 
 ### Accent reconciliation note
 
-The standalone mark/wordmark/favicon SVGs bake `#e0a93a`, while the CSS
-`--accent` is `#c9a76a` and `--accent-bright` is `#f5d68a`. The inline
-header/footer marks in `packages/landing/landing/templates/base.html` use
-`fill="currentColor"` and inherit `--accent-bright`, so the **rendered on-page
-gold is `#f5d68a`** while the **standalone asset files bake `#e0a93a`**. All
-three are members of the same bronze family. This divergence is intentional to
-record here; a future visual pass reconciles `#e0a93a` against `#c9a76a` /
-`#f5d68a`.
+The seal gold is unified onto the `--accent` token: the dark-context assets
+(`logion-mark.svg`, `logion-wordmark.svg`, `favicon.svg`) bake `#c9a76a` and the
+light-context `logion-wordmark-light.svg` bakes the light-theme `--accent`
+`#8a6a2b`. There is no longer an orphan color outside the documented palette.
+
+On the page, the inline header mark in
+`packages/landing/landing/templates/base.html` uses `fill="currentColor"` and
+inherits `--accent-bright` plus a `drop-shadow` glow — so it renders the
+brighter `#f5d68a` (dark) / `#5a4517` (light). This is an intentional on-page
+*treatment* driven by tokens, not a baked divergence: the structural logo color
+is `--accent`, and `--accent-bright` is the highlight applied to the glowing
+HUD mark and to link hovers.
 
 ## Typography
 
@@ -141,14 +153,11 @@ From styles.css (lines 23-25):
 --mono   "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 ```
 
-This guide documents the *intended* system-font-first stacks above.
-
-**Open issue:** the landing intends a system-font-first stack with no external
-font dependency, but styles.css currently `@import`s Google Fonts (line 4:
-`@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono...")`) and
-`base.html` `preconnect`s to `fonts.googleapis.com` and `fonts.gstatic.com`
-(lines 123-124). A future visual pass removes the external font fetch; the guide
-documents the intended system-font-first stack.
+The stacks are **system-font-first**: if "JetBrains Mono" / "Libre Baskerville"
+are installed locally they are used, otherwise the page falls back to platform
+mono/serif fonts. There is **no external font fetch** — the landing serves no
+Google Fonts `@import` and `base.html` carries no `fonts.googleapis.com` /
+`fonts.gstatic.com` preconnect, in line with the no-external-deps contract.
 
 ### Wordmark treatment
 

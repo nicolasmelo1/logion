@@ -79,7 +79,7 @@ def test_design_txt_contains_canonical_brand_anchors() -> None:
     assert "#c9a76a" in text  # dark --accent
     assert "#f5d68a" in text  # dark --accent-bright
     assert "#f5f2e9" in text  # light --bg
-    assert "#e0a93a" in text  # logo seal
+    assert "logo_seal: #c9a76a" in text  # seal reconciled onto --accent
     # Type stack + Greek ornament.
     assert "JetBrains Mono" in text
     assert "Libre Baskerville" in text
@@ -98,6 +98,25 @@ def test_design_txt_indexed_in_llms_txt() -> None:
     text = client.get("/llms.txt").text
     assert "/design.txt" in text
     assert "brand manifest" in text.lower()
+
+
+def test_landing_has_no_external_font_dependency() -> None:
+    # System-font-first: no Google Fonts @import and no preconnect to Google's
+    # font hosts (the no-external-deps landing contract).
+    page = client.get("/").text
+    assert "fonts.googleapis.com" not in page
+    assert "fonts.gstatic.com" not in page
+    css = client.get("/static/styles.css").text
+    assert "@import" not in css
+    assert "googleapis" not in css
+
+
+def test_logo_assets_use_accent_bronze_not_orphan_gold() -> None:
+    # The seal gold is reconciled onto the --accent family; the orphan
+    # #e0a93a must not survive in the served favicon.
+    favicon = client.get("/static/favicon.svg").text
+    assert "#c9a76a" in favicon
+    assert "#e0a93a" not in favicon
 
 
 def test_llms_txt_lists_agent_readable_entrypoints() -> None:
