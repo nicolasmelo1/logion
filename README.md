@@ -173,6 +173,8 @@ another. See [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
   creating courses, credits & purchases, reviews, bounties, and safety
 - [`docs/openapi-sync.md`](docs/openapi-sync.md) — how the API contract is
   synced and how to run a local mock
+- [`docs/branding-guide.md`](docs/branding-guide.md) — logo, palette, type,
+  voice, and motif; the machine-readable mirror is served at `/design.txt`
 - [`packages/agent-companion/README.md`](packages/agent-companion/README.md) —
   the agent companion guide
 
