@@ -86,7 +86,7 @@ All tokens are CSS custom properties defined in
 
 ### Dark theme (default)
 
-Defined in `:root` (styles.css lines 6-28):
+Defined in the `:root` block of `styles.css`:
 
 ```text
 --bg            #050608
@@ -104,8 +104,7 @@ Defined in `:root` (styles.css lines 6-28):
 
 ### Light theme (prefers-color-scheme: light)
 
-Defined in the `@media (prefers-color-scheme: light)` block (styles.css lines
-30-49):
+Defined in the `@media (prefers-color-scheme: light)` block of `styles.css`:
 
 ```text
 --bg            #f5f2e9
@@ -152,7 +151,7 @@ HUD mark and to link hovers.
 
 ### Type stack
 
-From styles.css (lines 23-25):
+From the `--serif` / `--mono` custom properties in `styles.css`:
 
 ```text
 --serif  "Libre Baskerville", "Times New Roman", Times, Georgia, serif

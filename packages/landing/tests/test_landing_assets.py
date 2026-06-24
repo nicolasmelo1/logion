@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from api.index import app as vercel_app
@@ -42,8 +43,17 @@ def test_base_template_has_no_external_preconnect() -> None:
     ).read_text(encoding="utf-8")
     assert "fonts.googleapis.com" not in base
     assert "fonts.gstatic.com" not in base
-    # Self-host or system fonts only — no external stylesheet/font hosts.
-    assert "preconnect" not in base
+    # No preconnect to an external host (the no-external-font-deps contract).
+    # Same-origin / non-font resource hints are allowed, so assert on the
+    # actual link targets rather than banning the bare word "preconnect".
+    for link in re.findall(r"<link\b[^>]*>", base):
+        if 'rel="preconnect"' not in link:
+            continue
+        href_match = re.search(r'href="([^"]*)"', link)
+        href = href_match.group(1) if href_match else ""
+        assert not re.match(r"(https?:)?//", href), (
+            f"external preconnect not allowed: {href}"
+        )
 
 
 def test_styles_make_section_titles_serif_italic_only() -> None:
