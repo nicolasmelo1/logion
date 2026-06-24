@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from api.index import app as vercel_app
@@ -24,6 +25,40 @@ def test_styles_supports_color_scheme() -> None:
 def test_styles_supports_reduced_motion() -> None:
     text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
     assert "prefers-reduced-motion" in text
+
+
+def test_styles_has_no_external_font_imports() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "fonts.googleapis.com" not in text
+    assert "fonts.gstatic.com" not in text
+    assert "@import" not in text
+
+
+def test_base_template_has_no_external_preconnect() -> None:
+    base = (
+        Path(__file__).resolve().parents[1]
+        / "landing"
+        / "templates"
+        / "base.html"
+    ).read_text(encoding="utf-8")
+    assert "fonts.googleapis.com" not in base
+    assert "fonts.gstatic.com" not in base
+    # No preconnect to an external host (the no-external-font-deps contract).
+    # Same-origin / non-font resource hints are allowed, so assert on the
+    # actual link targets rather than banning the bare word "preconnect".
+    # Handle either quote style and multi-token rel values
+    # (e.g. rel="preconnect dns-prefetch").
+    for link in re.findall(r"<link\b[^>]*>", base, flags=re.IGNORECASE):
+        rel_match = re.search(r"""rel\s*=\s*["']([^"']*)["']""", link)
+        if not rel_match:
+            continue
+        if "preconnect" not in rel_match.group(1).lower().split():
+            continue
+        href_match = re.search(r"""href\s*=\s*["']([^"']*)["']""", link)
+        href = href_match.group(1) if href_match else ""
+        assert not re.match(r"(https?:)?//", href), (
+            f"external preconnect not allowed: {href}"
+        )
 
 
 def test_styles_make_section_titles_serif_italic_only() -> None:

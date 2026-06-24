@@ -18,6 +18,11 @@
   var reduced = window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)")
     : { matches: false, addEventListener: function () {} };
+  // Touch / small-viewport: no pointer parallax (there is no mouse to track
+  // and it reads as jitter on mobile).
+  var coarse = window.matchMedia
+    ? window.matchMedia("(max-width: 768px), (pointer: coarse)")
+    : { matches: false, addEventListener: function () {} };
 
   // ----- ASCII decode intro (hidden, but real) --------------------------
   if (ascii && frames.length) {
@@ -611,8 +616,9 @@
   function updateSilhouetteParallax(dt) {
     var el = document.getElementById("silhouette");
     if (!el) return;
-    var targetX = reduced.matches ? 0 : -mouse.x * 36;
-    var targetY = reduced.matches ? 0 : -mouse.y * 22;
+    var noParallax = reduced.matches || coarse.matches;
+    var targetX = noParallax ? 0 : -mouse.x * 36;
+    var targetY = noParallax ? 0 : -mouse.y * 22;
     var k = Math.min(1, dt * (reduced.matches ? 12 : 3.5));
     silParX += (targetX - silParX) * k;
     silParY += (targetY - silParY) * k;

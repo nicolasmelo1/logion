@@ -86,7 +86,7 @@ All tokens are CSS custom properties defined in
 
 ### Dark theme (default)
 
-Defined in `:root` (styles.css lines 6-28):
+Defined in the `:root` block of `styles.css`:
 
 ```text
 --bg            #050608
@@ -104,8 +104,7 @@ Defined in `:root` (styles.css lines 6-28):
 
 ### Light theme (prefers-color-scheme: light)
 
-Defined in the `@media (prefers-color-scheme: light)` block (styles.css lines
-30-49):
+Defined in the `@media (prefers-color-scheme: light)` block of `styles.css`:
 
 ```text
 --bg            #f5f2e9
@@ -152,18 +151,24 @@ HUD mark and to link hovers.
 
 ### Type stack
 
-From styles.css (lines 23-25):
+From the `--serif` / `--mono` custom properties in `styles.css`:
 
 ```text
 --serif  "Libre Baskerville", "Times New Roman", Times, Georgia, serif
 --mono   "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 ```
 
-The stacks are **system-font-first**: if "JetBrains Mono" / "Libre Baskerville"
-are installed locally they are used, otherwise the page falls back to platform
-mono/serif fonts. There is **no external font fetch** — the landing serves no
-Google Fonts `@import` and `base.html` carries no `fonts.googleapis.com` /
-`fonts.gstatic.com` preconnect, in line with the no-external-deps contract.
+"JetBrains Mono" and "Libre Baskerville" are **self-hosted** as subset woff2
+files under `packages/landing/landing/static/fonts/` (both SIL OFL-1.1),
+declared with `@font-face` in `styles.css` — `local()`-first (so a locally
+installed copy wins), then the self-hosted woff2, with `font-display: swap`.
+If neither is available the stacks fall back to platform mono/serif fonts.
+Either way there is **no external font fetch** — the landing serves no Google
+Fonts `@import` and `base.html` carries no `fonts.googleapis.com` /
+`fonts.gstatic.com` preconnect, in line with the no-external-deps contract. The
+woff2 subsets are built reproducibly by
+`packages/landing/scripts/subset_brand_fonts.py` (see
+`static/fonts/README.md`).
 
 ### Wordmark treatment
 
