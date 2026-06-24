@@ -68,6 +68,7 @@ SHA256 = {
     "jbm_zip": "6f6376c6ed2960ea8a963cd7387ec9d76e3f629125bc33d1fdcd7eb7012f7bbf",  # pragma: allowlist secret
     "lb_regular": "05a95421961341c5b2556285e8415df9db27dab4f4abe22b446b3c6a8b916c5d",  # pragma: allowlist secret
     "lb_italic": "223959683dc73ec4437bd61fabaa4b3f22209e22855ffd3aee36ba61a5116e97",  # pragma: allowlist secret
+    "lb_ofl": "3624eddd4c8f8a908130a417ae7cd089c9da69899c4e0ca1a5217d0a6fae16fd",  # pragma: allowlist secret
 }
 
 # Mono needs Latin-1 + General Punctuation + Greek (the ΛΟΓΙΟΝ ornament) +
@@ -145,6 +146,7 @@ def main() -> None:
     with zipfile.ZipFile(io.BytesIO(fetch(JBM_ZIP, SHA256["jbm_zip"]))) as jbm:
         jbm_reg = jbm.read("fonts/ttf/JetBrainsMono-Regular.ttf")
         jbm_bold = jbm.read("fonts/ttf/JetBrainsMono-Bold.ttf")
+        # JBM's OFL.txt is covered by the already-verified zip checksum.
         (OUT / "OFL-JetBrainsMono.txt").write_bytes(jbm.read("OFL.txt"))
 
     print("Fetching Libre Baskerville…")
@@ -154,7 +156,9 @@ def main() -> None:
     lb_ital = fetch(
         LB_BASE + "LibreBaskerville-Italic%5Bwght%5D.ttf", SHA256["lb_italic"]
     )
-    (OUT / "OFL-LibreBaskerville.txt").write_bytes(fetch(LB_BASE + "OFL.txt"))
+    (OUT / "OFL-LibreBaskerville.txt").write_bytes(
+        fetch(LB_BASE + "OFL.txt", SHA256["lb_ofl"])
+    )
 
     print("Subsetting…")
     subset(jbm_reg, OUT / "JetBrainsMono-Regular.woff2", MONO)

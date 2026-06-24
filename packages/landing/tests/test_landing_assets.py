@@ -46,10 +46,15 @@ def test_base_template_has_no_external_preconnect() -> None:
     # No preconnect to an external host (the no-external-font-deps contract).
     # Same-origin / non-font resource hints are allowed, so assert on the
     # actual link targets rather than banning the bare word "preconnect".
-    for link in re.findall(r"<link\b[^>]*>", base):
-        if 'rel="preconnect"' not in link:
+    # Handle either quote style and multi-token rel values
+    # (e.g. rel="preconnect dns-prefetch").
+    for link in re.findall(r"<link\b[^>]*>", base, flags=re.IGNORECASE):
+        rel_match = re.search(r"""rel\s*=\s*["']([^"']*)["']""", link)
+        if not rel_match:
             continue
-        href_match = re.search(r'href="([^"]*)"', link)
+        if "preconnect" not in rel_match.group(1).lower().split():
+            continue
+        href_match = re.search(r"""href\s*=\s*["']([^"']*)["']""", link)
         href = href_match.group(1) if href_match else ""
         assert not re.match(r"(https?:)?//", href), (
             f"external preconnect not allowed: {href}"
