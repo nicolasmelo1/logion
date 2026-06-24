@@ -171,3 +171,37 @@ jobs:
 
       - name: Tests (vitest)
         run: npm test
+
+  social-management:
+    name: Social management (lint, types, tests, architecture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-packages --locked
+
+      - name: Lint (ruff)
+        run: uv run ruff check packages/social-management/
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check packages/social-management/
+
+      - name: Type check (mypy)
+        run: uv run mypy packages/social-management/ --ignore-missing-imports
+
+      - name: Tests + architecture
+        run: uv run pytest packages/social-management/tests/ -q --no-header

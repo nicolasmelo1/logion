@@ -12,6 +12,7 @@ members = [
     "packages/landing",
     "packages/agent-companion",
     "packages/scanners",
+    "packages/social-management",
 ]
 
 [dependency-groups]
@@ -24,6 +25,7 @@ dev = [
     "pytest>=9.0.3,<9.1.0",
     "python-semantic-release>=10.5.3,<10.6.0",
     "ruff>=0.15.12,<0.16.0",
+    "respx>=0.22,<0.23",
     "twine>=6.1,<7.0",
     "vulture>=2.14,<3.0",
 ]
@@ -75,13 +77,13 @@ ignore = [
 "packages/landing/scripts/subset_brand_fonts.py" = ["T201", "E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion", "logion_scanners"]
+known-first-party = ["cli", "landing", "logion", "logion_scanners", "social_management"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners"]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management"]
 markers = [
     "integration: integration tests requiring a running mock server (deselect with '-m \"not integration\"')",
     "docker: tests requiring Docker (deselect with '-m \"not docker\"')",

@@ -1,0 +1,3 @@
+content/*.yaml
+.env.local
+.spend-ledger.json

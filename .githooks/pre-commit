@@ -89,4 +89,25 @@ if [ -n "${npm_staged}" ]; then
 	)
 fi
 
+# ── social-management checks — only run when files under
+# packages/social-management/** are staged, so the hook stays fast
+# for changes to other packages.
+social_staged="$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^packages/social-management/' || true)"
+if [ -n "${social_staged}" ]; then
+	echo "social-management files staged — running social-management checks..."
+
+	echo "Running social-management lint (ruff)..."
+	uv run ruff check packages/social-management/
+
+	echo "Running social-management format check (ruff)..."
+	uv run ruff format --check packages/social-management/
+
+	echo "Running social-management type check (mypy)..."
+	uv run mypy packages/social-management/ --ignore-missing-imports
+
+	echo "Running social-management tests + architecture..."
+	uv run pytest packages/social-management/tests/ -q --no-header
+fi
+
 echo "All checks passed."

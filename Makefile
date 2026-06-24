@@ -9,7 +9,7 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
-	scanners-lint scanners-test
+	scanners-lint scanners-test social-lint social-test
 
 lint:
 	uv run ruff check packages/
@@ -150,3 +150,17 @@ scanners-test:
 
 scanners-test-integration:
 	uv run pytest packages/scanners/tests/ -q --no-header -m docker
+
+# ── social-management package targets ─────────────────────────
+social-lint:
+	uv run ruff check packages/social-management/
+	uv run ruff format --check packages/social-management/
+
+social-typecheck:
+	uv run mypy packages/social-management/ --ignore-missing-imports
+
+social-test:
+	uv run pytest packages/social-management/tests/ -q --no-header
+
+social-arch:
+	uv run pytest packages/social-management/tests/test_social_architecture.py -q --no-header
