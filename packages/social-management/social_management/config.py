@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from social_management.errors import MissingCredentialsError, SocialError
 
@@ -14,8 +14,8 @@ XBackend = Literal["api", "off"]
 
 # Logical channel slot -> env var holding its webhook URL. These slot
 # names are the CLI's stable --channel vocabulary; the actual Discord
-# channel each URL targets is decided in 13.4 (e.g. "creators" -> the
-# #course-building channel; "support" -> the #support *forum* channel).
+# channel each URL targets is decided during server setup (e.g.
+# "creators" -> #course-building; "support" -> the #support forum).
 WEBHOOK_ENV_BY_CHANNEL: dict[str, str] = {
     "announcements": "DISCORD_WEBHOOK_ANNOUNCEMENTS",
     "general": "DISCORD_WEBHOOK_GENERAL",
@@ -49,7 +49,7 @@ class SocialConfig(BaseModel):
     discord_bot_token: str | None = None
     discord_guild_id: str | None = None
     discord_channel_support: str | None = None
-    discord_webhooks: dict[str, str] = {}  # channel -> URL
+    discord_webhooks: dict[str, str] = Field(default_factory=dict)
     x_backend: XBackend = "off"
     x_api_key: str | None = None
     x_api_secret: str | None = None

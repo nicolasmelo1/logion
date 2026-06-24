@@ -86,10 +86,16 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
             )
         return 0
     if args.discord_cmd == "read":  # type: ignore[attr-defined]
-        channel_id = config.discord_channel_support or ""
+        channel_id = config.discord_channel_support
+        if not channel_id and not args.dry_run:  # type: ignore[attr-defined]
+            print(
+                "error: DISCORD_CHANNEL_SUPPORT not set",
+                file=sys.stderr,
+            )
+            return 2
         try:
             messages = client.read_recent(
-                channel_id,
+                channel_id or "",
                 limit=args.limit,  # type: ignore[attr-defined]
                 dry_run=args.dry_run,  # type: ignore[attr-defined]
             )

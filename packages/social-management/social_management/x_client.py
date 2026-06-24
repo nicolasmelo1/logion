@@ -103,11 +103,11 @@ class XClient:
           2. If backend != api or creds missing -> manual render
              (PostResult(sent=False, rendered=text, note='manual')); NO
              network, NO cost. (Raises nothing — graceful degrade.)
-          3. ledger.check_and_reserve(estimate, budget) ->
-             BudgetExceededError
-          4. if dry_run: return PostResult(dry_run=True, sent=False,
+          3. if dry_run: return PostResult(dry_run=True, sent=False,
              cost_cents=estimate.cents, rendered=text) WITHOUT
-             network/record.
+             network/record/budget-check.
+          4. ledger.check_and_reserve(estimate, budget) ->
+             BudgetExceededError
           5. if not confirm: raise ConfirmationRequiredError
              (mentions estimate.dollars and whether it has a link).
           6. POST /2/tweets {"text": text}; raise_for_status.
@@ -132,9 +132,6 @@ class XClient:
                 rendered=text,
                 note="X backend off/unconfigured — copy this to post manually",
             )
-        self._ledger.check_and_reserve(
-            estimate, self._config.x_monthly_budget_cents
-        )
         if dry_run:
             return PostResult(
                 platform="x",
@@ -145,6 +142,9 @@ class XClient:
                 rendered=text,
                 note=estimate.reason,
             )
+        self._ledger.check_and_reserve(
+            estimate, self._config.x_monthly_budget_cents
+        )
         if not confirm:
             raise ConfirmationRequiredError(
                 f"X post costs ~{estimate.dollars} "

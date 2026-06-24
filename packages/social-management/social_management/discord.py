@@ -71,10 +71,12 @@ class DiscordClient:
         (<=2000 chars). Forum channels (e.g. the `support` slot): the
         body MUST also carry ``thread_name`` (new post) or the request
         gets ``?thread_id=...`` (existing thread).
+        Raises MissingCredentialsError if the channel has no configured
+        webhook (even on dry_run, so misconfiguration is caught early).
         On dry_run: returns a PostResult with sent=False and
-        rendered=content, making NO network call. Raises
-        MissingCredentialsError if the channel has no configured webhook.
+        rendered=content, making NO network call.
         """
+        webhook_url = self._config.webhook_for(channel)  # may raise
         if dry_run:
             return PostResult(
                 platform="discord",
@@ -83,7 +85,6 @@ class DiscordClient:
                 sent=False,
                 rendered=content,
             )
-        webhook_url = self._config.webhook_for(channel)  # may raise
         self._respect_rate_limit(webhook_url)
         # Forum channels require thread_name/thread_id (see note above).
         body: dict[str, object] = {"content": content[:2000]}

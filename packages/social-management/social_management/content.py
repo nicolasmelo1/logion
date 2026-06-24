@@ -21,10 +21,9 @@ def add(
 
     Uses max-index+1 so deleted drafts don't cause index reuse and
     overwrite an existing file. If dry_run, return the would-be path
-    without writing.
+    without writing or creating directories.
     """
     if dry_run:
-        content_dir.mkdir(parents=True, exist_ok=True)
         existing = list(content_dir.glob(f"{draft.platform}-*.yaml"))
         max_n = _max_index(existing, draft.platform)
         return content_dir / f"{draft.platform}-{max_n + 1:03d}.yaml"
