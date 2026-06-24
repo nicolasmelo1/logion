@@ -1548,7 +1548,9 @@ pre code {
   display: block;
   width: 66px;
   height: 66px;
-  color: var(--accent-bright);
+  /* Match the orbit ring/dots (drawn in #c9a76a) so the seal reads as the
+     yellowish brand bronze in both themes, not the light-theme dark accent. */
+  color: #c9a76a;
   background: var(--bg);
   border-radius: 50%;
   filter: drop-shadow(0 0 10px rgba(201, 167, 106, 0.25));

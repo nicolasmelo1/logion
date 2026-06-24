@@ -68,7 +68,22 @@
     });
   }
 
+  function turnOf(seg) {
+    return seg.el.closest(".hero-demo__turn");
+  }
+
+  // Each turn (its role label — "you" / "agent" / "$" — and its text) stays
+  // hidden until the animation reaches it, so the labels appear in step with
+  // the text rather than all at once.
+  function setTurnsHidden(frame, hidden) {
+    frame.segments.forEach((seg) => {
+      const turn = turnOf(seg);
+      if (turn) turn.style.display = hidden ? "none" : "";
+    });
+  }
+
   function renderStatic(frame) {
+    setTurnsHidden(frame, false);
     frame.segments.forEach((seg) => {
       seg.el.textContent = seg.text;
     });
@@ -81,6 +96,7 @@
     frame.segments.forEach((seg) => {
       seg.el.textContent = "";
     });
+    setTurnsHidden(frame, true);
   }
 
   function sleep(ms) {
@@ -122,6 +138,9 @@
 
     for (const seg of frame.segments) {
       if (myToken !== runToken) return;
+      // Reveal this turn (its label + text) as it starts.
+      const turn = turnOf(seg);
+      if (turn) turn.style.display = "";
       // Cursor trails the turn currently being typed.
       if (frame.cursor) seg.el.parentNode.appendChild(frame.cursor);
       const speed = SPEED[seg.role] || DEFAULT_SPEED;

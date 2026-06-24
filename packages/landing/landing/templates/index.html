@@ -104,7 +104,7 @@
           </a>
         {% endfor %}
       </div>
-      <p class="release-note">{{ hero.release_note }}</p>
+      {% if hero.release_note %}<p class="release-note">{{ hero.release_note }}</p>{% endif %}
 
       <p class="hero-body">{{ hero.body }}</p>
 

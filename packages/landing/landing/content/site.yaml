@@ -29,9 +29,6 @@ hero:
     Logion is not a video course marketplace or a generic skill directory. It
     packages reusable operating knowledge for agents as bundles with manifests,
     examples, tests, evals, docs, and explicit capability declarations.
-  release_note: >-
-    Intended first public release path; availability depends on the first public
-    installer release.
   cta:
     primary:
       label: Copy install command
