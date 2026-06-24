@@ -5,15 +5,16 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from social_management.config import SocialConfig
-from social_management.cost import SpendLedger
-from social_management.errors import (
+from social_management.core.config import SocialConfig
+from social_management.core.errors import (
     BudgetExceededError,
     ConfirmationRequiredError,
     MissingCredentialsError,
 )
-from social_management.models import CostEstimate
-from social_management.x_client import X_API, XClient
+from social_management.cost.ledger import SpendLedger
+from social_management.x.client import XClient
+from social_management.x.constants import X_API
+from social_management.x.models import CostEstimate
 
 
 def _live_config(

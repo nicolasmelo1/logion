@@ -156,5 +156,11 @@ social-lint:
 	uv run ruff check packages/social-management/
 	uv run ruff format --check packages/social-management/
 
+social-typecheck:
+	uv run mypy packages/social-management/ --ignore-missing-imports
+
 social-test:
 	uv run pytest packages/social-management/tests/ -q --no-header
+
+social-arch:
+	uv run pytest packages/social-management/tests/test_social_architecture.py -q --no-header

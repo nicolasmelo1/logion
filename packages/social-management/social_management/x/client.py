@@ -14,15 +14,15 @@ from urllib.parse import quote
 
 import httpx
 
-from social_management.config import SocialConfig
-from social_management.cost import CostEstimator, SpendLedger
-from social_management.errors import (
+from social_management.core.config import SocialConfig
+from social_management.core.errors import (
     ConfirmationRequiredError,
     MissingCredentialsError,
 )
-from social_management.models import PostResult
-
-X_API = "https://api.x.com/2/tweets"
+from social_management.core.models import PostResult
+from social_management.cost.estimator import CostEstimator
+from social_management.cost.ledger import SpendLedger
+from social_management.x.constants import X_API
 
 
 class XClient:

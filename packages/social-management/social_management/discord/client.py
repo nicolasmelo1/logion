@@ -9,20 +9,16 @@ from typing import Any
 
 import httpx
 
-from social_management.config import SocialConfig
-from social_management.errors import MissingCredentialsError
-from social_management.models import PostResult, RecentMessage
-
-DISCORD_API = "https://discord.com/api/v10"
-WEBHOOK_RATE_LIMIT = 30  # messages
-WEBHOOK_RATE_WINDOW_S = 60  # per minute, per webhook
-
-KNOWN_FORUM_CHANNELS = frozenset({"support"})
-# Trade-off: post_webhook only has the webhook URL, not the channel id
-# needed to call GET /channels/{id} and detect type==15 (GUILD_FORUM).
-# So we hardcode the known forum slots here. read_recent detects forum
-# vs text dynamically (it has the channel id). If another slot becomes
-# a forum, add it here or the webhook post will 400.
+from social_management.core.config import SocialConfig
+from social_management.core.errors import MissingCredentialsError
+from social_management.core.models import PostResult
+from social_management.discord.constants import (
+    DISCORD_API,
+    KNOWN_FORUM_CHANNELS,
+    WEBHOOK_RATE_LIMIT,
+    WEBHOOK_RATE_WINDOW_S,
+)
+from social_management.discord.models import RecentMessage
 
 
 class DiscordClient:

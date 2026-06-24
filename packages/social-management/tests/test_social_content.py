@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from social_management.content import add, list_drafts
-from social_management.models import PostDraft
+from social_management.content.queue import add, list_drafts
+from social_management.core.models import PostDraft
 
 
 def test_add_writes_yaml(tmp_content_dir: Path) -> None:

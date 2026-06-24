@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from social_management.config import SocialConfig
-from social_management.errors import MissingCredentialsError
+from social_management.core.config import SocialConfig
+from social_management.core.errors import MissingCredentialsError
 
 
 def test_from_env_loads_webhooks(env, tmp_path) -> None:  # type: ignore[no-untyped-def]

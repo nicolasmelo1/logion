@@ -7,13 +7,13 @@ import time
 import httpx
 import pytest
 
-from social_management.config import SocialConfig
-from social_management.discord import (
+from social_management.core.config import SocialConfig
+from social_management.core.errors import MissingCredentialsError
+from social_management.discord.client import DiscordClient
+from social_management.discord.constants import (
     DISCORD_API,
     WEBHOOK_RATE_LIMIT,
-    DiscordClient,
 )
-from social_management.errors import MissingCredentialsError
 
 
 def _config_with_webhook(

@@ -23,7 +23,7 @@ def test_x_post_dry_run_prints_cost_exit_0(
     )
     monkeypatch.chdir(tmp_path)
     # Avoid loading a real .env.local
-    from social_management import config as cfg_module
+    from social_management.core import config as cfg_module
 
     original_from_env = cfg_module.SocialConfig.from_env
 
@@ -55,7 +55,7 @@ def test_x_post_no_confirm_exit_1(
         X_MONTHLY_BUDGET_CENTS="1000",
     )
     monkeypatch.chdir(tmp_path)
-    from social_management import config as cfg_module
+    from social_management.core import config as cfg_module
 
     original_from_env = cfg_module.SocialConfig.from_env
 
@@ -80,7 +80,7 @@ def test_discord_post_dry_run_exit_0(
 ) -> None:
     env(DISCORD_WEBHOOK_GENERAL="https://discord.com/api/webhooks/abc")
     monkeypatch.chdir(tmp_path)
-    from social_management import config as cfg_module
+    from social_management.core import config as cfg_module
 
     original_from_env = cfg_module.SocialConfig.from_env
 
@@ -113,8 +113,8 @@ def test_queue_add_then_list(
 ) -> None:
     env()
     monkeypatch.chdir(tmp_path)
-    from social_management import config as cfg_module
-    from social_management import content as content_module
+    from social_management.content import constants as content_constants
+    from social_management.core import config as cfg_module
 
     original_from_env = cfg_module.SocialConfig.from_env
 
@@ -126,7 +126,7 @@ def test_queue_add_then_list(
 
     monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
     # Make content queue use tmp_path/content.
-    monkeypatch.setattr(content_module, "CONTENT_DIR", tmp_path / "content")
+    monkeypatch.setattr(content_constants, "CONTENT_DIR", tmp_path / "content")
     code = main([
         "queue",
         "add",

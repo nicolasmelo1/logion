@@ -45,7 +45,7 @@ def env(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
 @pytest.fixture()
 def tmp_ledger(tmp_path: Path):  # type: ignore[no-untyped-def]
     """A SpendLedger pointing at a tmp file."""
-    from social_management.cost import SpendLedger
+    from social_management.cost.ledger import SpendLedger
 
     return SpendLedger(tmp_path / ".spend-ledger.json")
 

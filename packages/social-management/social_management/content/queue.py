@@ -6,9 +6,8 @@ from pathlib import Path
 
 import yaml
 
-from social_management.models import PostDraft
-
-CONTENT_DIR = Path("content")
+from social_management.content.constants import CONTENT_DIR
+from social_management.core.models import PostDraft
 
 
 def add(

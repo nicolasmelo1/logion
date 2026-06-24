@@ -8,20 +8,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from social_management.errors import MissingCredentialsError, SocialError
+from social_management.core.constants import (
+    ENV_LOCAL_FILE,
+    WEBHOOK_ENV_BY_CHANNEL,
+)
+from social_management.core.errors import MissingCredentialsError, SocialError
 
 XBackend = Literal["api", "off"]
-
-# Logical channel slot -> env var holding its webhook URL. These slot
-# names are the CLI's stable --channel vocabulary; the actual Discord
-# channel each URL targets is decided during server setup (e.g.
-# "creators" -> #course-building; "support" -> the #support forum).
-WEBHOOK_ENV_BY_CHANNEL: dict[str, str] = {
-    "announcements": "DISCORD_WEBHOOK_ANNOUNCEMENTS",
-    "general": "DISCORD_WEBHOOK_GENERAL",
-    "support": "DISCORD_WEBHOOK_SUPPORT",
-    "creators": "DISCORD_WEBHOOK_CREATORS",
-}
 
 
 def _load_env_local(path: Path) -> None:
@@ -68,7 +61,7 @@ class SocialConfig(BaseModel):
         nothing set).
         """
         if env_local is None:
-            env_local = Path(".env.local")
+            env_local = Path(ENV_LOCAL_FILE)
         _load_env_local(env_local)
         webhooks = {
             ch: os.environ[var]

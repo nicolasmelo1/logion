@@ -5,17 +5,17 @@ from __future__ import annotations
 import argparse
 import sys
 
-from social_management.config import SocialConfig
-from social_management.content import add, list_drafts
-from social_management.discord import DiscordClient
-from social_management.errors import (
+from social_management.content.queue import add, list_drafts
+from social_management.core.config import SocialConfig
+from social_management.core.errors import (
     BudgetExceededError,
     ConfirmationRequiredError,
     MissingCredentialsError,
     SocialError,
 )
-from social_management.models import PostDraft
-from social_management.x_client import XClient
+from social_management.core.models import PostDraft
+from social_management.discord.client import DiscordClient
+from social_management.x.client import XClient
 
 
 def _build_parser() -> argparse.ArgumentParser:

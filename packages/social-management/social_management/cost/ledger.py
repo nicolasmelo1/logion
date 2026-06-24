@@ -1,55 +1,14 @@
-"""X cost estimation + a local month-to-date spend ledger.
-
-Pricing constants reflect X pay-per-use as researched Jun 2026. They are
-the ONLY place magic numbers live; tests assert against them.
-"""
+"""Local month-to-date spend ledger for X posts."""
 
 from __future__ import annotations
 
 import json
-import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from social_management.errors import BudgetExceededError
-from social_management.models import CostEstimate
-
-POST_COST_CENTS = 2  # ~$0.015 rounded up to 2c
-POST_WITH_LINK_COST_CENTS = 20  # ~$0.20 link tax
-READ_COST_CENTS = 1  # ~$0.005 rounded up; reads are not gated, FYI
-
-# Matches http(s):// and bare domains likely to be unfurled by X.
-_URL_RE = re.compile(
-    r"(https?://\S+|\bwww\.\S+|\b[a-z0-9.-]+\.(?:com|sh|io|org|net|dev)\b)",
-    re.IGNORECASE,
-)
-
-
-class CostEstimator:
-    """Pure-function cost model — no I/O, trivially testable."""
-
-    @staticmethod
-    def has_link(text: str) -> bool:
-        return _URL_RE.search(text) is not None
-
-    @classmethod
-    def estimate(cls, text: str) -> CostEstimate:
-        """Return the cost of posting `text` to X.
-
-        20c if the body contains any URL/domain, else 2c.
-        """
-        if cls.has_link(text):
-            return CostEstimate(
-                cents=POST_WITH_LINK_COST_CENTS,
-                has_link=True,
-                reason="contains a link → ~$0.20 link tax"
-                " (put link in a reply)",
-            )
-        return CostEstimate(
-            cents=POST_COST_CENTS,
-            has_link=False,
-            reason="link-free body → ~$0.015",
-        )
+from social_management.core.constants import SPEND_LEDGER_FILE
+from social_management.core.errors import BudgetExceededError
+from social_management.x.models import CostEstimate
 
 
 class SpendLedger:
@@ -60,7 +19,7 @@ class SpendLedger:
     """
 
     def __init__(self, path: Path | None = None) -> None:
-        self.path = path or Path(".spend-ledger.json")
+        self.path = path or Path(SPEND_LEDGER_FILE)
 
     def _data(self) -> dict[str, int]:
         if not self.path.exists():
