@@ -71,6 +71,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/release_manifest.py" = ["T201"]
+"packages/landing/scripts/subset_brand_fonts.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_scanners"]

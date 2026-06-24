@@ -1,7 +1,55 @@
 /* SPDX-License-Identifier: MIT */
 /* Logion landing — dark editorial default with light fallback. */
-/* System-font-first: the --serif/--mono stacks fall back to platform fonts; */
-/* no external font fetch (see docs/branding-guide.md). */
+/* Brand fonts self-hosted as woff2 under static/fonts/ (JetBrains Mono +     */
+/* Libre Baskerville, both OFL-1.1). Loaded local()-first with               */
+/* font-display: swap, then the --serif/--mono stacks fall back to platform   */
+/* fonts. No external font fetch — no Google Fonts stylesheet import or        */
+/* preconnect (see docs/branding-guide.md). */
+
+/* --- Self-hosted brand fonts (OFL-1.1, static/fonts/) ------------------- */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("JetBrains Mono"),
+    local("JetBrainsMono-Regular"),
+    url("/static/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    local("JetBrains Mono Bold"),
+    local("JetBrainsMono-Bold"),
+    url("/static/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Libre Baskerville"),
+    local("LibreBaskerville-Regular"),
+    url("/static/fonts/LibreBaskerville-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Baskerville";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Libre Baskerville Italic"),
+    local("LibreBaskerville-Italic"),
+    url("/static/fonts/LibreBaskerville-Italic.woff2") format("woff2");
+}
 
 :root {
   interpolate-size: allow-keywords;
@@ -80,6 +128,49 @@ body {
   outline-offset: 3px;
 }
 
+/* --- CRT overlay: scanlines + edge vignette (motif) --------------------- */
+/* A single fixed, non-interactive layer above the page. Static (no keyframes)
+   so it needs no reduced-motion guard; kept very subtle to preserve AA text
+   contrast. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 52%,
+      rgba(0, 0, 0, 0.30) 100%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.05) 0,
+      rgba(0, 0, 0, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
+
+@media (prefers-color-scheme: light) {
+  body::after {
+    background:
+      radial-gradient(
+        ellipse at center,
+        transparent 60%,
+        rgba(60, 48, 20, 0.09) 100%
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        rgba(60, 48, 20, 0.03) 0,
+        rgba(60, 48, 20, 0.03) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+  }
+}
+
 a {
   color: var(--fg);
   text-decoration: none;
@@ -140,8 +231,10 @@ a:hover {
   font-size: 10px; /* JS overrides with computed fit-to-viewport size */
   line-height: 1;
   letter-spacing: 0;
-  color: rgba(201, 167, 106, 0.78);
-  text-shadow: 0 0 10px rgba(201, 167, 106, 0.22);
+  color: rgba(201, 167, 106, 0.92);
+  text-shadow:
+    0 0 14px rgba(201, 167, 106, 0.35),
+    0 0 38px rgba(201, 167, 106, 0.16);
   background: transparent;
   border: 0;
   -webkit-user-select: none;
@@ -154,8 +247,8 @@ a:hover {
 
 @media (prefers-color-scheme: light) {
   #silhouette {
-    color: rgba(90, 69, 23, 0.78);
-    text-shadow: none;
+    color: rgba(90, 69, 23, 0.86);
+    text-shadow: 0 0 16px rgba(138, 106, 43, 0.14);
   }
 }
 
@@ -471,16 +564,46 @@ button.cta {
 }
 
 .hero-copy h1 {
-  margin: 22px 0 16px;
+  margin: 18px 0 20px;
   font-family: var(--mono);
   font-weight: 700;
-  font-size: clamp(64px, 9vw, 132px);
-  line-height: 0.86;
-  letter-spacing: 0.03em;
+  font-size: clamp(64px, 9.2vw, 140px);
+  line-height: 0.82;
+  letter-spacing: 0.02em;
   color: var(--accent-bright);
   text-shadow:
     0 0 22px rgba(201, 167, 106, 0.28),
     0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* Greek line (ΛΟΓΙΟΝ): brushed-bronze gradient fill + HUD glow. The h1
+   text-shadow does not paint through a transparent fill, so the glow is
+   carried by drop-shadow here. */
+.hero-copy h1 > span:first-child {
+  display: inline-block;
+  letter-spacing: 0.1em;
+  background: linear-gradient(
+    180deg,
+    var(--accent-bright) 0%,
+    var(--accent) 76%,
+    var(--accent-bright) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 26px rgba(201, 167, 106, 0.32));
+}
+
+/* HUD kicker rule beneath the lockup. */
+.hero-copy h1::after {
+  content: "";
+  display: block;
+  width: 92px;
+  height: 2px;
+  margin-top: 22px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  box-shadow: var(--hud-glow);
 }
 
 @media (max-width: 980px) {
@@ -1100,8 +1223,10 @@ pre code {
   z-index: 3;
   background: var(--terminal-bg);
   border: 1px solid var(--rule-strong);
+  border-top-color: var(--accent);
   box-shadow:
     0 0 0 1px var(--panel-edge),
+    0 0 30px rgba(201, 167, 106, 0.1),
     var(--terminal-shadow);
   backdrop-filter: blur(8px);
   font-family: var(--mono);
@@ -1112,6 +1237,28 @@ pre code {
   width: 100%;
   justify-self: end;
   margin-top: 56px;
+}
+
+/* Top accent rail + HUD corner tick for the terminal panel. */
+.hero-demo::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  pointer-events: none;
+}
+
+.hero-demo::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 16px;
+  height: 16px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  pointer-events: none;
 }
 
 @media (max-width: 980px) {

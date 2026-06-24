@@ -26,6 +26,26 @@ def test_styles_supports_reduced_motion() -> None:
     assert "prefers-reduced-motion" in text
 
 
+def test_styles_has_no_external_font_imports() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "fonts.googleapis.com" not in text
+    assert "fonts.gstatic.com" not in text
+    assert "@import" not in text
+
+
+def test_base_template_has_no_external_preconnect() -> None:
+    base = (
+        Path(__file__).resolve().parents[1]
+        / "landing"
+        / "templates"
+        / "base.html"
+    ).read_text(encoding="utf-8")
+    assert "fonts.googleapis.com" not in base
+    assert "fonts.gstatic.com" not in base
+    # Self-host or system fonts only — no external stylesheet/font hosts.
+    assert "preconnect" not in base
+
+
 def test_styles_make_section_titles_serif_italic_only() -> None:
     text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
     section_title_block = text.split(".content-section h2 {", maxsplit=1)[
