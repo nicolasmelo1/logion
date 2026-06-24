@@ -122,6 +122,7 @@ parse_args() {
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
     INSTALL_NO_ONBOARDING=0
+    INSTALL_ONBOARDING_FAILED=0
     INSTALL_QUIET=0
     INSTALL_VERBOSE=0
 
@@ -255,7 +256,7 @@ parse_args() {
 
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_ONBOARDING_FAILED INSTALL_QUIET INSTALL_VERBOSE
 }
 
 # --- resolve_url helper -----------------------------------------------------
@@ -809,6 +810,8 @@ run_onboarding() {
     fi
     if ! command -v logion >/dev/null 2>&1; then
         warn "logion not on PATH; skipping onboarding. Run 'logion onboarding' later."
+        INSTALL_ONBOARDING_FAILED=1
+        export INSTALL_ONBOARDING_FAILED
         return 0
     fi
     if [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
@@ -817,7 +820,11 @@ run_onboarding() {
     fi
 
     info "Running 'logion onboarding' ..."
-    logion onboarding || warn "onboarding did not complete; run 'logion onboarding' later."
+    if ! logion onboarding; then
+        warn "onboarding did not complete; run 'logion onboarding' later."
+        INSTALL_ONBOARDING_FAILED=1
+        export INSTALL_ONBOARDING_FAILED
+    fi
     return 0
 }
 
@@ -831,7 +838,7 @@ print_next_steps() {
         info "✅ Logion installed (CLI + companion)."
     fi
     info ""
-    if [ "${INSTALL_NO_ONBOARDING}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+    if [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ "${INSTALL_NO_ONBOARDING}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
         info "Finish setup so your agent can use Logion:"
         info "  logion onboarding"
     else

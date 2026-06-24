@@ -209,6 +209,8 @@ function Parse-Args {
         Die -Message "--CliOnly and --SkillOnly are mutually exclusive" -ExitCode $script:EXIT_INVALID_ARGS
     }
 
+    $script:OnboardingFailed = $false
+
     $script:LastOpts = $opts
 
     return $opts
@@ -729,6 +731,7 @@ function Run-Onboarding {
     $logion = Get-Command logion -ErrorAction SilentlyContinue
     if (-not $logion) {
         Warn -Message "logion not on PATH; run 'logion onboarding' later."
+        $script:OnboardingFailed = $true
         return
     }
     if (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
@@ -737,8 +740,14 @@ function Run-Onboarding {
     }
 
     Info -Message "Running 'logion onboarding' ..."
-    & $logion.Source onboarding
-    if ($LASTEXITCODE -ne 0) {
+    try {
+        & $logion.Source onboarding
+        if ($LASTEXITCODE -ne 0) {
+            $script:OnboardingFailed = $true
+            Warn -Message "onboarding did not complete; run 'logion onboarding' later."
+        }
+    } catch {
+        $script:OnboardingFailed = $true
         Warn -Message "onboarding did not complete; run 'logion onboarding' later."
     }
 }
@@ -761,7 +770,7 @@ function Print-NextSteps {
         Write-Host "✓ Logion CLI v$Version and companion installed successfully." -ForegroundColor Green
     }
     Write-Host ""
-    if (($script:LastOpts -and $script:LastOpts.NoOnboarding) -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+    if ($script:OnboardingFailed -or ($script:LastOpts -and $script:LastOpts.NoOnboarding) -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
         Write-Host "Finish setup so your agent can use Logion:"
         Write-Host "  logion onboarding"
     } else {

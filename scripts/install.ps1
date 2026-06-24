@@ -14,7 +14,7 @@
 #   --Installer pipx|uv|venv Force a specific installer (default: uv)
 #   --DryRun                 Show what would be done without executing
 #   --NoModifyPath           Do not edit the user PATH
-#   --NoOnboarding          Do not run logion onboarding after install
+#   --NoOnboarding           Do not run logion onboarding after install
 #   --Quiet                  Suppress informational output
 #   --Verbose                Show extra detail
 #   --Help                   Print usage and exit
@@ -85,7 +85,7 @@ Options:
   --Installer pipx|uv|venv Force a specific installer (default: uv)
   --DryRun                 Show what would be done
   --NoModifyPath           Do not edit the user PATH
-  --NoOnboarding          Do not run logion onboarding after install
+  --NoOnboarding           Do not run logion onboarding after install
   --Quiet                  Suppress informational output
   --Verbose                Show extra detail
   --Help                   Print this help and exit

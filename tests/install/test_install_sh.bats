@@ -53,6 +53,7 @@ parse_args() {
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
     INSTALL_NO_ONBOARDING=0
+    INSTALL_ONBOARDING_FAILED=0
     INSTALL_QUIET=0
     INSTALL_VERBOSE=0
     while [ $# -gt 0 ]; do
@@ -76,7 +77,7 @@ parse_args() {
     fi
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_ONBOARDING_FAILED INSTALL_QUIET INSTALL_VERBOSE
     return 0
 }
 
@@ -145,11 +146,24 @@ run_onboarding() {
     if [ -n "${LOGION_NONINTERACTIVE:-}" ]; then
         return 0
     fi
+    if [ "${STUB_ONBOARDING_FAIL:-}" = 1 ]; then
+        INSTALL_ONBOARDING_FAILED=1
+        export INSTALL_ONBOARDING_FAILED
+        return 0
+    fi
     printf 'onboarding\n' >> "${HARNESS_TMPDIR}/onboarding-marker"
     return 0
 }
 
-print_next_steps() { info "Run 'logion --version' to verify."; return 0; }
+print_next_steps() {
+    if [ "${INSTALL_ONBOARDING_FAILED:-0}" = 1 ]; then
+        info "Finish setup so your agent can use Logion:"
+        info "  logion onboarding"
+    else
+        info "Your agent is ready to use Logion."
+    fi
+    return 0
+}
 STUB_EOF
     export INSTALL_LIB_PATH="${_stub_lib}"
 }
@@ -169,6 +183,7 @@ run_installer() {
         HARNESS_TMPDIR="${HARNESS_TMPDIR}" \
         HARNESS_BIN_DIR="${HARNESS_BIN_DIR}" \
         INSTALL_LIB_PATH="${INSTALL_LIB_PATH}" \
+        STUB_ONBOARDING_FAIL="${STUB_ONBOARDING_FAIL:-}" \
         sh "${_install_sh}" "$@"
 }
 
@@ -197,6 +212,13 @@ run_installer() {
     run run_installer
     [ "$status" -eq 0 ]
     [ -f "${HARNESS_TMPDIR}/onboarding-marker" ]
+}
+
+@test "onboarding failure prints rerun guidance" {
+    STUB_ONBOARDING_FAIL=1 run run_installer
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"logion onboarding"* ]]
+    [[ "$output" != *"Your agent is ready to use Logion."* ]]
 }
 
 @test "--no-onboarding skips onboarding handoff" {

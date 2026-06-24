@@ -112,18 +112,20 @@ exit 0
         [CmdletBinding()]
         param(
             [string]$Version = "0.1.0",
-            [string]$OnboardingMarker = $null
+            [string]$OnboardingMarker = $null,
+            [int]$OnboardingExitCode = 0
         )
 
         # Create a logion.cmd / logion script that reports the version.
         $ext = if ($IsWindows -or ($env:OS -eq "Windows_NT")) { ".cmd" } else { "" }
         $logionScript = [System.IO.Path]::Combine($script:HarnBinDir, "logion$ext")
         if ($ext -eq ".cmd") {
-            if ($OnboardingMarker) {
-                $content = "@if `"%1`"==`"onboarding`" echo onboarding>>`"$OnboardingMarker`"`n@echo logion $Version`n@exit /b 0"
+            $markerCommand = if ($OnboardingMarker) {
+                "echo onboarding>>`"$OnboardingMarker`""
             } else {
-                $content = "@echo logion $Version`n@exit /b 0"
+                "echo onboarding"
             }
+            $content = "@if `"%1`"==`"onboarding`" ($markerCommand & exit /b $OnboardingExitCode)`n@echo logion $Version`n@exit /b 0"
         } else {
             $markerLine = if ($OnboardingMarker) {
                 "    printf 'onboarding\n' >> `"$OnboardingMarker`""
@@ -134,7 +136,7 @@ exit 0
 #!/bin/sh
 if [ "`$1" = "onboarding" ]; then
 $markerLine
-    exit 0
+    exit $OnboardingExitCode
 fi
 if [ "`$1" = "--version" ] || [ "`$1" = "version" ]; then
     printf 'logion $Version\n'
@@ -538,6 +540,26 @@ Describe "onboarding handoff" {
             $opts = Parse-Args -ArgList @()
             Run-Onboarding -Opts $opts
             Test-Path $marker | Should -BeTrue
+        } finally {
+            $env:CI = $origCi
+            $env:LOGION_NONINTERACTIVE = $origNoninteractive
+        }
+    }
+
+    It "prompts to rerun onboarding when onboarding fails" {
+        $origCi = $env:CI
+        $origNoninteractive = $env:LOGION_NONINTERACTIVE
+        $env:CI = $null
+        $env:LOGION_NONINTERACTIVE = $null
+        Set-FakeLogion -Version "0.1.0" -OnboardingExitCode 9
+
+        try {
+            $opts = Parse-Args -ArgList @()
+            Run-Onboarding -Opts $opts
+            $script:OnboardingFailed | Should -BeTrue
+            $output = & { Print-NextSteps -Version "0.1.0" } 6>&1 | Out-String
+            $output | Should -Match "logion onboarding"
+            $output | Should -Not -Match "Your agent is ready"
         } finally {
             $env:CI = $origCi
             $env:LOGION_NONINTERACTIVE = $origNoninteractive
