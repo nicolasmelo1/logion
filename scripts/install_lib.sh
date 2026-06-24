@@ -838,9 +838,11 @@ print_next_steps() {
         info "✅ Logion installed (CLI + companion)."
     fi
     info ""
-    if [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ "${INSTALL_NO_ONBOARDING}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+    if [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
         info "Finish setup so your agent can use Logion:"
         info "  logion onboarding"
+    elif [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
+        info "Onboarding skipped (--no-onboarding)."
     else
         info "Your agent is ready to use Logion."
     fi
