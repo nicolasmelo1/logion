@@ -12,6 +12,7 @@ from social_management.errors import (
     BudgetExceededError,
     ConfirmationRequiredError,
     MissingCredentialsError,
+    SocialError,
 )
 from social_management.models import PostDraft
 from social_management.x_client import XClient
@@ -68,8 +69,8 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
     if args.discord_cmd == "post":  # type: ignore[attr-defined]
         try:
             result = client.post_webhook(
-                args.channel,
-                args.text,
+                args.channel,  # type: ignore[attr-defined]
+                args.text,  # type: ignore[attr-defined]
                 dry_run=args.dry_run,  # type: ignore[attr-defined]
             )
         except MissingCredentialsError as exc:
@@ -143,8 +144,11 @@ def _handle_queue(args: object) -> int:
             target=args.target,  # type: ignore[attr-defined]
             text=args.text,  # type: ignore[attr-defined]
         )
-        path = add(draft)
-        print(f"queued: {path}")
+        path = add(draft, dry_run=args.dry_run)  # type: ignore[attr-defined]
+        if args.dry_run:  # type: ignore[attr-defined]
+            print(f"[dry-run] would queue: {path}")
+        else:
+            print(f"queued: {path}")
         return 0
     if args.queue_cmd == "list":  # type: ignore[attr-defined]
         drafts = list_drafts()
@@ -168,7 +172,11 @@ def main(argv: list[str] | None = None) -> int:
     are caught here, printed to stderr, and mapped to exit code 1.
     """
     args = _build_parser().parse_args(argv)
-    config = SocialConfig.from_env()
+    try:
+        config = SocialConfig.from_env()
+    except SocialError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     if args.cmd == "discord":
         return _handle_discord(args, config)

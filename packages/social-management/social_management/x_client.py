@@ -51,9 +51,15 @@ class XClient:
             return {"Authorization": f"Bearer {bearer}"}
 
         # OAuth1.0a HMAC-SHA1 signing.
+        # x_is_live() already checked by post(), but mypy can't see
+        # that, so narrow here. has_x_oauth1() guarantees these are str.
+        assert self._config.x_api_key is not None
+        assert self._config.x_api_secret is not None
+        assert self._config.x_access_token is not None
+        assert self._config.x_access_secret is not None
         method = "POST"
         url = X_API
-        oauth_params = {
+        oauth_params: dict[str, str] = {
             "oauth_consumer_key": self._config.x_api_key,
             "oauth_nonce": secrets.token_hex(16),
             "oauth_signature_method": "HMAC-SHA1",

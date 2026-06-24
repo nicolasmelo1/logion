@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from datetime import datetime
+from typing import Any
 
 import httpx
 
@@ -17,6 +18,11 @@ WEBHOOK_RATE_LIMIT = 30  # messages
 WEBHOOK_RATE_WINDOW_S = 60  # per minute, per webhook
 
 KNOWN_FORUM_CHANNELS = frozenset({"support"})
+# Trade-off: post_webhook only has the webhook URL, not the channel id
+# needed to call GET /channels/{id} and detect type==15 (GUILD_FORUM).
+# So we hardcode the known forum slots here. read_recent detects forum
+# vs text dynamically (it has the channel id). If another slot becomes
+# a forum, add it here or the webhook post will 400.
 
 
 class DiscordClient:
@@ -122,7 +128,7 @@ class DiscordClient:
         )
         ch_resp.raise_for_status()
         ch_type = ch_resp.json().get("type", 0)
-        messages: list[dict[str, object]] = []
+        messages: list[dict[str, Any]] = []
         if ch_type == 15:
             # Forum: enumerate active threads, then read each.
             threads_resp = self._http.get(
@@ -155,14 +161,14 @@ class DiscordClient:
         # Map to RecentMessage, cap at limit.
         results: list[RecentMessage] = []
         for msg in messages[:limit]:
-            author = msg.get("author", {})
-            ts = msg.get("timestamp", "")
+            author: dict[str, Any] = msg.get("author", {})
+            ts: str = msg.get("timestamp", "")
             created = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             results.append(
                 RecentMessage(
-                    id=msg["id"],
-                    author=author.get("username", "unknown"),
-                    content=msg.get("content", ""),
+                    id=str(msg["id"]),
+                    author=str(author.get("username", "unknown")),
+                    content=str(msg.get("content", "")),
                     created_at=created,
                 )
             )

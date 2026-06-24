@@ -10,7 +10,7 @@ requires explicit operator confirmation.**
 ## What it does
 
 - **Discord (free primary):** post via per-channel incoming webhooks;
-  read recent `#support` messages via a bot token (read-only triage;
+  read recent messages via a bot token (read-only triage;
   agents draft replies, they never auto-send).
 - **X / Twitter (manual cadence, official API):** post via the official
   `POST /2/tweets` endpoint using the founder-provided API token, but
@@ -22,7 +22,7 @@ requires explicit operator confirmation.**
 
 ```bash
 # from the logion repo root (uv workspace)
-uv sync
+uv sync --all-packages
 uv run logion-social --help
 ```
 
@@ -41,7 +41,7 @@ uv run logion-social discord post --channel general --text "gm" --dry-run
 # Discord webhook post (live)
 uv run logion-social discord post --channel general --text "gm"
 
-# Discord read recent #support messages (requires bot token)
+# Discord read recent messages (requires bot token)
 uv run logion-social discord read --limit 50
 
 # Content queue
@@ -60,11 +60,17 @@ file; existing env vars take precedence over the file).
 | --- | --- |
 | `DISCORD_BOT_TOKEN` | Bot token for read-only triage (optional) |
 | `DISCORD_GUILD_ID` | Numeric guild/server id |
-| `DISCORD_WEBHOOK_ANNOUNCEMENTS` | Incoming webhook URL for `#announcements` |
-| `DISCORD_WEBHOOK_GENERAL` | Incoming webhook URL for `#general` |
-| `DISCORD_WEBHOOK_SUPPORT` | Incoming webhook URL for `#support` (forum channel) |
-| `DISCORD_WEBHOOK_CREATORS` | Incoming webhook URL → real channel `#course-building` |
-| `DISCORD_CHANNEL_SUPPORT` | Channel id of `#support` used by `discord read` |
+| `DISCORD_WEBHOOK_ANNOUNCEMENTS` | Incoming webhook URL for the `announcements` slot |
+| `DISCORD_WEBHOOK_GENERAL` | Incoming webhook URL for the `general` slot |
+| `DISCORD_WEBHOOK_SUPPORT` | Incoming webhook URL for the `support` slot |
+| `DISCORD_WEBHOOK_CREATORS` | Incoming webhook URL for the `creators` slot |
+| `DISCORD_CHANNEL_SUPPORT` | Channel id used by `discord read` |
+
+The four webhook slots (`announcements`, `general`, `support`,
+`creators`) are the CLI's stable `--channel` vocabulary. Each env var
+holds a webhook URL pointing at whatever Discord channel you created
+the webhook in — the slot name and the channel name need not match.
+See the operational setup guide for the real slot-to-channel mapping.
 
 ### X / Twitter
 

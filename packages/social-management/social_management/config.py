@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from social_management.errors import MissingCredentialsError
+from social_management.errors import MissingCredentialsError, SocialError
 
 XBackend = Literal["api", "off"]
 
@@ -75,12 +75,17 @@ class SocialConfig(BaseModel):
             for ch, var in WEBHOOK_ENV_BY_CHANNEL.items()
             if os.environ.get(var)
         }
+        raw_backend = os.environ.get("X_BACKEND", "off")
+        if raw_backend not in ("api", "off"):
+            raise SocialError(
+                f"X_BACKEND={raw_backend!r} is invalid; must be 'api' or 'off'"
+            )
         return cls(
             discord_bot_token=os.environ.get("DISCORD_BOT_TOKEN"),
             discord_guild_id=os.environ.get("DISCORD_GUILD_ID"),
             discord_channel_support=os.environ.get("DISCORD_CHANNEL_SUPPORT"),
             discord_webhooks=webhooks,
-            x_backend=os.environ.get("X_BACKEND", "off"),  # type: ignore[arg-type]
+            x_backend=raw_backend,  # type: ignore[arg-type]
             x_api_key=os.environ.get("X_API_KEY"),
             x_api_secret=os.environ.get("X_API_SECRET"),
             x_access_token=os.environ.get("X_ACCESS_TOKEN"),

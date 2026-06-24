@@ -39,7 +39,7 @@ def test_x_is_live_true_with_oauth1(env, tmp_path) -> None:  # type: ignore[no-u
         X_API_KEY="k",
         X_API_SECRET="s",
         X_ACCESS_TOKEN="t",
-        X_ACCESS_SECRET="ts",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
     )
     config = SocialConfig.from_env(env_local=tmp_path / "nope")
     assert config.x_is_live() is True

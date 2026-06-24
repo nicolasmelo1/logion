@@ -18,7 +18,7 @@ def test_x_post_dry_run_prints_cost_exit_0(
         X_API_KEY="k",
         X_API_SECRET="s",
         X_ACCESS_TOKEN="t",
-        X_ACCESS_SECRET="ts",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
         X_MONTHLY_BUDGET_CENTS="1000",
     )
     monkeypatch.chdir(tmp_path)
@@ -51,7 +51,7 @@ def test_x_post_no_confirm_exit_1(
         X_API_KEY="k",
         X_API_SECRET="s",
         X_ACCESS_TOKEN="t",
-        X_ACCESS_SECRET="ts",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
         X_MONTHLY_BUDGET_CENTS="1000",
     )
     monkeypatch.chdir(tmp_path)

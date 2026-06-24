@@ -26,7 +26,7 @@ def _live_config(
         X_API_KEY="k",
         X_API_SECRET="s",
         X_ACCESS_TOKEN="t",
-        X_ACCESS_SECRET="ts",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
         X_MONTHLY_BUDGET_CENTS=str(budget),
     )
     return SocialConfig.from_env(env_local=tmp_path / "nope")
