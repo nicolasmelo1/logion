@@ -636,7 +636,7 @@ button.cta {
 
 .hero-body {
   color: var(--fg);
-  margin: 0 0 32px;
+  margin: 44px 0 32px;
   max-width: 52ch;
   font-size: 16px;
   line-height: 1.7;
@@ -1501,6 +1501,12 @@ pre code {
   transform: translate(-50%, -50%);
   text-align: center;
   width: 132px;
+  /* Halo in the page background so the labels stay legible over the busy
+     ASCII figure behind the orbit. */
+  text-shadow:
+    0 0 6px var(--bg),
+    0 0 6px var(--bg),
+    0 0 10px var(--bg);
 }
 
 .cycle__node .dot {
@@ -1516,15 +1522,16 @@ pre code {
   display: block;
   font-family: var(--mono);
   font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--fg-dim);
+  color: var(--accent);
   margin-bottom: 3px;
 }
 
 .cycle__node .l {
   font-size: 14px;
   color: var(--fg);
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.3;
 }
 
