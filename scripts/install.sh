@@ -161,9 +161,7 @@ if [ "${INSTALL_SKILL_ONLY}" = "1" ]; then
     step_info "Skipping onboarding (--skill-only)"
 else
     step_info "Onboarding"
-    if ! run_onboarding; then
-        die 1 "Onboarding handoff failed"
-    fi
+    run_onboarding || true
 fi
 
 # 13/13 Print next steps
