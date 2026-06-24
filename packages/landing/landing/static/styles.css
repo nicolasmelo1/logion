@@ -318,7 +318,7 @@ a:hover {
 main {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 56px 32px 96px;
+  padding: 24px 32px 88px;
   position: relative;
   z-index: 2;
 }
@@ -364,7 +364,7 @@ main {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 12px;
-  margin: 8px 0 28px;
+  margin: 4px 0 18px;
 }
 
 .copy-cta {
@@ -539,13 +539,12 @@ button.cta {
 
 .hero {
   position: relative;
-  min-height: 82vh;
-  padding: 56px 0 72px;
+  padding: 20px 0 56px;
   border-bottom: 1px solid var(--rule);
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   align-items: start;
-  column-gap: 112px;
+  column-gap: 64px;
   row-gap: 32px;
 }
 
@@ -564,10 +563,10 @@ button.cta {
 }
 
 .hero-copy h1 {
-  margin: 18px 0 20px;
+  margin: 10px 0 14px;
   font-family: var(--mono);
   font-weight: 700;
-  font-size: clamp(64px, 9.2vw, 140px);
+  font-size: clamp(54px, 7.6vw, 116px);
   line-height: 0.82;
   letter-spacing: 0.02em;
   color: var(--accent-bright);
@@ -601,7 +600,7 @@ button.cta {
   display: block;
   width: 92px;
   height: 2px;
-  margin-top: 22px;
+  margin-top: 14px;
   background: linear-gradient(90deg, var(--accent), transparent);
   box-shadow: var(--hud-glow);
 }
@@ -623,14 +622,14 @@ button.cta {
   font-size: clamp(22px, 2.6vw, 30px);
   line-height: 1.2;
   color: var(--accent-bright);
-  margin: 0 0 18px;
+  margin: 0 0 12px;
   letter-spacing: 0.01em;
 }
 
 .hero-sub {
   font-size: clamp(18px, 1.9vw, 22px);
   color: var(--fg);
-  margin: 24px 0 28px;
+  margin: 14px 0 18px;
   max-width: 38ch;
   font-weight: 500;
 }
@@ -1401,12 +1400,14 @@ pre code {
   user-select: none;
 }
 
+/* Role markers and the run "$" follow the muted label appearance rather than
+   standing out as colored accents/icons. */
 .hero-demo__who--agent {
-  color: var(--accent);
+  color: var(--muted);
 }
 
 .hero-demo__who--run {
-  color: var(--bolt);
+  color: var(--muted);
   text-align: center;
 }
 
@@ -1548,7 +1549,7 @@ pre code {
   width: 66px;
   height: 66px;
   color: var(--accent-bright);
-  background: rgba(5, 6, 8, 0.82);
+  background: var(--bg);
   border-radius: 50%;
   filter: drop-shadow(0 0 10px rgba(201, 167, 106, 0.25));
 }
