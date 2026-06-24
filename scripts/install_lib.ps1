@@ -770,9 +770,11 @@ function Print-NextSteps {
         Write-Host "✓ Logion CLI v$Version and companion installed successfully." -ForegroundColor Green
     }
     Write-Host ""
-    if ($script:OnboardingFailed -or ($script:LastOpts -and $script:LastOpts.NoOnboarding) -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+    if ($script:OnboardingFailed -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
         Write-Host "Finish setup so your agent can use Logion:"
         Write-Host "  logion onboarding"
+    } elseif ($script:LastOpts -and $script:LastOpts.NoOnboarding) {
+        Write-Host "Onboarding skipped (--NoOnboarding)."
     } else {
         Write-Host "Your agent is ready to use Logion."
     }
