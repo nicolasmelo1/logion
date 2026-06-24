@@ -6,17 +6,18 @@
 //   LOGION_NPM_SKIP_INSTALL=1   — skip CLI install only (still handles companion)
 //   LOGION_NPM_FORCE_INSTALLER  — force "pipx", "uv", or "venv"
 //   LOGION_NPM_PYTHON           — override Python binary path
+//   LOGION_NPM_SKIP_ONBOARDING=1 — do not print onboarding pointer
 //   LOGION_COMPANION_BUNDLE_SOURCE — directory containing companion tarball
 //                                    (dev rig only; copies bundle to
 //                                     $LOGION_HOME/companion-bundles/ or
 //                                     ~/.logion/companion-bundles/)
 import { spawnSync } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { detectPython, type PythonInfo } from "../lib/check-python";
+import { installCompanionBundle } from "../lib/companion-bundle";
 import { which } from "../lib/which";
 
 type Installer = "pipx" | "uv" | "venv";
@@ -183,163 +184,21 @@ function pickInstaller(forced: string | undefined): Installer | null {
   return "venv";
 }
 
-function sortCodePoint(a: string, b: string): number {
-  if (a < b) {
-    return -1;
-  }
-  if (a > b) {
-    return 1;
-  }
-  return 0;
-}
-
-function listBundleSourceEntries(sourceDir: string): string[] | null {
-  try {
-    return fs.readdirSync(sourceDir).sort(sortCodePoint);
-  } catch {
-    log(
-      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} read failed — ` +
-        "skipping companion bundle copy.",
-    );
-    return null;
-  }
-}
-
-function findCompanionTarball(
-  sourceDir: string,
-  entries: string[],
-): { tarball: string; srcPath: string } | null {
-  for (const name of entries) {
-    if (!/^logion-marketplace-companion-.*\.tar\.gz$/.test(name)) {
-      continue;
-    }
-    const candidatePath = path.join(sourceDir, name);
-    try {
-      if (fs.statSync(candidatePath).isFile()) {
-        return { tarball: name, srcPath: candidatePath };
-      }
-    } catch {
-      log(`Could not stat companion tarball candidate ${candidatePath}.`);
-    }
-  }
-  return null;
-}
-
-function resolveLogionHome(): string {
-  const value = process.env.LOGION_HOME;
-  return value === undefined || value.length === 0 ? LOGION_DIR : value;
-}
-
-function sha256File(filePath: string): string {
-  const hash = crypto.createHash("sha256");
-  const fd = fs.openSync(filePath, "r");
-  const chunkSize = 64 * 1024;
-  const buf = Buffer.alloc(chunkSize);
-  let bytesRead: number;
-  try {
-    while ((bytesRead = fs.readSync(fd, buf, 0, chunkSize, null)) > 0) {
-      hash.update(buf.subarray(0, bytesRead));
-    }
-  } finally {
-    fs.closeSync(fd);
-  }
-  return hash.digest("hex");
-}
-
-/**
- * Copy the companion bundle from LOGION_COMPANION_BUNDLE_SOURCE into the
- * local companion-bundles directory.
- *
- * - If LOGION_COMPANION_BUNDLE_SOURCE is set, look for
- *   `logion-marketplace-companion-*.tar.gz` in that directory.
- * - Copy it to `$LOGION_HOME/companion-bundles/` (falling back to
- *   `~/.logion/companion-bundles/` when LOGION_HOME is unset).
- * - Write a per-tarball sidecar (replacing `.tar.gz` with `.source.json`)
- *   containing the source path and a SHA-256 of the tarball.
- * - If LOGION_COMPANION_BUNDLE_SOURCE is unset, do nothing (existing
- *   release path stays unchanged for users installing from npm registry).
- */
-function installCompanionBundle(): void {
-  const sourceDir = process.env.LOGION_COMPANION_BUNDLE_SOURCE;
-  if (!sourceDir) {
+function maybePrintOnboardingPointer(): void {
+  if (process.env.LOGION_NPM_SKIP_ONBOARDING === "1") {
     return;
   }
-
-  if (!fs.existsSync(sourceDir)) {
-    log(
-      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} does not exist — ` +
-        "skipping companion bundle copy.",
-    );
+  if (process.env.CI || process.env.LOGION_NONINTERACTIVE) {
     return;
   }
-
-  // Validate that sourceDir is actually a directory.
-  try {
-    const stat = fs.statSync(sourceDir);
-    if (!stat.isDirectory()) {
-      log(
-        `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} is not a directory — ` +
-          "skipping companion bundle copy.",
-      );
-      return;
-    }
-  } catch {
-    log(
-      `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} stat failed — ` +
-        "skipping companion bundle copy.",
-    );
-    return;
-  }
-
-  const entries = listBundleSourceEntries(sourceDir);
-  if (!entries) {
-    return;
-  }
-
-  const bundle = findCompanionTarball(sourceDir, entries);
-  if (!bundle) {
-    log(
-      `No companion tarball found in ${sourceDir} — ` +
-        "skipping companion bundle copy.",
-    );
-    return;
-  }
-
-  try {
-    // Determine destination: $LOGION_HOME/companion-bundles/ or
-    // ~/.logion/companion-bundles/ if LOGION_HOME is unset.
-    const logionHome = resolveLogionHome();
-    const bundlesDir = path.join(logionHome, "companion-bundles");
-    fs.mkdirSync(bundlesDir, { recursive: true });
-
-    const destPath = path.join(bundlesDir, bundle.tarball);
-    fs.copyFileSync(bundle.srcPath, destPath);
-    log(`Copied companion bundle to ${destPath}`);
-
-    // Write sidecar marker with source path and SHA-256.
-    // Hash in chunks to avoid loading the entire tarball into memory.
-    const sha256 = sha256File(destPath);
-
-    const sidecar = {
-      sourcePath: bundle.srcPath,
-      sha256,
-      installedAt: new Date().toISOString(),
-    };
-    const sidecarName = bundle.tarball.replace(/\.tar\.gz$/, ".source.json");
-    const sidecarPath = path.join(bundlesDir, sidecarName);
-    fs.writeFileSync(sidecarPath, `${JSON.stringify(sidecar, null, 2)}\n`);
-    log(`Wrote companion marker ${sidecarPath}`);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    log(`Warning: companion bundle copy failed: ${msg}.`);
-  }
+  log("Next: run `logion onboarding` to set up your agent.");
 }
 
 function main(): void {
   // Companion bundle install runs even when the CLI install is skipped
   // (dev rig sets LOGION_NPM_SKIP_INSTALL=1 but still needs the bundle
   // copied into $LOGION_HOME/companion-bundles/).
-  installCompanionBundle();
+  installCompanionBundle(log);
 
   if (process.env.LOGION_NPM_SKIP_INSTALL === "1") {
     log("LOGION_NPM_SKIP_INSTALL=1 — skipping CLI install.");
@@ -390,6 +249,7 @@ function main(): void {
 
   writeMarker(installer, version);
   verifyInstall(version);
+  maybePrintOnboardingPointer();
   log(`Installed logion-cli ${version} via ${installer}.`);
 }
 

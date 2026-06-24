@@ -121,6 +121,7 @@ parse_args() {
     INSTALL_INSTALLER=""
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
+    INSTALL_NO_ONBOARDING=0
     INSTALL_QUIET=0
     INSTALL_VERBOSE=0
 
@@ -191,6 +192,10 @@ parse_args() {
                 INSTALL_NO_MODIFY_PATH=1
                 shift
                 ;;
+            --no-onboarding)
+                INSTALL_NO_ONBOARDING=1
+                shift
+                ;;
             --quiet|-q)
                 INSTALL_QUIET=1
                 shift
@@ -211,6 +216,7 @@ parse_args() {
                 info "  --installer <i>    Installer backend: pipx, uv, venv"
                 info "  --dry-run          Show what would be done without doing it"
                 info "  --no-modify-path   Do not modify shell RC files"
+                info "  --no-onboarding    Do not run 'logion onboarding' at the end"
                 info "  --quiet            Suppress informational output"
                 info "  --verbose          Show extra detail"
                 info "  --help             Show this help"
@@ -249,7 +255,7 @@ parse_args() {
 
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_QUIET INSTALL_VERBOSE
 }
 
 # --- resolve_url helper -----------------------------------------------------
@@ -788,16 +794,50 @@ verify_install() {
     return 0
 }
 
+# --- Onboarding handoff -----------------------------------------------------
+
+# run_onboarding invokes `logion onboarding` unless opted out or unsafe.
+# It is best-effort: warn on failures, but never hard-fail the installer.
+run_onboarding() {
+    if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
+        info "Skipping onboarding (--no-onboarding)."
+        return 0
+    fi
+    if [ "${INSTALL_DRY_RUN}" = 1 ]; then
+        info "[dry-run] Would run: logion onboarding"
+        return 0
+    fi
+    if ! command -v logion >/dev/null 2>&1; then
+        warn "logion not on PATH; skipping onboarding. Run 'logion onboarding' later."
+        return 0
+    fi
+    if [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+        info "Non-interactive shell; run 'logion onboarding' to finish setup."
+        return 0
+    fi
+
+    info "Running 'logion onboarding' ..."
+    logion onboarding || warn "onboarding did not complete; run 'logion onboarding' later."
+    return 0
+}
+
 # --- Next steps -------------------------------------------------------------
 
 print_next_steps() {
     info ""
-    info "✅ Logion installed successfully!"
+    if [ "${INSTALL_CLI_ONLY}" = "1" ]; then
+        info "✅ Logion installed (CLI only)."
+    else
+        info "✅ Logion installed (CLI + companion)."
+    fi
     info ""
-    info "Next steps:"
-    info "  1. logion --help              Show available commands"
-    info "  2. logion listings search     Browse the marketplace"
-    info "  3. https://logion.sh/docs    Read the documentation"
+    if [ "${INSTALL_NO_ONBOARDING}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+        info "Finish setup so your agent can use Logion:"
+        info "  logion onboarding"
+    else
+        info "Your agent is ready to use Logion."
+    fi
     info ""
+    info "Docs: https://logion.sh/docs"
     info "You may need to open a new terminal for PATH changes to take effect."
 }

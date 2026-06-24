@@ -52,6 +52,7 @@ parse_args() {
     INSTALL_INSTALLER="pipx"
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
+    INSTALL_NO_ONBOARDING=0
     INSTALL_QUIET=0
     INSTALL_VERBOSE=0
     while [ $# -gt 0 ]; do
@@ -60,6 +61,7 @@ parse_args() {
             --cli-only)     INSTALL_CLI_ONLY=1 ;;
             --skill-only)  INSTALL_SKILL_ONLY=1 ;;
             --no-modify-path) INSTALL_NO_MODIFY_PATH=1 ;;
+            --no-onboarding) INSTALL_NO_ONBOARDING=1 ;;
             --quiet)        INSTALL_QUIET=1 ;;
             --channel)      shift; INSTALL_CHANNEL="$1" ;;
             --channel=*)    INSTALL_CHANNEL="${1#--channel=}" ;;
@@ -74,7 +76,7 @@ parse_args() {
     fi
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_QUIET INSTALL_VERBOSE
     return 0
 }
 
@@ -133,6 +135,20 @@ update_path() { return 0; }
 # verify_install <cli_version> [<companion_version>]
 verify_install() { return 0; }
 
+run_onboarding() {
+    if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
+        return 0
+    fi
+    if [ "${INSTALL_DRY_RUN}" = 1 ]; then
+        return 0
+    fi
+    if [ -n "${LOGION_NONINTERACTIVE:-}" ]; then
+        return 0
+    fi
+    printf 'onboarding\n' >> "${HARNESS_TMPDIR}/onboarding-marker"
+    return 0
+}
+
 print_next_steps() { info "Run 'logion --version' to verify."; return 0; }
 STUB_EOF
     export INSTALL_LIB_PATH="${_stub_lib}"
@@ -169,6 +185,24 @@ run_installer() {
     run run_installer
     [ "$status" -eq 0 ]
     [ -x "${HARNESS_BIN_DIR}/logion" ]
+}
+
+@test "companion is installed by default" {
+    run run_installer
+    [ "$status" -eq 0 ]
+    [ -e "${HARNESS_TMPDIR}/.logion/installed/logion-marketplace-companion/installed" ]
+}
+
+@test "default install runs onboarding handoff" {
+    run run_installer
+    [ "$status" -eq 0 ]
+    [ -f "${HARNESS_TMPDIR}/onboarding-marker" ]
+}
+
+@test "--no-onboarding skips onboarding handoff" {
+    run run_installer --no-onboarding
+    [ "$status" -eq 0 ]
+    [ ! -e "${HARNESS_TMPDIR}/onboarding-marker" ]
 }
 
 @test "real library: dry-run completes against fake manifest" {
@@ -233,6 +267,13 @@ run_installer() {
     [ "$status" -eq 0 ]
 }
 
+@test "--skill-only skips onboarding" {
+    fake_logion_preinstalled
+    run run_installer --skill-only
+    [ "$status" -eq 0 ]
+    [ ! -e "${HARNESS_TMPDIR}/onboarding-marker" ]
+}
+
 # ── 9. channel=latest ─────────────────────────────────────────────────────
 
 @test "channel=latest: uses the latest manifest URL" {
@@ -289,6 +330,12 @@ run_installer() {
 @test "--no-modify-path: skips shell profile modification" {
     run run_installer --no-modify-path
     [ "$status" -eq 0 ]
+}
+
+@test "non-interactive install does not run onboarding" {
+    LOGION_NONINTERACTIVE=1 run run_installer
+    [ "$status" -eq 0 ]
+    [ ! -e "${HARNESS_TMPDIR}/onboarding-marker" ]
 }
 
 # ── 16. --cli-only and --skill-only mutually exclusive ─────────────────────

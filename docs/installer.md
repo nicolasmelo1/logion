@@ -1,6 +1,7 @@
 # Logion Installer
 
-Run the one-liner to install the Logion CLI and companion bundle:
+Run the one-liner to install the Logion CLI and companion bundle, then hand
+off to onboarding so your agent can use Logion:
 
 ```bash
 curl -fsSL https://logion.sh/install.sh | sh
@@ -20,6 +21,10 @@ Windows (PowerShell):
 irm https://logion.sh/install.ps1 | iex
 ```
 
+Interactive shell installs run `logion onboarding` after verification. In
+CI/non-interactive shells the installer never prompts; it prints the same
+`logion onboarding` command for you to run later.
+
 ## Options
 
 ```text
@@ -35,6 +40,7 @@ OPTIONS
     --installer <pipx|uv|venv>    force Python installer
     --dry-run                     print actions without executing
     --no-modify-path              skip PATH-update step
+    --no-onboarding               skip onboarding handoff
     --quiet                       suppress informational output
     --verbose                     log every command
     -h, --help                    print usage and exit
@@ -48,6 +54,29 @@ OPTIONS
 | `LOGION_INSTALL_MANIFEST_URL` | Override manifest URL (tests) |
 | `LOGION_INSTALL_PYTHON` | Pin Python interpreter path |
 | `LOGION_INSTALL_SKIP_VERIFY` | Skip sha256 verification (dev only) |
+| `LOGION_NONINTERACTIVE` | Skip interactive onboarding prompts |
+| `LOGION_NPM_SKIP_ONBOARDING` | Suppress npm postinstall onboarding pointer |
+| `CI` | Skip interactive onboarding and npm pointer in CI |
+
+
+## Companion and onboarding behavior
+
+The companion bundle is installed by default. Use `--cli-only` when you only
+want the CLI. Use `--skill-only` only when `logion` is already on `PATH` and
+you want to install the companion without reinstalling the CLI.
+
+Use `--no-onboarding` on POSIX installers or `--NoOnboarding` in PowerShell to
+skip the final `logion onboarding` handoff. The handoff is best-effort: a
+failed onboarding run prints a warning and leaves the install intact.
+
+The npm wrapper does not run interactive onboarding during `npm install`.
+Instead, successful non-CI installs print:
+
+```text
+Next: run `logion onboarding` to set up your agent.
+```
+
+Set `LOGION_NPM_SKIP_ONBOARDING=1` to suppress that pointer.
 
 ## Exit codes
 

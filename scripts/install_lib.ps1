@@ -142,6 +142,7 @@ function Parse-Args {
         Installer    = "uv"
         DryRun       = $false
         NoModifyPath = $false
+        NoOnboarding = $false
         Quiet        = $false
         Verbose      = $false
         Help         = $false
@@ -191,6 +192,7 @@ function Parse-Args {
             }
             "^--DryRun$"     { $opts.DryRun = $true }
             "^--NoModifyPath$" { $opts.NoModifyPath = $true }
+            "^--NoOnboarding$" { $opts.NoOnboarding = $true }
             "^--Quiet$"      { $opts.Quiet = $true; $script:Quiet = $true }
             "^--Verbose$"    { $opts.Verbose = $true }
             "^--Help$"       { $opts.Help = $true }
@@ -206,6 +208,8 @@ function Parse-Args {
     if ($opts.CliOnly -and $opts.SkillOnly) {
         Die -Message "--CliOnly and --SkillOnly are mutually exclusive" -ExitCode $script:EXIT_INVALID_ARGS
     }
+
+    $script:LastOpts = $opts
 
     return $opts
 }
@@ -705,6 +709,40 @@ function Verify-Install {
     }
 }
 
+# ── Onboarding handoff ───────────────────────────────────────────────────
+function Run-Onboarding {
+    <#
+    .SYNOPSIS
+    Run logion onboarding unless disabled or unsafe for prompts.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][hashtable]$Opts)
+
+    if ($Opts.NoOnboarding) {
+        Info -Message "Skipping onboarding (--NoOnboarding)."
+        return
+    }
+    if ($Opts.DryRun) {
+        Info -Message "[DRY RUN] Would run: logion onboarding"
+        return
+    }
+    $logion = Get-Command logion -ErrorAction SilentlyContinue
+    if (-not $logion) {
+        Warn -Message "logion not on PATH; run 'logion onboarding' later."
+        return
+    }
+    if (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+        Info -Message "Non-interactive; run 'logion onboarding' to finish setup."
+        return
+    }
+
+    Info -Message "Running 'logion onboarding' ..."
+    & $logion.Source onboarding
+    if ($LASTEXITCODE -ne 0) {
+        Warn -Message "onboarding did not complete; run 'logion onboarding' later."
+    }
+}
+
 # ── Print next steps ─────────────────────────────────────────────────────
 function Print-NextSteps {
     <#
@@ -717,17 +755,21 @@ function Print-NextSteps {
     )
 
     Write-Host ""
-    Write-Host "✓ Logion CLI v$Version installed successfully!" -ForegroundColor Green
+    if ($script:LastOpts -and $script:LastOpts.CliOnly) {
+        Write-Host "✓ Logion CLI v$Version installed successfully." -ForegroundColor Green
+    } else {
+        Write-Host "✓ Logion CLI v$Version and companion installed successfully." -ForegroundColor Green
+    }
     Write-Host ""
-    Write-Host "Next steps:"
-    Write-Host "  1. Run:  logion --version"
-    Write-Host "  2. Run:  logion --help"
-    Write-Host "  3. Run:  logion listings search `"video cuts`""
-    Write-Host ""
-    Write-Host "If 'logion' is not found, open a new terminal or run:"
-    Write-Host "  `$env:PATH = `"`$HOME\.local\bin`$([System.IO.Path]::PathSeparator)`$env:PATH`""
+    if (($script:LastOpts -and $script:LastOpts.NoOnboarding) -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+        Write-Host "Finish setup so your agent can use Logion:"
+        Write-Host "  logion onboarding"
+    } else {
+        Write-Host "Your agent is ready to use Logion."
+    }
     Write-Host ""
     Write-Host "Documentation: https://logion.sh/docs"
+    Write-Host "If 'logion' is not found, open a new terminal or add ~/.local/bin to PATH."
     Write-Host "Report issues:  https://github.com/nicolasmelo1/logion/issues"
     Write-Host ""
 }
