@@ -108,6 +108,9 @@ jobs:
       - name: Forbidden SDK-internal imports
         run: make check-forbidden-imports
 
+      - name: Raw httpx calls in CLI (SDK-only)
+        run: make check-cli-http
+
       - name: Installer security guardrails
         run: make check-installer-security
 

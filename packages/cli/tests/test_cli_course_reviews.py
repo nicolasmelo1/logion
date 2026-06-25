@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -32,36 +33,18 @@ class FakeDownloadResponse:
         yield self.body
 
 
-class FakeBundleResponse:
-    """Fake bundle metadata response."""
+class FakeStreamClient:
+    """Fake httpx client — streams presigned bundle URLs only.
 
-    def __init__(self, files: list[dict[str, str]]) -> None:
-        self.status_code = 200
-        self.text = ""
-        self._files = files
+    The bundle manifest now comes from the SDK (``get_bundle``); raw
+    httpx is used solely to stream each file's presigned ``download_url``.
+    """
 
-    def json(self) -> dict[str, object]:
-        return {
-            "review_id": "770e8400-e29b-41d4-a716-446655440002",
-            "files": self._files,
-        }
-
-
-class FakeHttpClient:
-    """Fake httpx client for course-reviews download."""
-
-    def __init__(self, files: list[dict[str, str]]) -> None:
-        self.files = files
-
-    def __enter__(self) -> FakeHttpClient:
+    def __enter__(self) -> FakeStreamClient:
         return self
 
     def __exit__(self, *_exc: object) -> None:
         return None
-
-    def get(self, _url: str, *, headers: dict[str, str]) -> FakeBundleResponse:
-        assert headers["Authorization"] == "Bearer test-key"
-        return FakeBundleResponse(self.files)
 
     def stream(self, method: str, url: str) -> FakeDownloadResponse:
         assert method == "GET"
@@ -73,6 +56,7 @@ class FakeCourseReviewsResource:
 
     def __init__(self) -> None:
         self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.bundle_files: list[dict[str, str]] = []
 
     def list(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("list", kwargs)
@@ -155,6 +139,13 @@ class FakeCourseReviewsResource:
     def reject(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("reject", {"review_id": review_id, **kwargs})
         return {"id": review_id, "status": "rejected"}
+
+    def get_bundle(self, review_id: str, **kwargs: Any) -> SimpleNamespace:
+        self.last_call = ("get_bundle", {"review_id": review_id, **kwargs})
+        return SimpleNamespace(
+            review_id=review_id,
+            files=[SimpleNamespace(**f) for f in self.bundle_files],
+        )
 
 
 class FakeV1Namespace:
@@ -405,9 +396,12 @@ def test_course_reviews_download_writes_bundle_files(
             "download_url": "https://files/guide.md",
         },
     ]
+    cr = FakeCourseReviewsResource()
+    cr.bundle_files = files
+    _patch_client(monkeypatch, FakeClient(v1=FakeV1Namespace(cr)))
     monkeypatch.setattr(
         "cli.commands.course_reviews._download_handler.httpx.Client",
-        lambda **_: FakeHttpClient(files),
+        lambda **_: FakeStreamClient(),
     )
 
     target = tmp_path / "review"
@@ -443,9 +437,12 @@ def test_course_reviews_download_refuses_path_escape(
             "download_url": "https://files/escape.txt",
         },
     ]
+    cr = FakeCourseReviewsResource()
+    cr.bundle_files = files
+    _patch_client(monkeypatch, FakeClient(v1=FakeV1Namespace(cr)))
     monkeypatch.setattr(
         "cli.commands.course_reviews._download_handler.httpx.Client",
-        lambda **_: FakeHttpClient(files),
+        lambda **_: FakeStreamClient(),
     )
 
     target = tmp_path / "review"
