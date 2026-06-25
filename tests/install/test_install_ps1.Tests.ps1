@@ -555,9 +555,10 @@ Describe "onboarding handoff" {
 
         try {
             $opts = Parse-Args -ArgList @()
-            Run-Onboarding -Opts $opts
-            $script:OnboardingFailed | Should -BeTrue
-            $output = & { Print-NextSteps -Version "0.1.0" } 6>&1 | Out-String
+            $failed = $false
+            Run-Onboarding -Opts $opts -Failed ([ref]$failed)
+            $failed | Should -BeTrue
+            $output = & { Print-NextSteps -Version "0.1.0" -Opts $opts -OnboardingFailed $failed } 6>&1 | Out-String
             $output | Should -Match "logion onboarding"
             $output | Should -Not -Match "Your agent is ready"
         } finally {
@@ -589,6 +590,19 @@ Describe "onboarding handoff" {
         } finally {
             $env:CI = $origCi
         }
+    }
+
+    It "--CliOnly forwards --no-companion to onboarding" {
+        $opts = Parse-Args -ArgList @("--CliOnly", "--DryRun")
+        $output = & { Run-Onboarding -Opts $opts } 6>&1 | Out-String
+        $output | Should -Match "logion onboarding --no-companion"
+    }
+
+    It "default onboarding does not pass --no-companion" {
+        $opts = Parse-Args -ArgList @("--DryRun")
+        $output = & { Run-Onboarding -Opts $opts } 6>&1 | Out-String
+        $output | Should -Match "logion onboarding"
+        $output | Should -Not -Match "--no-companion"
     }
 }
 

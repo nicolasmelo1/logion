@@ -65,6 +65,10 @@ The companion bundle is installed by default. Use `--cli-only` when you only
 want the CLI. Use `--skill-only` only when `logion` is already on `PATH` and
 you want to install the companion without reinstalling the CLI.
 
+With `--cli-only`, the onboarding handoff still runs but is invoked as
+`logion onboarding --no-companion`, so it does not re-add the companion you
+opted out of.
+
 Use `--no-onboarding` on POSIX installers or `--NoOnboarding` in PowerShell to
 skip the final `logion onboarding` handoff. The handoff is best-effort: a
 failed onboarding run prints a warning and leaves the install intact.

@@ -239,6 +239,53 @@ run_installer() {
     [ "$status" -eq 0 ]
 }
 
+# ── 2b. Real run_onboarding: TTY guard + --no-companion forwarding ─────────
+# These source the *real* install_lib.sh (not the stub) so the actual guards
+# are exercised, not a simplified copy.
+
+# run_real_onboarding <key=val ...> — source the real lib, set INSTALL_* env,
+# and run run_onboarding with stdin from /dev/null (a non-TTY) so it can never
+# hang waiting on a prompt.
+run_real_onboarding() {
+    _real_lib="${BATS_TEST_DIRNAME}/../../scripts/install_lib.sh"
+    # shellcheck disable=SC2086
+    env "$@" sh -c '. "$1"; run_onboarding' _ "${_real_lib}" </dev/null
+}
+
+@test "real run_onboarding: non-interactive shell never invokes logion (no hang)" {
+    # A fake logion that records any invocation; the TTY guard must prevent it.
+    cat > "${HARNESS_BIN_DIR}/logion" <<LG_EOF
+#!/bin/sh
+printf 'invoked %s\n' "\$*" >> "${HARNESS_TMPDIR}/onboarding-invoked"
+exit 0
+LG_EOF
+    chmod +x "${HARNESS_BIN_DIR}/logion"
+
+    run run_real_onboarding \
+        PATH="${HARNESS_BIN_DIR}:/usr/bin:/bin" \
+        INSTALL_NO_ONBOARDING=0 INSTALL_DRY_RUN=0 INSTALL_CLI_ONLY=0
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Non-interactive shell"* ]]
+    [ ! -e "${HARNESS_TMPDIR}/onboarding-invoked" ]
+}
+
+@test "real run_onboarding: --cli-only forwards --no-companion" {
+    run run_real_onboarding \
+        PATH="/usr/bin:/bin" \
+        INSTALL_NO_ONBOARDING=0 INSTALL_DRY_RUN=1 INSTALL_CLI_ONLY=1
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"logion onboarding --no-companion"* ]]
+}
+
+@test "real run_onboarding: default does not pass --no-companion" {
+    run run_real_onboarding \
+        PATH="/usr/bin:/bin" \
+        INSTALL_NO_ONBOARDING=0 INSTALL_DRY_RUN=1 INSTALL_CLI_ONLY=0
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"logion onboarding"* ]]
+    [[ "$output" != *"--no-companion"* ]]
+}
+
 # ── 3. Refuses Python <3.12 ────────────────────────────────────────────────
 
 @test "refuses Python 3.11: exits with code 7" {

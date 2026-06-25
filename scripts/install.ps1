@@ -249,14 +249,15 @@ if (-not $Opts.SkillOnly) {
 }
 
 # ── Step 13: Run onboarding handoff ─────────────────────────────────────
+$onboardingFailed = $false
 if (-not $Opts.SkillOnly) {
-    Run-Onboarding -Opts $Opts
+    Run-Onboarding -Opts $Opts -Failed ([ref]$onboardingFailed)
 } else {
     Info -Message "Skipping onboarding (--SkillOnly)"
 }
 
 # ── Step 14: Print next steps ────────────────────────────────────────────
 
-Print-NextSteps -Version $Opts.Version
+Print-NextSteps -Version $Opts.Version -Opts $Opts -OnboardingFailed $onboardingFailed
 
 exit $EXIT_SUCCESS

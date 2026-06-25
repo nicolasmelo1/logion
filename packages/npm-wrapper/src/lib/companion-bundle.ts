@@ -15,12 +15,24 @@ interface CompanionBundle {
 
 const LOGION_DIR = path.join(os.homedir(), ".logion");
 
+// Stable, locale-independent ordering so tarball selection is deterministic
+// across platforms (default Array.sort can be locale-sensitive).
+function byCodePoint(a: string, b: string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+}
+
 function listBundleSourceEntries(
   sourceDir: string,
   log: LogFn,
 ): string[] | null {
   try {
-    return fs.readdirSync(sourceDir).sort();
+    return fs.readdirSync(sourceDir).sort(byCodePoint);
   } catch {
     log(
       `LOGION_COMPANION_BUNDLE_SOURCE=${sourceDir} read failed — ` +
@@ -117,7 +129,10 @@ function resolveCompanionBundle(
 }
 
 function copyCompanionBundle(bundle: CompanionBundle, log: LogFn): void {
-  const logionHome = process.env.LOGION_HOME || LOGION_DIR;
+  // Treat an unset *or empty* LOGION_HOME as "use the default" — matches the
+  // historical resolveLogionHome() behavior; `??` alone would keep "".
+  const envHome = process.env.LOGION_HOME;
+  const logionHome = envHome && envHome.length > 0 ? envHome : LOGION_DIR;
   const bundlesDir = path.join(logionHome, "companion-bundles");
   fs.mkdirSync(bundlesDir, { recursive: true });
 

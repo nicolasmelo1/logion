@@ -800,28 +800,38 @@ verify_install() {
 # run_onboarding invokes `logion onboarding` unless opted out or unsafe.
 # It is best-effort: warn on failures, but never hard-fail the installer.
 run_onboarding() {
+    # Honor --cli-only: onboarding installs/syncs the companion by default, so
+    # forward --no-companion to avoid re-adding what --cli-only opted out of.
+    _onboarding_arg=""
+    _onboarding_cmd="logion onboarding"
+    if [ "${INSTALL_CLI_ONLY}" = 1 ]; then
+        _onboarding_arg="--no-companion"
+        _onboarding_cmd="logion onboarding --no-companion"
+    fi
+
     if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
         info "Skipping onboarding (--no-onboarding)."
         return 0
     fi
     if [ "${INSTALL_DRY_RUN}" = 1 ]; then
-        info "[dry-run] Would run: logion onboarding"
+        info "[dry-run] Would run: ${_onboarding_cmd}"
         return 0
     fi
     if ! command -v logion >/dev/null 2>&1; then
-        warn "logion not on PATH; skipping onboarding. Run 'logion onboarding' later."
+        warn "logion not on PATH; skipping onboarding. Run '${_onboarding_cmd}' later."
         INSTALL_ONBOARDING_FAILED=1
         export INSTALL_ONBOARDING_FAILED
         return 0
     fi
     if [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
-        info "Non-interactive shell; run 'logion onboarding' to finish setup."
+        info "Non-interactive shell; run '${_onboarding_cmd}' to finish setup."
         return 0
     fi
 
-    info "Running 'logion onboarding' ..."
-    if ! logion onboarding; then
-        warn "onboarding did not complete; run 'logion onboarding' later."
+    info "Running '${_onboarding_cmd}' ..."
+    # shellcheck disable=SC2086 # _onboarding_arg is a single optional flag
+    if ! logion onboarding ${_onboarding_arg}; then
+        warn "onboarding did not complete; run '${_onboarding_cmd}' later."
         INSTALL_ONBOARDING_FAILED=1
         export INSTALL_ONBOARDING_FAILED
     fi
@@ -838,11 +848,11 @@ print_next_steps() {
         info "✅ Logion installed (CLI + companion)."
     fi
     info ""
-    if [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+    if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
+        info "Onboarding skipped (--no-onboarding). Run 'logion onboarding' to finish setup."
+    elif [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
         info "Finish setup so your agent can use Logion:"
         info "  logion onboarding"
-    elif [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
-        info "Onboarding skipped (--no-onboarding)."
     else
         info "Your agent is ready to use Logion."
     fi

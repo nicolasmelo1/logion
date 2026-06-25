@@ -209,10 +209,6 @@ function Parse-Args {
         Die -Message "--CliOnly and --SkillOnly are mutually exclusive" -ExitCode $script:EXIT_INVALID_ARGS
     }
 
-    $script:OnboardingFailed = $false
-
-    $script:LastOpts = $opts
-
     return $opts
 }
 
@@ -716,39 +712,56 @@ function Run-Onboarding {
     <#
     .SYNOPSIS
     Run logion onboarding unless disabled or unsafe for prompts.
+    .DESCRIPTION
+    Best-effort: never throws. When the handoff cannot run or fails, sets
+    $Failed.Value = $true so the caller can point the user at a manual rerun.
+    Onboarding's own output is left on the console (not captured) so the
+    interactive prompts work as expected.
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][hashtable]$Opts)
+    param(
+        [Parameter(Mandatory)][hashtable]$Opts,
+        [ref]$Failed
+    )
+
+    # --CliOnly forwards --no-companion: onboarding installs/syncs the companion
+    # by default, which would undo what --CliOnly opted out of.
+    $onboardingArgs = @("onboarding")
+    $rerun = "logion onboarding"
+    if ($Opts.CliOnly) {
+        $onboardingArgs += "--no-companion"
+        $rerun = "logion onboarding --no-companion"
+    }
 
     if ($Opts.NoOnboarding) {
         Info -Message "Skipping onboarding (--NoOnboarding)."
         return
     }
     if ($Opts.DryRun) {
-        Info -Message "[DRY RUN] Would run: logion onboarding"
+        Info -Message "[DRY RUN] Would run: $rerun"
         return
     }
     $logion = Get-Command logion -ErrorAction SilentlyContinue
     if (-not $logion) {
-        Warn -Message "logion not on PATH; run 'logion onboarding' later."
-        $script:OnboardingFailed = $true
+        Warn -Message "logion not on PATH; run '$rerun' later."
+        if ($Failed) { $Failed.Value = $true }
         return
     }
     if (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
-        Info -Message "Non-interactive; run 'logion onboarding' to finish setup."
+        Info -Message "Non-interactive; run '$rerun' to finish setup."
         return
     }
 
-    Info -Message "Running 'logion onboarding' ..."
+    Info -Message "Running '$rerun' ..."
     try {
-        & $logion.Source onboarding
+        & $logion.Source @onboardingArgs
         if ($LASTEXITCODE -ne 0) {
-            $script:OnboardingFailed = $true
-            Warn -Message "onboarding did not complete; run 'logion onboarding' later."
+            Warn -Message "onboarding did not complete; run '$rerun' later."
+            if ($Failed) { $Failed.Value = $true }
         }
     } catch {
-        $script:OnboardingFailed = $true
-        Warn -Message "onboarding did not complete; run 'logion onboarding' later."
+        Warn -Message "onboarding did not complete; run '$rerun' later."
+        if ($Failed) { $Failed.Value = $true }
     }
 }
 
@@ -760,21 +773,23 @@ function Print-NextSteps {
     #>
     [CmdletBinding()]
     param(
-        [string]$Version
+        [string]$Version,
+        [hashtable]$Opts,
+        [bool]$OnboardingFailed = $false
     )
 
     Write-Host ""
-    if ($script:LastOpts -and $script:LastOpts.CliOnly) {
+    if ($Opts -and $Opts.CliOnly) {
         Write-Host "✓ Logion CLI v$Version installed successfully." -ForegroundColor Green
     } else {
         Write-Host "✓ Logion CLI v$Version and companion installed successfully." -ForegroundColor Green
     }
     Write-Host ""
-    if ($script:OnboardingFailed -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+    if ($Opts -and $Opts.NoOnboarding) {
+        Write-Host "Onboarding skipped (--NoOnboarding). Run 'logion onboarding' to finish setup."
+    } elseif ($OnboardingFailed -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
         Write-Host "Finish setup so your agent can use Logion:"
         Write-Host "  logion onboarding"
-    } elseif ($script:LastOpts -and $script:LastOpts.NoOnboarding) {
-        Write-Host "Onboarding skipped (--NoOnboarding)."
     } else {
         Write-Host "Your agent is ready to use Logion."
     }
