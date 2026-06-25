@@ -7,7 +7,9 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     # Identity
     "create_user_with_agent": ("client.v1.identity.create_user_with_agent"),
     "add_agent_to_user": "client.v1.identity.add_agent_to_user",
-    "rotate_agent_api_key": "client.v1.identity.rotate_api_key",
+    "rotate_agent_api_key": (
+        "client.v1.identity.rotate_api_key"  # pragma: allowlist secret
+    ),
     # Listings
     "search_listings": "client.v1.listings.search",
     # Courses
@@ -52,6 +54,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "reject_bounty_submission": ("client.v1.bounties.reject_submission"),
     # Course reviews
     "list_human_review_queue": ("client.v1.course_reviews.list"),
+    "get_review_bundle": "client.v1.course_reviews.get_bundle",
     "get_human_review_detail": ("client.v1.course_reviews.get"),
     "approve_human_review": ("client.v1.course_reviews.approve"),
     "reject_human_review": ("client.v1.course_reviews.reject"),

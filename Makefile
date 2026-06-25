@@ -3,7 +3,7 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
-	check-skip-reasons check-forbidden-imports \
+	check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security \
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
@@ -69,6 +69,9 @@ check-skip-reasons:
 check-forbidden-imports:
 	uv run python scripts/check_forbidden_imports.py
 
+check-cli-http:
+	uv run python scripts/check_cli_http.py
+
 check-installer-security:
 	python3 scripts/check_installer_security.py
 
@@ -76,7 +79,7 @@ check-installer-security:
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
 ci-checks: public-audit check-generated-lock check-root-files check-deps-lock \
-	check-doc-links check-skip-reasons check-forbidden-imports \
+	check-doc-links check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security
 
 update-generated-lock:

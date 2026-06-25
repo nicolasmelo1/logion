@@ -11,6 +11,7 @@ from logion.v1._types.generated.v1 import (
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
     GetHumanReviewDetailResponse,
+    GetReviewBundleResponse,
     ListHumanReviewQueueResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
@@ -57,6 +58,23 @@ class CourseReviewsResource:
             Detailed review information.
         """
         return operations.get_human_review_detail(
+            self._http,
+            review_id=review_id,
+        )
+
+    def get_bundle(
+        self,
+        review_id: str | UUID,
+    ) -> GetReviewBundleResponse:
+        """Get presigned download URLs for the bundle under review.
+
+        Args:
+            review_id: The review's unique identifier (UUID).
+
+        Returns:
+            Presigned download URLs for the review bundle.
+        """
+        return operations.get_review_bundle(
             self._http,
             review_id=review_id,
         )
