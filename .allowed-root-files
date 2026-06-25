@@ -31,7 +31,6 @@ uv.lock
 
 # Directories
 .githooks
-.qlty
 .github
 assets
 contracts
