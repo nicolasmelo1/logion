@@ -26,6 +26,24 @@ function makeFakeBin(dir: string, name: string, output: string): string {
   return binPath;
 }
 
+function makeFakeLogionRecorder(dir: string, logPath: string): string {
+  const ext = process.platform === "win32" ? ".cmd" : "";
+  const binPath = path.join(dir, `logion${ext}`);
+  if (process.platform === "win32") {
+    fs.writeFileSync(
+      binPath,
+      `@echo %*>>"${logPath}"\r\n@echo logion-cli 0.1.0\r\n`,
+    );
+  } else {
+    fs.writeFileSync(
+      binPath,
+      `#!/bin/sh\nprintf '%s\\n' "$*" >> "${logPath}"\necho "logion-cli 0.1.0"\n`,
+      { mode: 0o755 },
+    );
+  }
+  return binPath;
+}
+
 function withPinnedVersion(fn: () => void): void {
   const original = fs.readFileSync(PKG_PATH, "utf8");
   const pkg = JSON.parse(original) as Record<string, unknown>;
@@ -379,6 +397,158 @@ describe("postinstall", () => {
         // Should fall back to $HOME/.logion/companion-bundles/
         const bundlesDir = path.join(fakeHome, ".logion", "companion-bundles");
         expect(fs.existsSync(bundlesDir)).toBe(true);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+  test("prints onboarding pointer after install", () => {
+    withPinnedVersion(() => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-test-"));
+      try {
+        const binDir = path.join(tmp, "bin");
+        fs.mkdirSync(binDir, { recursive: true });
+
+        const pyPath = makeFakeBin(binDir, "python3", "Python 3.12.0");
+        makeFakeBin(binDir, "pipx", "pipx 1.7.0");
+        makeFakeBin(binDir, "logion", "logion-cli 0.1.0");
+
+        const result = spawnSync(
+          process.execPath,
+          [path.join(SCRIPTS_DIR, "postinstall.js")],
+          {
+            env: {
+              ...process.env,
+              CI: "",
+              LOGION_NONINTERACTIVE: "",
+              LOGION_NPM_FORCE_INSTALLER: "pipx",
+              LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
+              PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+            },
+            stdio: "pipe",
+            timeout: 15_000,
+          },
+        );
+
+        expect(result.status).toBe(0);
+        expect(result.stderr.toString()).toContain("logion onboarding");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("suppresses onboarding pointer when LOGION_NPM_SKIP_ONBOARDING=1", () => {
+    withPinnedVersion(() => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-test-"));
+      try {
+        const binDir = path.join(tmp, "bin");
+        fs.mkdirSync(binDir, { recursive: true });
+
+        const pyPath = makeFakeBin(binDir, "python3", "Python 3.12.0");
+        makeFakeBin(binDir, "pipx", "pipx 1.7.0");
+        makeFakeBin(binDir, "logion", "logion-cli 0.1.0");
+
+        const result = spawnSync(
+          process.execPath,
+          [path.join(SCRIPTS_DIR, "postinstall.js")],
+          {
+            env: {
+              ...process.env,
+              CI: "",
+              LOGION_NONINTERACTIVE: "",
+              LOGION_NPM_SKIP_ONBOARDING: "1",
+              LOGION_NPM_FORCE_INSTALLER: "pipx",
+              LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
+              PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+            },
+            stdio: "pipe",
+            timeout: 15_000,
+          },
+        );
+
+        expect(result.status).toBe(0);
+        expect(result.stderr.toString()).not.toContain("logion onboarding");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("suppresses onboarding pointer in CI", () => {
+    withPinnedVersion(() => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-test-"));
+      try {
+        const binDir = path.join(tmp, "bin");
+        fs.mkdirSync(binDir, { recursive: true });
+
+        const pyPath = makeFakeBin(binDir, "python3", "Python 3.12.0");
+        makeFakeBin(binDir, "pipx", "pipx 1.7.0");
+        makeFakeBin(binDir, "logion", "logion-cli 0.1.0");
+
+        const result = spawnSync(
+          process.execPath,
+          [path.join(SCRIPTS_DIR, "postinstall.js")],
+          {
+            env: {
+              ...process.env,
+              CI: "1",
+              LOGION_NPM_FORCE_INSTALLER: "pipx",
+              LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
+              PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+            },
+            stdio: "pipe",
+            timeout: 15_000,
+          },
+        );
+
+        expect(result.status).toBe(0);
+        expect(result.stderr.toString()).not.toContain("logion onboarding");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("never spawns interactive onboarding during postinstall", () => {
+    withPinnedVersion(() => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-test-"));
+      try {
+        const binDir = path.join(tmp, "bin");
+        const callsPath = path.join(tmp, "logion-calls.txt");
+        fs.mkdirSync(binDir, { recursive: true });
+
+        const pyPath = makeFakeBin(binDir, "python3", "Python 3.12.0");
+        makeFakeBin(binDir, "pipx", "pipx 1.7.0");
+        makeFakeLogionRecorder(binDir, callsPath);
+
+        const result = spawnSync(
+          process.execPath,
+          [path.join(SCRIPTS_DIR, "postinstall.js")],
+          {
+            env: {
+              ...process.env,
+              CI: "",
+              LOGION_NONINTERACTIVE: "",
+              LOGION_NPM_FORCE_INSTALLER: "pipx",
+              LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
+              PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+            },
+            stdio: "pipe",
+            timeout: 15_000,
+          },
+        );
+
+        expect(result.status).toBe(0);
+        expect(fs.readFileSync(callsPath, "utf8")).not.toContain("onboarding");
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }

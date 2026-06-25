@@ -142,6 +142,7 @@ function Parse-Args {
         Installer    = "uv"
         DryRun       = $false
         NoModifyPath = $false
+        NoOnboarding = $false
         Quiet        = $false
         Verbose      = $false
         Help         = $false
@@ -191,6 +192,7 @@ function Parse-Args {
             }
             "^--DryRun$"     { $opts.DryRun = $true }
             "^--NoModifyPath$" { $opts.NoModifyPath = $true }
+            "^--NoOnboarding$" { $opts.NoOnboarding = $true }
             "^--Quiet$"      { $opts.Quiet = $true; $script:Quiet = $true }
             "^--Verbose$"    { $opts.Verbose = $true }
             "^--Help$"       { $opts.Help = $true }
@@ -705,6 +707,64 @@ function Verify-Install {
     }
 }
 
+# ── Onboarding handoff ───────────────────────────────────────────────────
+function Run-Onboarding {
+    <#
+    .SYNOPSIS
+    Run logion onboarding unless disabled or unsafe for prompts.
+    .DESCRIPTION
+    Best-effort: never throws. When the handoff cannot run or fails, sets
+    $Failed.Value = $true so the caller can point the user at a manual rerun.
+    Onboarding's own output is left on the console (not captured) so the
+    interactive prompts work as expected.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][hashtable]$Opts,
+        [ref]$Failed
+    )
+
+    # --CliOnly forwards --no-companion: onboarding installs/syncs the companion
+    # by default, which would undo what --CliOnly opted out of.
+    $onboardingArgs = @("onboarding")
+    $rerun = "logion onboarding"
+    if ($Opts.CliOnly) {
+        $onboardingArgs += "--no-companion"
+        $rerun = "logion onboarding --no-companion"
+    }
+
+    if ($Opts.NoOnboarding) {
+        Info -Message "Skipping onboarding (--NoOnboarding)."
+        return
+    }
+    if ($Opts.DryRun) {
+        Info -Message "[DRY RUN] Would run: $rerun"
+        return
+    }
+    $logion = Get-Command logion -ErrorAction SilentlyContinue
+    if (-not $logion) {
+        Warn -Message "logion not on PATH; run '$rerun' later."
+        if ($Failed) { $Failed.Value = $true }
+        return
+    }
+    if (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+        Info -Message "Non-interactive; run '$rerun' to finish setup."
+        return
+    }
+
+    Info -Message "Running '$rerun' ..."
+    try {
+        & $logion.Source @onboardingArgs
+        if ($LASTEXITCODE -ne 0) {
+            Warn -Message "onboarding did not complete; run '$rerun' later."
+            if ($Failed) { $Failed.Value = $true }
+        }
+    } catch {
+        Warn -Message "onboarding did not complete; run '$rerun' later."
+        if ($Failed) { $Failed.Value = $true }
+    }
+}
+
 # ── Print next steps ─────────────────────────────────────────────────────
 function Print-NextSteps {
     <#
@@ -713,21 +773,29 @@ function Print-NextSteps {
     #>
     [CmdletBinding()]
     param(
-        [string]$Version
+        [string]$Version,
+        [hashtable]$Opts,
+        [bool]$OnboardingFailed = $false
     )
 
     Write-Host ""
-    Write-Host "✓ Logion CLI v$Version installed successfully!" -ForegroundColor Green
+    if ($Opts -and $Opts.CliOnly) {
+        Write-Host "✓ Logion CLI v$Version installed successfully." -ForegroundColor Green
+    } else {
+        Write-Host "✓ Logion CLI v$Version and companion installed successfully." -ForegroundColor Green
+    }
     Write-Host ""
-    Write-Host "Next steps:"
-    Write-Host "  1. Run:  logion --version"
-    Write-Host "  2. Run:  logion --help"
-    Write-Host "  3. Run:  logion listings search `"video cuts`""
-    Write-Host ""
-    Write-Host "If 'logion' is not found, open a new terminal or run:"
-    Write-Host "  `$env:PATH = `"`$HOME\.local\bin`$([System.IO.Path]::PathSeparator)`$env:PATH`""
+    if ($Opts -and $Opts.NoOnboarding) {
+        Write-Host "Onboarding skipped (--NoOnboarding). Run 'logion onboarding' to finish setup."
+    } elseif ($OnboardingFailed -or -not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+        Write-Host "Finish setup so your agent can use Logion:"
+        Write-Host "  logion onboarding"
+    } else {
+        Write-Host "Your agent is ready to use Logion."
+    }
     Write-Host ""
     Write-Host "Documentation: https://logion.sh/docs"
+    Write-Host "If 'logion' is not found, open a new terminal or add ~/.local/bin to PATH."
     Write-Host "Report issues:  https://github.com/nicolasmelo1/logion/issues"
     Write-Host ""
 }

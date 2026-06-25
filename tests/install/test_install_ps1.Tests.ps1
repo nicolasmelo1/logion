@@ -110,16 +110,34 @@ exit 0
     # ── Helper: fake logion binary in harness ─────────────────────────────
     function Set-FakeLogion {
         [CmdletBinding()]
-        param([string]$Version = "0.1.0")
+        param(
+            [string]$Version = "0.1.0",
+            [string]$OnboardingMarker = $null,
+            [int]$OnboardingExitCode = 0
+        )
 
-        # Create a logion.cmd / logion script that reports the version
+        # Create a logion.cmd / logion script that reports the version.
         $ext = if ($IsWindows -or ($env:OS -eq "Windows_NT")) { ".cmd" } else { "" }
         $logionScript = [System.IO.Path]::Combine($script:HarnBinDir, "logion$ext")
         if ($ext -eq ".cmd") {
-            $content = "@echo logion $Version`n@exit /b 0"
+            $markerCommand = if ($OnboardingMarker) {
+                "echo onboarding>>`"$OnboardingMarker`""
+            } else {
+                "echo onboarding"
+            }
+            $content = "@if `"%1`"==`"onboarding`" ($markerCommand & exit /b $OnboardingExitCode)`n@echo logion $Version`n@exit /b 0"
         } else {
+            $markerLine = if ($OnboardingMarker) {
+                "    printf 'onboarding\n' >> `"$OnboardingMarker`""
+            } else {
+                "    printf 'onboarding\n'"
+            }
             $content = @"
 #!/bin/sh
+if [ "`$1" = "onboarding" ]; then
+$markerLine
+    exit $OnboardingExitCode
+fi
 if [ "`$1" = "--version" ] || [ "`$1" = "version" ]; then
     printf 'logion $Version\n'
 else
@@ -186,10 +204,10 @@ Describe "dry-run: prints DRY RUN prefixed actions and exits 0" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════
-# 2. Fresh install completes all 12 steps and installs logion
+# 2. Fresh install completes the flow and installs logion
 # ══════════════════════════════════════════════════════════════════════════
 
-Describe "fresh install: completes all 12 steps and installs logion" {
+Describe "fresh install: completes the flow and installs logion" {
     BeforeAll {
         Mock Check-Python  { return @{ Cmd = "python3"; Args = @() } }
         Mock Bootstrap-Uv  {}
@@ -203,7 +221,7 @@ Describe "fresh install: completes all 12 steps and installs logion" {
         Mock Die {}
     }
 
-    It "runs the full 12-step flow without error" {
+    It "runs the full flow without error" {
         $manifest = New-FakeManifest
         { Validate-Manifest -Manifest $manifest } | Should -Not -Throw
     }
@@ -497,6 +515,116 @@ Describe "--NoModifyPath: skips PATH modification" {
             Update-Path -BinDir "/tmp/test-bin"
         }
         Assert-MockCalled Update-Path -Times 0 -Scope It
+    }
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# 15. Onboarding handoff
+# ══════════════════════════════════════════════════════════════════════════
+
+Describe "onboarding handoff" {
+    It "Parse-Args sets NoOnboarding to true" {
+        $opts = Parse-Args -ArgList @("--NoOnboarding")
+        $opts.NoOnboarding | Should -BeTrue
+    }
+
+    It "runs onboarding by default" {
+        $origCi = $env:CI
+        $origNoninteractive = $env:LOGION_NONINTERACTIVE
+        $env:CI = $null
+        $env:LOGION_NONINTERACTIVE = $null
+        $marker = [System.IO.Path]::Combine($script:HarnTmpDir, "onboarding-default.marker")
+        Set-FakeLogion -Version "0.1.0" -OnboardingMarker $marker
+
+        try {
+            $opts = Parse-Args -ArgList @()
+            Run-Onboarding -Opts $opts
+            Test-Path $marker | Should -BeTrue
+        } finally {
+            $env:CI = $origCi
+            $env:LOGION_NONINTERACTIVE = $origNoninteractive
+        }
+    }
+
+    It "prompts to rerun onboarding when onboarding fails" {
+        $origCi = $env:CI
+        $origNoninteractive = $env:LOGION_NONINTERACTIVE
+        $env:CI = $null
+        $env:LOGION_NONINTERACTIVE = $null
+        Set-FakeLogion -Version "0.1.0" -OnboardingExitCode 9
+
+        try {
+            $opts = Parse-Args -ArgList @()
+            $failed = $false
+            Run-Onboarding -Opts $opts -Failed ([ref]$failed)
+            $failed | Should -BeTrue
+            $output = & { Print-NextSteps -Version "0.1.0" -Opts $opts -OnboardingFailed $failed } 6>&1 | Out-String
+            $output | Should -Match "logion onboarding"
+            $output | Should -Not -Match "Your agent is ready"
+        } finally {
+            $env:CI = $origCi
+            $env:LOGION_NONINTERACTIVE = $origNoninteractive
+        }
+    }
+
+    It "skips onboarding with --NoOnboarding" {
+        $marker = [System.IO.Path]::Combine($script:HarnTmpDir, "onboarding-skip.marker")
+        Set-FakeLogion -Version "0.1.0" -OnboardingMarker $marker
+
+        $opts = Parse-Args -ArgList @("--NoOnboarding")
+        Run-Onboarding -Opts $opts
+
+        Test-Path $marker | Should -BeFalse
+    }
+
+    It "skips onboarding when non-interactive" {
+        $origCi = $env:CI
+        $env:CI = "1"
+        $marker = [System.IO.Path]::Combine($script:HarnTmpDir, "onboarding-ci.marker")
+        Set-FakeLogion -Version "0.1.0" -OnboardingMarker $marker
+
+        try {
+            $opts = Parse-Args -ArgList @()
+            Run-Onboarding -Opts $opts
+            Test-Path $marker | Should -BeFalse
+        } finally {
+            $env:CI = $origCi
+        }
+    }
+
+    It "--CliOnly forwards --no-companion to onboarding" {
+        $opts = Parse-Args -ArgList @("--CliOnly", "--DryRun")
+        $output = & { Run-Onboarding -Opts $opts } 6>&1 | Out-String
+        $output | Should -Match "logion onboarding --no-companion"
+    }
+
+    It "default onboarding does not pass --no-companion" {
+        $opts = Parse-Args -ArgList @("--DryRun")
+        $output = & { Run-Onboarding -Opts $opts } 6>&1 | Out-String
+        $output | Should -Match "logion onboarding"
+        $output | Should -Not -Match "--no-companion"
+    }
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# 16. Companion remains installed by default
+# ══════════════════════════════════════════════════════════════════════════
+
+Describe "companion default install" {
+    It "does not set CliOnly by default" {
+        $opts = Parse-Args -ArgList @()
+        $opts.CliOnly | Should -BeFalse
+    }
+
+    It "calls Install-Companion for the default options" {
+        Mock Install-Companion {}
+        $opts = Parse-Args -ArgList @()
+
+        if (-not $opts.CliOnly) {
+            Install-Companion -Opts $opts -Version "0.1.0" -Manifest (New-FakeManifest)
+        }
+
+        Assert-MockCalled Install-Companion -Times 1 -Scope It
     }
 }
 
