@@ -886,6 +886,7 @@ def search_listings(
     *,
     query: str | None = None,
     tags: str | None = None,
+    category: str | None = None,
     language: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
@@ -899,6 +900,8 @@ def search_listings(
         params["query"] = query
     if tags is not None:
         params["tags"] = tags
+    if category is not None:
+        params["category"] = category
     if language is not None:
         params["language"] = language
     if price_min is not None:

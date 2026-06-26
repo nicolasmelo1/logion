@@ -99,10 +99,18 @@ def handle_search(args: argparse.Namespace) -> int:
     client = make_client(config)
     requested_limit = getattr(args, "limit", _DEFAULT_LIMIT) or _DEFAULT_LIMIT
     limit = min(max(requested_limit, 1), _MAX_LIMIT)
+    # The API accepts a comma-separated tags string. --tag (repeatable)
+    # is the preferred CLI form; --tags is the legacy comma form.
+    tag_filters = getattr(args, "tag_filters", None)
+    tags_param = args.tags
+    if tag_filters:
+        tags_param = ",".join(tag_filters)
+    category = getattr(args, "category", None)
     try:
         result = client.v1.listings.search(
             query=args.query,
-            tags=args.tags,
+            tags=tags_param,
+            category=category,
             language=getattr(args, "language", None),
             price_min=getattr(args, "price_min", None),
             price_max=getattr(args, "price_max", None),

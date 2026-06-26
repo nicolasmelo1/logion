@@ -7,6 +7,7 @@ import argparse
 
 from cli._options import COMMON_PARSER
 
+from ._cmd_help import CMD_HELP
 from .handlers import (
     handle_create,
     handle_get,
@@ -20,27 +21,14 @@ from .handlers import (
     handle_update,
 )
 from .parser_uploads import register_uploads as _register_uploads
-from .parser_utils import add_tag_arguments, add_tristate_flag
+from .parser_utils import (
+    add_category_argument,
+    add_tag_arguments,
+    add_tristate_flag,
+)
 
-# Re-export so existing imports (`from .parser_sections import
-# register_uploads`) still work.
+# Re-export for existing imports.
 register_uploads = _register_uploads
-
-CMD_HELP = {
-    "create": "Create a new course",
-    "get": "Get course details",
-    "purchase": "Purchase a course using credits",
-    "update": "Update an existing course",
-    "uploads": "Manage course version uploads",
-    "publication": "Manage course publication review",
-    "reviews": "Manage marketplace course reviews",
-    "feedback": "Get review feedback for a course",
-    "versions": "Manage course versions",
-    "capabilities": "Validate and inspect local capability manifests",
-    "report-usage": (
-        "File a usage review after completing a course-driven task"
-    ),
-}
 
 
 def register_create(subparsers: argparse._SubParsersAction) -> None:
@@ -55,6 +43,7 @@ def register_create(subparsers: argparse._SubParsersAction) -> None:
     create.add_argument("--price-cents", type=int)
     create.add_argument("--currency")
     add_tag_arguments(create, default=[])
+    add_category_argument(create)
     create.add_argument("--language")
     create.add_argument("--short-summary")
     create.add_argument(
@@ -126,6 +115,7 @@ def register_update(subparsers: argparse._SubParsersAction) -> None:
     )
 
     add_tag_arguments(update, default=None)
+    add_category_argument(update)
     update.add_argument(
         "--visibility", choices=["public", "unlisted", "private"]
     )

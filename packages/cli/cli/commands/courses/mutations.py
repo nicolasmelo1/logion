@@ -24,6 +24,7 @@ MUTABLE_UPDATE_FIELDS = [
     "language",
     "short_summary",
     "visibility",
+    "category",
 ]
 
 
@@ -107,6 +108,7 @@ def handle_create(args: argparse.Namespace) -> int:
             language=args.language,
             short_summary=args.short_summary,
             visibility=args.visibility,
+            category=getattr(args, "category", None),
         )
         if args.tags:
             kwargs["tags"] = args.tags
@@ -199,6 +201,7 @@ def handle_update(args: argparse.Namespace) -> int:
             language=args.language,
             short_summary=args.short_summary,
             visibility=args.visibility,
+            category=getattr(args, "category", None),
         )
         _apply_update_overrides(args, kwargs)
         result = client.v1.courses.update(**kwargs)

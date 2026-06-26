@@ -40,6 +40,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         description: str | None = None,
         price_cents: int | None = None,
         tags: list[str] | None = None,
+        category: str | None = None,
         language: str | None = None,
         currency: str | None = None,
         short_summary: str | None = None,
@@ -52,6 +53,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
             description=description,
             price_cents=price_cents,
             tags=tags,
+            category=category,
             language=normalize_language(language),
             currency=currency,
             short_summary=normalize_short_summary(short_summary),
@@ -71,6 +73,7 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         description: str | None = SENTINEL,  # type: ignore[assignment]
         price_cents: int | None = SENTINEL,  # type: ignore[assignment]
         tags: list[str] | None = SENTINEL,  # type: ignore[assignment]
+        category: str | None = SENTINEL,  # type: ignore[assignment]
         currency: str | None = SENTINEL,  # type: ignore[assignment]
         language: str | None = SENTINEL,  # type: ignore[assignment]
         short_summary: str | None = SENTINEL,  # type: ignore[assignment]
@@ -86,6 +89,8 @@ class _CoursesCoreMixin(_CoursesResourceBase):
             fields["price_cents"] = price_cents
         if tags is not SENTINEL:
             fields["tags"] = tags
+        if category is not SENTINEL:
+            fields["category"] = category
         if currency is not SENTINEL:
             fields["currency"] = currency
         if language is not SENTINEL:
