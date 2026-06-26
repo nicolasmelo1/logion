@@ -44,9 +44,11 @@ version: 1
 #   write:
 #     - ./outputs
 
-# secrets.env — environment variables the course may read.
-# Names must match the regex ^[A-Z_][A-Z0-9_]*$ (uppercase letters,
-# digits, and underscores; cannot start with a digit).
+# secrets.env — environment variables the course is *permitted* to read.
+# This is a permission gate: if an env var is not listed here, the
+# agent runtime must not expose it to the course.  Names must match the
+# regex ^[A-Z_][A-Z0-9_]*$ (uppercase letters, digits, and underscores;
+# cannot start with a digit).
 #
 # secrets:
 #   env:
@@ -57,3 +59,131 @@ version: 1
 #
 # human_approval:
 #   required: true
+
+# ---------------------------------------------------------------------------
+# runtime — host-side dependency metadata (version 1, optional).
+# ---------------------------------------------------------------------------
+#
+# runtime.requires declares *what* the course needs on the host machine.
+# It is metadata for reviewers and the install/boot lifecycle — it does
+# NOT grant any permission.  The tools/secrets/filesystem/network/
+# human_approval fields above are the only permission gates.  A course
+# can declare runtime.requires.bins: [python3] without listing "terminal"
+# in tools, but a warning will be emitted because the binary cannot be
+# invoked without terminal access.
+#
+# runtime.install declares *how* to install declared dependencies.  The
+# commands are disclosure only — Logion NEVER auto-runs them.  They exist
+# so reviewers and buyers can see exactly what would execute on a host
+# that opts in to provisioning.  human_approval should be true whenever
+# install steps are present.
+#
+# All runtime fields default to empty.  Uncomment only what applies.
+
+# runtime:
+#   requires:
+#     # env — env vars the course's *code* depends on at runtime.  This
+#     # is dependency metadata, NOT a permission.  The permission to
+#     # actually read the env var comes from secrets.env above.  If an
+#     # env var appears here but not in secrets.env, a warning is
+#     # emitted (the dependency is declared but the permission is not
+#     # granted).  Names follow the same ^[A-Z_][A-Z0-9_]*$ regex.
+#     #
+#     # env:
+#     #   - PYTHONPATH
+#     #   - DJANGO_SETTINGS_MODULE
+#
+#     # bins — binaries that MUST be present on PATH for the course to
+#     # function.  Names must match ^[A-Za-z0-9._+-]+$ — no spaces, no
+#     # slashes, no shell metacharacters.  Entries are sorted and
+#     # de-duplicated.
+#     #
+#     # bins:
+#     #   - python3
+#     #   - uv
+#     #   - node
+#
+#     # any_bins — groups of binaries where at least ONE per group must
+#     # be present.  Each group is a list; the binary name rules are the
+#     # same as bins.  Groups must not be empty.  Use this for
+#     # alternatives like [uv, pip] or [docker, podman].
+#     #
+#     # any_bins:
+#     #   - - uv
+#     #     - pip
+#     #   - - docker
+#     #     - podman
+#
+#     # config — config file paths the course reads, relative to the
+#     # bundle root.  Absolute paths and ".." traversal are rejected,
+#     # same as filesystem paths.
+#     #
+#     # config:
+#     #   - config/settings.yaml
+#     #   - .env.defaults
+#
+#     # os — operating systems the course supports.  Closed enum:
+#     # linux, macos, windows.  Entries are sorted and de-duplicated.
+#     # Omit or leave empty to declare OS-agnostic.
+#     #
+#     # os:
+#     #   - linux
+#     #   - macos
+#
+#     # software — third-party / proprietary / non-package-manager
+#     # software the course depends on.  Each entry is a mapping with:
+#     #   name     (str, required, max 120 chars)
+#     #   required (bool, default true) — false marks optional deps
+#     #   install  (str, default "external") — closed enum:
+#     #             external, manual, vendor, unknown
+#     #   notes    (str, default "", max 512 chars) — free-text context
+#     #
+#     # Examples:
+#     #   - AutoCAD (proprietary desktop CAD, vendor installer only):
+#     #     - name: AutoCAD
+#     #       install: vendor
+#     #       notes: "Proprietary; requires Autodesk account and license."
+#     #
+#     #   - Claude Code plugin (manual install from marketplace):
+#     #     - name: Claude Code
+#     #       install: manual
+#     #       required: false
+#     #       notes: "Optional: enables inline review without API round-trips."
+#     #
+#     # software:
+#     #   - name: AutoCAD
+#     #     install: vendor
+#     #     notes: "Proprietary; requires Autodesk account and license."
+#     #   - name: Claude Code
+#     #     install: manual
+#     #     required: false
+#     #     notes: "Optional: enables inline review without API round-trips."
+#
+#   # install — disclosure-only install commands.  Logion NEVER auto-runs
+#   # these.  They exist so reviewers and buyers can see what *would*
+#   # execute on a host that opts in to provisioning.  Each entry is a
+#   # mapping with:
+#   #   kind     (str, required) — closed enum: uv, npm, pip, brew, apt,
+#   #             go, cargo, external, manual
+#   #   command  (str, default "", max 240 chars, no newlines)
+#   #   required (bool, default true)
+#   #   notes    (str, default "", max 512 chars)
+#   #
+#   # Examples:
+#   #   - uv sync (Python dependency sync):
+#   #     - kind: uv
+#   #       command: "uv sync"
+#   #       notes: "Disclosure only — Logion never auto-runs this."
+#   #
+#   #   - npm install (Node dependency install):
+#   #     - kind: npm
+#   #       command: "npm install"
+#   #       notes: "Disclosure only — Logion never auto-runs this."
+#   #
+#   # install:
+#   #   - kind: uv
+#   #     command: "uv sync"
+#   #     notes: "Disclosure only — Logion never auto-runs this."
+#   #   - kind: npm
+#   #     command: "npm install"
+#   #     notes: "Disclosure only — Logion never auto-runs this."

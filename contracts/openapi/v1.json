@@ -642,6 +642,75 @@
             "title": "Human Approval Required",
             "type": "boolean"
           },
+          "runtime_install": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Runtime Install",
+            "type": "array"
+          },
+          "runtime_requires_any_bins": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Runtime Requires Any Bins",
+            "type": "array"
+          },
+          "runtime_requires_bins": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Requires Bins",
+            "type": "array"
+          },
+          "runtime_requires_config": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Requires Config",
+            "type": "array"
+          },
+          "runtime_requires_env": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Requires Env",
+            "type": "array"
+          },
+          "runtime_requires_os": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Requires Os",
+            "type": "array"
+          },
+          "runtime_requires_software": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Runtime Requires Software",
+            "type": "array"
+          },
+          "runtime_warning_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Warning Codes",
+            "type": "array"
+          },
+          "runtime_warnings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Runtime Warnings",
+            "type": "array"
+          },
           "secrets_env": {
             "items": {
               "type": "string"

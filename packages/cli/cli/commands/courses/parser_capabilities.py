@@ -72,4 +72,15 @@ def register_capabilities(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Overwrite an existing course/capabilities.yaml",
     )
+    scaffold.add_argument(
+        "--from-skill",
+        type=Path,
+        default=None,
+        metavar="SKILL_MD_PATH",
+        help=(
+            "Seed the scaffold from the metadata.logion capability "
+            "manifest in the given SKILL.md instead of emitting the "
+            "generic template."
+        ),
+    )
     scaffold.set_defaults(handler=handle_courses_capabilities_scaffold)

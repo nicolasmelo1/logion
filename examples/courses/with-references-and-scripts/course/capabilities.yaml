@@ -23,3 +23,11 @@ filesystem:
 
 human_approval:
   required: false
+
+# runtime — the bundled shell script needs a POSIX shell (sh) and
+# commonly uses Python 3 for any inline data processing.
+runtime:
+  requires:
+    bins:
+      - python3
+      - sh

@@ -17,6 +17,27 @@ import yaml
 CAPABILITY_MANIFEST_PATH = Path("course/capabilities.yaml")
 ALLOWED_TOOLS = {"browser", "terminal", "file", "web", "vision"}
 ENV_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+BIN_RE = re.compile(r"^[A-Za-z0-9._+-]+$")
+OS_VALUES = {"linux", "macos", "windows"}
+INSTALL_KINDS = {
+    "uv",
+    "npm",
+    "pip",
+    "brew",
+    "apt",
+    "go",
+    "cargo",
+    "external",
+    "manual",
+}
+SOFTWARE_INSTALL_KINDS = {"external", "manual", "vendor", "unknown"}
+
+_RUNTIME_WARNING_CODES = {
+    "runtime_env_not_declared_as_secret",
+    "runtime_declares_host_dependencies_without_terminal",
+    "install_steps_without_human_approval",
+    "install_steps_without_network_domains",
+}
 
 
 class CapabilityManifestError(ValueError):
@@ -57,6 +78,7 @@ def normalize_capability_manifest(
         "filesystem",
         "secrets",
         "human_approval",
+        "runtime",
     }
     if unknown:
         raise CapabilityManifestError(
@@ -91,6 +113,7 @@ def normalize_capability_manifest(
     allow_domains = _normalize_domains(
         _default_list(network.get("allow_domains"))
     )
+    runtime = _normalize_runtime(raw.get("runtime"))
     return {
         "version": 1,
         "summary": summary,
@@ -106,6 +129,7 @@ def normalize_capability_manifest(
         "human_approval": {
             "required": human_approval_required,
         },
+        "runtime": runtime,
     }
 
 
@@ -117,7 +141,10 @@ def summarize_capability_manifest(
     domains = manifest.get("network", {}).get("allow_domains") or []
     fs = manifest.get("filesystem", {})
     secrets = manifest.get("secrets", {})
-    return {
+    runtime = manifest.get("runtime") or {}
+    requires = runtime.get("requires") or {}
+    install = runtime.get("install") or []
+    summary = {
         "tools": tools,
         "allows_shell": "terminal" in tools,
         "allows_network": (
@@ -130,7 +157,19 @@ def summarize_capability_manifest(
         "human_approval_required": bool(
             manifest.get("human_approval", {}).get("required", False)
         ),
+        "runtime_requires_env": requires.get("env") or [],
+        "runtime_requires_bins": requires.get("bins") or [],
+        "runtime_requires_any_bins": requires.get("any_bins") or [],
+        "runtime_requires_config": requires.get("config") or [],
+        "runtime_requires_os": requires.get("os") or [],
+        "runtime_requires_software": requires.get("software") or [],
+        "runtime_install": install,
     }
+    summary["runtime_warning_codes"] = [
+        w["code"] for w in runtime_requirement_warnings(manifest)
+    ]
+    summary["runtime_warnings"] = runtime_requirement_warnings(manifest)
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -217,3 +256,325 @@ def _normalize_env(env_vars: Any) -> list[str]:
             raise CapabilityManifestError(f"Invalid env var name: {e!r}")
         result.append(e)
     return sorted(set(result))
+
+
+# ---------------------------------------------------------------------------
+# Runtime requirements normalisers
+# ---------------------------------------------------------------------------
+
+
+def _normalize_runtime(value: Any) -> dict[str, Any]:
+    """Normalise the optional top-level ``runtime`` mapping.
+
+    Defaults to an empty requires/install shape when absent.
+    """
+    if value is None:
+        return {"requires": _empty_requires(), "install": []}
+    if not isinstance(value, dict):
+        raise CapabilityManifestError("runtime must be a mapping")
+    unknown = set(value) - {"requires", "install"}
+    if unknown:
+        raise CapabilityManifestError(
+            f"Unknown runtime key: {sorted(unknown)[0]}"
+        )
+    requires = _normalize_runtime_requires(value.get("requires"))
+    install = _normalize_install(value.get("install"))
+    return {"requires": requires, "install": install}
+
+
+def _empty_requires() -> dict[str, Any]:
+    return {
+        "env": [],
+        "bins": [],
+        "any_bins": [],
+        "config": [],
+        "os": [],
+        "software": [],
+    }
+
+
+def _normalize_runtime_requires(value: Any) -> dict[str, Any]:
+    if value is None:
+        return _empty_requires()
+    if not isinstance(value, dict):
+        raise CapabilityManifestError("runtime.requires must be a mapping")
+    unknown = set(value) - {
+        "env",
+        "bins",
+        "any_bins",
+        "config",
+        "os",
+        "software",
+    }
+    if unknown:
+        raise CapabilityManifestError(
+            f"Unknown runtime.requires key: {sorted(unknown)[0]}"
+        )
+    return {
+        "env": _normalize_env(_default_list(value.get("env"))),
+        "bins": _normalize_required_bins(_default_list(value.get("bins"))),
+        "any_bins": _normalize_any_bins(_default_list(value.get("any_bins"))),
+        "config": _normalize_paths(_default_list(value.get("config"))),
+        "os": _normalize_os(_default_list(value.get("os"))),
+        "software": _normalize_software(_default_list(value.get("software"))),
+    }
+
+
+def _normalize_required_bins(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        raise CapabilityManifestError("runtime.requires.bins must be a list")
+    result: list[str] = []
+    for b in value:
+        if not isinstance(b, str):
+            raise CapabilityManifestError(f"Invalid binary name: {b!r}")
+        if not b:
+            raise CapabilityManifestError("Binary name must not be empty")
+        if not BIN_RE.match(b):
+            raise CapabilityManifestError(
+                f"Invalid binary name (slashes, spaces, "
+                f"or shell metacharacters not allowed): {b!r}"
+            )
+        result.append(b)
+    return sorted(set(result))
+
+
+def _normalize_any_bins(value: Any) -> list[list[str]]:
+    if not isinstance(value, list):
+        raise CapabilityManifestError(
+            "runtime.requires.any_bins must be a list"
+        )
+    groups: list[list[str]] = []
+    for group in value:
+        if not isinstance(group, list):
+            raise CapabilityManifestError(
+                "runtime.requires.any_bins entries must be lists"
+            )
+        if not group:
+            raise CapabilityManifestError(
+                "runtime.requires.any_bins groups must not be empty"
+            )
+        normalised = _normalize_required_bins(group)
+        groups.append(normalised)
+    # Dedupe groups by their tuple representation, preserving order.
+    seen: set[tuple[str, ...]] = set()
+    deduped: list[list[str]] = []
+    for g in groups:
+        key = tuple(g)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(g)
+    return deduped
+
+
+def _normalize_os(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        raise CapabilityManifestError("runtime.requires.os must be a list")
+    result: list[str] = []
+    for o in value:
+        if not isinstance(o, str):
+            raise CapabilityManifestError(f"Invalid os value: {o!r}")
+        if o not in OS_VALUES:
+            raise CapabilityManifestError(
+                f"Unknown os value: {o!r} (allowed: "
+                f"{', '.join(sorted(OS_VALUES))})"
+            )
+        result.append(o)
+    return sorted(set(result))
+
+
+def _normalize_software(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise CapabilityManifestError(
+            "runtime.requires.software must be a list"
+        )
+    result: list[dict[str, Any]] = []
+    for i, entry in enumerate(value):
+        if not isinstance(entry, dict):
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}] must be a mapping"
+            )
+        unknown = set(entry) - {"name", "required", "install", "notes"}
+        if unknown:
+            raise CapabilityManifestError(
+                f"Unknown runtime.requires.software key: {sorted(unknown)[0]}"
+            )
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].name must be a non-empty "
+                "string"
+            )
+        if len(name) > 120:
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].name must be at most 120 "
+                "characters"
+            )
+        required = entry.get("required", True)
+        if not isinstance(required, bool):
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].required must be a boolean"
+            )
+        install = entry.get("install", "external")
+        if not isinstance(install, str):
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].install must be a string"
+            )
+        if install not in SOFTWARE_INSTALL_KINDS:
+            raise CapabilityManifestError(
+                f"Unknown software install kind: {install!r} (allowed: "
+                f"{', '.join(sorted(SOFTWARE_INSTALL_KINDS))})"
+            )
+        notes = entry.get("notes", "")
+        if not isinstance(notes, str):
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].notes must be a string"
+            )
+        if len(notes) > 512:
+            raise CapabilityManifestError(
+                f"runtime.requires.software[{i}].notes must be at most 512 "
+                "characters"
+            )
+        result.append({
+            "name": name,
+            "required": required,
+            "install": install,
+            "notes": notes,
+        })
+    return result
+
+
+def _normalize_install(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise CapabilityManifestError("runtime.install must be a list")
+    result: list[dict[str, Any]] = []
+    for i, entry in enumerate(value):
+        result.append(_normalize_install_entry(entry, i))
+    return result
+
+
+def _normalize_install_entry(entry: Any, i: int) -> dict[str, Any]:
+    """Validate and normalise a single runtime.install entry."""
+    if not isinstance(entry, dict):
+        raise CapabilityManifestError(
+            f"runtime.install[{i}] must be a mapping"
+        )
+    unknown = set(entry) - {"kind", "command", "required", "notes"}
+    if unknown:
+        raise CapabilityManifestError(
+            f"Unknown runtime.install key: {sorted(unknown)[0]}"
+        )
+    kind = entry.get("kind")
+    if not isinstance(kind, str):
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].kind must be a string"
+        )
+    if kind not in INSTALL_KINDS:
+        raise CapabilityManifestError(
+            f"Unknown install kind: {kind!r} (allowed: "
+            f"{', '.join(sorted(INSTALL_KINDS))})"
+        )
+    command = entry.get("command", "")
+    if not isinstance(command, str):
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].command must be a string"
+        )
+    if "\n" in command or "\r" in command:
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].command must not contain newlines"
+        )
+    if len(command) > 240:
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].command must be at most 240 characters"
+        )
+    required = entry.get("required", True)
+    if not isinstance(required, bool):
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].required must be a boolean"
+        )
+    notes = entry.get("notes", "")
+    if not isinstance(notes, str):
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].notes must be a string"
+        )
+    if len(notes) > 512:
+        raise CapabilityManifestError(
+            f"runtime.install[{i}].notes must be at most 512 characters"
+        )
+    return {
+        "kind": kind,
+        "command": command,
+        "required": required,
+        "notes": notes,
+    }
+
+
+def runtime_requirement_warnings(
+    manifest: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Derive cross-field warnings from a normalised manifest.
+
+    Warnings are reviewer/author-facing disclosure only. They never become
+    hard validation failures; ``runtime.requires`` lowers false rejections
+    for legitimate external dependencies but must not hide behaviour that
+    still needs the normal ``tools``/``secrets``/``filesystem``/
+    ``network``/``human_approval`` declarations.
+    """
+    warnings: list[dict[str, str]] = []
+    runtime = manifest.get("runtime") or {}
+    requires = runtime.get("requires") or {}
+    install = runtime.get("install") or []
+    secrets_env = set(manifest.get("secrets", {}).get("env") or [])
+    tools = manifest.get("tools") or []
+    human_approval_required = bool(
+        manifest.get("human_approval", {}).get("required", False)
+    )
+    domains = manifest.get("network", {}).get("allow_domains") or []
+
+    for env_name in requires.get("env") or []:
+        if env_name not in secrets_env:
+            warnings.append({
+                "code": "runtime_env_not_declared_as_secret",
+                "severity": "medium",
+                "message": (
+                    f"runtime.requires.env includes {env_name} but "
+                    "secrets.env does not."
+                ),
+            })
+
+    has_host_deps = bool(
+        requires.get("bins") or requires.get("any_bins") or install
+    )
+    if has_host_deps and "terminal" not in tools:
+        warnings.append({
+            "code": "runtime_declares_host_dependencies_without_terminal",
+            "severity": "low",
+            "message": (
+                "runtime declares host dependencies or install steps "
+                "but 'terminal' is not in tools."
+            ),
+        })
+
+    if install and not human_approval_required:
+        warnings.append({
+            "code": "install_steps_without_human_approval",
+            "severity": "medium",
+            "message": (
+                "runtime.install is non-empty but "
+                "human_approval.required is false."
+            ),
+        })
+
+    network_kinds = {"uv", "npm", "pip", "brew", "apt", "go", "cargo"}
+    if any(step["kind"] in network_kinds for step in install) and not domains:
+        warnings.append({
+            "code": "install_steps_without_network_domains",
+            "severity": "low",
+            "message": (
+                "runtime.install includes package-manager steps but no "
+                "network allow_domains are declared."
+            ),
+        })
+
+    return warnings

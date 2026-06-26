@@ -46,6 +46,80 @@ def _append_summary_fields(
     human_approval = summary.get("human_approval_required")
     if human_approval is not None:
         lines.append(f"human_approval_required: {str(human_approval).lower()}")
+    _append_runtime_fields(lines, summary)
+    _append_runtime_warnings(lines, summary)
+
+
+def _render_install_steps(
+    lines: list[str],
+    install: list[dict[str, Any]],
+) -> None:
+    """Append install-step detail lines."""
+    lines.append("  install_steps:")
+    for step in install:
+        req = "required" if step.get("required") else "optional"
+        kind = step.get("kind", "")
+        command = step.get("command", "")
+        notes = step.get("notes", "")
+        cmd_part = f": {command}" if command else ""
+        note_part = f": {notes}" if notes else ""
+        lines.append(f"    - {kind}{cmd_part} ({req}){note_part}")
+
+
+def _append_runtime_fields(
+    lines: list[str],
+    summary: dict[str, Any],
+) -> None:
+    """Append runtime requirement and install-step detail fields.
+
+    Only rendered when any runtime field is non-empty, so minimal
+    manifests stay compact.
+    """
+    env = summary.get("runtime_requires_env") or []
+    bins = summary.get("runtime_requires_bins") or []
+    any_bins = summary.get("runtime_requires_any_bins") or []
+    config = summary.get("runtime_requires_config") or []
+    os_vals = summary.get("runtime_requires_os") or []
+    software = summary.get("runtime_requires_software") or []
+    install = summary.get("runtime_install") or []
+    if not any([env, bins, any_bins, config, os_vals, software, install]):
+        return
+    lines.append("runtime_requirements:")
+    if env:
+        lines.append(f"  env: {', '.join(env)}")
+    if bins:
+        lines.append(f"  bins: {', '.join(bins)}")
+    if any_bins:
+        groups = [" or ".join(g) for g in any_bins]
+        lines.append(f"  any_bins: {', '.join(groups)}")
+    if config:
+        lines.append(f"  config: {', '.join(config)}")
+    if os_vals:
+        lines.append(f"  os: {', '.join(os_vals)}")
+    if software:
+        lines.append("  software:")
+        for sw in software:
+            req = "required" if sw.get("required") else "optional"
+            install_kind = sw.get("install", "external")
+            name = sw.get("name", "")
+            notes = sw.get("notes", "")
+            suffix = f": {notes}" if notes else ""
+            lines.append(f"    - {name} ({install_kind}, {req}){suffix}")
+    if install:
+        _render_install_steps(lines, install)
+
+
+def _append_runtime_warnings(
+    lines: list[str],
+    summary: dict[str, Any],
+) -> None:
+    """Append runtime cross-field warning codes."""
+    codes = summary.get("runtime_warning_codes") or []
+    if not codes:
+        return
+    lines.append("runtime_warnings:")
+    for code in codes:
+        lines.append(f"  - {code}")
 
 
 def append_capability_summary_lines(
