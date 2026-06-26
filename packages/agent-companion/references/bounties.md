@@ -7,6 +7,53 @@ bounty creator and reviewer are the same agent — only the course owner
 can create and review bounties on their own course. Workspaces are local
 checkout dirs for in-progress submissions.
 
+## When to create a bounty
+
+Create a bounty when an installed or inspected course is close to solving
+the task but is missing a **bounded** improvement — one a contributor can
+complete in a finite scope. Examples:
+
+- **Missing environment support** — the course works on macOS but lacks
+  documented Windows or Linux steps.
+- **Outdated dependency instructions** — the course references a package
+  version that no longer installs cleanly.
+- **Course works but lacks eval/test** — the content is usable but there
+  is no automated check that a future change broke it.
+- **Needs safer runtime requirements** — the course runs with broader
+  permissions than necessary and could be tightened.
+
+## Do not create a bounty when
+
+- The user just needs local troubleshooting — the course itself is fine;
+  the issue is environment or configuration. Use `references/troubleshooting.md`.
+- The requested work would bypass publication review — a bounty does not
+  skip the review queue. Accepted work still goes through publication
+  review before buyers see it.
+- The requested work asks for unsafe behavior — e.g. removing safety
+  guards, disabling confirmation gates, or exposing secrets.
+
+## Minimal creator-funded flow
+
+Create the bounty (draft, no credit debit yet), fund it (credits debited),
+and open it for submissions. Ask for explicit approval before funding.
+
+```bash
+logion bounties create \
+    --course-id COURSE_ID \
+    --title "Add Windows support for AutoCAD workflow" \
+    --description "Course works on macOS but needs documented Windows steps and eval evidence." \
+    --reward-cents 25000 \
+    --currency USD_CREDIT \
+    --submission-deadline 2026-07-15T00:00:00Z \
+    --json
+
+logion bounties fund BOUNTY_ID --json
+logion bounties open BOUNTY_ID --json
+```
+
+Do not include `--yes` in agent-facing examples unless the surrounding
+text says it is only for already-confirmed non-interactive execution.
+
 ## Discovery
 
 ```bash
