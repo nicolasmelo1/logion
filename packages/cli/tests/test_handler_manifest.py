@@ -16,6 +16,8 @@ import argparse
 import ast
 import importlib
 import json
+import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -30,6 +32,19 @@ SDK_IMPORT_TARGETS = {
     ("cli._context", "make_client"),
     ("logion", "LogionClient"),
 }
+
+
+@contextmanager
+def _admin_enabled_temporarily():
+    old = os.environ.get("LOGION_ENABLE_ADMIN")
+    os.environ["LOGION_ENABLE_ADMIN"] = "1"
+    try:
+        yield
+    finally:
+        if old is None:
+            os.environ.pop("LOGION_ENABLE_ADMIN", None)
+        else:
+            os.environ["LOGION_ENABLE_ADMIN"] = old
 
 
 def _leaves(parser: argparse.ArgumentParser, prefix: tuple[str, ...] = ()):
@@ -84,11 +99,12 @@ def _imports_sdk(module_name: str | None) -> bool:
 def test_handler_manifest_covers_every_sdk_backed_leaf():
     manifest = yaml.safe_load(MANIFEST_PATH.read_text()) or {}
     declared = set((manifest.get("commands") or {}).keys())
-    sdk_backed = [
-        leaf["command"]
-        for leaf in _leaves(build_parser())
-        if _imports_sdk(leaf["handler_module"])
-    ]
+    with _admin_enabled_temporarily():
+        sdk_backed = [
+            leaf["command"]
+            for leaf in _leaves(build_parser())
+            if _imports_sdk(leaf["handler_module"])
+        ]
     missing = sorted(set(sdk_backed) - declared)
     assert not missing, (
         "Add handler_manifest.yaml entries for these SDK-backed CLI leaves: "
@@ -100,7 +116,8 @@ def test_handler_manifest_no_stale_entries():
     """Manifest entries must correspond to real CLI leaves."""
     manifest = yaml.safe_load(MANIFEST_PATH.read_text()) or {}
     declared = set((manifest.get("commands") or {}).keys())
-    real_leaves = {leaf["command"] for leaf in _leaves(build_parser())}
+    with _admin_enabled_temporarily():
+        real_leaves = {leaf["command"] for leaf in _leaves(build_parser())}
     stale = sorted(declared - real_leaves)
     assert not stale, (
         f"Remove handler_manifest.yaml entries for leaves that no longer "

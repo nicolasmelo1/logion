@@ -7,16 +7,36 @@ that invariant by walking the live ``build_parser()`` argparse tree and
 asserting every leaf subcommand carries a non-empty description/help
 string and a ``--json`` flag.
 
-Failures are parameterized per leaf command path so the offending
-command (e.g. ``skills install``) is named, not just "a command failed".
+Each leaf command is a separate parametrized test case so a failure
+names the exact offending command path (e.g. ``skills install``), not
+just "a command failed."
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import Iterator
+from contextlib import contextmanager
+
+import pytest
 
 from cli._parser import build_parser
+
+
+@contextmanager
+def _admin_enabled_temporarily() -> Iterator[None]:
+    """Temporarily enable admin commands while collecting parser leaves."""
+    old = os.environ.get("LOGION_ENABLE_ADMIN")
+    os.environ["LOGION_ENABLE_ADMIN"] = "1"
+    try:
+        yield
+    finally:
+        if old is None:
+            os.environ.pop("LOGION_ENABLE_ADMIN", None)
+        else:
+            os.environ["LOGION_ENABLE_ADMIN"] = old
+
 
 # ---------------------------------------------------------------------------
 # Argparse tree introspection helpers
@@ -65,10 +85,6 @@ def _iter_leaves(
 
     A leaf is a subparser that has no further ``_SubParsersAction``
     (i.e. it dispatches directly to a handler, not to sub-subcommands).
-
-    Yields ``(path, subparser, help_text, description)`` tuples where
-    ``help_text`` is the ``help=`` from the parent's ``add_parser`` call
-    and ``description`` is ``subparser.description``.
     """
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
@@ -97,17 +113,13 @@ def _iter_leaves(
 JSON_EXEMPT_COMMANDS: frozenset[tuple[str, ...]] = frozenset()
 
 
-def _build_and_collect() -> tuple[
-    argparse.ArgumentParser,
-    list[tuple[tuple[str, ...], argparse.ArgumentParser, str, str]],
+def _build_and_collect() -> list[
+    tuple[tuple[str, ...], argparse.ArgumentParser, str, str]
 ]:
-    """Build the parser with admin enabled and collect leaves."""
-    import os
-
-    os.environ["LOGION_ENABLE_ADMIN"] = "1"
-    parser = build_parser()
-    leaves = list(_iter_leaves(parser))
-    return parser, leaves
+    """Build the parser with admin enabled briefly and collect leaves."""
+    with _admin_enabled_temporarily():
+        parser = build_parser()
+    return list(_iter_leaves(parser))
 
 
 # ---------------------------------------------------------------------------
@@ -118,10 +130,6 @@ def _build_and_collect() -> tuple[
 def test_json_allowlist_is_empty_or_justified() -> None:
     """The JSON-exempt allowlist must be empty unless every entry is
     documented with a justification comment above."""
-    # The allowlist is defined as a module-level frozenset.  If a
-    # future command legitimately cannot emit JSON, add it there with
-    # an inline comment explaining why.  This test asserts the set is
-    # currently empty so any addition is a deliberate, reviewable diff.
     assert frozenset() == JSON_EXEMPT_COMMANDS, (
         "JSON_EXEMPT_COMMANDS is non-empty — each entry must be "
         "justified with a comment in the frozenset definition and "
@@ -130,14 +138,8 @@ def test_json_allowlist_is_empty_or_justified() -> None:
 
 
 def test_every_leaf_command_has_nonempty_help() -> None:
-    """Every leaf command must carry a non-empty help or description.
-
-    argparse always *accepts* ``--help``, but if the subparser was
-    registered without ``help=`` or ``description=``, ``--help`` prints a
-    bare usage line that documents nothing.  We assert at least one of
-    the two is non-empty.
-    """
-    _parser, leaves = _build_and_collect()
+    """Every leaf command must carry a non-empty help or description."""
+    leaves = _build_and_collect()
     missing: list[str] = []
     for path, _sub, help_text, desc in leaves:
         text = (help_text or desc or "").strip()
@@ -149,31 +151,42 @@ def test_every_leaf_command_has_nonempty_help() -> None:
     )
 
 
-def _leaf_command_ids() -> list[tuple[str, tuple[str, ...]]]:
-    """Return ``(id_string, path)`` for every leaf command."""
-    _parser, leaves = _build_and_collect()
-    return [(" ".join(path), path) for path, _sub, _h, _d in leaves]
+def _leaf_ids() -> list[str]:
+    """Return ``"path parts"`` for every leaf, for parametrize IDs."""
+    leaves = _build_and_collect()
+    return [" ".join(path) for path, _sub, _h, _d in leaves]
 
 
-def test_every_leaf_command_supports_json() -> None:
+def _leaf_param_data() -> list[
+    tuple[tuple[str, ...], argparse.ArgumentParser]
+]:
+    """Return ``(path, subparser)`` for every leaf command."""
+    leaves = _build_and_collect()
+    return [(path, sub) for path, sub, _h, _d in leaves]
+
+
+@pytest.mark.parametrize(
+    ("path", "sub"),
+    _leaf_param_data(),
+    ids=_leaf_ids(),
+)
+def test_every_leaf_command_supports_json(
+    path: tuple[str, ...],
+    sub: argparse.ArgumentParser,
+) -> None:
     """Every leaf command (not in the exempt set) must define ``--json``.
 
-    Uses a single collection assertion so each offender is named in the
-    failure message without pytest's parametrize limitations on
-    module-scoped fixtures.
+    Parametrized per leaf so a failure names the exact offending command
+    path (e.g. ``skills install``), not just ``"a command failed"``.
     """
-    _parser, leaves = _build_and_collect()
-    missing: list[str] = []
-    for path, sub, _help, _desc in leaves:
-        if path in JSON_EXEMPT_COMMANDS:
-            continue
-        flags = _flags_for(sub)
-        if "--json" not in flags:
-            missing.append(" ".join(path))
-    assert not missing, (
-        "Leaf commands missing --json (agents cannot get "
-        "machine-readable output):\n  - "
-        + "\n  - ".join(missing)
-        + "\nIf a command genuinely cannot emit JSON, add it to "
-        "JSON_EXEMPT_COMMANDS with a justification."
+    if path in JSON_EXEMPT_COMMANDS:
+        pytest.skip(
+            reason=f"{path!r} is in JSON_EXEMPT_COMMANDS",
+        )
+    flags = _flags_for(sub)
+    assert "--json" in flags, (
+        f"{' '.join(path)} is missing --json "
+        f"(agents cannot get machine-readable output). "
+        f"If a command genuinely cannot emit JSON, add it to "
+        f"JSON_EXEMPT_COMMANDS with a justification."
     )

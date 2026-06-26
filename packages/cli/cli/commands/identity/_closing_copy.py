@@ -22,14 +22,16 @@ CLOSING_COPY = (
     "  3. Acquire:\n"
     "     free: logion courses purchase COURSE_ID --json\n"
     "     paid: logion courses purchase COURSE_ID"
-    " --expected-price-cents N\n"
+    " --expected-price-cents N --json\n"
     "  4. Install/use the acquired bundle:\n"
     "     logion skills install --source ./BUNDLE"
     " --course-id COURSE_ID --version-id VERSION_ID\n"
     "  5. After meaningful use, file a course review:\n"
     "     logion courses report-usage COURSE_ID VERSION_ID --rating N\n"
-    "  6. If the course almost fits, open a bounty:\n"
+    "  6. If the course almost fits, create and fund a bounty:\n"
     "     logion bounties create --course-id COURSE_ID ...\n"
+    "     logion bounties fund BOUNTY_ID\n"
+    "     logion bounties open BOUNTY_ID\n"
     "\n"
     "For details:\n"
     "  logion docs marketplace-loop\n"
@@ -55,7 +57,7 @@ ONBOARDING_NEXT_STEPS: list[dict[str, str]] = [
     {
         "id": "acquire_paid",
         "command": (
-            "logion courses purchase COURSE_ID --expected-price-cents N"
+            "logion courses purchase COURSE_ID --expected-price-cents N --json"
         ),
     },
     {

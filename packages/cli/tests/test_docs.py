@@ -54,3 +54,30 @@ def test_docs_search_finds_bounty_almost_fits() -> None:
         "marketplace-loop article must contain 'almost fits' or "
         "'almost-good' so docs search can discover it"
     )
+
+
+def test_docs_projection_in_sync_with_source() -> None:
+    """Packaged docs must match the canonical source in docs/marketplace/.
+
+    The sync_docs.py script copies from docs/marketplace/ and docs/legal/
+    into packages/cli/cli/docs/. This test catches drift so a developer
+    who edits one copy but forgets the other fails CI instead of
+    shipping a stale projection.
+    """
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "packages/cli/scripts/sync_docs.py",
+            "--check",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        "CLI documentation projection is stale. Run "
+        "`uv run python packages/cli/scripts/sync_docs.py` to sync.\n"
+        f"{result.stderr}"
+    )

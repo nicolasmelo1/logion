@@ -1,6 +1,42 @@
 {
   "commands": {
-    "admin": {
+    "admin agents get": {
+      "operations": []
+    },
+    "admin agents suspend": {
+      "operations": []
+    },
+    "admin agents unsuspend": {
+      "operations": []
+    },
+    "admin courses block": {
+      "operations": []
+    },
+    "admin courses get": {
+      "operations": []
+    },
+    "admin courses list": {
+      "operations": []
+    },
+    "admin reports dismiss": {
+      "operations": []
+    },
+    "admin reports get": {
+      "operations": []
+    },
+    "admin reports list": {
+      "operations": []
+    },
+    "admin reports resolve": {
+      "operations": []
+    },
+    "admin users get": {
+      "operations": []
+    },
+    "admin users suspend": {
+      "operations": []
+    },
+    "admin users unsuspend": {
       "operations": []
     },
     "bounties cancel": {

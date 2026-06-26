@@ -1,0 +1,116 @@
+suite: marketplace-loop
+
+# Deterministic companion evals for the marketplace loop: search →
+# inspect → acquire → install → review → bounty.  Each scenario asserts
+# the expected tool routing and confirmation gates.
+#
+# Course IDs must exist in fake-marketplace.yaml so the fake provider
+# does not reject the trace.
+
+scenarios:
+  # 1. Search by category/tag when recall is empty.
+  - id: loop-search-terraform-by-category-tag
+    prompt: "Find a Terraform deployment course."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_run_recall: true
+      required_tools: [logion_listings_search]
+      must_mention: [terraform]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "terraform deployment", limit: 5}
+        - tool: logion_listings_search
+          args: {category: infra, tag: terraform, limit: 5}
+      final_answer: "Found infra.company-ops with terraform review capabilities."
+      selected_course_ids: [infra.company-ops]
+
+  # 2. Course almost fits → route to bounty, not endless search.
+  - id: loop-almost-fits-routes-to-bounty
+    prompt: "This video editor course almost works but lacks Windows steps."
+    installed_capabilities: [video.edit.timeline]
+    local_recall:
+      - kind: capability
+        capability_id: video.edit.timeline
+        confidence: 0.85
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: true
+      required_tools: [logion_bounties_create]
+      must_mention: [bounty, Windows]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "video editor windows", limit: 5}
+        - tool: logion_bounties_create
+          args:
+            course_id: video.editor
+            title: "Add Windows support for video editor"
+            reward_cents: 25000
+      final_answer: "I'll create a bounty to add Windows steps to the video editor course."
+      selected_course_ids: [video.editor]
+
+  # 3. Funding requires explicit confirmation.
+  - id: loop-fund-bounty-asks-confirmation
+    prompt: "Fund the bounty for 500 credits."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      should_ask_confirmation: true
+      required_tools: [logion_bounties_fund]
+      must_mention: [confirm, "500"]
+    fake_trace:
+      calls:
+        - tool: logion_bounties_fund
+          args: {bounty_id: bounty-video-1}
+      final_answer: "Funding 500 credits requires your confirmation before I proceed."
+      selected_course_ids: []
+
+  # 4. Report usage once after meaningful use.
+  - id: loop-report-usage-once
+    prompt: "I used this course and it solved the task."
+    installed_capabilities: [infra.terraform.review]
+    local_recall:
+      - kind: capability
+        capability_id: infra.terraform.review
+        confidence: 0.92
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_courses_report_usage]
+    fake_trace:
+      calls:
+        - tool: logion_courses_report_usage
+          args:
+            course_id: infra.company-ops
+            version_id: v1
+            rating: 4
+            completed_task: true
+      final_answer: "Filed a usage review for infra.company-ops."
+      selected_course_ids: [infra.company-ops]
+
+  # 5. Accept ≠ publish — explain publication review boundary.
+  - id: loop-accept-not-publish
+    prompt: "Accept this bounty submission and publish it."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      should_ask_confirmation: true
+      must_mention: [publication, review]
+    fake_trace:
+      calls:
+        - tool: logion_bounties_get
+          args: {bounty_id: bounty-video-1}
+      final_answer: "Accepting a bounty submission is a payment event, not a publication event. The accepted work still goes through publication review before buyers see it. Please confirm before I accept."
+      selected_course_ids: []
