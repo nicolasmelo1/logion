@@ -2424,6 +2424,11 @@
       },
       "GetCourseResponse": {
         "properties": {
+          "acquisition_count": {
+            "default": 0,
+            "title": "Acquisition Count",
+            "type": "integer"
+          },
           "approved_capabilities_summary": {
             "anyOf": [
               {
@@ -4383,6 +4388,11 @@
       },
       "ListingMetrics": {
         "properties": {
+          "acquisition_count": {
+            "default": 0,
+            "title": "Acquisition Count",
+            "type": "integer"
+          },
           "reliability_avg": {
             "anyOf": [
               {
