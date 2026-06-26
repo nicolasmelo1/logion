@@ -5,20 +5,26 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from cli._taxonomy import (
+    CATEGORY_SLUGS,
     DEFAULT_CATEGORY,
     RESERVED_TAG_SLUGS,
+    TAG_RE,
     TaxonomyValidationError,
     normalize_category,
     normalize_tag,
     normalize_tags,
     tag_search_tokens,
 )
+from cli.commands.courses._taxonomy_data import CATEGORY_KEYWORDS
 from cli.commands.courses.parser import register as register_courses
 from cli.commands.courses.taxonomy_suggest import suggest_taxonomy
 from cli.commands.listings.parser import register as register_listings
@@ -422,6 +428,148 @@ def test_taxonomy_suggest_cli_command(
     payload = json.loads(capsys.readouterr().out)
     assert payload["kind"] == "logion.courses.taxonomy.suggest"
     assert "devops" in payload["data"]["category_suggestions"]
+
+
+def test_taxonomy_suggest_text_mode_prints_output(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """Without --json the handler prints human-readable lines to stdout."""
+    skill = tmp_path / "SKILL.md"
+    skill.write_text(
+        "---\n"
+        "name: terraform-deploy\n"
+        "description: Deploy infrastructure with terraform\n"
+        "---\n\n"
+        "# Terraform Deploy\n",
+        encoding="utf-8",
+    )
+    code = main([
+        "courses",
+        "taxonomy",
+        "suggest",
+        "--bundle-dir",
+        str(tmp_path),
+    ])
+    assert code == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip(), "text mode must produce stdout output"
+    assert "category_suggestions:" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Deterministic category ordering
+# ---------------------------------------------------------------------------
+
+
+def test_taxonomy_suggest_category_order_matches_keyword_dict(
+    tmp_path: Path,
+) -> None:
+    """Category order follows CATEGORY_KEYWORDS keys, not frozenset."""
+    # Tokens that match several categories so ordering is observable.
+    skill = tmp_path / "SKILL.md"
+    skill.write_text(
+        "---\n"
+        "name: multi-tool\n"
+        "description: security audit and data pipeline with video editing\n"
+        "---\n\n"
+        "# Multi Tool\n",
+        encoding="utf-8",
+    )
+    result = suggest_taxonomy(tmp_path)
+    cats = result["category_suggestions"]
+    keyword_order = [c for c in CATEGORY_KEYWORDS if c in cats]
+    assert cats == keyword_order
+
+
+def test_taxonomy_suggest_category_order_is_hash_seed_independent(
+    tmp_path: Path,
+) -> None:
+    """Running suggest_taxonomy under different PYTHONHASHSEED values
+    must produce the same category order."""
+    skill = tmp_path / "SKILL.md"
+    skill.write_text(
+        "---\n"
+        "name: multi-tool\n"
+        "description: security audit and data pipeline with video editing\n"
+        "---\n\n"
+        "# Multi Tool\n",
+        encoding="utf-8",
+    )
+    bundle = str(tmp_path)
+
+    snippet = (
+        "from pathlib import Path\n"
+        "from cli.commands.courses.taxonomy_suggest import suggest_taxonomy\n"
+        f"r = suggest_taxonomy(Path({bundle!r}))\n"
+        "print(','.join(r['category_suggestions']))\n"
+    )
+
+    repo_root = Path(__file__).resolve().parents[2]
+    results: list[str] = []
+    for seed in (0, 1, 2, 3, 4):
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = str(seed)
+        proc = subprocess.run(
+            [sys.executable, "-c", snippet],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+            env=env,
+        )
+        assert proc.returncode == 0, proc.stderr
+        results.append(proc.stdout.strip())
+    assert len(set(results)) == 1, f"non-deterministic order: {results}"
+
+
+# ---------------------------------------------------------------------------
+# Golden constants test pinning CLI taxonomy against backend source-of-truth
+# ---------------------------------------------------------------------------
+
+
+EXPECTED_CATEGORY_SLUGS = frozenset({
+    "automation",
+    "code-review",
+    "data",
+    "devops",
+    "documentation",
+    "finance",
+    "marketing",
+    "media",
+    "productivity",
+    "research",
+    "security",
+    "testing",
+    "writing",
+    "other",
+})
+EXPECTED_RESERVED_TAG_SLUGS = frozenset({
+    "official",
+    "verified",
+    "trusted",
+    "featured",
+    "logion",
+    "admin",
+    "staff",
+    "platform",
+    "security-audited",
+})
+EXPECTED_TAG_RE_PATTERN = r"^[a-z0-9][a-z0-9-]{0,63}$"
+
+
+def test_taxonomy_constants_pin_category_slugs() -> None:
+    """CATEGORY_SLUGS must match the shared source-of-truth set exactly."""
+    assert CATEGORY_SLUGS == EXPECTED_CATEGORY_SLUGS
+
+
+def test_taxonomy_constants_pin_reserved_tag_slugs() -> None:
+    """RESERVED_TAG_SLUGS must match the shared source-of-truth set exactly."""
+    assert RESERVED_TAG_SLUGS == EXPECTED_RESERVED_TAG_SLUGS
+
+
+def test_taxonomy_constants_pin_tag_re_pattern() -> None:
+    """TAG_RE pattern must match the shared source-of-truth pattern."""
+    assert TAG_RE.pattern == EXPECTED_TAG_RE_PATTERN
 
 
 # ---------------------------------------------------------------------------

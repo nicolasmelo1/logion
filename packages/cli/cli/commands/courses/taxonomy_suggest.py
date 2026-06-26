@@ -16,7 +16,6 @@ from typing import Any
 import yaml
 
 from cli._taxonomy import (
-    CATEGORY_SLUGS,
     RESERVED_TAG_SLUGS,
     TaxonomyValidationError,
     normalize_tag,
@@ -117,7 +116,10 @@ def _suggest_categories(tokens: list[str]) -> list[str]:
             matches.append(category)
     if not matches:
         return ["other"]
-    return [c for c in CATEGORY_SLUGS if c in matches]
+    # CATEGORY_SLUGS is a frozenset (unordered); iterate CATEGORY_KEYWORDS
+    # keys instead so the output order is deterministic across processes.
+    match_set = set(matches)
+    return [c for c in CATEGORY_KEYWORDS if c in match_set]
 
 
 def _suggest_tags(tokens: list[str]) -> tuple[list[str], list[str]]:

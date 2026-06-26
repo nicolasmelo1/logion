@@ -30,6 +30,7 @@ def handle_taxonomy_suggest(args: argparse.Namespace) -> int:
         if rejected:
             lines.append(f"rejected_reserved: {', '.join(rejected)}")
         lines.append(f"source: {', '.join(result['source'])}")
+        print("\n".join(lines))
     return 0
 
 
