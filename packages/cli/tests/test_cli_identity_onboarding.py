@@ -483,4 +483,113 @@ def test_onboarding_closing_copy_mentions_agent(
     ])
     assert code == 0
     err = capsys.readouterr().err
-    assert "use Logion with your agent" in err
+    assert "Logion is ready" in err
+
+
+# ---------------------------------------------------------------------------
+# Marketplace-loop onboarding tests
+# ---------------------------------------------------------------------------
+
+
+def test_onboarding_closing_copy_mentions_structured_search(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Closing copy must teach --category/--tag search, not just free-text."""
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+    ])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "--category" in err
+    assert "--tag" in err
+
+
+def test_onboarding_closing_copy_mentions_bounties(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Closing copy must mention the bounty step in the marketplace loop."""
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+    ])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "bounty" in err.lower()
+
+
+def test_onboarding_json_includes_next_steps(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """JSON onboarding output must include stable next_steps array."""
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+        "--json",
+    ])
+    assert code == 0
+    data = _stdout_data(capsys)
+    assert "next_steps" in data
+    steps = data["next_steps"]
+    assert isinstance(steps, list)
+    # Verify the stable IDs are present.
+    ids = [s["id"] for s in steps]
+    expected_ids = {
+        "search",
+        "inspect",
+        "acquire_free",
+        "acquire_paid",
+        "install",
+        "review",
+        "bounty",
+        "docs",
+    }
+    assert expected_ids <= set(ids), (
+        f"missing next_step IDs: {expected_ids - set(ids)}"
+    )
+
+
+def test_onboarding_examples_do_not_include_yes_for_paid_or_fund() -> None:
+    """Paid/funding examples in closing copy must not include --yes.
+
+    Agents must ask for approval; --yes skips the prompt and is only
+    for already-confirmed non-interactive execution.
+    """
+    from cli.commands.identity._closing_copy import (
+        CLOSING_COPY,
+        ONBOARDING_NEXT_STEPS,
+    )
+
+    # Closing copy should not contain --yes.
+    assert "--yes" not in CLOSING_COPY, (
+        "Closing copy must not include --yes — agents must ask for approval"
+    )
+    # Next steps JSON should not contain --yes.
+    for step in ONBOARDING_NEXT_STEPS:
+        assert "--yes" not in step["command"], (
+            f"next_step '{step['id']}' must not include --yes"
+        )

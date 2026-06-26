@@ -112,17 +112,20 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
     ToolSpec(
         name="logion_listings_search",
         description=(
-            "Run `logion listings search --query QUERY --limit N` to "
-            "search the marketplace. Use only if local recall is "
+            "Run `logion listings search` to search the marketplace. "
+            "Use --category and --tag for structured filtering; use "
+            "--query for free-text search. Use only if local recall is "
             "insufficient."
         ),
         parameters={
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
+                "category": {"type": "string"},
+                "tag": {"type": "string"},
                 "limit": {"type": "integer", "minimum": 1},
             },
-            "required": ["query"],
+            "required": [],
             "additionalProperties": False,
         },
     ),
@@ -515,6 +518,35 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
                 "query": {"type": "string"},
                 "limit": {"type": "integer", "minimum": 1},
             },
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_create",
+        description=(
+            "Create a draft bounty on a course. Requires explicit user "
+            "approval before creating."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "course_id": {"type": "string"},
+                "title": {"type": "string"},
+                "reward_cents": {"type": "integer"},
+            },
+            "required": ["course_id", "title"],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_bounties_open",
+        description=("Open a funded bounty to accept submissions."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "bounty_id": {"type": "string"},
+            },
+            "required": ["bounty_id"],
             "additionalProperties": False,
         },
     ),

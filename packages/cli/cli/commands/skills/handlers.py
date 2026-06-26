@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from cli._local_state import (
@@ -21,9 +22,7 @@ from cli._local_state import (
     acquire_lock,
     enrich_manifest,
     installed_dir,
-    list_installed,
     validate_manifest,
-    verify_installed_content,
 )
 from cli._output import emit_json
 
@@ -39,8 +38,70 @@ from ._install_helpers import (
     read_capabilities,
     resolve_target,
 )
+from ._query_handlers import (  # noqa: F401  (re-export)
+    handle_skills_installed,
+    handle_skills_updates,
+)
 from ._update_handler import handle_skills_update  # noqa: F401  (re-export)
 from ._verify_handler import handle_skills_verify  # noqa: F401  (re-export)
+
+
+def _build_manifest_data(
+    args: argparse.Namespace,
+    course_id: str,
+    version_id: str,
+    source_dir: Path,
+) -> dict[str, Any]:
+    """Build the manifest dict for an install."""
+    install_source = getattr(args, "install_source", "manual")
+    is_marketplace = install_source == "logion-marketplace"
+    data: dict[str, Any] = {
+        "course_id": course_id,
+        "version_id": version_id,
+        "title": args.title or "",
+        "source": install_source,
+        "installed_at": "",
+        "entrypoint": "SKILL.md",
+        "capabilities": [],
+        "required_tools": ["terminal", "file"],
+        "permissions": [],
+        "env_vars": [],
+        "execution_policy": "approval-required",
+        "content_sha256": "",
+        "review_status": "approved",
+        "entitlement_status": "active" if is_marketplace else "unknown",
+        "license_scope": "unknown",
+        "official_update_channel": is_marketplace,
+        "last_verified_at": _utc_iso_now() if is_marketplace else None,
+    }
+    return read_capabilities(source_dir / "course" / "capabilities.yaml", data)
+
+
+def _validate_pre_install(
+    manifest_data: dict[str, Any],
+    course_id: str,
+    version_id: str,
+    home: Path,
+) -> int:
+    """Validate manifest before filesystem writes. Returns 0 on success."""
+    pre_manifest = enrich_manifest(
+        {
+            **manifest_data,
+            "installed_at": (
+                manifest_data.get("installed_at") or _utc_iso_now()
+            ),
+            "content_sha256": "_",
+        },
+        course_id,
+        version_id,
+        home,
+    )
+    pre_errors = validate_manifest(pre_manifest)
+    if pre_errors:
+        for e in pre_errors:
+            print(f"MANIFEST ERROR: {e}", file=sys.stderr)
+        return 3
+    return 0
 
 
 def handle_skills_install(args: argparse.Namespace) -> int:
@@ -72,51 +133,16 @@ def handle_skills_install(args: argparse.Namespace) -> int:
         if rc != 0:
             return rc
 
-    install_source = getattr(args, "install_source", "manual")
-    is_marketplace = install_source == "logion-marketplace"
-    manifest_data: dict[str, Any] = {
-        "course_id": course_id,
-        "version_id": version_id,
-        "title": args.title or "",
-        "source": install_source,
-        "installed_at": "",
-        "entrypoint": "SKILL.md",
-        "capabilities": [],
-        "required_tools": ["terminal", "file"],
-        "permissions": [],
-        "env_vars": [],
-        "execution_policy": "approval-required",
-        "content_sha256": "",
-        "review_status": "approved",
-        "entitlement_status": "active" if is_marketplace else "unknown",
-        "license_scope": "unknown",
-        "official_update_channel": is_marketplace,
-        "last_verified_at": _utc_iso_now() if is_marketplace else None,
-    }
-    manifest_data = read_capabilities(
-        source_dir / "course" / "capabilities.yaml", manifest_data
+    manifest_data = _build_manifest_data(
+        args, course_id, version_id, source_dir
     )
 
     # Validate the manifest *before* touching the filesystem so an
     # invalid bundle (including dry-run) cannot leave a partial copy
     # behind or report success without a real install.
-    pre_manifest = enrich_manifest(
-        {
-            **manifest_data,
-            "installed_at": (
-                manifest_data.get("installed_at") or _utc_iso_now()
-            ),
-            "content_sha256": "_",
-        },
-        course_id,
-        version_id,
-        home,
-    )
-    pre_errors = validate_manifest(pre_manifest)
-    if pre_errors:
-        for e in pre_errors:
-            print(f"MANIFEST ERROR: {e}", file=sys.stderr)
-        return 3
+    rc = _validate_pre_install(manifest_data, course_id, version_id, home)
+    if rc != 0:
+        return rc
 
     try:
         dest = installed_dir(course_id, version_id, home)
@@ -155,72 +181,16 @@ def handle_skills_install(args: argparse.Namespace) -> int:
 
     if symlink_parent and skill_name:
         apply_post_install_symlink(symlink_parent, skill_name, dest)
-    return 0
 
-
-def handle_skills_installed(args: argparse.Namespace) -> int:
-    """List installed skills."""
-    home = resolve_target(args)
-    installed = list_installed(home)
     if getattr(args, "json_output", False):
-        emit_json("logion.skills.installed", installed)
-        return 0
-    if not installed:
-        print(f"No installed capabilities under {home / 'installed'}.")
-        return 0
-    print(f"Installed capabilities ({len(installed)}):")
-    for m in installed:
-        course_id = m.get("course_id", "?")
-        version_id = m.get("version_id", "?")
-        title = m.get("title", "")
-        status = m.get("review_status", "unknown")
-        line = f"  {course_id}/{version_id}"
-        if title:
-            line += f" — {title}"
-        line += f" [{status}]"
-        verification = verify_installed_content(course_id, version_id, home)
-        if verification["user_modified"]:
-            line += " [LOCALLY MODIFIED]"
-        print(line)
-    return 0
-
-
-def handle_skills_updates(args: argparse.Namespace) -> int:
-    """Report integrity of installed skills (local-only update status)."""
-    home = resolve_target(args)
-    installed = list_installed(home)
-    if not installed:
-        print(f"No installed capabilities under {home / 'installed'}.")
-        return 0
-    out: list[dict[str, Any]] = []
-    for m in installed:
-        course_id = m.get("course_id", "?")
-        version_id = m.get("version_id", "?")
-        verification = verify_installed_content(course_id, version_id, home)
-        out.append({
-            "course_id": course_id,
-            "version_id": version_id,
-            "title": m.get("title", ""),
-            "source": m.get("source", "manual"),
-            "entitlement_status": m.get("entitlement_status", "unknown"),
-            "license_scope": m.get("license_scope", "unknown"),
-            "official_update_channel": m.get("official_update_channel", False),
-            "last_verified_at": m.get("last_verified_at"),
-            "manifest_path": m.get("manifest_path"),
-            "entrypoint": m.get("entrypoint", "SKILL.md"),
-            "ok": verification["ok"],
-            "user_modified": verification["user_modified"],
-        })
-    if getattr(args, "json_output", False):
-        emit_json("logion.skills.updates", out)
-        return 0
-    print(f"Update status ({len(out)} installed):")
-    for entry in out:
-        flags: list[str] = []
-        if entry["user_modified"]:
-            flags.append("locally-modified")
-        if not entry["ok"] and not entry["user_modified"]:
-            flags.append("integrity-unknown")
-        suffix = f" [{', '.join(flags)}]" if flags else ""
-        print(f"  {entry['course_id']}/{entry['version_id']}{suffix}")
+        emit_json(
+            "logion.skills.install",
+            {
+                "course_id": course_id,
+                "version_id": version_id,
+                "destination": str(dest),
+                "files_installed": len(copied),
+                "symlinked": bool(symlink_parent and skill_name),
+            },
+        )
     return 0

@@ -104,6 +104,7 @@ ignore = [
 "cli/commands/reports/handlers.py" = ["T201"]
 "cli/commands/notifications/handlers.py" = ["T201"]
 "cli/commands/skills/handlers.py" = ["T201"]
+"cli/commands/skills/_query_handlers.py" = ["T201"]
 "cli/commands/skills/_install_helpers.py" = ["T201"]
 "cli/commands/skills/_finalize.py" = ["T201"]
 "cli/commands/skills/_update_handler.py" = ["T201"]

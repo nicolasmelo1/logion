@@ -237,12 +237,3 @@ def install_companion(
         version_id=version_id,
         already=False,
     )
-
-
-CLOSING_COPY = (
-    "\nYou're ready to use Logion with your agent.\n"
-    '  - Search courses:  logion listings search "<query>"\n'
-    "  - Install a skill:  logion skills install <course-id>\n"
-    "  - Buy a course:    logion courses purchase <course-id>\n"
-    "  - Browse installed: logion skills installed\n"
-)

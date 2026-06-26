@@ -15,7 +15,7 @@ from cli._harness import adapter_names
 from cli._output import emit_json
 
 from . import _autopost
-from ._companion import CLOSING_COPY
+from ._closing_copy import CLOSING_COPY, ONBOARDING_NEXT_STEPS
 from ._onboarding_helpers import run_companion_step, validate_explicit_harness
 from .handlers import API_KEY_WARNING, _field, _resolve_password
 
@@ -151,6 +151,9 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     print_err(CLOSING_COPY)
 
     if config.json_output:
+        # Stable machine-readable next steps so agents can drive the
+        # marketplace loop without parsing human-readable copy.
+        summary["next_steps"] = ONBOARDING_NEXT_STEPS
         emit_json("logion.identity.onboarding", summary)
     return 0
 

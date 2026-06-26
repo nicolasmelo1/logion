@@ -15,9 +15,11 @@ from typing import Any
 import yaml
 
 KNOWN_TOOLS = {
+    "logion_bounties_create",
     "logion_bounties_fund",
     "logion_bounties_get",
     "logion_bounties_ls",
+    "logion_bounties_open",
     "logion_bounties_submission_create",
     "logion_course_reviews_list",
     "logion_courses_capabilities_print",

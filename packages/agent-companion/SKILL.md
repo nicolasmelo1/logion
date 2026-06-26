@@ -74,7 +74,9 @@ insufficient.
    use it as context only; do not execute automatically.
 4. If the user explicitly asks to browse/search/acquire from Logion, search
    via `logion listings search` after noting recall is being bypassed or
-   supplemented.
+   supplemented. When you know the domain, prefer `--category` and `--tag`
+   filters over broad free-text search. Use free-text `--query` only for
+   the remaining intent words.
 5. Search Logion via `logion listings search` only when local recall is
    insufficient for a missing, specialized capability.
 6. Inspect candidates via `logion courses get` before recommending
@@ -101,6 +103,23 @@ sequence:
    via `logion courses report-usage` (see "After using a Logion course"
    below). Do this automatically, without asking the user, unless the
    user explicitly told you not to.
+
+## Bounty routing: when a course almost fits
+
+If an installed or inspected course is close but missing a bounded
+improvement, route to `references/bounties.md` and propose a bounty
+instead of searching indefinitely. A bounded improvement is one a
+contributor can complete in a finite scope — missing environment
+support, outdated dependency instructions, a needed eval/test, or
+safer runtime requirements. If the gap is open-ended or requires
+rethinking the course, a bounty is not the right tool.
+
+Bounty confirmation gates remain explicit:
+- creating a draft bounty: explicit approval recommended, but no
+  credit debit
+- funding a bounty: required approval (credits are debited)
+- accepting a bounty submission: required approval (payable balance
+  accrues, but publication review still applies)
 
 ## Local Recall Guardrail
 
