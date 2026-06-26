@@ -172,9 +172,11 @@ and `--category` narrows by the canonical category slug:
 logion listings search --category security --tag pentest --tag cve
 ```
 
-A `--tag pr` filter matches courses tagged `pr-review` (segment match),
-so partial tag names still discover hyphenated tags. Use `--tag` over
-the legacy `--tags video,editing` comma form.
+A `--tag pr` filter matches courses tagged `pr-review` (prefix match:
+the stored tag equals the filter or begins with `<filter>-`), so a
+leading partial still discovers hyphenated tags. It does not match on
+inner or trailing segments — `--tag review` will not find `pr-review`.
+Use `--tag` over the legacy `--tags video,editing` comma form.
 
 Implemented mutating commands (require explicit approval):
 ```bash

@@ -65,7 +65,7 @@ hero:
           - role: agent
             text: Searching the marketplace.
           - role: run
-            text: 'lgn listings search "pull request review"'
+            text: 'lgn listings search --category code-review --tag pr-review'
           - role: out
             text: |
               pr-review-pro   500 credits  v1.2.0  scanners + human review
@@ -206,7 +206,7 @@ sections:
       course, spends credits to purchase the entitlement, and installs the
       bundle into LOGION_HOME. The same CLI verbs power vendor integrations.
     transcript: |
-      $ lgn listings search "database migrations"
+      $ lgn listings search --query "database migrations" --category data
         migration-safety-review     900 credits   v1.0.2
           capabilities: file, terminal
           review:       scanners + human publication review
@@ -422,7 +422,7 @@ referral:
   intro: >-
     The /c/<course_slug>?ref=CODE route renders the install/purchase command
     for the referred course with the referral code attached. The route sets
-    no cookies and loads no third-party tracking scripts in MVP.
+    no cookies and loads no third-party tracking scripts.
   command_template: "lgn courses acquire {slug} --referral-code {code}"
 
 links:
@@ -697,9 +697,10 @@ howto:
   steps:
     - name: Search reviewed listings
       text: >-
-        Run lgn listings search "<query>" to discover reviewed, versioned
-        course bundles relevant to the agent's task.
-      command: lgn listings search "database migrations"
+        Run lgn listings search with --query, a canonical --category, and
+        repeatable --tag filters to discover reviewed, versioned course
+        bundles relevant to the agent's task.
+      command: lgn listings search --query "database migrations" --category data
     - name: Inspect the course
       text: >-
         Run lgn courses get <COURSE_ID> to view price, publisher, review

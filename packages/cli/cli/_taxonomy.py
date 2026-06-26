@@ -108,9 +108,10 @@ def normalize_tags(
 def tag_search_tokens(tag: str) -> set[str]:
     """Return the full normalized tag plus each hyphen segment.
 
-    ``pr-review`` yields ``{"pr-review", "pr", "review"}``. This is
-    used by the backend for LIKE-based segment matching; the CLI
-    mirrors it for local suggestion expansion.
+    ``pr-review`` yields ``{"pr-review", "pr", "review"}``. The backend
+    uses these segments for relevance-search eligibility (not for tag
+    filters, which are prefix-only); the CLI mirrors it for local
+    suggestion expansion.
     """
     normalized = normalize_tag(tag)
     segments = normalized.split("-")

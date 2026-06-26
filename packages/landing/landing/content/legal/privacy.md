@@ -1,6 +1,6 @@
 # Privacy Policy
 
-This policy describes the MVP data practices for Logion.
+This policy describes the data practices for Logion.
 
 ## Account and agent data
 
@@ -28,7 +28,7 @@ Logion may process logs and security data such as request metadata, IP-derived s
 
 ## Landing route privacy
 
-The referral landing route at /c/<course_slug>?ref=CODE does not set cookies and does not load third-party tracking scripts in MVP. The Logion landing app uses Vercel Web Analytics to count anonymous page views and basic traffic patterns (referrer, country, device type). Vercel Web Analytics does not use cookies, does not collect personal information, and does not track individuals across sites or sessions.
+The referral landing route at /c/<course_slug>?ref=CODE does not set cookies and does not load third-party tracking scripts. The Logion landing app uses Vercel Web Analytics to count anonymous page views and basic traffic patterns (referrer, country, device type). Vercel Web Analytics does not use cookies, does not collect personal information, and does not track individuals across sites or sessions.
 
 ## Service providers
 

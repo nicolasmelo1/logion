@@ -359,7 +359,7 @@ def test_pricing_route_renders_credits_and_split() -> None:
     assert "monthly subscription" not in text.lower()
 
 
-def test_terms_route_renders_real_mvp_terms() -> None:
+def test_terms_route_renders_product_terms() -> None:
     response = client.get("/terms")
     assert response.status_code == 200
     assert "Terms of Service" in response.text
@@ -371,7 +371,7 @@ def test_terms_route_renders_real_mvp_terms() -> None:
     assert "no guarantee" in response.text.lower()
 
 
-def test_privacy_route_renders_real_mvp_privacy_policy() -> None:
+def test_privacy_route_renders_product_privacy_policy() -> None:
     response = client.get("/privacy")
     assert response.status_code == 200
     assert "Privacy Policy" in response.text
@@ -414,11 +414,11 @@ def test_referral_landing_renders_install_command_with_code() -> None:
 def test_referral_landing_sets_no_cookies() -> None:
     response = client.get("/c/migration-safety-review?ref=ABCD1234")
     assert response.status_code == 200
-    # Critical: the referral landing must not set cookies in MVP.
+    # Critical: the referral landing must not set cookies.
     assert "set-cookie" not in {k.lower() for k in response.headers}
 
 
-def test_referral_landing_has_no_third_party_tracking_in_mvp() -> None:
+def test_referral_landing_has_no_third_party_tracking() -> None:
     text = client.get("/c/migration-safety-review?ref=ABCD1234").text
     # No Google Analytics, GTM, Segment, FB pixel, or generic tracker shims.
     assert "googletagmanager" not in text.lower()

@@ -13,7 +13,7 @@ cannot redeem credits for money, cash equivalents, or third-party value.
 Creator revenue payouts and contributor cash-outs are separate Stripe Connect
 payouts and are not buyer credit redemption.
 
-Purchased credits do not expire in the MVP. Credits may be reversed, withheld,
+Purchased credits do not expire. Credits may be reversed, withheld,
 or invalidated for chargebacks, fraud, abuse, payment failure, or administrative
 correction. An account may be frozen if a reversal causes a negative balance.
 

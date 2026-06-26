@@ -117,8 +117,13 @@ curl -fsSL https://logion.sh/install.sh | sh  # standalone installer
 ```bash
 logion --version
 logion --help
-logion listings search "video cuts"
+logion listings search --query "video cuts" --limit 5
+logion listings search --category devops --tag terraform   # narrow by category + tag
 ```
+
+Discovery is structured: `--category` filters by a canonical slug and `--tag`
+is repeatable (AND across filters, prefix match — `--tag pr` finds `pr-review`).
+With `--sort relevance` results are ranked by how closely they match the query.
 
 ## What's in the box
 

@@ -126,7 +126,7 @@ def test_markdown_content_avoids_negative_anchors() -> None:
     assert not present, f"forbidden anchors in landing.md: {present}"
 
 
-def test_terms_content_contains_required_mvp_rules() -> None:
+def test_terms_content_contains_required_rules() -> None:
     text = TERMS_PATH.read_text(encoding="utf-8")
     lower = text.lower()
     for anchor in (
@@ -148,7 +148,7 @@ def test_terms_content_contains_required_mvp_rules() -> None:
     assert "DRM" in text
 
 
-def test_privacy_content_contains_required_mvp_disclosures() -> None:
+def test_privacy_content_contains_required_disclosures() -> None:
     text = PRIVACY_PATH.read_text(encoding="utf-8")
     for anchor in (
         "account",
