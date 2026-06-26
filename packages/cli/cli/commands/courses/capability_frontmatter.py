@@ -79,10 +79,19 @@ def _read_frontmatter(skill_path: Path) -> dict[str, Any] | None:
         return None
     if not text.startswith("---"):
         return None
-    end = text.find("\n---", 3)
+    # Anchor closing delimiter to end-of-line so "\n---xyz" is not
+    # mistaken for a frontmatter terminator.
+    end = text.find("\n---\n", 3)
     if end < 0:
-        return None
-    block = text[3:end]
+        # Handle frontmatter that is the entire file (no trailing newline).
+        stripped = text.rstrip()
+        if stripped.endswith("---") and text.count("---") >= 2:
+            end = stripped.rfind("---")
+            block = text[3:end].rstrip()
+        else:
+            return None
+    else:
+        block = text[3:end]
     try:
         parsed = yaml.safe_load(block)
     except yaml.YAMLError as exc:
@@ -115,7 +124,19 @@ def _extract_logion_mapping(
         )
     direct = logion
     nested = logion.get("capabilities")
-    has_direct = any(k in logion for k in ("version", "summary", "tools"))
+    has_direct = any(
+        k in logion
+        for k in (
+            "version",
+            "summary",
+            "tools",
+            "network",
+            "filesystem",
+            "secrets",
+            "human_approval",
+            "runtime",
+        )
+    )
     has_nested = isinstance(nested, dict)
     if has_direct and has_nested:
         raise CapabilityManifestError(

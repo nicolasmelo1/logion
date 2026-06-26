@@ -168,6 +168,7 @@ def summarize_capability_manifest(
     summary["runtime_warning_codes"] = [
         w["code"] for w in runtime_requirement_warnings(manifest)
     ]
+    summary["runtime_warnings"] = runtime_requirement_warnings(manifest)
     return summary
 
 

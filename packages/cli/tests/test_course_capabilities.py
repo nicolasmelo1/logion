@@ -173,6 +173,31 @@ class TestRuntimeWarnings:
         codes = [w["code"] for w in warnings]
         assert "install_steps_without_human_approval" in codes
 
+    def test_runtime_host_deps_without_terminal_emits_warning(self) -> None:
+        """bins declared but terminal not in tools should warn."""
+        manifest = _manifest(
+            tools=["file"],
+            runtime={"requires": {"bins": ["python3"]}},
+        )
+        result = normalize_capability_manifest(manifest)
+        warnings = runtime_requirement_warnings(result)
+        codes = [w["code"] for w in warnings]
+        assert "runtime_declares_host_dependencies_without_terminal" in codes
+
+    def test_runtime_install_without_network_domains_emits_warning(
+        self,
+    ) -> None:
+        """install with package managers but no network domains should warn."""
+        manifest = _manifest(
+            tools=["terminal"],
+            human_approval={"required": True},
+            runtime={"install": [{"kind": "uv", "command": "uv sync"}]},
+        )
+        result = normalize_capability_manifest(manifest)
+        warnings = runtime_requirement_warnings(result)
+        codes = [w["code"] for w in warnings]
+        assert "install_steps_without_network_domains" in codes
+
 
 class TestSummary:
     def test_summarize_includes_runtime_keys(self) -> None:
@@ -217,3 +242,15 @@ class TestSummary:
             "runtime_env_not_declared_as_secret"
             in summary["runtime_warning_codes"]
         )
+
+    def test_summarize_includes_runtime_warnings(self) -> None:
+        """Full warning dicts (code, severity, message) in summary."""
+        manifest = _manifest(
+            tools=["file"],
+            runtime={"requires": {"env": ["GITHUB_TOKEN"]}},
+        )
+        result = normalize_capability_manifest(manifest)
+        summary = summarize_capability_manifest(result)
+        assert "runtime_warnings" in summary
+        assert isinstance(summary["runtime_warnings"], list)
+        assert len(summary["runtime_warnings"]) > 0

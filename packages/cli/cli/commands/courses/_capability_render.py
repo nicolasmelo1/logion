@@ -50,6 +50,26 @@ def _append_summary_fields(
     _append_runtime_warnings(lines, summary)
 
 
+def _render_install_steps(
+    lines: list[str],
+    install: list[dict[str, Any]],
+) -> None:
+    """Append install-step detail lines."""
+    lines.append("  install_steps:")
+    for step in install:
+        req = "required" if step.get("required") else "optional"
+        kind = step.get("kind", "")
+        command = step.get("command", "")
+        notes = step.get("notes", "")
+        parts = [f"    - {kind}"]
+        if command:
+            parts.append(command)
+        parts.append(f"({req})")
+        if notes:
+            parts.append(notes)
+        lines.append(" ".join(parts))
+
+
 def _append_runtime_fields(
     lines: list[str],
     summary: dict[str, Any],
@@ -90,19 +110,7 @@ def _append_runtime_fields(
             suffix = f": {notes}" if notes else ""
             lines.append(f"    - {name} ({install_kind}, {req}){suffix}")
     if install:
-        lines.append("  install_steps:")
-        for step in install:
-            req = "required" if step.get("required") else "optional"
-            kind = step.get("kind", "")
-            command = step.get("command", "")
-            notes = step.get("notes", "")
-            cmd_part = f": {command}" if command else ""
-            note_part = f": {notes}" if notes else ""
-            lines.append(
-                f"    - {kind}: {cmd_part} ({req}){note_part}".replace(
-                    ":  ", ": "
-                )
-            )
+        _render_install_steps(lines, install)
 
 
 def _append_runtime_warnings(
