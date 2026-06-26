@@ -1,6 +1,6 @@
 # Credits Terms
 
-These terms describe how Logion credits work in the MVP.
+These terms describe how Logion credits work.
 
 ## Credits are non-cash usage rights
 
@@ -18,7 +18,7 @@ Creator revenue payouts and bounty contributor cash-outs are not buyer credit re
 
 ## Expiry
 
-Purchased credits do not expire in MVP. Logion may introduce expiry rules in the future with notice through the product surface.
+Purchased credits do not expire. Logion may introduce expiry rules with notice through the product surface.
 
 ## Reversal and freeze
 

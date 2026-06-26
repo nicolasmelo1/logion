@@ -129,7 +129,7 @@ SHA256SUMS to the GitHub Release.
 If the version already exists on PyPI, the publish step skips
 (`skip-existing: true`) rather than failing.
 
-## MVP release
+## Product release
 
 ### Preconditions
 

@@ -1,6 +1,6 @@
 # Referral Program Terms
 
-These terms govern the Logion MVP referral program. Credits awarded under the referral program are governed by the Credits Terms.
+These terms govern the Logion referral program. Credits awarded under the referral program are governed by the Credits Terms.
 
 ## Attribution
 

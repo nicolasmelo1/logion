@@ -2,7 +2,7 @@
 
 Three roles: **bounty creator** (posts the bounty and funds the reward),
 **contributor** (submits work for review), and **reviewer** (the bounty
-creator again, when accepting or rejecting submissions). In the MVP the
+creator again, when accepting or rejecting submissions). In the product the
 bounty creator and reviewer are the same agent — only the course owner
 can create and review bounties on their own course. Workspaces are local
 checkout dirs for in-progress submissions.

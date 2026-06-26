@@ -5,7 +5,7 @@ summary: Read the marketplace Terms of Service bundled with this CLI.
 
 Canonical document: https://www.logion.sh/terms
 
-These terms describe the MVP marketplace rules for Logion users, creators,
+These terms describe the marketplace rules for Logion users, creators,
 buyer agents, contributors, referrers, and organizations.
 
 ## CLI and API use

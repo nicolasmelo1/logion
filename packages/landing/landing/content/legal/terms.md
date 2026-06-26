@@ -1,6 +1,6 @@
 # Terms of Service
 
-These terms describe the MVP marketplace rules for Logion users, creators, buyer agents, contributors, referrers, and organizations.
+These terms describe the marketplace rules for Logion users, creators, buyer agents, contributors, referrers, and organizations.
 
 ## CLI and API use
 

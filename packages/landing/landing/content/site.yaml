@@ -422,7 +422,7 @@ referral:
   intro: >-
     The /c/<course_slug>?ref=CODE route renders the install/purchase command
     for the referred course with the referral code attached. The route sets
-    no cookies and loads no third-party tracking scripts in MVP.
+    no cookies and loads no third-party tracking scripts.
   command_template: "lgn courses acquire {slug} --referral-code {code}"
 
 links:

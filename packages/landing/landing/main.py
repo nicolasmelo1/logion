@@ -423,7 +423,7 @@ def referral_landing(
         command = template.format(slug=course_slug, code=referral_code)
     else:
         command = f"lgn courses acquire {course_slug}"
-    # MVP: no cookies, no third-party tracking on this route.
+    # Keep referral landing attribution-free at the browser layer.
     return templates.TemplateResponse(
         request,
         "referral.html",
