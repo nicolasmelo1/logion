@@ -1,7 +1,7 @@
 {
-  "contracts/openapi/v1.json": "d68e7e8164d7e8ddd7820af8c05f590ea8335cdb9bb0ccb9c5fddad3c8ce0028",
+  "contracts/openapi/v1.json": "715fe753521033573de278a734e1b70002bed4deaa2e28c9508399ddcf7ee288",
   "packages/client/src/logion/v1/_generated/__init__.py": "a7dca5b1167b240ff752c4adff0ed4cf948b75a5d547baf4332525a81f096c66",
   "packages/client/src/logion/v1/_generated/operations.py": "235ff345dfe98ac2a9832b05c52c6ba2edb70ad00af34473044768749648491f",
   "packages/client/src/logion/v1/_types/generated/__init__.py": "49694c314c13c45cdac0e8b789d78a747bab1131ce6bf89649e5daca4ab56f7e",
-  "packages/client/src/logion/v1/_types/generated/v1.py": "56af5e9c5e20d86c6a87c221e44df2c5b494eb81fccccdf91654e4b23b27954b"
+  "packages/client/src/logion/v1/_types/generated/v1.py": "2bee751f7c73c85e6be68769a7349d1abcca79973930dbed22d7fca6493fef00"
 }
