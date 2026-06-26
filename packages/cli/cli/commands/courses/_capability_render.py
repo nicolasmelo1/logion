@@ -61,13 +61,9 @@ def _render_install_steps(
         kind = step.get("kind", "")
         command = step.get("command", "")
         notes = step.get("notes", "")
-        parts = [f"    - {kind}"]
-        if command:
-            parts.append(command)
-        parts.append(f"({req})")
-        if notes:
-            parts.append(notes)
-        lines.append(" ".join(parts))
+        cmd_part = f": {command}" if command else ""
+        note_part = f": {notes}" if notes else ""
+        lines.append(f"    - {kind}{cmd_part} ({req}){note_part}")
 
 
 def _append_runtime_fields(
