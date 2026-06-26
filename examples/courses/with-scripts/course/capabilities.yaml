@@ -30,3 +30,11 @@ secrets:
 
 human_approval:
   required: false
+
+# runtime — the bundled Gmail CLI is stdlib-only, but it does require
+# a Python 3 interpreter on the host.  No install steps are needed
+# because the course ships all its code.
+runtime:
+  requires:
+    bins:
+      - python3

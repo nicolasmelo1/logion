@@ -111,6 +111,48 @@ class TestCapabilitiesScaffold:
         """The scaffold must quote the env-var regex verbatim."""
         assert "^[A-Z_][A-Z0-9_]*$" in TEMPLATE_TEXT
 
+    def test_template_documents_runtime_fields(self) -> None:
+        """The scaffold must mention every runtime.requires field."""
+        # The template uses YAML nesting under `runtime:` → `requires:`,
+        # so we check for the field keys plus the runtime/install
+        # section headers rather than dotted paths.
+        for token in (
+            "runtime:",
+            "requires:",
+            "install:",
+            "# env —",
+            "# bins —",
+            "# any_bins —",
+            "# config —",
+            "# os —",
+            "# software —",
+        ):
+            assert token in TEMPLATE_TEXT, (
+                f"Scaffold missing runtime token: {token}"
+            )
+
+    def test_template_documents_install_warning(self) -> None:
+        """The scaffold must warn that install commands are never auto-run."""
+        assert "never auto-run" in TEMPLATE_TEXT.lower()
+
+    def test_template_documents_secrets_vs_runtime_env_distinction(
+        self,
+    ) -> None:
+        """The scaffold must explain secrets.env vs runtime.requires.env."""
+        assert "secrets.env" in TEMPLATE_TEXT
+        # The template explains the permission vs dependency distinction.
+        assert "permission" in TEMPLATE_TEXT.lower()
+        assert "dependency" in TEMPLATE_TEXT.lower()
+
+    def test_template_documents_install_kinds(self) -> None:
+        """The scaffold must list every INSTALL_KINDS enum value."""
+        from cli._course_capabilities import INSTALL_KINDS
+
+        for kind in INSTALL_KINDS:
+            assert kind in TEMPLATE_TEXT, (
+                f"Scaffold missing install kind: {kind}"
+            )
+
 
 class TestScaffoldCommand:
     def test_scaffold_to_stdout(self, capsys: pytest.CaptureFixture) -> None:
@@ -184,6 +226,152 @@ class TestScaffoldCommand:
         # And the rewritten manifest passes the validator.
         manifest = load_and_validate_capability_manifest(bundle)
         assert manifest["version"] == 1
+
+
+class TestScaffoldFromSkill:
+    """Tests for ``--from-skill`` seeding the scaffold."""
+
+    def _skill_md(
+        self,
+        tmp_path: Path,
+        frontmatter: str,
+        body: str = "# Skill\n",
+    ) -> Path:
+        skill = tmp_path / "SKILL.md"
+        skill.write_text(
+            f"---\n{frontmatter}---\n{body}",
+            encoding="utf-8",
+        )
+        return skill
+
+    def test_from_skill_writes_manifest_to_bundle(
+        self, tmp_path: Path
+    ) -> None:
+        from cli.main import main
+
+        skill = self._skill_md(
+            tmp_path,
+            "metadata:\n"
+            "  logion:\n"
+            "    version: 1\n"
+            '    summary: "From skill."\n'
+            "    tools:\n"
+            "      - file\n",
+        )
+        bundle = tmp_path / "course"
+        rc = main([
+            "courses",
+            "capabilities",
+            "scaffold",
+            "--from-skill",
+            str(skill),
+            "--bundle-dir",
+            str(bundle),
+        ])
+        assert rc == 0
+        written = bundle / CAPABILITY_MANIFEST_PATH
+        assert written.is_file()
+        manifest = load_and_validate_capability_manifest(bundle)
+        assert manifest["version"] == 1
+        assert manifest["summary"] == "From skill."
+        assert manifest["tools"] == ["file"]
+
+    def test_from_skill_prints_to_stdout(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        from cli.main import main
+
+        skill = self._skill_md(
+            tmp_path,
+            "metadata:\n"
+            "  logion:\n"
+            "    version: 1\n"
+            '    summary: "Stdout skill."\n',
+        )
+        rc = main([
+            "courses",
+            "capabilities",
+            "scaffold",
+            "--from-skill",
+            str(skill),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "version: 1" in captured.out
+        assert "Stdout skill." in captured.out
+
+    def test_from_skill_no_metadata_logion_returns_exit_2(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        from cli.main import main
+
+        skill = self._skill_md(
+            tmp_path,
+            "metadata:\n  other: true\n",
+        )
+        rc = main([
+            "courses",
+            "capabilities",
+            "scaffold",
+            "--from-skill",
+            str(skill),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "no metadata.logion" in captured.err
+
+    def test_from_skill_refuses_overwrite_without_force(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        from cli.main import main
+
+        skill = self._skill_md(
+            tmp_path,
+            "metadata:\n  logion:\n    version: 1\n",
+        )
+        bundle = tmp_path / "course"
+        (bundle / CAPABILITY_MANIFEST_PATH.parent).mkdir(parents=True)
+        (bundle / CAPABILITY_MANIFEST_PATH).write_text(
+            "version: 1\n", encoding="utf-8"
+        )
+        rc = main([
+            "courses",
+            "capabilities",
+            "scaffold",
+            "--from-skill",
+            str(skill),
+            "--bundle-dir",
+            str(bundle),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 2
+        assert "Refusing to overwrite" in captured.err
+
+    def test_from_skill_force_overwrites(self, tmp_path: Path) -> None:
+        from cli.main import main
+
+        skill = self._skill_md(
+            tmp_path,
+            'metadata:\n  logion:\n    version: 1\n    summary: "Forced."\n',
+        )
+        bundle = tmp_path / "course"
+        (bundle / CAPABILITY_MANIFEST_PATH.parent).mkdir(parents=True)
+        (bundle / CAPABILITY_MANIFEST_PATH).write_text(
+            "garbage: nope\n", encoding="utf-8"
+        )
+        rc = main([
+            "courses",
+            "capabilities",
+            "scaffold",
+            "--from-skill",
+            str(skill),
+            "--bundle-dir",
+            str(bundle),
+            "--force",
+        ])
+        assert rc == 0
+        manifest = load_and_validate_capability_manifest(bundle)
+        assert manifest["summary"] == "Forced."
 
 
 class TestScaffoldFailureModes:

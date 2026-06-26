@@ -148,3 +148,32 @@ secrets:
 # bootstrap skill that runs constantly in the background.
 human_approval:
   required: false
+
+# runtime — host-side dependency metadata.  The companion's tooling
+# needs Python 3.12+ and a uv/pip pair for dependency management.  The
+# ``hf`` CLI is required for GGUF downloads.  llama-server may come
+# from either a pre-built binary or a local build (any_bins).  The
+# install commands below are disclosure only — Logion never auto-runs
+# them.  They document what a host would execute to provision the
+# environment.  human_approval stays false because per-action approval
+# is already handled by SKILL.md's safety enum above.
+runtime:
+  requires:
+    bins:
+      - python3
+      - uv
+      - hf
+    any_bins:
+      - - llama-server
+        - llamafile
+    os:
+      - linux
+      - macos
+  install:
+    - kind: uv
+      command: "uv sync"
+      notes: "Disclosure only — installs dspy/optuna optional extra and dev group."
+    - kind: external
+      command: "pip install huggingface_hub[cli]"
+      required: false
+      notes: "Disclosure only — alternative to uv for the hf CLI."

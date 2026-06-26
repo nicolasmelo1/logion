@@ -25,3 +25,19 @@ filesystem:
 
 human_approval:
   required: false
+
+# runtime — the eval harness is stdlib-only but the bundled scorer may
+# use uv-managed dependencies.  The install command is disclosure only;
+# Logion never auto-runs it.  human_approval stays false because the
+# eval runs locally with no network or secrets.
+runtime:
+  requires:
+    bins:
+      - python3
+    any_bins:
+      - - uv
+        - pip
+  install:
+    - kind: uv
+      command: "uv sync"
+      notes: "Disclosure only — Logion never auto-runs this."
