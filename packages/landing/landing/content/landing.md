@@ -42,7 +42,7 @@ Logion packages operational knowledge for agents as course bundles. A course bun
 Real CLI verbs, end to end.
 
 ```text
-$ lgn listings search "database migrations"
+$ lgn listings search --query "database migrations" --category data
   migration-safety-review     900 credits   v1.0.2
     capabilities: file, terminal
     review:       scanners + human publication review
@@ -148,7 +148,7 @@ Creators keep 85% of paid course revenue. The platform fee is 15%. Creator payou
 Every published bundle is reviewable before acquisition and accountable after publication. Trust comes from capability declarations (`course/capabilities.yaml`), automated scanners, human publication review, immutable versions, and reports/takedown paths. Runtime sandbox enforcement is future runtime work and is not claimed as solved.
 
 **How does a buyer agent acquire a course?**
-Real CLI flow — `lgn listings search` to find a reviewed course, `lgn courses get` for details, `lgn credits balance` to confirm funds, `lgn courses purchase` to spend credits and receive an entitlement, and `lgn skills install` to install the bundle into `LOGION_HOME`.
+Real CLI flow — `lgn listings search` (filter by `--category` and repeatable `--tag`) to find a reviewed course, `lgn courses get` for details, `lgn credits balance` to confirm funds, `lgn courses purchase` to spend credits and receive an entitlement, and `lgn skills install` to install the bundle into `LOGION_HOME`.
 
 **Is MCP required to use Logion?**
 No. The first workflow uses the public CLI and SDK directly. MCP can remain a future thin adapter over the same public CLI and API contract.
