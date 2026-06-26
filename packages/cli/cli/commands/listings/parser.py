@@ -33,7 +33,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     search.add_argument("--query")
-    search.add_argument("--tags")
+    tag_group = search.add_mutually_exclusive_group()
+    tag_group.add_argument(
+        "--tag",
+        action="append",
+        dest="tag_filters",
+        default=None,
+        help="Filter by tag (repeatable; AND semantics)",
+    )
+    tag_group.add_argument(
+        "--tags",
+        dest="tags",
+        help="Filter by tags (comma-separated; use --tag instead)",
+    )
+    search.add_argument("--category")
     search.add_argument("--language")
     search.add_argument("--price-min", type=int)
     search.add_argument("--price-max", type=int)

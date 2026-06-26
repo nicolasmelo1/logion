@@ -141,6 +141,8 @@ installed CLI version and do not require network access.
 Implemented safe discovery commands:
 ```bash
 logion listings search --query "video cuts" --limit 5
+logion listings search --category devops --tag terraform --limit 5
+logion listings search --category security --tag pentest --tag audit --json
 logion courses get COURSE_ID
 logion courses versions get COURSE_ID VERSION_ID
 logion notifications unread-count
@@ -154,10 +156,25 @@ logion courses reviews list COURSE_ID --limit 5
 logion courses reviews summary COURSE_ID
 logion courses publication latest COURSE_ID --json
 logion courses feedback COURSE_ID --json
+logion courses taxonomy suggest --bundle-dir ./course --json
 logion payments seller-readiness --json
 logion payments creator-earnings --json
 logion credits balance --json
 ```
+
+### Search by tags and category
+
+Prefer structured filters over free-text queries when the intent is
+discoverable by category or tag. `--tag` is repeatable (AND semantics)
+and `--category` narrows by the canonical category slug:
+
+```bash
+logion listings search --category security --tag pentest --tag cve
+```
+
+A `--tag pr` filter matches courses tagged `pr-review` (segment match),
+so partial tag names still discover hyphenated tags. Use `--tag` over
+the legacy `--tags video,editing` comma form.
 
 Implemented mutating commands (require explicit approval):
 ```bash

@@ -5,19 +5,31 @@ when the agent is in a creator workflow.
 
 ## Course lifecycle overview
 
-1. `logion courses create` — produces a draft.
-2. Edit local bundle (SKILL.md, capabilities.yaml, references, scripts).
-3. `logion courses capabilities validate --bundle-dir <path>` — local check.
-4. `logion courses uploads create COURSE_ID --file SKILL.md --file course/capabilities.yaml [...]`.
-5. `logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ...`.
-6. `logion courses uploads complete COURSE_ID VERSION_ID`.
-7. `logion courses publication request COURSE_ID` (after confirmation).
-8. Poll `logion courses publication latest COURSE_ID`.
-9. On rejection, read `logion courses feedback COURSE_ID`, fix, repeat from 4.
+1. `logion courses taxonomy suggest --bundle-dir <path>` — get
+   category/tag suggestions before creating.
+2. `logion courses create --category <slug> --tag <tag> ...` — produces
+   a draft with category and tags set.
+3. Edit local bundle (SKILL.md, capabilities.yaml, references, scripts).
+4. `logion courses capabilities validate --bundle-dir <path>` — local check.
+5. `logion courses uploads create COURSE_ID --file SKILL.md --file course/capabilities.yaml [...]`.
+6. `logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ...`.
+7. `logion courses uploads complete COURSE_ID VERSION_ID`.
+8. `logion courses publication request COURSE_ID` (after confirmation).
+9. Poll `logion courses publication latest COURSE_ID`.
+10. On rejection, read `logion courses feedback COURSE_ID`, fix, repeat from 5.
 
 ## Create/update metadata checklist
 
 - Title, slug, summary, description, language, tags, visibility, price.
+- Category: one canonical slug (e.g. `devops`, `security`, `writing`).
+  Use `logion courses taxonomy suggest --bundle-dir ./course --json` to
+  get deterministic suggestions from SKILL.md and capabilities.yaml, but
+  the author must accept the category explicitly — it is never inferred
+  on publish.
+- Tags: normalized to lowercase hyphenated slugs. Spaces and underscores
+  convert to hyphens. Reserved labels (`official`, `verified`,
+  `trusted`, `featured`, `logion`, `admin`, `staff`, `platform`,
+  `security-audited`) are rejected. Max 20 tags, max 64 chars each.
 - Required tools and required env-var names (NEVER values).
 - Capability IDs declared in `course/capabilities.yaml`.
 

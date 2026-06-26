@@ -100,6 +100,7 @@ ignore = [
 "cli/_errors.py" = ["T201"]
 "cli/_output.py" = ["T201"]
 "cli/commands/courses/capabilities.py" = ["T201"]
+"cli/commands/courses/taxonomy_handler.py" = ["T201"]
 "cli/commands/reports/handlers.py" = ["T201"]
 "cli/commands/notifications/handlers.py" = ["T201"]
 "cli/commands/skills/handlers.py" = ["T201"]

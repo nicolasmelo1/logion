@@ -28,6 +28,7 @@ class ListingsResource:
         *,
         query: str | None = None,
         tags: str | None = None,
+        category: str | None = None,
         language: str | None = None,
         price_min: int | None = None,
         price_max: int | None = None,
@@ -42,6 +43,7 @@ class ListingsResource:
         Args:
             query: Full-text search query.
             tags: Filter by tag names (comma-separated string).
+            category: Filter by category slug (e.g. "devops", "security").
             language: Filter by language code (e.g. "en", "pt").
             price_min: Minimum price in cents.
             price_max: Maximum price in cents.
@@ -65,6 +67,7 @@ class ListingsResource:
             self._http,
             query=query,
             tags=tags,
+            category=category,
             language=language,
             price_min=price_min,
             price_max=price_max,

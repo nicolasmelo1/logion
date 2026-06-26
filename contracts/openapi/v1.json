@@ -1215,6 +1215,17 @@
       },
       "CreateCourseRequest": {
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "currency": {
             "default": "USD",
             "maxLength": 3,
@@ -1303,6 +1314,10 @@
       },
       "CreateCourseResponse": {
         "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1423,6 +1438,7 @@
           "price_cents",
           "currency",
           "language",
+          "category",
           "tags",
           "current_version",
           "published_at",
@@ -2418,6 +2434,10 @@
               }
             ]
           },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2598,6 +2618,7 @@
           "price_cents",
           "currency",
           "language",
+          "category",
           "tags",
           "current_version",
           "published_at",
@@ -4281,6 +4302,11 @@
       },
       "ListingItemResponse": {
         "properties": {
+          "category": {
+            "default": "other",
+            "title": "Category",
+            "type": "string"
+          },
           "currency": {
             "default": "USD",
             "title": "Currency",
@@ -5740,6 +5766,17 @@
       },
       "UpdateCourseRequest": {
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "currency": {
             "anyOf": [
               {
@@ -5850,6 +5887,10 @@
       },
       "UpdateCourseResponse": {
         "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5970,6 +6011,7 @@
           "price_cents",
           "currency",
           "language",
+          "category",
           "tags",
           "current_version",
           "published_at",
@@ -11481,6 +11523,23 @@
                 }
               ],
               "title": "Tags"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
             }
           },
           {

@@ -28,6 +28,20 @@ def add_tag_arguments(
         )
 
 
+def add_category_argument(
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Add ``--category`` argument to a create or update parser."""
+    parser.add_argument(
+        "--category",
+        default=None,
+        help=(
+            "Course category slug (e.g. devops, security, writing). "
+            "Unknown slugs are rejected by the API."
+        ),
+    )
+
+
 def add_tristate_flag(
     parser: argparse.ArgumentParser,
     flag: str,
