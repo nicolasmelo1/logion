@@ -1798,3 +1798,66 @@ def test_courses_purchase_without_price_guard(
     assert code == 0
     assert courses.last_call[0] == "purchase"
     assert courses.last_call[1]["expected_price_cents"] is None
+
+
+def test_courses_capabilities_validate_requires_license(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = tmp_path / "bundle"
+    (bundle / "course").mkdir(parents=True)
+    (bundle / "SKILL.md").write_text(
+        "---\nname: demo\nlicense: MIT\n---\n# Demo\n",
+        encoding="utf-8",
+    )
+    (bundle / "course" / "capabilities.yaml").write_text(
+        "version: 1\nsummary: demo\ntools:\n  - file\n",
+        encoding="utf-8",
+    )
+    code = main([
+        "courses",
+        "capabilities",
+        "validate",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "Invalid course bundle" in err
+    assert "LICENSE" in err
+
+
+def test_courses_capabilities_scaffold_writes_license_template(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = tmp_path / "bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "scaffold",
+        "--bundle-dir",
+        str(bundle),
+        "--license-template",
+        "logion-standard-course-v1",
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "course/capabilities.yaml" in out
+    assert "LICENSE" in out
+    assert (bundle / "LICENSE").is_file()
+    license_text = (bundle / "LICENSE").read_text(encoding="utf-8")
+    assert "Logion Standard Course License v1.0" in license_text
+
+
+def test_courses_capabilities_scaffold_rejects_license_template_without_bundle_dir(  # noqa: E501
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code = main([
+        "courses",
+        "capabilities",
+        "scaffold",
+        "--license-template",
+        "mit",
+    ])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--license-template requires --bundle-dir" in err

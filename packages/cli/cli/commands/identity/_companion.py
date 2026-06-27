@@ -1,12 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Companion-bundle step for ``identity onboarding``.
-
-Locates the companion bundle directory, delegates the canonical install
-to the existing ``handle_skills_install`` path (so the bundle lands in
-``$LOGION_HOME/installed/`` with a manifest, content hash, and real
-``course_id``/``version_id``), and symlinks the installed directory
-into the chosen harness's ``skill_dir``.
-"""
+"""Companion-bundle step for ``identity onboarding``."""
 
 from __future__ import annotations
 
@@ -50,34 +43,45 @@ class CompanionInstallError(RuntimeError):
     """Raised when the canonical install step fails."""
 
 
-# Stable identifier for the first-party companion course.  The version
-# is read from the bundle's ``SKILL.md`` frontmatter so updates are
-# tracked correctly; ``"latest"`` is only a fallback.
 COMPANION_COURSE_ID = "logion-marketplace-companion"
 _FALLBACK_VERSION_ID = "latest"
 
 
-def _read_companion_version(bundle_dir: Path) -> str:
-    """Read ``version:`` from the bundle's SKILL.md frontmatter."""
+def _read_skill_frontmatter_value(
+    bundle_dir: Path,
+    field: str,
+    fallback: str,
+) -> str:
+    """Read a scalar frontmatter field from the bundle's SKILL.md."""
     skill_md = bundle_dir / "SKILL.md"
     if not skill_md.is_file():
-        return _FALLBACK_VERSION_ID
+        return fallback
     try:
         text = skill_md.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return _FALLBACK_VERSION_ID
+        return fallback
     if not text.startswith("---"):
-        return _FALLBACK_VERSION_ID
+        return fallback
     end = text.find("\n---", 3)
     if end < 0:
-        return _FALLBACK_VERSION_ID
+        return fallback
     block = text[3:end]
+    prefix = f"{field}:"
     for line in block.splitlines():
         stripped = line.strip()
-        if stripped.startswith("version:"):
-            value = stripped[len("version:") :].strip().strip('"').strip("'")
-            return value or _FALLBACK_VERSION_ID
-    return _FALLBACK_VERSION_ID
+        if stripped.startswith(prefix):
+            value = stripped[len(prefix) :].strip().strip('"').strip("'")
+            return value or fallback
+    return fallback
+
+
+def _read_companion_version(bundle_dir: Path) -> str:
+    """Read ``version:`` from the bundle's SKILL.md frontmatter."""
+    return _read_skill_frontmatter_value(
+        bundle_dir,
+        "version",
+        _FALLBACK_VERSION_ID,
+    )
 
 
 def locate_bundle_dir(args: argparse.Namespace) -> Path | None:
@@ -149,6 +153,11 @@ def install_companion(
 
     course_id = COMPANION_COURSE_ID
     version_id = _read_companion_version(bundle_dir)
+    skill_name = _read_skill_frontmatter_value(
+        bundle_dir,
+        "name",
+        COMPANION_COURSE_ID,
+    )
 
     # If already installed canonically, check whether the content
     # matches.  Only return ``already=True`` when the bundle is
@@ -171,7 +180,7 @@ def install_companion(
         if existing_hash and new_hash == existing_hash:
             from ._onboarding_helpers import ensure_symlink as _ensure_symlink
 
-            _ensure_symlink(adapter, existing)
+            _ensure_symlink(adapter, existing, skill_name=skill_name)
             return CompanionResult(
                 installed=False,
                 skill_dir=str(adapter.skill_dir()),
@@ -229,7 +238,7 @@ def install_companion(
 
     from ._onboarding_helpers import ensure_symlink as _ensure_symlink
 
-    _ensure_symlink(adapter, installed)
+    _ensure_symlink(adapter, installed, skill_name=skill_name)
     return CompanionResult(
         installed=True,
         skill_dir=str(adapter.skill_dir()),

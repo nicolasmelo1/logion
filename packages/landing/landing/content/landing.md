@@ -87,7 +87,7 @@ Runtime sandbox enforcement remains future runtime work; the landing does not cl
 The API implementation is private; the client and integration surface are public for inspection. No MCP setup is required for the first workflow.
 
 - CLI source — `packages/cli`
-- Python SDK — `packages/sdk-python`
+- Python SDK — `packages/client`
 - npm wrapper — `packages/npm-wrapper`
 - agent companion SKILL.md — `packages/agent-companion`
 - public OpenAPI contract — `contracts/openapi`

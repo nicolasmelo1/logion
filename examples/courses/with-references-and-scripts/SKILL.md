@@ -1,7 +1,7 @@
 ---
 name: with-references-and-scripts
 description: Logion course example that bundles a runnable script and a reference doc. Use as a starting template when your skill executes a small subprocess (terminal tool) and produces output files. Demonstrates progressive disclosure across SKILL.md, references/, and scripts/.
-license: MIT
+license: Logion Standard Course License v1.0
 compatibility: Requires a POSIX shell (bash, zsh). No network, no env vars.
 metadata:
   author: logion-examples

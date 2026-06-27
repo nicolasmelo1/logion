@@ -58,3 +58,8 @@ The line: a course may **assume** an environment, but it may **not extend** the 
 ## License
 
 MIT — same as the rest of `logion/`.
+
+
+## Licensing note
+
+These example bundles ship with `LICENSE` files using the Logion Standard Course License v1.0 so the publication artifact is explicit. Replace them with MIT/Apache-2.0/etc. for free courses, or keep the Logion license for paid distribution.

@@ -264,7 +264,7 @@ sections:
       - label: CLI source
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
       - label: Python SDK
-        href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/client
       - label: npm wrapper
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper
       - label: agent companion SKILL.md
@@ -587,7 +587,7 @@ ai:
           href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
           description: Logion CLI source.
         - title: Python SDK package
-          href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/client
           description: Python SDK source.
         - title: npm wrapper package
           href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper

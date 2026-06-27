@@ -103,6 +103,25 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and the local mock
 server.
 
+### Public-repo dev rig
+
+You can iterate on the companion directly from this repo without a private API
+checkout. The public `.devrig/` supports two modes:
+
+```bash
+make bootstrap
+make dev-up MODE=mock               # local Prism mock on 127.0.0.1:4010
+make dev-up MODE=prod               # live API with your own Logion account
+make doctor AGENT=codex
+make companion AGENT=codex ROLE=seller
+# or launch the harness in this repo with the companion already synced
+make start-companion AGENT=codex ROLE=seller
+```
+
+`MODE=prod` does **not** create throwaway accounts; it points the build at the
+live API so you can test with your own user. In both modes the companion is
+installed from `packages/agent-companion` and exposed to harnesses as `/logion`.
+
 ### Package managers
 
 Shipping with the first public release:

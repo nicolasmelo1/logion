@@ -20,6 +20,7 @@ REPO_ROOT = COMPANION_ROOT.parent.parent
 SCRIPT = COMPANION_ROOT / "scripts" / "package_skill.py"
 
 BUNDLE_KIND = "logion-marketplace-companion"
+SKILL_NAME = "logion"
 VERSION = "0.1.0"
 
 EXPECTED_TOP_LEVEL_DIRS = {
@@ -349,7 +350,7 @@ class TestReleaseBundleManifestSchema:
         assert isinstance(manifest["minimum_cli_version"], str)
 
         # skill_name must match
-        assert manifest["skill_name"] == BUNDLE_KIND
+        assert manifest["skill_name"] == SKILL_NAME
 
         # skill_md_sha256 must be present
         assert "skill_md_sha256" in manifest

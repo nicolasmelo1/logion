@@ -1,7 +1,7 @@
 ---
 name: with-scripts
 description: Bundled Gmail CLI example demonstrating the scripts/ entrypoint + src/ implementation split. Use as a template when your course ships real code that goes beyond a single shell script. Shows how to organize a course bundle that owns its codebase — no runtime package installation, all dependencies stdlib-only. Replaces the "tell the user to npm install my CLI" anti-pattern.
-license: MIT
+license: Logion Standard Course License v1.0
 compatibility: Requires Python 3.10+ and a valid GMAIL_OAUTH_TOKEN environment variable.
 metadata:
   author: logion-examples

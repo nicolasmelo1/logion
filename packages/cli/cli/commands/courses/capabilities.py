@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from cli._config import resolve_config_from_args
+from cli._course_bundle import CourseBundleError, validate_course_bundle
 from cli._course_capabilities import (
     CAPABILITY_MANIFEST_PATH,
     CapabilityManifestError,
@@ -28,6 +29,13 @@ from cli.commands.courses.capability_frontmatter import (
 )
 
 CAPABILITIES_TEMPLATE_FILENAME = "course_capabilities.template.yaml"
+LICENSE_TEMPLATE_FILES = {
+    "mit": "course_license_mit.template.txt",
+    "apache-2.0": "course_license_apache-2.0.template.txt",
+    "logion-standard-course-v1": (
+        "course_license_logion-standard-course-v1.template.txt"
+    ),
+}
 
 
 def handle_courses_capabilities_validate(
@@ -35,7 +43,11 @@ def handle_courses_capabilities_validate(
 ) -> int:
     """Validate a local capability manifest and print a summary."""
     try:
+        validate_course_bundle(args.bundle_dir)
         manifest = load_and_validate_capability_manifest(args.bundle_dir)
+    except CourseBundleError as exc:
+        print(f"Invalid course bundle: {exc}", file=sys.stderr)
+        return 2
     except CapabilityManifestError as exc:
         print(f"Invalid capability manifest: {exc}", file=sys.stderr)
         return 2
@@ -56,7 +68,11 @@ def handle_courses_capabilities_print(
 ) -> int:
     """Validate a local capability manifest and print normalised JSON."""
     try:
+        validate_course_bundle(args.bundle_dir)
         manifest = load_and_validate_capability_manifest(args.bundle_dir)
+    except CourseBundleError as exc:
+        print(f"Invalid course bundle: {exc}", file=sys.stderr)
+        return 2
     except CapabilityManifestError as exc:
         print(f"Invalid capability manifest: {exc}", file=sys.stderr)
         return 2
@@ -74,6 +90,16 @@ def _template_text() -> str:
         resources
         .files("cli.templates")
         .joinpath(CAPABILITIES_TEMPLATE_FILENAME)
+        .read_text(encoding="utf-8")
+    )
+
+
+def _license_template_text(template_name: str) -> str:
+    """Return the bundled LICENSE scaffold contents."""
+    return (
+        resources
+        .files("cli.templates")
+        .joinpath(LICENSE_TEMPLATE_FILES[template_name])
         .read_text(encoding="utf-8")
     )
 
@@ -102,13 +128,9 @@ def _scaffold_from_skill(
     skill_path: Path,
     bundle_dir: Path | None,
     force: bool,
+    license_template: str | None,
 ) -> int:
-    """Seed a capability manifest from SKILL.md frontmatter.
-
-    When *bundle_dir* is None the serialised manifest is printed to stdout.
-    Otherwise it is written to ``<bundle-dir>/course/capabilities.yaml``
-    with overwrite protection unless *force* is True.
-    """
+    """Seed a capability manifest from SKILL.md frontmatter."""
     try:
         manifest = extract_logion_capabilities_from_skill(skill_path)
     except CapabilityManifestError as exc:
@@ -135,16 +157,44 @@ def _scaffold_from_skill(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text, encoding="utf-8")
     print(f"Wrote scaffold to {dest}")
+    if license_template is not None:
+        try:
+            _write_license_template(bundle_dir, license_template, force)
+        except FileExistsError:
+            license_path = bundle_dir / "LICENSE"
+            print(
+                f"Refusing to overwrite existing license: {license_path} "
+                "(pass --force to replace)",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"Wrote scaffold to {bundle_dir / 'LICENSE'}")
     return 0
+
+
+def _write_license_template(
+    bundle_dir: Path,
+    template_name: str,
+    force: bool,
+) -> None:
+    """Materialise a LICENSE file from the selected template."""
+    dest = bundle_dir / "LICENSE"
+    if dest.exists() and not force:
+        raise FileExistsError(dest)
+    dest.write_text(_license_template_text(template_name), encoding="utf-8")
 
 
 def _scaffold_template(
     bundle_dir: Path | None,
     force: bool,
+    license_template: str | None,
 ) -> int:
     """Emit the generic commented template scaffold."""
     text = _template_text()
     if bundle_dir is None:
+        if license_template is not None:
+            print("--license-template requires --bundle-dir", file=sys.stderr)
+            return 2
         print(text, end="")
         return 0
     dest = bundle_dir / CAPABILITY_MANIFEST_PATH
@@ -162,27 +212,34 @@ def _scaffold_template(
     # ``Path(str(...))`` just to call shutil.copyfile.
     dest.write_text(text, encoding="utf-8")
     print(f"Wrote scaffold to {dest}")
+    if license_template is not None:
+        try:
+            _write_license_template(bundle_dir, license_template, force)
+        except FileExistsError:
+            license_path = bundle_dir / "LICENSE"
+            print(
+                f"Refusing to overwrite existing license: {license_path} "
+                "(pass --force to replace)",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"Wrote scaffold to {bundle_dir / 'LICENSE'}")
     return 0
 
 
 def handle_courses_capabilities_scaffold(
     args: argparse.Namespace,
 ) -> int:
-    """Emit the capability manifest scaffold.
-
-    With ``--from-skill`` the scaffold is seeded from the
-    ``metadata.logion`` capability manifest embedded in the given
-    SKILL.md's YAML frontmatter. Without it, the generic commented
-    template is emitted instead.
-
-    With ``--bundle-dir`` the scaffold is written to
-    ``<bundle-dir>/course/capabilities.yaml`` (refuses to overwrite an
-    existing file unless ``--force`` is passed).  Without ``--bundle-dir``
-    the scaffold is printed to stdout so the agent can pipe it.
-    """
+    """Emit the capability manifest scaffold."""
     bundle_dir: Path | None = getattr(args, "bundle_dir", None)
     from_skill: Path | None = getattr(args, "from_skill", None)
     force: bool = getattr(args, "force", False)
+    license_template: str | None = getattr(args, "license_template", None)
     if from_skill is not None:
-        return _scaffold_from_skill(from_skill, bundle_dir, force)
-    return _scaffold_template(bundle_dir, force)
+        return _scaffold_from_skill(
+            from_skill,
+            bundle_dir,
+            force,
+            license_template,
+        )
+    return _scaffold_template(bundle_dir, force, license_template)

@@ -73,6 +73,16 @@ def register_capabilities(subparsers: argparse._SubParsersAction) -> None:
         help="Overwrite an existing course/capabilities.yaml",
     )
     scaffold.add_argument(
+        "--license-template",
+        choices=["mit", "apache-2.0", "logion-standard-course-v1"],
+        default=None,
+        help=(
+            "Also write bundle-dir/LICENSE from the selected template. "
+            "Use logion-standard-course-v1 for the marketplace "
+            "default paid-course license."
+        ),
+    )
+    scaffold.add_argument(
         "--from-skill",
         type=Path,
         default=None,

@@ -23,6 +23,7 @@ def _make_source_bundle(root: Path) -> Path:
         "version: 1\nsummary: test\ntools:\n  - file\n",
         encoding="utf-8",
     )
+    (src / "LICENSE").write_text("MIT test license\n", encoding="utf-8")
     (src / "references" / "x.md").write_text("ref", encoding="utf-8")
     return src
 
@@ -290,3 +291,28 @@ class TestSkillsInspect:
         assert rc == 0
         data = json.loads(captured.out)
         assert data["data"]["course_id"] == "x"
+
+
+class TestSkillsBundleValidation:
+    def test_install_rejects_missing_license(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        home = tmp_path / "home"
+        bundle = _make_source_bundle(tmp_path)
+        (bundle / "LICENSE").unlink()
+        rc = main([
+            "skills",
+            "install",
+            "--source",
+            str(bundle),
+            "--course-id",
+            "weather.basic",
+            "--version-id",
+            "1.0.0",
+            "--target",
+            str(home),
+        ])
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert "invalid course bundle" in captured.err
+        assert "LICENSE" in captured.err

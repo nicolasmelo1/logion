@@ -1,7 +1,7 @@
 ---
 name: with-eval
 description: Reviews code diffs against a structured checklist covering security (sql-injection, hardcoded-secret, unvalidated-input), reliability (missing-error-handling, resource-leak), and correctness (off-by-one, wrong-comparison). Use when reviewing PRs, audit diffs, or any code change where you want a categorised, line-anchored review instead of free-form prose. Ships with a bundled deterministic self-test that catches "faking" agents that rubber-stamp without reading the diff.
-license: MIT
+license: Logion Standard Course License v1.0
 compatibility: Requires Python 3.10+ (for the bundled self-test).
 metadata:
   author: logion-examples

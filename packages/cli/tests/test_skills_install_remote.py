@@ -41,6 +41,7 @@ def _write_skill_md(
         "# Test Skill\n\nHello.\n",
         encoding="utf-8",
     )
+    (directory / "LICENSE").write_text("MIT test license\n", encoding="utf-8")
 
 
 def _write_capabilities(directory: Path) -> None:
@@ -97,7 +98,7 @@ def _build_tarball(
         "generated_at": "2026-06-01T12:34:56Z",
         "git_commit": "abc1234",
         "minimum_cli_version": "0.1.0",
-        "skill_name": "logion-marketplace-companion",
+        "skill_name": "logion",
         "skill_md_sha256": hashlib.sha256(
             (bundle_dir / "SKILL.md").read_bytes()
         ).hexdigest(),
