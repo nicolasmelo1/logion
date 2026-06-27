@@ -331,8 +331,8 @@ def test_cancel_bounty_calls_client(
 
 
 def test_payout_command_removed() -> None:
-    """phase 9.7: `logion bounties payout` is gone — accept accrues
-    the payable directly and the contributor uses payments cash-out."""
+    """`logion bounties payout` is gone; accept accrues the payable
+    directly and the contributor uses payments cash-out."""
     # argparse raises SystemExit(2) when an unknown sub-command is supplied.
     with pytest.raises(SystemExit) as excinfo:
         main([

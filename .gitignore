@@ -208,9 +208,6 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
-# Qlty (local code-quality config; not wired into project CI)
-.qlty/
-
 # PyPI configuration file
 .pypirc
 

@@ -1,0 +1,95 @@
+name: Release installer assets
+
+on:
+  push:
+    tags: ["installer-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-installer-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify installer scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run installer security scanner
+        run: python3 scripts/check_installer_security.py
+
+  package:
+    name: Package installer scripts
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Stage installer assets
+        run: |
+          mkdir -p dist
+          cp scripts/install.sh dist/install.sh
+          cp scripts/install_lib.sh dist/install_lib.sh
+          cp scripts/install.ps1 dist/install.ps1
+          cp scripts/install_lib.ps1 dist/install_lib.ps1
+      - name: Compute SHA256 sidecars
+        run: |
+          cd dist
+          for asset in install.sh install_lib.sh install.ps1 install_lib.ps1; do
+            sha256sum "$asset" > "$asset.sha256"
+          done
+      - name: Write release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cat > dist/release-notes.md <<EOF
+          # Logion installer ${RELEASE_TAG}
+
+          This release contains the curl-able POSIX installer, PowerShell installer,
+          their shared libraries, and SHA256 sidecars.
+
+          logion.sh redirects the public installer URLs to these assets.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-assets
+          path: dist/
+
+  release:
+    name: Attach installer assets to GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-assets
+          path: dist/
+      - name: Attach installer assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          body_path: dist/release-notes.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/install.sh
+            dist/install_lib.sh
+            dist/install.ps1
+            dist/install_lib.ps1
+            dist/install.sh.sha256
+            dist/install_lib.sh.sha256
+            dist/install.ps1.sha256
+            dist/install_lib.ps1.sha256
+            dist/release-notes.md

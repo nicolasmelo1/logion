@@ -71,7 +71,7 @@ The timeout fired before settlement reached the API. Re-run with a longer
 **Bounty contributor sees no balance after `accept`.** The accept step
 accrues a payable balance directly; the contributor cashes out with
 `logion payments cash-out`. The legacy `bounties payout` command was
-removed in phase 9.7 — if a script still references it, drop the call.
+removed — if a script still references it, drop the call.
 
 ## What is NOT a CLI issue
 

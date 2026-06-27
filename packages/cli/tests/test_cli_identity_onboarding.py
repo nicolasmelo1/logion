@@ -299,7 +299,7 @@ def test_onboarding_prompt_enables_autopost(
 
 
 # ---------------------------------------------------------------------------
-# Companion + consent tests (phase 14.1)
+# Companion + consent tests
 # ---------------------------------------------------------------------------
 
 

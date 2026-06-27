@@ -2,12 +2,11 @@
 """Tests for ``logion skills install`` when --source points to a
 tarball, URL, or release-manifest reference.
 
-The CLI handler changes for remote install support (phase 7.6)
-are not yet in place.  Tests that exercise future handler paths
-are marked ``@pytest.mark.skip`` with a reason.  The
-local-tarball test exercises the CURRENT code by expanding a
-fixture tarball into a temp directory and delegating to the
-existing directory-based install.
+The CLI handler changes for remote install support are not yet in
+place. Tests that exercise future handler paths are marked
+``@pytest.mark.skip`` with a reason. The local-tarball test exercises
+the CURRENT code by expanding a fixture tarball into a temp directory
+and delegating to the existing directory-based install.
 """
 
 from __future__ import annotations
@@ -262,7 +261,7 @@ class TestSkillsInstallFromLocalTarball:
 
 
 @pytest.mark.skip(
-    reason="pending phase-7.6 CLI handler extension for URL source support"
+    reason="pending CLI handler extension for URL source support"
 )
 class TestSkillsInstallFromUrl:
     """Install from a remote tarball URL with sha256
@@ -325,8 +324,7 @@ class TestSkillsInstallFromUrl:
 
 
 @pytest.mark.skip(
-    reason="pending phase-7.6 CLI handler extension for "
-    "minimum_cli_version check"
+    reason="pending CLI handler extension for minimum_cli_version check"
 )
 class TestSkillsInstallRefusesOldCliVersion:
     """A bundle whose minimum_cli_version exceeds the running
@@ -361,8 +359,7 @@ class TestSkillsInstallRefusesOldCliVersion:
 
 
 @pytest.mark.skip(
-    reason="pending phase-7.6 CLI handler extension for "
-    "manifest reference resolution"
+    reason="pending CLI handler extension for manifest reference resolution"
 )
 class TestSkillsInstallManifestReference:
     """Resolve --source

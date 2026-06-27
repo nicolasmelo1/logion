@@ -1540,7 +1540,7 @@ def test_grade_context_efficiency_enforces_listings_limit(catalog) -> None:
 
 
 def test_action_kind_includes_ask_before_update() -> None:
-    """Phase 6.10 §4.1: ActionKind must include ask_before_update."""
+    """ActionKind must include ask_before_update."""
     pytest.importorskip("dspy")
     from evals.optimizers.dspy.signatures import ActionKind
 

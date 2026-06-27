@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Phase 6.11: tests for the reference-routing signature, metric,
+"""Tests for the reference-routing signature, metric,
 scenarios, and renderer gates."""
 
 from __future__ import annotations

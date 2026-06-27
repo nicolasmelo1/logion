@@ -29,9 +29,12 @@ hero:
     Logion is not a video course marketplace or a generic skill directory. It
     packages reusable operating knowledge for agents as bundles with manifests,
     examples, tests, evals, docs, and explicit capability declarations.
+  release_note: >-
+    One command sets up the CLI and the agent companion and runs onboarding so
+    your agent can use Logion — going live with the first public release.
   cta:
     primary:
-      label: Copy install command
+      label: Install + connect your agent
       href: "#install"
       command: curl -fsSL https://logion.sh/install.sh | sh
     secondary:
@@ -364,8 +367,10 @@ sections:
   - id: install
     title: Install
     body: >-
-      The curl installer is the primary first-public-release path. pipx and npx
-      are alternate paths for users who prefer package managers.
+      One line installs the Logion CLI and the agent companion, then runs
+      onboarding. Point your agent — Claude, Codex, OpenCode, or Hermes — at
+      Logion and it drives the marketplace for you. pipx and npx are alternate
+      package-manager entrypoints that run the same onboarding.
 
   - id: harness
     title: Harness-native workflow
@@ -378,21 +383,23 @@ sections:
 cli:
   heading: Install
   body: >-
-    Commands are intended first public release paths until the corresponding
-    release channel is live.
+    The curl installer adds the CLI and the companion, then runs
+    `logion onboarding` to wire up your agent. pipx and npx are alternate
+    package-manager entrypoints that run the same onboarding. Use --cli-only or
+    --no-onboarding to opt out.
   install:
-    - label: curl primary
+    - label: curl primary (CLI + companion + onboarding)
       role: primary
       command: curl -fsSL https://logion.sh/install.sh | sh
     - label: pipx alternate
       role: alternate
-      command: pipx install logion-cli
+      command: pipx install logion-cli && logion onboarding
     - label: npx alternate
       role: alternate
-      command: npx @logion/cli --help
+      command: npx @logion/cli onboarding
   quickstart:
-    - lgn --help
-    - lgn courses get <COURSE_ID>
+    - logion onboarding
+    - "# then talk to your agent — it uses Logion for you"
 
 pricing:
   heading: Pricing

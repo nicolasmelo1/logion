@@ -35,7 +35,7 @@
     window.setInterval(asciiTick, reduced.matches ? 4000 : 240);
   }
 
-  // ----- Copy install command -------------------------------------------
+  // ----- Copy installer command ------------------------------------------
   function copyWithFallback(value) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(value);

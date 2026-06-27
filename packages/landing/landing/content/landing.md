@@ -20,18 +20,20 @@ The edge is shifting from raw model scale to how well a system integrates real h
 
 ## Install
 
-Primary intended first public release path:
+One command installs the CLI and the agent companion, then runs onboarding:
 
 ```bash
 curl -fsSL https://logion.sh/install.sh | sh
 ```
 
-Alternate intended first public release paths:
+Then point your agent (Claude, Codex, OpenCode, or Hermes) at Logion — it drives the marketplace for you. pipx and npx are alternate package-manager entrypoints that run the same onboarding:
 
 ```bash
-pipx install logion-cli
-npx @logion/cli --help
+pipx install logion-cli && logion onboarding
+npx @logion/cli onboarding
 ```
+
+Use `--cli-only` or `--no-onboarding` to opt out of the companion/onboarding.
 
 ## What Logion is
 

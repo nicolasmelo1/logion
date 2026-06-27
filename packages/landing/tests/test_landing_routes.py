@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
+import pytest
 from fastapi.testclient import TestClient
 
 from landing.main import STATIC_DIR, app
@@ -198,7 +199,7 @@ def test_homepage_includes_install_section() -> None:
     assert response.status_code == 200
     assert 'id="install"' in response.text
     assert "pipx install logion-cli" in response.text
-    assert "npx @logion/cli --help" in response.text
+    assert "npx @logion/cli onboarding" in response.text
 
 
 def test_homepage_includes_primary_curl_install_command() -> None:
@@ -217,9 +218,119 @@ def test_homepage_makes_curl_the_primary_install_path() -> None:
     curl_index = response.text.index("curl -fsSL")
     pipx_index = response.text.index("pipx install")
     npx_index = response.text.index("npx @logion/cli")
-    assert curl_index < pipx_index
-    assert curl_index < npx_index
+    assert curl_index < pipx_index < npx_index
     assert "install-option--primary" in response.text
+
+
+def test_hero_cta_reflects_agent_use_across_surfaces() -> None:
+    html = client.get("/").text
+    md = client.get("/", headers={"Accept": "text/markdown"}).text
+
+    assert "Install + connect your agent" in html
+    assert "your agent" in md.lower()
+
+
+@pytest.mark.parametrize(
+    "asset",
+    ["install.sh", "install_lib.sh", "install.ps1", "install_lib.ps1"],
+)
+def test_installer_asset_redirects_to_github_release(asset: str) -> None:
+    response = client.get(f"/{asset}", follow_redirects=False)
+
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert location.startswith(
+        "https://github.com/nicolasmelo1/logion/releases/download/"
+    )
+    assert location.endswith(f"/{asset}")
+
+
+@pytest.mark.parametrize("channel", ["stable", "latest"])
+def test_manifest_redirects_to_raw_main(channel: str) -> None:
+    response = client.get(
+        f"/releases/manifest-{channel}.json",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == (
+        "https://raw.githubusercontent.com/nicolasmelo1/logion/main/"
+        f"releases/manifest-{channel}.json"
+    )
+
+
+def test_unknown_manifest_channel_is_404() -> None:
+    response = client.get(
+        "/releases/manifest-bogus.json",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 404
+
+
+def test_installer_routes_do_not_shadow_content_routes() -> None:
+    for path in ("/", "/pricing", "/terms", "/privacy"):
+        assert client.get(path).status_code == 200, path
+
+
+@pytest.mark.parametrize("bad_tag", ["bad tag", "../../etc", "a/b", "tag$x"])
+def test_invalid_installer_tag_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, bad_tag: str
+) -> None:
+    # A malformed LOGION_INSTALLER_TAG must fail closed (no redirect to an
+    # attacker-influenced or path-traversing GitHub URL), not 302 blindly.
+    monkeypatch.setattr("landing.main.INSTALLER_TAG", bad_tag)
+    response = client.get("/install.sh", follow_redirects=False)
+    assert response.status_code == 500
+
+
+def test_custom_installer_tag_is_honored() -> None:
+    # A routine version bump is an env-var change (no code deploy): the tag
+    # flows straight into the redirect target.
+    import landing.main
+
+    original = landing.main.INSTALLER_TAG
+    try:
+        landing.main.INSTALLER_TAG = "installer-v9"
+        location = client.get("/install.sh", follow_redirects=False).headers[
+            "location"
+        ]
+        assert location == (
+            "https://github.com/nicolasmelo1/logion/releases/download/"
+            "installer-v9/install.sh"
+        )
+    finally:
+        landing.main.INSTALLER_TAG = original
+
+
+def test_og_image_asset_is_served() -> None:
+    response = client.get("/static/og-image.png")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    # Real card, not a placeholder; PNG magic header present.
+    assert response.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert len(response.content) > 5000
+
+
+def test_og_image_metadata_points_at_served_card() -> None:
+    html = client.get("/").text
+    expected = "https://logion.sh/static/og-image.png"
+    assert f'<meta property="og:image" content="{expected}">' in html
+    assert f'<meta name="twitter:image" content="{expected}">' in html
+    assert '<meta name="twitter:card" content="summary_large_image">' in html
+    assert '<meta property="og:image:width" content="1200">' in html
+    assert '<meta property="og:image:height" content="630">' in html
+
+
+def test_llms_txt_exposes_install_story_surface() -> None:
+    # /llms.txt is the agent index; it links the landing markdown, which must
+    # carry the install/onboarding story so agents can reach the curl path.
+    llms = client.get("/llms.txt").text
+    assert "https://logion.sh/" in llms
+    md = client.get("/", headers={"Accept": "text/markdown"}).text.lower()
+    assert "curl -fssl https://logion.sh/install.sh | sh" in md
+    assert "companion" in md
+    assert "onboarding" in md
 
 
 def test_index_returns_markdown_when_requested() -> None:
