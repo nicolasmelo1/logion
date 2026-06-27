@@ -72,7 +72,8 @@ def test_audit_public_safe_private_repo_path_detected() -> None:
 
         result = _run_audit(tmp)
         assert result.returncode == 1, (
-            f"Expected exit 1 for private repo path, got {result.returncode}.\n"
+            "Expected exit 1 for private repo path, "
+            f"got {result.returncode}.\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
         assert "private repo path" in result.stdout
@@ -126,7 +127,10 @@ def test_audit_public_safe_ignores_gitignored() -> None:
 
 
 def test_audit_public_safe_capitalized_phase_detected() -> None:
-    """Capitalized 'Phase 7.1' should trip; lowercase 'phased' should not."""
+    """Capitalized milestone labels should trip.
+
+    Lowercase usages like ``phased`` should not.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         _write(
             os.path.join(tmp, "docs", "internal-leak.md"),

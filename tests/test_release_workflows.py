@@ -1,4 +1,4 @@
-"""Release workflow structure tests (§6 of phase-7.7 plan).
+"""Release workflow structure tests for safe, tag-only publishing.
 
 These tests parse the release workflow YAML files as structured data and
 assert properties required for safe, tag-only release publishing.

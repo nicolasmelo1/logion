@@ -157,11 +157,11 @@ def test_install_does_not_claim_cli_only() -> None:
 
 
 def test_release_note_is_honest_about_availability() -> None:
-    # Critical: until 14.4 (public repo) + 14.5 (published releases) +
-    # ``installer-v1`` land, the curl path 302s to a 404. The hero status line
-    # must NOT claim the install works immediately, and must carry a
+    # Critical: until the public repo work, published releases, and
+    # ``installer-v1`` all land, the curl path 302s to a 404. The hero status
+    # line must NOT claim the install works immediately, and must carry a
     # forward-looking availability signal. Drop the forward signal only once
-    # the public install path is actually live (see phase-14.4 / phase-14.5).
+    # the public install path is actually live.
     content = yaml.safe_load(CONTENT_PATH.read_text(encoding="utf-8"))
     note = content["hero"]["release_note"].lower()
 

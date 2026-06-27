@@ -88,9 +88,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     get.set_defaults(handler=handle_get)
 
     # ── lifecycle commands (open / fund / cancel) ───────────────
-    # Removed in phase 9.7: `logion bounties payout` is gone — accept
-    # accrues a creator-payable balance directly, and contributors cash
-    # out via `logion payments cash-out`. No separate payout step.
+    # `logion bounties payout` is gone — accept accrues a
+    # creator-payable balance directly, and contributors cash out via
+    # `logion payments cash-out`. No separate payout step.
     for cmd, sdk_method, action in [
         ("open", "update_status", "open this bounty"),
         (
