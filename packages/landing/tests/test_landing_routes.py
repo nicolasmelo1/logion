@@ -227,7 +227,7 @@ def test_hero_cta_reflects_agent_use_across_surfaces() -> None:
     md = client.get("/", headers={"Accept": "text/markdown"}).text
 
     assert "Install + connect your agent" in html
-    assert "point your agent" in md.lower() or "your agent" in md.lower()
+    assert "your agent" in md.lower()
 
 
 @pytest.mark.parametrize(
