@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: MIT
 """Generate the Open Graph / social-card image (``static/og-image.png``).
 
-The card mirrors the live site's **dark theme**: a near-black background
-(``#050608``), the gold gradient lambda seal + ``LOGION`` wordmark, the
-``Smarter, together.`` motto in Baskerville italic, a mono description, and
-the install command in a bordered pill — over a faint matrix-rain glyph
-texture (the brand motif). It is the canonical, auditable record of how the
-committed ``og-image.png`` was produced.
+The card mirrors the live site's **dark theme** and hero hierarchy: a
+near-black background (``#050608``), the gold gradient Greek ``ΛΟΓΙΟΝ``
+ornament, the gold lambda seal + ``LOGION`` wordmark centered on one line,
+the ``Smarter, together.`` motto in Baskerville italic, and a mono
+description — over a faint matrix-rain glyph texture (the brand motif). It
+is the canonical, auditable record of how the committed ``og-image.png``
+was produced.
 
 Design tokens are taken from the ``design.palette.dark`` block in
 ``content/site.yaml`` so the card cannot silently drift from the brand:
@@ -16,7 +17,7 @@ The lambda path is copied verbatim from ``static/brand/logion-mark.svg``.
 Fonts: rendered with cairosvg using the closest system matches to the brand
 stacks — **Baskerville** for the serif motto (the brand serif is Libre
 Baskerville; Baskerville is the nearest macOS system face) and **Menlo** for
-the mono wordmark/body/command (Menlo is the brand mono fallback). cairosvg
+the mono wordmark/body (Menlo is the brand mono fallback). cairosvg
 cannot decode the self-hosted woff2 (no brotli), so the committed PNG is the
 canonical artifact; regenerate on a host that has Baskerville + Menlo.
 
@@ -81,6 +82,24 @@ def _rain() -> str:
 
 
 def build_svg() -> str:
+    cx = W / 2  # horizontal centre
+
+    # Centre the [seal + "LOGION"] row as one group. Menlo is monospace, so a
+    # cap advance of ~0.6em + letter-spacing gives an accurate text width.
+    word = "LOGION"
+    word_fs = 64
+    word_ls = 6
+    advance = word_fs * 0.6 + word_ls
+    word_w = len(word) * advance - word_ls
+    seal_h = 78
+    seal_scale = seal_h / 256
+    gap = 30
+    row_baseline = 338
+    group_left = cx - (seal_h + gap + word_w) / 2
+    cap_h = 0.72 * word_fs
+    seal_y = row_baseline - cap_h / 2 - seal_h / 2
+    word_x = group_left + seal_h + gap
+
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" \
 height="{H}" viewBox="0 0 {W} {H}">
   <defs>
@@ -89,9 +108,9 @@ height="{H}" viewBox="0 0 {W} {H}">
       <stop offset="0.55" stop-color="{ACCENT}"/>
       <stop offset="1" stop-color="#8a6a2b"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.28" cy="0.30" r="0.9">
+    <radialGradient id="glow" cx="0.5" cy="0.34" r="0.85">
       <stop offset="0" stop-color="#1a1407" stop-opacity="0.9"/>
-      <stop offset="0.55" stop-color="{BG}" stop-opacity="0.0"/>
+      <stop offset="0.6" stop-color="{BG}" stop-opacity="0.0"/>
     </radialGradient>
   </defs>
 
@@ -106,32 +125,29 @@ height="{H}" viewBox="0 0 {W} {H}">
     <path d="M{W - 78} {H - 48} L{W - 48} {H - 48} L{W - 48} {H - 78}"/>
   </g>
 
-  <text x="92" y="108" font-family="Menlo,monospace" font-size="22" \
-letter-spacing="6" fill="{ACCENT}" fill-opacity="0.85">\
-&#9679; &#923;&#927;&#915;&#921;&#927;&#925; // AGENT-NATIVE MARKETPLACE</text>
+  <text x="{cx}" y="112" text-anchor="middle" font-family="Menlo,monospace" \
+font-size="22" letter-spacing="6" fill="{ACCENT}" fill-opacity="0.85">\
+&#9679; AGENT-NATIVE MARKETPLACE</text>
 
-  <g transform="translate(92 150) scale(0.62)">{_LAMBDA}</g>
+  <text x="{cx}" y="232" text-anchor="middle" font-family="Menlo,monospace" \
+font-weight="bold" font-size="96" letter-spacing="14" fill="url(#gold)">\
+&#923;&#927;&#915;&#921;&#927;&#925;</text>
 
-  <text x="285" y="248" font-family="Menlo,monospace" font-weight="bold" \
-font-size="118" letter-spacing="6" fill="url(#gold)">LOGION</text>
+  <g transform="translate({group_left:.1f} {seal_y:.1f}) \
+scale({seal_scale:.4f})">{_LAMBDA}</g>
+  <text x="{word_x:.1f}" y="{row_baseline}" font-family="Menlo,monospace" \
+font-weight="bold" font-size="{word_fs}" letter-spacing="{word_ls}" \
+fill="{FG}">{word}</text>
 
-  <text x="96" y="338" font-family="Baskerville,Georgia,serif" \
-font-style="italic" font-size="50" fill="{BRIGHT}">Smarter, together.</text>
+  <text x="{cx}" y="424" text-anchor="middle" \
+font-family="Baskerville,Georgia,serif" font-style="italic" font-size="50" \
+fill="{BRIGHT}">Smarter, together.</text>
 
-  <text x="96" y="408" font-family="Menlo,monospace" font-size="31" \
-fill="{FG}">An agent-native marketplace for operational</text>
-  <text x="96" y="450" font-family="Menlo,monospace" font-size="31" \
-fill="{FG}">knowledge &#8212; reviewed, versioned course bundles.</text>
-
-  <rect x="92" y="498" width="894" height="74" rx="10" fill="#0c0e12" \
-stroke="{ACCENT}" stroke-opacity="0.7" stroke-width="2"/>
-  <text x="118" y="544" font-family="Menlo,monospace" font-size="26" \
-fill="{ACCENT}" fill-opacity="0.7">&#9656;</text>
-  <text x="150" y="544" font-family="Menlo,monospace" font-size="26" \
-fill="{BRIGHT}">curl -fsSL https://logion.sh/install.sh | sh</text>
-
-  <text x="{W - 60}" y="556" text-anchor="end" font-family="Menlo,monospace" \
-font-size="24" letter-spacing="3" fill="{ACCENT}">logion.sh</text>
+  <text x="{cx}" y="496" text-anchor="middle" font-family="Menlo,monospace" \
+font-size="31" fill="{FG}">An agent-native marketplace for operational</text>
+  <text x="{cx}" y="538" text-anchor="middle" font-family="Menlo,monospace" \
+font-size="31" fill="{FG}">\
+knowledge &#8212; reviewed, versioned course bundles.</text>
 </svg>"""
 
 
