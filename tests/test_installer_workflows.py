@@ -162,7 +162,7 @@ def test_release_installer_is_environment_gated() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 9. Installer release assets
+# 10. Installer release assets
 # ---------------------------------------------------------------------------
 
 
