@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -138,12 +139,40 @@ def test_install_story_leads_with_agent_use() -> None:
 
 
 def test_install_does_not_claim_cli_only() -> None:
+    # Semantic guard (punctuation-independent): every "install(s) the CLI"
+    # mention must be immediately paired with the companion, never sold as a
+    # standalone "installs the CLI" story. Also: no "CLI-only" framing (the
+    # ``--cli-only`` flag is fine) and no stale launch hedge.
+    cli_standalone = re.compile(
+        r"install(?:s|ed|ing)?\s+(?:the\s+)?cli\b(?!\s+and\b)"
+    )
     for path in (CONTENT_PATH, MARKDOWN_PATH):
         lower = path.read_text(encoding="utf-8").lower()
 
-        assert "installs the cli." not in lower
+        assert not cli_standalone.search(lower), (
+            f"{path.name} sells 'installs the CLI' without the companion"
+        )
         assert "cli-only" not in lower or "--cli-only" in lower
         assert "intended first public release path" not in lower
+
+
+def test_release_note_is_honest_about_availability() -> None:
+    # Critical: until 14.4 (public repo) + 14.5 (published releases) +
+    # ``installer-v1`` land, the curl path 302s to a 404. The hero status line
+    # must NOT claim the install works immediately, and must carry a
+    # forward-looking availability signal. Drop the forward signal only once
+    # the public install path is actually live (see phase-14.4 / phase-14.5).
+    content = yaml.safe_load(CONTENT_PATH.read_text(encoding="utf-8"))
+    note = content["hero"]["release_note"].lower()
+
+    for overclaim in ("right away", "available now", "install it today"):
+        assert overclaim not in note, (
+            f"release_note over-claims: {overclaim!r}"
+        )
+    assert any(
+        signal in note
+        for signal in ("first public release", "going live", "coming")
+    ), "release_note must signal the install path is not live yet"
 
 
 def test_alternate_entrypoints_still_run_onboarding() -> None:

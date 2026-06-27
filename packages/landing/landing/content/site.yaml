@@ -30,8 +30,8 @@ hero:
     packages reusable operating knowledge for agents as bundles with manifests,
     examples, tests, evals, docs, and explicit capability declarations.
   release_note: >-
-    One command installs the CLI and the agent companion, then runs onboarding
-    so your agent can use Logion right away.
+    One command sets up the CLI and the agent companion and runs onboarding so
+    your agent can use Logion — going live with the first public release.
   cta:
     primary:
       label: Install + connect your agent
