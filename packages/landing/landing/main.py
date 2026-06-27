@@ -190,6 +190,8 @@ FAVICON_BYTES = FAVICON_PATH.read_bytes()
 
 
 def _installer_redirect(asset: str) -> RedirectResponse:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", INSTALLER_TAG):
+        raise HTTPException(status_code=500, detail="Invalid LOGION_INSTALLER_TAG")
     url = (
         f"https://github.com/{GITHUB_REPO}/releases/download/"
         f"{INSTALLER_TAG}/{asset}"
