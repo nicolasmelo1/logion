@@ -151,9 +151,8 @@ def test_release_installer_runs_security_scanner() -> None:
     assert any("check_installer_security.py" in cmd for cmd in run_commands)
 
 # ---------------------------------------------------------------------------
-# 8. Installer release environment gate
+# 9. Installer release environment gate
 # ---------------------------------------------------------------------------
-
 
 def test_release_installer_is_environment_gated() -> None:
     """The GitHub Release attachment is gated by the release environment."""
