@@ -126,6 +126,35 @@ def test_markdown_content_avoids_negative_anchors() -> None:
     assert not present, f"forbidden anchors in landing.md: {present}"
 
 
+def test_install_story_leads_with_agent_use() -> None:
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        text = path.read_text(encoding="utf-8")
+        lower = text.lower()
+
+        assert "companion" in lower
+        assert "onboarding" in lower
+        assert "point your agent" in lower or "your agent" in lower
+        assert "curl -fsSL https://logion.sh/install.sh | sh" in text
+
+
+def test_install_does_not_claim_cli_only() -> None:
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        lower = path.read_text(encoding="utf-8").lower()
+
+        assert "installs the cli." not in lower
+        assert "cli-only" not in lower or "--cli-only" in lower
+        assert "intended first public release path" not in lower
+
+
+def test_alternate_entrypoints_still_run_onboarding() -> None:
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        text = path.read_text(encoding="utf-8")
+
+        assert "pipx install logion-cli" in text
+        assert "npx @logion/cli" in text
+        assert "onboarding" in text.lower()
+
+
 def test_terms_content_contains_required_rules() -> None:
     text = TERMS_PATH.read_text(encoding="utf-8")
     lower = text.lower()

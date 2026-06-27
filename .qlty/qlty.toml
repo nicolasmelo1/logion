@@ -1,0 +1,128 @@
+# Initialized with `qlty init --no` and calibrated for the Logion monorepo.
+# Keep this aligned with native project checks in pyproject.toml and package-level tooling.
+config_version = "0"
+
+exclude_patterns = [
+  "*_min.*",
+  "*-min.*",
+  "*.min.*",
+  "**/.yarn/**",
+  "**/*.d.ts",
+  "**/assets/**",
+  "**/bower_components/**",
+  "**/build/**",
+  "**/cache/**",
+  "**/config/**",
+  "**/db/**",
+  "**/deps/**",
+  "**/dist/**",
+  "**/extern/**",
+  "**/external/**",
+  "**/generated/**",
+  "**/Godeps/**",
+  "**/gradlew/**",
+  "**/mvnw/**",
+  "**/node_modules/**",
+  "**/protos/**",
+  "**/seed/**",
+  "**/target/**",
+  "**/templates/**",
+  "**/testdata/**",
+  "**/vendor/**",
+]
+
+test_patterns = [
+  "**/test/**",
+  "**/tests/**",
+  "**/spec/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/*_test.*",
+  "**/*_spec.*",
+  "**/test_*.*",
+  "**/spec_*.*",
+]
+
+[smells]
+mode = "comment"
+
+[[source]]
+name = "default"
+default = true
+
+[[plugin]]
+name = "actionlint"
+
+[[plugin]]
+name = "bandit"
+
+[[plugin]]
+name = "eslint"
+mode = "disabled"
+version = "9.39.4"
+prefix = "packages/npm-wrapper"
+package_file = "package.json"
+# The npm wrapper already has a package-local `npm run lint` gate. Qlty's
+# containerized ESLint runner currently mis-resolves the flat-config project
+# service path, so keep ESLint disabled here until that runner path is fixed.
+
+# OSV needs outbound API access and produced container network errors in this
+# environment. Keep dependency scanning in native/security workflows until the
+# Qlty runtime network path is reliable.
+[[plugin]]
+name = "osv-scanner"
+mode = "disabled"
+
+[[plugin]]
+name = "prettier"
+version = "3.8.3"
+package_file = "packages/npm-wrapper/package.json"
+
+[[plugin]]
+name = "radarlint-python"
+mode = "comment"
+
+[[plugin]]
+name = "ripgrep"
+mode = "comment"
+
+[[plugin]]
+name = "ruff"
+drivers = [
+  "lint",
+]
+
+[[plugin]]
+name = "shellcheck"
+
+[[plugin]]
+name = "trufflehog"
+
+[[plugin]]
+name = "zizmor"
+mode = "disabled"
+
+# Match the repository's native Bandit policy in pyproject.toml: pytest asserts
+# are intentional and already exempted from native Bandit runs.
+[[triage]]
+match.rules = ["bandit:B101"]
+set.ignored = true
+
+[[triage]]
+match.rules = ["bandit:B404", "bandit:B603", "bandit:B607", "bandit:B310"]
+set.ignored = true
+
+# Native Bandit excludes test trees; keep Qlty aligned so pytest fixtures and
+# subprocess-based checker tests do not drown out production security findings.
+[[exclude]]
+plugins = ["bandit"]
+file_patterns = ["**/tests/**", "tests/**"]
+
+# Course examples are executable documentation/fixtures, not package code.
+[[exclude]]
+plugins = ["ruff"]
+file_patterns = ["examples/**"]
+
+# The existing GitHub Actions convention uses major-version action refs
+# (for example, actions/checkout@v4). Keep Zizmor disabled for the initial
+# Qlty rollout and track workflow hardening separately from this gate.

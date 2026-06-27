@@ -21,6 +21,7 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     PlainTextResponse,
+    RedirectResponse,
     Response,
 )
 from fastapi.staticfiles import StaticFiles
@@ -35,6 +36,10 @@ CONTENT_PATH = CONTENT_DIR / "site.yaml"
 MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
 FAVICON_PATH = STATIC_DIR / "favicon.svg"
+GITHUB_REPO = "nicolasmelo1/logion"
+INSTALLER_TAG = os.environ.get("LOGION_INSTALLER_TAG", "installer-v1")
+_MANIFEST_CHANNELS = ("stable", "latest")
+
 PUBLIC_PATHS = (
     "/",
     "/pricing",
@@ -182,6 +187,46 @@ content = load_content()
 markdown_content = load_markdown()
 ascii_hero = ASCII_HERO_PATH.read_text(encoding="utf-8")
 FAVICON_BYTES = FAVICON_PATH.read_bytes()
+
+
+def _installer_redirect(asset: str) -> RedirectResponse:
+    url = (
+        f"https://github.com/{GITHUB_REPO}/releases/download/"
+        f"{INSTALLER_TAG}/{asset}"
+    )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/install.sh", include_in_schema=False)
+def install_sh() -> RedirectResponse:
+    return _installer_redirect("install.sh")
+
+
+@app.get("/install_lib.sh", include_in_schema=False)
+def install_lib_sh() -> RedirectResponse:
+    return _installer_redirect("install_lib.sh")
+
+
+@app.get("/install.ps1", include_in_schema=False)
+def install_ps1() -> RedirectResponse:
+    return _installer_redirect("install.ps1")
+
+
+@app.get("/install_lib.ps1", include_in_schema=False)
+def install_lib_ps1() -> RedirectResponse:
+    return _installer_redirect("install_lib.ps1")
+
+
+@app.get("/releases/manifest-{channel}.json", include_in_schema=False)
+def release_manifest(channel: str) -> RedirectResponse:
+    if channel not in _MANIFEST_CHANNELS:
+        raise HTTPException(status_code=404)
+    url = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/"
+        f"releases/manifest-{channel}.json"
+    )
+    return RedirectResponse(url, status_code=302)
+
 
 
 def _ctx(**extra: Any) -> dict[str, Any]:

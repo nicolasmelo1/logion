@@ -1,4 +1,4 @@
-"""Workflow structure tests for install-smoke.yml."""
+"""Workflow structure tests for installer CI and releases."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ def _load(name: str) -> dict:
 
 
 SMOKE = _load("install-smoke.yml")
+INSTALLER_RELEASE = _load("release-installer.yml")
 
 
 def _triggers(wf: dict) -> dict:
@@ -120,3 +121,72 @@ def test_install_smoke_runs_psscriptanalyzer_and_pester() -> None:
         "Windows job must invoke PSScriptAnalyzer"
     )
     assert "Invoke-Pester" in joined, "Windows job must invoke Pester"
+
+
+
+# ---------------------------------------------------------------------------
+# 7. Installer release workflow trigger
+# ---------------------------------------------------------------------------
+
+
+def test_release_installer_runs_on_installer_tags() -> None:
+    """release-installer.yml is triggered by installer-v* tags."""
+    triggers = _triggers(INSTALLER_RELEASE)
+    push_tags = triggers.get("push", {}).get("tags", [])
+    assert "installer-v*" in push_tags
+
+
+
+# ---------------------------------------------------------------------------
+# 8. Installer release verifies source scripts
+# ---------------------------------------------------------------------------
+
+
+def test_release_installer_runs_security_scanner() -> None:
+    """release-installer.yml scans installer sources before packaging."""
+    verify_steps = INSTALLER_RELEASE["jobs"]["verify"]["steps"]
+    run_commands = [
+        step.get("run", "") for step in verify_steps if "run" in step
+    ]
+    assert any("check_installer_security.py" in cmd for cmd in run_commands)
+
+# ---------------------------------------------------------------------------
+# 8. Installer release environment gate
+# ---------------------------------------------------------------------------
+
+
+def test_release_installer_is_environment_gated() -> None:
+    """The GitHub Release attachment is gated by the release environment."""
+    release_job = INSTALLER_RELEASE["jobs"]["release"]
+    assert release_job["environment"]["name"] == "release"
+    assert release_job["permissions"]["contents"] == "write"
+
+
+# ---------------------------------------------------------------------------
+# 9. Installer release assets
+# ---------------------------------------------------------------------------
+
+
+def test_release_installer_attaches_scripts_and_sidecars() -> None:
+    """Installer release attaches every public script and sha256 sidecar."""
+    release_steps = INSTALLER_RELEASE["jobs"]["release"]["steps"]
+    release_step = next(
+        step
+        for step in release_steps
+        if step.get("uses", "").startswith("softprops/")
+    )
+    files = release_step["with"]["files"]
+
+    expected = [
+        "dist/install.sh",
+        "dist/install_lib.sh",
+        "dist/install.ps1",
+        "dist/install_lib.ps1",
+        "dist/install.sh.sha256",
+        "dist/install_lib.sh.sha256",
+        "dist/install.ps1.sha256",
+        "dist/install_lib.ps1.sha256",
+        "dist/release-notes.md",
+    ]
+    for asset in expected:
+        assert asset in files, f"release-installer.yml missing {asset}"
