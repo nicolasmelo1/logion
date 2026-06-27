@@ -228,7 +228,6 @@ def release_manifest(channel: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=302)
 
 
-
 def _ctx(**extra: Any) -> dict[str, Any]:
     ctx: dict[str, Any] = dict(content)
     ctx["ascii_hero"] = ascii_hero
