@@ -688,7 +688,7 @@ function Verify-Install {
     $logion = Get-Command "logion" -ErrorAction SilentlyContinue
     if (-not $logion) {
         # Also check for the short alias
-        $logion = Get-Command "lgn" -ErrorAction SilentlyContinue
+        $logion = Get-Command "logion" -ErrorAction SilentlyContinue
     }
 
     if (-not $logion) {

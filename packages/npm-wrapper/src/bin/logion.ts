@@ -3,10 +3,13 @@
 // Thin shim: forward all arguments to the user-installed `logion`
 // binary (placed on PATH by postinstall -> pipx/uv/venv).
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 
 import { which } from "../lib/which";
 
-const target = which("logion");
+const target = which("logion", {
+  excludeRealpaths: [fs.realpathSync.native(__filename)],
+});
 if (!target) {
   process.stderr.write(
     "logion binary not found. Reinstall with " +

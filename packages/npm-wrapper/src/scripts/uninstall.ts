@@ -59,9 +59,7 @@ function removeManagedVenv(): void {
 
 function removeShims(): void {
   const names =
-    process.platform === "win32"
-      ? ["logion.exe", "lgn.exe", "logion.cmd", "lgn.cmd"]
-      : ["logion", "lgn"];
+    process.platform === "win32" ? ["logion.exe", "logion.cmd"] : ["logion"];
   for (const name of names) {
     const link = path.join(LOCAL_BIN, name);
     try {

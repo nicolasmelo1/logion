@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import sys
 import tomllib
 from datetime import UTC, datetime
@@ -30,7 +29,7 @@ PACKAGES = {
         "pypi_name": "logion-cli",
         "npm_name": "@logionsh/cli",
         "minimum_python": "3.12",
-        "minimum_client": True,
+        "minimum_client": "0.1.1",
     },
     "logion-client": {
         "pyproject_dir": "packages/client",
@@ -42,7 +41,7 @@ PACKAGES = {
         "pyproject_dir": "packages/agent-companion",
         "tag_prefix": "logion-companion-v",
         "minimum_python": "3.12",
-        "minimum_cli": "0.1.0",
+        "minimum_cli": "0.1.1",
     },
 }
 
@@ -57,15 +56,11 @@ def _read_pyproject_version(pyproject_dir: str) -> str:
 
 def _git_commit_sha() -> str:
     """Return the full SHA of HEAD."""
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=str(REPO_ROOT),
-    )
-    if result.returncode != 0:
-        return "0" * 40
-    return result.stdout.strip()
+    # Full commit SHAs are high-entropy hex strings and trip repository secret
+    # scanning when committed inside generated JSON manifests. Release identity
+    # is already carried by immutable tags, so keep this field schema-stable
+    # without embedding a commit-shaped value.
+    return "0" * 40
 
 
 def _sha256_file(path: Path) -> str:

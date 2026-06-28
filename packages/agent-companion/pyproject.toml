@@ -1,6 +1,6 @@
 [project]
 name = "logion-agent-companion"
-version = "0.1.0"
+version = "0.1.1"
 description = "Logion Marketplace Companion — skill for discovering, acquiring, installing, updating, and managing Logion courses/capabilities."
 requires-python = ">=3.12"
 dependencies = [

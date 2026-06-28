@@ -343,7 +343,7 @@ def test_index_returns_markdown_when_requested() -> None:
     assert "Trust model" in response.text
     assert "Agent acquisition flow" in response.text
     assert "Open-source trust layer" in response.text
-    assert "lgn courses purchase" in response.text
+    assert "logion courses purchase" in response.text
 
 
 def test_markdown_response_is_agent_readable_without_visual_assets() -> None:
@@ -375,9 +375,9 @@ def test_homepage_renders_agent_acquisition_transcript() -> None:
     text = client.get("/").text
     assert 'class="terminal-transcript"' in text
     assert "Agent acquisition flow" in text
-    assert "lgn listings search" in text
-    assert "lgn courses purchase" in text
-    assert "lgn skills install" in text
+    assert "logion listings search" in text
+    assert "logion courses purchase" in text
+    assert "logion skills install" in text
     assert "--install-source logion-marketplace" in text
     assert "entitlement:" in text
 
@@ -519,7 +519,7 @@ def test_referral_landing_renders_install_command_with_code() -> None:
     text = response.text
     assert "migration-safety-review" in text
     assert "--referral-code ABCD1234" in text
-    assert "lgn courses acquire migration-safety-review" in text
+    assert "logion courses acquire migration-safety-review" in text
 
 
 def test_referral_landing_sets_no_cookies() -> None:
@@ -543,7 +543,7 @@ def test_referral_landing_without_code_renders_plain_command() -> None:
     response = client.get("/c/migration-safety-review")
     assert response.status_code == 200
     text = response.text
-    assert "lgn courses acquire migration-safety-review" in text
+    assert "logion courses acquire migration-safety-review" in text
     assert "--referral-code" not in text
 
 
@@ -584,8 +584,8 @@ def test_homepage_emits_howto_jsonld_with_real_cli_steps() -> None:
     text = client.get("/").text
     assert '"@type": "HowTo"' in text
     assert "Acquire and install" in text
-    assert "lgn listings search" in text
-    assert "lgn courses purchase" in text
+    assert "logion listings search" in text
+    assert "logion courses purchase" in text
 
 
 def test_homepage_emits_software_application_jsonld() -> None:

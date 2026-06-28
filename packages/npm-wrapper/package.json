@@ -19,8 +19,7 @@
     "agent"
   ],
   "bin": {
-    "logion": "dist/bin/logion.js",
-    "lgn": "dist/bin/lgn.js"
+    "logion": "dist/bin/logion.js"
   },
   "scripts": {
     "build": "tsup",

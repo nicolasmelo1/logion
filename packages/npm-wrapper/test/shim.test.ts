@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// Tests for the built dist/bin/{logion,lgn}.js shims.
+// Tests for the built dist/bin/logion.js shim.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -14,17 +14,6 @@ describe("shim", () => {
   test("exits 127 when logion binary not found on PATH", () => {
     const nodeDir = path.dirname(process.execPath);
     const r = spawnSync(process.execPath, [path.join(BIN_DIR, "logion.js")], {
-      env: { ...process.env, PATH: nodeDir },
-      stdio: "pipe",
-      timeout: 15_000,
-    });
-    expect(r.status).toBe(127);
-    expect(r.stderr.toString()).toContain("not found");
-  });
-
-  test("exits 127 when lgn binary not found on PATH", () => {
-    const nodeDir = path.dirname(process.execPath);
-    const r = spawnSync(process.execPath, [path.join(BIN_DIR, "lgn.js")], {
       env: { ...process.env, PATH: nodeDir },
       stdio: "pipe",
       timeout: 15_000,
@@ -64,6 +53,49 @@ describe("shim", () => {
 
     expect(r.status).toBe(0);
     expect(r.stdout.toString()).toContain("args: --version");
+  });
+
+  test("skips npm shim when resolving logion target", () => {
+    if (process.platform === "win32") {
+      return;
+    }
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-shim-test-"));
+    const npmBinDir = path.join(tmp, "npm-bin");
+    const realBinDir = path.join(tmp, "real-bin");
+    fs.mkdirSync(npmBinDir, { recursive: true });
+    fs.mkdirSync(realBinDir, { recursive: true });
+    fs.symlinkSync(
+      path.join(BIN_DIR, "logion.js"),
+      path.join(npmBinDir, "logion"),
+    );
+    fs.writeFileSync(
+      path.join(realBinDir, "logion"),
+      '#!/bin/sh\necho "real: $*"\n',
+      { mode: 0o755 },
+    );
+
+    const r = spawnSync(
+      process.execPath,
+      [path.join(BIN_DIR, "logion.js"), "--version"],
+      {
+        env: {
+          ...process.env,
+          PATH:
+            npmBinDir +
+            path.delimiter +
+            realBinDir +
+            path.delimiter +
+            (process.env.PATH ?? ""),
+        },
+        stdio: "pipe",
+        timeout: 15_000,
+      },
+    );
+
+    fs.rmSync(tmp, { recursive: true, force: true });
+
+    expect(r.status).toBe(0);
+    expect(r.stdout.toString()).toContain("real: --version");
   });
 
   test("propagates exit code from underlying binary", () => {

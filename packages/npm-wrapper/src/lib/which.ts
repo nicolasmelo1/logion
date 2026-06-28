@@ -18,7 +18,17 @@ function candidatesForName(name: string): string[] {
   return [name, ...pathext.map((ext) => name + ext.toLowerCase())];
 }
 
-export function which(name: string): string | null {
+interface WhichOptions {
+  excludeRealpaths?: string[];
+}
+
+export function which(
+  name: string,
+  options: WhichOptions = {},
+): string | null {
+  const excluded = new Set(
+    (options.excludeRealpaths ?? []).map((p) => fs.realpathSync.native(p)),
+  );
   const rawPath = process.env.PATH ?? "";
   const dirs = rawPath.split(path.delimiter).filter(Boolean);
   for (const dir of dirs) {
@@ -26,7 +36,7 @@ export function which(name: string): string | null {
       const full = path.join(dir, candidate);
       try {
         const stat = fs.statSync(full);
-        if (stat.isFile()) {
+        if (stat.isFile() && !excluded.has(fs.realpathSync.native(full))) {
           return full;
         }
       } catch {

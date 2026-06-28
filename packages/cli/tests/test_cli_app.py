@@ -25,15 +25,15 @@ def test_help_includes_phase_1_commands(
     assert "notifications" in output
 
 
-def test_project_scripts_define_logion_and_lgn() -> None:
-    """pyproject.toml defines both logion and lgn entrypoints."""
+def test_project_scripts_define_logion_entrypoint() -> None:
+    """pyproject.toml defines the logion entrypoint."""
     data = (_HERE / "pyproject.toml").read_text()
     import tomllib
 
     parsed = tomllib.loads(data)
     scripts = parsed["project"]["scripts"]
     assert scripts["logion"] == "cli.main:main"
-    assert scripts["lgn"] == "cli.main:main"
+    assert set(scripts) == {"logion"}
 
 
 def test_version_uses_package_metadata(

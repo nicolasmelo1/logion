@@ -12,8 +12,8 @@ pip install logion-cli
 ## Quick start
 
 ```bash
-lgn --help
-lgn courses get <COURSE_ID>
+logion --help
+logion courses get <COURSE_ID>
 ```
 
 ## License
