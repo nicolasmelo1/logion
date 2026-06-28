@@ -20,6 +20,7 @@ from cli.commands import (
     recall,
     reports,
     skills,
+    update,
 )
 from cli.commands import (
     credits as credits_mod,
@@ -63,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     bounties.register(subparsers)
     skills.register(subparsers)
     recall.register(subparsers)
+    update.register(subparsers)
 
     # Top-level `logion onboarding` alias — same handler as
     # `logion identity onboarding`.

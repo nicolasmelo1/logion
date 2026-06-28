@@ -157,8 +157,8 @@ def test_install_does_not_claim_cli_only() -> None:
 
 
 def test_release_note_is_honest_about_availability() -> None:
-    # Critical: until the public repo work, published releases, and
-    # ``installer-v1`` all land, the curl path 302s to a 404. The hero status
+    # Critical: until the public repo work and public install path both land,
+    # the curl path can 302 to a 404. The hero status
     # line must NOT claim the install works immediately, and must carry a
     # forward-looking availability signal. Drop the forward signal only once
     # the public install path is actually live.

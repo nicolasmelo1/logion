@@ -239,10 +239,10 @@ def test_installer_asset_redirects_to_github_release(asset: str) -> None:
 
     assert response.status_code == 302
     location = response.headers["location"]
-    assert location.startswith(
-        "https://github.com/nicolasmelo1/logion/releases/download/"
+    assert location == (
+        "https://raw.githubusercontent.com/nicolasmelo1/logion/main/"
+        f"scripts/{asset}"
     )
-    assert location.endswith(f"/{asset}")
 
 
 @pytest.mark.parametrize("channel", ["stable", "latest"])
@@ -271,36 +271,6 @@ def test_unknown_manifest_channel_is_404() -> None:
 def test_installer_routes_do_not_shadow_content_routes() -> None:
     for path in ("/", "/pricing", "/terms", "/privacy"):
         assert client.get(path).status_code == 200, path
-
-
-@pytest.mark.parametrize("bad_tag", ["bad tag", "../../etc", "a/b", "tag$x"])
-def test_invalid_installer_tag_is_rejected(
-    monkeypatch: pytest.MonkeyPatch, bad_tag: str
-) -> None:
-    # A malformed LOGION_INSTALLER_TAG must fail closed (no redirect to an
-    # attacker-influenced or path-traversing GitHub URL), not 302 blindly.
-    monkeypatch.setattr("landing.main.INSTALLER_TAG", bad_tag)
-    response = client.get("/install.sh", follow_redirects=False)
-    assert response.status_code == 500
-
-
-def test_custom_installer_tag_is_honored() -> None:
-    # A routine version bump is an env-var change (no code deploy): the tag
-    # flows straight into the redirect target.
-    import landing.main
-
-    original = landing.main.INSTALLER_TAG
-    try:
-        landing.main.INSTALLER_TAG = "installer-v9"
-        location = client.get("/install.sh", follow_redirects=False).headers[
-            "location"
-        ]
-        assert location == (
-            "https://github.com/nicolasmelo1/logion/releases/download/"
-            "installer-v9/install.sh"
-        )
-    finally:
-        landing.main.INSTALLER_TAG = original
 
 
 def test_og_image_asset_is_served() -> None:
