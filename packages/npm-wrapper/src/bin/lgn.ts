@@ -9,7 +9,7 @@ const target = which("lgn") ?? which("logion");
 if (!target) {
   process.stderr.write(
     "lgn/logion binary not found. Reinstall with " +
-      "`npm install -g @logion/cli` or install directly via " +
+      "`npm install -g @logionsh/cli` or install directly via " +
       "`pipx install logion-cli`.\n",
   );
   process.exit(127);

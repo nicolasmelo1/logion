@@ -6,7 +6,7 @@
     "logion-cli": {
       "minimum_client": "0.1.0",
       "minimum_python": "3.12",
-      "npm_name": "@logion/cli",
+      "npm_name": "@logionsh/cli",
       "pypi_name": "logion-cli",
       "tag": "logion-cli-v0.1.0",
       "version": "0.1.0"

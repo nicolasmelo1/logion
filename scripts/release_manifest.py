@@ -28,7 +28,7 @@ PACKAGES = {
         "pyproject_dir": "packages/cli",
         "tag_prefix": "logion-cli-v",
         "pypi_name": "logion-cli",
-        "npm_name": "@logion/cli",
+        "npm_name": "@logionsh/cli",
         "minimum_python": "3.12",
         "minimum_client": True,
     },

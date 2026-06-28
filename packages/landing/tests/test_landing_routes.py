@@ -199,7 +199,7 @@ def test_homepage_includes_install_section() -> None:
     assert response.status_code == 200
     assert 'id="install"' in response.text
     assert "pipx install logion-cli" in response.text
-    assert "npx @logion/cli onboarding" in response.text
+    assert "npx @logionsh/cli onboarding" in response.text
 
 
 def test_homepage_includes_primary_curl_install_command() -> None:
@@ -217,7 +217,7 @@ def test_homepage_makes_curl_the_primary_install_path() -> None:
     response = client.get("/")
     curl_index = response.text.index("curl -fsSL")
     pipx_index = response.text.index("pipx install")
-    npx_index = response.text.index("npx @logion/cli")
+    npx_index = response.text.index("npx @logionsh/cli")
     assert curl_index < pipx_index < npx_index
     assert "install-option--primary" in response.text
 

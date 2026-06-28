@@ -1,13 +1,13 @@
-# @logion/cli
+# @logionsh/cli
 
 Thin npm wrapper around the canonical [`logion-cli`](https://pypi.org/project/logion-cli/) Python package.
 
 ## Install
 
 ```bash
-npm install -g @logion/cli
+npm install -g @logionsh/cli
 # or
-npx @logion/cli --help
+npx @logionsh/cli --help
 ```
 
 ## Requirements
@@ -25,7 +25,7 @@ On install, the postinstall hook:
 3. Shims the `logion` and `lgn` binaries onto your PATH.
 
 The pinned PyPI version is baked into the npm tarball at publish
-time, so `npm install -g @logion/cli@0.3.0` always installs the
+time, so `npm install -g @logionsh/cli@0.3.0` always installs the
 exact matching Python package.
 
 ## Why not pure Node?

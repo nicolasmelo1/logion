@@ -180,7 +180,7 @@ def test_alternate_entrypoints_still_run_onboarding() -> None:
         text = path.read_text(encoding="utf-8")
 
         assert "pipx install logion-cli" in text
-        assert "npx @logion/cli" in text
+        assert "npx @logionsh/cli" in text
         assert "onboarding" in text.lower()
 
 
