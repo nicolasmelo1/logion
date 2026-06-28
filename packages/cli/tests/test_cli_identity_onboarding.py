@@ -48,6 +48,8 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
     monkeypatch.chdir(proj)
     monkeypatch.delenv("LOGION_PASSWORD", raising=False)
+    # A stray companion-source from a dev-rig shell must not leak in.
+    monkeypatch.delenv("LOGION_COMPANION_BUNDLE_SOURCE", raising=False)
     identity = FakeIdentityResource()
     monkeypatch.setattr(
         "cli._context.LogionClient",
@@ -266,7 +268,10 @@ def test_onboarding_autodetect_no_harness_is_noted(
     (env.logion_home / "credentials.json").write_text(
         json.dumps({"schema_version": 1, "user_id": "u1"})
     )
-    monkeypatch.setattr("cli.commands.identity._autopost.detect_present", list)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    monkeypatch.setattr(
+        "cli.commands.identity._harness_select.detect_present", list
+    )
     code = main([
         "identity",
         "onboarding",
@@ -321,6 +326,168 @@ def _make_bundle(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return bundle
+
+
+def _make_tarball(tmp_path: Path) -> Path:
+    """Build a companion tarball with the real top-level prefix dir.
+
+    Mirrors ``package_skill.py``: files live under
+    ``logion-marketplace-companion-<version>/`` inside the archive.
+    """
+    import tarfile
+
+    bundle = _make_bundle(tmp_path)
+    tarball = tmp_path / "logion-marketplace-companion-0.1.0.tar.gz"
+    with tarfile.open(tarball, "w:gz") as tf:
+        tf.add(bundle, arcname="logion-marketplace-companion-0.1.0")
+    return tarball
+
+
+def test_onboarding_companion_from_tarball(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tarball = _make_tarball(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(tarball),
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+    assert code == 0
+    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+
+
+def test_onboarding_companion_from_dir_holding_tarball(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The dev rig points the source at a dir that holds the tarball.
+    tarball = _make_tarball(tmp_path)
+    holder = tmp_path / "companion-bundle"
+    holder.mkdir()
+    tarball.rename(holder / tarball.name)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(holder),
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+    assert code == 0
+    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+
+
+def test_onboarding_interactive_selects_subset(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cli._harness import get_adapter
+
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda *_a, **_k: "1")
+    monkeypatch.setattr(
+        "cli.commands.identity._harness_select.detect_present",
+        lambda: [get_adapter("claude-code"), get_adapter("codex")],
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--json",
+    ])
+    assert code == 0
+    # Only the picked harness (claude-code) is configured.
+    settings = json.loads((env.home / ".claude" / "settings.json").read_text())
+    assert MATCHER in settings["permissions"]["allow"]
+    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    # codex was offered but not picked → untouched.
+    assert not (env.home / ".codex" / "config.toml").exists()
+
+
+def test_onboarding_repeated_harness_targets_multiple(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--harness",
+        "claude-code",
+        "--harness",
+        "codex",
+        "--json",
+    ])
+    assert code == 0
+    data = _stdout_data(capsys)
+    granted = {h["harness"] for h in data["autopost"]["harnesses"]}
+    assert granted == {"claude-code", "codex"}
+
+
+def test_onboarding_interactive_empty_selection_skips(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cli._harness import get_adapter
+
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda *_a, **_k: "")
+    monkeypatch.setattr(
+        "cli.commands.identity._harness_select.detect_present",
+        lambda: [get_adapter("claude-code")],
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--json",
+    ])
+    assert code == 0
+    data = _stdout_data(capsys)
+    assert data["autopost"]["harnesses"] == []
+    assert not (env.home / ".claude" / "skills" / "logion").exists()
 
 
 def test_onboarding_installs_companion_into_skill_dir(

@@ -14,7 +14,6 @@ import argparse
 import sys
 
 from cli._errors import print_err
-from cli._harness import adapter_names, detect_present, get_adapter
 from cli._harness.base import GrantResult, HarnessAdapter, HarnessConfigError
 
 
@@ -59,41 +58,22 @@ def resolve_optin(args: argparse.Namespace) -> bool:
     return decision
 
 
-def _target_adapters(args: argparse.Namespace) -> list[HarnessAdapter] | None:
-    """Resolve which harnesses to grant: ``--harness`` or auto-detected.
-
-    Returns ``None`` only when an explicit ``--harness`` is unknown —
-    the error message is printed by ``validate_explicit_harness``
-    before this function is reached, so we return ``None`` silently
-    to signal the hard error without duplicating the message.
-    """
-    if args.harness:
-        adapter = get_adapter(args.harness)
-        if adapter is None:
-            return None
-        return [adapter]
-    present = detect_present()
-    if not present:
-        print_err(
-            "No supported agent harness detected, so autopost was not "
-            f"configured. Supported: {', '.join(adapter_names())}. "
-            "Re-run with --harness <name> to force."
-        )
-    return present
-
-
-def apply(args: argparse.Namespace) -> dict[str, object] | None:
+def apply(
+    args: argparse.Namespace,
+    adapters: list[HarnessAdapter],
+) -> dict[str, object] | None:
     """Grant the autopost permission across the resolved harnesses.
 
-    Returns a JSON-safe summary, or ``None`` on a hard error (unknown
-    harness or an unparseable harness config).
+    *adapters* is the harness selection resolved once by
+    ``select_harnesses`` and shared with the companion step. Returns a
+    JSON-safe summary, or ``None`` on an unparseable harness config.
     """
-    adapters = _target_adapters(args)
-    if adapters is None:
-        # Unknown harness explicitly requested — a hard error.
-        return None
     if not adapters:
-        # No supported harness detected; already noted to the user.
+        # No harness selected/detected — nothing to grant.
+        print_err(
+            "Auto-review consent saved, but no harness was selected, so "
+            "no permission rule was written."
+        )
         return {"enabled": True, "scope": args.autopost_scope, "harnesses": []}
 
     grants: list[GrantResult] = []

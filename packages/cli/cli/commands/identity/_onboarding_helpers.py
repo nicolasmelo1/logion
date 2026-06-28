@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 from cli._errors import print_err
-from cli._harness import adapter_names, detect_present, get_adapter
+from cli._harness import adapter_names, get_adapter
 from cli._harness.base import HarnessAdapter
 
 from ._companion import (
@@ -37,53 +37,51 @@ def empty_companion_summary() -> dict[str, object]:
 
 
 def validate_explicit_harness(args: argparse.Namespace) -> int | None:
-    """Return an exit code if an explicit ``--harness`` is invalid.
+    """Return an exit code if any explicit ``--harness`` is invalid.
 
+    ``--harness`` is repeatable, so every requested name is validated.
     Validated whenever ``--harness`` is set, *regardless of*
     ``--agent-dir``: ``--agent-dir`` only overrides the companion
-    target, but ``--harness`` still drives the autopost grant.  Skipping
-    this when ``--agent-dir`` is present let an unknown ``--harness``
-    slip through to ``_autopost.apply`` (which returns ``None`` →
-    exit 2) with no clear message.
+    target, but ``--harness`` still drives the autopost grant and the
+    harness selection.
     """
-    requested = getattr(args, "harness", None)
-    if requested and get_adapter(requested) is None:
-        print_err(
-            f"Error: unknown harness '{requested}'. "
-            f"Supported: {', '.join(adapter_names())}."
-        )
-        return 2
+    requested = getattr(args, "harness", None) or []
+    for name in requested:
+        if get_adapter(name) is None:
+            print_err(
+                f"Error: unknown harness '{name}'. "
+                f"Supported: {', '.join(adapter_names())}."
+            )
+            return 2
     return None
 
 
 def run_companion_step(
     args: argparse.Namespace,
+    adapters: list[HarnessAdapter],
 ) -> tuple[dict[str, object], int | None]:
     """Run the companion install step.
 
     Returns ``(summary_dict, exit_code_or_none)``.  A non-None exit
     code means the caller should return it immediately.
 
-    When multiple harnesses are auto-detected, the companion is
-    installed into **every** detected harness, matching autopost's
-    behaviour of granting across all present harnesses.  An explicit
-    ``--harness`` or ``--agent-dir`` restricts the target to one.
+    *adapters* is the harness selection resolved once by
+    ``select_harnesses``; the companion is installed into each. An
+    explicit ``--agent-dir`` overrides the target to that single skill
+    dir (a ``CustomPathHarness``), independent of the selection.
     """
     if getattr(args, "no_companion", False):
         return empty_companion_summary(), None
 
-    try:
-        adapters = resolve_target_adapters(args)
-    except CompanionNotFoundError:
-        return empty_companion_summary(), 2
+    targets = companion_targets(args, adapters)
 
-    if not adapters:
+    if not targets:
         print_err(
-            "No supported agent harness detected, so the companion "
-            "bundle was not installed. Re-run with --harness <name> "
-            "or --agent-dir <path>."
+            "No agent harness selected, so the companion bundle was not "
+            "installed. Re-run with --harness <name> or --agent-dir <path>."
         )
         return empty_companion_summary(), None
+    adapters = targets
 
     # Install the companion into each resolved adapter.  The canonical
     # install (manifest + content hash) happens once per (course_id,
@@ -152,30 +150,19 @@ def ensure_symlink(
         )
 
 
-def resolve_target_adapters(
+def companion_targets(
     args: argparse.Namespace,
+    adapters: list[HarnessAdapter],
 ) -> list[HarnessAdapter]:
     """Resolve the adapter(s) for the companion step.
 
-    Returns a list (possibly empty).  An explicit but unknown
-    ``--harness`` is a hard error (raised below), not a silent skip.
-
-    When no explicit harness or agent-dir is given, auto-detected
-    harnesses are returned as a list — the companion is installed
-    into all of them, matching autopost's multi-harness behaviour.
+    ``--agent-dir`` overrides the resolved selection with a single
+    ``CustomPathHarness``; otherwise the shared *adapters* selection is
+    used as-is.
     """
-    from cli._harness.custom import CustomPathHarness
-
     agent_dir = getattr(args, "agent_dir", None)
     if agent_dir:
+        from cli._harness.custom import CustomPathHarness
+
         return [CustomPathHarness(Path(agent_dir).expanduser())]
-
-    harness = getattr(args, "harness", None)
-    if harness:
-        adapter = get_adapter(harness)
-        if adapter is None:
-            # Message already printed by validate_explicit_harness.
-            raise CompanionNotFoundError(f"unknown harness: {harness}")
-        return [adapter]
-
-    return detect_present()
+    return adapters

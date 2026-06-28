@@ -16,6 +16,7 @@ from cli._output import emit_json
 
 from . import _autopost
 from ._closing_copy import CLOSING_COPY, ONBOARDING_NEXT_STEPS
+from ._harness_select import select_harnesses
 from ._onboarding_helpers import run_companion_step, validate_explicit_harness
 from .handlers import API_KEY_WARNING, _field, _resolve_password
 
@@ -131,8 +132,13 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     if rc is not None:
         return rc
 
+    # Resolve the harness(es) once (explicit --harness, an interactive
+    # pick, or all detected) and apply the same choice to both the
+    # auto-review grant and the companion install.
+    adapters = select_harnesses(args)
+
     if _autopost.resolve_optin(args):
-        autopost = _autopost.apply(args)
+        autopost = _autopost.apply(args, adapters)
         if autopost is None:
             return 2
         summary["autopost"] = autopost
@@ -143,7 +149,7 @@ def handle_onboarding(args: argparse.Namespace) -> int:
         )
         summary["autopost"] = {"enabled": False}
 
-    companion_summary, rc = run_companion_step(args)
+    companion_summary, rc = run_companion_step(args, adapters)
     if rc is not None:
         return rc
     summary["companion"] = companion_summary
@@ -201,9 +207,13 @@ def register_onboarding(sub: argparse._SubParsersAction) -> None:
     )
     parser.add_argument(
         "--harness",
+        action="append",
         default=None,
+        metavar="NAME",
         help=(
-            "Target a specific harness (default: auto-detect). "
+            "Target a specific harness; repeat for several "
+            "(e.g. --harness claude-code --harness codex). Omit in an "
+            "interactive terminal to pick from detected harnesses. "
             f"Supported: {', '.join(adapter_names())}."
         ),
     )
