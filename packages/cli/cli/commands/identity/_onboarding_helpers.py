@@ -119,7 +119,11 @@ def run_companion_step(
     return result, None
 
 
-def ensure_symlink(adapter: HarnessAdapter, install_dest: Path) -> None:
+def ensure_symlink(
+    adapter: HarnessAdapter,
+    install_dest: Path,
+    skill_name: str | None = None,
+) -> None:
     """Symlink ``install_dest`` into ``adapter.skill_dir()``.
 
     Uses the existing ``create_symlink`` helper so we share the same
@@ -135,7 +139,7 @@ def ensure_symlink(adapter: HarnessAdapter, install_dest: Path) -> None:
     """
     from cli.commands.skills._agent_symlink import create_symlink
 
-    skill_name = COMPANION_COURSE_ID
+    skill_name = skill_name or COMPANION_COURSE_ID
     target_skill_dir = adapter.skill_dir()
     try:
         create_symlink(target_skill_dir, skill_name, install_dest)

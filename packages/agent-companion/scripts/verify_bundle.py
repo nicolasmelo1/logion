@@ -22,6 +22,7 @@ import tarfile
 from pathlib import Path
 
 BUNDLE_KIND = "logion-marketplace-companion"
+SKILL_NAME = "logion"
 
 REQUIRED_TOP_FILES = [
     "SKILL.md",
@@ -212,10 +213,10 @@ def _check_manifest_top_level(manifest: dict, errors: list[str]) -> None:
             f"got {type(manifest['minimum_cli_version']).__name__}"
         )
 
-    if manifest.get("skill_name") != BUNDLE_KIND:
+    if manifest.get("skill_name") != SKILL_NAME:
         errors.append(
             f"manifest.json skill_name must be "
-            f"'{BUNDLE_KIND}', got "
+            f"'{SKILL_NAME}', got "
             f"'{manifest.get('skill_name')}'"
         )
 

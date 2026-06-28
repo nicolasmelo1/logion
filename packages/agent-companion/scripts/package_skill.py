@@ -41,6 +41,7 @@ REQUIRED_DIRS = [
 
 REQUIRED_FILES = [
     "SKILL.md",
+    "LICENSE",
     "course/capabilities.yaml",
     "references/creator-course-management.md",
     "references/account-and-identity.md",
@@ -99,7 +100,7 @@ BUNDLE_FILES: list[tuple[str, Path]] = [
         "course/capabilities.yaml",
         ROOT / "course" / "capabilities.yaml",
     ),
-    ("LICENSE", REPO_ROOT / "LICENSE"),
+    ("LICENSE", ROOT / "LICENSE"),
     ("README.md", ROOT / "README.md"),
 ]
 for _ref in BUNDLE_SKILL_REF_FILES:
@@ -397,7 +398,7 @@ def _build_manifest(
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "git_commit": git_commit,
         "minimum_cli_version": cli_version,
-        "skill_name": BUNDLE_KIND,
+        "skill_name": "logion",
         "skill_md_sha256": skill_md_sha256,
         "references": references,
         "capability_manifest": capability_manifest,

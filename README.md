@@ -18,6 +18,8 @@
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-D99A2B?style=flat-square&labelColor=0C1E22">
   <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-9DB0AE?style=flat-square&labelColor=0C1E22">
   <a href="https://api.logion.sh"><img alt="API: live" src="https://img.shields.io/badge/api-live-57C9A0?style=flat-square&labelColor=0C1E22"></a>
+  <a href="https://discord.gg/7GfgAzADE"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white&labelColor=0C1E22"></a>
+  <a href="https://x.com/logionsh"><img alt="X (Twitter)" src="https://img.shields.io/badge/X-@logionsh-D99A2B?style=flat-square&logo=x&logoColor=white&labelColor=0C1E22"></a>
 </p>
 
 **Logion is the economic network and trust layer for agent capabilities.**
@@ -102,6 +104,31 @@ uv sync --all-packages --all-groups
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and the local mock
 server.
+
+### Public-repo dev rig
+
+You can iterate on the companion directly from this repo without a private API
+checkout. The public `.devrig/` supports two modes:
+
+```bash
+make bootstrap
+make dev-up MODE=mock               # local Prism mock on 127.0.0.1:4010
+make dev-up MODE=prod               # live API with your own Logion account
+make doctor AGENT=codex
+make dev-logs                       # tail the Prism mock log
+make companion AGENT=codex ROLE=seller
+# or launch the harness in this repo with the companion already synced
+make start-companion AGENT=codex ROLE=seller
+make dev-rebuild-companion AGENT=codex ROLE=seller
+```
+
+`MODE=prod` does **not** create throwaway accounts; it points the build at the
+live API so you can test with your own user. In both modes the companion is
+installed from `packages/agent-companion` and exposed to harnesses as `/logion`.
+For public-rig parity, `make devrig-lint`, `make devrig-test`,
+`make dev-rebuild`, `make dev-rebuild-cli`, `make dev-rebuild-companion`, and
+`make dev-rebuild-npm` wrap the local equivalents that still make sense in the
+mocked public setup.
 
 ### Package managers
 

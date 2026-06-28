@@ -1,5 +1,10 @@
 SHELL := /bin/bash
 ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+DEVRIG_ENV := $(ROOT)/.devrig/devrig.env
+MODE ?= mock
+AGENT ?= codex
+ROLE ?= seller
+LOGION_DEVRIG_API_BASE_URL ?=
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
@@ -9,7 +14,9 @@ ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
-	scanners-lint scanners-test social-lint social-test
+	scanners-lint scanners-test social-lint social-test \
+	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
+	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm
 
 lint:
 	uv run ruff check packages/
@@ -43,7 +50,13 @@ install-hooks:
 	@echo "Configured Git hooks path to .githooks"
 
 mock:
-	npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 & echo $$! > .prism.pid
+	@mkdir -p .devrig
+	@if [ -f .prism.pid ] && kill -0 $$(cat .prism.pid) 2>/dev/null; then \
+		echo "Prism mock already running on http://127.0.0.1:4010"; \
+	else \
+		npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010 > .devrig/prism.log 2>&1 & echo $$! > .prism.pid; \
+		echo "Started Prism mock on http://127.0.0.1:4010 (log: .devrig/prism.log)"; \
+	fi
 
 mock-stop:
 	@if [ -f .prism.pid ]; then kill $$(cat .prism.pid) 2>/dev/null || true; rm -f .prism.pid; fi
@@ -167,3 +180,47 @@ social-test:
 
 social-arch:
 	uv run pytest packages/social-management/tests/test_social_architecture.py -q --no-header
+
+bootstrap:
+	uv sync --all-packages --all-groups
+	uv run python scripts/devrig.py bootstrap
+
+dev-up:
+	uv run python scripts/devrig.py env --mode $(MODE) --role $(ROLE) $(if $(LOGION_DEVRIG_API_BASE_URL),--api-base-url $(LOGION_DEVRIG_API_BASE_URL),) --write $(DEVRIG_ENV)
+	@if [ "$(MODE)" = "mock" ]; then $(MAKE) mock; else echo "Using production API via personal Logion account"; fi
+
+dev-api:
+	@if [ "$(MODE)" = "prod" ]; then \
+		uv run python scripts/devrig.py env --mode prod --role $(ROLE) $(if $(LOGION_DEVRIG_API_BASE_URL),--api-base-url $(LOGION_DEVRIG_API_BASE_URL),) --write $(DEVRIG_ENV); \
+		echo "Production mode does not start a local API. Current base URL:"; \
+		grep LOGION_BASE_URL $(DEVRIG_ENV); \
+	else \
+		npx @stoplight/prism-cli mock contracts/openapi/v1.json --port 4010; \
+	fi
+
+doctor:
+	uv run python scripts/devrig.py doctor --env-file $(DEVRIG_ENV) --agent $(AGENT)
+
+companion:
+	uv run python scripts/devrig.py companion --env-file $(DEVRIG_ENV) --agent $(AGENT) --role $(ROLE)
+
+start-companion:
+	uv run python scripts/devrig.py launch --env-file $(DEVRIG_ENV) --agent $(AGENT) --role $(ROLE)
+
+clean-companion:
+	uv run python scripts/devrig.py clean
+
+dev-logs:
+	@if [ -f .devrig/prism.log ]; then tail -f .devrig/prism.log; else echo "No Prism log yet at .devrig/prism.log"; fi
+
+devrig-lint: lint
+
+devrig-test: test
+
+dev-rebuild: bootstrap clean-companion companion
+
+dev-rebuild-cli: bootstrap
+
+dev-rebuild-companion: clean-companion companion
+
+dev-rebuild-npm: npm-build

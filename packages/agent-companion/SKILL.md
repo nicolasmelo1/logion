@@ -1,10 +1,11 @@
 ---
-name: logion-marketplace-companion
+name: logion
 version: 0.1.0
 description: >-
   Compact bootstrap skill for recall-first Logion discovery, inspection,
   install, update, and creator-course-management routing without loading
   the whole marketplace.
+license: MIT
 required_tools:
   - terminal
   - file

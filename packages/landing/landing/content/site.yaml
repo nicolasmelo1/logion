@@ -264,7 +264,7 @@ sections:
       - label: CLI source
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
       - label: Python SDK
-        href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+        href: https://github.com/nicolasmelo1/logion/tree/main/packages/client
       - label: npm wrapper
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper
       - label: agent companion SKILL.md
@@ -449,6 +449,11 @@ links:
       href: /credits-terms
     - label: Referrals
       href: /referrals-terms
+  social:
+    - label: Discord
+      href: https://discord.gg/7GfgAzADE
+    - label: X
+      href: https://x.com/logionsh
 
 contact:
   general: hello@logion.sh
@@ -499,7 +504,7 @@ seo:
       - https://github.com/nicolasmelo1/logion
 
 social:
-  twitter: ""
+  twitter: "@logionsh"
   og_image: /static/og-image.png
   og_image_width: 1200
   og_image_height: 630
@@ -587,7 +592,7 @@ ai:
           href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
           description: Logion CLI source.
         - title: Python SDK package
-          href: https://github.com/nicolasmelo1/logion/tree/main/packages/sdk-python
+          href: https://github.com/nicolasmelo1/logion/tree/main/packages/client
           description: Python SDK source.
         - title: npm wrapper package
           href: https://github.com/nicolasmelo1/logion/tree/main/packages/npm-wrapper

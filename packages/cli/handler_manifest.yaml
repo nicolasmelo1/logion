@@ -113,6 +113,8 @@ commands:
     operations: [complete_upload_session]
   courses uploads create:
     operations: [create_upload_session]
+  courses uploads push:
+    operations: [get_course]
   courses versions get:
     operations: [get_course_version]
 

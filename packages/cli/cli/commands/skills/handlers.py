@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from cli._course_bundle import CourseBundleError, validate_course_bundle
 from cli._local_state import (
     LockHeldError,
     UnsafeIdentifierError,
@@ -104,7 +105,7 @@ def _validate_pre_install(
     return 0
 
 
-def handle_skills_install(args: argparse.Namespace) -> int:
+def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
     """Install a skill bundle from a local source directory."""
     home = resolve_target(args)
     source_dir = args.source.resolve()
@@ -116,6 +117,11 @@ def handle_skills_install(args: argparse.Namespace) -> int:
             f"ERROR: source directory must contain SKILL.md: {source_dir}",
             file=sys.stderr,
         )
+        return 1
+    try:
+        validate_course_bundle(source_dir)
+    except CourseBundleError as exc:
+        print(f"ERROR: invalid course bundle: {exc}", file=sys.stderr)
         return 1
 
     # Ask about the symlink up-front, before any filesystem writes.

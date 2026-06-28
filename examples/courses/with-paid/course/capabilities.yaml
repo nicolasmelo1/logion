@@ -1,0 +1,25 @@
+# course/capabilities.yaml — paid-course example
+
+version: 1
+
+summary: >-
+  Paid-course example that reads local audit notes and writes a structured
+  report. Demonstrates a benign paid bundle with explicit local capabilities.
+
+tools:
+  - file
+  - terminal
+
+filesystem:
+  read:
+    - .
+  write:
+    - ./outputs
+
+human_approval:
+  required: false
+
+runtime:
+  requires:
+    bins:
+      - python3

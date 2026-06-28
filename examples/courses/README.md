@@ -58,3 +58,11 @@ The line: a course may **assume** an environment, but it may **not extend** the 
 ## License
 
 MIT — same as the rest of `logion/`.
+
+
+## Licensing note
+
+The baseline examples in this directory are free-course templates, so they
+ship with `MIT` licenses. The paid-course example at `with-paid/` ships with
+ the Logion Standard Course License v1.0 to demonstrate the paid publication
+ path.

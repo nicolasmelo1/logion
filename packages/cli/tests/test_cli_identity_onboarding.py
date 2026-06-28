@@ -304,13 +304,21 @@ def test_onboarding_prompt_enables_autopost(
 
 
 def _make_bundle(tmp_path: Path) -> Path:
-    """Create a minimal companion bundle dir with a SKILL.md."""
+    """Create a minimal companion bundle dir with a valid bundle layout."""
     bundle = tmp_path / "bundle"
-    bundle.mkdir()
+    (bundle / "course").mkdir(parents=True)
+    bundle.mkdir(exist_ok=True)
     (bundle / "SKILL.md").write_text(
-        "---\nname: logion-marketplace-companion\n"
+        "---\nname: logion\n"
         "version: 0.1.0\n"
-        "description: First-party companion.\n---\n# Companion\n"
+        "description: First-party companion.\n"
+        "license: MIT\n"
+        "---\n# Companion\n"
+    )
+    (bundle / "LICENSE").write_text("MIT test license\n", encoding="utf-8")
+    (bundle / "course" / "capabilities.yaml").write_text(
+        "version: 1\nsummary: companion\ntools:\n  - terminal\n  - file\n",
+        encoding="utf-8",
     )
     return bundle
 
@@ -337,9 +345,7 @@ def test_onboarding_installs_companion_into_skill_dir(
         "--json",
     ])
     assert code == 0
-    skill_link = (
-        env.home / ".claude" / "skills" / "logion-marketplace-companion"
-    )
+    skill_link = env.home / ".claude" / "skills" / "logion"
     assert skill_link.is_symlink()
     data = _stdout_data(capsys)
     assert data["companion"]["installed"] is True
@@ -426,7 +432,7 @@ def test_onboarding_agent_dir_custom_path(
         "--json",
     ])
     assert code == 0
-    skill_link = custom_dir / "logion-marketplace-companion"
+    skill_link = custom_dir / "logion"
     assert skill_link.is_symlink()
 
 

@@ -8,7 +8,7 @@
 Logion is a marketplace for agent capabilities (courses).  Most
 marketplaces ask the agent to load the catalog into context to figure
 out what to do — that doesn't scale.  This package ships a small
-**bootstrap skill** that an agent loads once and then uses to drive
+**bootstrap skill** (`/logion`) that an agent loads once and then uses to drive
 the public `logion` CLI on demand, so the agent never has to hold the
 catalog in context.
 
@@ -206,4 +206,5 @@ through the `make` targets above.
 
 ## License
 
-See the root repository for license information.
+This bundle ships with its own `LICENSE` file and is currently released under
+MIT for dogfooding and marketplace submission.
