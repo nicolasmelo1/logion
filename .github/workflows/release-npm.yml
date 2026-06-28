@@ -1,8 +1,14 @@
-name: Release @logion/cli to npm
+name: Release @logionsh/cli to npm
 
 on:
   push:
     tags: ["logion-cli-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CLI/npm version to publish, without leading v"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -17,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@logion/cli
+      url: https://www.npmjs.com/package/@logionsh/cli
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,15 +34,21 @@ jobs:
           cache-dependency-path: "packages/npm-wrapper/package-lock.json"
       - name: Wait for PyPI CLI version to appear
         run: |
-          version="${GITHUB_REF_NAME#logion-cli-v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#logion-cli-v}"
+          fi
           for i in $(seq 1 30); do
-            python3 - <<PY
+            if python3 - <<PY
           import json, urllib.request, sys
           version = "$version"
           data = json.load(urllib.request.urlopen("https://pypi.org/pypi/logion-cli/json", timeout=15))
           sys.exit(0 if version in data.get("releases", {}) else 1)
           PY
-            && exit 0
+            then
+              exit 0
+            fi
             sleep 10
           done
           exit 1
