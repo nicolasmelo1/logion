@@ -631,16 +631,22 @@ install_companion() {
     _cli_tag="${2:-logion-cli-v$_version}"
     _manifest="$INSTALL_TMPDIR/manifest.json"
 
-    # Read companion bundle URL and sha256 from manifest under "logion-companion"
+    # Read companion bundle URL, sha256, and release tag from manifest under
+    # "logion-companion". The companion ships under its own release tag, which
+    # can differ from the CLI tag passed by install.sh.
     _bundle_url="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.url')"
     _bundle_sha="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.sha256')"
+    _comp_tag="$(manifest_get_field "$_manifest" '.packages["logion-companion"].tag')"
+    if [ -z "$_comp_tag" ] || [ "$_comp_tag" = "null" ]; then
+        _comp_tag="logion-companion-v$_version"
+    fi
 
     # Translate release:// URLs
-    _bundle_url="$(resolve_url "$_bundle_url" "$_cli_tag")"
+    _bundle_url="$(resolve_url "$_bundle_url" "$_comp_tag")"
 
     if [ -z "$_bundle_url" ] || [ "$_bundle_url" = "null" ]; then
         # Construct tarball URL from known pattern
-        _bundle_url="https://github.com/nicolasmelo1/logion/releases/download/$_cli_tag/logion-marketplace-companion-$_version.tar.gz"
+        _bundle_url="https://github.com/nicolasmelo1/logion/releases/download/$_comp_tag/logion-marketplace-companion-$_version.tar.gz"
     fi
     if [ -z "$_bundle_sha" ] || [ "$_bundle_sha" = "null" ]; then
         warn "No SHA-256 found in manifest for companion; verification will be skipped"

@@ -58,3 +58,56 @@ _make_prefixed_bundle() {
     [ "$status" -eq 0 ]
     [ -d "${WORK}/dest" ]
 }
+
+@test "install_companion resolves bundle URLs with the companion tag" {
+    INSTALL_TMPDIR="${WORK}"
+    INSTALL_DRY_RUN=1
+    cat > "${WORK}/manifest.json" <<'JSON'
+{
+  "packages": {
+    "logion-cli": {
+      "tag": "logion-cli-v0.1.2",
+      "version": "0.1.2"
+    },
+    "logion-companion": {
+      "bundle": {
+        "url": "release://logion-marketplace-companion-0.1.2.tar.gz"
+      },
+      "tag": "logion-companion-v0.1.2",
+      "version": "0.1.2"
+    }
+  }
+}
+JSON
+
+    run install_companion "0.1.2" "logion-cli-v0.1.2"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/nicolasmelo1/logion/releases/download/logion-companion-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
+    [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
+}
+
+@test "install_companion fallback URL uses the companion tag" {
+    INSTALL_TMPDIR="${WORK}"
+    INSTALL_DRY_RUN=1
+    cat > "${WORK}/manifest.json" <<'JSON'
+{
+  "packages": {
+    "logion-cli": {
+      "tag": "logion-cli-v0.1.2",
+      "version": "0.1.2"
+    },
+    "logion-companion": {
+      "tag": "logion-companion-v0.1.2",
+      "version": "0.1.2"
+    }
+  }
+}
+JSON
+
+    run install_companion "0.1.2" "logion-cli-v0.1.2"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/nicolasmelo1/logion/releases/download/logion-companion-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
+    [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
+}
