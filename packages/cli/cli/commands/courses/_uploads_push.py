@@ -1,27 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Push bytes to S3 for a previously created upload session.
-
-This is the missing primitive between ``courses uploads create`` (which
-returns presigned URLs) and ``courses uploads complete`` (which seals
-the version once every PUT has landed).  Without it, authors had to
-write their own ``curl``/``requests`` loop against the presigned URLs.
-
-Design notes
-------------
-- The handler is intentionally a *primitive*: it does not call ``create``
-  or ``complete``.  Composing the three is the job of a higher-level
-  ``publish`` workflow.  Keeping each step a primitive lets agents
-  retry exactly the file that failed without re-issuing presigned URLs
-  or sealing a half-uploaded version.
-- The session JSON is whatever ``create_upload_session`` returns.  The
-  caller can pass it via ``--session-file PATH`` or ``--session-file -``
-  to read from stdin.
-- Local files are located via the same ``--file [PATH=]LOCAL`` syntax
-  as ``uploads create`` for consistency.  The ``PATH`` half is matched
-  against each session entry's ``filename``.
-- Network failures are surfaced as exit code 6 with a per-file
-  breakdown so the caller can re-run with only the failed files.
-"""
+"""Push bytes to S3 for a previously created upload session."""
 
 from __future__ import annotations
 
@@ -33,9 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from cli._config import resolve_config_from_args
+from cli._context import make_client
 from cli._errors import print_err, validate_uuid_id
 from cli._output import emit_json
 
+from ._upload_bundle_validation import validate_bundle_files_for_upload
 from .uploads import _resolve_upload_files
 
 # Exit codes used by ``handle_uploads_push``.
@@ -210,6 +190,13 @@ def _emit_results(
     print(f"Pushed {len(results) - failures}/{len(results)} files.")
 
 
+def _course_price_cents(course: Any) -> int:
+    """Read ``price_cents`` from a SDK response object or plain dict."""
+    if isinstance(course, dict):
+        return int(course.get("price_cents", 0) or 0)
+    return int(getattr(course, "price_cents", 0) or 0)
+
+
 def handle_uploads_push(args: argparse.Namespace) -> int:
     """Push every file in the upload session to its presigned URL."""
     rc, uploads, file_map = _prepare_push(args)
@@ -217,6 +204,23 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
         return rc
 
     config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        course = client.v1.courses.get(course_id=args.course_id)
+    except Exception as exc:
+        print_err(f"could not fetch course metadata: {exc}")
+        return EXIT_BAD_ARGS
+    finally:
+        client.close()
+
+    ok, error = validate_bundle_files_for_upload(
+        file_map=file_map,
+        paid=_course_price_cents(course) > 0,
+    )
+    if not ok:
+        print_err(f"invalid course bundle for upload: {error}")
+        return EXIT_BAD_ARGS
+
     results: list[dict[str, Any]] = []
     failures = 0
     # COMMON_PARSER leaves --max-retries / --timeout as None when the

@@ -77,9 +77,8 @@ def register_capabilities(subparsers: argparse._SubParsersAction) -> None:
         choices=["mit", "apache-2.0", "logion-standard-course-v1"],
         default=None,
         help=(
-            "Also write bundle-dir/LICENSE from the selected template. "
-            "Use logion-standard-course-v1 for the marketplace "
-            "default paid-course license."
+            "Write bundle-dir/LICENSE from the selected template. "
+            "When omitted, scaffold writes MIT by default."
         ),
     )
     scaffold.add_argument(

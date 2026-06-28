@@ -1848,6 +1848,24 @@ def test_courses_capabilities_scaffold_writes_license_template(
     assert "Logion Standard Course License v1.0" in license_text
 
 
+def test_courses_capabilities_scaffold_writes_mit_license_by_default(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = tmp_path / "bundle"
+    code = main([
+        "courses",
+        "capabilities",
+        "scaffold",
+        "--bundle-dir",
+        str(bundle),
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "LICENSE" in out
+    license_text = (bundle / "LICENSE").read_text(encoding="utf-8")
+    assert "MIT License" in license_text
+
+
 def test_courses_capabilities_scaffold_rejects_license_template_without_bundle_dir(  # noqa: E501
     capsys: pytest.CaptureFixture[str],
 ) -> None:

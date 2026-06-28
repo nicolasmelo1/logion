@@ -104,6 +104,11 @@ def _license_template_text(template_name: str) -> str:
     )
 
 
+def _default_license_template(license_template: str | None) -> str:
+    """Choose a license template when scaffolding a local bundle."""
+    return license_template or "mit"
+
+
 def _serialize_manifest_yaml(manifest: dict[str, Any]) -> str:
     """Serialise a normalised manifest dict to YAML with a header."""
     body = yaml.safe_dump(
@@ -157,19 +162,7 @@ def _scaffold_from_skill(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text, encoding="utf-8")
     print(f"Wrote scaffold to {dest}")
-    if license_template is not None:
-        try:
-            _write_license_template(bundle_dir, license_template, force)
-        except FileExistsError:
-            license_path = bundle_dir / "LICENSE"
-            print(
-                f"Refusing to overwrite existing license: {license_path} "
-                "(pass --force to replace)",
-                file=sys.stderr,
-            )
-            return 2
-        print(f"Wrote scaffold to {bundle_dir / 'LICENSE'}")
-    return 0
+    return _write_scaffold_license(bundle_dir, license_template, force)
 
 
 def _write_license_template(
@@ -182,6 +175,30 @@ def _write_license_template(
     if dest.exists() and not force:
         raise FileExistsError(dest)
     dest.write_text(_license_template_text(template_name), encoding="utf-8")
+
+
+def _write_scaffold_license(
+    bundle_dir: Path,
+    license_template: str | None,
+    force: bool,
+) -> int:
+    """Write the bundle LICENSE file for scaffold flows."""
+    try:
+        _write_license_template(
+            bundle_dir,
+            _default_license_template(license_template),
+            force,
+        )
+    except FileExistsError:
+        license_path = bundle_dir / "LICENSE"
+        print(
+            f"Refusing to overwrite existing license: {license_path} "
+            "(pass --force to replace)",
+            file=sys.stderr,
+        )
+        return 2
+    print(f"Wrote scaffold to {bundle_dir / 'LICENSE'}")
+    return 0
 
 
 def _scaffold_template(
@@ -212,19 +229,7 @@ def _scaffold_template(
     # ``Path(str(...))`` just to call shutil.copyfile.
     dest.write_text(text, encoding="utf-8")
     print(f"Wrote scaffold to {dest}")
-    if license_template is not None:
-        try:
-            _write_license_template(bundle_dir, license_template, force)
-        except FileExistsError:
-            license_path = bundle_dir / "LICENSE"
-            print(
-                f"Refusing to overwrite existing license: {license_path} "
-                "(pass --force to replace)",
-                file=sys.stderr,
-            )
-            return 2
-        print(f"Wrote scaffold to {bundle_dir / 'LICENSE'}")
-    return 0
+    return _write_scaffold_license(bundle_dir, license_template, force)
 
 
 def handle_courses_capabilities_scaffold(

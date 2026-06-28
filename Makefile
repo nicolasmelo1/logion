@@ -15,7 +15,8 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	npm-test npm-pack npm-build \
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
 	scanners-lint scanners-test social-lint social-test \
-	bootstrap dev-up dev-api doctor companion start-companion clean-companion
+	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
+	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm
 
 lint:
 	uv run ruff check packages/
@@ -208,3 +209,18 @@ start-companion:
 
 clean-companion:
 	uv run python scripts/devrig.py clean
+
+dev-logs:
+	@if [ -f .devrig/prism.log ]; then tail -f .devrig/prism.log; else echo "No Prism log yet at .devrig/prism.log"; fi
+
+devrig-lint: lint
+
+devrig-test: test
+
+dev-rebuild: bootstrap clean-companion companion
+
+dev-rebuild-cli: bootstrap
+
+dev-rebuild-companion: clean-companion companion
+
+dev-rebuild-npm: npm-build

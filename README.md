@@ -113,14 +113,20 @@ make bootstrap
 make dev-up MODE=mock               # local Prism mock on 127.0.0.1:4010
 make dev-up MODE=prod               # live API with your own Logion account
 make doctor AGENT=codex
+make dev-logs                       # tail the Prism mock log
 make companion AGENT=codex ROLE=seller
 # or launch the harness in this repo with the companion already synced
 make start-companion AGENT=codex ROLE=seller
+make dev-rebuild-companion AGENT=codex ROLE=seller
 ```
 
 `MODE=prod` does **not** create throwaway accounts; it points the build at the
 live API so you can test with your own user. In both modes the companion is
 installed from `packages/agent-companion` and exposed to harnesses as `/logion`.
+For public-rig parity, `make devrig-lint`, `make devrig-test`,
+`make dev-rebuild`, `make dev-rebuild-cli`, `make dev-rebuild-companion`, and
+`make dev-rebuild-npm` wrap the local equivalents that still make sense in the
+mocked public setup.
 
 ### Package managers
 

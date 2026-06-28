@@ -1,7 +1,7 @@
 ---
 name: minimal
 description: A bare-minimum Logion course example. Use as a starting template when authoring a new skill that needs no tools, no network, no filesystem writes, and no env vars. Demonstrates the smallest valid SKILL.md plus capabilities.yaml pairing.
-license: Logion Standard Course License v1.0
+license: MIT
 ---
 
 # Minimal Logion Course

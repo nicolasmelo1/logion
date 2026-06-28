@@ -32,14 +32,55 @@ def version_id() -> str:
 
 @pytest.fixture
 def bundle(tmp_path: Path) -> dict[str, Path]:
-    """Create a tiny on-disk bundle: SKILL.md and one reference."""
+    """Create a tiny valid on-disk course bundle."""
     skill = tmp_path / "SKILL.md"
-    skill.write_text("body", encoding="utf-8")
-    ref = tmp_path / "references"
-    ref.mkdir()
-    usage = ref / "usage.md"
-    usage.write_text("how to use", encoding="utf-8")
-    return {"SKILL.md": skill, "references/usage.md": usage}
+    skill.write_text(
+        "---\nname: demo\nlicense: MIT\n---\n# Demo\n",
+        encoding="utf-8",
+    )
+    license_file = tmp_path / "LICENSE"
+    license_file.write_text("MIT test license\n", encoding="utf-8")
+    course_dir = tmp_path / "course"
+    course_dir.mkdir()
+    capabilities = course_dir / "capabilities.yaml"
+    capabilities.write_text(
+        "version: 1\nsummary: demo\ntools:\n  - file\n",
+        encoding="utf-8",
+    )
+    return {
+        "SKILL.md": skill,
+        "LICENSE": license_file,
+        "course/capabilities.yaml": capabilities,
+    }
+
+
+class _FakeCoursesResource:
+    def __init__(self, price_cents: int = 0) -> None:
+        self.price_cents = price_cents
+
+    def get(self, **_kwargs: Any) -> dict[str, Any]:
+        return {"price_cents": self.price_cents}
+
+
+class _FakeClient:
+    def __init__(self, price_cents: int = 0) -> None:
+        self.v1 = type(
+            "_V1",
+            (),
+            {"courses": _FakeCoursesResource(price_cents=price_cents)},
+        )()
+
+    def close(self) -> None:
+        pass
+
+
+def _patch_client(
+    monkeypatch: pytest.MonkeyPatch, *, price_cents: int = 0
+) -> None:
+    monkeypatch.setattr(
+        "cli.commands.courses._uploads_push.make_client",
+        lambda _config: _FakeClient(price_cents=price_cents),
+    )
 
 
 def _make_session(
@@ -114,8 +155,11 @@ class TestHappyPath:
         session = _make_session(course_id, version_id, bundle)
         session_path = tmp_path / "session.json"
         session_path.write_text(json.dumps(session), encoding="utf-8")
-
-        _patch_httpx_seq(monkeypatch, [_FakeResponse(200), _FakeResponse(200)])
+        _patch_client(monkeypatch)
+        _patch_httpx_seq(
+            monkeypatch,
+            [_FakeResponse(200), _FakeResponse(200), _FakeResponse(200)],
+        )
 
         rc = main([
             "courses",
@@ -128,11 +172,13 @@ class TestHappyPath:
             "--file",
             f"SKILL.md={bundle['SKILL.md']}",
             "--file",
-            f"references/usage.md={bundle['references/usage.md']}",
+            f"LICENSE={bundle['LICENSE']}",
+            "--file",
+            f"course/capabilities.yaml={bundle['course/capabilities.yaml']}",
         ])
         out = capsys.readouterr()
         assert rc == 0
-        assert "Pushed 2/2 files" in out.out
+        assert "Pushed 3/3 files" in out.out
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +213,7 @@ class TestValidation:
         ])
         captured = capsys.readouterr()
         assert rc == _uploads_push.EXIT_MISSING_FILES
-        assert "references/usage.md" in captured.err
+        assert "LICENSE" in captured.err
 
     def test_session_mismatch_course(
         self,
@@ -224,6 +270,39 @@ class TestValidation:
         assert rc == _uploads_push.EXIT_BAD_ARGS
         assert "not valid JSON" in captured.err
 
+    def test_paid_course_requires_logion_license(
+        self,
+        tmp_path: Path,
+        course_id: str,
+        version_id: str,
+        bundle: dict[str, Path],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        session = _make_session(course_id, version_id, bundle)
+        session_path = tmp_path / "session.json"
+        session_path.write_text(json.dumps(session), encoding="utf-8")
+        _patch_client(monkeypatch, price_cents=2500)
+
+        rc = main([
+            "courses",
+            "uploads",
+            "push",
+            course_id,
+            version_id,
+            "--session-file",
+            str(session_path),
+            "--file",
+            f"SKILL.md={bundle['SKILL.md']}",
+            "--file",
+            f"LICENSE={bundle['LICENSE']}",
+            "--file",
+            (f"course/capabilities.yaml={bundle['course/capabilities.yaml']}"),
+        ])
+        captured = capsys.readouterr()
+        assert rc == _uploads_push.EXIT_BAD_ARGS
+        assert "paid courses must ship" in captured.err
+
 
 # ---------------------------------------------------------------------------
 # Retry semantics
@@ -245,6 +324,12 @@ class TestRetries:
         )
         session_path = tmp_path / "session.json"
         session_path.write_text(json.dumps(session), encoding="utf-8")
+        _patch_client(monkeypatch)
+        monkeypatch.setattr(
+            _uploads_push,
+            "validate_bundle_files_for_upload",
+            lambda **_kwargs: (True, None),
+        )
 
         # First call: 403.  Must NOT be retried.
         calls = _patch_httpx_seq(
@@ -280,6 +365,12 @@ class TestRetries:
         )
         session_path = tmp_path / "session.json"
         session_path.write_text(json.dumps(session), encoding="utf-8")
+        _patch_client(monkeypatch)
+        monkeypatch.setattr(
+            _uploads_push,
+            "validate_bundle_files_for_upload",
+            lambda **_kwargs: (True, None),
+        )
 
         # Two 503s then a 200.
         calls = _patch_httpx_seq(
