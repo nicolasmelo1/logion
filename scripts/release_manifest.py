@@ -29,7 +29,7 @@ PACKAGES = {
         "pypi_name": "logion-cli",
         "npm_name": "@logionsh/cli",
         "minimum_python": "3.12",
-        "minimum_client": "0.1.1",
+        "minimum_client": "0.1.2",
     },
     "logion-client": {
         "pyproject_dir": "packages/client",
@@ -41,7 +41,7 @@ PACKAGES = {
         "pyproject_dir": "packages/agent-companion",
         "tag_prefix": "logion-companion-v",
         "minimum_python": "3.12",
-        "minimum_cli": "0.1.1",
+        "minimum_cli": "0.1.2",
     },
 }
 

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 //
-// postinstall.ts — detect Python, install logion-cli via pipx/uv/venv.
+// postinstall.ts — detect Python, install logion-cli into the npm-managed venv.
 //
 // Environment variables:
 //   LOGION_NPM_SKIP_INSTALL=1   — skip CLI install only (still handles companion)
-//   LOGION_NPM_FORCE_INSTALLER  — force "pipx", "uv", or "venv"
+//   LOGION_NPM_FORCE_INSTALLER  — force "pipx", "uv", or "venv" (default: venv)
 //   LOGION_NPM_PYTHON           — override Python binary path
 //   LOGION_NPM_SKIP_ONBOARDING=1 — do not print onboarding pointer
 //   LOGION_COMPANION_BUNDLE_SOURCE — directory containing companion tarball
@@ -26,7 +26,6 @@ const HOME = os.homedir();
 const LOGION_DIR = path.join(HOME, ".logion");
 const MANAGED_VENV_DIR = path.join(LOGION_DIR, "npm-managed-venv");
 const MARKER_PATH = path.join(LOGION_DIR, "npm-wrapper-installer.json");
-const LOCAL_BIN = path.join(HOME, ".local", "bin");
 const PLACEHOLDER_VERSION = "0.0.0-placeholder";
 
 interface InstallerMarker {
@@ -104,56 +103,16 @@ function venvBin(name: string): string {
   return path.join(MANAGED_VENV_DIR, "bin", name);
 }
 
-function linkOrCopy(src: string, dest: string): void {
-  if (fs.existsSync(dest)) {
-    fs.unlinkSync(dest);
-  }
-  try {
-    fs.symlinkSync(src, dest);
-  } catch {
-    // Windows without dev-mode/admin: fall back to copy.
-    fs.copyFileSync(src, dest);
-  }
-}
-
-function shimNamesFor(base: string): string[] {
-  return process.platform === "win32" ? [`${base}.exe`] : [base];
-}
-
 function installViaVenv(version: string, py: PythonInfo): void {
   log(`Installing logion-cli==${version} via managed venv...`);
-  runChecked(py.cmd, [...py.args, "-m", "venv", MANAGED_VENV_DIR]);
+  runChecked(py.cmd, [...py.args, "-m", "venv", "--clear", MANAGED_VENV_DIR]);
   runChecked(venvBin("pip"), ["install", `logion-cli==${version}`]);
-
-  fs.mkdirSync(LOCAL_BIN, { recursive: true });
-
-  for (const base of ["logion"] as const) {
-    const src = venvBin(base);
-    if (!fs.existsSync(src)) {
-      continue;
-    }
-    for (const destName of shimNamesFor(base)) {
-      const dest = path.join(LOCAL_BIN, destName);
-      try {
-        linkOrCopy(src, dest);
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        log(
-          `Warning: could not create shim ${dest}: ${msg}. ` +
-            `Add ${LOCAL_BIN} to PATH manually.`,
-        );
-      }
-    }
-  }
 }
 
-function verifyInstall(version: string): void {
-  const target = which("logion");
-  if (!target) {
-    log(
-      "Warning: logion not on PATH yet. " +
-        "Ensure your installer's bin directory is exported.",
-    );
+function verifyInstall(version: string, installer: Installer): void {
+  const target = installer === "venv" ? venvBin("logion") : which("logion");
+  if (!target || !fs.existsSync(target)) {
+    log("Warning: logion binary was not found after install.");
     return;
   }
   const r = spawnSync(target, ["--version"], {
@@ -174,12 +133,6 @@ function pickInstaller(forced: string | undefined): Installer | null {
   }
   if (forced !== undefined && forced.length > 0) {
     return null;
-  }
-  if (which("pipx")) {
-    return "pipx";
-  }
-  if (which("uv")) {
-    return "uv";
   }
   return "venv";
 }
@@ -223,10 +176,7 @@ function main(): void {
         "Install Python 3.12+ or set LOGION_NPM_PYTHON.",
     );
     log("See: https://www.python.org/downloads/");
-    log(
-      "Or set LOGION_NPM_SKIP_INSTALL=1 and install manually: " +
-        "pipx install logion-cli",
-    );
+    log("Or set LOGION_NPM_SKIP_INSTALL=1 to skip the Python CLI install.");
     process.exit(1);
   }
 
@@ -248,7 +198,7 @@ function main(): void {
   }
 
   writeMarker(installer, version);
-  verifyInstall(version);
+  verifyInstall(version, installer);
   maybePrintOnboardingPointer();
   log(`Installed logion-cli ${version} via ${installer}.`);
 }

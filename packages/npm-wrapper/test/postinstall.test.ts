@@ -44,6 +44,55 @@ function makeFakeLogionRecorder(dir: string, logPath: string): string {
   return binPath;
 }
 
+function makeFakeVenvPython(dir: string): string {
+  const binPath = path.join(
+    dir,
+    process.platform === "win32" ? "python.cmd" : "python",
+  );
+  if (process.platform === "win32") {
+    fs.writeFileSync(
+      binPath,
+      [
+        "@echo off",
+        'if "%1"=="-m" (',
+        "  set dest=%4",
+        String.raw`  mkdir "%dest%\Scripts" 2>nul`,
+        String.raw`  echo @echo off>"%dest%\Scripts\pip.exe"`,
+        String.raw`  echo echo pip install %%*>>"%dest%\Scripts\pip.exe"`,
+        String.raw`  echo @echo off>"%dest%\Scripts\logion.exe"`,
+        String.raw`  echo echo logion 0.1.0>>"%dest%\Scripts\logion.exe"`,
+        "  exit /b 0",
+        ")",
+        "echo Python 3.12.0",
+      ].join("\r\n"),
+    );
+  } else {
+    fs.writeFileSync(
+      binPath,
+      `#!/bin/sh
+if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
+  dest="$4"
+  mkdir -p "$dest/bin"
+  cat > "$dest/bin/pip" <<'EOF'
+#!/bin/sh
+echo "pip install $*"
+EOF
+  chmod +x "$dest/bin/pip"
+  cat > "$dest/bin/logion" <<'EOF'
+#!/bin/sh
+echo "logion 0.1.0"
+EOF
+  chmod +x "$dest/bin/logion"
+  exit 0
+fi
+echo "Python 3.12.0"
+`,
+      { mode: 0o755 },
+    );
+  }
+  return binPath;
+}
+
 function withPinnedVersion(fn: () => void): void {
   const original = fs.readFileSync(PKG_PATH, "utf8");
   const pkg = JSON.parse(original) as Record<string, unknown>;
@@ -178,6 +227,52 @@ describe("postinstall", () => {
 
         expect(r.status).toBe(0);
         expect(r.stderr.toString()).toContain("uv");
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("uses managed venv by default", () => {
+    withPinnedVersion(() => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-test-"));
+      try {
+        const binDir = path.join(tmp, "bin");
+        fs.mkdirSync(binDir, { recursive: true });
+        const pyPath = makeFakeVenvPython(binDir);
+
+        const r = spawnSync(
+          process.execPath,
+          [path.join(SCRIPTS_DIR, "postinstall.js")],
+          {
+            env: {
+              ...process.env,
+              LOGION_NPM_FORCE_INSTALLER: "",
+              LOGION_NPM_PYTHON: pyPath,
+              HOME: tmp,
+              USERPROFILE: tmp,
+              PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+            },
+            stdio: "pipe",
+            timeout: 15_000,
+          },
+        );
+
+        const stderr = r.stderr.toString();
+        expect(r.status).toBe(0);
+        expect(stderr).toContain("managed venv");
+        expect(stderr).toContain("via venv");
+        const logionPath =
+          process.platform === "win32"
+            ? path.join(
+                tmp,
+                ".logion",
+                "npm-managed-venv",
+                "Scripts",
+                "logion.exe",
+              )
+            : path.join(tmp, ".logion", "npm-managed-venv", "bin", "logion");
+        expect(fs.existsSync(logionPath)).toBe(true);
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
