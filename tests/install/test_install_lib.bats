@@ -111,3 +111,19 @@ JSON
     [[ "$output" == *"https://github.com/nicolasmelo1/logion/releases/download/logion-companion-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
     [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
 }
+
+@test "install_cli clears existing pipx venv before reinstalling" {
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/bin/pipx" <<PIPX
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/pipx-calls.log"
+exit 0
+PIPX
+    chmod +x "${WORK}/bin/pipx"
+
+    PATH="${WORK}/bin:${PATH}" run install_cli "0.1.4" "pipx"
+
+    [ "$status" -eq 0 ]
+    sed -n '1p' "${WORK}/pipx-calls.log" | grep -F "uninstall logion-cli"
+    sed -n '2p' "${WORK}/pipx-calls.log" | grep -F "install --force logion-cli==0.1.4 --pip-args=--no-cache-dir"
+}

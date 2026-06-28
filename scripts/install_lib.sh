@@ -570,6 +570,10 @@ install_cli() {
             if ! command -v pipx >/dev/null 2>&1; then
                 die 4 "pipx not found"
             fi
+            # pipx can leave a partial venv behind when the resolver fails.
+            # Clear any previous logion-cli install first so reruns are
+            # idempotent instead of failing on an existing venv.
+            pipx uninstall logion-cli >/dev/null 2>&1 || true
             if ! pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
                 die 8 "pipx install logion-cli==$_version failed"
             fi
