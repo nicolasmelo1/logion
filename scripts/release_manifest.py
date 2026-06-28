@@ -200,7 +200,24 @@ def cmd_check(args: argparse.Namespace) -> None:
     on_disk_manifest = json.loads(on_disk)
 
     channel = on_disk_manifest.get("channel", "stable")
-    manifest = build_manifest(channel=channel)
+    manifest = build_manifest(
+        channel=channel,
+        release_assets_dir=args.release_assets_dir,
+    )
+    if not args.release_assets_dir:
+        # Release manifests may commit asset URL/checksum fields generated
+        # from dist/ artifacts that are not present in ordinary CI checkouts.
+        # Preserve those fields for check-mode comparison while still
+        # rebuilding and validating the version/tag/minimum metadata.
+        for name, on_disk_pkg in on_disk_manifest.get(
+            "packages", {},
+        ).items():
+            rebuilt_pkg = manifest.get("packages", {}).get(name)
+            if not isinstance(rebuilt_pkg, dict):
+                continue
+            for asset_key in ("wheel", "sdist", "skill_md", "bundle"):
+                if asset_key in on_disk_pkg:
+                    rebuilt_pkg[asset_key] = on_disk_pkg[asset_key]
 
     # Compare structurally, ignoring generated_at (which is always
     # "now") and git_commit (which changes on every commit).
@@ -275,6 +292,11 @@ def main() -> None:
         dest="in_",
         default="releases/manifest-stable.json",
         help="Path to manifest to check",
+    )
+    check_p.add_argument(
+        "--release-assets-dir",
+        default=None,
+        help="Directory with release assets for sha256",
     )
 
     args = parser.parse_args()
