@@ -464,13 +464,13 @@ def referral_landing(
     template = str(
         referral_cfg.get(
             "command_template",
-            "lgn courses acquire {slug} --referral-code {code}",
+            "logion courses acquire {slug} --referral-code {code}",
         )
     )
     if referral_code:
         command = template.format(slug=course_slug, code=referral_code)
     else:
-        command = f"lgn courses acquire {course_slug}"
+        command = f"logion courses acquire {course_slug}"
     # Keep referral landing attribution-free at the browser layer.
     return templates.TemplateResponse(
         request,

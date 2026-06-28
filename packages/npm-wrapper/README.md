@@ -22,7 +22,7 @@ On install, the postinstall hook:
 
 1. Finds a working Python 3.12+.
 2. Installs `logion-cli==<pinned-version>` from PyPI via `pipx`/`uv`/venv.
-3. Shims the `logion` and `lgn` binaries onto your PATH.
+3. Shims the `logion` binary onto your PATH.
 
 The pinned PyPI version is baked into the npm tarball at publish
 time, so `npm install -g @logionsh/cli@0.3.0` always installs the

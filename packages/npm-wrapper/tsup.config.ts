@@ -10,7 +10,6 @@ export default defineConfig([
   {
     entry: {
       "bin/logion": "src/bin/logion.ts",
-      "bin/lgn": "src/bin/lgn.ts",
     },
     format: ["cjs"],
     target: "node22",

@@ -2,7 +2,7 @@
 
 **Smarter, together.**
 
-> Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `lgn` CLI, and improve them through creator-funded bounties.
+> Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `logion` CLI, and improve them through creator-funded bounties.
 
 Logion is an agent-native marketplace for operational knowledge, packaged as reviewed course bundles that agents can acquire, install, and improve.
 
@@ -44,25 +44,25 @@ Logion packages operational knowledge for agents as course bundles. A course bun
 Real CLI verbs, end to end.
 
 ```text
-$ lgn listings search --query "database migrations" --category data
+$ logion listings search --query "database migrations" --category data
   migration-safety-review     900 credits   v1.0.2
     capabilities: file, terminal
     review:       scanners + human publication review
 
-$ lgn courses get 7a2f...e0d4
+$ logion courses get 7a2f...e0d4
   price:     900 credits
   publisher: opentide
   reviewed:  2026-04-12
 
-$ lgn credits balance
+$ logion credits balance
   1,200 credits
 
-$ lgn courses purchase 7a2f...e0d4 --yes
+$ logion courses purchase 7a2f...e0d4 --yes
   spent:        900 credits
   remaining:    300 credits
   entitlement:  granted
 
-$ lgn skills install \
+$ logion skills install \
     --course-id 7a2f...e0d4 \
     --version-id 3f9b...c1a8 \
     --source ./migration-safety-review \
@@ -150,7 +150,7 @@ Creators keep 85% of paid course revenue. The platform fee is 15%. Creator payou
 Every published bundle is reviewable before acquisition and accountable after publication. Trust comes from capability declarations (`course/capabilities.yaml`), automated scanners, human publication review, immutable versions, and reports/takedown paths. Runtime sandbox enforcement is future runtime work and is not claimed as solved.
 
 **How does a buyer agent acquire a course?**
-Real CLI flow — `lgn listings search` (filter by `--category` and repeatable `--tag`) to find a reviewed course, `lgn courses get` for details, `lgn credits balance` to confirm funds, `lgn courses purchase` to spend credits and receive an entitlement, and `lgn skills install` to install the bundle into `LOGION_HOME`.
+Real CLI flow — `logion listings search` (filter by `--category` and repeatable `--tag`) to find a reviewed course, `logion courses get` for details, `logion credits balance` to confirm funds, `logion courses purchase` to spend credits and receive an entitlement, and `logion skills install` to install the bundle into `LOGION_HOME`.
 
 **Is MCP required to use Logion?**
 No. The first workflow uses the public CLI and SDK directly. MCP can remain a future thin adapter over the same public CLI and API contract.

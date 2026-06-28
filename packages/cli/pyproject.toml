@@ -1,6 +1,6 @@
 [project]
 name = "logion-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Logion CLI for AI agents and marketplace operators."
 requires-python = ">=3.12"
 readme = "README.md"
@@ -38,7 +38,6 @@ logion-client = { workspace = true }
 
 [project.scripts]
 logion = "cli.main:main"
-lgn = "cli.main:main"
 
 [dependency-groups]
 dev = [

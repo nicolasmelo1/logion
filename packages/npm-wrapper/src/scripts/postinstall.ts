@@ -127,7 +127,7 @@ function installViaVenv(version: string, py: PythonInfo): void {
 
   fs.mkdirSync(LOCAL_BIN, { recursive: true });
 
-  for (const base of ["logion", "lgn"] as const) {
+  for (const base of ["logion"] as const) {
     const src = venvBin(base);
     if (!fs.existsSync(src)) {
       continue;
