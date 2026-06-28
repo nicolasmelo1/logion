@@ -595,9 +595,13 @@ function Install-Companion {
         }
         Info -Message "SHA-256 verified for companion bundle"
 
-        # Extract
+        # Extract. The bundle is packed under a top-level
+        # logion-marketplace-companion-<version>/ dir, so strip it
+        # (--strip-components=1) to land SKILL.md directly in
+        # $companionDir — matching install_lib.sh and what
+        # `logion skills install --source` expects.
         try {
-            tar -xzf $tmpFile -C $companionDir
+            tar -xzf $tmpFile --strip-components=1 -C $companionDir
         } catch {
             Die -Message "Failed to extract companion bundle: $($_.Exception.Message)" -ExitCode $script:EXIT_INSTALL_FAILED
         }

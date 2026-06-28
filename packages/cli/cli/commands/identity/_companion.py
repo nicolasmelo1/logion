@@ -6,13 +6,14 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from cli._harness.base import HarnessAdapter
 from cli._local_state import get_home
+
+from ._companion_source import locate_bundle_source, materialize_bundle
 
 
 @dataclass(frozen=True)
@@ -84,43 +85,6 @@ def _read_companion_version(bundle_dir: Path) -> str:
     )
 
 
-def locate_bundle_dir(args: argparse.Namespace) -> Path | None:
-    """Resolve the companion bundle source directory.
-
-    Order: ``--companion-source`` flag →
-    ``$LOGION_COMPANION_BUNDLE_SOURCE`` env →
-    newest dir under ``$LOGION_HOME/companion-bundles/`` → None.
-    """
-    source = getattr(args, "companion_source", None)
-    if source is not None:
-        path = Path(source)
-        return path if path.is_dir() else None
-
-    env_source = os.environ.get("LOGION_COMPANION_BUNDLE_SOURCE")
-    if env_source:
-        path = Path(env_source)
-        if path.is_dir():
-            return path
-
-    bundles_root = get_home() / "companion-bundles"
-    if not bundles_root.is_dir():
-        return None
-
-    # Newest dir by mtime; skip entries that can't be stat'ed (perms,
-    # broken mounts, transient FS errors) so onboarding never crashes.
-    newest: tuple[float, Path] | None = None
-    for entry in bundles_root.iterdir():
-        try:
-            if not entry.is_dir():
-                continue
-            mtime = entry.stat().st_mtime
-        except OSError:
-            continue
-        if newest is None or mtime > newest[0]:
-            newest = (mtime, entry)
-    return newest[1] if newest else None
-
-
 def _already_installed(course_id: str, version_id: str) -> Path | None:
     """Return the installed dir if the companion is already installed."""
     from cli._local_state import UnsafeIdentifierError, installed_dir
@@ -137,20 +101,40 @@ def install_companion(
 ) -> CompanionResult:
     """Install the companion bundle and symlink it into the harness skill dir.
 
-    Delegates the canonical install to ``handle_skills_install`` with a
+    Resolves the source (a bundle dir, a ``*.tar.gz``, or a dir holding
+    one companion tarball), extracting a tarball when needed, then
+    delegates the canonical install to ``handle_skills_install`` with a
     Namespace carrying ``--source=<bundle_dir>``,
     ``--symlink-dir=adapter.skill_dir()``, and
     ``--install-source=logion-marketplace``.  Idempotent: a re-run over
     an unchanged bundle returns ``already=True`` with ``installed=False``.
     """
-    bundle_dir = locate_bundle_dir(args)
-    if bundle_dir is None:
+    source = locate_bundle_source(args)
+    if source is None:
+        explicit = getattr(args, "companion_source", None)
+        if explicit is not None:
+            raise CompanionNotFoundError(
+                "--companion-source is not a bundle directory or a "
+                f".tar.gz file: {explicit}"
+            )
         raise CompanionNotFoundError(
-            "no companion bundle directory found — "
-            "set --companion-source or place a bundle under "
-            f"{get_home() / 'companion-bundles'}"
+            "no companion bundle source found — "
+            "set --companion-source (a bundle dir or .tar.gz) or place a "
+            f"bundle under {get_home() / 'companion-bundles'}"
         )
 
+    # Keep the extracted temp dir (for tarball sources) alive for the
+    # whole install via the context manager.
+    with materialize_bundle(source) as bundle_dir:
+        return _install_from_dir(args, adapter, bundle_dir)
+
+
+def _install_from_dir(
+    args: argparse.Namespace,
+    adapter: HarnessAdapter,
+    bundle_dir: Path,
+) -> CompanionResult:
+    """Install a materialized companion bundle directory."""
     course_id = COMPANION_COURSE_ID
     version_id = _read_companion_version(bundle_dir)
     skill_name = _read_skill_frontmatter_value(
