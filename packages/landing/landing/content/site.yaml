@@ -44,7 +44,7 @@ hero:
         href: /terms
   readouts:
     top: "ΛΟΓΙΟΝ // MARKETPLACE LOOP ONLINE"
-    bottom: "v0.1.0 · BUILD α"
+    bottom: "v0.1.2 · BUILD α"
   meta:
     - term: bundle
       value: course/capabilities.yaml

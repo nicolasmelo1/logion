@@ -10,31 +10,41 @@ import { describe, expect, test } from "vitest";
 
 const BIN_DIR = path.join(__dirname, "..", "dist", "bin");
 
+function makeManagedLogion(home: string, body: string): void {
+  const logionPath =
+    process.platform === "win32"
+      ? path.join(home, ".logion", "npm-managed-venv", "Scripts", "logion.exe")
+      : path.join(home, ".logion", "npm-managed-venv", "bin", "logion");
+  fs.mkdirSync(path.dirname(logionPath), { recursive: true });
+  fs.writeFileSync(logionPath, body, { mode: 0o755 });
+}
+
 describe("shim", () => {
-  test("exits 127 when logion binary not found on PATH", () => {
+  test("exits 127 when managed logion binary is missing", () => {
     const nodeDir = path.dirname(process.execPath);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-shim-test-"));
     const r = spawnSync(process.execPath, [path.join(BIN_DIR, "logion.js")], {
-      env: { ...process.env, PATH: nodeDir },
+      env: {
+        ...process.env,
+        HOME: tmp,
+        USERPROFILE: tmp,
+        PATH: nodeDir,
+      },
       stdio: "pipe",
       timeout: 15_000,
     });
+    fs.rmSync(tmp, { recursive: true, force: true });
     expect(r.status).toBe(127);
-    expect(r.stderr.toString()).toContain("not found");
+    expect(r.stderr.toString()).toContain("npm-managed environment");
   });
 
-  test("forwards arguments to logion binary when on PATH", () => {
+  test("forwards arguments to npm-managed logion binary", () => {
     if (process.platform === "win32") {
       // POSIX shell-script fixtures don't run on Windows runners.
       return;
     }
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-shim-test-"));
-    const binDir = path.join(tmp, "bin");
-    fs.mkdirSync(binDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(binDir, "logion"),
-      '#!/bin/sh\necho "args: $*"\n',
-      { mode: 0o755 },
-    );
+    makeManagedLogion(tmp, '#!/bin/sh\necho "args: $*"\n');
 
     const r = spawnSync(
       process.execPath,
@@ -42,7 +52,8 @@ describe("shim", () => {
       {
         env: {
           ...process.env,
-          PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+          HOME: tmp,
+          USERPROFILE: tmp,
         },
         stdio: "pipe",
         timeout: 15_000,
@@ -55,24 +66,19 @@ describe("shim", () => {
     expect(r.stdout.toString()).toContain("args: --version");
   });
 
-  test("skips npm shim when resolving logion target", () => {
+  test("ignores unrelated logion binaries on PATH", () => {
     if (process.platform === "win32") {
       return;
     }
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-shim-test-"));
-    const npmBinDir = path.join(tmp, "npm-bin");
-    const realBinDir = path.join(tmp, "real-bin");
-    fs.mkdirSync(npmBinDir, { recursive: true });
-    fs.mkdirSync(realBinDir, { recursive: true });
-    fs.symlinkSync(
-      path.join(BIN_DIR, "logion.js"),
-      path.join(npmBinDir, "logion"),
-    );
+    const staleBinDir = path.join(tmp, "stale-bin");
+    fs.mkdirSync(staleBinDir, { recursive: true });
     fs.writeFileSync(
-      path.join(realBinDir, "logion"),
-      '#!/bin/sh\necho "real: $*"\n',
+      path.join(staleBinDir, "logion"),
+      '#!/bin/sh\necho "stale: $*"\n',
       { mode: 0o755 },
     );
+    makeManagedLogion(tmp, '#!/bin/sh\necho "managed: $*"\n');
 
     const r = spawnSync(
       process.execPath,
@@ -80,12 +86,9 @@ describe("shim", () => {
       {
         env: {
           ...process.env,
-          PATH:
-            npmBinDir +
-            path.delimiter +
-            realBinDir +
-            path.delimiter +
-            (process.env.PATH ?? ""),
+          HOME: tmp,
+          USERPROFILE: tmp,
+          PATH: staleBinDir + path.delimiter + (process.env.PATH ?? ""),
         },
         stdio: "pipe",
         timeout: 15_000,
@@ -95,7 +98,8 @@ describe("shim", () => {
     fs.rmSync(tmp, { recursive: true, force: true });
 
     expect(r.status).toBe(0);
-    expect(r.stdout.toString()).toContain("real: --version");
+    expect(r.stdout.toString()).toContain("managed: --version");
+    expect(r.stdout.toString()).not.toContain("stale");
   });
 
   test("propagates exit code from underlying binary", () => {
@@ -103,16 +107,13 @@ describe("shim", () => {
       return;
     }
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "logion-shim-test-"));
-    const binDir = path.join(tmp, "bin");
-    fs.mkdirSync(binDir, { recursive: true });
-    fs.writeFileSync(path.join(binDir, "logion"), "#!/bin/sh\nexit 42\n", {
-      mode: 0o755,
-    });
+    makeManagedLogion(tmp, "#!/bin/sh\nexit 42\n");
 
     const r = spawnSync(process.execPath, [path.join(BIN_DIR, "logion.js")], {
       env: {
         ...process.env,
-        PATH: binDir + path.delimiter + (process.env.PATH ?? ""),
+        HOME: tmp,
+        USERPROFILE: tmp,
       },
       stdio: "pipe",
       timeout: 15_000,

@@ -1,7 +1,7 @@
 {
   "name": "@logionsh/cli",
   "version": "0.0.0-placeholder",
-  "description": "Logion CLI — installs and shims the canonical Python logion-cli from PyPI.",
+  "description": "Logion CLI — installs and runs the canonical Python logion-cli from a managed environment.",
   "license": "MIT",
   "repository": {
     "type": "git",

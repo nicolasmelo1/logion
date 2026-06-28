@@ -15,7 +15,6 @@ const HOME = os.homedir();
 const LOGION_DIR = path.join(HOME, ".logion");
 const MANAGED_VENV_DIR = path.join(LOGION_DIR, "npm-managed-venv");
 const MARKER_PATH = path.join(LOGION_DIR, "npm-wrapper-installer.json");
-const LOCAL_BIN = path.join(HOME, ".local", "bin");
 
 type Installer = "pipx" | "uv" | "venv";
 
@@ -57,32 +56,14 @@ function removeManagedVenv(): void {
   }
 }
 
-function removeShims(): void {
-  const names =
-    process.platform === "win32" ? ["logion.exe", "logion.cmd"] : ["logion"];
-  for (const name of names) {
-    const link = path.join(LOCAL_BIN, name);
-    try {
-      const stat = fs.lstatSync(link);
-      if (stat.isSymbolicLink() || stat.isFile()) {
-        fs.unlinkSync(link);
-      }
-    } catch {
-      // not present — fine
-    }
-  }
-}
-
 function main(): void {
   const marker = readMarker();
   if (!marker) {
-    removeShims();
     return;
   }
 
   if (marker.installer === "venv") {
     removeManagedVenv();
-    removeShims();
   } else if (marker.installer === "pipx" && which("pipx")) {
     log("Uninstalling logion-cli via pipx...");
     tryRun("pipx", ["uninstall", "logion-cli"]);
