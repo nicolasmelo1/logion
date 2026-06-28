@@ -38,7 +38,7 @@ jobs:
         run: |
           python3 scripts/check_installer_security.py
           shellcheck -s sh -x -e SC1091 scripts/install.sh scripts/install_lib.sh scripts/install_test/harness.sh
-          bats tests/install/test_install_sh.bats
+          bats tests/install/test_install_sh.bats tests/install/test_install_lib.bats
 
   windows:
     runs-on: windows-latest

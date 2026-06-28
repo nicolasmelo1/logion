@@ -613,6 +613,18 @@ install_cli() {
 
 # --- Companion installation -------------------------------------------------
 
+# extract_companion_bundle <tarball> <dest_dir>
+# The bundle is packed under a top-level
+# logion-marketplace-companion-<version>/ directory, so strip that prefix
+# (--strip-components=1) — otherwise SKILL.md lands one level too deep and
+# the subsequent `logion skills install --source <dest>` cannot find it.
+extract_companion_bundle() {
+    _eb_tarball="$1"
+    _eb_dest="$2"
+    mkdir -p "$_eb_dest" 2>/dev/null || true
+    tar -xzf "$_eb_tarball" --strip-components=1 -C "$_eb_dest"
+}
+
 # install_companion <version> [<cli-tag>]
 install_companion() {
     _version="$1"
@@ -653,8 +665,7 @@ install_companion() {
         sha256_verify "$_tarball" "$_bundle_sha"
     fi
 
-    mkdir -p "$_dest_dir" 2>/dev/null || true
-    if ! tar -xzf "$_tarball" -C "$_dest_dir"; then
+    if ! extract_companion_bundle "$_tarball" "$_dest_dir"; then
         die 8 "Failed to extract companion tarball"
     fi
 

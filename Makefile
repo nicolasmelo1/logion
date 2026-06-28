@@ -140,7 +140,7 @@ install-sh-lint: check-installer-security
 	shellcheck -s sh -x -e SC1091 scripts/install.sh scripts/install_lib.sh scripts/install_test/harness.sh
 
 install-sh-test: install-sh-lint
-	bats tests/install/test_install_sh.bats
+	bats tests/install/test_install_sh.bats tests/install/test_install_lib.bats
 
 install-ps1-lint:
 	pwsh -NoLogo -NoProfile -Command '$$paths = @("scripts/install.ps1", "scripts/install_lib.ps1", "tests/install/test_install_ps1.Tests.ps1"); foreach ($$path in $$paths) { Invoke-ScriptAnalyzer -Path $$path -Severity Error -EnableExit; Invoke-ScriptAnalyzer -Path $$path -IncludeRule PSAvoidUsingInvokeExpression -EnableExit }'
