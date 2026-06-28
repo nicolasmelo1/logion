@@ -132,12 +132,19 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     if rc is not None:
         return rc
 
-    # Resolve the harness(es) once (explicit --harness, an interactive
-    # pick, or all detected) and apply the same choice to both the
-    # auto-review grant and the companion install.
-    adapters = select_harnesses(args)
+    # Decide auto-review first, then resolve the harness(es) once and
+    # share that choice between the grant and the companion install.
+    # Only prompt for a harness when a step actually needs one — skip it
+    # entirely when auto-review is off and --no-companion is set.
+    autopost_enabled = _autopost.resolve_optin(args)
+    companion_will_run = not getattr(args, "no_companion", False)
 
-    if _autopost.resolve_optin(args):
+    if autopost_enabled or companion_will_run:
+        adapters = select_harnesses(args)
+    else:
+        adapters = []
+
+    if autopost_enabled:
         autopost = _autopost.apply(args, adapters)
         if autopost is None:
             return 2

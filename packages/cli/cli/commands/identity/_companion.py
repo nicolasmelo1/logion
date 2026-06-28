@@ -111,6 +111,12 @@ def install_companion(
     """
     source = locate_bundle_source(args)
     if source is None:
+        explicit = getattr(args, "companion_source", None)
+        if explicit is not None:
+            raise CompanionNotFoundError(
+                "--companion-source is not a bundle directory or a "
+                f".tar.gz file: {explicit}"
+            )
         raise CompanionNotFoundError(
             "no companion bundle source found — "
             "set --companion-source (a bundle dir or .tar.gz) or place a "

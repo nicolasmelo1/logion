@@ -44,10 +44,11 @@ def _prompt_selection(detected: list[HarnessAdapter]) -> list[HarnessAdapter]:
     for i, adapter in enumerate(detected, start=1):
         print_err(f"  {i}. {adapter.name}")
     while True:
+        # Prompt on stderr (not via input()'s stdout prompt) so --json
+        # output on stdout stays machine-readable.
+        print_err("Select harness(es) to set up [e.g. 1,3; empty to skip]: ")
         try:
-            answer = input(
-                "Select harness(es) to set up [e.g. 1,3; empty to skip]: "
-            ).strip()
+            answer = input().strip()
         except EOFError:
             return []
         if not answer:

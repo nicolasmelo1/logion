@@ -458,6 +458,95 @@ def test_onboarding_repeated_harness_targets_multiple(
     assert granted == {"claude-code", "codex"}
 
 
+def test_onboarding_interactive_json_stdout_stays_clean(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The harness prompt must not leak onto stdout, or --json breaks.
+    from cli._harness import get_adapter
+
+    bundle = _make_bundle(tmp_path)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda *_a, **_k: "1")
+    monkeypatch.setattr(
+        "cli.commands.identity._harness_select.detect_present",
+        lambda: [get_adapter("claude-code")],
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--enable-autopost",
+        "--companion-source",
+        str(bundle),
+        "--json",
+    ])
+    assert code == 0
+    # _stdout_data json.loads(stdout): raises if the prompt leaked there.
+    data = _stdout_data(capsys)
+    assert data["user_id"] == "u1"
+
+
+def test_onboarding_no_steps_skips_harness_prompt(
+    env: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # No autopost and --no-companion → no step needs a harness, so we
+    # must not prompt even in a TTY.
+    from cli._harness import get_adapter
+
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+    def _no_input(*_a: object, **_k: object) -> str:
+        raise AssertionError("should not prompt when no step needs a harness")
+
+    monkeypatch.setattr("builtins.input", _no_input)
+    monkeypatch.setattr(
+        "cli.commands.identity._harness_select.detect_present",
+        lambda: [get_adapter("claude-code")],
+    )
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--no-companion",
+    ])
+    assert code == 0
+
+
+def test_onboarding_invalid_companion_source_is_clear(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    bogus = tmp_path / "nope.txt"
+    bogus.write_text("not a bundle\n")
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--companion-source",
+        str(bogus),
+        "--harness",
+        "claude-code",
+    ])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "not a bundle directory or a .tar.gz" in err
+
+
 def test_onboarding_interactive_empty_selection_skips(
     env: SimpleNamespace,
     tmp_path: Path,
