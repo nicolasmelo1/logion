@@ -449,6 +449,11 @@ links:
       href: /credits-terms
     - label: Referrals
       href: /referrals-terms
+  social:
+    - label: Discord
+      href: https://discord.gg/7GfgAzADE
+    - label: X
+      href: https://x.com/logionsh
 
 contact:
   general: hello@logion.sh
@@ -499,7 +504,7 @@ seo:
       - https://github.com/nicolasmelo1/logion
 
 social:
-  twitter: ""
+  twitter: "@logionsh"
   og_image: /static/og-image.png
   og_image_width: 1200
   og_image_height: 630

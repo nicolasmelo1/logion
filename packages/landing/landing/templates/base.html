@@ -154,6 +154,13 @@
             <a href="{{ link.href }}">{{ link.label }}</a>
           {% endfor %}
         </nav>
+        {%- if links.social %}
+        <nav aria-label="Social">
+          {% for link in links.social %}
+            <a href="{{ link.href }}" rel="me noopener" target="_blank">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+        {%- endif %}
         <p>
           <a href="mailto:{{ contact.general }}">{{ contact.general }}</a>
         </p>
