@@ -111,3 +111,44 @@ JSON
     [[ "$output" == *"https://github.com/nicolasmelo1/logion/releases/download/logion-companion-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
     [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
 }
+
+@test "install_companion registers with required CLI metadata" {
+    _make_prefixed_bundle
+    _bundle_sha="$(sha256sum "${WORK}/bundle.tar.gz" | cut -d' ' -f1)"
+    INSTALL_TMPDIR="${WORK}"
+    INSTALL_DRY_RUN=0
+    HOME="${WORK}/home"
+    mkdir -p "${WORK}/bin" "$HOME"
+    cat > "${WORK}/bin/logion" <<LOGION_EOF
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/logion-calls"
+exit 0
+LOGION_EOF
+    chmod +x "${WORK}/bin/logion"
+    PATH="${WORK}/bin:${PATH}"
+    export HOME PATH INSTALL_TMPDIR INSTALL_DRY_RUN
+    cat > "${WORK}/manifest.json" <<JSON
+{
+  "packages": {
+    "logion-companion": {
+      "bundle": {
+        "url": "file://${WORK}/bundle.tar.gz",
+        "sha256": "${_bundle_sha}"
+      },
+      "tag": "logion-companion-v0.1.0",
+      "version": "0.1.0"
+    }
+  }
+}
+JSON
+
+    run install_companion "0.1.0" "logion-cli-v0.1.0"
+
+    [ "$status" -eq 0 ]
+    _call="$(cat "${WORK}/logion-calls")"
+    [[ "$_call" == *"skills install"* ]]
+    [[ "$_call" == *"--course-id logion-marketplace-companion"* ]]
+    [[ "$_call" == *"--version-id 0.1.0"* ]]
+    [[ "$_call" == *"--install-source logion-marketplace"* ]]
+    [[ "$_call" == *"--no-symlink"* ]]
+}

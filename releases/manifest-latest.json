@@ -27,7 +27,7 @@
     },
     "logion-companion": {
       "bundle": {
-        "sha256": "38a9162f5823bdf287f6106db52009aed2471ab3bc5207a03337f926155223ac",
+        "sha256": "6c1a277979b3d35d973ac63c56ad40c5be213b9e1a622c00dac388d716480a27",
         "url": "release://logion-marketplace-companion-0.1.3.tar.gz"
       },
       "minimum_cli": "0.1.2",
