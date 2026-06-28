@@ -1,5 +1,5 @@
 {
-  "name": "@logion/cli",
+  "name": "@logionsh/cli",
   "version": "0.0.0-placeholder",
   "description": "Logion CLI — installs and shims the canonical Python logion-cli from PyPI.",
   "license": "MIT",

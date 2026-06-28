@@ -396,7 +396,7 @@ cli:
       command: pipx install logion-cli && logion onboarding
     - label: npx alternate
       role: alternate
-      command: npx @logion/cli onboarding
+      command: npx @logionsh/cli onboarding
   quickstart:
     - logion onboarding
     - "# then talk to your agent — it uses Logion for you"

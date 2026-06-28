@@ -61,7 +61,7 @@ BeforeAll {
                     tag             = "logion-cli-v0.1.0"
                     minimum_python  = "3.12"
                     pypi_name       = "logion-cli"
-                    npm_name        = "@logion/cli"
+                    npm_name        = "@logionsh/cli"
                     minimum_client  = "0.1.0"
                     wheel           = @{
                         url    = "file:///fake/wheel.whl"

@@ -30,7 +30,7 @@ Then point your agent (Claude, Codex, OpenCode, or Hermes) at Logion — it driv
 
 ```bash
 pipx install logion-cli && logion onboarding
-npx @logion/cli onboarding
+npx @logionsh/cli onboarding
 ```
 
 Use `--cli-only` or `--no-onboarding` to opt out of the companion/onboarding.

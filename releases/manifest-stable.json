@@ -1,12 +1,12 @@
 {
   "channel": "stable",
-  "generated_at": "2026-06-02T00:45:50+00:00",
-  "git_commit": "973889029e87ff0d79bd75cf51525e7c104c15aa",
+  "generated_at": "2026-06-28T16:48:00+00:00",
+  "git_commit": "47161c3c7a4c95d557d0bea4d8444377880f4bbe",
   "packages": {
     "logion-cli": {
       "minimum_client": "0.1.0",
       "minimum_python": "3.12",
-      "npm_name": "@logion/cli",
+      "npm_name": "@logionsh/cli",
       "pypi_name": "logion-cli",
       "tag": "logion-cli-v0.1.0",
       "version": "0.1.0"
