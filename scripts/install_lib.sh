@@ -704,9 +704,15 @@ install_companion() {
         die 8 "Failed to extract companion tarball"
     fi
 
-    # Register with logion CLI
+    # Register with logion CLI. Disable CLI auto-update for installer-internal
+    # invocations to avoid recursive updates while this installer is running.
     if command -v logion >/dev/null 2>&1; then
-        if ! logion skills install --source "$_dest_dir"; then
+        if ! LOGION_AUTO_UPDATE=0 logion skills install \
+            --source "$_dest_dir" \
+            --course-id "logion-marketplace-companion" \
+            --version-id "$_version" \
+            --title "Logion Marketplace Companion" \
+            --force; then
             warn "logion skills install --source $_dest_dir failed (companion extracted but not registered)"
         fi
     else
@@ -818,7 +824,7 @@ verify_install() {
         die 9 "logion CLI not found on PATH after installation"
     fi
 
-    _got_ver="$(logion --version 2>/dev/null | head -1)"
+    _got_ver="$(LOGION_AUTO_UPDATE=0 logion --version 2>/dev/null | head -1)"
     if [ -z "$_got_ver" ]; then
         die 9 "logion --version returned empty output"
     fi
@@ -828,7 +834,7 @@ verify_install() {
     # Optionally verify companion
     if [ -n "$_comp_ver" ] && [ "$INSTALL_CLI_ONLY" != 1 ]; then
         if command -v logion >/dev/null 2>&1; then
-            _installed="$(logion skills installed 2>/dev/null || true)"
+            _installed="$(LOGION_AUTO_UPDATE=0 logion skills installed 2>/dev/null || true)"
             if [ -z "$_installed" ]; then
                 warn "logion skills installed returned no output"
             else

@@ -112,6 +112,42 @@ JSON
     [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
 }
 
+@test "install_companion registers companion with required skill metadata" {
+    INSTALL_TMPDIR="${WORK}"
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/manifest.json" <<JSON
+{
+  "packages": {
+    "logion-companion": {
+      "bundle": {
+        "url": "file://${WORK}/bundle.tar.gz"
+      },
+      "tag": "logion-companion-v0.1.0",
+      "version": "0.1.0"
+    }
+  }
+}
+JSON
+    _make_prefixed_bundle
+    cat > "${WORK}/bin/curl" <<CURL
+#!/bin/sh
+cp "${WORK}/bundle.tar.gz" "\$4"
+CURL
+    cat > "${WORK}/bin/logion" <<LOGION
+#!/bin/sh
+printf 'LOGION_AUTO_UPDATE=%s\n' "\${LOGION_AUTO_UPDATE:-}" >> "${WORK}/logion-calls.log"
+printf '%s\n' "\$*" >> "${WORK}/logion-calls.log"
+exit 0
+LOGION
+    chmod +x "${WORK}/bin/curl" "${WORK}/bin/logion"
+
+    HOME="${WORK}/home" PATH="${WORK}/bin:${PATH}" run install_companion "0.1.0" "logion-cli-v0.1.0"
+
+    [ "$status" -eq 0 ]
+    grep -F "LOGION_AUTO_UPDATE=0" "${WORK}/logion-calls.log"
+    grep -F "skills install --source ${WORK}/home/.logion/installed/logion-marketplace-companion/0.1.0 --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --force" "${WORK}/logion-calls.log"
+}
+
 @test "install_cli clears existing pipx venv before reinstalling" {
     mkdir -p "${WORK}/bin"
     cat > "${WORK}/bin/pipx" <<PIPX
