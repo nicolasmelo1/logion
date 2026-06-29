@@ -395,6 +395,45 @@ def test_onboarding_companion_from_dir_holding_tarball(
     assert (env.home / ".claude" / "skills" / "logion").is_symlink()
 
 
+def test_onboarding_uses_installer_extracted_companion(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """onboarding finds the companion extracted by curl install."""
+    bundle = _make_bundle(tmp_path)
+    installed = (
+        env.logion_home
+        / "installed"
+        / "logion-marketplace-companion"
+        / "0.1.0"
+    )
+    installed.mkdir(parents=True)
+    for child in bundle.iterdir():
+        if child.is_file():
+            (installed / child.name).write_bytes(child.read_bytes())
+        elif child.is_dir():
+            import shutil
+
+            shutil.copytree(child, installed / child.name)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+
+    assert code == 0
+    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+
+
 def test_onboarding_interactive_selects_subset(
     env: SimpleNamespace,
     tmp_path: Path,
