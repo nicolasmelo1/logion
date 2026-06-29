@@ -28,6 +28,13 @@ class FakeIdentityResource:
             "api_key_prefix": "lg-abc",  # pragma: allowlist secret
         }
 
+    def rotate_api_key(self, **kwargs: Any) -> dict[str, Any]:
+        self.calls.append(("rotate_api_key", kwargs))
+        return {
+            "api_key": {"key": "lg-repaired", "prefix": "lg-rep"},
+            "api_key_prefix": "lg-rep",  # pragma: allowlist secret
+        }
+
 
 class FakeClient:
     def __init__(self, identity: FakeIdentityResource) -> None:
@@ -84,6 +91,8 @@ def test_onboarding_provisions_identity(
     assert creds["user_id"] == "u1"
     assert creds["agent_id"] == "a1"
     assert creds["email"] == "u@example.com"
+    assert creds["api_key"] == "lg-abc123"
+    assert creds["api_key_prefix"] == "lg-abc"
     data = _stdout_data(capsys)
     assert data["created"] is True
     assert data["autopost"] == {"enabled": False}
@@ -107,6 +116,46 @@ def test_onboarding_reuses_existing_identity(
     assert data["user_id"] == "existing-user"
     # No provisioning call.
     assert env.identity.calls == []
+
+
+def test_onboarding_repairs_missing_stored_api_key(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "user_id": "existing-user",
+            "agent_id": "existing-agent",
+        })
+    )
+
+    code = main([
+        "identity",
+        "onboarding",
+        "--password",
+        "testpass1",
+        "--no-enable-autopost",
+        "--no-companion",
+        "--json",
+    ])
+
+    assert code == 0
+    assert env.identity.calls == [
+        (
+            "rotate_api_key",
+            {
+                "user_id": "existing-user",
+                "agent_id": "existing-agent",
+                "user_password": "testpass1",
+            },
+        )
+    ]
+    creds = json.loads((env.logion_home / "credentials.json").read_text())
+    assert creds["api_key"] == "lg-repaired"
+    assert creds["api_key_prefix"] == "lg-rep"
+    data = _stdout_data(capsys)
+    assert data["credentials"]["api_key_persisted"] is True
 
 
 def test_onboarding_enables_autopost_project_scope(

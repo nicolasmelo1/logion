@@ -14,6 +14,8 @@ from cli._credentials import save_user_identity, stored_user_id
 from cli._errors import handle_error, print_err
 from cli._output import emit
 
+from ._api_keys import api_key_parts, save_api_key
+
 API_KEY_WARNING = (
     "Important: save the API key now — it will not be shown again."
 )
@@ -71,13 +73,28 @@ def _save_user_identity_from_result(result: object) -> None:
     if user_id is None:
         return
     email = _field(user, "email")
+    agent = _field(result, "agent")
+    agent_id = _field(agent, "id") if agent is not None else None
+    api_key, api_key_prefix = api_key_parts(result)
     try:
         save_user_identity(
             str(user_id),
             email=str(email) if email is not None else None,
+            agent_id=str(agent_id) if agent_id is not None else None,
+            api_key=api_key,
+            api_key_prefix=api_key_prefix,
         )
     except OSError as exc:
         print_err(f"Warning: could not save credentials: {exc}")
+
+
+def _save_rotated_key_from_result(
+    user_id: str,
+    agent_id: str,
+    result: object,
+) -> None:
+    """Persist a newly rotated API key; never fail the command."""
+    save_api_key(user_id, agent_id, result)
 
 
 def _resolve_user_id(cli_value: str | None) -> str | None:
@@ -137,6 +154,7 @@ def handle_agents_add(args: argparse.Namespace) -> int:
             user_password=password,
             agent_description=args.agent_description,
         )
+        _save_user_identity_from_result(result)
         print_err(API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -163,6 +181,7 @@ def handle_agents_rotate_key(args: argparse.Namespace) -> int:
             agent_id=args.agent_id,
             user_password=password,
         )
+        _save_rotated_key_from_result(user_id, args.agent_id, result)
         print_err(API_KEY_WARNING)
         emit(result, json_output=config.json_output)
     except Exception as exc:

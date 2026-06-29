@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 
 import pytest
 
@@ -45,7 +47,9 @@ def test_is_admin_enabled_truthy(
 
 def test_resolve_from_args_defaults(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
+    monkeypatch.setenv("LOGION_HOME", str(tmp_path))
     monkeypatch.delenv("LOGION_API_KEY", raising=False)
     monkeypatch.delenv("LOGION_BASE_URL", raising=False)
     args = argparse.Namespace(
@@ -59,6 +63,32 @@ def test_resolve_from_args_defaults(
     assert config.api_key is None
     assert config.base_url == DEFAULT_BASE_URL
     assert config.json_output is False
+
+
+def test_resolve_reads_stored_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("LOGION_HOME", str(tmp_path))
+    monkeypatch.delenv("LOGION_API_KEY", raising=False)
+    (tmp_path / "credentials.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "api_key": "stored_api_key",  # pragma: allowlist secret
+        }),
+        encoding="utf-8",
+    )
+    args = argparse.Namespace(
+        api_key=None,
+        base_url=None,
+        json_output=False,
+        timeout=None,
+        max_retries=None,
+    )
+
+    config = resolve_config_from_args(args)
+
+    assert config.api_key == "stored_api_key"  # pragma: allowlist secret
 
 
 def test_resolve_from_args_explicit() -> None:

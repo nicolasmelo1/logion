@@ -4,111 +4,46 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from cli._config import resolve_config_from_args
-from cli._context import make_client
-from cli._credentials import save_user_identity, stored_user_id
-from cli._errors import handle_error, print_err
+from cli._credentials import (
+    stored_agent_id,
+    stored_api_key,
+    stored_api_key_prefix,
+    stored_user_id,
+)
+from cli._errors import print_err
 from cli._harness import adapter_names
 from cli._output import emit_json
 
 from . import _autopost
+from ._api_keys import rotate_and_save_api_key
 from ._closing_copy import CLOSING_COPY, ONBOARDING_NEXT_STEPS
 from ._harness_select import select_harnesses
 from ._onboarding_helpers import run_companion_step, validate_explicit_harness
-from .handlers import API_KEY_WARNING, _field, _resolve_password
+from ._provisioning import provision_identity
+from .handlers import _resolve_password
 
 
-def _prompt(question: str, default: str | None = None) -> str:
-    """Prompt for free text; return *default* on empty input."""
-    suffix = f" [{default}]" if default else ""
-    try:
-        answer = input(f"{question}{suffix}: ").strip()
-    except EOFError:
-        return default or ""
-    return answer or (default or "")
-
-
-def _resolve_email(cli_value: str | None) -> str | None:
-    """Return the email from the flag, an interactive prompt, or None."""
-    if cli_value:
-        return cli_value
-    if sys.stdin.isatty():
-        email = _prompt("Email")
-        return email or None
-    print_err("Error: --email is required in non-interactive mode.")
-    return None
-
-
-def _provision_identity(
+def _repair_missing_api_key(
     args: argparse.Namespace,
     config: object,
+    user_id: str,
 ) -> dict[str, object] | None:
-    """Create a user + first agent and persist identity context.
-
-    Returns a summary dict (including the one-time API key), or ``None``
-    on a handled error.
-    """
-    email = _resolve_email(args.email)
-    if email is None:
-        return None
-
-    agent_name = args.agent_name
-    if not agent_name:
-        agent_name = (
-            _prompt("Agent name", default="default-agent")
-            if sys.stdin.isatty()
-            else "default-agent"
+    """Persist an API key for legacy onboarding runs that saved only ids."""
+    agent_id = stored_agent_id()
+    if agent_id is None:
+        print_err(
+            "Warning: no stored agent id; run "
+            "`logion identity agents-add` or re-onboard with a fresh identity."
         )
+        return {"api_key_persisted": False}
 
     password = _resolve_password(args.password)
     if password is None:
-        return None
-
-    client = make_client(config)  # type: ignore[arg-type]
-    try:
-        result = client.v1.identity.create_user_with_agent(
-            email=email,
-            user_password=password,
-            agent_name=agent_name,
-            user_name=args.user_name,
-            agent_description=None,
-        )
-    except Exception as exc:
-        handle_error(exc)
-        return None
-    finally:
-        client.close()
-
-    user = _field(result, "user")
-    agent = _field(result, "agent")
-    user_id = _field(user, "id")
-    agent_id = _field(agent, "id")
-    resolved_email = _field(user, "email")
-
-    if user_id is not None:
-        try:
-            save_user_identity(
-                str(user_id),
-                email=str(resolved_email)
-                if resolved_email is not None
-                else None,
-                agent_id=str(agent_id) if agent_id is not None else None,
-            )
-        except OSError as exc:
-            print_err(f"Warning: could not save credentials: {exc}")
-
-    print_err(API_KEY_WARNING)
-    return {
-        "user_id": str(user_id) if user_id is not None else None,
-        "agent_id": str(agent_id) if agent_id is not None else None,
-        "email": str(resolved_email) if resolved_email is not None else None,
-        "api_key": _field(result, "api_key"),
-        "api_key_prefix": _field(result, "api_key_prefix"),
-        "created": True,
-    }
+        return {"api_key_persisted": False}
+    return rotate_and_save_api_key(config, user_id, agent_id, password)
 
 
 def handle_onboarding(args: argparse.Namespace) -> int:
@@ -118,13 +53,25 @@ def handle_onboarding(args: argparse.Namespace) -> int:
 
     existing = stored_user_id()
     if existing is None:
-        identity = _provision_identity(args, config)
+        identity = provision_identity(args, config)
         if identity is None:
             return 2
         summary.update(identity)
     else:
         print_err(f"Already onboarded (user {existing}).")
         summary.update({"user_id": existing, "created": False})
+        existing_api_key = stored_api_key()
+        if existing_api_key is None:
+            print_err("Stored Logion API key missing; repairing credentials.")
+            repaired = _repair_missing_api_key(args, config, existing)
+            if repaired is None:
+                return 2
+            summary["credentials"] = repaired
+        else:
+            summary["credentials"] = {
+                "api_key_persisted": True,
+                "api_key_prefix": stored_api_key_prefix(),
+            }
 
     # Validate an explicitly-requested harness up-front so an unknown
     # name is a hard error before autopost or the companion step runs.
