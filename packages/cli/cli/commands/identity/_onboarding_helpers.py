@@ -85,7 +85,7 @@ def run_companion_step(
 
     # Install the companion into each resolved adapter.  The canonical
     # install (manifest + content hash) happens once per (course_id,
-    # version_id); subsequent adapters just get a symlink.
+    # version_id); subsequent adapters get a synced skill copy.
     summaries: list[dict[str, object]] = []
     for adapter in adapters:
         try:
@@ -122,18 +122,17 @@ def ensure_symlink(
     install_dest: Path,
     skill_name: str | None = None,
 ) -> None:
-    """Symlink ``install_dest`` into ``adapter.skill_dir()``.
+    """Copy ``install_dest`` into ``adapter.skill_dir()``.
 
-    Uses the existing ``create_symlink`` helper so we share the same
-    replace-prior-link/refuse-real-directory behaviour as
+    Uses the existing ``create_symlink`` compatibility helper so we share
+    the same replace-prior-target behavior as
     ``logion skills install --symlink-dir``.
 
-    A symlink failure is **non-fatal and never raises**: it is surfaced
+    A copy failure is **non-fatal and never raises**: it is surfaced
     as a warning on stderr (mirroring ``apply_post_install_symlink``),
-    so onboarding does not crash — or corrupt ``--json`` with a
-    traceback — when the target is a real directory or otherwise
-    unwritable.  The canonical install under ``$LOGION_HOME/installed/``
-    is valid regardless.
+    so onboarding does not crash — or corrupt ``--json`` with a traceback
+    — when the target is unwritable.  The canonical install under
+    ``$LOGION_HOME/installed/`` is valid regardless.
     """
     from cli.commands.skills._agent_symlink import create_symlink
 
@@ -141,11 +140,9 @@ def ensure_symlink(
     target_skill_dir = adapter.skill_dir()
     try:
         create_symlink(target_skill_dir, skill_name, install_dest)
-    except FileExistsError as exc:
-        print_err(f"Warning: companion symlink skipped: {exc}")
     except OSError as exc:
         print_err(
-            f"Warning: companion symlink failed ({exc}); "
+            f"Warning: companion skill copy failed ({exc}); "
             "canonical install is fine."
         )
 

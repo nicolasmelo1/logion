@@ -137,6 +137,7 @@ CURL
 #!/bin/sh
 printf 'LOGION_AUTO_UPDATE=%s\n' "\${LOGION_AUTO_UPDATE:-}" >> "${WORK}/logion-calls.log"
 printf '%s\n' "\$*" >> "${WORK}/logion-calls.log"
+test -f "${WORK}/companion-source/SKILL.md"
 exit 0
 LOGION
     chmod +x "${WORK}/bin/curl" "${WORK}/bin/logion"
@@ -145,7 +146,7 @@ LOGION
 
     [ "$status" -eq 0 ]
     grep -F "LOGION_AUTO_UPDATE=0" "${WORK}/logion-calls.log"
-    grep -F "skills install --source ${WORK}/home/.logion/installed/logion-marketplace-companion/0.1.0 --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --force" "${WORK}/logion-calls.log"
+    grep -F "skills install --source ${WORK}/companion-source --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --no-symlink --force" "${WORK}/logion-calls.log"
 }
 
 @test "install_cli clears existing pipx venv before reinstalling" {

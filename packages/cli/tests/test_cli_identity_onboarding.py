@@ -238,29 +238,32 @@ def test_onboarding_unknown_harness_with_no_autopost_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
-def test_ensure_symlink_warns_and_does_not_raise_on_real_dir(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_ensure_symlink_replaces_existing_symlink_with_real_copy(
+    tmp_path: Path,
 ) -> None:
-    """A real directory at the symlink target must warn, not crash.
-
-    Onboarding must follow skills-install's warn-and-continue: a failed
-    symlink is non-fatal and never raises a traceback (which would also
-    corrupt --json).
-    """
+    """Harness installs must be real copies, not symlinks."""
     from cli._harness.custom import CustomPathHarness
     from cli.commands.identity._companion import COMPANION_COURSE_ID
     from cli.commands.identity._onboarding_helpers import ensure_symlink
 
     skill_dir = tmp_path / "skills"
-    # Pre-place a *real* directory where the symlink would go.
-    (skill_dir / COMPANION_COURSE_ID).mkdir(parents=True)
+    old_source = tmp_path / "old"
+    old_source.mkdir()
+    skill_dir.mkdir()
+    (skill_dir / COMPANION_COURSE_ID).symlink_to(
+        old_source,
+        target_is_directory=True,
+    )
     install_dest = tmp_path / "installed"
     install_dest.mkdir()
+    (install_dest / "SKILL.md").write_text("---\nname: logion\n---\n")
 
-    # Must not raise.
     ensure_symlink(CustomPathHarness(skill_dir), install_dest)
 
-    assert "symlink skipped" in capsys.readouterr().err
+    copied = skill_dir / COMPANION_COURSE_ID
+    assert copied.is_dir()
+    assert not copied.is_symlink()
+    assert (copied / "SKILL.md").is_file()
 
 
 def test_onboarding_unknown_harness_with_agent_dir_still_errors(
@@ -413,7 +416,9 @@ def test_onboarding_companion_from_tarball(
         "--json",
     ])
     assert code == 0
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
 
 
 def test_onboarding_companion_from_dir_holding_tarball(
@@ -441,7 +446,9 @@ def test_onboarding_companion_from_dir_holding_tarball(
         "--json",
     ])
     assert code == 0
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
 
 
 def test_onboarding_uses_installer_extracted_companion(
@@ -480,7 +487,9 @@ def test_onboarding_uses_installer_extracted_companion(
     ])
 
     assert code == 0
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
 
 
 def test_onboarding_interactive_selects_subset(
@@ -512,7 +521,9 @@ def test_onboarding_interactive_selects_subset(
     # Only the picked harness (claude-code) is configured.
     settings = json.loads((env.home / ".claude" / "settings.json").read_text())
     assert MATCHER in settings["permissions"]["allow"]
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
     # codex was offered but not picked → untouched.
     assert not (env.home / ".codex" / "config.toml").exists()
 
@@ -690,7 +701,8 @@ def test_onboarding_installs_companion_into_skill_dir(
     ])
     assert code == 0
     skill_link = env.home / ".claude" / "skills" / "logion"
-    assert skill_link.is_symlink()
+    assert skill_link.is_dir()
+    assert not skill_link.is_symlink()
     data = _stdout_data(capsys)
     assert data["companion"]["installed"] is True
 
@@ -777,7 +789,8 @@ def test_onboarding_agent_dir_custom_path(
     ])
     assert code == 0
     skill_link = custom_dir / "logion"
-    assert skill_link.is_symlink()
+    assert skill_link.is_dir()
+    assert not skill_link.is_symlink()
 
 
 def test_onboarding_persists_autoreview_consent_true(

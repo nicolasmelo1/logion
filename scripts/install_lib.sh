@@ -690,6 +690,7 @@ install_companion() {
     fi
 
     _dest_dir="$HOME/.logion/installed/logion-marketplace-companion/$_version"
+    _source_dir="$INSTALL_TMPDIR/companion-source"
     _tarball="$INSTALL_TMPDIR/companion.tar.gz"
 
     if ! curl -fsSL "$_bundle_url" -o "$_tarball"; then
@@ -700,7 +701,7 @@ install_companion() {
         sha256_verify "$_tarball" "$_bundle_sha"
     fi
 
-    if ! extract_companion_bundle "$_tarball" "$_dest_dir"; then
+    if ! extract_companion_bundle "$_tarball" "$_source_dir"; then
         die 8 "Failed to extract companion tarball"
     fi
 
@@ -708,15 +709,19 @@ install_companion() {
     # invocations to avoid recursive updates while this installer is running.
     if command -v logion >/dev/null 2>&1; then
         if ! LOGION_AUTO_UPDATE=0 logion skills install \
-            --source "$_dest_dir" \
+            --source "$_source_dir" \
             --course-id "logion-marketplace-companion" \
             --version-id "$_version" \
             --title "Logion Marketplace Companion" \
+            --no-symlink \
             --force; then
             warn "logion skills install --source $_dest_dir failed (companion extracted but not registered)"
         fi
     else
         warn "logion CLI not on PATH; companion extracted to $_dest_dir but not registered"
+        if ! extract_companion_bundle "$_tarball" "$_dest_dir"; then
+            die 8 "Failed to extract companion tarball"
+        fi
     fi
 
     info "logion-marketplace-companion==$_version installed to $_dest_dir"
