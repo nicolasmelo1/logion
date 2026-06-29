@@ -16,8 +16,13 @@ from pathlib import Path
 
 from cli._options import COMMON_PARSER
 from cli._output import emit_json
+from cli._version import __version__
 
 INSTALLER_URL = "https://logion.sh/install.sh"
+INSTALLER_HEADERS = {
+    "Accept": "application/x-sh, text/x-shellscript, text/plain, */*",
+    "User-Agent": f"logion-cli/{__version__}",
+}
 
 
 def _installer_command(script: Path, args: argparse.Namespace) -> list[str]:
@@ -40,7 +45,8 @@ def _installer_command(script: Path, args: argparse.Namespace) -> list[str]:
 
 def _download_installer(url: str, timeout: float | None) -> Path:
     """Download the official installer to a temporary executable file."""
-    with urllib.request.urlopen(url, timeout=timeout or 30.0) as response:
+    request = urllib.request.Request(url, headers=INSTALLER_HEADERS)
+    with urllib.request.urlopen(request, timeout=timeout or 30.0) as response:
         body = response.read()
     with tempfile.NamedTemporaryFile(
         prefix="logion-update-",
