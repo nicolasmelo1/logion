@@ -14,6 +14,7 @@ import urllib.request
 from contextlib import suppress
 from pathlib import Path
 
+from cli import _auto_update
 from cli._options import COMMON_PARSER
 from cli._output import emit_json
 from cli._version import __version__
@@ -61,6 +62,14 @@ def _download_installer(url: str, timeout: float | None) -> Path:
 
 def handle_update(args: argparse.Namespace) -> int:
     """Update Logion CLI and companion through the public installer."""
+    auto_update_mode = getattr(args, "auto_update", None)
+    if getattr(args, "enable_auto_update", False):
+        auto_update_mode = "on"
+    if getattr(args, "disable_auto_update", False):
+        auto_update_mode = "off"
+    if auto_update_mode is not None:
+        return _handle_auto_update_mode(auto_update_mode, args)
+
     try:
         script = _download_installer(INSTALLER_URL, args.timeout)
     except (OSError, urllib.error.URLError) as exc:
@@ -109,6 +118,31 @@ def handle_update(args: argparse.Namespace) -> int:
             script.unlink()
 
 
+def _handle_auto_update_mode(mode: str, args: argparse.Namespace) -> int:
+    """Handle auto-update settings without running an installer update."""
+    if mode == "on":
+        _auto_update.set_enabled(True)
+    elif mode == "off":
+        _auto_update.set_enabled(False)
+    elif mode != "status":
+        sys.stderr.write(f"ERROR: unknown auto-update mode: {mode}\n")
+        return 2
+
+    data = _auto_update.status()
+    if getattr(args, "json_output", False):
+        emit_json("logion.update.auto_update", data)
+    else:
+        status = "enabled" if data["enabled"] else "disabled"
+        sys.stderr.write(f"Auto-update is {status}.\n")
+        sys.stderr.write(
+            "Commands since check: "
+            f"{data['commands_since_check']}/{data['command_threshold']}\n"
+        )
+        if data.get("last_checked_at"):
+            sys.stderr.write(f"Last checked: {data['last_checked_at']}\n")
+    return 0
+
+
 def register(subparsers: argparse._SubParsersAction) -> None:
     """Register the ``update`` command."""
     parser = subparsers.add_parser(
@@ -136,5 +170,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--dry-run",
         action="store_true",
         help="Show what would be updated without making changes",
+    )
+    parser.add_argument(
+        "--auto-update",
+        choices=["on", "off", "status"],
+        help="Enable, disable, or inspect automatic CLI updates",
+    )
+    parser.add_argument(
+        "--enable-auto-update",
+        action="store_true",
+        help="Enable automatic CLI updates",
+    )
+    parser.add_argument(
+        "--disable-auto-update",
+        action="store_true",
+        help="Disable automatic CLI updates",
     )
     parser.set_defaults(handler=handle_update)

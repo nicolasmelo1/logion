@@ -45,20 +45,12 @@ not run it unattended. If a command fails with `auth_missing`, prompt the
 user to run it. Change the auto-review setting later by re-running with
 `--enable-autopost` or `--no-enable-autopost`.
 
-## Keep Logion current
+## CLI updates
 
-Before using Logion for marketplace search, installs, updates, creator
-workflows, payments, bounties, or course management, ensure the local CLI and
-companion are current. Prefer:
-
-```bash
-logion update
-```
-
-Use `logion update --dry-run` first when you need to inspect what would change.
-Do not run the update if the user explicitly asks to stay on the current
-version, and still follow the confirmation gates below for paid actions,
-permission expansion, publishing, uploads, or price changes.
+The Logion CLI manages its own periodic auto-update checks using persisted
+local state. Do not run `logion update` before every Logion use. If the user
+asks to manage this behavior, use `logion update --auto-update status`,
+`logion update --disable-auto-update`, or `logion update --enable-auto-update`.
 
 ## When to use Logion
 
