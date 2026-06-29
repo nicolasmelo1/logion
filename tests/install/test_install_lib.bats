@@ -121,9 +121,39 @@ exit 0
 PIPX
     chmod +x "${WORK}/bin/pipx"
 
+    LOGION_INSTALL_RETRIES=1
     PATH="${WORK}/bin:${PATH}" run install_cli "0.1.4" "pipx"
 
     [ "$status" -eq 0 ]
     sed -n '1p' "${WORK}/pipx-calls.log" | grep -F "uninstall logion-cli"
     sed -n '2p' "${WORK}/pipx-calls.log" | grep -F "install --force logion-cli==0.1.4 --pip-args=--no-cache-dir"
+}
+
+@test "install_cli retries transient pipx resolver misses" {
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/bin/pipx" <<PIPX
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/pipx-calls.log"
+if [ "\$1" = "install" ]; then
+    count_file="${WORK}/pipx-install-count"
+    count=0
+    [ -f "\$count_file" ] && count="\$(cat "\$count_file")"
+    count="\$((count + 1))"
+    printf '%s\n' "\$count" > "\$count_file"
+    [ "\$count" -lt 3 ] && exit 1
+fi
+exit 0
+PIPX
+    cat > "${WORK}/bin/sleep" <<'SLEEP'
+#!/bin/sh
+exit 0
+SLEEP
+    chmod +x "${WORK}/bin/pipx" "${WORK}/bin/sleep"
+
+    LOGION_INSTALL_RETRIES=3
+    PATH="${WORK}/bin:${PATH}" run install_cli "0.1.7" "pipx"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "${WORK}/pipx-install-count")" -eq 3 ]
+    grep -F "retrying" <<<"$output"
 }

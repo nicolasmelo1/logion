@@ -551,6 +551,28 @@ sha256_verify() {
     info "SHA-256 verified: $_file"
 }
 
+# --- Retry helpers ----------------------------------------------------------
+
+run_with_retries() {
+    _label="$1"
+    shift
+    _attempt=1
+    _max_attempts="${LOGION_INSTALL_RETRIES:-5}"
+
+    while :; do
+        if "$@"; then
+            return 0
+        fi
+        if [ "$_attempt" -ge "$_max_attempts" ]; then
+            return 1
+        fi
+        _sleep="$(( _attempt * 5 ))"
+        warn "$_label failed; retrying in ${_sleep}s ($_attempt/$_max_attempts)"
+        sleep "$_sleep"
+        _attempt="$(( _attempt + 1 ))"
+    done
+}
+
 # --- CLI installation -------------------------------------------------------
 
 # install_cli <version> <installer>
@@ -574,7 +596,8 @@ install_cli() {
             # Clear any previous logion-cli install first so reruns are
             # idempotent instead of failing on an existing venv.
             pipx uninstall logion-cli >/dev/null 2>&1 || true
-            if ! pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
+            if ! run_with_retries "pipx install logion-cli==$_version" \
+                pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
                 die 8 "pipx install logion-cli==$_version failed"
             fi
             ;;
@@ -582,7 +605,8 @@ install_cli() {
             if ! command -v uv >/dev/null 2>&1; then
                 die 4 "uv not found"
             fi
-            if ! uv tool install "logion-cli==$_version" --force; then
+            if ! run_with_retries "uv tool install logion-cli==$_version" \
+                uv tool install "logion-cli==$_version" --force; then
                 die 8 "uv tool install logion-cli==$_version failed"
             fi
             ;;
@@ -597,7 +621,8 @@ install_cli() {
             if ! . "$_venv_dir/bin/activate"; then
                 die 8 "Failed to activate virtual environment at $_venv_dir"
             fi
-            if ! pip install --no-cache-dir "logion-cli==$_version"; then
+            if ! run_with_retries "pip install logion-cli==$_version" \
+                pip install --no-cache-dir "logion-cli==$_version"; then
                 die 8 "pip install logion-cli==$_version failed"
             fi
             deactivate 2>/dev/null || true
