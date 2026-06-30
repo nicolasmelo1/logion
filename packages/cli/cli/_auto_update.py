@@ -18,6 +18,7 @@ from cli._local_state import _atomic_write_text, get_home
 STATE_FILENAME = "auto_update.json"
 DEFAULT_COMMAND_THRESHOLD = 25
 DEFAULT_INTERVAL_HOURS = 24
+NPM_MANAGED_VENV_DIRNAME = "npm-managed-venv"
 
 
 def state_path(home: Path | None = None) -> Path:
@@ -90,6 +91,20 @@ def status(home: Path | None = None) -> dict[str, Any]:
     }
 
 
+def _is_npm_managed_python() -> bool:
+    """Return True when this CLI is running from the npm wrapper venv.
+
+    The npm wrapper shim always dispatches to
+    ``~/.logion/npm-managed-venv/bin/logion``.  That environment is managed by
+    npm postinstall, not by the curl installer used for Python CLI updates.  If
+    auto-update runs here, the generic installer can update pipx/uv while the
+    npm shim keeps invoking the stale managed venv.
+    """
+    executable = Path(sys.executable).expanduser().absolute()
+    managed = (Path.home() / ".logion" / NPM_MANAGED_VENV_DIRNAME).absolute()
+    return executable == managed or managed in executable.parents
+
+
 def maybe_auto_update(args: argparse.Namespace) -> None:
     """Increment usage counters and run auto-update when policy is due."""
     command = getattr(args, "command", "")
@@ -104,6 +119,14 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
     )
 
     if not data["enabled"] or os.environ.get("LOGION_AUTO_UPDATE") == "0":
+        _write_state(data)
+        return
+
+    if _is_npm_managed_python():
+        data["last_error"] = (
+            "auto-update skipped: npm-managed install is updated by "
+            "npm postinstall"
+        )
         _write_state(data)
         return
 
