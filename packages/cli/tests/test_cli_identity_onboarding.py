@@ -28,6 +28,13 @@ class FakeIdentityResource:
             "api_key_prefix": "lg-abc",  # pragma: allowlist secret
         }
 
+    def rotate_api_key(self, **kwargs: Any) -> dict[str, Any]:
+        self.calls.append(("rotate_api_key", kwargs))
+        return {
+            "api_key": {"key": "lg-repaired", "prefix": "lg-rep"},
+            "api_key_prefix": "lg-rep",  # pragma: allowlist secret
+        }
+
 
 class FakeClient:
     def __init__(self, identity: FakeIdentityResource) -> None:
@@ -84,6 +91,8 @@ def test_onboarding_provisions_identity(
     assert creds["user_id"] == "u1"
     assert creds["agent_id"] == "a1"
     assert creds["email"] == "u@example.com"
+    assert creds["api_key"] == "lg-abc123"
+    assert creds["api_key_prefix"] == "lg-abc"
     data = _stdout_data(capsys)
     assert data["created"] is True
     assert data["autopost"] == {"enabled": False}
@@ -107,6 +116,46 @@ def test_onboarding_reuses_existing_identity(
     assert data["user_id"] == "existing-user"
     # No provisioning call.
     assert env.identity.calls == []
+
+
+def test_onboarding_repairs_missing_stored_api_key(
+    env: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "user_id": "existing-user",
+            "agent_id": "existing-agent",
+        })
+    )
+
+    code = main([
+        "identity",
+        "onboarding",
+        "--password",
+        "testpass1",
+        "--no-enable-autopost",
+        "--no-companion",
+        "--json",
+    ])
+
+    assert code == 0
+    assert env.identity.calls == [
+        (
+            "rotate_api_key",
+            {
+                "user_id": "existing-user",
+                "agent_id": "existing-agent",
+                "user_password": "testpass1",
+            },
+        )
+    ]
+    creds = json.loads((env.logion_home / "credentials.json").read_text())
+    assert creds["api_key"] == "lg-repaired"
+    assert creds["api_key_prefix"] == "lg-rep"
+    data = _stdout_data(capsys)
+    assert data["credentials"]["api_key_persisted"] is True
 
 
 def test_onboarding_enables_autopost_project_scope(
@@ -189,29 +238,32 @@ def test_onboarding_unknown_harness_with_no_autopost_errors(
     assert "unknown harness" in capsys.readouterr().err
 
 
-def test_ensure_symlink_warns_and_does_not_raise_on_real_dir(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_ensure_symlink_replaces_existing_symlink_with_real_copy(
+    tmp_path: Path,
 ) -> None:
-    """A real directory at the symlink target must warn, not crash.
-
-    Onboarding must follow skills-install's warn-and-continue: a failed
-    symlink is non-fatal and never raises a traceback (which would also
-    corrupt --json).
-    """
+    """Harness installs must be real copies, not symlinks."""
     from cli._harness.custom import CustomPathHarness
     from cli.commands.identity._companion import COMPANION_COURSE_ID
     from cli.commands.identity._onboarding_helpers import ensure_symlink
 
     skill_dir = tmp_path / "skills"
-    # Pre-place a *real* directory where the symlink would go.
-    (skill_dir / COMPANION_COURSE_ID).mkdir(parents=True)
+    old_source = tmp_path / "old"
+    old_source.mkdir()
+    skill_dir.mkdir()
+    (skill_dir / COMPANION_COURSE_ID).symlink_to(
+        old_source,
+        target_is_directory=True,
+    )
     install_dest = tmp_path / "installed"
     install_dest.mkdir()
+    (install_dest / "SKILL.md").write_text("---\nname: logion\n---\n")
 
-    # Must not raise.
     ensure_symlink(CustomPathHarness(skill_dir), install_dest)
 
-    assert "symlink skipped" in capsys.readouterr().err
+    copied = skill_dir / COMPANION_COURSE_ID
+    assert copied.is_dir()
+    assert not copied.is_symlink()
+    assert (copied / "SKILL.md").is_file()
 
 
 def test_onboarding_unknown_harness_with_agent_dir_still_errors(
@@ -364,7 +416,9 @@ def test_onboarding_companion_from_tarball(
         "--json",
     ])
     assert code == 0
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
 
 
 def test_onboarding_companion_from_dir_holding_tarball(
@@ -392,7 +446,50 @@ def test_onboarding_companion_from_dir_holding_tarball(
         "--json",
     ])
     assert code == 0
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
+
+
+def test_onboarding_uses_installer_extracted_companion(
+    env: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """onboarding finds the companion extracted by curl install."""
+    bundle = _make_bundle(tmp_path)
+    installed = (
+        env.logion_home
+        / "installed"
+        / "logion-marketplace-companion"
+        / "0.1.0"
+    )
+    installed.mkdir(parents=True)
+    for child in bundle.iterdir():
+        if child.is_file():
+            (installed / child.name).write_bytes(child.read_bytes())
+        elif child.is_dir():
+            import shutil
+
+            shutil.copytree(child, installed / child.name)
+    (env.logion_home / "credentials.json").write_text(
+        json.dumps({"schema_version": 1, "user_id": "u1"})
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    code = main([
+        "identity",
+        "onboarding",
+        "--no-enable-autopost",
+        "--harness",
+        "claude-code",
+        "--json",
+    ])
+
+    assert code == 0
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
 
 
 def test_onboarding_interactive_selects_subset(
@@ -424,7 +521,9 @@ def test_onboarding_interactive_selects_subset(
     # Only the picked harness (claude-code) is configured.
     settings = json.loads((env.home / ".claude" / "settings.json").read_text())
     assert MATCHER in settings["permissions"]["allow"]
-    assert (env.home / ".claude" / "skills" / "logion").is_symlink()
+    skill_dir = env.home / ".claude" / "skills" / "logion"
+    assert skill_dir.is_dir()
+    assert not skill_dir.is_symlink()
     # codex was offered but not picked → untouched.
     assert not (env.home / ".codex" / "config.toml").exists()
 
@@ -602,7 +701,8 @@ def test_onboarding_installs_companion_into_skill_dir(
     ])
     assert code == 0
     skill_link = env.home / ".claude" / "skills" / "logion"
-    assert skill_link.is_symlink()
+    assert skill_link.is_dir()
+    assert not skill_link.is_symlink()
     data = _stdout_data(capsys)
     assert data["companion"]["installed"] is True
 
@@ -689,7 +789,8 @@ def test_onboarding_agent_dir_custom_path(
     ])
     assert code == 0
     skill_link = custom_dir / "logion"
-    assert skill_link.is_symlink()
+    assert skill_link.is_dir()
+    assert not skill_link.is_symlink()
 
 
 def test_onboarding_persists_autoreview_consent_true(

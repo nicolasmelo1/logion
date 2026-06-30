@@ -37,7 +37,6 @@ MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
 FAVICON_PATH = STATIC_DIR / "favicon.svg"
 GITHUB_REPO = "nicolasmelo1/logion"
-INSTALLER_TAG = os.environ.get("LOGION_INSTALLER_TAG", "installer-v1")
 _MANIFEST_CHANNELS = ("stable", "latest")
 
 PUBLIC_PATHS = (
@@ -190,13 +189,10 @@ FAVICON_BYTES = FAVICON_PATH.read_bytes()
 
 
 def _installer_redirect(asset: str) -> RedirectResponse:
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", INSTALLER_TAG):
-        raise HTTPException(
-            status_code=500, detail="Invalid LOGION_INSTALLER_TAG"
-        )
+    if not re.fullmatch(r"install(_lib)?\.(sh|ps1)", asset):
+        raise HTTPException(status_code=500, detail="Invalid installer asset")
     url = (
-        f"https://github.com/{GITHUB_REPO}/releases/download/"
-        f"{INSTALLER_TAG}/{asset}"
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/scripts/{asset}"
     )
     return RedirectResponse(url, status_code=302)
 

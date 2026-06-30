@@ -112,21 +112,12 @@ JSON
     [[ "$output" != *"download/logion-cli-v0.1.2/logion-marketplace-companion-0.1.2.tar.gz"* ]]
 }
 
-@test "install_companion registers with required CLI metadata" {
+@test "install_companion registers companion with required skill metadata" {
     _make_prefixed_bundle
     _bundle_sha="$(sha256sum "${WORK}/bundle.tar.gz" | cut -d' ' -f1)"
     INSTALL_TMPDIR="${WORK}"
     INSTALL_DRY_RUN=0
-    HOME="${WORK}/home"
-    mkdir -p "${WORK}/bin" "$HOME"
-    cat > "${WORK}/bin/logion" <<LOGION_EOF
-#!/bin/sh
-printf '%s\n' "\$*" >> "${WORK}/logion-calls"
-exit 0
-LOGION_EOF
-    chmod +x "${WORK}/bin/logion"
-    PATH="${WORK}/bin:${PATH}"
-    export HOME PATH INSTALL_TMPDIR INSTALL_DRY_RUN
+    mkdir -p "${WORK}/bin"
     cat > "${WORK}/manifest.json" <<JSON
 {
   "packages": {
@@ -141,14 +132,68 @@ LOGION_EOF
   }
 }
 JSON
+    cat > "${WORK}/bin/curl" <<CURL
+#!/bin/sh
+cp "${WORK}/bundle.tar.gz" "\$4"
+CURL
+    cat > "${WORK}/bin/logion" <<LOGION
+#!/bin/sh
+printf 'LOGION_AUTO_UPDATE=%s\n' "\${LOGION_AUTO_UPDATE:-}" >> "${WORK}/logion-calls.log"
+printf '%s\n' "\$*" >> "${WORK}/logion-calls.log"
+test -f "${WORK}/companion-source/SKILL.md"
+exit 0
+LOGION
+    chmod +x "${WORK}/bin/curl" "${WORK}/bin/logion"
 
-    run install_companion "0.1.0" "logion-cli-v0.1.0"
+    HOME="${WORK}/home" PATH="${WORK}/bin:${PATH}" run install_companion "0.1.0" "logion-cli-v0.1.0"
 
     [ "$status" -eq 0 ]
-    _call="$(cat "${WORK}/logion-calls")"
-    [[ "$_call" == *"skills install"* ]]
-    [[ "$_call" == *"--course-id logion-marketplace-companion"* ]]
-    [[ "$_call" == *"--version-id 0.1.0"* ]]
-    [[ "$_call" == *"--install-source logion-marketplace"* ]]
-    [[ "$_call" == *"--no-symlink"* ]]
+    grep -F "LOGION_AUTO_UPDATE=0" "${WORK}/logion-calls.log"
+    grep -F "skills install --source ${WORK}/companion-source --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --install-source logion-marketplace --no-symlink --force" "${WORK}/logion-calls.log"
+}
+
+@test "install_cli clears existing pipx venv before reinstalling" {
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/bin/pipx" <<PIPX
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/pipx-calls.log"
+exit 0
+PIPX
+    chmod +x "${WORK}/bin/pipx"
+
+    LOGION_INSTALL_RETRIES=1
+    PATH="${WORK}/bin:${PATH}" run install_cli "0.1.4" "pipx"
+
+    [ "$status" -eq 0 ]
+    sed -n '1p' "${WORK}/pipx-calls.log" | grep -F "uninstall logion-cli"
+    sed -n '2p' "${WORK}/pipx-calls.log" | grep -F "install --force logion-cli==0.1.4 --pip-args=--no-cache-dir"
+}
+
+@test "install_cli retries transient pipx resolver misses" {
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/bin/pipx" <<PIPX
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/pipx-calls.log"
+if [ "\$1" = "install" ]; then
+    count_file="${WORK}/pipx-install-count"
+    count=0
+    [ -f "\$count_file" ] && count="\$(cat "\$count_file")"
+    count="\$((count + 1))"
+    printf '%s\n' "\$count" > "\$count_file"
+    [ "\$count" -lt 3 ] && exit 1
+fi
+exit 0
+PIPX
+    cat > "${WORK}/bin/sleep" <<'SLEEP'
+#!/bin/sh
+exit 0
+SLEEP
+    chmod +x "${WORK}/bin/pipx" "${WORK}/bin/sleep"
+
+    LOGION_INSTALL_RETRIES=3
+    PATH="${WORK}/bin:${PATH}" run install_cli "0.1.7" "pipx"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "${WORK}/pipx-install-count")" -eq 3 ]
+    grep -F "retrying" <<<"$output"
 }

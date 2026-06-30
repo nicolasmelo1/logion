@@ -20,7 +20,6 @@ import argparse
 import gzip
 import hashlib
 import json
-import subprocess
 import sys
 import tarfile
 from datetime import UTC, datetime
@@ -367,18 +366,8 @@ def _read_cli_version() -> str:
 
 
 def _git_short_sha() -> str:
-    """Return short git SHA of HEAD, or 'unknown'."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=str(REPO_ROOT),
-        )
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "unknown"
+    """Return a schema-stable git marker for deterministic bundles."""
+    return "0000000"
 
 
 def _build_manifest(
@@ -395,7 +384,9 @@ def _build_manifest(
         "schema_version": 1,
         "bundle_kind": BUNDLE_KIND,
         "version": version,
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.fromtimestamp(0, UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
         "git_commit": git_commit,
         "minimum_cli_version": cli_version,
         "skill_name": "logion",

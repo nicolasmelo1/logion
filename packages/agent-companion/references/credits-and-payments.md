@@ -25,9 +25,11 @@ logion credits top-up --amount AMOUNT_CENTS --yes --json
 
 Creates a Stripe Checkout session for the given amount in cents — which is
 the same number as credits granted (1:1, server-enforced; valid range
-500–50000). Returns a `top_up_id`
-and `checkout_url`. Surface the URL to the user — do not open or follow it
-automatically. `--yes` is required; the CLI refuses without it.
+500–50000). Returns a `top_up_id` and `checkout_url`. Surface the
+`checkout_url` to the user exactly as returned by `--json` — do not open or
+follow it automatically, do not shorten it, do not omit query strings, and do
+not omit the Stripe `#...` URL fragment. Stripe Checkout links are invalid if
+the fragment is dropped. `--yes` is required; the CLI refuses without it.
 
 ```bash
 logion credits top-ups get TOP_UP_ID --json

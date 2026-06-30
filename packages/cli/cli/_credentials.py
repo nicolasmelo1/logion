@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: MIT
 """Persisted CLI credentials (~/.logion/credentials.json).
 
-Stores non-secret identity context (currently the user id and email) so
-commands like ``identity agents-add`` do not require ``--user-id`` on
-every invocation.  Secrets (passwords, API keys) are never written here.
+Stores identity context and the agent API key so commands do not require
+``--user-id`` or ``LOGION_API_KEY`` on every invocation.
 """
 
 from __future__ import annotations
@@ -43,6 +42,8 @@ def save_user_identity(
     email: str | None = None,
     home: Path | None = None,
     agent_id: str | None = None,
+    api_key: str | None = None,
+    api_key_prefix: str | None = None,
 ) -> Path:
     """Persist the user identity, preserving unrelated keys."""
     path = credentials_path(home)
@@ -53,6 +54,10 @@ def save_user_identity(
         data["email"] = email
     if agent_id is not None:
         data["agent_id"] = agent_id
+    if api_key is not None:
+        data["api_key"] = api_key
+    if api_key_prefix is not None:
+        data["api_key_prefix"] = api_key_prefix
     _atomic_write_text(
         path,
         json.dumps(data, indent=2, ensure_ascii=False) + "\n",
@@ -74,6 +79,22 @@ def stored_user_id(home: Path | None = None) -> str | None:
 def stored_agent_id(home: Path | None = None) -> str | None:
     """Return the stored agent id, or ``None`` if not set."""
     value = read_credentials(home).get("agent_id")
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def stored_api_key(home: Path | None = None) -> str | None:
+    """Return the stored API key, or ``None`` if not set."""
+    value = read_credentials(home).get("api_key")
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def stored_api_key_prefix(home: Path | None = None) -> str | None:
+    """Return the stored API key prefix, or ``None`` if not set."""
+    value = read_credentials(home).get("api_key_prefix")
     if isinstance(value, str) and value.strip():
         return value
     return None

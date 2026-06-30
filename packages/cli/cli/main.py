@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 from cli._parser import build_parser
@@ -76,6 +77,11 @@ def main(argv: list[str] | None = None) -> int:
         rc = handle_onboarding(_onboarding_args_from(args))
         if rc != 0:
             return rc
+
+    from cli._auto_update import maybe_auto_update
+
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        maybe_auto_update(args)
 
     return args.handler(args)
 

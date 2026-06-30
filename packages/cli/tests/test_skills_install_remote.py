@@ -260,6 +260,37 @@ class TestSkillsInstallFromLocalTarball:
         assert local is not None
         assert local["course_id"] == "manifest-test"
 
+    def test_symlink_dir_syncs_real_skill_copy(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Agent skill directories receive a real copy, not a symlink."""
+        bundle_dir = _build_bundle_directory(tmp_path, name="agent-skill")
+        (bundle_dir / "README.md").write_text("fresh\n", encoding="utf-8")
+        home = ensure_layout(tmp_path / "home")
+        agent_dir = tmp_path / "agent-skills"
+        old = agent_dir / "agent-skill"
+        old.mkdir(parents=True)
+        (old / "README.md").write_text("stale\n", encoding="utf-8")
+
+        args = _args(
+            source=bundle_dir,
+            course_id="agent-skill-course",
+            version_id="0.1.0",
+            target=home,
+        )
+        args.symlink_dir = str(agent_dir)
+        args.no_symlink = False
+        rc = handle_skills_install(args)
+        assert rc == 0
+
+        copied = agent_dir / "agent-skill"
+        assert copied.is_dir()
+        assert not copied.is_symlink()
+        assert (copied / "SKILL.md").is_file()
+        assert (copied / "course" / "capabilities.yaml").is_file()
+        assert not (copied / "README.md").exists()
+
 
 @pytest.mark.skip(
     reason="pending CLI handler extension for URL source support"

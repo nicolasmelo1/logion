@@ -318,6 +318,19 @@ class TestSkillStructure:
             "never implies automatic execution" in body
         )
 
+    def test_credit_top_up_reference_preserves_checkout_url_fragment(
+        self,
+    ) -> None:
+        content = (ROOT / "references" / "credits-and-payments.md").read_text(
+            encoding="utf-8"
+        )
+        lower = content.lower()
+        assert "checkout_url" in content
+        assert "exactly as returned by `--json`" in content
+        assert "stripe `#...` url fragment" in lower
+        assert "invalid" in lower
+        assert "fragment is dropped" in lower
+
     def test_skill_md_never_instructs_loading_full_marketplace(self) -> None:
         body = _skill_body(_read_skill()).lower()
         forbidden = [

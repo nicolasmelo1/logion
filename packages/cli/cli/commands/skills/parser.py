@@ -70,14 +70,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--symlink-dir",
         default=None,
         help=(
-            "Symlink the installed skill into this directory "
+            "Copy the installed skill into this agent skill directory "
             "(e.g. ~/.claude/skills). Skip the interactive prompt."
         ),
     )
     install.add_argument(
         "--no-symlink",
         action="store_true",
-        help="Skip the agent-symlink prompt entirely (canonical install only)",
+        help=(
+            "Skip the agent skill-copy prompt entirely "
+            "(canonical install only)"
+        ),
     )
     install.set_defaults(handler=handle_skills_install)
 

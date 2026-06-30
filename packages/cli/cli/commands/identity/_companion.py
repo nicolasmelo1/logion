@@ -99,15 +99,15 @@ def _already_installed(course_id: str, version_id: str) -> Path | None:
 def install_companion(
     args: argparse.Namespace, adapter: HarnessAdapter
 ) -> CompanionResult:
-    """Install the companion bundle and symlink it into the harness skill dir.
+    """Install the companion bundle and copy it into the harness skill dir.
 
     Resolves the source (a bundle dir, a ``*.tar.gz``, or a dir holding
     one companion tarball), extracting a tarball when needed, then
     delegates the canonical install to ``handle_skills_install`` with a
     Namespace carrying ``--source=<bundle_dir>``,
-    ``--symlink-dir=adapter.skill_dir()``, and
     ``--install-source=logion-marketplace``.  Idempotent: a re-run over
-    an unchanged bundle returns ``already=True`` with ``installed=False``.
+    an unchanged bundle returns ``already=True`` with ``installed=False``
+    after refreshing the harness copy.
     """
     source = locate_bundle_source(args)
     if source is None:
@@ -191,8 +191,8 @@ def _install_from_dir(
         # the bundle content differs (checked above).
         force=existing is not None,
         install_source="logion-marketplace",
-        symlink_dir=str(adapter.skill_dir()),
-        no_symlink=False,
+        symlink_dir=None,
+        no_symlink=True,
         # Common options needed by resolve_config_from_args.
         api_key=getattr(args, "api_key", None),
         base_url=getattr(args, "base_url", None),

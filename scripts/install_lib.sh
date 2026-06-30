@@ -587,6 +587,28 @@ sha256_verify() {
     info "SHA-256 verified: $_file"
 }
 
+# --- Retry helpers ----------------------------------------------------------
+
+run_with_retries() {
+    _label="$1"
+    shift
+    _attempt=1
+    _max_attempts="${LOGION_INSTALL_RETRIES:-5}"
+
+    while :; do
+        if "$@"; then
+            return 0
+        fi
+        if [ "$_attempt" -ge "$_max_attempts" ]; then
+            return 1
+        fi
+        _sleep="$(( _attempt * 5 ))"
+        warn "$_label failed; retrying in ${_sleep}s ($_attempt/$_max_attempts)"
+        sleep "$_sleep"
+        _attempt="$(( _attempt + 1 ))"
+    done
+}
+
 # --- CLI installation -------------------------------------------------------
 
 # install_cli <version> <installer>
@@ -606,7 +628,12 @@ install_cli() {
             if ! command -v pipx >/dev/null 2>&1; then
                 die 4 "pipx not found"
             fi
-            if ! pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
+            # pipx can leave a partial venv behind when the resolver fails.
+            # Clear any previous logion-cli install first so reruns are
+            # idempotent instead of failing on an existing venv.
+            pipx uninstall logion-cli >/dev/null 2>&1 || true
+            if ! run_with_retries "pipx install logion-cli==$_version" \
+                pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
                 die 8 "pipx install logion-cli==$_version failed"
             fi
             ;;
@@ -614,7 +641,8 @@ install_cli() {
             if ! command -v uv >/dev/null 2>&1; then
                 die 4 "uv not found"
             fi
-            if ! uv tool install "logion-cli==$_version" --force; then
+            if ! run_with_retries "uv tool install logion-cli==$_version" \
+                uv tool install "logion-cli==$_version" --force; then
                 die 8 "uv tool install logion-cli==$_version failed"
             fi
             ;;
@@ -629,7 +657,8 @@ install_cli() {
             if ! . "$_venv_dir/bin/activate"; then
                 die 8 "Failed to activate virtual environment at $_venv_dir"
             fi
-            if ! pip install --no-cache-dir "logion-cli==$_version"; then
+            if ! run_with_retries "pip install logion-cli==$_version" \
+                pip install --no-cache-dir "logion-cli==$_version"; then
                 die 8 "pip install logion-cli==$_version failed"
             fi
             deactivate 2>/dev/null || true
@@ -712,10 +741,10 @@ install_companion() {
     fi
 
     # Register with logion CLI. The CLI requires marketplace identity metadata
-    # for canonical installs; install from a temporary source directory so the
-    # CLI can populate $HOME/.logion/installed/... itself.
+    # for canonical installs, and installer-internal invocations must not trigger
+    # recursive CLI auto-updates while this installer is running.
     if command -v logion >/dev/null 2>&1; then
-        if ! logion skills install \
+        if ! LOGION_AUTO_UPDATE=0 logion skills install \
             --source "$_source_dir" \
             --course-id logion-marketplace-companion \
             --version-id "$_version" \
@@ -840,7 +869,7 @@ verify_install() {
         die 9 "logion CLI not found on PATH after installation"
     fi
 
-    _got_ver="$(logion --version 2>/dev/null | head -1)"
+    _got_ver="$(LOGION_AUTO_UPDATE=0 logion --version 2>/dev/null | head -1)"
     if [ -z "$_got_ver" ]; then
         die 9 "logion --version returned empty output"
     fi
@@ -850,7 +879,7 @@ verify_install() {
     # Optionally verify companion
     if [ -n "$_comp_ver" ] && [ "$INSTALL_CLI_ONLY" != 1 ]; then
         if command -v logion >/dev/null 2>&1; then
-            _installed="$(logion skills installed 2>/dev/null || true)"
+            _installed="$(LOGION_AUTO_UPDATE=0 logion skills installed 2>/dev/null || true)"
             if [ -z "$_installed" ]; then
                 warn "logion skills installed returned no output"
             else

@@ -99,14 +99,7 @@ def _extract_manifest(tarball: Path) -> dict:
 
 
 class TestReleaseBundleDeterministic:
-    """Two consecutive builds produce identical content.
-
-    The manifest's ``generated_at`` timestamp changes between
-    builds, so byte-level equality of the whole tarball is not
-    expected.  Instead we verify that every file in the tarball
-    is byte-identical except ``manifest.json``, and that
-    ``manifest.json`` differs only in the ``generated_at`` field.
-    """
+    """Two consecutive builds produce byte-identical tarballs."""
 
     def test_release_bundle_deterministic(self, tmp_path: Path) -> None:
         out1 = tmp_path / "build1"
@@ -158,9 +151,9 @@ class TestReleaseBundleDeterministic:
             f"stderr: {result2.stderr}"
         )
 
-        prefix = f"{BUNDLE_KIND}-{VERSION}"
         tb1 = _tarball_path(out1)
         tb2 = _tarball_path(out2)
+        assert tb1.read_bytes() == tb2.read_bytes()
 
         with (
             tarfile.open(str(tb1), "r:gz") as t1,
@@ -180,43 +173,21 @@ class TestReleaseBundleDeterministic:
                 data1 = f1.read()
                 data2 = f2.read()
 
-                if name == f"{prefix}/manifest.json":
-                    # Manifest may differ only
-                    # in generated_at timestamp
-                    m1 = json.loads(data1)
-                    m2 = json.loads(data2)
-                    gen1 = m1.pop("generated_at")
-                    m2.pop("generated_at")
-                    assert m1 == m2, (
-                        f"Manifest content differs "
-                        f"beyond generated_at:\n"
-                        f"build1={m1}\nbuild2={m2}"
-                    )
-                    # Timestamps should be close
-                    # but are not expected to be equal
-                    assert isinstance(gen1, str), (
-                        f"generated_at must be str, got {type(gen1).__name__}"
-                    )
-                else:
-                    sha1 = hashlib.sha256(data1).hexdigest()
-                    sha2 = hashlib.sha256(data2).hexdigest()
-                    assert data1 == data2, (
-                        f"File {name} differs between "
-                        f"builds: sha1={sha1}, sha2={sha2}"
-                    )
+                sha1 = hashlib.sha256(data1).hexdigest()
+                sha2 = hashlib.sha256(data2).hexdigest()
+                assert data1 == data2, (
+                    f"File {name} differs between "
+                    f"builds: sha1={sha1}, sha2={sha2}"
+                )
 
-            # Verify same member set has
-            # identical sha256 for content files
-            # (excluding manifest.json)
+            # Verify same member set has identical sha256 for all files.
             content_sha1 = {
                 name: hashlib.sha256(t1.extractfile(m).read()).hexdigest()
                 for name, m in members1.items()
-                if name != f"{prefix}/manifest.json"
             }
             content_sha2 = {
                 name: hashlib.sha256(t2.extractfile(m).read()).hexdigest()
                 for name, m in members2.items()
-                if name != f"{prefix}/manifest.json"
             }
             assert content_sha1 == content_sha2
 

@@ -124,7 +124,7 @@ def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
         print(f"ERROR: invalid course bundle: {exc}", file=sys.stderr)
         return 1
 
-    # Ask about the symlink up-front, before any filesystem writes.
+    # Ask about the agent skill copy up-front, before any filesystem writes.
     # The user's choice is captured here and applied after install.
     skill_name, symlink_parent = resolve_symlink_intent(source_dir, args)
 
@@ -196,6 +196,8 @@ def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
                 "version_id": version_id,
                 "destination": str(dest),
                 "files_installed": len(copied),
+                "agent_skill_copied": bool(symlink_parent and skill_name),
+                # Kept for backwards compatibility with older JSON consumers.
                 "symlinked": bool(symlink_parent and skill_name),
             },
         )

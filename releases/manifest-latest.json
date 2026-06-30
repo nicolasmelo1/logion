@@ -1,6 +1,6 @@
 {
   "channel": "latest",
-  "generated_at": "2026-06-28T22:57:11+00:00",
+  "generated_at": "2026-06-29T02:15:45+00:00",
   "git_commit": "0000000000000000000000000000000000000000",
   "packages": {
     "logion-cli": {
@@ -8,32 +8,32 @@
       "minimum_python": "3.12",
       "npm_name": "@logionsh/cli",
       "pypi_name": "logion-cli",
-      "tag": "logion-cli-v0.1.3",
-      "version": "0.1.3",
+      "tag": "logion-cli-v0.1.9",
+      "version": "0.1.9",
       "wheel": {
-        "sha256": "56fa35ac197da5d41401372256a796b77ea4ed9a5863dce8639b9017d0c18fbb",
-        "url": "release://logion_cli-0.1.3-py3-none-any.whl"
+        "sha256": "1c4f3a5f9a8f753ce4e9ec8f4df193dda3e97e959eecd86983ea18303ef06071",
+        "url": "release://logion_cli-0.1.9-py3-none-any.whl"
       }
     },
     "logion-client": {
       "minimum_python": "3.12",
       "pypi_name": "logion-client",
-      "tag": "logion-client-v0.1.3",
-      "version": "0.1.3",
+      "tag": "logion-client-v0.1.4",
+      "version": "0.1.4",
       "wheel": {
-        "sha256": "eec6e59f5a37a833b197c8f589d18ea5c39bc6dc0f6d0371efbafc15d7a0137e",
-        "url": "release://logion_client-0.1.3-py3-none-any.whl"
+        "sha256": "8c2425233175de1f425935e8afcbbfff21a55c5dc57f1e84ad79131c9d79f7fd",
+        "url": "release://logion_client-0.1.4-py3-none-any.whl"
       }
     },
     "logion-companion": {
       "bundle": {
-        "sha256": "6c1a277979b3d35d973ac63c56ad40c5be213b9e1a622c00dac388d716480a27",
-        "url": "release://logion-marketplace-companion-0.1.3.tar.gz"
+        "sha256": "a0d56d99f52d4f93351ebeb50499c812fd15053924f5134732302aa461e29c17",
+        "url": "release://logion-marketplace-companion-0.1.6.tar.gz"
       },
       "minimum_cli": "0.1.2",
       "minimum_python": "3.12",
-      "tag": "logion-companion-v0.1.3",
-      "version": "0.1.3"
+      "tag": "logion-companion-v0.1.6",
+      "version": "0.1.6"
     }
   },
   "schema_version": 1

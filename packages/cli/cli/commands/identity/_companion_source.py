@@ -28,6 +28,7 @@ from pathlib import Path
 from cli._local_state import get_home
 
 _COMPANION_TARBALL_GLOB = "logion-marketplace-companion-*.tar.gz"
+_INSTALLED_COMPANION_ID = "logion-marketplace-companion"
 
 
 def _is_valid_source(path: Path) -> bool:
@@ -42,6 +43,7 @@ def locate_bundle_source(args: argparse.Namespace) -> Path | None:
 
     Order: ``--companion-source`` flag →
     ``$LOGION_COMPANION_BUNDLE_SOURCE`` env →
+    newest installed companion under ``$LOGION_HOME/installed/`` →
     newest dir under ``$LOGION_HOME/companion-bundles/`` → None.
 
     The returned path may be a bundle directory, a companion ``*.tar.gz``
@@ -59,6 +61,10 @@ def locate_bundle_source(args: argparse.Namespace) -> Path | None:
         if _is_valid_source(path):
             return path
 
+    installed = _newest_installed_companion()
+    if installed is not None:
+        return installed
+
     bundles_root = get_home() / "companion-bundles"
     if not bundles_root.is_dir():
         return None
@@ -69,6 +75,25 @@ def locate_bundle_source(args: argparse.Namespace) -> Path | None:
     for entry in bundles_root.iterdir():
         try:
             if not entry.is_dir():
+                continue
+            mtime = entry.stat().st_mtime
+        except OSError:
+            continue
+        if newest is None or mtime > newest[0]:
+            newest = (mtime, entry)
+    return newest[1] if newest else None
+
+
+def _newest_installed_companion() -> Path | None:
+    """Return the newest installer-extracted companion dir, if present."""
+    installed_root = get_home() / "installed" / _INSTALLED_COMPANION_ID
+    if not installed_root.is_dir():
+        return None
+
+    newest: tuple[float, Path] | None = None
+    for entry in installed_root.iterdir():
+        try:
+            if not entry.is_dir() or not (entry / "SKILL.md").is_file():
                 continue
             mtime = entry.stat().st_mtime
         except OSError:

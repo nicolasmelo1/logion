@@ -59,6 +59,16 @@ def test_bounties_appears_in_help(
     assert "bounties" in output
 
 
+def test_update_appears_in_help(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--help lists update as a top-level command."""
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+    assert exc_info.value.code == 0
+    assert "update" in capsys.readouterr().out
+
+
 def test_admin_hidden_by_default() -> None:
     """admin subcommand exits 2 without LOGION_ENABLE_ADMIN."""
     code = main(["admin"])

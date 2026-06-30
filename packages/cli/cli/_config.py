@@ -6,6 +6,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from cli._credentials import stored_api_key
+
 DEFAULT_BASE_URL = "https://api.logion.sh"
 
 
@@ -37,6 +39,8 @@ def resolve_config_from_args(
     api_key: str | None = getattr(args, "api_key", None)
     if api_key is None:
         api_key = os.getenv("LOGION_API_KEY")
+    if api_key is None:
+        api_key = stored_api_key()
 
     base_url: str | None = getattr(args, "base_url", None)
     if base_url is None:

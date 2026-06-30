@@ -1,21 +1,22 @@
 # SPDX-License-Identifier: MIT
-"""Symlink installed skills into a coding agent's skill directory.
+"""Copy installed skills into a coding agent's skill directory.
 
 Logion's canonical install location is
 ``$LOGION_HOME/installed/<course-id>/<version-id>/``.  That keeps
 Logion's lifecycle separate from the user's agent harness.  But agents
 (Claude Code, Codex, OpenCode, Hermes, ...) load skills from their own
-fixed directories, so without a symlink the user has to wire the two
-together manually after every install.
+fixed directories, so without a synced copy the user has to wire the
+two together manually after every install.
 
 This module reads the skill name from the bundle's SKILL.md frontmatter
-and offers to create the symlink.  The target directory is whatever the
+and offers to copy the installed skill.  The target directory is whatever the
 user types — no auto-detection, no harness inference.  The known
 conventions are listed in the prompt as examples only.
 """
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -57,9 +58,9 @@ def prompt_symlink_dir(
     explicit_dir: str | None,
     no_symlink: bool,
 ) -> Path | None:
-    """Decide where to symlink the installed skill.
+    """Decide where to copy the installed skill.
 
-    Returns the resolved parent directory (which the link will be
+    Returns the resolved parent directory (which the copy will be
     placed inside) or ``None`` to skip.
 
     Resolution order:
@@ -76,8 +77,7 @@ def prompt_symlink_dir(
         return None
 
     sys.stdout.write(
-        f"\nSymlink skill '{skill_name}' into a coding-agent skill dir? "
-        "[y/N]: "
+        f"\nCopy skill '{skill_name}' into a coding-agent skill dir? [y/N]: "
     )
     sys.stdout.flush()
     try:
@@ -88,7 +88,7 @@ def prompt_symlink_dir(
     if raw not in ("y", "yes"):
         return None
 
-    sys.stdout.write("Target directory for the symlink. Examples:\n")
+    sys.stdout.write("Target directory for the skill copy. Examples:\n")
     for label, path in EXAMPLE_AGENT_DIRS:
         sys.stdout.write(f"  {label:14}  {path}\n")
     sys.stdout.write("Path: ")
@@ -106,29 +106,29 @@ def prompt_symlink_dir(
 def create_symlink(
     parent_dir: Path, skill_name: str, install_dest: Path
 ) -> Path:
-    """Symlink ``install_dest`` into ``parent_dir / skill_name``.
+    """Copy ``install_dest`` into ``parent_dir / skill_name``.
 
-    Replaces any prior symlink or file at the target.  Refuses to
-    clobber a real directory (the user may have placed it themselves).
-    Creates ``parent_dir`` if missing.  Returns the resulting link path.
+    Replaces any prior symlink, file, or directory at the target.
+    Creates ``parent_dir`` if missing.  Returns the resulting copy path.
+
+    The function name is kept for compatibility with older internal
+    callers; the behavior is intentionally a real copy because some
+    harnesses do not load skills through symlinks reliably.
     """
     parent_dir.mkdir(parents=True, exist_ok=True)
-    link = parent_dir / skill_name
-    if link.is_symlink() or link.is_file():
-        link.unlink()
-    elif link.is_dir():
-        raise FileExistsError(
-            f"{link} is a real directory, not a symlink. "
-            "Remove it before re-running install."
-        )
-    link.symlink_to(install_dest, target_is_directory=True)
-    return link
+    target = parent_dir / skill_name
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.is_dir():
+        shutil.rmtree(target)
+    shutil.copytree(install_dest, target, symlinks=False)
+    return target
 
 
 def resolve_symlink_intent(
     source_dir: Path, args
 ) -> tuple[str | None, Path | None]:
-    """Read the skill name and prompt for symlink target up-front.
+    """Read the skill name and prompt for skill-copy target up-front.
 
     Returns ``(skill_name, symlink_parent)``.  Either or both may be None
     if the bundle has no readable name or the user declined.
@@ -148,14 +148,12 @@ def resolve_symlink_intent(
 def apply_post_install_symlink(
     symlink_parent: Path, skill_name: str, dest: Path
 ) -> None:
-    """Create the symlink and surface errors as warnings (non-fatal)."""
+    """Sync the skill copy and surface errors as warnings (non-fatal)."""
     try:
-        link = create_symlink(symlink_parent, skill_name, dest)
-    except FileExistsError as exc:
-        sys.stderr.write(f"WARN: symlink skipped: {exc}\n")
+        target = create_symlink(symlink_parent, skill_name, dest)
     except OSError as exc:
         sys.stderr.write(
-            f"WARN: symlink failed ({exc}); canonical install is fine\n"
+            f"WARN: skill copy failed ({exc}); canonical install is fine\n"
         )
     else:
-        sys.stdout.write(f"Symlinked: {link} -> {dest}\n")
+        sys.stdout.write(f"Copied: {dest} -> {target}\n")

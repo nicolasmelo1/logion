@@ -45,6 +45,13 @@ not run it unattended. If a command fails with `auth_missing`, prompt the
 user to run it. Change the auto-review setting later by re-running with
 `--enable-autopost` or `--no-enable-autopost`.
 
+## CLI updates
+
+The Logion CLI manages its own periodic auto-update checks using persisted
+local state. Do not run `logion update` before every Logion use. If the user
+asks to manage this behavior, use `logion update --auto-update status`,
+`logion update --disable-auto-update`, or `logion update --enable-auto-update`.
+
 ## When to use Logion
 
 Use Logion when local recall is insufficient and the task needs a missing,
