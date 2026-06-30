@@ -242,7 +242,7 @@ run_installer() {
 @test "real library: manifest parser supports bracket notation without jq" {
     unset INSTALL_LIB_PATH
     _real_lib="${BATS_TEST_DIRNAME}/../../scripts/install_lib.sh"
-    _real_python="$(command -v python3 || true)"
+    _real_python="$(PATH="${HARNESS_ORIG_PATH}" command -v python3 || true)"
     if [ -z "${_real_python}" ]; then
         skip "python3 not found on PATH"
     fi
@@ -263,7 +263,7 @@ PYTHON_EOF
 @test "real library: companion fallback uses companion release tag" {
     unset INSTALL_LIB_PATH
     _real_lib="${BATS_TEST_DIRNAME}/../../scripts/install_lib.sh"
-    _real_python="$(command -v python3 || true)"
+    _real_python="$(PATH="${HARNESS_ORIG_PATH}" command -v python3 || true)"
     if [ -z "${_real_python}" ]; then
         skip "python3 not found on PATH"
     fi
