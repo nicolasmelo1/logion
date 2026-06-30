@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: MIT
 """Generate the Open Graph / social-card image (``static/og-image.png``).
 
-The card mirrors the live site's **dark theme** and hero hierarchy: a
-near-black background (``#050608``), the gold gradient Greek ``ΛΟΓΙΟΝ``
-ornament, the gold lambda seal + ``LOGION`` wordmark centered on one line,
-the ``Smarter, together.`` motto in Baskerville italic, and a mono
-description — over a faint matrix-rain glyph texture (the brand motif). It
-is the canonical, auditable record of how the committed ``og-image.png``
-was produced.
+The card mirrors the live site's **dark theme** and hero hierarchy, and — like
+the hero — leads with the emotional hook, not the ornament. A YouTube-thumbnail
+hierarchy: a near-black background (``#050608``), a small gold
+``AGENT-NATIVE MARKETPLACE`` kicker, the **hook** (``Teach the agents what
+you know.``) as the dominant gold-gradient headline, a mono support line,
+then the gold lambda seal + ``LOGION`` wordmark and the ``Smarter,
+together.`` motto as a compact brand footer — over a faint matrix-rain glyph
+texture (the brand motif). It is the canonical, auditable record of how the
+committed ``og-image.png`` was produced. The hook text is kept in sync with
+``hero.hook`` in ``site.yaml``.
 
 Design tokens are taken from the ``design.palette.dark`` block in
 ``content/site.yaml`` so the card cannot silently drift from the brand:
@@ -84,17 +87,18 @@ def _rain() -> str:
 def build_svg() -> str:
     cx = W / 2  # horizontal centre
 
-    # Centre the [seal + "LOGION"] row as one group. Menlo is monospace, so a
-    # cap advance of ~0.6em + letter-spacing gives an accurate text width.
+    # Brand footer: centre the [seal + "LOGION"] row as one group. Menlo is
+    # monospace, so a cap advance of ~0.6em + letter-spacing gives an accurate
+    # text width. Smaller than before — the brand is the footer, not the lead.
     word = "LOGION"
-    word_fs = 64
-    word_ls = 6
+    word_fs = 44
+    word_ls = 5
     advance = word_fs * 0.6 + word_ls
     word_w = len(word) * advance - word_ls
-    seal_h = 78
+    seal_h = 54
     seal_scale = seal_h / 256
-    gap = 30
-    row_baseline = 338
+    gap = 22
+    row_baseline = 524
     group_left = cx - (seal_h + gap + word_w) / 2
     cap_h = 0.72 * word_fs
     seal_y = row_baseline - cap_h / 2 - seal_h / 2
@@ -125,13 +129,20 @@ height="{H}" viewBox="0 0 {W} {H}">
     <path d="M{W - 78} {H - 48} L{W - 48} {H - 48} L{W - 48} {H - 78}"/>
   </g>
 
-  <text x="{cx}" y="112" text-anchor="middle" font-family="Menlo,monospace" \
+  <text x="{cx}" y="118" text-anchor="middle" font-family="Menlo,monospace" \
 font-size="22" letter-spacing="6" fill="{ACCENT}" fill-opacity="0.85">\
 &#9679; AGENT-NATIVE MARKETPLACE</text>
 
-  <text x="{cx}" y="232" text-anchor="middle" font-family="Menlo,monospace" \
-font-weight="bold" font-size="96" letter-spacing="14" fill="url(#gold)">\
-&#923;&#927;&#915;&#921;&#927;&#925;</text>
+  <text x="{cx}" y="248" text-anchor="middle" font-family="Menlo,monospace" \
+font-weight="bold" font-size="78" letter-spacing="1" fill="{FG}">\
+Teach the agents</text>
+  <text x="{cx}" y="338" text-anchor="middle" font-family="Menlo,monospace" \
+font-weight="bold" font-size="78" letter-spacing="1" fill="url(#gold)">\
+what you know.</text>
+
+  <text x="{cx}" y="408" text-anchor="middle" font-family="Menlo,monospace" \
+font-size="28" fill="{FG}">\
+Keep it owned, credited, and compounding.</text>
 
   <g transform="translate({group_left:.1f} {seal_y:.1f}) \
 scale({seal_scale:.4f})">{_LAMBDA}</g>
@@ -139,15 +150,9 @@ scale({seal_scale:.4f})">{_LAMBDA}</g>
 font-weight="bold" font-size="{word_fs}" letter-spacing="{word_ls}" \
 fill="{FG}">{word}</text>
 
-  <text x="{cx}" y="424" text-anchor="middle" \
-font-family="Baskerville,Georgia,serif" font-style="italic" font-size="50" \
+  <text x="{cx}" y="580" text-anchor="middle" \
+font-family="Baskerville,Georgia,serif" font-style="italic" font-size="34" \
 fill="{BRIGHT}">Smarter, together.</text>
-
-  <text x="{cx}" y="496" text-anchor="middle" font-family="Menlo,monospace" \
-font-size="31" fill="{FG}">An agent-native marketplace for operational</text>
-  <text x="{cx}" y="538" text-anchor="middle" font-family="Menlo,monospace" \
-font-size="31" fill="{FG}">\
-knowledge &#8212; reviewed, versioned course bundles.</text>
 </svg>"""
 
 

@@ -73,8 +73,17 @@
         <span>{{ hero.greek }}</span><br>
         <span class="accent">{{ hero.heading }}</span>
       </h1>
+      {% if hero.hook %}<p class="hero-hook">{{ hero.hook }}</p>{% endif %}
       {% if hero.motto %}<p class="hero-motto">{{ hero.motto }}</p>{% endif %}
       <p class="hero-sub">{{ hero.subheading }}</p>
+
+      {% if hero.signals %}
+        <ul class="hero-signals" aria-label="Trust signals">
+          {% for signal in hero.signals %}
+            <li><span class="hero-signals__check" aria-hidden="true">✓</span>{{ signal }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
 
       <div class="cta-row">
         <div class="copy-cta">

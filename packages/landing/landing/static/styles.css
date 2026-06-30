@@ -616,14 +616,52 @@ button.cta {
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
 }
 
+/* Emotional, plain-language lead — the first thing a human reads after the
+   brand lockup. Larger and heavier than the sub so it owns the fold. */
+.hero-hook {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(24px, 3.2vw, 38px);
+  line-height: 1.18;
+  color: var(--fg);
+  margin: 20px 0 14px;
+  max-width: 24ch;
+  letter-spacing: -0.01em;
+}
+
 .hero-motto {
   font-family: var(--serif);
   font-style: italic;
-  font-size: clamp(22px, 2.6vw, 30px);
+  font-size: clamp(18px, 2.1vw, 24px);
   line-height: 1.2;
   color: var(--accent-bright);
   margin: 0 0 12px;
   letter-spacing: 0.01em;
+}
+
+/* Honest trust-signal strip above the fold. */
+.hero-signals {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--fg-dim);
+}
+
+.hero-signals li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hero-signals__check {
+  color: var(--accent-bright);
+  font-weight: 700;
 }
 
 .hero-sub {
