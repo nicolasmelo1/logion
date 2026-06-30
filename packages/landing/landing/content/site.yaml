@@ -55,7 +55,11 @@ hero:
         href: /terms
   readouts:
     top: "ΛΟΓΙΟΝ // MARKETPLACE LOOP ONLINE"
-    bottom: "v0.1.2 · BUILD α"
+    # Fallback only — the live readout is derived from the published release
+    # manifest (GitHub Releases) at render time. This static value shows just
+    # the channel, never a hard-coded version that could drift, for the rare
+    # case GitHub is unreachable.
+    bottom: "stable channel"
   meta:
     - term: bundle
       value: course/capabilities.yaml

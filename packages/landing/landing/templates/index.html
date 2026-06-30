@@ -188,7 +188,7 @@
       </aside>
     {% endif %}
 
-    <span class="hero-readout br">{{ hero.readouts.bottom }}</span>
+    <span class="hero-readout br">{{ release_readout or hero.readouts.bottom }}</span>
   </section>
 
   {% for section in sections %}
