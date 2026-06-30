@@ -12,6 +12,7 @@ from cli.commands import (
     course_reviews,
     courses,
     docs,
+    doctor,
     health,
     identity,
     listings,
@@ -50,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     health.register(subparsers)
+    doctor.register(subparsers)
     identity.register(subparsers)
     listings.register(subparsers)
     notifications.register(subparsers)
