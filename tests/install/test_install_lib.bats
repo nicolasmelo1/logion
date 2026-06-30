@@ -113,14 +113,18 @@ JSON
 }
 
 @test "install_companion registers companion with required skill metadata" {
+    _make_prefixed_bundle
+    _bundle_sha="$(sha256sum "${WORK}/bundle.tar.gz" | cut -d' ' -f1)"
     INSTALL_TMPDIR="${WORK}"
+    INSTALL_DRY_RUN=0
     mkdir -p "${WORK}/bin"
     cat > "${WORK}/manifest.json" <<JSON
 {
   "packages": {
     "logion-companion": {
       "bundle": {
-        "url": "file://${WORK}/bundle.tar.gz"
+        "url": "file://${WORK}/bundle.tar.gz",
+        "sha256": "${_bundle_sha}"
       },
       "tag": "logion-companion-v0.1.0",
       "version": "0.1.0"
@@ -128,7 +132,6 @@ JSON
   }
 }
 JSON
-    _make_prefixed_bundle
     cat > "${WORK}/bin/curl" <<CURL
 #!/bin/sh
 cp "${WORK}/bundle.tar.gz" "\$4"
@@ -146,7 +149,7 @@ LOGION
 
     [ "$status" -eq 0 ]
     grep -F "LOGION_AUTO_UPDATE=0" "${WORK}/logion-calls.log"
-    grep -F "skills install --source ${WORK}/companion-source --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --no-symlink --force" "${WORK}/logion-calls.log"
+    grep -F "skills install --source ${WORK}/companion-source --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --install-source logion-marketplace --no-symlink --force" "${WORK}/logion-calls.log"
 }
 
 @test "install_cli clears existing pipx venv before reinstalling" {

@@ -330,43 +330,79 @@ manifest_get_field() {
     fi
 
     if [ -n "$_json_python" ]; then
-        # Convert jq-style path to python dict navigation
-        # '.packages."logion-cli".version' → d["packages"]["logion-cli"]["version"]
+        # Convert the jq-style subset used by this installer into path parts.
+        # Supports dot segments and bracket-quoted keys:
+        # .packages["logion-cli"].version -> ["packages", "logion-cli", "version"]
         _py_path="$(printf '%s' "$_path" | "$_json_python" -c "
-import sys, re, json
+import json, sys
+
 p = sys.stdin.read().strip()
 if p.startswith('.'):
     p = p[1:]
-# Split on dots respecting quoted segments
+
 parts = []
-current = ''
-in_quote = False
-quote_char = ''
+current = []
 i = 0
 while i < len(p):
     c = p[i]
-    if in_quote:
-        if c == quote_char:
-            in_quote = False
-            parts.append(current)
-            current = ''
-            # skip next dot
-            if i + 1 < len(p) and p[i+1] == '.':
-                i += 1
-        else:
-            current += c
-    elif c in ('\"', \"'\"):
-        in_quote = True
-        quote_char = c
-    elif c == '.':
+    if c == '.':
         if current:
-            parts.append(current)
-            current = ''
-    else:
-        current += c
+            parts.append(''.join(current))
+            current = []
+        i += 1
+        continue
+    if c == '[':
+        if current:
+            parts.append(''.join(current))
+            current = []
+        i += 1
+        if i >= len(p) or p[i] not in ('\"', \"'\"):
+            raise SystemExit(2)
+        quote = p[i]
+        i += 1
+        quoted = []
+        while i < len(p):
+            c = p[i]
+            if c == '\\\\' and i + 1 < len(p):
+                quoted.append(p[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                break
+            quoted.append(c)
+            i += 1
+        else:
+            raise SystemExit(2)
+        i += 1
+        if i >= len(p) or p[i] != ']':
+            raise SystemExit(2)
+        parts.append(''.join(quoted))
+        i += 1
+        continue
+    if c in ('\"', \"'\"):
+        quote = c
+        i += 1
+        quoted = []
+        while i < len(p):
+            c = p[i]
+            if c == '\\\\' and i + 1 < len(p):
+                quoted.append(p[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                break
+            quoted.append(c)
+            i += 1
+        else:
+            raise SystemExit(2)
+        parts.append(''.join(quoted))
+        i += 1
+        continue
+    current.append(c)
     i += 1
+
 if current:
-    parts.append(current)
+    parts.append(''.join(current))
 print(json.dumps(parts))
 " 2>/dev/null)"
         "$_json_python" -c "
@@ -654,10 +690,9 @@ extract_companion_bundle() {
     tar -xzf "$_eb_tarball" --strip-components=1 -C "$_eb_dest"
 }
 
-# install_companion <version> [<cli-tag>]
+# install_companion <version> [<unused-legacy-cli-tag>]
 install_companion() {
     _version="$1"
-    _cli_tag="${2:-logion-cli-v$_version}"
     _manifest="$INSTALL_TMPDIR/manifest.json"
 
     # Read companion bundle URL, sha256, and release tag from manifest under
@@ -670,11 +705,11 @@ install_companion() {
         _comp_tag="logion-companion-v$_version"
     fi
 
-    # Translate release:// URLs
+    # Translate release:// URLs against the companion release tag.
     _bundle_url="$(resolve_url "$_bundle_url" "$_comp_tag")"
 
     if [ -z "$_bundle_url" ] || [ "$_bundle_url" = "null" ]; then
-        # Construct tarball URL from known pattern
+        # Construct tarball URL from known pattern.
         _bundle_url="https://github.com/nicolasmelo1/logion/releases/download/$_comp_tag/logion-marketplace-companion-$_version.tar.gz"
     fi
     if [ -z "$_bundle_sha" ] || [ "$_bundle_sha" = "null" ]; then
@@ -705,23 +740,28 @@ install_companion() {
         die 8 "Failed to extract companion tarball"
     fi
 
-    # Register with logion CLI. Disable CLI auto-update for installer-internal
-    # invocations to avoid recursive updates while this installer is running.
+    # Register with logion CLI. The CLI requires marketplace identity metadata
+    # for canonical installs, and installer-internal invocations must not trigger
+    # recursive CLI auto-updates while this installer is running.
     if command -v logion >/dev/null 2>&1; then
         if ! LOGION_AUTO_UPDATE=0 logion skills install \
             --source "$_source_dir" \
-            --course-id "logion-marketplace-companion" \
+            --course-id logion-marketplace-companion \
             --version-id "$_version" \
             --title "Logion Marketplace Companion" \
+            --install-source logion-marketplace \
             --no-symlink \
             --force; then
-            warn "logion skills install --source $_dest_dir failed (companion extracted but not registered)"
+            warn "logion skills install --source $_source_dir failed (companion extracted but not registered)"
+            if ! extract_companion_bundle "$_tarball" "$_dest_dir"; then
+                die 8 "Failed to extract companion tarball"
+            fi
         fi
     else
-        warn "logion CLI not on PATH; companion extracted to $_dest_dir but not registered"
         if ! extract_companion_bundle "$_tarball" "$_dest_dir"; then
             die 8 "Failed to extract companion tarball"
         fi
+        warn "logion CLI not on PATH; companion extracted to $_dest_dir but not registered"
     fi
 
     info "logion-marketplace-companion==$_version installed to $_dest_dir"

@@ -239,6 +239,67 @@ run_installer() {
     [ "$status" -eq 0 ]
 }
 
+@test "real library: manifest parser supports bracket notation without jq" {
+    unset INSTALL_LIB_PATH
+    _real_lib="${BATS_TEST_DIRNAME}/../../scripts/install_lib.sh"
+    _real_python="$(PATH="${HARNESS_ORIG_PATH}" command -v python3 || true)"
+    if [ -z "${_real_python}" ]; then
+        skip "python3 not found on PATH"
+    fi
+    cat > "${HARNESS_BIN_DIR}/python3" <<PYTHON_EOF
+#!/bin/sh
+exec "${_real_python}" "\$@"
+PYTHON_EOF
+    chmod +x "${HARNESS_BIN_DIR}/python3"
+
+    run env PATH="${HARNESS_BIN_DIR}" /bin/sh -c \
+        '. "$1"; validate_manifest "$2"' \
+        _ "${_real_lib}" "${HARNESS_MANIFEST_DIR}/manifest-stable.json"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"cli_version=0.1.0"* ]]
+}
+
+@test "real library: companion fallback uses companion release tag" {
+    unset INSTALL_LIB_PATH
+    _real_lib="${BATS_TEST_DIRNAME}/../../scripts/install_lib.sh"
+    _real_python="$(PATH="${HARNESS_ORIG_PATH}" command -v python3 || true)"
+    if [ -z "${_real_python}" ]; then
+        skip "python3 not found on PATH"
+    fi
+    cat > "${HARNESS_BIN_DIR}/python3" <<PYTHON_EOF
+#!/bin/sh
+exec "${_real_python}" "\$@"
+PYTHON_EOF
+    chmod +x "${HARNESS_BIN_DIR}/python3"
+    _manifest_dir="${HARNESS_TMPDIR}/companion-fallback"
+    mkdir -p "${_manifest_dir}"
+    cat > "${_manifest_dir}/manifest.json" <<MANIFEST_EOF
+{
+  "schema_version": 1,
+  "packages": {
+    "logion-companion": {
+      "version": "0.1.0",
+      "tag": "logion-companion-v0.1.0",
+      "minimum_cli": "0.1.0"
+    }
+  }
+}
+MANIFEST_EOF
+
+    run env \
+        PATH="${HARNESS_BIN_DIR}" \
+        HOME="${HARNESS_TMPDIR}" \
+        INSTALL_TMPDIR="${_manifest_dir}" \
+        INSTALL_DRY_RUN=1 \
+        /bin/sh -c '. "$1"; install_companion "0.1.0" "logion-cli-v0.1.0"' \
+        _ "${_real_lib}"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"logion-companion-v0.1.0/logion-marketplace-companion-0.1.0.tar.gz"* ]]
+    [[ "$output" != *"logion-cli-v0.1.0/logion-marketplace-companion-0.1.0.tar.gz"* ]]
+}
+
 # ── 2b. Real run_onboarding: TTY guard + --no-companion forwarding ─────────
 # These source the *real* install_lib.sh (not the stub) so the actual guards
 # are exercised, not a simplified copy.
