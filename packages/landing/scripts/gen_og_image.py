@@ -9,13 +9,14 @@ you know.``) as the dominant gold-gradient headline, a mono support line,
 then the gold lambda seal + ``LOGION`` wordmark and the ``Smarter,
 together.`` motto as a compact brand footer — over a faint matrix-rain glyph
 texture (the brand motif). It is the canonical, auditable record of how the
-committed ``og-image.png`` was produced. The hook text is kept in sync with
-``hero.hook`` in ``site.yaml``.
+committed ``og-image.png`` was produced.
 
-Design tokens are taken from the ``design.palette.dark`` block in
-``content/site.yaml`` so the card cannot silently drift from the brand:
-``bg #050608``, ``fg #e9eef5``, ``accent #c9a76a``, ``accent_bright #f5d68a``.
-The lambda path is copied verbatim from ``static/brand/logion-mark.svg``.
+The hook lines and palette constants below are **manually mirrored** from
+``content/site.yaml`` (``hero.hook`` and ``design.palette.dark``:
+``bg #050608``, ``fg #e9eef5``, ``accent #c9a76a``, ``accent_bright #f5d68a``)
+— they are hard-coded here, not loaded at runtime, so update both together
+when the copy or palette changes. The lambda path is copied verbatim from
+``static/brand/logion-mark.svg``.
 
 Fonts: rendered with cairosvg using the closest system matches to the brand
 stacks — **Baskerville** for the serif motto (the brand serif is Libre

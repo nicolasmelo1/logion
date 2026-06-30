@@ -106,7 +106,9 @@ def test_auto_update_skips_npm_managed_venv(
     assert calls == []
     data = json.loads((tmp_path / "auto_update.json").read_text())
     assert data["commands_since_check"] == 1
-    assert "npm-managed install" in data["last_error"]
+    # A skip is recorded under last_skip_reason, not last_error.
+    assert "npm-managed install" in data["last_skip_reason"]
+    assert data.get("last_error") is None
 
 
 def test_update_can_disable_auto_update(

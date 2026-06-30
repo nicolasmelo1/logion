@@ -35,7 +35,9 @@ MARKER_PATH = NPM_HOME / "npm-wrapper-installer.json"
 def _detect_install_method(executable: Path) -> str:
     """Classify how the running CLI was installed from its executable path."""
     resolved = executable.expanduser()
-    if resolved == MANAGED_VENV_DIR or MANAGED_VENV_DIR in resolved.parents:
+    # The interpreter lives under the venv dir, so parent-membership is the
+    # meaningful check (the executable is never equal to the dir itself).
+    if MANAGED_VENV_DIR in resolved.parents:
         return "npm-managed-venv"
     parts = [p.lower() for p in resolved.parts]
     if "pipx" in parts:

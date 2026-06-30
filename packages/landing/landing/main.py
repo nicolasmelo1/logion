@@ -278,8 +278,10 @@ def _fetch_release_readout() -> str | None:
 def release_readout(*, now: float | None = None) -> str:
     """Hero readout derived from GitHub Releases, cached with a TTL.
 
-    Never blocks the page on the network: a fetch failure (or stale cache
-    refresh that fails) falls back to the static site.yaml readout.
+    On a cache miss this performs one synchronous fetch (bounded by the
+    2.5s timeout); it never *fails* rendering on a network error — a failed
+    fetch falls back to the static site.yaml readout. Within the TTL the
+    cached value is returned with no network call.
     """
     current = time.monotonic() if now is None else now
     cached = _readout_cache["value"]
