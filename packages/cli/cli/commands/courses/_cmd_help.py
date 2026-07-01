@@ -4,6 +4,7 @@
 CMD_HELP = {
     "create": "Create a new course",
     "get": "Get course details",
+    "mine": "List your own courses (any status or visibility)",
     "purchase": "Purchase a course using credits",
     "update": "Update an existing course",
     "uploads": "Manage course version uploads",

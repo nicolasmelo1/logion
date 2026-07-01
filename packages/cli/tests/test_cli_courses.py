@@ -37,6 +37,29 @@ class FakeCoursesResource:
         self.last_call = ("get", kwargs)
         return {"id": kwargs["course_id"], "title": "Test Course"}
 
+    def mine(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("mine", kwargs)
+        return {
+            "courses": [
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "title": "Draft Private",
+                    "slug": "draft-private",
+                    "status": "draft",
+                    "visibility": "private",
+                    "price_cents": 0,
+                    "currency": "USD",
+                    "category": "other",
+                    "language": None,
+                    "short_summary": None,
+                    "published_at": None,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                }
+            ],
+            "next_cursor": None,
+        }
+
     def update(self, **kwargs: Any) -> dict[str, Any]:
         self.last_call = ("update", kwargs)
         return {"id": kwargs["course_id"], "updated": True}
@@ -1879,3 +1902,65 @@ def test_courses_capabilities_scaffold_rejects_license_template_without_bundle_d
     assert code == 2
     err = capsys.readouterr().err
     assert "--license-template requires --bundle-dir" in err
+
+
+def test_courses_mine_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses mine --json returns the owner's courses envelope."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main(["courses", "mine", "--json"])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "mine"
+    # No filters passed -> only the default limit is forwarded.
+    assert kwargs == {"limit": 20}
+    data = json.loads(capsys.readouterr().out)
+    assert data["kind"] == "logion.courses.mine"
+    assert data["data"]["items"][0]["title"] == "Draft Private"
+    assert data["data"]["next_cursor"] is None
+
+
+def test_courses_mine_forwards_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """courses mine forwards status/visibility/limit/cursor filters."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "courses",
+        "mine",
+        "--status",
+        "draft",
+        "--visibility",
+        "private",
+        "--limit",
+        "5",
+    ])
+    assert code == 0
+    method, kwargs = courses.last_call
+    assert method == "mine"
+    assert kwargs == {
+        "limit": 5,
+        "status": "draft",
+        "visibility": "private",
+    }
+
+
+def test_courses_mine_human_output(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """courses mine prints one readable line per course."""
+    courses = FakeCoursesResource()
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+    code = main(["courses", "mine"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Draft Private" in out
+    assert "[draft/private]" in out

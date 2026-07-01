@@ -15,6 +15,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",
+    "list_my_courses": "client.v1.courses.mine",
     "update_course": "client.v1.courses.update",
     "get_my_course_review": "client.v1.courses.get_my_review",
     "request_publication": ("client.v1.courses.request_publication_review"),

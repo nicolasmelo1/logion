@@ -6,6 +6,7 @@ from .capabilities import (
     handle_courses_capabilities_print,
     handle_courses_capabilities_validate,
 )
+from .listing import handle_mine
 from .mutations import (
     handle_create,
     handle_get,
@@ -35,6 +36,7 @@ __all__ = [
     "handle_create",
     "handle_feedback",
     "handle_get",
+    "handle_mine",
     "handle_publication_latest",
     "handle_publication_request",
     "handle_purchase",

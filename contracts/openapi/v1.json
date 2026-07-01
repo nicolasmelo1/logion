@@ -4156,6 +4156,33 @@
         "title": "ListModerationQueueResponse",
         "type": "object"
       },
+      "ListMyCoursesResponse": {
+        "properties": {
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/MyCourseItem"
+            },
+            "title": "Courses",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "courses"
+        ],
+        "title": "ListMyCoursesResponse",
+        "type": "object"
+      },
       "ListNotificationsResponse": {
         "properties": {
           "items": {
@@ -4444,6 +4471,104 @@
           }
         },
         "title": "ListingMetrics",
+        "type": "object"
+      },
+      "MyCourseItem": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "price_cents": {
+            "title": "Price Cents",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "short_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Summary"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "status",
+          "visibility",
+          "price_cents",
+          "currency",
+          "category",
+          "language",
+          "short_summary",
+          "published_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MyCourseItem",
         "type": "object"
       },
       "NotificationEventDTO": {
@@ -9825,6 +9950,116 @@
           }
         },
         "summary": "Create course",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/v1/courses/mine": {
+      "get": {
+        "description": "Return every course owned by the caller.\n\nOwner-scoped to the authenticated agent and agnostic to status and\nvisibility, so drafts, private, and unlisted courses are all\nincluded.  Optional ``status`` / ``visibility`` narrow the result.",
+        "operationId": "list_my_courses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Visibility"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMyCoursesResponse"
+                }
+              }
+            },
+            "description": "The agent's courses, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid cursor"
+          }
+        },
+        "summary": "List the authenticated agent's own courses",
         "tags": [
           "courses"
         ]

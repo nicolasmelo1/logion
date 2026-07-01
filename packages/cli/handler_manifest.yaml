@@ -91,6 +91,8 @@ commands:
     operations: [get_course_review_feedback]
   courses get:
     operations: [get_course]
+  courses mine:
+    operations: [list_my_courses]
   courses publication latest:
     operations: [get_review_status]
   courses publication request:

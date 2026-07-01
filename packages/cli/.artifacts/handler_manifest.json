@@ -135,6 +135,11 @@
         "get_course"
       ]
     },
+    "courses mine": {
+      "operations": [
+        "list_my_courses"
+      ]
+    },
     "courses publication latest": {
       "operations": [
         "get_review_status"
