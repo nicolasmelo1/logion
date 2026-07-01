@@ -32,6 +32,9 @@ from packaging.version import InvalidVersion, Version
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from release_manifest import COMPANION_COURSE_ID  # noqa: E402
+
 SMOKE_FINDINGS_FILENAME = "release-smoke-findings.md"
 
 _PACKAGE_CONFIG: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
@@ -493,7 +496,6 @@ class ReleaseExecutor:
         """Publish the companion bundle to the store (opt-in)."""
         if not self._plan.publish_store:
             return
-        from release_manifest import COMPANION_COURSE_ID
 
         course_id = COMPANION_COURSE_ID
         cmd = [

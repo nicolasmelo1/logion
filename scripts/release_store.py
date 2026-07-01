@@ -166,9 +166,7 @@ class CompanionStorePublisher:
         tarball_name = tarball.name
         for _suffix in tarball.suffixes:
             tarball_name = tarball_name.rsplit(".", 1)[0]
-        extract_dir = (
-            self._root / "dist" / f"companion-extract-{tarball_name}"
-        )
+        extract_dir = self._root / "dist" / f"companion-extract-{tarball_name}"
         extract_dir.mkdir(parents=True, exist_ok=True)
 
         specs: list[UploadFileSpec] = []

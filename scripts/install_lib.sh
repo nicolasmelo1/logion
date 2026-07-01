@@ -728,7 +728,7 @@ install_companion() {
         return 0
     fi
 
-    _dest_dir="$HOME/.logion/installed/logion-marketplace-companion/$_version"
+    _dest_dir="$HOME/.logion/installed/$_comp_course_id/$_version"
     _source_dir="$INSTALL_TMPDIR/companion-source"
     _tarball="$INSTALL_TMPDIR/companion.tar.gz"
 

@@ -282,7 +282,7 @@ PYTHON_EOF
       "version": "0.1.0",
       "tag": "logion-companion-v0.1.0",
       "minimum_cli": "0.1.0",
-      "course_id": "logion-marketplace-companion"
+      "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932"
     }
   }
 }

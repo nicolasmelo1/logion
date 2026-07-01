@@ -86,6 +86,19 @@ jobs:
       - run: uv sync --all-packages --locked
       - name: Build bundle
         run: make companion-bundle
+      - name: Install companion into temp LOGION_HOME
+        env:
+          LOGION_HOME: /tmp/logion-home
+        run: |
+          mkdir -p "$LOGION_HOME"
+          uv run logion skills install \
+            --source packages/agent-companion \
+            --course-id 5ddf32c6-e139-4056-ac94-c4a231bfd932 \
+            --version-id "$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])")" \
+            --title "Logion Marketplace Companion" \
+            --install-source logion-marketplace \
+            --no-symlink \
+            --force
       - name: Install into temp LOGION_HOME and smoke test
         env:
           LOGION_HOME: /tmp/logion-home

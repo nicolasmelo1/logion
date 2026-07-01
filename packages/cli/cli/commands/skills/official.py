@@ -58,7 +58,7 @@ class OfficialCompanionService:
                     installed=True,
                     course_id=LOGION_MARKETPLACE_COMPANION_COURSE_ID,
                     version_id=entry.get("version_id"),
-                    version=entry.get("version_id"),
+                    version=entry.get("version", entry.get("version_id")),
                     source=entry.get("source"),
                     needs_update=False,
                     reason=None,

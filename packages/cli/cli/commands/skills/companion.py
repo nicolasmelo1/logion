@@ -7,12 +7,14 @@ import argparse
 
 from cli._output import emit_json
 
+from ._install_helpers import resolve_target
 from .official import OfficialCompanionService
 
 
 def handle_companion_status(args: argparse.Namespace) -> int:
     """Report the official companion installation status."""
-    service = OfficialCompanionService()
+    home = resolve_target(args)
+    service = OfficialCompanionService(home=home)
     status = service.inspect()
     if getattr(args, "json_output", False):
         emit_json("logion.skills.companion.status", status.to_dict())
@@ -37,7 +39,8 @@ def handle_companion_install(args: argparse.Namespace) -> int:
     actionable guidance.
     """
     channel = getattr(args, "channel", "stable")
-    service = OfficialCompanionService()
+    home = resolve_target(args)
+    service = OfficialCompanionService(home=home)
     status = service.inspect()
     if status.installed:
         if getattr(args, "json_output", False):
@@ -72,7 +75,8 @@ def handle_companion_install(args: argparse.Namespace) -> int:
 
 def handle_companion_update(args: argparse.Namespace) -> int:
     """Update the official companion."""
-    service = OfficialCompanionService()
+    home = resolve_target(args)
+    service = OfficialCompanionService(home=home)
     status = service.inspect()
     if not status.installed:
         if getattr(args, "json_output", False):

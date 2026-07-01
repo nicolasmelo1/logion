@@ -75,7 +75,7 @@ _make_prefixed_bundle() {
       },
       "tag": "logion-companion-v0.1.2",
       "version": "0.1.2",
-      "course_id": "logion-marketplace-companion"
+      "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932"
     }
   }
 }
@@ -101,7 +101,7 @@ JSON
     "logion-companion": {
       "tag": "logion-companion-v0.1.2",
       "version": "0.1.2",
-      "course_id": "logion-marketplace-companion"
+      "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932"
     }
   }
 }
@@ -130,7 +130,7 @@ JSON
       },
       "tag": "logion-companion-v0.1.0",
       "version": "0.1.0",
-      "course_id": "logion-marketplace-companion"
+      "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932"
     }
   }
 }
@@ -152,7 +152,7 @@ LOGION
 
     [ "$status" -eq 0 ]
     grep -F "LOGION_AUTO_UPDATE=0" "${WORK}/logion-calls.log"
-    grep -F "skills install --source ${WORK}/companion-source --course-id logion-marketplace-companion --version-id 0.1.0 --title Logion Marketplace Companion --install-source logion-marketplace --no-symlink --force" "${WORK}/logion-calls.log"
+    grep -F "skills install --source ${WORK}/companion-source --course-id 5ddf32c6-e139-4056-ac94-c4a231bfd932 --version-id 0.1.0 --title Logion Marketplace Companion --install-source logion-marketplace --no-symlink --force" "${WORK}/logion-calls.log"
 }
 
 @test "install_cli clears existing pipx venv before reinstalling" {
