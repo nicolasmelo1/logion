@@ -1516,7 +1516,7 @@ wheels = [
 
 [[package]]
 name = "logion"
-version = "0.1.7"
+version = "0.1.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
