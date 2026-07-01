@@ -15,12 +15,25 @@ import hashlib
 import json
 import sys
 import tomllib
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 SCHEMA_VERSION = 1
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+#: Course identifier for the first-party Logion Marketplace Companion.
+#:
+#: Mirrored from ``packages/cli/cli/_first_party.py`` because
+#: ``scripts/`` cannot import from ``packages/`` without a package
+#: install.  Keep the two copies in sync;
+#: :func:`validate_first_party_course_ids` asserts the committed
+#: manifest carries this value.
+COMPANION_COURSE_ID = "5ddf32c6-e139-4056-ac94-c4a231bfd932"
+
+#: TypedDict-style alias for a manifest package entry.
+ManifestPackage = dict[str, object]
 
 PACKAGES = {
     "logion-cli": {
@@ -42,6 +55,7 @@ PACKAGES = {
         "tag_prefix": "logion-companion-v",
         "minimum_python": "3.12",
         "minimum_cli": "0.1.2",
+        "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932",
     },
 }
 
@@ -73,7 +87,8 @@ def _sha256_file(path: Path) -> str:
 
 
 def _resolve_minimum_client(
-    pkg_cfg: dict, all_versions: dict[str, str],
+    pkg_cfg: dict,
+    all_versions: dict[str, str],
 ) -> str | None:
     """Resolve minimum_client from config or client version."""
     raw = pkg_cfg.get("minimum_client")
@@ -85,6 +100,56 @@ def _resolve_minimum_client(
     if isinstance(raw, str):
         return raw
     return None
+
+
+def companion_course_id() -> str:
+    """Return the companion package's course identifier."""
+    return COMPANION_COURSE_ID
+
+
+def build_companion_entry(
+    channel: str,
+    tag: str,
+) -> ManifestPackage:
+    """Build the companion package entry with course_id and version_id."""
+    return {
+        "name": "logion-marketplace-companion",
+        "course_id": COMPANION_COURSE_ID,
+        "version_id": None,
+        "tag": tag,
+        "channel": channel,
+    }
+
+
+def validate_first_party_course_ids(manifest: dict) -> None:
+    """Assert the companion entry carries the expected course_id.
+
+    Raises :class:`ValueError` if the companion package entry is
+    missing ``course_id`` or carries a value that is not a valid UUID
+    matching :data:`COMPANION_COURSE_ID`.
+    """
+    packages = manifest.get("packages", {})
+    companion = packages.get("logion-companion")
+    if not isinstance(companion, dict):
+        raise TypeError("manifest missing logion-companion package entry")
+    course_id = companion.get("course_id")
+    if course_id is None:
+        raise ValueError("companion entry missing course_id")
+    if not isinstance(course_id, str):
+        raise TypeError(
+            f"companion course_id must be a string, got {type(course_id)}"
+        )
+    try:
+        uuid.UUID(course_id)
+    except (ValueError, AttributeError) as exc:
+        raise ValueError(
+            f"companion course_id is not a valid UUID: {course_id!r}"
+        ) from exc
+    if course_id != COMPANION_COURSE_ID:
+        raise ValueError(
+            f"companion course_id drift: expected "
+            f"{COMPANION_COURSE_ID}, got {course_id}"
+        )
 
 
 def build_manifest(
@@ -104,7 +169,7 @@ def build_manifest(
         tag_prefix = cfg["tag_prefix"]
         tag = f"{tag_prefix}{version}"
 
-        entry: dict[str, str | dict] = {
+        entry: dict[str, object] = {
             "version": version,
             "tag": tag,
             "minimum_python": cfg["minimum_python"],
@@ -120,6 +185,15 @@ def build_manifest(
             entry["minimum_client"] = min_client
         if "minimum_cli" in cfg:
             entry["minimum_cli"] = cfg["minimum_cli"]
+
+        # The companion package is the first-party skill bundle
+        # distributed via the release manifest.  Tag it with its
+        # course_id so installers can correlate the tarball to the
+        # installed course.  version_id is null until a specific
+        # marketplace version is published.
+        if name == "logion-companion":
+            entry["course_id"] = COMPANION_COURSE_ID
+            entry["version_id"] = None
 
         # Attach release assets if available
         if release_assets_dir:
@@ -153,11 +227,7 @@ def build_manifest(
 
     manifest: dict = {
         "schema_version": SCHEMA_VERSION,
-        "generated_at": (
-            datetime.now(UTC)
-            .replace(microsecond=0)
-            .isoformat()
-        ),
+        "generated_at": (datetime.now(UTC).replace(microsecond=0).isoformat()),
         "git_commit": _git_commit_sha(),
         "channel": channel,
         "packages": packages,
@@ -178,8 +248,7 @@ def cmd_build(args: argparse.Namespace) -> None:
     )
     output = serialize_manifest(manifest)
     out_path = Path(
-        args.out
-        or f"releases/manifest-{args.channel}.json",
+        args.out or f"releases/manifest-{args.channel}.json",
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(output, encoding="utf-8")
@@ -199,6 +268,15 @@ def cmd_check(args: argparse.Namespace) -> None:
     on_disk = on_disk_path.read_text(encoding="utf-8")
     on_disk_manifest = json.loads(on_disk)
 
+    # Validate first-party course_id fields before diffing so a
+    # missing or drifted course_id is caught even if the rest of
+    # the manifest matches.
+    try:
+        validate_first_party_course_ids(on_disk_manifest)
+    except ValueError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     channel = on_disk_manifest.get("channel", "stable")
     manifest = build_manifest(
         channel=channel,
@@ -210,7 +288,8 @@ def cmd_check(args: argparse.Namespace) -> None:
         # Preserve those fields for check-mode comparison while still
         # rebuilding and validating the version/tag/minimum metadata.
         for name, on_disk_pkg in on_disk_manifest.get(
-            "packages", {},
+            "packages",
+            {},
         ).items():
             rebuilt_pkg = manifest.get("packages", {}).get(name)
             if not isinstance(rebuilt_pkg, dict):
@@ -222,11 +301,13 @@ def cmd_check(args: argparse.Namespace) -> None:
     # Compare structurally, ignoring generated_at (which is always
     # "now") and git_commit (which changes on every commit).
     rebuildable_fields = {
-        k: v for k, v in manifest.items()
+        k: v
+        for k, v in manifest.items()
         if k not in ("generated_at", "git_commit")
     }
     on_disk_comparable = {
-        k: v for k, v in on_disk_manifest.items()
+        k: v
+        for k, v in on_disk_manifest.items()
         if k not in ("generated_at", "git_commit")
     }
 
@@ -235,12 +316,18 @@ def cmd_check(args: argparse.Namespace) -> None:
 
         # Diff only the non-volatile fields so the output is meaningful
         on_disk_stripped = serialize_manifest(
-            {k: v for k, v in on_disk_manifest.items()
-             if k not in ("generated_at", "git_commit")},
+            {
+                k: v
+                for k, v in on_disk_manifest.items()
+                if k not in ("generated_at", "git_commit")
+            },
         )
         rebuilt_stripped = serialize_manifest(
-            {k: v for k, v in manifest.items()
-             if k not in ("generated_at", "git_commit")},
+            {
+                k: v
+                for k, v in manifest.items()
+                if k not in ("generated_at", "git_commit")
+            },
         )
         diff = difflib.unified_diff(
             on_disk_stripped.splitlines(keepends=True),

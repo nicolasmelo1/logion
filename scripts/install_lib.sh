@@ -701,8 +701,12 @@ install_companion() {
     _bundle_url="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.url')"
     _bundle_sha="$(manifest_get_field "$_manifest" '.packages["logion-companion"].bundle.sha256')"
     _comp_tag="$(manifest_get_field "$_manifest" '.packages["logion-companion"].tag')"
+    _comp_course_id="$(manifest_get_field "$_manifest" '.packages["logion-companion"].course_id')"
     if [ -z "$_comp_tag" ] || [ "$_comp_tag" = "null" ]; then
         _comp_tag="logion-companion-v$_version"
+    fi
+    if [ -z "$_comp_course_id" ] || [ "$_comp_course_id" = "null" ]; then
+        die 5 "Manifest missing required field: packages[\"logion-companion\"].course_id"
     fi
 
     # Translate release:// URLs against the companion release tag.
@@ -746,7 +750,7 @@ install_companion() {
     if command -v logion >/dev/null 2>&1; then
         if ! LOGION_AUTO_UPDATE=0 logion skills install \
             --source "$_source_dir" \
-            --course-id logion-marketplace-companion \
+            --course-id "$_comp_course_id" \
             --version-id "$_version" \
             --title "Logion Marketplace Companion" \
             --install-source logion-marketplace \

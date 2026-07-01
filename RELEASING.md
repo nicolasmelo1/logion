@@ -129,37 +129,58 @@ SHA256SUMS to the GitHub Release.
 If the version already exists on PyPI, the publish step skips
 (`skip-existing: true`) rather than failing.
 
-## Product release
+## Release orchestration
+
+The release path is coordinated by `scripts/release_orchestrator.py`,
+exposed through Make targets:
+
+```bash
+# Plan only — no mutations, safe to run anytime
+make release-plan VERSION=X.Y.Z
+
+# Validate without pushing
+make release-dry-run VERSION=X.Y.Z
+
+# Full release: preflight → bump → check → build → manifest →
+# smoke gate → commit → tag → push → GitHub releases
+make release VERSION=X.Y.Z
+
+# Also publish the companion to the marketplace store
+PUBLISH_STORE=1 make release VERSION=X.Y.Z
+```
 
 ### Preconditions
 
-- `main` is green.
+- `main` is green and up to date with `origin/main`.
 - `make ci-checks` passes.
 - `make install-test` passes.
-- Package version has already been updated in the package metadata.
+- `gh auth status` succeeds (release mode only).
+- A release smoke findings file exists (release mode only).
 
-### Publish one package
+### Smoke evidence
 
-```bash
-git fetch origin
-git switch main
-git pull --ff-only
-git tag logion-cli-vX.Y.Z
-git push origin logion-cli-vX.Y.Z
-```
-
-Watch the matching release workflow.
-
-### Regenerate manifests
+Before running `make release`, prepare and validate smoke evidence:
 
 ```bash
-make release-manifest
-make release-manifest-check
-git diff releases/
+python scripts/release_smoke.py init --version X.Y.Z --out findings.md
+# Run manual smoke per the release-smoke-checklist, then:
+python scripts/release_smoke.py check findings.md --version X.Y.Z
 ```
 
-Open a PR with the manifest changes. Do not push manifest changes
-straight to `main`.
+At least three harnesses must be recorded (including Codex and Claude
+Code). Every release-blocker finding must have a linked issue URL.
+
+### Store publication
+
+Store publication is opt-in via `PUBLISH_STORE=1`. The store publisher
+uploads the companion bundle as a new course version through the public
+CLI, requests publication review, and stops before human approval:
+
+```bash
+PUBLISH_STORE=1 make release VERSION=X.Y.Z
+# or directly:
+make release-store VERSION=X.Y.Z
+```
 
 ### Smoke installer before announcement
 
@@ -176,3 +197,4 @@ For PowerShell, run the Pester suite and one manual `-DryRun` install.
 - npm: deprecate the broken version.
 - GitHub Release: keep tags immutable; publish a patch tag.
 - Manifest: update stable/latest through reviewed PR.
+- Store: do not unpublish; upload a new version with a fix.

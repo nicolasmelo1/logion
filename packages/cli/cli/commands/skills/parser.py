@@ -9,6 +9,11 @@ from pathlib import Path
 from cli._options import COMMON_PARSER
 
 from ._search_handler import handle_skills_search
+from .companion import (
+    handle_companion_install,
+    handle_companion_status,
+    handle_companion_update,
+)
 from .handlers import (
     handle_skills_inspect,
     handle_skills_install,
@@ -17,6 +22,7 @@ from .handlers import (
     handle_skills_updates,
     handle_skills_verify,
 )
+from .prune import handle_skills_prune
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -155,3 +161,80 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     search.add_argument("--verbose", action="store_true", default=False)
     search.add_argument("--target", type=Path, default=None)
     search.set_defaults(handler=handle_skills_search)
+
+    prune = sub.add_parser(
+        "prune",
+        help="Remove old installed versions beyond a retention count",
+        parents=[COMMON_PARSER],
+    )
+    prune.add_argument(
+        "--course-id",
+        required=True,
+        help="Course identifier to prune installed versions for",
+    )
+    prune.add_argument(
+        "--keep",
+        type=int,
+        default=3,
+        help="Number of non-protected versions to retain (default: 3)",
+    )
+    prune.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Show what would be removed without deleting (default "
+        "unless --yes)",
+    )
+    prune.add_argument(
+        "--yes",
+        action="store_true",
+        default=False,
+        help="Apply the prune (default is dry-run)",
+    )
+    prune.add_argument(
+        "--force-modified",
+        action="store_true",
+        default=False,
+        help="Allow removing versions with locally modified content",
+    )
+    prune.add_argument("--target", type=Path, default=None)
+    prune.set_defaults(handler=handle_skills_prune)
+
+    # -- companion subcommands -------------------------------------------
+    companion = sub.add_parser(
+        "companion",
+        help="Manage the official Logion marketplace companion",
+    )
+    companion_sub = companion.add_subparsers(
+        dest="companion_command",
+        required=True,
+    )
+
+    companion_status = companion_sub.add_parser(
+        "status",
+        help="Report companion installation status",
+        parents=[COMMON_PARSER],
+    )
+    companion_status.add_argument("--target", type=Path, default=None)
+    companion_status.set_defaults(handler=handle_companion_status)
+
+    companion_install = companion_sub.add_parser(
+        "install",
+        help="Install the official companion",
+        parents=[COMMON_PARSER],
+    )
+    companion_install.add_argument(
+        "--channel",
+        default="stable",
+        help="Release channel (default: stable)",
+    )
+    companion_install.add_argument("--target", type=Path, default=None)
+    companion_install.set_defaults(handler=handle_companion_install)
+
+    companion_update = companion_sub.add_parser(
+        "update",
+        help="Update the official companion",
+        parents=[COMMON_PARSER],
+    )
+    companion_update.add_argument("--target", type=Path, default=None)
+    companion_update.set_defaults(handler=handle_companion_update)

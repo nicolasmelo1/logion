@@ -10,6 +10,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from cli._first_party import (
+    LOGION_MARKETPLACE_COMPANION_COURSE_ID,
+    LOGION_MARKETPLACE_COMPANION_NAME,
+)
 from cli._harness.base import HarnessAdapter
 from cli._local_state import get_home
 
@@ -44,7 +48,7 @@ class CompanionInstallError(RuntimeError):
     """Raised when the canonical install step fails."""
 
 
-COMPANION_COURSE_ID = "logion-marketplace-companion"
+COMPANION_COURSE_ID = LOGION_MARKETPLACE_COMPANION_COURSE_ID
 _FALLBACK_VERSION_ID = "latest"
 
 
@@ -184,7 +188,7 @@ def _install_from_dir(
         source=bundle_dir,
         course_id=course_id,
         version_id=version_id,
-        title="Logion Marketplace Companion",
+        title=LOGION_MARKETPLACE_COMPANION_NAME,
         target=None,
         dry_run=False,
         # Force overwrite when the companion is already installed but
