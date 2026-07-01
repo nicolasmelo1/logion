@@ -189,7 +189,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--yes",
         action="store_true",
         default=False,
-        help="Apply the prune (default is dry-run)",
+        help="Apply the prune (default is dry-run). "
+        "Mutually exclusive with --dry-run.",
     )
     prune.add_argument(
         "--force-modified",

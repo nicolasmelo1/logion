@@ -32,11 +32,19 @@ __all__ = [
 ]
 
 
+def _ref_to_dict(ref: InstalledVersionRef) -> dict:
+    """Convert a ref to a JSON-safe dict (datetime/path -> str)."""
+    d = asdict(ref)
+    d["installed_at"] = ref.installed_at.isoformat()
+    d["path"] = str(ref.path)
+    return d
+
+
 def _plan_to_dict(plan: RetentionPlan) -> dict:
     return {
         "course_id": plan.course_id,
-        "keep": [asdict(r) for r in plan.keep],
-        "remove": [asdict(r) for r in plan.remove],
+        "keep": [_ref_to_dict(r) for r in plan.keep],
+        "remove": [_ref_to_dict(r) for r in plan.remove],
         "reason": plan.reason,
     }
 
@@ -73,6 +81,14 @@ def handle_skills_prune(args: argparse.Namespace) -> int:
             2,
         )
 
+    if getattr(args, "dry_run", False) and getattr(args, "yes", False):
+        return _error(
+            args,
+            "validation_failed",
+            "--dry-run and --yes are mutually exclusive",
+            2,
+        )
+
     try:
         _safe_segment(course_id, "course_id")
     except UnsafeIdentifierError as exc:
@@ -94,9 +110,15 @@ def handle_skills_prune(args: argparse.Namespace) -> int:
         emit_json("logion.skills.prune", payload)
         return 0
 
-    if plan.remove:
-        for _ref in plan.remove:
-            pass
+    if dry_run:
+        print(f"Prune plan for {course_id} (dry-run):")
     else:
-        pass
+        print(f"Pruned {course_id}:")
+    print(f"  keep {len(plan.keep)}, remove {len(plan.remove)}")
+    if plan.remove:
+        print("  Removed:")
+        for ref in plan.remove:
+            print(f"    {ref.version_id}")
+    else:
+        print("  Nothing to remove.")
     return 0

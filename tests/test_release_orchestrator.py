@@ -93,17 +93,29 @@ def test_preflight_allows_named_smoke_findings() -> None:
     planner.validate_clean_or_release_only_worktree()
 
 
-def test_release_dry_run_does_not_run_git_push() -> None:
+def test_release_dry_run_does_not_run_git_push(
+    tmp_path: Path,
+) -> None:
     """Dry-run mode does not execute git push."""
     plan = ReleasePlanner(
         repo_root=REPO_ROOT,
     ).load("0.1.99", publish_store=False)
+    # Create the smoke findings file so preflight passes.
+    plan.smoke_findings_path.parent.mkdir(parents=True, exist_ok=True)
+    plan.smoke_findings_path.write_text(
+        "---\nrelease_version: \"0.1.99\"\napi_base_url: \"\"\n"
+        "cli_version: \"\"\nharnesses:\n  - codex\n  - claude-code\n"
+        "  - opencode\n---\n",
+        encoding="utf-8",
+    )
     runner = _FakeRunner()
     executor = ReleaseExecutor(plan, runner=runner)
     executor.execute(dry_run=True)
     # No git push command should have been issued.
     push_calls = [c for c in runner.calls if "push" in c and "git" in c]
-    assert push_calls == [], (f"Dry-run should not push, got: {push_calls}",)
+    assert push_calls == [], (
+        f"Dry-run should not push, got: {push_calls}",
+    )
 
 
 def test_release_creates_expected_tag_commands() -> None:

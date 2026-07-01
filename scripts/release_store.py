@@ -149,18 +149,27 @@ class CompanionStorePublisher:
         self,
         tarball: Path,
     ) -> list[UploadFileSpec]:
-        """List the files inside a companion bundle tarball."""
+        """List the files inside a companion bundle tarball.
+
+        Files are extracted to ``extracted_dir`` before upload so
+        ``local_path`` points to a real on-disk file.
+        """
+        extract_dir = (
+            self._root / "dist" / (f"companion-extract-{tarball.stem}")
+        )
+        extract_dir.mkdir(parents=True, exist_ok=True)
+
         specs: list[UploadFileSpec] = []
         with tarfile.open(tarball, "r:gz") as tar:
             for member in tar.getmembers():
                 if not member.isfile():
                     continue
-                # Tarball paths are relative to the bundle root;
-                # the upload path is the path inside the tarball.
+                tar.extract(member, path=extract_dir, filter="data")
+                local = extract_dir / member.name
                 specs.append(
                     UploadFileSpec(
                         upload_path=member.name,
-                        local_path=Path(member.name),
+                        local_path=local,
                     ),
                 )
         return specs
@@ -304,14 +313,21 @@ class CompanionStorePublisher:
 
     def _extract_status(self, output: str) -> str | None:
         """Extract the publication review status from output."""
-        # Status appears as a JSON field or in a human-readable line.
         for line in output.splitlines():
             lower = line.lower()
             if "status" in lower:
                 for word in line.split():
                     word = word.strip('"').strip(",").lower()
-                    if word in _OK_STATUSES:
-                        return word
+                    if word and word.replace("_", "-") in (
+                        "queued",
+                        "passed",
+                        "rejected",
+                        "failed",
+                        "pending",
+                        "in_progress",
+                        "in-progress",
+                    ):
+                        return word.replace("_", "-")
         return None
 
     def _print_reviewer_followup(self, course_id: str) -> None:
@@ -382,6 +398,10 @@ class CompanionStorePublisher:
         commands.append(
             "# push_upload <version_id> — version_id from create output",
         )
+        push_cmd = f"logion courses uploads push {plan.course_id} <version_id>"
+        for spec in plan.upload_files:
+            push_cmd += f" --file {spec.upload_path}={spec.local_path}"
+        commands.append(push_cmd)
         commands.append(
             f"logion courses uploads complete {plan.course_id} <version_id>",
         )

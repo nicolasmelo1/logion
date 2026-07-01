@@ -194,13 +194,17 @@ class ReleasePlanner:
             self._root / "releases" / "manifest-latest.json",
         )
 
+        # Map package short-names to their paths for changed_paths.
+        name_to_path = {
+            name: self._root / pkg_dir
+            for name, pkg_dir, _, _ in _PACKAGE_CONFIG
+        }
+
         return ReleasePlan(
             version=next_version,
             packages=tuple(packages),
             changed_paths=tuple(
-                self._root / pkg_dir
-                for _, pkg_dir, _, _ in _PACKAGE_CONFIG
-                if pkg_dir.split("/")[-1] in changed
+                name_to_path[name] for name in changed if name in name_to_path
             ),
             tags_to_create=tuple(tags),
             manifest_outputs=manifest_outputs,
@@ -281,6 +285,10 @@ class ReleaseExecutor:
 
     def preflight(self) -> None:
         """Run all preflight gates."""
+        ReleasePlanner(
+            repo_root=self._root(),
+            runner=self._runner,
+        ).validate_clean_or_release_only_worktree()
         self._validate_no_conflicting_tags()
         self._validate_smoke_findings_exist()
 
@@ -515,6 +523,7 @@ class ReleaseExecutor:
         In dry-run mode only plans and validates — no mutations.
         """
         if dry_run:
+            self.preflight()
             return {
                 "dry_run": True,
                 "tags": list(self._plan.tags_to_create),
@@ -634,7 +643,6 @@ def main() -> None:
     release_p.add_argument("--version", required=True)
     release_p.add_argument("--publish-store", action="store_true")
     release_p.add_argument("--dry-run", action="store_true")
-    release_p.add_argument("--allow-non-main", action="store_true")
     release_p.set_defaults(func=cmd_release)
 
     args = parser.parse_args()

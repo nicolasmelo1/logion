@@ -18,10 +18,12 @@ def handle_companion_status(args: argparse.Namespace) -> int:
         emit_json("logion.skills.companion.status", status.to_dict())
         return 0
     if status.installed:
-        pass
+        print(f"Companion installed: {status.course_id}/{status.version_id}")
+        print(f"  Source: {status.source}")
     else:
+        print("Companion not installed.")
         if status.reason:
-            pass
+            print(f"  {status.reason}")
     return 0
 
 
@@ -33,12 +35,15 @@ def handle_companion_install(args: argparse.Namespace) -> int:
         if getattr(args, "json_output", False):
             emit_json("logion.skills.companion.install", status.to_dict())
             return 0
+        print(f"Companion already installed: {status.version_id}")
         return 0
     if getattr(args, "json_output", False):
         emit_json("logion.skills.companion.install", status.to_dict())
     else:
-        pass
-    return 0
+        print("Companion not installed.")
+        if status.reason:
+            print(f"  {status.reason}")
+    return 1
 
 
 def handle_companion_update(args: argparse.Namespace) -> int:
@@ -49,10 +54,18 @@ def handle_companion_update(args: argparse.Namespace) -> int:
         if getattr(args, "json_output", False):
             emit_json("logion.skills.companion.update", status.to_dict())
         else:
-            pass
+            print("Companion not installed.")
+            if status.reason:
+                print(f"  {status.reason}")
         return 1
     if getattr(args, "json_output", False):
         emit_json("logion.skills.companion.update", status.to_dict())
     else:
-        pass
+        print(
+            f"Companion update check: {status.course_id}/{status.version_id}"
+        )
+        if status.needs_update:
+            print("  Update available.")
+        else:
+            print("  Up to date.")
     return 0

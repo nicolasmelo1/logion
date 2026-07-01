@@ -14,6 +14,7 @@ from cli._local_state import (
     list_installed,
     read_index,
     read_recall,
+    read_workflows,
     write_manifest,
     write_workflows,
 )
@@ -302,7 +303,7 @@ def test_skills_prune_rebuilds_index_and_recall_after_delete(
 
     write_index(build_index(home), home)
     write_recall(
-        build_recall_entries(list_installed(home), read_recall(home)),
+        build_recall_entries(list_installed(home), read_workflows(home)),
         home,
     )
 
