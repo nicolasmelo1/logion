@@ -18,6 +18,7 @@ from cli._local_state import _atomic_write_text, get_home
 STATE_FILENAME = "auto_update.json"
 DEFAULT_COMMAND_THRESHOLD = 25
 DEFAULT_INTERVAL_HOURS = 24
+NPM_MANAGED_VENV_DIRNAME = "npm-managed-venv"
 
 
 def state_path(home: Path | None = None) -> Path:
@@ -85,9 +86,27 @@ def status(home: Path | None = None) -> dict[str, Any]:
         "last_attempt_at": data.get("last_attempt_at"),
         "last_success_at": data.get("last_success_at"),
         "last_error": data.get("last_error"),
+        "last_skip_reason": data.get("last_skip_reason"),
         "command_threshold": DEFAULT_COMMAND_THRESHOLD,
         "interval_hours": DEFAULT_INTERVAL_HOURS,
     }
+
+
+def _is_npm_managed_python() -> bool:
+    """Return True when this CLI is running from the npm wrapper venv.
+
+    The npm wrapper shim always dispatches into the managed venv
+    (``~/.logion/npm-managed-venv/bin/logion`` on POSIX,
+    ``...\\Scripts\\logion.exe`` on Windows).  That environment is managed by
+    npm postinstall, not by the curl installer used for Python CLI updates.  If
+    auto-update runs here, the generic installer can update pipx/uv while the
+    npm shim keeps invoking the stale managed venv.
+    """
+    executable = Path(sys.executable).expanduser().absolute()
+    managed = (Path.home() / ".logion" / NPM_MANAGED_VENV_DIRNAME).absolute()
+    # sys.executable is the interpreter *inside* the venv, so it lives under
+    # the managed dir — a parent-membership test is the meaningful check.
+    return managed in executable.parents
 
 
 def maybe_auto_update(args: argparse.Namespace) -> None:
@@ -104,6 +123,15 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
     )
 
     if not data["enabled"] or os.environ.get("LOGION_AUTO_UPDATE") == "0":
+        _write_state(data)
+        return
+
+    if _is_npm_managed_python():
+        # A skip is not a failure: record it under its own field so JSON
+        # consumers can keep treating last_error as "the last real failure".
+        data["last_skip_reason"] = (
+            "npm-managed install is updated by npm postinstall"
+        )
         _write_state(data)
         return
 

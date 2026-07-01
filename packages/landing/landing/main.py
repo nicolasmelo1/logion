@@ -8,8 +8,12 @@ can be edited without touching Python.
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import time
+import urllib.error
+import urllib.request
 from datetime import UTC
 from html import escape
 from pathlib import Path
@@ -38,6 +42,17 @@ ASCII_HERO_PATH = STATIC_DIR / "ascii" / "zeus.txt"
 FAVICON_PATH = STATIC_DIR / "favicon.svg"
 GITHUB_REPO = "nicolasmelo1/logion"
 _MANIFEST_CHANNELS = ("stable", "latest")
+# Channel whose published version drives the hero readout. Sourced from the
+# release manifest on main so the page reflects actual GitHub Releases.
+_READOUT_CHANNEL = "stable"
+RELEASE_MANIFEST_URL = (
+    f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/"
+    f"releases/manifest-{_READOUT_CHANNEL}.json"
+)
+# In-process cache so render does not fetch GitHub on every request. One fetch
+# per cold start and at most one per TTL window on a warm instance.
+_READOUT_TTL_SECONDS = 3600.0
+_readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
 
 PUBLIC_PATHS = (
     "/",
@@ -228,11 +243,64 @@ def release_manifest(channel: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=302)
 
 
+def _fallback_readout() -> str:
+    """Static hero readout from site.yaml, used when GitHub is unreachable."""
+    readouts = content.get("hero", {}).get("readouts", {})
+    return str(readouts.get("bottom", ""))
+
+
+def _fetch_release_readout() -> str | None:
+    """Fetch the published version from the release manifest on GitHub.
+
+    Returns ``v<version> · <channel>`` for the CLI package, or None on any
+    network/parse failure so the caller can fall back to the static value.
+    """
+    request = urllib.request.Request(
+        RELEASE_MANIFEST_URL,
+        headers={"Accept": "application/json", "User-Agent": "logion-landing"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=2.5) as response:
+            data = json.loads(response.read())
+    except (OSError, urllib.error.URLError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    packages = data.get("packages")
+    cli = packages.get("logion-cli") if isinstance(packages, dict) else None
+    version = cli.get("version") if isinstance(cli, dict) else None
+    if not isinstance(version, str) or not version:
+        return None
+    channel = data.get("channel", _READOUT_CHANNEL)
+    return f"v{version} · {channel}"
+
+
+def release_readout(*, now: float | None = None) -> str:
+    """Hero readout derived from GitHub Releases, cached with a TTL.
+
+    On a cache miss this performs one synchronous fetch (bounded by the
+    2.5s timeout); it never *fails* rendering on a network error — a failed
+    fetch falls back to the static site.yaml readout. Within the TTL the
+    cached value is returned with no network call.
+    """
+    current = time.monotonic() if now is None else now
+    cached = _readout_cache["value"]
+    if cached is not None and current - _readout_cache["at"] < (
+        _READOUT_TTL_SECONDS
+    ):
+        return str(cached)
+    value = _fetch_release_readout() or _fallback_readout()
+    _readout_cache["value"] = value
+    _readout_cache["at"] = current
+    return value
+
+
 def _ctx(**extra: Any) -> dict[str, Any]:
     ctx: dict[str, Any] = dict(content)
     ctx["ascii_hero"] = ascii_hero
     ctx.setdefault("breadcrumbs", content.get("breadcrumbs", {}))
     ctx.setdefault("page_date_modified", None)
+    ctx.setdefault("release_readout", _fallback_readout())
     ctx.update(extra)
     return ctx
 
@@ -363,7 +431,9 @@ def index(request: Request) -> Response:
             markdown_content,
             media_type="text/markdown; charset=utf-8",
         )
-    return templates.TemplateResponse(request, "index.html", _ctx())
+    return templates.TemplateResponse(
+        request, "index.html", _ctx(release_readout=release_readout())
+    )
 
 
 @app.get("/pricing", response_class=HTMLResponse)

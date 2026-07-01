@@ -1,4 +1,10 @@
-"""Google OSV-Scanner running inside Docker."""
+"""Google OSV-Scanner.
+
+Runs either via Docker (``docker run ghcr.io/google/osv-scanner``)
+for local development, or via a native ``osv-scanner`` binary on PATH
+when a ``binary_path`` is supplied — for environments that have the
+binary installed but no Docker daemon available.
+"""
 
 from __future__ import annotations
 
@@ -32,7 +38,7 @@ def _extract_cvss_base(vector: str) -> float | None:
 
 
 class OsvScanner(BaseScanner):
-    """Google OSV-Scanner running inside Docker."""
+    """Google OSV-Scanner (Docker or native binary)."""
 
     layer = SCANNER_OSV
 
@@ -62,29 +68,48 @@ class OsvScanner(BaseScanner):
         self,
         *,
         docker_image: str = "ghcr.io/google/osv-scanner:latest",
+        binary_path: str | None = None,
         timeout_seconds: int = 300,
     ) -> None:
+        # When ``binary_path`` is set, the native binary is invoked
+        # directly and Docker is never used.  This is the hosted-worker
+        # path; ``docker_image`` is ignored in that mode.
         self._image = docker_image
+        self._binary_path = binary_path
         self._timeout = timeout_seconds
 
-    def scan(self, bundle_path: Path) -> ScannerResult:
-        # Resolve to absolute path — Docker -v requires it.
-        abs_bundle = bundle_path.resolve()
+    @property
+    def _native(self) -> bool:
+        return self._binary_path is not None
 
-        cmd = [
+    def _build_cmd(self, abs_bundle: Path) -> list[str]:
+        scan_args = [
+            "scan",
+            "source",
+            "--format",
+            "json",
+            "--recursive",
+        ]
+        if self._binary_path is not None:
+            # Native binary scans the host path directly — no mount.
+            return [self._binary_path, *scan_args, str(abs_bundle)]
+        return [
             "docker",
             "run",
             "--rm",
             "-v",
             f"{abs_bundle}:/scan:ro",
             self._image,
-            "scan",
-            "source",
-            "--format",
-            "json",
-            "--recursive",
+            *scan_args,
             "/scan",
         ]
+
+    def scan(self, bundle_path: Path) -> ScannerResult:
+        # Resolve to absolute path — Docker -v requires it, and the
+        # native binary benefits from an unambiguous target.
+        abs_bundle = bundle_path.resolve()
+
+        cmd = self._build_cmd(abs_bundle)
 
         try:
             proc = subprocess.run(  # nosec B603
@@ -94,15 +119,22 @@ class OsvScanner(BaseScanner):
                 timeout=self._timeout,
             )
         except FileNotFoundError:
+            error = (
+                f"OSV-Scanner binary not found at {self._binary_path!r} — "
+                "native scan skipped. "
+                "Ensure the osv-scanner binary is installed and on PATH."
+                if self._native
+                else (
+                    "Docker is not available — "
+                    "OSV scan skipped. "
+                    "Install Docker to run OSV-Scanner."
+                )
+            )
             return ScannerResult(
                 layer=SCANNER_OSV,
                 passed=False,
                 findings=[],
-                error=(
-                    "Docker is not available — "
-                    "OSV scan skipped. "
-                    "Install Docker to run OSV-Scanner."
-                ),
+                error=error,
             )
         except subprocess.TimeoutExpired:
             return ScannerResult(
@@ -117,8 +149,9 @@ class OsvScanner(BaseScanner):
         # Docker exit 125 covers several failure modes.
         # Only treat as "Docker not available" when the daemon
         # is truly missing; mount/pull failures get a distinct
-        # message so the CLI can differentiate.
-        if proc.returncode == 125:
+        # message so the CLI can differentiate.  Docker-specific —
+        # the native binary never returns 125, so skip in native mode.
+        if not self._native and proc.returncode == 125:
             if "is the docker daemon running" in combined.lower():
                 error = (
                     "Docker is not available — "

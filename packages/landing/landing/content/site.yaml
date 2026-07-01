@@ -21,10 +21,21 @@ site:
 hero:
   greek: ΛΟΓΙΟΝ
   heading: Logion
+  # Emotional, plain-language lead that carries the ethos tension above the
+  # fold. Brand voice: network/shared-capability first, money never the hook.
+  hook: >-
+    Teach the agents what you know. Keep it owned, credited, and compounding.
   motto: Smarter, together.
   subheading: >-
     An agent-native marketplace for operational knowledge, packaged as reviewed
     course bundles that agents can acquire, install, and improve.
+  # Honest trust signals shown above the fold — every item is already true and
+  # documented elsewhere on the page. Not testimonials; real proof points.
+  signals:
+    - Open-source, auditable client
+    - Scanners + human review on every version
+    - Immutable, versioned bundles
+    - Creators keep 85%
   body: >-
     Logion is not a video course marketplace or a generic skill directory. It
     packages reusable operating knowledge for agents as bundles with manifests,
@@ -44,7 +55,11 @@ hero:
         href: /terms
   readouts:
     top: "ΛΟΓΙΟΝ // MARKETPLACE LOOP ONLINE"
-    bottom: "v0.1.2 · BUILD α"
+    # Fallback only — the live readout is derived from the published release
+    # manifest (GitHub Releases) at render time. This static value shows just
+    # the channel, never a hard-coded version that could drift, for the rare
+    # case GitHub is unreachable.
+    bottom: "stable channel"
   meta:
     - term: bundle
       value: course/capabilities.yaml

@@ -1,4 +1,10 @@
-"""Trivy filesystem scanner running inside Docker."""
+"""Trivy filesystem scanner.
+
+Runs either via Docker (``docker run aquasec/trivy``) for local
+development, or via a native ``trivy`` binary on PATH when a
+``binary_path`` is supplied — for environments that have the binary
+installed but no Docker daemon available.
+"""
 
 from __future__ import annotations
 
@@ -30,9 +36,15 @@ _DOCKER_UNAVAILABLE_MSG = (
     "Install Docker or start the Docker daemon."
 )
 
+_BINARY_NOT_FOUND_MSG = (
+    "Trivy binary not found at {binary!r} — "
+    "native scan skipped. "
+    "Ensure the trivy binary is installed and on PATH."
+)
+
 
 class TrivyScanner(BaseScanner):
-    """Trivy filesystem scanner running inside Docker."""
+    """Trivy filesystem scanner (Docker or native binary)."""
 
     layer = SCANNER_TRIVY
 
@@ -40,29 +52,48 @@ class TrivyScanner(BaseScanner):
         self,
         *,
         docker_image: str = "aquasec/trivy:latest",
+        binary_path: str | None = None,
         timeout_seconds: int = 300,
     ) -> None:
+        # When ``binary_path`` is set, the native binary is invoked
+        # directly and Docker is never used.  This is the hosted-worker
+        # path; ``docker_image`` is ignored in that mode.
         self._image = docker_image
+        self._binary_path = binary_path
         self._timeout = timeout_seconds
 
-    def scan(self, bundle_path: Path) -> ScannerResult:
-        # Resolve to absolute path — Docker -v requires it.
-        abs_bundle = bundle_path.resolve()
+    @property
+    def _native(self) -> bool:
+        return self._binary_path is not None
 
-        cmd = [
+    def _build_cmd(self, abs_bundle: Path) -> list[str]:
+        scan_args = [
+            "fs",
+            "--format",
+            "json",
+            "--severity",
+            "CRITICAL,HIGH,MEDIUM,LOW",
+        ]
+        if self._binary_path is not None:
+            # Native binary scans the host path directly — no mount.
+            return [self._binary_path, *scan_args, str(abs_bundle)]
+        return [
             "docker",
             "run",
             "--rm",
             "-v",
             f"{abs_bundle}:/scan:ro",
             self._image,
-            "fs",
-            "--format",
-            "json",
-            "--severity",
-            "CRITICAL,HIGH,MEDIUM,LOW",
+            *scan_args,
             "/scan",
         ]
+
+    def scan(self, bundle_path: Path) -> ScannerResult:
+        # Resolve to absolute path — Docker -v requires it, and the
+        # native binary benefits from an unambiguous target.
+        abs_bundle = bundle_path.resolve()
+
+        cmd = self._build_cmd(abs_bundle)
 
         try:
             proc = subprocess.run(  # nosec B603
@@ -72,11 +103,16 @@ class TrivyScanner(BaseScanner):
                 timeout=self._timeout,
             )
         except FileNotFoundError:
+            error = (
+                _BINARY_NOT_FOUND_MSG.format(binary=self._binary_path)
+                if self._native
+                else _DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy")
+            )
             return ScannerResult(
                 layer=SCANNER_TRIVY,
                 passed=False,
                 findings=[],
-                error=_DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy"),
+                error=error,
             )
         except subprocess.TimeoutExpired as exc:
             raw = exc.stdout if isinstance(exc.stdout, str) else None
@@ -93,8 +129,10 @@ class TrivyScanner(BaseScanner):
         # Docker exit 125 covers several failure modes.  We only
         # treat it as "Docker not available" when the daemon is
         # truly missing; mount / pull failures get a distinct message
-        # so the CLI can differentiate (exit 2 vs scan error).
-        if proc.returncode == 125:
+        # so the CLI can differentiate (exit 2 vs scan error).  This
+        # is Docker-specific — the native binary never returns 125 for
+        # these reasons, so skip it in native mode.
+        if not self._native and proc.returncode == 125:
             if "Is the docker daemon running" in combined.lower():
                 error = _DOCKER_UNAVAILABLE_MSG.format(scanner="Trivy")
             else:

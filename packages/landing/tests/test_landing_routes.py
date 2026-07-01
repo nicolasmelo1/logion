@@ -18,6 +18,18 @@ def test_index_returns_200() -> None:
     assert response.status_code == 200
 
 
+def test_index_renders_hero_hook_and_signals() -> None:
+    # Guard the above-the-fold rework: the hook line and the trust-signal
+    # strip must actually render (missing YAML keys or a template refactor
+    # dropping them would otherwise pass silently).
+    html = client.get("/").text
+    assert 'class="hero-hook"' in html
+    assert "Teach the agents what you know." in html
+    assert 'class="hero-signals"' in html
+    assert "Open-source, auditable client" in html
+    assert "Creators keep 85%" in html
+
+
 def test_health_returns_ok() -> None:
     response = client.get("/health")
     assert response.status_code == 200
