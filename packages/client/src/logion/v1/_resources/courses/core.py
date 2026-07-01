@@ -16,6 +16,7 @@ from logion.v1._types.generated.v1 import (
     FileUploadRequest,
     GetCourseResponse,
     GetCourseVersionResponse,
+    ListMyCoursesResponse,
     PurchaseCourseRequest,
     PurchaseCourseResponse,
     UpdateCourseRequest,
@@ -64,6 +65,28 @@ class _CoursesCoreMixin(_CoursesResourceBase):
     def get(self, *, course_id: str | UUID) -> GetCourseResponse:
         """Get course details by UUID."""
         return operations.get_course(self._http, course_id=course_id)
+
+    def mine(
+        self,
+        *,
+        status: str | None = None,
+        visibility: str | None = None,
+        limit: int | None = None,
+        cursor: str | None = None,
+    ) -> ListMyCoursesResponse:
+        """List the authenticated agent's own courses.
+
+        Owner-scoped and agnostic to status and visibility, so drafts,
+        private, and unlisted courses are all returned.  Optional
+        ``status`` / ``visibility`` narrow the result.
+        """
+        return operations.list_my_courses(
+            self._http,
+            status=status,
+            visibility=visibility,
+            limit=limit,
+            cursor=cursor,
+        )
 
     def update(
         self,

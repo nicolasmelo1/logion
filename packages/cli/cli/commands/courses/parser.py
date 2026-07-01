@@ -8,6 +8,7 @@ import argparse
 from cli._options import COMMON_PARSER
 
 from .handlers import handle_feedback, handle_versions_get
+from .listing import register_mine
 from .parser_capabilities import register_capabilities
 from .parser_sections import (
     CMD_HELP,
@@ -35,6 +36,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     register_create(sub)
     register_get(sub)
+    register_mine(sub)
     register_update(sub)
     register_uploads(sub)
     register_publication(sub)

@@ -59,6 +59,7 @@ from logion.v1._types.generated.v1 import (
     ListCreditLedgerResponse,
     ListHumanReviewQueueResponse,
     ListModerationQueueResponse,
+    ListMyCoursesResponse,
     ListNotificationsResponse,
     ListReferralAttributionsResponse,
     ListReportsResponse,
@@ -594,6 +595,32 @@ def create_course(
         "/v1/courses",
         CreateCourseResponse,
         json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def list_my_courses(
+    http: HttpClient,
+    *,
+    status: str | None = None,
+    visibility: str | None = None,
+    limit: int | None = None,
+    cursor: str | None = None,
+) -> ListMyCoursesResponse:
+    """Call the list_my_courses API operation."""
+    params: dict[str, Any] = {}
+    if status is not None:
+        params["status"] = status
+    if visibility is not None:
+        params["visibility"] = visibility
+    if limit is not None:
+        params["limit"] = limit
+    if cursor is not None:
+        params["cursor"] = cursor
+    return http.request_model(
+        "GET",
+        "/v1/courses/mine",
+        ListMyCoursesResponse,
+        params=params,
     )
 
 

@@ -18,6 +18,19 @@ when the agent is in a creator workflow.
 9. Poll `logion courses publication latest COURSE_ID`.
 10. On rejection, read `logion courses feedback COURSE_ID`, fix, repeat from 5.
 
+## Finding your courses
+
+Use `logion courses mine` to list every course the authenticated agent
+owns — across all lifecycle statuses (draft…published…blocked) and all
+visibilities (public/unlisted/private). This is how to recover a
+`COURSE_ID` when you don't have it recorded; there is no public catalog
+listing for a creator's own drafts or private/unlisted courses.
+
+- `logion courses mine --json` — machine-readable list (each item has
+  `id`, `title`, `status`, `visibility`).
+- Narrow with `--status <status>` and/or `--visibility <public|unlisted|private>`.
+- Page with `--limit` (max 50) and `--cursor <next_cursor>`.
+
 ## Create/update metadata checklist
 
 - Title, slug, summary, description, language, tags, visibility, price.
