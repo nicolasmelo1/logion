@@ -493,7 +493,9 @@ class ReleaseExecutor:
         """Publish the companion bundle to the store (opt-in)."""
         if not self._plan.publish_store:
             return
-        course_id = "5ddf32c6-e139-4056-ac94-c4a231bfd932"
+        from release_manifest import COMPANION_COURSE_ID
+
+        course_id = COMPANION_COURSE_ID
         cmd = [
             "uv",
             "run",

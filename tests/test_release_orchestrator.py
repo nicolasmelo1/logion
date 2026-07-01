@@ -93,9 +93,7 @@ def test_preflight_allows_named_smoke_findings() -> None:
     planner.validate_clean_or_release_only_worktree()
 
 
-def test_release_dry_run_does_not_run_git_push(
-    tmp_path: Path,
-) -> None:
+def test_release_dry_run_does_not_run_git_push() -> None:
     """Dry-run mode does not execute git push."""
     plan = ReleasePlanner(
         repo_root=REPO_ROOT,

@@ -135,7 +135,14 @@ class CompanionStorePublisher:
                 f"Run `make companion-bundle` first.",
             )
 
-        extracted_dir = self._root / "dist" / f"companion-extract-{version}"
+        # Match _list_tarball_files extraction dir naming (strips
+        # all suffixes, not just .stem which leaves .tar on .tar.gz).
+        tarball_name = tarball.name
+        for _suffix in tarball.suffixes:
+            tarball_name = tarball_name.rsplit(".", 1)[0]
+        extracted_dir = (
+            self._root / "dist" / f"companion-extract-{tarball_name}"
+        )
         files = self._list_tarball_files(tarball)
         return CompanionStorePublishPlan(
             course_id=course_id,
@@ -154,8 +161,13 @@ class CompanionStorePublisher:
         Files are extracted to ``extracted_dir`` before upload so
         ``local_path`` points to a real on-disk file.
         """
+        # Strip all suffixes (.tar.gz → bare name); Path.stem
+        # only removes the last suffix, leaving ".tar" behind.
+        tarball_name = tarball.name
+        for _suffix in tarball.suffixes:
+            tarball_name = tarball_name.rsplit(".", 1)[0]
         extract_dir = (
-            self._root / "dist" / (f"companion-extract-{tarball.stem}")
+            self._root / "dist" / f"companion-extract-{tarball_name}"
         )
         extract_dir.mkdir(parents=True, exist_ok=True)
 

@@ -83,8 +83,13 @@ def test_store_publish_plan_preserves_bundle_paths(
     )
     plan = publisher.build_plan(VERSION, COMPANION_UUID)
     assert plan.bundle_tarball == tarball
+    # extracted_dir uses the tarball name (minus .tar.gz suffixes),
+    # not the bare version string.
+    expected_extract_name = tarball.name
+    for _suffix in tarball.suffixes:
+        expected_extract_name = expected_extract_name.rsplit(".", 1)[0]
     assert plan.extracted_dir == (
-        repo_root / "dist" / f"companion-extract-{VERSION}"
+        repo_root / "dist" / f"companion-extract-{expected_extract_name}"
     )
     assert plan.version == VERSION
     assert plan.course_id == COMPANION_UUID

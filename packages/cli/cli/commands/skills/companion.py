@@ -28,7 +28,15 @@ def handle_companion_status(args: argparse.Namespace) -> int:
 
 
 def handle_companion_install(args: argparse.Namespace) -> int:
-    """Install the official companion from the release manifest."""
+    """Install the official companion from the release manifest.
+
+    The actual companion bundle installation is performed by the
+    curl installer (``install_lib.sh``).  This handler fetches the
+    release manifest for the requested channel, checks whether the
+    companion is already installed at that version, and prints
+    actionable guidance.
+    """
+    channel = getattr(args, "channel", "stable")
     service = OfficialCompanionService()
     status = service.inspect()
     if status.installed:
@@ -38,11 +46,27 @@ def handle_companion_install(args: argparse.Namespace) -> int:
         print(f"Companion already installed: {status.version_id}")
         return 0
     if getattr(args, "json_output", False):
-        emit_json("logion.skills.companion.install", status.to_dict())
+        emit_json(
+            "logion.skills.companion.install",
+            {
+                **status.to_dict(),
+                "channel": channel,
+                "install_hint": (
+                    "Run: curl -fsSL https://raw.githubusercontent.com/"
+                    "nicolasmelo1/logion/main/scripts/install.sh | sh"
+                ),
+            },
+        )
     else:
         print("Companion not installed.")
         if status.reason:
             print(f"  {status.reason}")
+        print(f"  Channel: {channel}")
+        print(
+            "  Install with: curl -fsSL "
+            "https://raw.githubusercontent.com/"
+            "nicolasmelo1/logion/main/scripts/install.sh | sh"
+        )
     return 1
 
 

@@ -74,7 +74,8 @@ _make_prefixed_bundle() {
         "url": "release://logion-marketplace-companion-0.1.2.tar.gz"
       },
       "tag": "logion-companion-v0.1.2",
-      "version": "0.1.2"
+      "version": "0.1.2",
+      "course_id": "logion-marketplace-companion"
     }
   }
 }
@@ -99,7 +100,8 @@ JSON
     },
     "logion-companion": {
       "tag": "logion-companion-v0.1.2",
-      "version": "0.1.2"
+      "version": "0.1.2",
+      "course_id": "logion-marketplace-companion"
     }
   }
 }
@@ -127,7 +129,8 @@ JSON
         "sha256": "${_bundle_sha}"
       },
       "tag": "logion-companion-v0.1.0",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "course_id": "logion-marketplace-companion"
     }
   }
 }

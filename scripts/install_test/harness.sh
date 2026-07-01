@@ -140,6 +140,7 @@ setup_fake_release() {
       "tag": "logion-companion-v0.1.0",
       "minimum_python": "3.12",
       "minimum_cli": "0.1.0",
+      "course_id": "logion-marketplace-companion",
       "bundle": {
         "url": "file://${_bundle_path}",
         "sha256": "${_bundle_sha256}"

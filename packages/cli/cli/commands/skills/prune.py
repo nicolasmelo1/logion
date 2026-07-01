@@ -7,6 +7,7 @@ Delegates retention logic to :mod:`_prune_engine`.
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import asdict
 
 from cli._errors import emit_error_json
@@ -58,6 +59,8 @@ def _error(
     """Emit a compliant error in JSON or human form."""
     if getattr(args, "json_output", False):
         emit_error_json(code, message, exit_code)
+    else:
+        print(f"Error: {message}", file=sys.stderr)
     return exit_code
 
 

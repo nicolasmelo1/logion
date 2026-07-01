@@ -93,5 +93,5 @@ jobs:
         run: |
           mkdir -p "$LOGION_HOME"
           uv run logion skills installed
-          uv run logion skills inspect logion
+          uv run logion skills inspect logion-marketplace-companion
           uv run logion recall search "marketplace"

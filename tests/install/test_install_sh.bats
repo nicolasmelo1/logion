@@ -281,7 +281,8 @@ PYTHON_EOF
     "logion-companion": {
       "version": "0.1.0",
       "tag": "logion-companion-v0.1.0",
-      "minimum_cli": "0.1.0"
+      "minimum_cli": "0.1.0",
+      "course_id": "logion-marketplace-companion"
     }
   }
 }
