@@ -21,6 +21,7 @@ from logion_scanners.models import (
 )
 
 logger = logging.getLogger(__name__)
+_OUTPUT_SNIPPET_LIMIT = 500
 
 _SEVERITY_MAP: dict[str, str] = {
     "CRITICAL": "critical",
@@ -158,14 +159,18 @@ class TrivyScanner(BaseScanner):
             )
 
         try:
-            report = json.loads(proc.stdout)
+            report = self._load_json_report(proc.stdout)
         except json.JSONDecodeError:
             return ScannerResult(
                 layer=SCANNER_TRIVY,
                 passed=False,
                 findings=[],
                 raw_output=combined,
-                error="Failed to parse Trivy JSON output",
+                error=(
+                    "Failed to parse Trivy JSON output. "
+                    f"stdout={self._snippet(proc.stdout)!r}; "
+                    f"stderr={self._snippet(proc.stderr)!r}"
+                ),
             )
 
         findings = self._parse_findings(report)
@@ -179,6 +184,32 @@ class TrivyScanner(BaseScanner):
             findings=findings,
             raw_output=combined,
         )
+
+    @staticmethod
+    def _load_json_report(output: str) -> dict:
+        """Load Trivy JSON even when progress text wraps stdout."""
+        try:
+            return json.loads(output)
+        except json.JSONDecodeError:
+            decoder = json.JSONDecoder()
+            for index, char in enumerate(output):
+                if char != "{":
+                    continue
+                try:
+                    value, _ = decoder.raw_decode(output[index:])
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(value, dict):
+                    return value
+            raise
+
+    @staticmethod
+    def _snippet(output: str) -> str:
+        """Return a compact diagnostic snippet without huge scanner output."""
+        normalized = " ".join(output.split())
+        if len(normalized) <= _OUTPUT_SNIPPET_LIMIT:
+            return normalized
+        return normalized[:_OUTPUT_SNIPPET_LIMIT] + "..."
 
     @staticmethod
     def _parse_findings(

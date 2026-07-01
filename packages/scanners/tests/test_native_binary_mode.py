@@ -46,6 +46,47 @@ def test_trivy_native_builds_binary_command(monkeypatch, tmp_path):
     assert result.passed is True
 
 
+def test_trivy_native_parses_json_wrapped_by_progress_output(
+    monkeypatch, tmp_path
+):
+    def fake_run(_cmd, **_kwargs):
+        return _FakeProc(
+            0,
+            stdout='2026-07-01T00:00:00Z INFO updating DB\n{"Results": []}\n',
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = TrivyScanner(binary_path="trivy").scan(tmp_path)
+
+    assert result.layer == SCANNER_TRIVY
+    assert result.error is None
+    assert result.passed is True
+
+
+def test_trivy_native_parse_error_includes_output_snippets(
+    monkeypatch, tmp_path
+):
+    def fake_run(_cmd, **_kwargs):
+        return _FakeProc(
+            0,
+            stdout="not json",
+            stderr="failed to download vulnerability database",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = TrivyScanner(binary_path="trivy").scan(tmp_path)
+
+    assert result.layer == SCANNER_TRIVY
+    assert result.passed is False
+    assert result.error is not None
+    assert "Failed to parse Trivy JSON output" in result.error
+    assert "not json" in result.error
+    assert "failed to download vulnerability database" in result.error
+
+
 def test_osv_native_builds_binary_command(monkeypatch, tmp_path):
     captured: dict = {}
 
