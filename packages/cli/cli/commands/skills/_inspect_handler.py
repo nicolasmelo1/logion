@@ -14,6 +14,7 @@ from typing import Any
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json
+from cli._first_party import get_first_party_course
 from cli._local_state import (
     UnsafeIdentifierError,
     _safe_segment,
@@ -112,6 +113,11 @@ def _local_manifest_for_course(
     return candidates[-1]
 
 
+def _canonical_course_id(course_id: str) -> str:
+    first_party = get_first_party_course(course_id)
+    return first_party.course_id if first_party is not None else course_id
+
+
 def _synthesized_remote_manifest(
     course_id: str,
     version_id: str | None,
@@ -138,7 +144,7 @@ def _synthesized_remote_manifest(
 def handle_skills_inspect(args: argparse.Namespace) -> int:
     """Inspect a local skill install, enriched with remote metadata."""
     home = resolve_target(args)
-    course_id: str = args.course_id
+    course_id = _canonical_course_id(args.course_id)
     version_id: str | None = getattr(args, "version_id", None)
     verbose = bool(getattr(args, "verbose", False))
 

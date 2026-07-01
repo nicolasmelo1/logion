@@ -1,0 +1,110 @@
+name: Companion publishability
+
+on:
+  pull_request:
+    paths:
+      - "packages/agent-companion/**"
+      - "scripts/release_*"
+      - "releases/**"
+      - "scripts/install*"
+      - "scripts/install_lib*"
+      - "tests/install/**"
+      - "Makefile"
+      - ".github/workflows/companion-publishability.yml"
+  push:
+    branches: [main]
+    tags: ["logion-companion-v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: companion-publishability-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-companion:
+    name: Verify companion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --locked
+      - name: Verify companion
+        run: uv run make -C packages/agent-companion verify
+
+  build-bundle:
+    name: Build & verify bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --locked
+      - name: Build companion bundle
+        run: make companion-bundle
+      - name: Verify companion bundle
+        run: make companion-bundle-verify
+
+  manifest-check:
+    name: Manifest check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --locked
+      - name: Release manifest check
+        run: make release-manifest-check
+
+  install-fixture:
+    name: Install & smoke fixture
+    runs-on: ubuntu-latest
+    needs: build-bundle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --locked
+      - name: Build bundle
+        run: make companion-bundle
+      - name: Install companion into temp LOGION_HOME
+        env:
+          LOGION_HOME: /tmp/logion-home
+        run: |
+          mkdir -p "$LOGION_HOME"
+          uv run logion skills install \
+            --source packages/agent-companion \
+            --course-id 5ddf32c6-e139-4056-ac94-c4a231bfd932 \
+            --version-id "$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('packages/agent-companion/pyproject.toml').read_text())['project']['version'])")" \
+            --title "Logion Marketplace Companion" \
+            --install-source logion-marketplace \
+            --no-symlink \
+            --force
+      - name: Install into temp LOGION_HOME and smoke test
+        env:
+          LOGION_HOME: /tmp/logion-home
+          LOGION_API_BASE_URL: http://127.0.0.1:4010
+        run: |
+          mkdir -p "$LOGION_HOME"
+          uv run logion skills installed
+          uv run logion skills inspect 5ddf32c6-e139-4056-ac94-c4a231bfd932
+          uv run logion recall search "marketplace"

@@ -16,7 +16,8 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
 	scanners-lint scanners-test social-lint social-test \
 	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
-	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm
+	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
+	release-plan release release-dry-run release-store
 
 lint:
 	uv run ruff check packages/
@@ -224,3 +225,16 @@ dev-rebuild-cli: bootstrap
 dev-rebuild-companion: clean-companion companion
 
 dev-rebuild-npm: npm-build
+
+# ── release orchestration targets ───────────────────────────────
+release-plan:
+	uv run python scripts/release_orchestrator.py plan --version $(VERSION)
+
+release:
+	uv run python scripts/release_orchestrator.py release --version $(VERSION) $(if $(PUBLISH_STORE),--publish-store,)
+
+release-dry-run:
+	uv run python scripts/release_orchestrator.py release --version $(VERSION) --dry-run $(if $(PUBLISH_STORE),--publish-store,)
+
+release-store:
+	uv run python scripts/release_store.py publish-companion --version $(VERSION) --course-id 5ddf32c6-e139-4056-ac94-c4a231bfd932

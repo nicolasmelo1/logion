@@ -21,7 +21,7 @@ typecheck:
 	uv run python -m mypy scripts/package_skill.py --ignore-missing-imports
 
 package-check:
-	uv run python scripts/package_skill.py
+	uv run python scripts/package_skill.py validate
 
 eval:
 	uv run python evals/run_eval.py \

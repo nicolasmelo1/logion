@@ -18,7 +18,8 @@ _HEX = frozenset("0123456789abcdef")
 
 
 def _run(
-    args: list[str], **kwargs: object,
+    args: list[str],
+    **kwargs: object,
 ) -> subprocess.CompletedProcess[str]:
     """Run a subprocess via uv run."""
     return subprocess.run(
@@ -41,7 +42,9 @@ def _load_json(path: Path) -> dict:
 
 
 def _check_toplevel(
-    manifest: dict, schema_props: dict, errors: list[str],
+    manifest: dict,
+    schema_props: dict,
+    errors: list[str],
 ) -> None:
     """Validate top-level const/enum/pattern fields."""
     sv_prop = schema_props.get("schema_version", {})
@@ -55,10 +58,7 @@ def _check_toplevel(
         )
 
     ch_prop = schema_props.get("channel", {})
-    if (
-        "enum" in ch_prop
-        and manifest.get("channel") not in ch_prop["enum"]
-    ):
+    if "enum" in ch_prop and manifest.get("channel") not in ch_prop["enum"]:
         errors.append(
             f"channel: expected one of "
             f"{ch_prop['enum']}, "
@@ -67,47 +67,44 @@ def _check_toplevel(
 
     gc_prop = schema_props.get("git_commit", {})
     if "pattern" in gc_prop and not re.match(
-        gc_prop["pattern"], manifest.get("git_commit", ""),
+        gc_prop["pattern"],
+        manifest.get("git_commit", ""),
     ):
         errors.append("git_commit does not match pattern")
 
 
 def _check_packages(
-    manifest: dict, schema_props: dict, errors: list[str],
+    manifest: dict,
+    schema_props: dict,
+    errors: list[str],
 ) -> None:
     """Validate package entries against pattern properties."""
     packages = manifest.get("packages", {})
     pkg_pattern_props = schema_props.get(
-        "packages", {},
+        "packages",
+        {},
     ).get("patternProperties", {})
     pkg_schema = pkg_pattern_props.get("^logion-", {})
     for pkg_name, pkg_entry in packages.items():
         pattern_key = (
-            next(iter(pkg_pattern_props.keys()))
-            if pkg_pattern_props else ""
+            next(iter(pkg_pattern_props.keys())) if pkg_pattern_props else ""
         )
         if pattern_key and not re.match(pattern_key, pkg_name):
-            errors.append(
-                f"Package key {pkg_name} "
-                f"does not match pattern"
-            )
+            errors.append(f"Package key {pkg_name} does not match pattern")
 
         for req in pkg_schema.get("required", []):
             if req not in pkg_entry:
-                errors.append(
-                    f"{pkg_name}: missing required field {req}"
-                )
+                errors.append(f"{pkg_name}: missing required field {req}")
 
         allowed = set(pkg_schema.get("properties", {}).keys())
         for key in pkg_entry:
             if key not in allowed:
-                errors.append(
-                    f"{pkg_name}: unexpected field {key}"
-                )
+                errors.append(f"{pkg_name}: unexpected field {key}")
 
 
 def _validate_manifest_against_schema(
-    manifest: dict, schema: dict,
+    manifest: dict,
+    schema: dict,
 ) -> list[str]:
     """Validate manifest fields against schema.
 
@@ -132,9 +129,7 @@ def test_manifest_validates_against_schema() -> None:
     manifest = _load_json(STABLE_MANIFEST)
     schema = _load_json(SCHEMA_PATH)
     errors = _validate_manifest_against_schema(manifest, schema)
-    assert errors == [], (
-        "Schema validation errors:\n" + "\n".join(errors)
-    )
+    assert errors == [], "Schema validation errors:\n" + "\n".join(errors)
 
 
 def test_manifest_build_deterministic() -> None:
@@ -146,11 +141,13 @@ def test_manifest_build_deterministic() -> None:
     import tempfile
 
     with tempfile.NamedTemporaryFile(
-        suffix=".json", delete=False,
+        suffix=".json",
+        delete=False,
     ) as f1:
         path1 = f1.name
     with tempfile.NamedTemporaryFile(
-        suffix=".json", delete=False,
+        suffix=".json",
+        delete=False,
     ) as f2:
         path2 = f2.name
 
@@ -165,9 +162,7 @@ def test_manifest_build_deterministic() -> None:
         m2 = json.loads(Path(path2).read_text(encoding="utf-8"))
         stable1 = {k: v for k, v in m1.items() if k not in volatile}
         stable2 = {k: v for k, v in m2.items() if k not in volatile}
-        assert stable1 == stable2, (
-            "Manifests differ outside volatile fields"
-        )
+        assert stable1 == stable2, "Manifests differ outside volatile fields"
     finally:
         os.unlink(path1)
         os.unlink(path2)
@@ -191,9 +186,7 @@ def test_manifest_check_fails_on_version_drift() -> None:
     import tempfile
     import tomllib
 
-    cli_pyproject = (
-        REPO_ROOT / "packages" / "cli" / "pyproject.toml"
-    )
+    cli_pyproject = REPO_ROOT / "packages" / "cli" / "pyproject.toml"
     original = cli_pyproject.read_bytes()
 
     try:
@@ -201,20 +194,26 @@ def test_manifest_check_fails_on_version_drift() -> None:
         original_version = data["project"]["version"]
         cli_pyproject.write_text(
             cli_pyproject.read_text("utf-8").replace(
-                original_version, "99.99.99",
+                original_version,
+                "99.99.99",
             ),
             encoding="utf-8",
         )
 
         with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False,
+            suffix=".json",
+            delete=False,
         ) as f:
             tmp_path = f.name
 
         try:
             # Build a manifest from the drifted state
             build_result = _run([
-                "build", "--channel", "stable", "--out", tmp_path,
+                "build",
+                "--channel",
+                "stable",
+                "--out",
+                tmp_path,
             ])
             assert build_result.returncode == 0, (
                 f"build failed: {build_result.stderr}"
@@ -223,14 +222,15 @@ def test_manifest_check_fails_on_version_drift() -> None:
                 Path(tmp_path).read_text(encoding="utf-8"),
             )
             assert (
-                rebuilt["packages"]["logion-cli"]["version"]
-                == "99.99.99"
+                rebuilt["packages"]["logion-cli"]["version"] == "99.99.99"
             ), "Build should pick up mutated version"
 
             # Check against the committed (un-drifted) manifest
             # — this should fail because versions differ.
             check_result = _run([
-                "check", "--in", str(STABLE_MANIFEST),
+                "check",
+                "--in",
+                str(STABLE_MANIFEST),
             ])
             assert check_result.returncode != 0, (
                 "check should fail on version drift"
@@ -245,9 +245,7 @@ def test_manifest_includes_minimum_python() -> None:
     """Every package entry must have minimum_python."""
     manifest = _load_json(STABLE_MANIFEST)
     for pkg_name, entry in manifest["packages"].items():
-        assert "minimum_python" in entry, (
-            f"{pkg_name} missing minimum_python"
-        )
+        assert "minimum_python" in entry, f"{pkg_name} missing minimum_python"
 
 
 def test_manifest_cli_depends_on_minimum_client() -> None:
@@ -258,18 +256,12 @@ def test_manifest_cli_depends_on_minimum_client() -> None:
 
     assert cli_entry is not None, "logion-cli entry missing"
     assert client_entry is not None, "logion-client entry missing"
-    assert "minimum_client" in cli_entry, (
-        "logion-cli missing minimum_client"
-    )
+    assert "minimum_client" in cli_entry, "logion-cli missing minimum_client"
 
     client_version = client_entry["version"]
-    client_major_minor = ".".join(
-        client_version.split(".")[:2]
-    )
+    client_major_minor = ".".join(client_version.split(".")[:2])
     min_client = cli_entry["minimum_client"]
-    min_client_major_minor = ".".join(
-        min_client.split(".")[:2]
-    )
+    min_client_major_minor = ".".join(min_client.split(".")[:2])
 
     assert min_client_major_minor == client_major_minor, (
         f"CLI minimum_client ({min_client}) doesn't "
@@ -286,9 +278,7 @@ def test_manifest_sha256_lowercase_hex() -> None:
             if obj is None:
                 continue
             sha = obj.get("sha256", "")
-            assert len(sha) == 64, (
-                f"{pkg_name}.{field}.sha256 length != 64"
-            )
+            assert len(sha) == 64, f"{pkg_name}.{field}.sha256 length != 64"
             assert all(c in _HEX for c in sha), (
                 f"{pkg_name}.{field}.sha256 has non-hex-lowercase"
             )
@@ -298,7 +288,9 @@ def test_manifest_schema_version_is_pinned() -> None:
     """The SCHEMA_VERSION constant must match manifest."""
     source = SCRIPT_PATH.read_text(encoding="utf-8")
     match = re.search(
-        r"^SCHEMA_VERSION\s*=\s*(\d+)", source, re.MULTILINE,
+        r"^SCHEMA_VERSION\s*=\s*(\d+)",
+        source,
+        re.MULTILINE,
     )
     assert match is not None, "SCHEMA_VERSION not found in script"
 

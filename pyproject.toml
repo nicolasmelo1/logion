@@ -73,6 +73,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/release_manifest.py" = ["T201"]
+# Release automation scripts: console output is the primary UI.
+"scripts/release_orchestrator.py" = ["T201"]
+"scripts/release_store.py" = ["T201"]
+"scripts/release_smoke.py" = ["T201"]
 # Guardrail: prints its findings to the console.
 "scripts/check_cli_http.py" = ["T201"]
 # Build utility: console output (T201) and long checksum/URL literals (E501).
@@ -88,7 +92,7 @@ known-first-party = ["cli", "landing", "logion", "logion_scanners", "social_mana
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management"]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "."]
 markers = [
     "integration: integration tests requiring a running mock server (deselect with '-m \"not integration\"')",
     "docker: tests requiring Docker (deselect with '-m \"not docker\"')",

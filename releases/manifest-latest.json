@@ -30,10 +30,12 @@
         "sha256": "3f1d89b4896b9f6e4d0cd60e298218c01f8e3fa98dfa774ce087313f00c548fb",
         "url": "release://logion-marketplace-companion-0.1.7.tar.gz"
       },
+      "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932",
       "minimum_cli": "0.1.2",
       "minimum_python": "3.12",
       "tag": "logion-companion-v0.1.7",
-      "version": "0.1.7"
+      "version": "0.1.7",
+      "version_id": null
     }
   },
   "schema_version": 1

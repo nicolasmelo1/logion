@@ -107,4 +107,18 @@ def handle_skills_update(args: argparse.Namespace) -> int:
         dry_run=False,
         force=True,
     )
-    return handle_skills_install(install_args)
+    rc = handle_skills_install(install_args)
+    if rc != 0:
+        return rc
+
+    # Retention: keep the current installed version plus recent
+    # rollback versions.  Runs only on a successful update so a
+    # failed install does not delete old rollback directories.
+    from .prune import DEFAULT_KEEP, InstalledVersionRetention, LocalState
+
+    home = resolve_target(args)
+    state = LocalState(home)
+    retention = InstalledVersionRetention(state)
+    plan = retention.plan(course_id, keep=DEFAULT_KEEP)
+    retention.apply(plan, dry_run=False)
+    return 0
