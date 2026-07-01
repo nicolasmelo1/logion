@@ -1,6 +1,6 @@
 {
   "channel": "stable",
-  "generated_at": "2026-07-01T04:36:03+00:00",
+  "generated_at": "2026-07-01T04:48:23+00:00",
   "git_commit": "0000000000000000000000000000000000000000",
   "packages": {
     "logion-cli": {
@@ -18,11 +18,11 @@
     "logion-client": {
       "minimum_python": "3.12",
       "pypi_name": "logion-client",
-      "tag": "logion-client-v0.1.4",
-      "version": "0.1.4",
+      "tag": "logion-client-v0.1.5",
+      "version": "0.1.5",
       "wheel": {
-        "sha256": "8c2425233175de1f425935e8afcbbfff21a55c5dc57f1e84ad79131c9d79f7fd",
-        "url": "release://logion_client-0.1.4-py3-none-any.whl"
+        "sha256": "f605d5fd69b5e0b1c957ca402618b209f3b8b376d7e5c0df96c58d05020ac67d",
+        "url": "release://logion_client-0.1.5-py3-none-any.whl"
       }
     },
     "logion-companion": {

@@ -1643,7 +1643,7 @@ dev = [
 
 [[package]]
 name = "logion-client"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "packages/client" }
 dependencies = [
     { name = "email-validator" },
