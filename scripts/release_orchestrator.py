@@ -84,6 +84,25 @@ def _set_pyproject_version(pyproject_dir: str, version: str) -> None:
     toml_path.write_text(new_text, encoding="utf-8")
 
 
+def _porcelain_paths(stdout: str) -> tuple[str, ...]:
+    """Extract changed paths from ``git status --porcelain -z`` output."""
+    paths: list[str] = []
+    parts = [part for part in stdout.split("\0") if part]
+    i = 0
+    while i < len(parts):
+        entry = parts[i]
+        if len(entry) < 4:
+            i += 1
+            continue
+        status = entry[:2]
+        path = entry[3:].strip()
+        paths.append(path)
+        if status[0] in {"R", "C"} or status[1] in {"R", "C"}:
+            i += 1
+        i += 1
+    return tuple(paths)
+
+
 # ── data classes ──────────────────────────────────────────────────
 
 
@@ -218,30 +237,24 @@ class ReleasePlanner:
     def detect_changed_packages(self) -> tuple[str, ...]:
         """Return the package short-names with uncommitted changes."""
         result = self._runner.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "-z"],
             cwd=self._root,
         )
         changed: list[str] = []
+        paths = _porcelain_paths(result.stdout)
         for name, pkg_dir, _, _ in _PACKAGE_CONFIG:
             prefix = pkg_dir + "/"
-            if any(
-                line.strip().split(maxsplit=1)[-1].startswith(prefix)
-                for line in result.stdout.splitlines()
-                if line.strip()
-            ):
+            if any(path.startswith(prefix) for path in paths):
                 changed.append(name)
         return tuple(changed)
 
     def validate_clean_or_release_only_worktree(self) -> None:
         """Ensure the worktree is clean or has only smoke findings."""
         result = self._runner.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "-z"],
             cwd=self._root,
         )
-        for line in result.stdout.splitlines():
-            if not line.strip():
-                continue
-            path = line.strip().split(maxsplit=1)[-1]
+        for path in _porcelain_paths(result.stdout):
             if path == SMOKE_FINDINGS_FILENAME:
                 continue
             raise RuntimeError(

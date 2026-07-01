@@ -10,6 +10,7 @@ from scripts.release_orchestrator import (
     _PACKAGE_CONFIG,
     ReleaseExecutor,
     ReleasePlanner,
+    _porcelain_paths,
     plan_to_json,
 )
 
@@ -156,3 +157,28 @@ def test_plan_to_json_round_trips() -> None:
     assert data["version"] == "0.1.99"
     assert data["publish_store"] is True
     assert len(data["tags_to_create"]) == 3
+
+
+def test_porcelain_paths_handles_rename_entries() -> None:
+    """NUL-delimited porcelain rename output reports the new path only."""
+    stdout = (
+        "R  release-smoke-findings.md\0"
+        "old-release-smoke-findings.md\0"
+        " M packages/cli/cli/foo.py\0"
+    )
+    assert _porcelain_paths(stdout) == (
+        "release-smoke-findings.md",
+        "packages/cli/cli/foo.py",
+    )
+
+
+def test_preflight_allows_renamed_smoke_findings() -> None:
+    """Smoke findings rename is parsed from porcelain -z without old path."""
+    runner = _FakeRunner()
+    runner._responses = {
+        "git status --porcelain": (
+            "R  release-smoke-findings.md\0old-release-smoke-findings.md\0"
+        ),
+    }
+    planner = ReleasePlanner(repo_root=REPO_ROOT, runner=runner)
+    planner.validate_clean_or_release_only_worktree()

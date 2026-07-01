@@ -81,9 +81,28 @@ class OfficialCompanionService:
         manifest: dict[str, Any],
     ) -> CompanionInstallStatus:
         """Install companion from a release manifest dict."""
-        companion_entry = manifest.get("packages", {}).get(
-            "logion-companion", {}
-        )
+        packages = manifest.get("packages", {})
+        if not isinstance(packages, dict):
+            return CompanionInstallStatus(
+                installed=False,
+                course_id=LOGION_MARKETPLACE_COMPANION_COURSE_ID,
+                version_id=None,
+                version=None,
+                source=None,
+                needs_update=True,
+                reason="Manifest packages must be an object",
+            )
+        companion_entry = packages.get("logion-companion", {})
+        if not isinstance(companion_entry, dict):
+            return CompanionInstallStatus(
+                installed=False,
+                course_id=LOGION_MARKETPLACE_COMPANION_COURSE_ID,
+                version_id=None,
+                version=None,
+                source=None,
+                needs_update=True,
+                reason="Manifest companion entry must be an object",
+            )
         version = companion_entry.get("version")
         course_id = companion_entry.get(
             "course_id",

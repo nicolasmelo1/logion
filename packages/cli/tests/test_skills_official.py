@@ -105,6 +105,28 @@ def test_companion_install_from_manifest_missing_version(
     assert status.reason == "Manifest missing companion version"
 
 
+@pytest.mark.parametrize(
+    ("manifest", "reason"),
+    [
+        ({"packages": []}, "Manifest packages must be an object"),
+        (
+            {"packages": {"logion-companion": []}},
+            "Manifest companion entry must be an object",
+        ),
+    ],
+)
+def test_companion_install_from_manifest_malformed_shapes(
+    home: Path,
+    manifest: dict,
+    reason: str,
+) -> None:
+    service = OfficialCompanionService(home=home)
+    status = service.install_from_manifest(manifest)
+    assert not status.installed
+    assert status.needs_update
+    assert status.reason == reason
+
+
 def test_companion_status_to_dict_has_all_fields(home: Path) -> None:
     """to_dict() has all expected keys."""
     service = OfficialCompanionService(home=home)

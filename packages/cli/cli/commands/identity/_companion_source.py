@@ -25,10 +25,14 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
+from cli._first_party import LOGION_MARKETPLACE_COMPANION_COURSE_ID
 from cli._local_state import get_home
 
 _COMPANION_TARBALL_GLOB = "logion-marketplace-companion-*.tar.gz"
-_INSTALLED_COMPANION_ID = "logion-marketplace-companion"
+_INSTALLED_COMPANION_IDS = (
+    LOGION_MARKETPLACE_COMPANION_COURSE_ID,
+    "logion-marketplace-companion",
+)
 
 
 def _is_valid_source(path: Path) -> bool:
@@ -86,20 +90,20 @@ def locate_bundle_source(args: argparse.Namespace) -> Path | None:
 
 def _newest_installed_companion() -> Path | None:
     """Return the newest installer-extracted companion dir, if present."""
-    installed_root = get_home() / "installed" / _INSTALLED_COMPANION_ID
-    if not installed_root.is_dir():
-        return None
-
     newest: tuple[float, Path] | None = None
-    for entry in installed_root.iterdir():
-        try:
-            if not entry.is_dir() or not (entry / "SKILL.md").is_file():
-                continue
-            mtime = entry.stat().st_mtime
-        except OSError:
+    for companion_id in _INSTALLED_COMPANION_IDS:
+        installed_root = get_home() / "installed" / companion_id
+        if not installed_root.is_dir():
             continue
-        if newest is None or mtime > newest[0]:
-            newest = (mtime, entry)
+        for entry in installed_root.iterdir():
+            try:
+                if not entry.is_dir() or not (entry / "SKILL.md").is_file():
+                    continue
+                mtime = entry.stat().st_mtime
+            except OSError:
+                continue
+            if newest is None or mtime > newest[0]:
+                newest = (mtime, entry)
     return newest[1] if newest else None
 
 

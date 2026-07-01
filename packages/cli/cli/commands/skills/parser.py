@@ -22,7 +22,7 @@ from .handlers import (
     handle_skills_updates,
     handle_skills_verify,
 )
-from .prune import handle_skills_prune
+from .prune import DEFAULT_KEEP, handle_skills_prune
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -175,17 +175,21 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     prune.add_argument(
         "--keep",
         type=int,
-        default=3,
-        help="Number of non-protected versions to retain (default: 3)",
+        default=DEFAULT_KEEP,
+        help=(
+            "Number of non-protected versions to retain "
+            f"(default: {DEFAULT_KEEP})"
+        ),
     )
-    prune.add_argument(
+    prune_apply = prune.add_mutually_exclusive_group()
+    prune_apply.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
         help="Show what would be removed without deleting (default "
         "unless --yes)",
     )
-    prune.add_argument(
+    prune_apply.add_argument(
         "--yes",
         action="store_true",
         default=False,
