@@ -36,7 +36,6 @@ jobs:
       VERSION: ${{ inputs.version }}
       PUBLISH_STORE: ${{ inputs.publish_store && '1' || '' }}
       LOGION_API_KEY: ${{ secrets.LOGION_API_KEY }}
-      SMOKE_FINDINGS: ${{ runner.temp }}/release-smoke-findings.md
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +51,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Configure smoke findings path
+        run: echo "SMOKE_FINDINGS=$RUNNER_TEMP/release-smoke-findings.md" >> "$GITHUB_ENV"
       - name: Decode smoke findings
         env:
           SMOKE_FINDINGS_BASE64: ${{ inputs.smoke_findings_base64 }}
