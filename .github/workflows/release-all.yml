@@ -44,9 +44,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: packages/npm-wrapper/.nvmrc
+          cache: npm
+          cache-dependency-path: packages/npm-wrapper/package-lock.json
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - name: Install npm wrapper dependencies
+        working-directory: packages/npm-wrapper
+        run: npm ci --ignore-scripts
       - name: Install shell test tools
         run: |
           sudo apt-get update
