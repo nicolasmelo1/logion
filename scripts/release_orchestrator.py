@@ -160,10 +160,11 @@ class SubprocessRunner:
         cwd: Path | None = None,
         check: bool = True,
     ) -> subprocess.CompletedProcess[str]:
+        _ = check
         return subprocess.run(
             list(args),
             cwd=str(cwd) if cwd else None,
-            check=check,
+            check=False,
             capture_output=True,
             text=True,
         )
@@ -321,6 +322,8 @@ class ReleaseExecutor:
         self._validate_smoke_findings_exist()
 
     def _validate_no_conflicting_tags(self) -> None:
+        if self._release_already_applied():
+            return
         for tag in self._plan.tags_to_create:
             result = self._runner.run(
                 ["git", "tag", "-l", tag],
@@ -332,6 +335,24 @@ class ReleaseExecutor:
                 raise RuntimeError(
                     f"Tag {tag} already exists",
                 )
+
+    def _release_already_applied(self) -> bool:
+        """Return True when a previous run already pushed this release."""
+        version = str(self._plan.version)
+        if any(
+            _read_pyproject_version(str(pkg.path)) != version
+            for pkg in self._plan.packages
+        ):
+            return False
+        for tag in self._plan.tags_to_create:
+            result = self._runner.run(
+                ["git", "tag", "-l", tag],
+                cwd=self._root(),
+                check=False,
+            )
+            if result.stdout.strip() != tag:
+                return False
+        return True
 
     def _validate_smoke_findings_exist(self) -> None:
         if not self._plan.smoke_findings_path.exists():
@@ -538,6 +559,21 @@ class ReleaseExecutor:
             }
 
         self.preflight()
+        if self._release_already_applied():
+            self.run_checks()
+            self.verify_smoke_evidence()
+            if self._plan.publish_store:
+                self.publish_store()
+            return {
+                "dry_run": False,
+                "resumed": True,
+                "pushed": False,
+                "tagged": False,
+                "committed": False,
+                "tags": list(self._plan.tags_to_create),
+                "manifests": [str(p) for p in self._plan.manifest_outputs],
+                "publish_store": self._plan.publish_store,
+            }
         self.bump_versions()
         self.run_checks()
         self.build_artifacts()

@@ -6,6 +6,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from scripts import release_orchestrator as release_orchestrator_module
 from scripts.release_orchestrator import (
     _PACKAGE_CONFIG,
     ReleaseExecutor,
@@ -35,7 +36,8 @@ class _FakeRunner:
         check: bool = True,  # noqa: ARG002
     ) -> subprocess.CompletedProcess[str]:
         self.calls.append(list(args))
-        key = " ".join(args[:3])
+        full_key = " ".join(args)
+        key = full_key if full_key in self._responses else " ".join(args[:3])
         stdout = self._responses.get(key, "")
         return subprocess.CompletedProcess(
             args=args,
@@ -140,6 +142,51 @@ def test_release_checks_refresh_lock_after_version_bump() -> None:
     executor = ReleaseExecutor(plan, runner=runner)
     executor.run_checks()
     assert runner.calls[0] == ["uv", "lock"]
+
+
+def test_release_resume_skips_commit_tag_and_push(monkeypatch) -> None:
+    """A failed store publish can be rerun after commit/tags exist."""
+    version = "0.1.99"
+
+    def fake_read_pyproject_version(_path: str) -> str:
+        return version
+
+    monkeypatch.setattr(
+        release_orchestrator_module,
+        "_read_pyproject_version",
+        fake_read_pyproject_version,
+    )
+    plan = ReleasePlanner(repo_root=REPO_ROOT).load(
+        version,
+        publish_store=True,
+    )
+    plan.smoke_findings_path.parent.mkdir(parents=True, exist_ok=True)
+    plan.smoke_findings_path.write_text(
+        "---\nrelease_version: \"0.1.99\"\napi_base_url: \"\"\n"
+        "cli_version: \"\"\nharnesses:\n  - codex\n  - claude-code\n"
+        "  - opencode\n---\n",
+        encoding="utf-8",
+    )
+    runner = _FakeRunner(
+        {
+            f"git tag -l {tag}": tag
+            for tag in plan.tags_to_create
+        },
+    )
+    executor = ReleaseExecutor(plan, runner=runner)
+    try:
+        result = executor.execute()
+    finally:
+        plan.smoke_findings_path.unlink(missing_ok=True)
+
+    assert result["resumed"] is True
+    assert not any(call[:2] == ["git", "commit"] for call in runner.calls)
+    assert not any(call[:2] == ["git", "push"] for call in runner.calls)
+    assert not any(
+        call[:2] == ["git", "tag"] and "-a" in call
+        for call in runner.calls
+    )
+    assert any("scripts/release_store.py" in call for call in runner.calls)
 
 
 def test_release_executor_leaves_github_releases_to_actions() -> None:
