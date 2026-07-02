@@ -20,19 +20,19 @@ COMPANION_SOURCE = ROOT / "packages" / "agent-companion"
 HARNESS_MAP = {
     "claude": {
         "binary": "claude",
-        "skill_dir": Path.home() / ".claude" / "skills",
+        "skill_dir": (".claude", "skills"),
     },
     "codex": {
         "binary": "codex",
-        "skill_dir": Path.home() / ".codex" / "skills",
+        "skill_dir": (".codex", "skills"),
     },
     "hermes": {
         "binary": "hermes",
-        "skill_dir": Path.home() / ".hermes" / "skills",
+        "skill_dir": (".hermes", "skills"),
     },
     "opencode": {
         "binary": "opencode",
-        "skill_dir": Path.home() / ".config" / "opencode" / "skills",
+        "skill_dir": (".config", "opencode", "skills"),
     },
 }
 
@@ -47,6 +47,10 @@ def _companion_version() -> str:
         if line.startswith("version:"):
             return line.split(":", 1)[1].strip()
     return "latest"
+
+
+def _harness_skill_dir(agent: str) -> Path:
+    return Path.home().joinpath(*HARNESS_MAP[agent]["skill_dir"])
 
 
 def _load_env(path: Path) -> dict[str, str]:
@@ -123,7 +127,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def _install_companion(agent: str) -> int:
-    skill_dir = HARNESS_MAP[agent]["skill_dir"]
+    skill_dir = _harness_skill_dir(agent)
     cmd = [
         "uv",
         "run",
@@ -190,15 +194,15 @@ def cmd_launch(args: argparse.Namespace) -> int:
 
 def cmd_clean(_args: argparse.Namespace) -> int:
     removed = 0
-    for cfg in HARNESS_MAP.values():
-        link = cfg["skill_dir"] / "logion"
+    for agent in HARNESS_MAP:
+        link = _harness_skill_dir(agent) / "logion"
         if link.exists() or link.is_symlink():
             if link.is_dir() and not link.is_symlink():
                 shutil.rmtree(link)
             else:
                 link.unlink()
             removed += 1
-    noun = "path" if removed == 1 else "paths"
+    noun = "location" if removed == 1 else "locations"
     _emit(f"Removed {removed} companion skill {noun}")
     return 0
 

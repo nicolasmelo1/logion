@@ -80,4 +80,4 @@ def test_devrig_clean_removes_copied_companion_directory(
     assert result.returncode == 0
     assert not copied_skill.exists()
     assert not symlink.exists()
-    assert "Removed 2 companion skill paths" in result.stdout
+    assert "Removed 2 companion skill locations" in result.stdout

@@ -40,7 +40,8 @@ def test_skill_dir_per_harness(
 
 def test_codex_prompt_example_matches_adapter_path() -> None:
     examples = dict(EXAMPLE_AGENT_DIRS)
-    assert examples["Codex"] == "~/.codex/skills"
+    adapter_path = CodexAdapter(home_dir=Path("~")).skill_dir()
+    assert examples["Codex"] == str(adapter_path)
 
 
 def test_registry_lists_all_four() -> None:
