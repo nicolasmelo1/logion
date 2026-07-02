@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -38,6 +39,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from release_manifest import COMPANION_COURSE_ID  # noqa: E402
 
 SMOKE_FINDINGS_FILENAME = "release-smoke-findings.md"
+SMOKE_FINDINGS_ENV = "SMOKE_FINDINGS"
 
 _PACKAGE_CONFIG: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     (
@@ -224,6 +226,13 @@ class ReleasePlanner:
             for name, pkg_dir, _, _ in _PACKAGE_CONFIG
         }
 
+        smoke_findings = os.environ.get(SMOKE_FINDINGS_ENV)
+        smoke_findings_path = (
+            Path(smoke_findings)
+            if smoke_findings
+            else self._root / SMOKE_FINDINGS_FILENAME
+        )
+
         return ReleasePlan(
             version=next_version,
             packages=tuple(packages),
@@ -232,7 +241,7 @@ class ReleasePlanner:
             ),
             tags_to_create=tuple(tags),
             manifest_outputs=manifest_outputs,
-            smoke_findings_path=self._root / SMOKE_FINDINGS_FILENAME,
+            smoke_findings_path=smoke_findings_path,
             publish_store=publish_store,
         )
 

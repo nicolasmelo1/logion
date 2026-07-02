@@ -179,6 +179,17 @@ def test_plan_to_json_round_trips() -> None:
     assert len(data["tags_to_create"]) == 3
 
 
+def test_plan_uses_smoke_findings_env(monkeypatch) -> None:
+    """GitHub Actions can keep smoke evidence outside the repo root."""
+    smoke_path = "/tmp/logion-release-smoke.md"
+    monkeypatch.setenv("SMOKE_FINDINGS", smoke_path)
+    plan = ReleasePlanner(repo_root=REPO_ROOT).load(
+        "0.1.99",
+        publish_store=False,
+    )
+    assert plan.smoke_findings_path == Path(smoke_path)
+
+
 def test_porcelain_paths_handles_rename_entries() -> None:
     """NUL-delimited porcelain rename output reports the new path only."""
     stdout = (

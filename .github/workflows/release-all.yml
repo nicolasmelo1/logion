@@ -36,6 +36,7 @@ jobs:
       VERSION: ${{ inputs.version }}
       PUBLISH_STORE: ${{ inputs.publish_store && '1' || '' }}
       LOGION_API_KEY: ${{ secrets.LOGION_API_KEY }}
+      SMOKE_FINDINGS: ${{ runner.temp }}/release-smoke-findings.md
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,11 +56,11 @@ jobs:
         env:
           SMOKE_FINDINGS_BASE64: ${{ inputs.smoke_findings_base64 }}
         run: |
-          printf '%s' "$SMOKE_FINDINGS_BASE64" | base64 --decode > release-smoke-findings.md
+          printf '%s' "$SMOKE_FINDINGS_BASE64" | base64 --decode > "$SMOKE_FINDINGS"
       - name: Validate smoke findings
         run: >
           uv run python scripts/release_smoke.py check
-          release-smoke-findings.md
+          "$SMOKE_FINDINGS"
           --version "$VERSION"
       - name: Run coordinated release
         run: make release VERSION="$VERSION"
