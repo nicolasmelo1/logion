@@ -131,8 +131,58 @@ If the version already exists on PyPI, the publish step skips
 
 ## Release orchestration
 
-The release path is coordinated by `scripts/release_orchestrator.py`,
-exposed through Make targets:
+The preferred release entrypoint is the **Release all Logion packages**
+GitHub Actions workflow (`.github/workflows/release-all.yml`). It bumps
+`logion-client`, `logion-cli`, and `logion-agent-companion` to the same
+version, regenerates both release manifests, commits the release, creates
+the package tags, and optionally publishes the first-party companion to the
+Logion store.
+
+Package publishing is GitHub Actions-owned:
+
+- `logion-client-vX.Y.Z` triggers the client PyPI publisher.
+- `logion-cli-vX.Y.Z` triggers the CLI PyPI publisher and npm wrapper
+  publisher.
+- `logion-companion-vX.Y.Z` triggers the companion bundle publisher.
+
+### GitHub Actions release
+
+1. Prepare smoke evidence:
+
+   ```bash
+   uv run python scripts/release_smoke.py init \
+     --version X.Y.Z \
+     --out release-smoke-findings.md
+   # Run manual smoke per the release-smoke-checklist, then:
+   uv run python scripts/release_smoke.py check \
+     release-smoke-findings.md \
+     --version X.Y.Z
+   ```
+
+2. Base64-encode the smoke findings file:
+
+   ```bash
+   python3 - <<'PY'
+   import base64
+   from pathlib import Path
+
+   print(base64.b64encode(Path("release-smoke-findings.md").read_bytes()).decode())
+   PY
+   ```
+
+3. Run the **Release all Logion packages** workflow with:
+   - `version`: `X.Y.Z`
+   - `smoke_findings_base64`: the base64 output from step 2
+   - `publish_store`: enabled for first-party companion publication
+
+The workflow is the single release entrypoint. It coordinates the repo
+mutation and tag push; the pushed tags trigger the package-specific publisher
+workflows.
+
+### Local fallback
+
+The same release path is exposed locally through Make targets for owner
+fallback/debugging:
 
 ```bash
 # Plan only — no mutations, safe to run anytime
@@ -172,9 +222,10 @@ Code). Every release-blocker finding must have a linked issue URL.
 
 ### Store publication
 
-Store publication is opt-in via `PUBLISH_STORE=1`. The store publisher
-uploads the companion bundle as a new course version through the public
-CLI, requests publication review, and stops before human approval:
+Store publication is opt-in via the workflow's `publish_store` input or
+local `PUBLISH_STORE=1`. The store publisher uploads the companion bundle
+as a new course version through the public CLI, requests publication review,
+and stops before human approval:
 
 ```bash
 PUBLISH_STORE=1 make release VERSION=X.Y.Z

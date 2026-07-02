@@ -117,6 +117,23 @@ def test_release_dry_run_does_not_run_git_push() -> None:
     )
 
 
+def test_release_checks_refresh_lock_after_version_bump() -> None:
+    """Mutable releases update uv.lock after bumping package versions."""
+    plan = ReleasePlanner(repo_root=REPO_ROOT).load(
+        "0.1.99",
+        publish_store=False,
+    )
+    runner = _FakeRunner()
+    executor = ReleaseExecutor(plan, runner=runner)
+    executor.run_checks()
+    assert runner.calls[0] == ["uv", "lock"]
+
+
+def test_release_executor_leaves_github_releases_to_actions() -> None:
+    """Tag-triggered GitHub Actions own release asset publication."""
+    assert not hasattr(ReleaseExecutor, "create_github_releases")
+
+
 def test_release_creates_expected_tag_commands() -> None:
     """Tags match the expected ``logion-<pkg>-v<version>`` format."""
     planner = ReleasePlanner(repo_root=REPO_ROOT)

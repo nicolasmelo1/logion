@@ -3,7 +3,9 @@
 
 Builds a :class:`ReleasePlan` from the current repository state,
 bumps versions across all three public packages, runs the full
-check/build/manifest pipeline, and creates tags + GitHub releases.
+check/build/manifest pipeline, and creates/pushes tags. Package
+publication and GitHub Release asset attachment are handled by
+GitHub Actions triggered from those tags.
 
 Usage::
 
@@ -344,7 +346,7 @@ class ReleaseExecutor:
     def run_checks(self) -> None:
         """Run the full check/build sequence via make."""
         steps = [
-            ["uv", "lock", "--check"],
+            ["uv", "lock"],
             ["make", "ci-checks"],
             ["make", "install-test"],
             ["make", "npm-test"],
@@ -480,29 +482,6 @@ class ReleaseExecutor:
             )
         self._ctx.pushed = True
 
-    # -- GitHub releases ----------------------------------------
-
-    def create_github_releases(self) -> None:
-        """Create GitHub releases for every tag via ``gh``."""
-        for tag in self._plan.tags_to_create:
-            cmd = [
-                "gh",
-                "release",
-                "create",
-                tag,
-                "--title",
-                tag,
-                "--notes",
-                f"Release {tag}",
-                "--target",
-                "main",
-            ]
-            result = self._runner.run(cmd, cwd=self._root())
-            if result.returncode != 0:
-                raise RuntimeError(
-                    f"gh release create failed for {tag}: {result.stderr}",
-                )
-
     # -- store publication -------------------------------------
 
     def publish_store(self) -> None:
@@ -557,7 +536,6 @@ class ReleaseExecutor:
         self.commit_release()
         self.tag_release()
         self.push()
-        self.create_github_releases()
         if self._plan.publish_store:
             self.publish_store()
         return {

@@ -38,7 +38,7 @@ BUNDLE_TARBALL_NAME = "logion-marketplace-companion-{version}.tar.gz"
 # Set as a GitHub Actions secret or environment variable before running
 # store publication. The CLI reads this via its standard credential
 # resolution (env var takes precedence over stored credentials).
-STORE_API_KEY_ENV = "LOGION_API_KEY"
+STORE_API_KEY_ENV = "LOGION_API_KEY"  # pragma: allowlist secret
 
 # Accepted publication review statuses that allow the script to
 # proceed without error. Any other status fails the release.
@@ -214,6 +214,8 @@ class CompanionStorePublisher:
     ) -> str:
         """Create an upload session, returning the version_id."""
         cmd = [
+            "uv",
+            "run",
             "logion",
             "courses",
             "uploads",
@@ -254,6 +256,8 @@ class CompanionStorePublisher:
             plan.extracted_dir.parent / f"upload-session-{version_id}.json"
         )
         cmd = [
+            "uv",
+            "run",
             "logion",
             "courses",
             "uploads",
@@ -281,6 +285,8 @@ class CompanionStorePublisher:
     ) -> None:
         """Mark the upload session as complete."""
         cmd = [
+            "uv",
+            "run",
             "logion",
             "courses",
             "uploads",
@@ -302,6 +308,8 @@ class CompanionStorePublisher:
     ) -> None:
         """Request publication review for the course."""
         cmd = [
+            "uv",
+            "run",
             "logion",
             "courses",
             "publication",
@@ -401,22 +409,26 @@ class CompanionStorePublisher:
             f"packages/agent-companion/scripts/verify_bundle.py "
             f"{plan.bundle_tarball}",
         )
-        create_cmd = "logion courses uploads create " + plan.course_id
+        create_cmd = "uv run logion courses uploads create " + plan.course_id
         for spec in plan.upload_files:
             create_cmd += f" --file {spec.upload_path}={spec.local_path}"
         commands.append(create_cmd)
         commands.append(
             "# push_upload <version_id> — version_id from create output",
         )
-        push_cmd = f"logion courses uploads push {plan.course_id} <version_id>"
+        push_cmd = (
+            f"uv run logion courses uploads push "
+            f"{plan.course_id} <version_id>"
+        )
         for spec in plan.upload_files:
             push_cmd += f" --file {spec.upload_path}={spec.local_path}"
         commands.append(push_cmd)
         commands.append(
-            f"logion courses uploads complete {plan.course_id} <version_id>",
+            f"uv run logion courses uploads complete "
+            f"{plan.course_id} <version_id>",
         )
         commands.append(
-            "logion courses publication request " + plan.course_id,
+            "uv run logion courses publication request " + plan.course_id,
         )
         return commands
 
