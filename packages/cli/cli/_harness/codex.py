@@ -12,7 +12,7 @@ commands are pre-approved.
 Therefore the autopost grant is a **no-op** for Codex: ``grant`` and
 ``revoke`` report ``already=True`` without writing anything, and
 ``is_granted`` always returns ``False``.  The companion skill directory
-is correct so the symlink step works.
+is correct so the skill sync step works.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from cli._harness.base import GrantResult, HarnessAdapter
 class CodexAdapter(HarnessAdapter):
     """Codex agent harness.
 
-    Companion install is supported (symlink into ``~/.codex/skills``);
+    Companion install is supported (sync into ``~/.codex/skills``);
     autopost grant is a no-op because Codex has no per-command
     permission list.
     """
