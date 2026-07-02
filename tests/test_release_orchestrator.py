@@ -57,6 +57,16 @@ def test_plan_includes_all_three_package_tags() -> None:
     assert "logion-companion-v0.1.99" in tags
 
 
+def test_plan_normalizes_leading_v_for_tags() -> None:
+    """Friendly v-prefixed input must not create vv-prefixed tags."""
+    planner = ReleasePlanner(repo_root=REPO_ROOT)
+    plan = planner.load("v0.1.99", publish_store=False)
+    tags = set(plan.tags_to_create)
+    assert "logion-client-v0.1.99" in tags
+    assert "logion-cli-v0.1.99" in tags
+    assert "logion-companion-v0.1.99" in tags
+
+
 def test_plan_requires_semver() -> None:
     """Non-semver version raises ValueError."""
     planner = ReleasePlanner(repo_root=REPO_ROOT)

@@ -47,6 +47,19 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - name: Install shell test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats shellcheck
+      - name: Install PowerShell test tools
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name Pester)) {
+            Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          }
       - name: Configure release git identity
         run: |
           git config user.name "github-actions[bot]"

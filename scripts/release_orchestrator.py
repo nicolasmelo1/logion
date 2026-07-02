@@ -198,9 +198,10 @@ class ReleasePlanner:
 
         packages: list[ReleasePackage] = []
         tags: list[str] = []
+        normalized_version = str(next_version)
         for name, pkg_dir, tag_prefix, build_targets in _PACKAGE_CONFIG:
             current = Version(_read_pyproject_version(pkg_dir))
-            tag_name = f"{tag_prefix}{version}"
+            tag_name = f"{tag_prefix}{normalized_version}"
             packages.append(
                 ReleasePackage(
                     name=name,  # type: ignore[arg-type]
