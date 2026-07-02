@@ -23,7 +23,7 @@ from pathlib import Path
 # Shown only as examples in the prompt.  We do not infer or filter.
 EXAMPLE_AGENT_DIRS: tuple[tuple[str, str], ...] = (
     ("Claude Code", "~/.claude/skills"),
-    ("Codex", "~/.agents/skills"),
+    ("Codex", "~/.codex/skills"),
     ("OpenCode", "~/.config/opencode/skills"),
     ("Hermes", "~/.hermes/skills"),
 )

@@ -193,9 +193,13 @@ def cmd_clean(_args: argparse.Namespace) -> int:
     for cfg in HARNESS_MAP.values():
         link = cfg["skill_dir"] / "logion"
         if link.exists() or link.is_symlink():
-            link.unlink()
+            if link.is_dir() and not link.is_symlink():
+                shutil.rmtree(link)
+            else:
+                link.unlink()
             removed += 1
-    _emit(f"Removed {removed} companion symlink(s)")
+    noun = "path" if removed == 1 else "paths"
+    _emit(f"Removed {removed} companion skill {noun}")
     return 0
 
 

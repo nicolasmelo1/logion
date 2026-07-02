@@ -13,6 +13,7 @@ from cli._harness.codex import CodexAdapter
 from cli._harness.custom import CustomPathHarness
 from cli._harness.hermes import HermesAdapter
 from cli._harness.opencode import OpenCodeAdapter
+from cli.commands.skills._agent_symlink import EXAMPLE_AGENT_DIRS
 
 
 def _make(adapter_cls, tmp_path: Path):
@@ -35,6 +36,11 @@ def test_skill_dir_per_harness(
     a = _make(adapter_cls, tmp_path)
     result = a.skill_dir()
     assert result == (tmp_path / "home" / expected_suffix)
+
+
+def test_codex_prompt_example_matches_adapter_path() -> None:
+    examples = dict(EXAMPLE_AGENT_DIRS)
+    assert examples["Codex"] == "~/.codex/skills"
 
 
 def test_registry_lists_all_four() -> None:
