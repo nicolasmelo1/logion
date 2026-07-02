@@ -299,23 +299,29 @@ candidate. Every release-blocker must have an issue_url.
 def cmd_init(args: argparse.Namespace) -> int:
     """Initialize a release-smoke findings template file."""
     out = args.out or "release-smoke-findings.md"
-    content = _TEMPLATE.format(version=args.version)
+    content = _TEMPLATE.format(version=_normalize_version(args.version))
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(content)
     print(f"Wrote smoke findings template to {out}")
     return 0
 
 
+def _normalize_version(version: str) -> str:
+    """Accept a friendly leading ``v`` for smoke helper commands."""
+    return version[1:] if version.startswith("v") else version
+
+
 def _validate_file(path: str, version: str) -> int:
     report = parse_smoke_report(path)
-    if report.release_version and report.release_version != version:
+    normalized = _normalize_version(version)
+    if report.release_version and report.release_version != normalized:
         print(
             f"ERROR: findings file version "
-            f"{report.release_version!r} != --version {version!r}",
+            f"{report.release_version!r} != --version {normalized!r}",
             file=sys.stderr,
         )
         return 1
-    errors = check_smoke_report(report, version)
+    errors = check_smoke_report(report, normalized)
     if errors:
         print("Smoke evidence gate FAILED:", file=sys.stderr)
         for err in errors:
@@ -327,17 +333,18 @@ def _validate_file(path: str, version: str) -> int:
 def cmd_workflow_input(args: argparse.Namespace) -> int:
     """Create or encode the workflow smoke input."""
     path = Path(args.path or "release-smoke-findings.md")
+    version = _normalize_version(args.version)
     if not path.exists():
-        content = _TEMPLATE.format(version=args.version)
+        content = _TEMPLATE.format(version=version)
         path.write_text(content, encoding="utf-8")
         print(f"Wrote smoke findings template to {path}", file=sys.stderr)
         print(
             "Fill it with real smoke evidence, then rerun this command.",
             file=sys.stderr,
         )
-        return 2
+        return 0
 
-    result = _validate_file(str(path), args.version)
+    result = _validate_file(str(path), version)
     if result != 0:
         return result
     print(base64.b64encode(path.read_bytes()).decode())

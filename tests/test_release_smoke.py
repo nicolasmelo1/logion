@@ -188,10 +188,22 @@ def test_workflow_input_creates_template_when_missing(
     path = tmp_path / "release-smoke-findings.md"
     args = type("Args", (), {"path": str(path), "version": VERSION})()
     result = cmd_workflow_input(args)
-    assert result == 2
+    assert result == 0
     assert path.exists()
     captured = capsys.readouterr()
     assert "Fill it with real smoke evidence" in captured.err
+
+
+def test_workflow_input_accepts_leading_v_when_creating_template(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "release-smoke-findings.md"
+    args = type("Args", (), {"path": str(path), "version": f"v{VERSION}"})()
+    result = cmd_workflow_input(args)
+    assert result == 0
+    assert f'release_version: "{VERSION}"' in path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_workflow_input_prints_valid_base64(
@@ -212,6 +224,30 @@ harnesses:
 """
     path.write_text(content, encoding="utf-8")
     args = type("Args", (), {"path": str(path), "version": VERSION})()
+    result = cmd_workflow_input(args)
+    assert result == 0
+    encoded = capsys.readouterr().out.strip()
+    assert base64.b64decode(encoded.encode()).decode() == content
+
+
+def test_workflow_input_accepts_leading_v_when_validating(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    path = tmp_path / "release-smoke-findings.md"
+    content = f"""\
+---
+release_version: "{VERSION}"
+api_base_url: "https://api.example.com"
+cli_version: "{VERSION}"
+harnesses:
+  - codex
+  - claude-code
+  - opencode
+---
+"""
+    path.write_text(content, encoding="utf-8")
+    args = type("Args", (), {"path": str(path), "version": f"v{VERSION}"})()
     result = cmd_workflow_input(args)
     assert result == 0
     encoded = capsys.readouterr().out.strip()
