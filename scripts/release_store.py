@@ -55,6 +55,37 @@ _UUID_RE = re.compile(
     re.IGNORECASE,
 )
 
+_REQUIRED_BUNDLE_ROOT_FILES = frozenset(
+    {"SKILL.md", "LICENSE", "course/capabilities.yaml"}
+)
+
+
+def _common_bundle_root(paths: Sequence[str]) -> str | None:
+    """Return a single tarball root directory to strip before upload."""
+    top_level_dirs: set[str] = set()
+    stripped_paths: set[str] = set()
+    for path in paths:
+        first, sep, rest = path.partition("/")
+        if not sep or not rest:
+            return None
+        top_level_dirs.add(first)
+        stripped_paths.add(rest)
+    if len(top_level_dirs) != 1:
+        return None
+    if not _REQUIRED_BUNDLE_ROOT_FILES.issubset(stripped_paths):
+        return None
+    return next(iter(top_level_dirs))
+
+
+def _strip_bundle_root(path: str, root: str | None) -> str:
+    """Strip the tarball root directory from an upload path."""
+    if root is None:
+        return path
+    prefix = f"{root}/"
+    if path.startswith(prefix):
+        return path[len(prefix) :]
+    return path
+
 
 @dataclass(frozen=True)
 class UploadFileSpec:
@@ -171,16 +202,23 @@ class CompanionStorePublisher:
         extract_dir = self._root / "dist" / f"companion-extract-{tarball_name}"
         extract_dir.mkdir(parents=True, exist_ok=True)
 
-        specs: list[UploadFileSpec] = []
         with tarfile.open(tarball, "r:gz") as tar:
-            for member in tar.getmembers():
-                if not member.isfile():
-                    continue
+            file_members = [
+                member for member in tar.getmembers() if member.isfile()
+            ]
+            upload_root = _common_bundle_root(
+                member.name for member in file_members
+            )
+            specs: list[UploadFileSpec] = []
+            for member in file_members:
                 tar.extract(member, path=extract_dir, filter="data")
                 local = extract_dir / member.name
                 specs.append(
                     UploadFileSpec(
-                        upload_path=member.name,
+                        upload_path=_strip_bundle_root(
+                            member.name,
+                            upload_root,
+                        ),
                         local_path=local,
                     ),
                 )

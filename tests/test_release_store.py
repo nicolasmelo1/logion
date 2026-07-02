@@ -99,6 +99,39 @@ def test_store_publish_plan_preserves_bundle_paths(
     assert "course/intro.md" in names
 
 
+def test_store_publish_plan_strips_tarball_root_for_upload(
+    repo_root: Path,
+) -> None:
+    """Upload paths are rooted at the course bundle, not the tar prefix."""
+    dist = repo_root / "dist"
+    tarball_path = dist / BUNDLE_TARBALL_NAME.format(version=VERSION)
+    bundle_root = f"logion-marketplace-companion-{VERSION}"
+    _make_tarball(
+        tarball_path,
+        {
+            f"{bundle_root}/SKILL.md": "---\nlicense: MIT\n---\n",
+            f"{bundle_root}/LICENSE": "MIT License\n",
+            f"{bundle_root}/course/capabilities.yaml": "version: 1\n",
+            f"{bundle_root}/references/troubleshooting.md": "ref\n",
+        },
+    )
+
+    publisher = CompanionStorePublisher(
+        repo_root=repo_root, runner=_RecordingRunner()
+    )
+    plan = publisher.build_plan(VERSION, COMPANION_UUID)
+
+    specs = {spec.upload_path: spec.local_path for spec in plan.upload_files}
+    assert "SKILL.md" in specs
+    assert "LICENSE" in specs
+    assert "course/capabilities.yaml" in specs
+    assert "references/troubleshooting.md" in specs
+    assert all(not path.startswith(f"{bundle_root}/") for path in specs)
+    assert specs["LICENSE"] == (
+        plan.extracted_dir / bundle_root / "LICENSE"
+    )
+
+
 def test_store_publish_requires_existing_tarball(
     repo_root: Path,
 ) -> None:
