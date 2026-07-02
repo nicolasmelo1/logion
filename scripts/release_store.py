@@ -20,6 +20,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import tarfile
@@ -220,6 +221,7 @@ class CompanionStorePublisher:
             "uploads",
             "create",
             plan.course_id,
+            "--json",
         ]
         for spec in plan.upload_files:
             cmd.append("--file")
@@ -231,19 +233,44 @@ class CompanionStorePublisher:
             raise RuntimeError(
                 f"uploads create failed:\n{result.stderr}",
             )
-        version_id = self._extract_version_id(result.stdout)
+        upload_session = self._extract_upload_session(result.stdout)
+        version_id = str(upload_session.get("version_id", ""))
         if not version_id:
             raise RuntimeError(
                 "Could not determine version_id from uploads create "
                 "output. Ensure the configured account is the course "
                 "owner.",
             )
+        session_file = (
+            plan.extracted_dir.parent / f"upload-session-{version_id}.json"
+        )
+        session_file.write_text(
+            json.dumps(upload_session, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
         return version_id
 
-    def _extract_version_id(self, output: str) -> str | None:
-        """Extract a version_id (UUID) from CLI output."""
-        match = _UUID_RE.search(output)
-        return match.group(0) if match else None
+    def _extract_upload_session(self, output: str) -> dict[str, object]:
+        """Extract the upload-session payload from CLI JSON/text output."""
+        try:
+            parsed = json.loads(output)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict):
+            data = parsed.get("data")
+            if isinstance(data, dict):
+                return data
+            return parsed
+
+        session: dict[str, object] = {}
+        for line in output.splitlines():
+            key, sep, value = line.partition(":")
+            if not sep:
+                continue
+            normalized_key = key.strip()
+            if normalized_key in {"course_id", "version_id"}:
+                session[normalized_key] = value.strip()
+        return session
 
     def push_upload(
         self,

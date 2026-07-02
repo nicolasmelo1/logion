@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+import json
 import tarfile
 from collections.abc import Sequence
 from pathlib import Path
@@ -141,7 +142,19 @@ def test_store_publish_requests_publication_after_upload(
     runner = _RecordingRunner(
         outputs=[
             "",
-            "version_id: 11111111-2222-3333-4444-555555555555",
+            json.dumps(
+                {
+                    "version": "v1",
+                    "kind": "logion.courses.uploads.create",
+                    "data": {
+                        "course_id": COMPANION_UUID,
+                        "version_id": (
+                            "11111111-2222-3333-4444-555555555555"
+                        ),
+                        "uploads": [],
+                    },
+                },
+            ),
             "",
             "",
             "",
@@ -155,6 +168,40 @@ def test_store_publish_requests_publication_after_upload(
     assert "publication" in last_call
     assert "request" in last_call
     assert COMPANION_UUID in last_call
+    session_file = (
+        repo_root
+        / "dist"
+        / "upload-session-11111111-2222-3333-4444-555555555555.json"
+    )
+    assert json.loads(session_file.read_text(encoding="utf-8"))[
+        "version_id"
+    ] == "11111111-2222-3333-4444-555555555555"
+
+
+def test_store_publish_extracts_text_version_id_not_course_id(
+    repo_root: Path,
+    tarball: Path,  # noqa: ARG001
+) -> None:
+    """Human output parser must not confuse course_id with version_id."""
+    version_id = "11111111-2222-3333-4444-555555555555"
+    runner = _RecordingRunner(
+        outputs=[
+            "",
+            f"course_id: {COMPANION_UUID}\nversion_id: {version_id}\n",
+            "",
+            "",
+            "",
+            "",
+        ]
+    )
+    publisher = CompanionStorePublisher(repo_root=repo_root, runner=runner)
+    publisher.publish(VERSION, COMPANION_UUID)
+    push_call = next(call for call in runner.calls if "push" in call)
+    assert version_id in push_call
+    assert (
+        str(repo_root / "dist" / f"upload-session-{version_id}.json")
+        in push_call
+    )
 
 
 def test_store_publish_dry_run_prints_commands_only(
