@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from scripts.release_smoke import (
     SmokeFinding,
     SmokeReport,
     check_smoke_report,
+    cmd_workflow_input,
     parse_smoke_report,
 )
 
@@ -177,3 +179,40 @@ harnesses:
 def test_min_harnesses_is_three() -> None:
     """The MIN_HARNESSES constant is 3."""
     assert MIN_HARNESSES == 3
+
+
+def test_workflow_input_creates_template_when_missing(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    path = tmp_path / "release-smoke-findings.md"
+    args = type("Args", (), {"path": str(path), "version": VERSION})()
+    result = cmd_workflow_input(args)
+    assert result == 2
+    assert path.exists()
+    captured = capsys.readouterr()
+    assert "Fill it with real smoke evidence" in captured.err
+
+
+def test_workflow_input_prints_valid_base64(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    path = tmp_path / "release-smoke-findings.md"
+    content = f"""\
+---
+release_version: "{VERSION}"
+api_base_url: "https://api.example.com"
+cli_version: "{VERSION}"
+harnesses:
+  - codex
+  - claude-code
+  - opencode
+---
+"""
+    path.write_text(content, encoding="utf-8")
+    args = type("Args", (), {"path": str(path), "version": VERSION})()
+    result = cmd_workflow_input(args)
+    assert result == 0
+    encoded = capsys.readouterr().out.strip()
+    assert base64.b64decode(encoded.encode()).decode() == content

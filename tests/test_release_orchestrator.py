@@ -109,12 +109,15 @@ def test_release_dry_run_does_not_run_git_push() -> None:
     )
     runner = _FakeRunner()
     executor = ReleaseExecutor(plan, runner=runner)
-    executor.execute(dry_run=True)
-    # No git push command should have been issued.
-    push_calls = [c for c in runner.calls if "push" in c and "git" in c]
-    assert push_calls == [], (
-        f"Dry-run should not push, got: {push_calls}",
-    )
+    try:
+        executor.execute(dry_run=True)
+        # No git push command should have been issued.
+        push_calls = [c for c in runner.calls if "push" in c and "git" in c]
+        assert push_calls == [], (
+            f"Dry-run should not push, got: {push_calls}",
+        )
+    finally:
+        plan.smoke_findings_path.unlink(missing_ok=True)
 
 
 def test_release_checks_refresh_lock_after_version_bump() -> None:

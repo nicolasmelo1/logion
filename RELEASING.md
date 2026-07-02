@@ -150,29 +150,17 @@ Package publishing is GitHub Actions-owned:
 1. Prepare smoke evidence:
 
    ```bash
-   uv run python scripts/release_smoke.py init \
-     --version X.Y.Z \
-     --out release-smoke-findings.md
-   # Run manual smoke per the release-smoke-checklist, then:
-   uv run python scripts/release_smoke.py check \
-     release-smoke-findings.md \
-     --version X.Y.Z
+   make release-smoke-input VERSION=X.Y.Z
    ```
 
-2. Base64-encode the smoke findings file:
-
-   ```bash
-   python3 - <<'PY'
-   import base64
-   from pathlib import Path
-
-   print(base64.b64encode(Path("release-smoke-findings.md").read_bytes()).decode())
-   PY
-   ```
+   If `release-smoke-findings.md` does not exist yet, the command creates a
+   template and exits. Fill it with real smoke evidence, then rerun the same
+   command. On success, it validates the file and prints the base64 string for
+   the workflow input.
 
 3. Run the **Release all Logion packages** workflow with:
    - `version`: `X.Y.Z`
-   - `smoke_findings_base64`: the base64 output from step 2
+   - `smoke_findings_base64`: the output from `make release-smoke-input`
    - `publish_store`: enabled for first-party companion publication
 
 The workflow is the single release entrypoint. It coordinates the repo

@@ -17,10 +17,12 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import base64
 import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 MIN_HARNESSES = 3
@@ -304,27 +306,50 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_check(args: argparse.Namespace) -> int:
-    """Validate a release-smoke findings file."""
-    report = parse_smoke_report(args.path)
-    if (
-        report.release_version
-        and args.version
-        and report.release_version != args.version
-    ):
+def _validate_file(path: str, version: str) -> int:
+    report = parse_smoke_report(path)
+    if report.release_version and report.release_version != version:
         print(
             f"ERROR: findings file version "
-            f"{report.release_version!r} != --version "
-            f"{args.version!r}",
+            f"{report.release_version!r} != --version {version!r}",
             file=sys.stderr,
         )
         return 1
-    errors = check_smoke_report(report, args.version)
+    errors = check_smoke_report(report, version)
     if errors:
         print("Smoke evidence gate FAILED:", file=sys.stderr)
         for err in errors:
             print(f"  - {err}", file=sys.stderr)
         return 1
+    return 0
+
+
+def cmd_workflow_input(args: argparse.Namespace) -> int:
+    """Create or encode the workflow smoke input."""
+    path = Path(args.path or "release-smoke-findings.md")
+    if not path.exists():
+        content = _TEMPLATE.format(version=args.version)
+        path.write_text(content, encoding="utf-8")
+        print(f"Wrote smoke findings template to {path}", file=sys.stderr)
+        print(
+            "Fill it with real smoke evidence, then rerun this command.",
+            file=sys.stderr,
+        )
+        return 2
+
+    result = _validate_file(str(path), args.version)
+    if result != 0:
+        return result
+    print(base64.b64encode(path.read_bytes()).decode())
+    return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    """Validate a release-smoke findings file."""
+    result = _validate_file(args.path, args.version)
+    if result != 0:
+        return result
+    report = parse_smoke_report(args.path)
     print(
         f"OK: smoke evidence gate passed "
         f"({len(report.harnesses)} harnesses, "
@@ -349,6 +374,14 @@ def main() -> None:
     check_p.add_argument("path")
     check_p.add_argument("--version", required=True)
     check_p.set_defaults(func=cmd_check)
+
+    input_p = sub.add_parser(
+        "workflow-input",
+        help="Create or print the base64 workflow smoke input",
+    )
+    input_p.add_argument("--version", required=True)
+    input_p.add_argument("--path", default=None)
+    input_p.set_defaults(func=cmd_workflow_input)
 
     args = parser.parse_args()
     sys.exit(args.func(args))

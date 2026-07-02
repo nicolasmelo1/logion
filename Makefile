@@ -17,7 +17,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	scanners-lint scanners-test social-lint social-test \
 	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
-	release-plan release release-dry-run release-store
+	release-plan release release-dry-run release-store release-smoke-input
 
 lint:
 	uv run ruff check packages/
@@ -238,3 +238,6 @@ release-dry-run:
 
 release-store:
 	uv run python scripts/release_store.py publish-companion --version $(VERSION) --course-id 5ddf32c6-e139-4056-ac94-c4a231bfd932
+
+release-smoke-input:
+	uv run python scripts/release_smoke.py workflow-input --version $(VERSION)
