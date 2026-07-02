@@ -39,6 +39,7 @@ BUNDLE_TARBALL_NAME = "logion-marketplace-companion-{version}.tar.gz"
 # store publication. The CLI reads this via its standard credential
 # resolution (env var takes precedence over stored credentials).
 STORE_API_KEY_ENV = "LOGION_API_KEY"  # pragma: allowlist secret
+_LOGION_CLI_CMD = ("uv", "run", "--package", "logion-cli", "logion")
 
 # Accepted publication review statuses that allow the script to
 # proceed without error. Any other status fails the release.
@@ -214,9 +215,7 @@ class CompanionStorePublisher:
     ) -> str:
         """Create an upload session, returning the version_id."""
         cmd = [
-            "uv",
-            "run",
-            "logion",
+            *_LOGION_CLI_CMD,
             "courses",
             "uploads",
             "create",
@@ -256,9 +255,7 @@ class CompanionStorePublisher:
             plan.extracted_dir.parent / f"upload-session-{version_id}.json"
         )
         cmd = [
-            "uv",
-            "run",
-            "logion",
+            *_LOGION_CLI_CMD,
             "courses",
             "uploads",
             "push",
@@ -285,9 +282,7 @@ class CompanionStorePublisher:
     ) -> None:
         """Mark the upload session as complete."""
         cmd = [
-            "uv",
-            "run",
-            "logion",
+            *_LOGION_CLI_CMD,
             "courses",
             "uploads",
             "complete",
@@ -308,9 +303,7 @@ class CompanionStorePublisher:
     ) -> None:
         """Request publication review for the course."""
         cmd = [
-            "uv",
-            "run",
-            "logion",
+            *_LOGION_CLI_CMD,
             "courses",
             "publication",
             "request",
@@ -409,7 +402,10 @@ class CompanionStorePublisher:
             f"packages/agent-companion/scripts/verify_bundle.py "
             f"{plan.bundle_tarball}",
         )
-        create_cmd = "uv run logion courses uploads create " + plan.course_id
+        create_cmd = (
+            "uv run --package logion-cli logion courses uploads create "
+            + plan.course_id
+        )
         for spec in plan.upload_files:
             create_cmd += f" --file {spec.upload_path}={spec.local_path}"
         commands.append(create_cmd)
@@ -417,18 +413,19 @@ class CompanionStorePublisher:
             "# push_upload <version_id> — version_id from create output",
         )
         push_cmd = (
-            f"uv run logion courses uploads push "
+            f"uv run --package logion-cli logion courses uploads push "
             f"{plan.course_id} <version_id>"
         )
         for spec in plan.upload_files:
             push_cmd += f" --file {spec.upload_path}={spec.local_path}"
         commands.append(push_cmd)
         commands.append(
-            f"uv run logion courses uploads complete "
+            f"uv run --package logion-cli logion courses uploads complete "
             f"{plan.course_id} <version_id>",
         )
         commands.append(
-            "uv run logion courses publication request " + plan.course_id,
+            "uv run --package logion-cli logion courses publication request "
+            + plan.course_id,
         )
         return commands
 
