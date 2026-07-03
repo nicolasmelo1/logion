@@ -12,6 +12,7 @@ import pytest
 
 from cli._parser import build_parser
 from cli.main import main
+from logion import APIError
 
 _CONNECT_KIND = "logion.identity.github.connect"
 _STATUS_KIND = "logion.identity.github.status"
@@ -30,6 +31,13 @@ class FakeGithubIdentityResource:
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self._poll_responses: list[Any] = []
         self._poll_index = 0
+        self.begin_response = SimpleNamespace(
+            device_code="dev-code-123",
+            user_code="ABCD-1234",
+            verification_uri="https://github.com/login/device",
+            expires_in=900,
+            interval=1,
+        )
 
     def set_poll_responses(self, responses: list[Any]) -> None:
         self._poll_responses = responses
@@ -37,13 +45,7 @@ class FakeGithubIdentityResource:
 
     def begin_github_device_flow(self, **kwargs: Any) -> SimpleNamespace:
         self.calls.append(("begin_github_device_flow", kwargs))
-        return SimpleNamespace(
-            device_code="dev-code-123",
-            user_code="ABCD-1234",
-            verification_uri="https://github.com/login/device",
-            expires_in=900,
-            interval=1,
-        )
+        return self.begin_response
 
     def poll_github_device_flow(self, **kwargs: Any) -> Any:
         self.calls.append(("poll_github_device_flow", kwargs))
@@ -292,6 +294,44 @@ def test_connect_forwards_scope_tier(
     assert begin_calls[0][1]["scope_tier"] == "repo"
 
 
+def test_connect_caps_wait_and_poll_sleep(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """connect clamps long device-flow waits to the documented cap."""
+    identity = FakeGithubIdentityResource()
+    identity.begin_response = SimpleNamespace(
+        device_code="dev-code-123",
+        user_code="ABCD-1234",
+        verification_uri="https://github.com/login/device",
+        expires_in=10_000,
+        interval=10_000,
+    )
+    identity.set_poll_responses([
+        SimpleNamespace(status="pending", interval=10_000),
+        SimpleNamespace(
+            status="connected",
+            github_login="octouser",
+            scope_tier="identity",
+        ),
+    ])
+    _patch_client(monkeypatch, identity)
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        "cli.commands.identity.github.time.sleep",
+        sleeps.append,
+    )
+
+    code = main(["identity", "github", "connect"])
+    assert code == 0
+    capsys.readouterr()
+
+    assert sleeps
+    assert max(sleeps) <= 30
+    assert all(sleep > 0 for sleep in sleeps)
+
+
 # ---------------------------------------------------------------------------
 # Status
 # ---------------------------------------------------------------------------
@@ -356,6 +396,30 @@ def test_status_text_mode_not_connected(
 
     out = capsys.readouterr().out
     assert "Not connected" in out
+
+
+def test_status_json_api_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """status emits structured JSON for API errors."""
+
+    class RaisingResource(FakeGithubIdentityResource):
+        def get_github_identity(self) -> SimpleNamespace:
+            self.calls.append(("get_github_identity", {}))
+            raise APIError(401, "missing api key")
+
+    identity = RaisingResource()
+    _patch_client(monkeypatch, identity)
+
+    code = main(["identity", "github", "status", "--json"])
+    assert code == 1
+
+    err = capsys.readouterr().err
+    payload = json.loads(err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "auth_missing"
+    assert payload["data"]["exit_code"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -430,6 +494,30 @@ def test_disconnect_with_yes_text_mode(
     assert "disconnected" in out.lower()
 
 
+def test_disconnect_json_api_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """disconnect emits structured JSON for GitHub identity conflicts."""
+
+    class RaisingResource(FakeGithubIdentityResource):
+        def revoke_github_identity(self) -> dict[str, Any]:
+            self.calls.append(("revoke_github_identity", {}))
+            raise APIError(409, "github_identity_conflict")
+
+    identity = RaisingResource()
+    _patch_client(monkeypatch, identity)
+
+    code = main(["identity", "github", "disconnect", "--yes", "--json"])
+    assert code == 1
+
+    err = capsys.readouterr().err
+    payload = json.loads(err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "github_identity_conflict"
+    assert payload["data"]["exit_code"] == 1
+
+
 # ---------------------------------------------------------------------------
 # No token leakage
 # ---------------------------------------------------------------------------
@@ -454,6 +542,30 @@ def test_no_token_in_connect_output(
     granted = envelopes[-1]
     assert "access_token" not in granted["data"]
     assert "token" not in granted["data"]
+
+
+def test_connect_json_api_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """connect emits structured JSON for backend GitHub OAuth outages."""
+
+    class RaisingResource(FakeGithubIdentityResource):
+        def begin_github_device_flow(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(("begin_github_device_flow", kwargs))
+            raise APIError(503, "github_oauth_unconfigured")
+
+    identity = RaisingResource()
+    _patch_client(monkeypatch, identity)
+
+    code = main(["identity", "github", "connect", "--json"])
+    assert code == 1
+
+    err = capsys.readouterr().err
+    payload = json.loads(err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "github_oauth_unconfigured"
+    assert payload["data"]["exit_code"] == 1
 
 
 def test_no_token_in_status_output(
