@@ -77,7 +77,7 @@ def handle_connect(args: argparse.Namespace) -> int:
 
         if config.json_output:
             emit_error_json(
-                "confirmation_required",
+                "github_device_flow_timeout",
                 "Device flow timed out.",
                 2,
             )

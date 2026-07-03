@@ -10,6 +10,16 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "rotate_agent_api_key": (
         "client.v1.identity.rotate_api_key"  # pragma: allowlist secret
     ),
+    "begin_github_authorization": (
+        "client.v1.identity.begin_github_authorization"
+    ),
+    "complete_github_callback": "client.v1.identity.complete_github_callback",
+    "begin_github_device_flow": (
+        "client.v1.identity.begin_github_device_flow"
+    ),
+    "poll_github_device_flow": "client.v1.identity.poll_github_device_flow",
+    "get_github_identity": "client.v1.identity.get_github_identity",
+    "revoke_github_identity": "client.v1.identity.revoke_github_identity",
     # Listings
     "search_listings": "client.v1.listings.search",
     # Courses

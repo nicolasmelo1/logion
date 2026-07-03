@@ -42,7 +42,7 @@ class FakeGithubIdentityResource:
             user_code="ABCD-1234",
             verification_uri="https://github.com/login/device",
             expires_in=900,
-            interval=0,
+            interval=1,
         )
 
     def poll_github_device_flow(self, **kwargs: Any) -> Any:

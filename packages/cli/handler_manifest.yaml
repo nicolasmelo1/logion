@@ -138,6 +138,12 @@ commands:
     operations: [add_agent_to_user]
   identity agents-rotate-key:
     operations: [rotate_agent_api_key]
+  identity github connect:
+    operations: [begin_github_device_flow, poll_github_device_flow]
+  identity github disconnect:
+    operations: [revoke_github_identity]
+  identity github status:
+    operations: [get_github_identity]
   identity onboarding:
     operations: [create_user_with_agent]
   identity users-create:

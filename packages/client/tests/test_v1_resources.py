@@ -446,13 +446,11 @@ class TestIdentityResource:
             state="state-xyz",
         )
         assert result == {"status": "ok"}
-        http.request.assert_called_once()
-        call_args = http.request.call_args
-        assert call_args.args[0] == "GET"
-        assert call_args.args[1] == "/v1/identity/github/callback"
-        params = call_args.kwargs["params"]
-        assert params["code"] == "abc123"
-        assert params["state"] == "state-xyz"
+        http.request.assert_called_once_with(
+            "GET",
+            "/v1/identity/github/callback",
+            params={"code": "abc123", "state": "state-xyz"},
+        )
 
     def test_begin_github_device_flow(self) -> None:
         """begin_github_device_flow() sends POST with scope_tier."""

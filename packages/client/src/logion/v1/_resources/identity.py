@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
@@ -146,7 +148,7 @@ class IdentityResource:
         *,
         code: str,
         state: str,
-    ) -> dict[str, object]:
+    ) -> str:
         """Complete the GitHub OAuth callback (GET with query params).
 
         Args:
@@ -154,12 +156,15 @@ class IdentityResource:
             state: State token from the authorization request.
 
         Returns:
-            Raw response dict from the callback endpoint.
+            HTML body or plain-text response from the callback endpoint.
         """
-        return operations.complete_github_callback(
-            self._http,
-            code=code,
-            state=state,
+        return cast(
+            str,
+            self._http.request(
+                "GET",
+                "/v1/identity/github/callback",
+                params={"code": code, "state": state},
+            ),
         )
 
     def begin_github_device_flow(
@@ -201,12 +206,15 @@ class IdentityResource:
             device_code=device_code,
             scope_tier=scope_tier,
         )
-        data = self._http.request(
-            "POST",
-            "/v1/identity/github/device/poll",
-            json=body.model_dump(mode="json", exclude_none=True),
+        data = cast(
+            dict[str, Any],
+            self._http.request(
+                "POST",
+                "/v1/identity/github/device/poll",
+                json=body.model_dump(mode="json", exclude_none=True),
+            ),
         )
-        if data.get("status") == "pending":
+        if data.get("status") == "pending" or "github_login" not in data:
             return DevicePollPendingResponse.model_validate(data)
         return DevicePollGrantedResponse.model_validate(data)
 

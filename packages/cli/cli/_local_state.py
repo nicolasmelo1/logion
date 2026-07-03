@@ -191,6 +191,8 @@ def mask_command_string(value: str) -> str:
 
 
 def _looks_like_secret_key(key: str) -> bool:
+    if key == "tokens":
+        return False
     return any(p.search(key) for p in SECRET_KEY_PATTERNS)
 
 
@@ -623,7 +625,15 @@ def _recall_tokens(*parts: str) -> list[str]:
         text = str(part or "").strip()
         if not text:
             continue
-        tokens.extend(segment for segment in re.split(r"\s+", text) if segment)
+        for segment in re.split(r"\s+", text):
+            if not segment:
+                continue
+            tokens.append(segment)
+            tokens.extend(
+                token
+                for token in re.split(r"[^A-Za-z0-9]+", segment)
+                if token and token != segment
+            )
     return tokens
 
 
@@ -734,7 +744,7 @@ def search_recall(
     ranked = rank(query, entries, limit=limit)
     out: list[dict[str, Any]] = []
     for similarity, entry in ranked:
-        if similarity < 0.20:
+        if similarity < 0.10:
             continue
 
         entry_type = entry.get("type", "")

@@ -35,6 +35,10 @@ def calibrate_installed_confidence(query_similarity: float) -> float:
 
     The query similarity is the entire signal.
     """
+    if query_similarity <= 0.0:
+        return 0.0
+    if query_similarity < 0.2:
+        return min(1.0, query_similarity + 0.15)
     return query_similarity
 
 
