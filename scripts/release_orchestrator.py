@@ -41,6 +41,43 @@ from release_manifest import COMPANION_COURSE_ID  # noqa: E402
 SMOKE_FINDINGS_FILENAME = "release-smoke-findings.md"
 SMOKE_FINDINGS_ENV = "SMOKE_FINDINGS"
 
+CHANGELOG_PATH = REPO_ROOT / "releases" / "CHANGELOG.md"
+
+# Conventional Commit types displayed in the changelog, in display order.
+_CHANGELOG_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("feat", "Features"),
+    ("fix", "Bug Fixes"),
+    ("perf", "Performance"),
+    ("refactor", "Refactors"),
+    ("docs", "Documentation"),
+    ("test", "Tests"),
+    ("ci", "CI"),
+    ("chore", "Chores"),
+)
+
+# Maps commit type to changelog section heading.
+_TYPE_TO_SECTION: dict[str, str] = dict(_CHANGELOG_SECTIONS)
+
+_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
+_COMMIT_RE = re.compile(
+    r"^(?P<type>feat|fix|perf|refactor|docs|test|ci|chore|build|revert)"
+    r"(?:\((?P<scope>[^)]+)\))?"
+    r":\s*(?P<subject>.+?)"
+    r"(?:\s+\(#(?P<pr>\d+)\))?\s*$",
+)
+
+
+@dataclass(frozen=True)
+class MergedPR:
+    """A single merged pull request for changelog purposes."""
+
+    number: int
+    author: str
+    commit_type: str
+    scope: str | None
+    subject: str
+
+
 _PACKAGE_CONFIG: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     (
         "client",
@@ -105,6 +142,153 @@ def _porcelain_paths(stdout: str) -> tuple[str, ...]:
             i += 1
         i += 1
     return tuple(paths)
+
+
+def _find_last_release_tag(
+    runner: CommandRunner,
+    repo_root: Path,
+) -> str | None:
+    """Return the most recent ``logion-cli-v*`` tag, or None."""
+    result = runner.run(
+        ["git", "tag", "--sort=-creatordate", "--list", "logion-cli-v*"],
+        cwd=repo_root,
+        check=False,
+    )
+    lines = [line for line in result.stdout.strip().splitlines() if line]
+    return lines[0] if lines else None
+
+
+def _collect_merged_prs(
+    runner: CommandRunner,
+    repo_root: Path,
+    from_tag: str | None,
+) -> list[MergedPR]:
+    """Collect merged PRs since *from_tag* via ``git log``.
+
+    Uses ``--no-merges`` to get the squashed commit for each PR.
+    The commit subject carries the Conventional Commit prefix and the
+    PR number in ``(#N)`` form.  The author is the commit's author name.
+
+    Commits without a PR number (e.g. direct pushes or release commits)
+    are skipped — they are not user-facing changes.
+    """
+    rev_range = f"{from_tag}..HEAD" if from_tag else "HEAD"
+    result = runner.run(
+        [
+            "git",
+            "log",
+            rev_range,
+            "--no-merges",
+            "--pretty=format:%an|%s",
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    prs: list[MergedPR] = []
+    for line in result.stdout.strip().splitlines():
+        if not line or "|" not in line:
+            continue
+        author, _, subject = line.partition("|")
+        subject = subject.strip()
+        match = _COMMIT_RE.match(subject)
+        if not match:
+            continue
+        pr_str = match.group("pr")
+        if not pr_str:
+            continue
+        prs.append(
+            MergedPR(
+                number=int(pr_str),
+                author=author.strip(),
+                commit_type=match.group("type"),
+                scope=match.group("scope"),
+                subject=match.group("subject").strip(),
+            )
+        )
+    return prs
+
+
+def _format_changelog_entry(
+    version: str,
+    prs: Sequence[MergedPR],
+) -> str:
+    """Build a Markdown changelog entry for *version* from *prs*."""
+    lines: list[str] = [f"## {version}", ""]
+
+    # Group by section, preserving order within each section.
+    sections: dict[str, list[MergedPR]] = {
+        heading: [] for _, heading in _CHANGELOG_SECTIONS
+    }
+    extras: list[MergedPR] = []
+    for pr in prs:
+        heading = _TYPE_TO_SECTION.get(pr.commit_type)
+        if heading and heading in sections:
+            sections[heading].append(pr)
+        else:
+            extras.append(pr)
+
+    # Collect unique authors for the contributor line.
+    all_authors = {pr.author for pr in prs}
+
+    for heading in sections:
+        items = sections[heading]
+        if not items:
+            continue
+        lines.append(f"### {heading}")
+        for pr in items:
+            scope = f"**{pr.scope}**: " if pr.scope else ""
+            author = f"@{pr.author}"
+            lines.append(f"- {scope}{pr.subject} (#{pr.number}) — {author}")
+        lines.append("")
+
+    if extras:
+        lines.append("### Other")
+        for pr in extras:
+            lines.append(f"- {pr.subject} (#{pr.number}) — @{pr.author}")
+        lines.append("")
+
+    if all_authors:
+        # Sort alphabetically, case-insensitive.
+        sorted_authors = sorted(all_authors, key=str.lower)
+        lines.append(
+            f"**Contributors:** {', '.join(f'@{a}' for a in sorted_authors)}"
+        )
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def update_changelog_file(
+    changelog_path: Path,
+    version: str,
+    prs: Sequence[MergedPR],
+) -> str:
+    """Prepend a new entry to the changelog file and return it.
+
+    If the file has the standard header (lines before the first
+    ``## `` section), the new entry is inserted right after it.
+    """
+    entry = _format_changelog_entry(version, prs)
+    if not changelog_path.exists():
+        changelog_path.write_text(entry + "\n", encoding="utf-8")
+        return entry
+
+    existing = changelog_path.read_text(encoding="utf-8")
+    # Find the first "## " section heading.
+    insert_pos = existing.find("\n## ")
+    if insert_pos == -1:
+        # No existing sections — append.
+        new_content = existing.rstrip() + "\n\n" + entry + "\n"
+    else:
+        # Insert after the header, before the first section.
+        new_content = (
+            existing[: insert_pos + 1]
+            + entry
+            + "\n"
+            + existing[insert_pos + 1 :]
+        )
+    changelog_path.write_text(new_content, encoding="utf-8")
+    return entry
 
 
 # ── data classes ──────────────────────────────────────────────────
@@ -429,6 +613,23 @@ class ReleaseExecutor:
                     f"Manifest build failed: {result.stderr}",
                 )
 
+    # -- changelog ----------------------------------------------
+
+    def update_changelog(self) -> None:
+        """Prepend a changelog entry for this release to CHANGELOG.md.
+
+        Collects merged PRs since the last release tag, groups them by
+        Conventional Commit type, and inserts the entry after the file
+        header.  External contributors are credited by name.
+        """
+        last_tag = _find_last_release_tag(self._runner, self._root())
+        prs = _collect_merged_prs(self._runner, self._root(), last_tag)
+        update_changelog_file(
+            CHANGELOG_PATH,
+            str(self._plan.version),
+            prs,
+        )
+
     # -- smoke --------------------------------------------------
 
     def verify_smoke_evidence(self) -> None:
@@ -578,6 +779,7 @@ class ReleaseExecutor:
         self.run_checks()
         self.build_artifacts()
         self.regenerate_manifests()
+        self.update_changelog()
         self.verify_smoke_evidence()
         self.commit_release()
         self.tag_release()

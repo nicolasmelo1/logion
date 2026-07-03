@@ -9,10 +9,15 @@ from pathlib import Path
 from scripts import release_orchestrator as release_orchestrator_module
 from scripts.release_orchestrator import (
     _PACKAGE_CONFIG,
+    MergedPR,
     ReleaseExecutor,
     ReleasePlanner,
+    _collect_merged_prs,
+    _find_last_release_tag,
+    _format_changelog_entry,
     _porcelain_paths,
     plan_to_json,
+    update_changelog_file,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -114,8 +119,8 @@ def test_release_dry_run_does_not_run_git_push() -> None:
     # Create the smoke findings file so preflight passes.
     plan.smoke_findings_path.parent.mkdir(parents=True, exist_ok=True)
     plan.smoke_findings_path.write_text(
-        "---\nrelease_version: \"0.1.99\"\napi_base_url: \"\"\n"
-        "cli_version: \"\"\nharnesses:\n  - codex\n  - claude-code\n"
+        '---\nrelease_version: "0.1.99"\napi_base_url: ""\n'
+        'cli_version: ""\nharnesses:\n  - codex\n  - claude-code\n'
         "  - opencode\n---\n",
         encoding="utf-8",
     )
@@ -162,16 +167,13 @@ def test_release_resume_skips_commit_tag_and_push(monkeypatch) -> None:
     )
     plan.smoke_findings_path.parent.mkdir(parents=True, exist_ok=True)
     plan.smoke_findings_path.write_text(
-        "---\nrelease_version: \"0.1.99\"\napi_base_url: \"\"\n"
-        "cli_version: \"\"\nharnesses:\n  - codex\n  - claude-code\n"
+        '---\nrelease_version: "0.1.99"\napi_base_url: ""\n'
+        'cli_version: ""\nharnesses:\n  - codex\n  - claude-code\n'
         "  - opencode\n---\n",
         encoding="utf-8",
     )
     runner = _FakeRunner(
-        {
-            f"git tag -l {tag}": tag
-            for tag in plan.tags_to_create
-        },
+        {f"git tag -l {tag}": tag for tag in plan.tags_to_create},
     )
     executor = ReleaseExecutor(plan, runner=runner)
     try:
@@ -183,8 +185,7 @@ def test_release_resume_skips_commit_tag_and_push(monkeypatch) -> None:
     assert not any(call[:2] == ["git", "commit"] for call in runner.calls)
     assert not any(call[:2] == ["git", "push"] for call in runner.calls)
     assert not any(
-        call[:2] == ["git", "tag"] and "-a" in call
-        for call in runner.calls
+        call[:2] == ["git", "tag"] and "-a" in call for call in runner.calls
     )
     assert any("scripts/release_store.py" in call for call in runner.calls)
 
@@ -270,3 +271,178 @@ def test_preflight_allows_renamed_smoke_findings() -> None:
     }
     planner = ReleasePlanner(repo_root=REPO_ROOT, runner=runner)
     planner.validate_clean_or_release_only_worktree()
+
+
+# ── changelog tests ──────────────────────────────────────────────
+
+
+def test_find_last_release_tag_returns_most_recent() -> None:
+    """_find_last_release_tag returns the newest logion-cli-v* tag."""
+    runner = _FakeRunner({
+        "git tag --sort=-creatordate --list logion-cli-v*": (
+            "logion-cli-v0.1.11\nlogion-cli-v0.1.10\n"
+        ),
+    })
+    tag = _find_last_release_tag(runner, REPO_ROOT)
+    assert tag == "logion-cli-v0.1.11"
+
+
+def test_find_last_release_tag_returns_none_when_empty() -> None:
+    """No tags returns None."""
+    runner = _FakeRunner({})
+    tag = _find_last_release_tag(runner, REPO_ROOT)
+    assert tag is None
+
+
+def test_collect_merged_prs_parses_squash_commits() -> None:
+    """_collect_merged_prs extracts PR number, author, type, scope."""
+    runner = _FakeRunner({
+        "git log logion-cli-v0.1.11..HEAD": (
+            "Nicolas Leal|fix(update): clean installer output (#132)\n"
+            "M'ael|fix(cli): align Codex skill path (#131)\n"
+            "Nicolas Melo|chore(release): strip bundle root\n"
+            "Nicolas Melo|feat(cli): add prune command (#130)\n"
+        ),
+    })
+    prs = _collect_merged_prs(runner, REPO_ROOT, "logion-cli-v0.1.11")
+    # The chore commit without a PR number is skipped.
+    assert len(prs) == 3
+    assert prs[0].number == 132
+    assert prs[0].author == "Nicolas Leal"
+    assert prs[0].commit_type == "fix"
+    assert prs[0].scope == "update"
+    assert prs[0].subject == "clean installer output"
+    assert prs[1].number == 131
+    assert prs[1].author == "M'ael"
+    assert prs[1].commit_type == "fix"
+    assert prs[1].scope == "cli"
+    assert prs[2].number == 130
+    assert prs[2].commit_type == "feat"
+
+
+def test_collect_merged_prs_empty_when_no_tag() -> None:
+    """No previous tag scans all of HEAD."""
+    runner = _FakeRunner({
+        "git log HEAD": "Nicolas|fix(core): something (#1)\n",
+    })
+    prs = _collect_merged_prs(runner, REPO_ROOT, None)
+    assert len(prs) == 1
+    assert prs[0].number == 1
+
+
+def test_format_changelog_entry_groups_by_type() -> None:
+    """Entry has section headings and credits contributors."""
+    prs = [
+        MergedPR(
+            number=131,
+            author="M'ael",
+            commit_type="fix",
+            scope="cli",
+            subject="align Codex skill path",
+        ),
+        MergedPR(
+            number=130,
+            author="Nicolas",
+            commit_type="feat",
+            scope="cli",
+            subject="add prune command",
+        ),
+        MergedPR(
+            number=132,
+            author="Nicolas",
+            commit_type="fix",
+            scope="update",
+            subject="clean installer output",
+        ),
+    ]
+    entry = _format_changelog_entry("0.2.0", prs)
+    assert "## 0.2.0" in entry
+    assert "### Features" in entry
+    assert "### Bug Fixes" in entry
+    # Scope is bolded.
+    assert "**cli**: " in entry
+    # PR numbers appear.
+    assert "#131" in entry
+    assert "#130" in entry
+    assert "#132" in entry
+    # Contributors line includes both authors.
+    assert "@M'ael" in entry
+    assert "@Nicolas" in entry
+
+
+def test_format_changelog_entry_skips_empty_sections() -> None:
+    """Sections with no PRs are not emitted."""
+    prs = [
+        MergedPR(
+            number=1,
+            author="Alice",
+            commit_type="fix",
+            scope=None,
+            subject="bug fix",
+        ),
+    ]
+    entry = _format_changelog_entry("0.1.0", prs)
+    assert "### Bug Fixes" in entry
+    assert "### Features" not in entry
+    assert "### Performance" not in entry
+
+
+def test_format_changelog_entry_handles_no_scope() -> None:
+    """PRs without a scope don't get a bold prefix."""
+    prs = [
+        MergedPR(
+            number=1,
+            author="Alice",
+            commit_type="fix",
+            scope=None,
+            subject="bug fix",
+        ),
+    ]
+    entry = _format_changelog_entry("0.1.0", prs)
+    assert "- bug fix (#1) — @Alice" in entry
+    assert "**None**" not in entry
+
+
+def test_update_changelog_file_prepends_after_header(tmp_path: Path) -> None:
+    """New entry is inserted after the file header, before old sections."""
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        "# Changelog\n\nHeader text.\n\n## 0.1.0\n\n- old entry\n",
+        encoding="utf-8",
+    )
+    prs = [
+        MergedPR(
+            number=131,
+            author="M'ael",
+            commit_type="fix",
+            scope="cli",
+            subject="align Codex path",
+        ),
+    ]
+    update_changelog_file(changelog, "0.2.0", prs)
+    content = changelog.read_text(encoding="utf-8")
+    # Header is preserved.
+    assert content.startswith("# Changelog")
+    # New entry comes before old.
+    assert content.index("## 0.2.0") < content.index("## 0.1.0")
+    assert "align Codex path" in content
+
+
+def test_update_changelog_file_creates_when_missing(
+    tmp_path: Path,
+) -> None:
+    """Missing changelog file is created with just the entry."""
+    changelog = tmp_path / "CHANGELOG.md"
+    prs = [
+        MergedPR(
+            number=1,
+            author="Alice",
+            commit_type="feat",
+            scope=None,
+            subject="initial",
+        ),
+    ]
+    update_changelog_file(changelog, "0.1.0", prs)
+    content = changelog.read_text(encoding="utf-8")
+    assert "## 0.1.0" in content
+    assert "initial (#1)" in content
