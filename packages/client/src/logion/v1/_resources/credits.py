@@ -39,11 +39,15 @@ class CreditsResource:
         local currency using the current exchange rate; credits are
         still granted in USD.
         """
-        body = CreateCreditTopUpRequest(
-            amount_cents=amount_cents,
-            currency=currency,
+        body = CreateCreditTopUpRequest(amount_cents=amount_cents)
+        data = body.model_dump(mode="json", exclude_none=True)
+        data["currency"] = currency
+        return self._http.request_model(
+            "POST",
+            "/v1/credits/top-ups",
+            CreateCreditTopUpResponse,
+            json=data,
         )
-        return operations.create_credit_top_up(self._http, body=body)
 
     def get_top_up(self, *, top_up_id: str | UUID) -> GetCreditTopUpResponse:
         """Get a credit top-up by ID."""

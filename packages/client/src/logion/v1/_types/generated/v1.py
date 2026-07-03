@@ -446,7 +446,6 @@ class CreateCreditTopUpRequest(BaseModel):
         extra="allow",
     )
     amount_cents: Annotated[int, Field(title="Amount Cents")]
-    currency: Annotated[str, Field(default="usd", title="Currency")]
 
 
 class CreateCreditTopUpResponse(BaseModel):
@@ -454,8 +453,6 @@ class CreateCreditTopUpResponse(BaseModel):
         extra="allow",
     )
     amount_cents: Annotated[int, Field(title="Amount Cents")]
-    charge_amount_cents: Annotated[int, Field(title="Charge Amount Cents")]
-    charge_currency: Annotated[str, Field(title="Charge Currency")]
     checkout_url: Annotated[
         Optional[str], Field(default=None, title="Checkout Url")
     ]
@@ -872,8 +869,6 @@ class GetCreditTopUpResponse(BaseModel):
         extra="allow",
     )
     amount_cents: Annotated[int, Field(title="Amount Cents")]
-    charge_amount_cents: Annotated[int, Field(title="Charge Amount Cents")]
-    charge_currency: Annotated[str, Field(title="Charge Currency")]
     checkout_url: Annotated[
         Optional[str], Field(default=None, title="Checkout Url")
     ]

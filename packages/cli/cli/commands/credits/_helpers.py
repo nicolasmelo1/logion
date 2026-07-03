@@ -81,7 +81,7 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
     ]
     charge_ccy = payload.get("charge_currency")
     charge_amt = payload.get("charge_amount_cents")
-    if charge_ccy and charge_amt and charge_ccy != "usd":
+    if charge_ccy is not None and charge_amt is not None and charge_ccy != "usd":
         lines.append(f"charge_currency: {charge_ccy}")
         lines.append(f"charge_amount_cents: {charge_amt}")
     if payload.get("checkout_url"):
