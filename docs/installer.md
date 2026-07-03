@@ -106,9 +106,11 @@ The installer is versioned independently via `installer-vN` tags
 - `install.ps1` + `install.ps1.sha256`
 - `release-notes.md`
 
-The redirect at `https://logion.sh/install.sh` points at the latest
-`installer-v*` release. The installer reads the package manifest from
-the relevant package tag, **not** from its own tag.
+The redirect at `https://logion.sh/install.sh` points at the raw
+`scripts/install.sh` on `main` (the `installer-v*` release assets back
+the direct-GitHub download path shown above). The installer reads the
+package manifest from the relevant package tag, **not** from its own
+tag.
 
 ## Threat model
 
