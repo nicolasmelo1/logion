@@ -38,9 +38,7 @@ def _compute_similarity(query: str, composed: str) -> float:
 def _token_similarity(query: str, tokens: list[str]) -> float:
     """Return token-set overlap similarity in [0, 1]."""
     q_tokens = {
-        token
-        for token in re.split(r"[^A-Za-z0-9]+", query.lower())
-        if token
+        token for token in re.split(r"[^A-Za-z0-9]+", query.lower()) if token
     }
     e_tokens: set[str] = set()
     for token in tokens:
