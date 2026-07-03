@@ -1553,7 +1553,7 @@ dev = [
 
 [[package]]
 name = "logion-agent-companion"
-version = "0.1.11"
+version = "0.1.12"
 source = { editable = "packages/agent-companion" }
 dependencies = [
     { name = "pyyaml" },
@@ -1603,7 +1603,7 @@ dspy = [
 
 [[package]]
 name = "logion-cli"
-version = "0.1.11"
+version = "0.1.12"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "logion-client" },
@@ -1643,7 +1643,7 @@ dev = [
 
 [[package]]
 name = "logion-client"
-version = "0.1.11"
+version = "0.1.12"
 source = { editable = "packages/client" }
 dependencies = [
     { name = "email-validator" },
