@@ -1515,6 +1515,11 @@
           "amount_cents": {
             "title": "Amount Cents",
             "type": "integer"
+          },
+          "currency": {
+            "default": "usd",
+            "title": "Currency",
+            "type": "string"
           }
         },
         "required": [
@@ -1528,6 +1533,14 @@
           "amount_cents": {
             "title": "Amount Cents",
             "type": "integer"
+          },
+          "charge_amount_minor": {
+            "title": "Charge Amount Minor",
+            "type": "integer"
+          },
+          "charge_currency": {
+            "title": "Charge Currency",
+            "type": "string"
           },
           "checkout_url": {
             "anyOf": [
@@ -1578,7 +1591,9 @@
           "top_up_id",
           "status",
           "amount_cents",
-          "credit_cents_granted"
+          "credit_cents_granted",
+          "charge_currency",
+          "charge_amount_minor"
         ],
         "title": "CreateCreditTopUpResponse",
         "type": "object"
@@ -2940,6 +2955,14 @@
             "title": "Amount Cents",
             "type": "integer"
           },
+          "charge_amount_minor": {
+            "title": "Charge Amount Minor",
+            "type": "integer"
+          },
+          "charge_currency": {
+            "title": "Charge Currency",
+            "type": "string"
+          },
           "checkout_url": {
             "anyOf": [
               {
@@ -2989,7 +3012,9 @@
           "top_up_id",
           "status",
           "amount_cents",
-          "credit_cents_granted"
+          "credit_cents_granted",
+          "charge_currency",
+          "charge_amount_minor"
         ],
         "title": "GetCreditTopUpResponse",
         "type": "object"
@@ -11349,6 +11374,16 @@
               }
             },
             "description": "Credit top-up checkout created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported currency"
           },
           "401": {
             "content": {

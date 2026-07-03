@@ -41,7 +41,7 @@ class CreditsResource:
         """
         body = CreateCreditTopUpRequest(
             amount_cents=amount_cents,
-            currency=currency,  # type: ignore[call-arg]  # extra="allow"
+            currency=currency,
         )
         return operations.create_credit_top_up(self._http, body=body)
 
