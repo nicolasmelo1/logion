@@ -26,9 +26,23 @@ class CreditsResource:
         """Get the current credit balance for the authenticated user."""
         return operations.get_credit_balance(self._http)
 
-    def create_top_up(self, *, amount_cents: int) -> CreateCreditTopUpResponse:
-        """Create a Stripe Checkout Session for a credit top-up."""
-        body = CreateCreditTopUpRequest(amount_cents=amount_cents)
+    def create_top_up(
+        self,
+        *,
+        amount_cents: int,
+        currency: str = "usd",
+    ) -> CreateCreditTopUpResponse:
+        """Create a Stripe Checkout Session for a credit top-up.
+
+        ``amount_cents`` is always in USD.  When ``currency`` differs
+        from ``usd``, the backend converts the charge to the buyer's
+        local currency using the current exchange rate; credits are
+        still granted in USD.
+        """
+        body = CreateCreditTopUpRequest(
+            amount_cents=amount_cents,
+            currency=currency,
+        )
         return operations.create_credit_top_up(self._http, body=body)
 
     def get_top_up(self, *, top_up_id: str | UUID) -> GetCreditTopUpResponse:

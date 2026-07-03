@@ -83,7 +83,8 @@ def handle_credits_top_up(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.credits.create_top_up(
-            amount_cents=args.amount_cents
+            amount_cents=args.amount_cents,
+            currency=getattr(args, "currency", "usd"),
         )
         payload = top_up_to_payload(result)
         if config.json_output:

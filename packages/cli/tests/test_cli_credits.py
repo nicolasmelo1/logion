@@ -144,7 +144,7 @@ def test_credits_top_up_json_forwards_amount_with_confirmation(
 
     assert credits_resource.last_call == (
         "create_top_up",
-        {"amount_cents": 1000},
+        {"amount_cents": 1000, "currency": "usd"},
     )
     assert fake.closed is True
     payload = json.loads(capsys.readouterr().out)
@@ -214,3 +214,30 @@ def test_credits_ledger_json(
     payload = json.loads(capsys.readouterr().out)
     assert payload["kind"] == "logion.credits.ledger"
     assert payload["data"][0]["id"] == "ledger-1"
+
+
+def test_credits_top_up_forwards_currency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """credits top-up --currency brl forwards the currency flag."""
+    credits_resource = FakeCreditsResource()
+    _patch_client(monkeypatch, credits_resource)
+
+    assert (
+        main([
+            "credits",
+            "top-up",
+            "--amount",
+            "1000",
+            "--currency",
+            "brl",
+            "--yes",
+            "--json",
+        ])
+        == 0
+    )
+
+    assert credits_resource.last_call == (
+        "create_top_up",
+        {"amount_cents": 1000, "currency": "brl"},
+    )

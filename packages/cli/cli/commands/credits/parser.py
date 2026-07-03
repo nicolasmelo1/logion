@@ -46,7 +46,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         dest="amount_cents",
         required=True,
         type=int,
-        help="Amount in cents for the credit top-up.",
+        help="Amount in USD cents for the credit top-up.",
+    )
+    top_up.add_argument(
+        "--currency",
+        dest="currency",
+        default="usd",
+        help=(
+            "Charge currency (ISO 4217). Default: usd. "
+            "When not usd, the charge is converted at the current "
+            "exchange rate; credits are always granted in USD."
+        ),
     )
     top_up.add_argument(
         "--yes",

@@ -79,6 +79,11 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
         f"amount_cents: {payload.get('amount_cents')}",
         f"credit_cents_granted: {payload.get('credit_cents_granted')}",
     ]
+    charge_ccy = payload.get("charge_currency")
+    charge_amt = payload.get("charge_amount_cents")
+    if charge_ccy and charge_amt and charge_ccy != "usd":
+        lines.append(f"charge_currency: {charge_ccy}")
+        lines.append(f"charge_amount_cents: {charge_amt}")
     if payload.get("checkout_url"):
         lines.append(f"checkout_url: {payload.get('checkout_url')}")
     if payload.get("stripe_checkout_session_id"):
