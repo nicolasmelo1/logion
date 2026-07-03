@@ -51,3 +51,33 @@ def test_devrig_doctor_reports_missing_env(tmp_path: Path) -> None:
     )
     assert result.returncode == 0
     assert "missing" in result.stdout
+
+
+def test_devrig_clean_removes_copied_companion_directory(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    copied_skill = home / ".codex" / "skills" / "logion"
+    copied_skill.mkdir(parents=True)
+    (copied_skill / "SKILL.md").write_text(
+        "---\nname: logion\n---\n",
+        encoding="utf-8",
+    )
+    symlink_parent = home / ".claude" / "skills"
+    symlink_parent.mkdir(parents=True)
+    symlink = symlink_parent / "logion"
+    symlink.symlink_to(copied_skill, target_is_directory=True)
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "clean"],
+        cwd=str(ROOT),
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert not copied_skill.exists()
+    assert not symlink.exists()
+    assert "Removed 2 companion skill locations" in result.stdout
