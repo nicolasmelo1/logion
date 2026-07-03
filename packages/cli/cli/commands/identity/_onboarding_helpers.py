@@ -134,6 +134,7 @@ def ensure_symlink(
     — when the target is unwritable.  The canonical install under
     ``$LOGION_HOME/installed/`` is valid regardless.
     """
+    from cli.commands.skills._agent_copies import record_agent_copy
     from cli.commands.skills._agent_symlink import create_symlink
 
     skill_name = skill_name or COMPANION_COURSE_ID
@@ -145,6 +146,18 @@ def ensure_symlink(
             f"Warning: companion skill copy failed ({exc}); "
             "canonical install is fine."
         )
+        return
+    # ``install_dest`` is always ``installed_dir(course, version, home)``
+    # (``<home>/installed/<course>/<version>``), so the identifiers and
+    # home can be recovered from the path itself.
+    home = install_dest.parents[2]
+    record_agent_copy(
+        home,
+        course_id=install_dest.parent.name,
+        skill_name=skill_name,
+        target_dir=target_skill_dir,
+        version_id=install_dest.name,
+    )
 
 
 def companion_targets(

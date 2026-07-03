@@ -111,6 +111,44 @@ class TestSkillsInstall:
         assert rc2 == 2
         assert "different content" in captured.err
 
+    def test_install_records_agent_copy(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        home = tmp_path / "home"
+        agent_dir = tmp_path / "agent-skills"
+        bundle = _make_source_bundle(tmp_path)
+
+        rc = main([
+            "skills",
+            "install",
+            "--source",
+            str(bundle),
+            "--course-id",
+            "weather.basic",
+            "--version-id",
+            "1.0.0",
+            "--target",
+            str(home),
+            "--symlink-dir",
+            str(agent_dir),
+        ])
+
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "Copied:" in captured.out
+        assert (agent_dir / "test" / "SKILL.md").is_file()
+        payload = json.loads((home / "agent_copies.json").read_text())
+        records = payload["entries"]
+        assert records == [
+            {
+                "course_id": "weather.basic",
+                "skill_name": "test",
+                "target_dir": str(agent_dir.resolve()),
+                "version_id": "1.0.0",
+                "synced_at": records[0]["synced_at"],
+            }
+        ]
+
 
 class TestSkillsInstalled:
     def test_installed_lists_manifests(
@@ -265,6 +303,52 @@ class TestSkillsUpdate:
             encoding="utf-8"
         )
         assert body == "v2 contents"
+
+    def test_update_refreshes_recorded_agent_copy(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        home = tmp_path / "home"
+        agent_dir = tmp_path / "agent-skills"
+        bundle = _make_source_bundle(tmp_path)
+        main([
+            "skills",
+            "install",
+            "--source",
+            str(bundle),
+            "--course-id",
+            "x",
+            "--version-id",
+            "1.0",
+            "--target",
+            str(home),
+            "--symlink-dir",
+            str(agent_dir),
+        ])
+        capsys.readouterr()
+
+        new_bundle = _make_source_bundle(tmp_path / "new")
+        (new_bundle / "SKILL.md").write_text(
+            "---\nname: test\n---\nupdated copy", encoding="utf-8"
+        )
+        rc = main([
+            "skills",
+            "update",
+            "x",
+            "--version-id",
+            "1.0",
+            "--source",
+            str(new_bundle),
+            "--target",
+            str(home),
+            "--force",
+        ])
+
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "Refreshed agent copy:" in captured.out
+        assert (agent_dir / "test" / "SKILL.md").read_text(
+            encoding="utf-8"
+        ) == "---\nname: test\n---\nupdated copy"
 
 
 class TestSkillsInspect:
