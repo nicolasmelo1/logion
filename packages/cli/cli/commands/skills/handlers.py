@@ -27,6 +27,7 @@ from cli._local_state import (
 )
 from cli._output import emit_json
 
+from ._agent_copies import record_agent_copy, sync_agent_copies
 from ._agent_symlink import (
     apply_post_install_symlink,
     resolve_symlink_intent,
@@ -185,8 +186,31 @@ def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
         f"Installed: {course_id}/{version_id} ({len(copied)} files) -> {dest}"
     )
 
+    # Refresh previously recorded harness copies of this course so an
+    # update never leaves a stale copy behind in e.g. ~/.claude/skills.
+    refreshed = sync_agent_copies(
+        home,
+        course_id=course_id,
+        version_id=version_id,
+        install_dest=dest,
+        skill_name=skill_name,
+    )
+    for target in refreshed:
+        print(f"Refreshed agent copy: {target}")
+
+    copied_target = None
     if symlink_parent and skill_name:
-        apply_post_install_symlink(symlink_parent, skill_name, dest)
+        copied_target = apply_post_install_symlink(
+            symlink_parent, skill_name, dest
+        )
+        if copied_target is not None:
+            record_agent_copy(
+                home,
+                course_id=course_id,
+                skill_name=skill_name,
+                target_dir=symlink_parent,
+                version_id=version_id,
+            )
 
     if getattr(args, "json_output", False):
         emit_json(
@@ -196,9 +220,10 @@ def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
                 "version_id": version_id,
                 "destination": str(dest),
                 "files_installed": len(copied),
-                "agent_skill_copied": bool(symlink_parent and skill_name),
+                "agent_skill_copied": copied_target is not None,
+                "agent_copies_refreshed": len(refreshed),
                 # Kept for backwards compatibility with older JSON consumers.
-                "symlinked": bool(symlink_parent and skill_name),
+                "symlinked": copied_target is not None,
             },
         )
     return 0

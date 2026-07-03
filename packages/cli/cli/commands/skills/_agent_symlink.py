@@ -147,13 +147,18 @@ def resolve_symlink_intent(
 
 def apply_post_install_symlink(
     symlink_parent: Path, skill_name: str, dest: Path
-) -> None:
-    """Sync the skill copy and surface errors as warnings (non-fatal)."""
+) -> Path | None:
+    """Sync the skill copy and surface errors as warnings (non-fatal).
+
+    Returns the copy path on success, or None if the copy failed, so
+    callers can record only copies that actually exist on disk.
+    """
     try:
         target = create_symlink(symlink_parent, skill_name, dest)
     except OSError as exc:
         sys.stderr.write(
             f"WARN: skill copy failed ({exc}); canonical install is fine\n"
         )
-    else:
-        sys.stdout.write(f"Copied: {dest} -> {target}\n")
+        return None
+    sys.stdout.write(f"Copied: {dest} -> {target}\n")
+    return target
