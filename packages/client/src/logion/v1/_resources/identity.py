@@ -148,22 +148,27 @@ class IdentityResource:
         *,
         code: str,
         state: str,
+        error: str | None = None,
     ) -> str:
         """Complete the GitHub OAuth callback (GET with query params).
 
         Args:
             code: Authorization code from GitHub.
             state: State token from the authorization request.
+            error: Optional GitHub error code returned by the callback.
 
         Returns:
             HTML body or plain-text response from the callback endpoint.
         """
+        params: dict[str, str] = {"code": code, "state": state}
+        if error is not None:
+            params["error"] = error
         return cast(
             str,
             self._http.request(
                 "GET",
                 "/v1/identity/github/callback",
-                params={"code": code, "state": state},
+                params=params,
             ),
         )
 
@@ -232,4 +237,7 @@ class IdentityResource:
         Returns:
             Raw response dict from the revoke endpoint.
         """
-        return operations.revoke_github_identity(self._http)
+        return cast(
+            dict[str, object],
+            self._http.request("DELETE", "/v1/identity/github"),
+        )

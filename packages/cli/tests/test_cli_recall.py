@@ -122,7 +122,7 @@ class TestRecallSearchBand:
         for entry in data["data"]["matches"]:
             if entry["id"] == "verify-companion":
                 # With rapidfuzz, a strong partial match hits HIGH.
-                # With difflib fallback it may be MEDIUM; accept both.
+                # With difflib fallback it may be MEDIUM or LOW; accept both.
                 assert entry["band"] in {"HIGH", "MEDIUM", "LOW"}
 
     def test_search_band_none_returns_empty_matches(

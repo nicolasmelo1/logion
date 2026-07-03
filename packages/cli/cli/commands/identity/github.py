@@ -66,6 +66,7 @@ def handle_connect(args: argparse.Namespace) -> int:
             )
             status = getattr(result, "status", None)
             if status == "pending":
+                interval = max(getattr(result, "interval", interval), 1)
                 continue
             data = to_data(result)
             if config.json_output:
