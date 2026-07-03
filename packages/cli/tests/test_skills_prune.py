@@ -18,6 +18,8 @@ from cli._local_state import (
     write_manifest,
     write_workflows,
 )
+from cli.commands.skills._agent_copies import record_agent_copy
+from cli.commands.skills._agent_symlink import create_symlink
 from cli.commands.skills.prune import (
     DEFAULT_KEEP,
     InstalledVersionRetention,
@@ -278,6 +280,45 @@ def test_skills_prune_dry_run_does_not_delete(home: Path) -> None:
     for i in range(1, 6):
         version_dir = home / "installed" / COURSE_ID / f"v{i}"
         assert version_dir.exists(), f"v{i} must still exist after dry run"
+
+
+def test_skills_prune_refreshes_recorded_agent_copy(home: Path) -> None:
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    old_dir = _install_version(
+        home,
+        COURSE_ID,
+        "v1",
+        base,
+        content="old copy",
+    )
+    _install_version(
+        home,
+        COURSE_ID,
+        "v2",
+        base + timedelta(days=1),
+        content="new copy",
+    )
+    agent_dir = home / "agent-skills"
+    create_symlink(agent_dir, "retention-test", old_dir)
+    record_agent_copy(
+        home,
+        course_id=COURSE_ID,
+        skill_name="retention-test",
+        target_dir=agent_dir,
+        version_id="v1",
+    )
+
+    rc = handle_skills_prune(
+        _ns(target=home, course_id=COURSE_ID, keep=1, yes=True)
+    )
+
+    assert rc == 0
+    assert not (home / "installed" / COURSE_ID / "v1").exists()
+    assert (agent_dir / "retention-test" / "SKILL.md").read_text(
+        encoding="utf-8"
+    ) == "new copy"
+    records = (home / "agent_copies.json").read_text(encoding="utf-8")
+    assert '"version_id": "v2"' in records
 
 
 def test_skills_prune_rebuilds_index_and_recall_after_delete(

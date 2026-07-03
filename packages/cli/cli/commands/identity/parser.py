@@ -7,6 +7,7 @@ import argparse
 
 from cli._options import COMMON_PARSER
 
+from .github import register_github
 from .handlers import (
     handle_agents_add,
     handle_agents_rotate_key,
@@ -37,6 +38,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
 
     register_onboarding(sub)
+    register_github(sub)
 
     users_create = sub.add_parser(
         "users-create",

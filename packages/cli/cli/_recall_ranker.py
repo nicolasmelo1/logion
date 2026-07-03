@@ -12,6 +12,7 @@ must produce stable (but possibly lower-quality) rankings.
 from __future__ import annotations
 
 import difflib
+import re
 from typing import Any
 
 try:
@@ -32,6 +33,23 @@ def _compute_similarity(query: str, composed: str) -> float:
     if _HAS_RAPIDFUZZ and _rf_fuzz is not None:
         return _rf_fuzz.partial_token_set_ratio(query, composed) / 100.0
     return difflib.SequenceMatcher(None, query, composed).ratio()
+
+
+def _token_similarity(query: str, tokens: list[str]) -> float:
+    """Return token-set overlap similarity in [0, 1]."""
+    q_tokens = {
+        token for token in re.split(r"[^A-Za-z0-9]+", query.lower()) if token
+    }
+    e_tokens: set[str] = set()
+    for token in tokens:
+        e_tokens.update(
+            piece
+            for piece in re.split(r"[^A-Za-z0-9]+", str(token).lower())
+            if piece
+        )
+    if not q_tokens or not e_tokens:
+        return 0.0
+    return len(q_tokens & e_tokens) / len(q_tokens | e_tokens)
 
 
 def _compose_entry_text(entry: dict[str, Any]) -> str:
@@ -62,7 +80,10 @@ def rank(
     scored: list[tuple[float, str, dict[str, Any]]] = []
     for entry in entries:
         composed = _compose_entry_text(entry)
-        similarity = _compute_similarity(q, composed)
+        similarity = max(
+            _compute_similarity(q, composed),
+            _token_similarity(q, list(entry.get("tokens") or [])),
+        )
         if similarity < _MINIMUM_SIMILARITY:
             continue
         entry_id = entry.get("id", "")

@@ -14,6 +14,7 @@ from cli._errors import emit_error_json
 from cli._local_state import UnsafeIdentifierError, _safe_segment
 from cli._output import emit_json
 
+from ._agent_copies import sync_agent_copies
 from ._install_helpers import resolve_target
 from ._prune_engine import (
     DEFAULT_KEEP,
@@ -105,9 +106,20 @@ def handle_skills_prune(args: argparse.Namespace) -> int:
         force_modified=force_modified,
     )
     plan = retention.apply(plan, dry_run=dry_run)
+    refreshed: list[str] = []
+    if not dry_run and plan.remove and plan.keep:
+        latest_kept = max(plan.keep, key=lambda ref: ref.installed_at)
+        refreshed = sync_agent_copies(
+            home,
+            course_id=course_id,
+            version_id=latest_kept.version_id,
+            install_dest=latest_kept.path,
+            skill_name=None,
+        )
 
     payload = _plan_to_dict(plan)
     payload["dry_run"] = dry_run
+    payload["agent_copies_refreshed"] = len(refreshed)
 
     if json_output:
         emit_json("logion.skills.prune", payload)
@@ -124,4 +136,6 @@ def handle_skills_prune(args: argparse.Namespace) -> int:
             print(f"    {ref.version_id}")
     else:
         print("  Nothing to remove.")
+    for target in refreshed:
+        print(f"  Refreshed agent copy: {target}")
     return 0

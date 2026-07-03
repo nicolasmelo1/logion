@@ -505,11 +505,15 @@ def test_taxonomy_suggest_category_order_is_hash_seed_independent(
         "print(','.join(r['category_suggestions']))\n"
     )
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     results: list[str] = []
     for seed in (0, 1, 2, 3, 4):
         env = dict(os.environ)
         env["PYTHONHASHSEED"] = str(seed)
+        env["PYTHONPATH"] = os.pathsep.join([
+            str(repo_root / "packages" / "cli"),
+            str(repo_root / "packages" / "client" / "src"),
+        ])
         proc = subprocess.run(
             [sys.executable, "-c", snippet],
             capture_output=True,

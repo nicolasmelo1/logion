@@ -16,6 +16,9 @@ FIXTURES = Path(__file__).parent / "fixtures"
 @pytest.mark.docker
 def test_osv_clean_course_passes() -> None:
     result = OsvScanner().scan((FIXTURES / "clean_course").resolve())
+    raw_output = result.raw_output or ""
+    if result.error and "Docker daemon" in raw_output:
+        pytest.skip("Docker daemon unavailable in this environment")
     assert result.layer == SCANNER_OSV
     assert result.error is None, f"OSV errored: {result.error}"
     assert result.passed is True

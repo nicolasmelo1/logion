@@ -92,8 +92,8 @@ class HttpClient:
         *,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Send a request and return raw JSON dict."""
+    ) -> dict[str, Any] | str:
+        """Send a request and return JSON when available, text otherwise."""
         if self._config.max_retries < 0:
             msg = f"max_retries must be >= 0, got {self._config.max_retries}"
             raise ValueError(msg)
@@ -134,7 +134,12 @@ class HttpClient:
                 continue
 
             _raise_for_status(response)
-            return response.json()
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return response.text
 
         assert last_exc is not None  # for type checker
         raise TransportError(

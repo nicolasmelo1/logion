@@ -3,13 +3,23 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from logion._http import HttpClient
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     AddAgentToUserRequest,
     AddAgentToUserResponse,
+    AuthorizeRequest,
+    AuthorizeResponse,
     CreateUserWithAgentRequest,
     CreateUserWithAgentResponse,
+    DeviceBeginRequest,
+    DeviceBeginResponse,
+    DevicePollGrantedResponse,
+    DevicePollPendingResponse,
+    DevicePollRequest,
+    GithubIdentityResponse,
     RotateAgentApiKeyRequest,
     RotateAgentApiKeyResponse,
     UserName,
@@ -110,4 +120,124 @@ class IdentityResource:
             user_id=user_id,
             agent_id=agent_id,
             body=body,
+        )
+
+    def begin_github_authorization(
+        self,
+        *,
+        scope_tier: str = "identity",
+        redirect_target: str = "none",
+    ) -> AuthorizeResponse:
+        """Begin the GitHub OAuth authorization flow.
+
+        Args:
+            scope_tier: OAuth scope tier — ``identity`` or ``repo``.
+            redirect_target: Where to redirect after authorization.
+
+        Returns:
+            Response containing the authorize URL and state expiry.
+        """
+        body = AuthorizeRequest(
+            scope_tier=scope_tier,
+            redirect_target=redirect_target,
+        )
+        return operations.begin_github_authorization(self._http, body=body)
+
+    def complete_github_callback(
+        self,
+        *,
+        code: str,
+        state: str,
+        error: str | None = None,
+    ) -> str:
+        """Complete the GitHub OAuth callback (GET with query params).
+
+        Args:
+            code: Authorization code from GitHub.
+            state: State token from the authorization request.
+            error: Optional GitHub error code returned by the callback.
+
+        Returns:
+            HTML body or plain-text response from the callback endpoint.
+        """
+        params: dict[str, str] = {"code": code, "state": state}
+        if error is not None:
+            params["error"] = error
+        return cast(
+            str,
+            self._http.request(
+                "GET",
+                "/v1/identity/github/callback",
+                params=params,
+            ),
+        )
+
+    def begin_github_device_flow(
+        self,
+        *,
+        scope_tier: str = "identity",
+    ) -> DeviceBeginResponse:
+        """Begin the GitHub device flow authorization.
+
+        Args:
+            scope_tier: OAuth scope tier — ``identity`` or ``repo``.
+
+        Returns:
+            Response with device code, user code, and verification URI.
+        """
+        body = DeviceBeginRequest(scope_tier=scope_tier)
+        return operations.begin_github_device_flow(self._http, body=body)
+
+    def poll_github_device_flow(
+        self,
+        *,
+        device_code: str,
+        scope_tier: str = "identity",
+    ) -> DevicePollGrantedResponse | DevicePollPendingResponse:
+        """Poll the GitHub device flow for authorization status.
+
+        Returns ``DevicePollPendingResponse`` while the user has not yet
+        completed authorization, and ``DevicePollGrantedResponse`` once
+        they have.
+
+        Args:
+            device_code: Device code from the begin response.
+            scope_tier: OAuth scope tier — ``identity`` or ``repo``.
+
+        Returns:
+            Granted or pending response depending on authorization state.
+        """
+        body = DevicePollRequest(
+            device_code=device_code,
+            scope_tier=scope_tier,
+        )
+        data = cast(
+            dict[str, Any],
+            self._http.request(
+                "POST",
+                "/v1/identity/github/device/poll",
+                json=body.model_dump(mode="json", exclude_none=True),
+            ),
+        )
+        if data.get("status") == "pending" or "github_login" not in data:
+            return DevicePollPendingResponse.model_validate(data)
+        return DevicePollGrantedResponse.model_validate(data)
+
+    def get_github_identity(self) -> GithubIdentityResponse:
+        """Get the current GitHub identity connection status.
+
+        Returns:
+            Response with connection status, login, and scope tier.
+        """
+        return operations.get_github_identity(self._http)
+
+    def revoke_github_identity(self) -> dict[str, object]:
+        """Revoke the GitHub identity connection.
+
+        Returns:
+            Raw response dict from the revoke endpoint.
+        """
+        return cast(
+            dict[str, object],
+            self._http.request("DELETE", "/v1/identity/github"),
         )

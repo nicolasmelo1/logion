@@ -3,12 +3,18 @@
 
 from __future__ import annotations
 
+import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from landing.main import STATIC_DIR, app
+LANDING_DIR = Path(__file__).resolve().parents[1]
+if str(LANDING_DIR) not in sys.path:
+    sys.path.insert(0, str(LANDING_DIR))
+
+from landing.main import STATIC_DIR, app  # noqa: E402
 
 client = TestClient(app)
 
@@ -39,10 +45,10 @@ def test_health_returns_ok() -> None:
 def test_landing_app_does_not_support_legacy_brand_env() -> None:
     import inspect
 
-    import landing.main
+    import landing.main as landing_main
 
     legacy_brand = "CLA" + "WSERA"
-    assert legacy_brand not in inspect.getsource(landing.main)
+    assert legacy_brand not in inspect.getsource(landing_main)
 
 
 def test_robots_txt_allows_indexing_and_points_to_sitemap() -> None:
