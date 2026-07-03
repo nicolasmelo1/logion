@@ -16,15 +16,20 @@ from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._types.generated.v1 import (
     AddAgentToUserResponse,
+    AuthorizeResponse,
     CreateCourseResponse,
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpResponse,
     CreateUserWithAgentResponse,
+    DeviceBeginResponse,
+    DevicePollGrantedResponse,
+    DevicePollPendingResponse,
     GetCourseResponse,
     GetCourseVersionResponse,
     GetCreatorEarningsResponse,
     GetCreditBalanceResponse,
     GetCreditTopUpResponse,
+    GithubIdentityResponse,
     OnboardingLinkResponse,
     OrderResponse,
     PurchaseCourseResponse,
@@ -399,6 +404,142 @@ class TestIdentityResource:
         )
         json_body = call_args.kwargs["json"]
         assert json_body["user_password"] == "secret123"
+
+    def test_begin_github_authorization(self) -> None:
+        """begin_github_authorization() sends scope_tier and
+        redirect_target."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=AuthorizeResponse)
+        http.request_model.return_value = mock_resp
+        resource = IdentityResource(http)
+        resource.begin_github_authorization(
+            scope_tier="repo",
+            redirect_target="none",
+        )
+        http.request_model.assert_called_once()
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/identity/github/authorize"
+        assert call_args.args[2] == AuthorizeResponse
+        json_body = call_args.kwargs["json"]
+        assert json_body["scope_tier"] == "repo"
+        assert json_body["redirect_target"] == "none"
+
+    def test_begin_github_authorization_defaults(self) -> None:
+        """begin_github_authorization() uses identity scope by default."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=AuthorizeResponse)
+        http.request_model.return_value = mock_resp
+        resource = IdentityResource(http)
+        resource.begin_github_authorization()
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["scope_tier"] == "identity"
+
+    def test_complete_github_callback(self) -> None:
+        """complete_github_callback() sends GET with query params."""
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {"status": "ok"}
+        resource = IdentityResource(http)
+        result = resource.complete_github_callback(
+            code="abc123",
+            state="state-xyz",
+        )
+        assert result == {"status": "ok"}
+        http.request.assert_called_once()
+        call_args = http.request.call_args
+        assert call_args.args[0] == "GET"
+        assert call_args.args[1] == "/v1/identity/github/callback"
+        params = call_args.kwargs["params"]
+        assert params["code"] == "abc123"
+        assert params["state"] == "state-xyz"
+
+    def test_begin_github_device_flow(self) -> None:
+        """begin_github_device_flow() sends POST with scope_tier."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=DeviceBeginResponse)
+        http.request_model.return_value = mock_resp
+        resource = IdentityResource(http)
+        result = resource.begin_github_device_flow(scope_tier="repo")
+        assert result == mock_resp
+        call_args = http.request_model.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/identity/github/device"
+        assert call_args.args[2] == DeviceBeginResponse
+        json_body = call_args.kwargs["json"]
+        assert json_body["scope_tier"] == "repo"
+
+    def test_begin_github_device_flow_default_scope(self) -> None:
+        """begin_github_device_flow() defaults to identity scope."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=DeviceBeginResponse)
+        http.request_model.return_value = mock_resp
+        resource = IdentityResource(http)
+        resource.begin_github_device_flow()
+        call_args = http.request_model.call_args
+        json_body = call_args.kwargs["json"]
+        assert json_body["scope_tier"] == "identity"
+
+    def test_poll_github_device_flow_granted(self) -> None:
+        """poll_github_device_flow() returns granted response when
+        status is not pending."""
+        http = MagicMock(spec=HttpClient)
+        granted_data = {
+            "status": "connected",
+            "github_login": "octocat",
+            "scope_tier": "identity",
+        }
+        http.request.return_value = granted_data
+        resource = IdentityResource(http)
+        result = resource.poll_github_device_flow(
+            device_code="dev-123",
+        )
+        assert isinstance(result, DevicePollGrantedResponse)
+        assert result.github_login == "octocat"
+        call_args = http.request.call_args
+        assert call_args.args[0] == "POST"
+        assert call_args.args[1] == "/v1/identity/github/device/poll"
+        json_body = call_args.kwargs["json"]
+        assert json_body["device_code"] == "dev-123"
+
+    def test_poll_github_device_flow_pending(self) -> None:
+        """poll_github_device_flow() returns pending response when
+        status is pending."""
+        http = MagicMock(spec=HttpClient)
+        pending_data = {"status": "pending", "interval": 5}
+        http.request.return_value = pending_data
+        resource = IdentityResource(http)
+        result = resource.poll_github_device_flow(
+            device_code="dev-123",
+        )
+        assert isinstance(result, DevicePollPendingResponse)
+        assert result.status == "pending"
+
+    def test_get_github_identity(self) -> None:
+        """get_github_identity() calls GET /v1/identity/github."""
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=GithubIdentityResponse)
+        http.request_model.return_value = mock_resp
+        resource = IdentityResource(http)
+        result = resource.get_github_identity()
+        assert result == mock_resp
+        http.request_model.assert_called_once_with(
+            "GET",
+            "/v1/identity/github",
+            GithubIdentityResponse,
+        )
+
+    def test_revoke_github_identity(self) -> None:
+        """revoke_github_identity() calls DELETE /v1/identity/github."""
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {"status": "disconnected"}
+        resource = IdentityResource(http)
+        result = resource.revoke_github_identity()
+        assert result == {"status": "disconnected"}
+        http.request.assert_called_once_with(
+            "DELETE",
+            "/v1/identity/github",
+        )
 
 
 # ---- PaymentsResource ----

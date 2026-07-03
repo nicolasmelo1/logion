@@ -12,6 +12,8 @@ from logion.v1._types.generated.v1 import (
     AddAgentToUserResponse,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
+    AuthorizeRequest,
+    AuthorizeResponse,
     BlockCourseResponse,
     CancelBountyResponse,
     CompleteCourseVersionUploadSessionResponse,
@@ -30,6 +32,10 @@ from logion.v1._types.generated.v1 import (
     CreateReportResponse,
     CreateUserWithAgentRequest,
     CreateUserWithAgentResponse,
+    DeviceBeginRequest,
+    DeviceBeginResponse,
+    DevicePollGrantedResponse,
+    DevicePollRequest,
     DismissReportRequest,
     DismissReportResponse,
     FundBountyResponse,
@@ -53,6 +59,7 @@ from logion.v1._types.generated.v1 import (
     GetReviewStatusResponse,
     GetUnreadCountResponse,
     GetUserDetailResponse,
+    GithubIdentityResponse,
     ListBountiesResponse,
     ListBountySubmissionsResponse,
     ListCourseReviewsResponse,
@@ -860,6 +867,97 @@ def get_credit_top_up(
         "GET",
         f"/v1/credits/top-ups/{top_up_id}",
         GetCreditTopUpResponse,
+    )
+
+
+def revoke_github_identity(
+    http: HttpClient,
+) -> dict[str, Any]:
+    """Call the revoke_github_identity API operation."""
+    return cast(
+        dict[str, Any],
+        http.request(
+            "DELETE",
+            "/v1/identity/github",
+        ),
+    )
+
+
+def get_github_identity(
+    http: HttpClient,
+) -> GithubIdentityResponse:
+    """Call the get_github_identity API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/identity/github",
+        GithubIdentityResponse,
+    )
+
+
+def begin_github_authorization(
+    http: HttpClient,
+    *,
+    body: AuthorizeRequest,
+) -> AuthorizeResponse:
+    """Call the begin_github_authorization API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/identity/github/authorize",
+        AuthorizeResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def complete_github_callback(
+    http: HttpClient,
+    *,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    """Call the complete_github_callback API operation."""
+    params: dict[str, Any] = {}
+    if code is not None:
+        params["code"] = code
+    if state is not None:
+        params["state"] = state
+    if error is not None:
+        params["error"] = error
+    return cast(
+        dict[str, Any],
+        http.request(
+            "GET",
+            "/v1/identity/github/callback",
+            params=params,
+        ),
+    )
+
+
+def begin_github_device_flow(
+    http: HttpClient,
+    *,
+    body: DeviceBeginRequest,
+) -> DeviceBeginResponse:
+    """Call the begin_github_device_flow API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/identity/github/device",
+        DeviceBeginResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def poll_github_device_flow(
+    http: HttpClient,
+    *,
+    body: DevicePollRequest,
+) -> DevicePollGrantedResponse:
+    """Call the poll_github_device_flow API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/identity/github/device/poll",
+        DevicePollGrantedResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

@@ -353,6 +353,41 @@
         "title": "AssetResponse",
         "type": "object"
       },
+      "AuthorizeRequest": {
+        "properties": {
+          "redirect_target": {
+            "default": "none",
+            "title": "Redirect Target",
+            "type": "string"
+          },
+          "scope_tier": {
+            "default": "identity",
+            "title": "Scope Tier",
+            "type": "string"
+          }
+        },
+        "title": "AuthorizeRequest",
+        "type": "object"
+      },
+      "AuthorizeResponse": {
+        "properties": {
+          "authorize_url": {
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "state_expires_at": {
+            "format": "date-time",
+            "title": "State Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url",
+          "state_expires_at"
+        ],
+        "title": "AuthorizeResponse",
+        "type": "object"
+      },
       "BlockCourseResponse": {
         "properties": {
           "course_id": {
@@ -1807,6 +1842,107 @@
           "api_key_prefix"
         ],
         "title": "CreateUserWithAgentResponse",
+        "type": "object"
+      },
+      "DeviceBeginRequest": {
+        "properties": {
+          "scope_tier": {
+            "default": "identity",
+            "title": "Scope Tier",
+            "type": "string"
+          }
+        },
+        "title": "DeviceBeginRequest",
+        "type": "object"
+      },
+      "DeviceBeginResponse": {
+        "properties": {
+          "device_code": {
+            "title": "Device Code",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "integer"
+          },
+          "user_code": {
+            "title": "User Code",
+            "type": "string"
+          },
+          "verification_uri": {
+            "title": "Verification Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_code",
+          "user_code",
+          "verification_uri",
+          "expires_in",
+          "interval"
+        ],
+        "title": "DeviceBeginResponse",
+        "type": "object"
+      },
+      "DevicePollGrantedResponse": {
+        "properties": {
+          "github_login": {
+            "title": "Github Login",
+            "type": "string"
+          },
+          "scope_tier": {
+            "title": "Scope Tier",
+            "type": "string"
+          },
+          "status": {
+            "default": "connected",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "github_login",
+          "scope_tier"
+        ],
+        "title": "DevicePollGrantedResponse",
+        "type": "object"
+      },
+      "DevicePollPendingResponse": {
+        "properties": {
+          "interval": {
+            "default": 5,
+            "title": "Interval",
+            "type": "integer"
+          },
+          "status": {
+            "default": "pending",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "DevicePollPendingResponse",
+        "type": "object"
+      },
+      "DevicePollRequest": {
+        "properties": {
+          "device_code": {
+            "title": "Device Code",
+            "type": "string"
+          },
+          "scope_tier": {
+            "default": "identity",
+            "title": "Scope Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_code"
+        ],
+        "title": "DevicePollRequest",
         "type": "object"
       },
       "DismissReportRequest": {
@@ -3774,6 +3910,64 @@
           "updated_at"
         ],
         "title": "GetUserDetailResponse",
+        "type": "object"
+      },
+      "GithubIdentityResponse": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "github_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Login"
+          },
+          "scope_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Tier"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "GithubIdentityResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -11508,6 +11702,451 @@
         "summary": "Get credit top-up",
         "tags": [
           "credits"
+        ]
+      }
+    },
+    "/v1/identity/github": {
+      "delete": {
+        "operationId": "revoke_github_identity",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Revoke GitHub identity",
+        "tags": [
+          "identity"
+        ]
+      },
+      "get": {
+        "operationId": "get_github_identity",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Get GitHub identity status",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/identity/github/authorize": {
+      "post": {
+        "operationId": "begin_github_authorization",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Begin GitHub OAuth web flow",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/identity/github/callback": {
+      "get": {
+        "operationId": "complete_github_callback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "State",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid state"
+          },
+          "409": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "GitHub OAuth web callback",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/identity/github/device": {
+      "post": {
+        "operationId": "begin_github_device_flow",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceBeginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceBeginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Begin GitHub device flow",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/identity/github/device/poll": {
+      "post": {
+        "operationId": "poll_github_device_flow",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePollGrantedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePollPendingResponse"
+                }
+              }
+            },
+            "description": "Authorization pending"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Poll GitHub device flow",
+        "tags": [
+          "identity"
         ]
       }
     },
