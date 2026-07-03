@@ -10,10 +10,13 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json, handle_error, print_err
 from cli._output import emit_json, to_data
+from logion import APIError
 
 _CONNECT_KIND = "logion.identity.github.connect"
 _STATUS_KIND = "logion.identity.github.status"
 _DISCONNECT_KIND = "logion.identity.github.disconnect"
+_MAX_DEVICE_FLOW_EXPIRES_IN_S = 900
+_MAX_DEVICE_FLOW_SLEEP_S = 30
 
 
 def _require_yes(yes: bool, action: str, json_output: bool) -> int | None:
@@ -28,6 +31,35 @@ def _require_yes(yes: bool, action: str, json_output: bool) -> int | None:
     return 2
 
 
+def _detail_text(detail: str | list[dict[str, object]]) -> str:
+    if isinstance(detail, list):
+        return "; ".join(str(item) for item in detail)
+    return str(detail)
+
+
+def _api_error_code(exc: APIError) -> str:
+    detail_text = _detail_text(exc.detail).lower()
+    if exc.status_code == 401:
+        return "auth_missing"
+    if "github_oauth_unconfigured" in detail_text or exc.status_code == 503:
+        return "github_oauth_unconfigured"
+    if "github_identity_conflict" in detail_text or exc.status_code == 409:
+        return "github_identity_conflict"
+    if exc.status_code == 404:
+        return "not_found"
+    if exc.status_code == 422:
+        return "validation_failed"
+    return "server_error"
+
+
+def _handle_api_error(exc: APIError, json_output: bool) -> int:
+    if json_output:
+        emit_error_json(_api_error_code(exc), _detail_text(exc.detail), 1)
+    else:
+        return handle_error(exc)
+    return 1
+
+
 def handle_connect(args: argparse.Namespace) -> int:
     """Execute ``identity github connect`` via device flow."""
     config = resolve_config_from_args(args)
@@ -40,7 +72,9 @@ def handle_connect(args: argparse.Namespace) -> int:
         verification_uri = begin.verification_uri
         device_code = begin.device_code
         interval = max(begin.interval, 1)
-        expires_in = begin.expires_in
+        expires_in = min(
+            max(begin.expires_in, 1), _MAX_DEVICE_FLOW_EXPIRES_IN_S
+        )
 
         if config.json_output:
             emit_json(
@@ -59,7 +93,10 @@ def handle_connect(args: argparse.Namespace) -> int:
 
         deadline = time.monotonic() + expires_in
         while time.monotonic() < deadline:
-            time.sleep(interval)
+            remaining = max(deadline - time.monotonic(), 0.0)
+            sleep_for = min(interval, remaining, _MAX_DEVICE_FLOW_SLEEP_S)
+            if sleep_for > 0:
+                time.sleep(sleep_for)
             result = client.v1.identity.poll_github_device_flow(
                 device_code=device_code,
                 scope_tier=args.scope_tier,
@@ -84,6 +121,8 @@ def handle_connect(args: argparse.Namespace) -> int:
             )
         else:
             print_err("Device flow timed out before authorization completed.")
+    except APIError as exc:
+        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -108,6 +147,8 @@ def handle_status(args: argparse.Namespace) -> int:
                 print(f"Connected as @{login}")
             else:
                 print("Not connected")
+    except APIError as exc:
+        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -134,6 +175,8 @@ def handle_disconnect(args: argparse.Namespace) -> int:
             emit_json(_DISCONNECT_KIND, data)
         else:
             print("GitHub identity disconnected.")
+    except APIError as exc:
+        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
         return handle_error(exc)
     else:
