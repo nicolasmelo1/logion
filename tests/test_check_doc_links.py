@@ -10,6 +10,9 @@ import sys
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SCRIPT = os.path.join(REPO_ROOT, "scripts", "check_doc_links.py")
+LOGION_URL_SCRIPT = os.path.join(
+    REPO_ROOT, "scripts", "check_logion_sh_urls.py"
+)
 
 
 def test_real_repo_doc_links_resolve() -> None:
@@ -58,3 +61,16 @@ def test_external_links_are_ignored(tmp_path) -> None:  # type: ignore[no-untype
         cwd=fake,
     )
     assert result.returncode == 0, result.stdout
+
+
+def test_real_repo_logion_sh_urls_are_known() -> None:
+    """Every committed logion.sh URL must point at a known public route."""
+    result = subprocess.run(
+        [sys.executable, LOGION_URL_SCRIPT],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    assert result.returncode == 0, (
+        f"Unknown logion.sh URLs:\n{result.stdout}\n{result.stderr}"
+    )

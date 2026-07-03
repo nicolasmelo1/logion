@@ -34,6 +34,7 @@ def _installer_command(script: Path, args: argparse.Namespace) -> list[str]:
         "--channel",
         args.channel,
         "--no-onboarding",
+        "--update",
     ]
     if args.version:
         command.extend(["--version", args.version])

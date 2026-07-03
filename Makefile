@@ -8,7 +8,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links \
-	check-skip-reasons check-forbidden-imports check-cli-http \
+	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security \
 	update-generated-lock update-deps-lock \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
@@ -77,6 +77,9 @@ check-deps-lock:
 check-doc-links:
 	uv run python scripts/check_doc_links.py
 
+check-logion-sh-urls:
+	uv run python scripts/check_logion_sh_urls.py
+
 check-skip-reasons:
 	uv run python scripts/check_pytest_skip_reasons.py
 
@@ -93,8 +96,8 @@ check-installer-security:
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
 ci-checks: public-audit check-generated-lock check-root-files check-deps-lock \
-	check-doc-links check-skip-reasons check-forbidden-imports check-cli-http \
-	check-installer-security
+	check-doc-links check-logion-sh-urls check-skip-reasons \
+	check-forbidden-imports check-cli-http check-installer-security
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update
