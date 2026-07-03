@@ -798,7 +798,8 @@ function Print-NextSteps {
         Write-Host "Your agent is ready to use Logion."
     }
     Write-Host ""
-    Write-Host "Documentation: https://logion.sh/docs"
+    Write-Host "Docs: logion docs"
+    Write-Host "Ask your agent with the /logion skill for guided help."
     Write-Host "If 'logion' is not found, open a new terminal or add ~/.local/bin to PATH."
     Write-Host "Report issues:  https://github.com/nicolasmelo1/logion/issues"
     Write-Host ""

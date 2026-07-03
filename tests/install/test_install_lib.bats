@@ -172,6 +172,29 @@ PIPX
     sed -n '2p' "${WORK}/pipx-calls.log" | grep -F "install --force logion-cli==0.1.4 --pip-args=--no-cache-dir"
 }
 
+@test "install_cli prints deterministic logion entrypoint only" {
+    mkdir -p "${WORK}/bin"
+    cat > "${WORK}/bin/pipx" <<PIPX
+#!/bin/sh
+printf '%s\n' "\$*" >> "${WORK}/pipx-calls.log"
+if [ "\$1" = "install" ]; then
+    printf '  These apps are now available\n'
+    printf '    - lgn\n'
+    printf '    - logion\n'
+fi
+exit 0
+PIPX
+    chmod +x "${WORK}/bin/pipx"
+
+    LOGION_INSTALL_RETRIES=1
+    PATH="${WORK}/bin:${PATH}" run install_cli "0.1.4" "pipx"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Available command:"* ]]
+    [[ "$output" == *"  logion"* ]]
+    [[ "$output" != *"lgn"* ]]
+}
+
 @test "install_cli retries transient pipx resolver misses" {
     mkdir -p "${WORK}/bin"
     cat > "${WORK}/bin/pipx" <<PIPX

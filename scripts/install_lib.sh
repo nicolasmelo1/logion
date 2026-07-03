@@ -123,6 +123,7 @@ parse_args() {
     INSTALL_NO_MODIFY_PATH=0
     INSTALL_NO_ONBOARDING=0
     INSTALL_ONBOARDING_FAILED=0
+    INSTALL_IS_UPDATE=0
     INSTALL_QUIET=0
     INSTALL_VERBOSE=0
 
@@ -197,6 +198,11 @@ parse_args() {
                 INSTALL_NO_ONBOARDING=1
                 shift
                 ;;
+            --update)
+                INSTALL_IS_UPDATE=1
+                INSTALL_NO_ONBOARDING=1
+                shift
+                ;;
             --quiet|-q)
                 INSTALL_QUIET=1
                 shift
@@ -256,7 +262,7 @@ parse_args() {
 
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_ONBOARDING_FAILED INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_ONBOARDING_FAILED INSTALL_IS_UPDATE INSTALL_QUIET INSTALL_VERBOSE
 }
 
 # --- resolve_url helper -----------------------------------------------------
@@ -609,6 +615,35 @@ run_with_retries() {
     done
 }
 
+# --- CLI entrypoints --------------------------------------------------------
+
+cli_entrypoints() {
+    if command -v python3 >/dev/null 2>&1 && [ -f "packages/cli/pyproject.toml" ]; then
+        python3 - <<'PY' 2>/dev/null
+import pathlib
+import tomllib
+
+data = tomllib.loads(pathlib.Path("packages/cli/pyproject.toml").read_text())
+for name in sorted(data.get("project", {}).get("scripts", {})):
+    print(name)
+PY
+        return 0
+    fi
+    printf 'logion\n'
+}
+
+print_cli_entrypoints() {
+    _entrypoints="$(cli_entrypoints)"
+    if [ -z "$_entrypoints" ]; then
+        _entrypoints="logion"
+    fi
+    info "Available command:"
+    printf '%s\n' "$_entrypoints" | while IFS= read -r _entrypoint; do
+        [ -n "$_entrypoint" ] || continue
+        info "  $_entrypoint"
+    done
+}
+
 # --- CLI installation -------------------------------------------------------
 
 # install_cli <version> <installer>
@@ -632,8 +667,11 @@ install_cli() {
             # Clear any previous logion-cli install first so reruns are
             # idempotent instead of failing on an existing venv.
             pipx uninstall logion-cli >/dev/null 2>&1 || true
+            _pipx_log="${INSTALL_TMPDIR:-/tmp}/logion-pipx-install.log"
+            # shellcheck disable=SC2016 # $1/$2 are expanded inside sh -c.
             if ! run_with_retries "pipx install logion-cli==$_version" \
-                pipx install --force "logion-cli==$_version" --pip-args="--no-cache-dir"; then
+                sh -c 'pipx install --force "$1" --pip-args="--no-cache-dir" >"$2" 2>&1' sh "logion-cli==$_version" "$_pipx_log"; then
+                cat "$_pipx_log" >&2 2>/dev/null || true
                 die 8 "pipx install logion-cli==$_version failed"
             fi
             ;;
@@ -641,8 +679,11 @@ install_cli() {
             if ! command -v uv >/dev/null 2>&1; then
                 die 4 "uv not found"
             fi
+            _uv_log="${INSTALL_TMPDIR:-/tmp}/logion-uv-tool-install.log"
+            # shellcheck disable=SC2016 # $1/$2 are expanded inside sh -c.
             if ! run_with_retries "uv tool install logion-cli==$_version" \
-                uv tool install "logion-cli==$_version" --force; then
+                sh -c 'uv tool install "$1" --force >"$2" 2>&1' sh "logion-cli==$_version" "$_uv_log"; then
+                cat "$_uv_log" >&2 2>/dev/null || true
                 die 8 "uv tool install logion-cli==$_version failed"
             fi
             ;;
@@ -674,6 +715,7 @@ install_cli() {
     esac
 
     info "logion-cli==$_version installed successfully"
+    print_cli_entrypoints
 }
 
 # --- Companion installation -------------------------------------------------
@@ -943,13 +985,23 @@ run_onboarding() {
 
 print_next_steps() {
     info ""
-    if [ "${INSTALL_CLI_ONLY}" = "1" ]; then
+    if [ "${INSTALL_IS_UPDATE}" = "1" ]; then
+        if [ "${INSTALL_CLI_ONLY}" = "1" ]; then
+            info "✅ Logion updated (CLI only)."
+        else
+            info "✅ Logion updated (CLI + companion)."
+        fi
+    elif [ "${INSTALL_CLI_ONLY}" = "1" ]; then
         info "✅ Logion installed (CLI only)."
     else
         info "✅ Logion installed (CLI + companion)."
     fi
     info ""
-    if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
+    if [ "${INSTALL_IS_UPDATE}" = "1" ]; then
+        info "Docs are bundled with the CLI:"
+        info "  logion docs"
+        info "Ask your agent with the /logion skill for guided help."
+    elif [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
         info "Onboarding skipped (--no-onboarding). Run 'logion onboarding' to finish setup."
     elif [ "${INSTALL_ONBOARDING_FAILED}" = 1 ] || [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
         info "Finish setup so your agent can use Logion:"
@@ -958,6 +1010,6 @@ print_next_steps() {
         info "Your agent is ready to use Logion."
     fi
     info ""
-    info "Docs: https://logion.sh/docs"
+    info "Docs: logion docs"
     info "You may need to open a new terminal for PATH changes to take effect."
 }

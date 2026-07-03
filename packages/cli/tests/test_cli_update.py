@@ -28,6 +28,7 @@ def test_update_installer_command_defaults_to_latest_no_onboarding() -> None:
         "--channel",
         "latest",
         "--no-onboarding",
+        "--update",
     ]
     assert "--cli-only" not in command
     assert "--skill-only" not in command
@@ -86,6 +87,7 @@ def test_update_installer_command_forwards_options() -> None:
         "--channel",
         "stable",
         "--no-onboarding",
+        "--update",
         "--version",
         "0.1.3",
         "--installer",

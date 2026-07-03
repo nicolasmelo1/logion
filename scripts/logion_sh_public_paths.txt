@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+#
+# Public paths that may be referenced as https://logion.sh/<path>.
+# Keep this list in sync with packages/landing/landing/main.py and the
+# installer/release assets served from the landing app.
+/
+/credits-terms
+/design.txt
+/favicon.ico
+/health
+/install.ps1
+/install.sh
+/install_lib.ps1
+/install_lib.sh
+/llms-full.txt
+/llms.txt
+/pricing
+/privacy
+/referrals-terms
+/releases
+/robots.txt
+/sitemap.xml
+/terms
+/releases/manifest-latest.json
+/releases/manifest-stable.json
+/releases/manifest-*
+/schemas/release-manifest/v1.json
+/static
+/static/*
