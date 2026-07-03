@@ -67,6 +67,28 @@ class TestCreditsResource:
         assert call_args.args[2] == CreateCreditTopUpResponse
         assert call_args.kwargs["json"]["amount_cents"] == 1000
 
+    def test_create_top_up_default_includes_usd_currency(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreateCreditTopUpResponse)
+        http.request_model.return_value = mock_resp
+        resource = CreditsResource(http)
+
+        resource.create_top_up(amount_cents=1000)
+
+        call_args = http.request_model.call_args
+        assert call_args.kwargs["json"]["currency"] == "usd"
+
+    def test_create_top_up_forwards_non_default_currency(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        mock_resp = MagicMock(spec=CreateCreditTopUpResponse)
+        http.request_model.return_value = mock_resp
+        resource = CreditsResource(http)
+
+        resource.create_top_up(amount_cents=1000, currency="brl")
+
+        call_args = http.request_model.call_args
+        assert call_args.kwargs["json"]["currency"] == "brl"
+
     def test_get_top_up_accepts_uuid_string(self) -> None:
         http = MagicMock(spec=HttpClient)
         mock_resp = MagicMock(spec=GetCreditTopUpResponse)

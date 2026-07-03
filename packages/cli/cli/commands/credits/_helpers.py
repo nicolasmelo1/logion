@@ -80,10 +80,14 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
         f"credit_cents_granted: {payload.get('credit_cents_granted')}",
     ]
     charge_ccy = payload.get("charge_currency")
-    charge_amt = payload.get("charge_amount_cents")
-    if charge_ccy is not None and charge_amt is not None and charge_ccy != "usd":
+    charge_amt = payload.get("charge_amount_minor")
+    if (
+        charge_ccy is not None
+        and charge_amt is not None
+        and charge_ccy.lower() != "usd"
+    ):
         lines.append(f"charge_currency: {charge_ccy}")
-        lines.append(f"charge_amount_cents: {charge_amt}")
+        lines.append(f"charge_amount_minor: {charge_amt}")
     if payload.get("checkout_url"):
         lines.append(f"checkout_url: {payload.get('checkout_url')}")
     if payload.get("stripe_checkout_session_id"):

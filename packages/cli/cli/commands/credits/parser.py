@@ -52,10 +52,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--currency",
         dest="currency",
         default="usd",
+        type=lambda v: v.lower().strip(),
         help=(
-            "Charge currency (ISO 4217). Default: usd. "
-            "When not usd, the charge is converted at the current "
-            "exchange rate; credits are always granted in USD."
+            "Charge currency (ISO 4217, case-insensitive). "
+            "Default: usd. When not usd, the charge is converted "
+            "at the current exchange rate; credits are always "
+            "granted in USD."
         ),
     )
     top_up.add_argument(
