@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fake executable that reports failure.
+read -r _prompt
+printf '%s\n' "RESULT: failed"
+exit 1

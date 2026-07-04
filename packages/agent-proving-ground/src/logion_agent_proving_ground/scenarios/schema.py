@@ -24,8 +24,8 @@ class AgentSpec(BaseModel):
     devrig_role: str | None = None
     env: dict[str, str] = Field(default_factory=dict)
     system_prompt: str | None = None
-    max_turns: int = Field(default=40, ge=1)
     timeout_seconds: int = Field(default=900, ge=1)
+    command: list[str] | None = None
 
     @field_validator("id", "workspace")
     @classmethod
@@ -82,6 +82,7 @@ class ScenarioSpec(BaseModel):
     name: str
     description: str
     api_adapter: str = "mock"
+    driver_config: dict = Field(default_factory=dict)
     agents: list[AgentSpec]
     phases: list[PhaseSpec]
     final_assertions: list[AssertionSpec] = Field(default_factory=list)

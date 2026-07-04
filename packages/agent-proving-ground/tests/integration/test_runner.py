@@ -7,7 +7,6 @@ import pytest
 from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
 from logion_agent_proving_ground.artifacts import ArtifactStore
 from logion_agent_proving_ground.assertions.registry import AssertionRegistry
-from logion_agent_proving_ground.drivers.scripted import ScriptedDriver
 from logion_agent_proving_ground.runner import (
     AgentDriverFactory,
     ScenarioRunner,
@@ -21,9 +20,9 @@ def runner_factory(tmp_path):
     def _make(scenario_source, operations=None):
         scenario = load_scenario(scenario_source)
         api = MockApiAdapter()
-        drivers = AgentDriverFactory({
-            "scripted": lambda: ScriptedDriver(operations=operations or {})
-        })
+        drivers = AgentDriverFactory(
+            scenario.driver_config, scripted_operations=operations or {}
+        )
         artifacts = ArtifactStore(tmp_path)
         timeline = Timeline(tmp_path / "timeline.jsonl")
         return ScenarioRunner(
