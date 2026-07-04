@@ -11,6 +11,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security \
 	update-generated-lock update-deps-lock \
+	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test agent-proving-ground-verify \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
@@ -185,7 +186,20 @@ social-test:
 social-arch:
 	uv run pytest packages/social-management/tests/test_social_architecture.py -q --no-header
 
-bootstrap:
+# ── agent-proving-ground package targets ───────────────────────
+agent-proving-ground-lint:
+	uv run ruff check packages/agent-proving-ground/
+	uv run ruff format --check packages/agent-proving-ground/
+
+agent-proving-ground-typecheck:
+	uv run mypy --config-file packages/agent-proving-ground/pyproject.toml packages/agent-proving-ground/src
+
+agent-proving-ground-test:
+	uv run pytest packages/agent-proving-ground/tests/ -q --no-header
+
+agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test
+
+bootstrap: install-hooks
 	uv sync --all-packages --all-groups
 	uv run python scripts/devrig.py bootstrap
 

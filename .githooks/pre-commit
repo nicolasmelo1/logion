@@ -89,6 +89,15 @@ if [ -n "${npm_staged}" ]; then
 	)
 fi
 
+# ── agent-proving-ground checks — keep the package strongly typed and tested.
+# Only run when files under packages/agent-proving-ground/** are staged.
+agent_pg_staged="$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^packages/agent-proving-ground/' || true)"
+if [ -n "${agent_pg_staged}" ]; then
+	echo "agent-proving-ground files staged — running package verification..."
+	make agent-proving-ground-verify
+fi
+
 # ── social-management checks — only run when files under
 # packages/social-management/** are staged, so the hook stays fast
 # for changes to other packages.
