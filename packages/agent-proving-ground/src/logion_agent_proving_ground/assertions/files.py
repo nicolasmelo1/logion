@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from logion_agent_proving_ground.artifacts import resolve_artifact_path
 from logion_agent_proving_ground.assertions.base import (
     Assertion,
     AssertionContext,
@@ -21,7 +22,15 @@ class FileExistsAssertion(Assertion):
                 message="missing path parameter",
                 evidence=params,
             )
-        target = ctx.artifacts_dir / path
+        try:
+            target = resolve_artifact_path(ctx.artifacts_dir, path)
+        except ValueError as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=str(exc),
+                evidence={"path": path},
+            )
         if target.exists():
             return AssertionOutcome(
                 type=self.type,

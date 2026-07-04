@@ -52,6 +52,7 @@ class ScenarioRunner:
         assertions: AssertionRegistry,
         timeline: Timeline,
         runs_root: Path | None = None,
+        run_id: str | None = None,
     ) -> None:
         self.scenario = scenario
         self.api = api
@@ -61,7 +62,7 @@ class ScenarioRunner:
         self.timeline = timeline
         self.runs_root = runs_root or DEFAULT_RUNS_ROOT
         self.started_at = utc_now_iso()
-        self.run_id = self._make_run_id()
+        self.run_id = run_id or self._make_run_id()
         self._agents: dict[str, AgentDriver] = {}
 
     def _make_run_id(self) -> str:
@@ -69,6 +70,9 @@ class ScenarioRunner:
         return f"{ts[:15]}-{self.scenario.name}"
 
     async def run(self) -> ScenarioResult:
+        result: ScenarioResult | None = None
+        phase_results: list[dict] = []
+        all_assertion_results: list[AssertionOutcome] = []
         self.timeline.event(
             "run.started", run_id=self.run_id, scenario=self.scenario.name
         )
@@ -82,8 +86,6 @@ class ScenarioRunner:
             )
             self.timeline.event("world.created", world_base_url=world.base_url)
             await self._start_agents(world)
-            phase_results: list[dict] = []
-            all_assertion_results: list[AssertionOutcome] = []
             for phase in self.scenario.phases:
                 phase_result = await self._run_phase(phase, world)
                 phase_results.append(phase_result)
@@ -93,34 +95,33 @@ class ScenarioRunner:
                     for a in phase_assertions
                 ])
                 if phase_result["status"] != "completed":
-                    return self._result(
+                    result = self._result(
                         status="failed",
                         failure_message=phase_result.get(
                             "message", "phase failed"
                         ),
+                        assertion_results=all_assertion_results,
+                        phase_results=phase_results,
                     )
-            final_assertion_results = await self._run_assertions(
-                self.scenario.final_assertions,
-                world,
-                phase_id=None,
-            )
-            all_assertion_results.extend(final_assertion_results)
-            self.artifacts.write_json(
-                "assertions.json",
-                [r.model_dump(mode="json") for r in all_assertion_results],
-            )
-            failed = [
-                a for a in final_assertion_results if a.status == "failed"
-            ]
-            run_status: Literal["passed", "failed"] = (
-                "failed" if failed else "passed"
-            )
-            result = self._result(
-                status=run_status,
-                assertion_results=final_assertion_results,
-                phase_results=phase_results,
-            )
-            self._write_report(result, all_assertion_results)
+                    break
+            if result is None:
+                final_assertion_results = await self._run_assertions(
+                    self.scenario.final_assertions,
+                    world,
+                    phase_id=None,
+                )
+                all_assertion_results.extend(final_assertion_results)
+                failed = [
+                    a for a in final_assertion_results if a.status == "failed"
+                ]
+                run_status: Literal["passed", "failed"] = (
+                    "failed" if failed else "passed"
+                )
+                result = self._result(
+                    status=run_status,
+                    assertion_results=all_assertion_results,
+                    phase_results=phase_results,
+                )
         except AssertionFailure as exc:
             result = self._result(status="failed", failure_message=str(exc))
         except InconclusiveRun as exc:
@@ -128,11 +129,26 @@ class ScenarioRunner:
                 status="inconclusive", failure_message=str(exc)
             )
         finally:
+            if result is None:
+                result = self._result(
+                    status="inconclusive",
+                    failure_message="run did not produce a result",
+                )
+            self.artifacts.write_json(
+                "assertions.json",
+                [r.model_dump(mode="json") for r in all_assertion_results],
+            )
+            self._write_report(result)
+            self.timeline.event(
+                "run.completed",
+                run_id=self.run_id,
+                status=result.status,
+            )
             await self._stop_agents()
             await self.api.stop()
             await self.artifacts.flush()
             await self.timeline.flush()
-            self.timeline.event("run.completed", run_id=self.run_id)
+            self.timeline.close()
         return result
 
     async def _start_agents(self, world: World) -> None:
@@ -294,11 +310,7 @@ class ScenarioRunner:
             failure_message=failure_message,
         )
 
-    def _write_report(
-        self,
-        result: ScenarioResult,
-        assertion_results: list[AssertionOutcome],
-    ) -> None:
+    def _write_report(self, result: ScenarioResult) -> None:
         report = {
             "run_id": result.run_id,
             "scenario": result.scenario,
@@ -309,7 +321,7 @@ class ScenarioRunner:
             "finished_at": result.finished_at,
             "phase_results": result.phase_results,
             "assertion_results": [
-                a.model_dump(mode="json") for a in assertion_results
+                a.model_dump(mode="json") for a in result.assertion_results
             ],
             "failure_message": result.failure_message,
         }

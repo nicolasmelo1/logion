@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
@@ -46,6 +48,13 @@ async def test_skill_report_contract_passes(runner_factory, tmp_path) -> None:
     result = await runner.run()
     assert result.status == "passed"
     assert (tmp_path / "assertions-final.json").exists()
+    timeline_lines = (
+        (tmp_path / "timeline.jsonl")
+        .read_text(encoding="utf-8")
+        .strip()
+        .splitlines()
+    )
+    assert json.loads(timeline_lines[-1])["type"] == "run.completed"
 
 
 async def test_missing_usage_report_fails(runner_factory) -> None:

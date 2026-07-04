@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -15,25 +14,6 @@ class World(BaseModel):
     agent_env: dict[str, dict[str, str]] = Field(default_factory=dict)
     handles: dict[str, str] = Field(default_factory=dict)
     data: dict = Field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class AgentLaunch:
-    run_id: str
-    agent_id: str
-    role: str
-    workspace: Path
-    env: dict[str, str]
-    system_prompt: str | None
-    timeout_seconds: int
-
-
-@dataclass(frozen=True)
-class AgentTurnResult:
-    status: Literal["completed", "failed", "inconclusive", "timed_out"]
-    transcript_path: Path
-    summary: str | None = None
-    raw_exit_code: int | None = None
 
 
 class AssertionOutcome(BaseModel):

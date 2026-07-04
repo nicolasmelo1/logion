@@ -19,9 +19,8 @@ workflow?*
 
 ## What this package does **not** ship
 
-This phase intentionally does not ship real agent drivers (Codex, Claude,
-opencode, etc.) or adapters that talk to the private backend. Those land in
-Phase 18.2 and later.
+This package does not yet ship real agent drivers (Codex, Claude,
+opencode, etc.) or adapters that talk to the private backend.
 
 Real release proof requires real agent drivers. The `mock`/`scripted` path is
 only for contributor development and scenario authoring.
@@ -72,7 +71,8 @@ final_assertions:
 ```
 
 Public contributors can add scenarios without private API access. Local
-maintainers can run stronger adapters with DB/log assertions in later phases.
+maintainers can run stronger adapters with DB/log assertions in follow-up
+work.
 
 ## Project structure
 

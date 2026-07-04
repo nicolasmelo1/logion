@@ -93,6 +93,7 @@ async def _cmd_run(args: argparse.Namespace) -> int:
         artifacts=artifacts,
         assertions=AssertionRegistry(),
         timeline=timeline,
+        run_id=run_id,
     )
     result = await runner.run()
     artifacts.write_json("run.json", result.model_dump(mode="json"))

@@ -40,7 +40,7 @@ class ScriptedDriver(AgentDriver):
         ops = self._operations.get(phase_id, [])
         status: Literal["completed", "failed"] = "completed"
         lines = [
-            f"# Phase {phase_id}\n",
+            f"# Step {phase_id}\n",
             "Received goal:",
             goal,
             "",
@@ -64,7 +64,7 @@ class ScriptedDriver(AgentDriver):
         return AgentTurnResult(
             status=status,
             transcript_path=self._transcript,
-            summary=f"completed phase {phase_id}",
+            summary=f"completed step {phase_id}",
             raw_exit_code=0,
         )
 

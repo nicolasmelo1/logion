@@ -47,9 +47,7 @@ class ArtifactStore:
         return path
 
     def _resolve(self, relative: str) -> Path:
-        if ".." in Path(relative).parts:
-            raise ValueError(f"path traversal rejected: {relative}")
-        return self.root / relative
+        return resolve_artifact_path(self.root, relative)
 
     async def flush(self) -> None:
         pass
@@ -87,3 +85,10 @@ def _json_default(value: Any) -> Any:
     raise TypeError(
         f"Object of type {type(value).__name__} is not JSON serializable"
     )
+
+
+def resolve_artifact_path(root: Path, relative: str) -> Path:
+    candidate = Path(relative)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise ValueError(f"path traversal rejected: {relative}")
+    return root / candidate

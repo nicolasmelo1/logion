@@ -114,22 +114,6 @@ class ScenarioSpec(BaseModel):
         return self
 
 
-SUPPORTED_ASSERTION_TYPES = frozenset({
-    "api.course_exists",
-    "api.purchase_exists",
-    "api.review_exists",
-    "api.usage_report_exists",
-    "api.bounty_exists",
-    "api.bounty_submission_exists",
-    "api.bounty_accepted",
-    "api.no_double_credit_debit",
-    "api.credit_balance_changed",
-    "api.course_remains_purchasable",
-    "timeline.no_unredacted_secret",
-    "files.exists",
-})
-
-
 def validate_assertions(_spec: ScenarioSpec) -> None:
     """Assertion types are resolved at runtime.
 
