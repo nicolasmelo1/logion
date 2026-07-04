@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,10 @@ from logion_agent_proving_ground.timeline import Timeline
 
 
 class AgentDriverFactory:
-    def __init__(self, drivers: dict[str, AgentDriver]) -> None:
+    def __init__(
+        self,
+        drivers: dict[str, Callable[[], AgentDriver]],
+    ) -> None:
         self._drivers = drivers
 
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
@@ -39,7 +43,7 @@ class AgentDriverFactory:
             raise InconclusiveRun(
                 f"unknown driver {name} for agent {agent_id}"
             )
-        return self._drivers[name]
+        return self._drivers[name]()
 
 
 class ScenarioRunner:

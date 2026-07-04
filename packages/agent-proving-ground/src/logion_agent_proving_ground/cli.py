@@ -156,7 +156,7 @@ def _build_api_adapter(name: str) -> MockApiAdapter:
 def _build_driver_factory(name: str) -> AgentDriverFactory:
     if name != "scripted":
         raise ValueError(f"unsupported agent driver: {name}")
-    return AgentDriverFactory({"scripted": ScriptedDriver()})
+    return AgentDriverFactory({"scripted": ScriptedDriver})
 
 
 def _print_report(result: ScenarioResult) -> None:

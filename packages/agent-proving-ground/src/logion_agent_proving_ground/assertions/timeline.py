@@ -5,7 +5,7 @@ from logion_agent_proving_ground.assertions.base import (
     AssertionContext,
     AssertionOutcome,
 )
-from logion_agent_proving_ground.redaction import _API_KEY_RE, _BEARER_RE
+from logion_agent_proving_ground.redaction import redact_text
 
 
 class TimelineNoUnredactedSecretAssertion(Assertion):
@@ -26,7 +26,7 @@ class TimelineNoUnredactedSecretAssertion(Assertion):
             )
         text = timeline_path.read_text(encoding="utf-8")
         for line in text.splitlines():
-            if _BEARER_RE.search(line) or _API_KEY_RE.search(line):
+            if redact_text(line) != line:
                 return AssertionOutcome(
                     type=self.type,
                     status="failed",

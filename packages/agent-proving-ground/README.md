@@ -39,8 +39,8 @@ logion-agent-proving-ground run builtin:skill_report_contract \
   --api-adapter mock \
   --agent-driver scripted
 
-# inspect the latest run report
-logion-agent-proving-ground report .runs/proving-ground/latest
+# inspect a run report (use the artifact_root printed by `run`)
+logion-agent-proving-ground report .runs/proving-ground/<run-id>
 ```
 
 ## Authoring scenarios

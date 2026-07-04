@@ -22,7 +22,7 @@ def runner_factory(tmp_path):
         scenario = load_scenario(scenario_source)
         api = MockApiAdapter()
         drivers = AgentDriverFactory({
-            "scripted": ScriptedDriver(operations=operations or {})
+            "scripted": lambda: ScriptedDriver(operations=operations or {})
         })
         artifacts = ArtifactStore(tmp_path)
         timeline = Timeline(tmp_path / "timeline.jsonl")
@@ -114,3 +114,52 @@ phases:
     runner = runner_factory(str(scenario_path))
     result = await runner.run()
     assert result.status == "passed"
+
+
+async def test_multi_agent_scenario_uses_isolated_driver_instances(
+    runner_factory,
+    tmp_path,
+) -> None:
+    text = """
+schema_version: "1"
+name: multi_agent_isolation
+description: test
+api_adapter: mock
+agents:
+  - id: learner
+    role: learner
+    driver: scripted
+  - id: reviewer
+    role: reviewer
+    driver: scripted
+phases:
+  - id: learner_step
+    actor: learner
+    goal: learner goal
+  - id: reviewer_step
+    actor: reviewer
+    goal: reviewer goal
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+    runner = runner_factory(
+        str(scenario_path),
+        operations={
+            "learner_step": ["draft answer"],
+            "reviewer_step": ["review answer"],
+        },
+    )
+
+    result = await runner.run()
+
+    assert result.status == "passed"
+    learner_transcript = (
+        tmp_path / "agents" / "learner" / "workspace" / "transcript.md"
+    ).read_text(encoding="utf-8")
+    reviewer_transcript = (
+        tmp_path / "agents" / "reviewer" / "workspace" / "transcript.md"
+    ).read_text(encoding="utf-8")
+    assert "learner goal" in learner_transcript
+    assert "reviewer goal" not in learner_transcript
+    assert "reviewer goal" in reviewer_transcript
+    assert "learner goal" not in reviewer_transcript
