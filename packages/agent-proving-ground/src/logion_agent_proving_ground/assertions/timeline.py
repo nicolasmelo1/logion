@@ -26,11 +26,13 @@ class TimelineNoUnredactedSecretAssertion(Assertion):
             )
         text = timeline_path.read_text(encoding="utf-8")
         for line in text.splitlines():
+            redacted = redact_text(line)
+            if redacted != line:
                 return AssertionOutcome(
                     type=self.type,
                     status="failed",
                     message="timeline contains unredacted secret-like value",
-                    evidence={"line": redact_text(line)[:200]},
+                    evidence={"line": redacted[:200]},
                 )
         return AssertionOutcome(
             type=self.type,

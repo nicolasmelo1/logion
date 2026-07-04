@@ -159,8 +159,9 @@ class ScenarioRunner:
         env_by_agent: dict[str, dict[str, str]] = {}
         for agent_spec in self.scenario.agents:
             driver = self.driver_factory.get(agent_spec.id, agent_spec)
+            workspace_name = agent_spec.workspace or "workspace"
             workspace = self.artifacts.mkdir(
-                f"agents/{agent_spec.id}/workspace"
+                f"agents/{agent_spec.id}/{workspace_name}"
             )
             env = {**agent_spec.env, **world.agent_env.get(agent_spec.id, {})}
             env_by_agent[agent_spec.id] = env

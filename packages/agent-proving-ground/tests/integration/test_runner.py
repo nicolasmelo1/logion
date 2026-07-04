@@ -129,6 +129,7 @@ agents:
   - id: learner
     role: learner
     driver: scripted
+    workspace: drafts
   - id: reviewer
     role: reviewer
     driver: scripted
@@ -154,7 +155,7 @@ phases:
 
     assert result.status == "passed"
     learner_transcript = (
-        tmp_path / "agents" / "learner" / "workspace" / "transcript.md"
+        tmp_path / "agents" / "learner" / "drafts" / "transcript.md"
     ).read_text(encoding="utf-8")
     reviewer_transcript = (
         tmp_path / "agents" / "reviewer" / "workspace" / "transcript.md"

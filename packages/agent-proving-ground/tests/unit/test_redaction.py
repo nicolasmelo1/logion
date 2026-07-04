@@ -56,4 +56,10 @@ async def test_timeline_secret_assertion_detects_any_redactable_secret(
 
     assert outcome.status == "failed"
     assert "unredacted secret-like value" in outcome.message
+    assert outcome.evidence == {
+        "line": (
+            '{"type":"agent.turn.completed","summary":"github_token='
+            '<redacted>"}'
+        )
+    }
     ctx.timeline.close()

@@ -143,7 +143,7 @@ def _scenario_source(source: str) -> str:
 
         return (
             BUILTIN_SCENARIOS_ROOT / f"{source[len('builtin:') :]}.yaml"
-        ).read_text()
+        ).read_text(encoding="utf-8")
     return Path(source).read_text(encoding="utf-8")
 
 
