@@ -7,244 +7,147 @@ from logion_agent_proving_ground.assertions.base import (
 )
 
 
-class CourseExistsAssertion(Assertion):
+class _ApiQueryAssertion(Assertion):
+    """Shared evaluate loop for API-observed-effect assertions.
+
+    Subclasses declare the query type, the result key that proves the
+    effect, and pass/fail messages. Adapter capability gaps (query result
+    carries ``unsupported``) surface as ``unsupported`` outcomes so the
+    runner can apply the optional/required policy.
+    """
+
+    type = ""
+    query_type = ""
+    found_key = "found"
+    evidence_keys: tuple[str, ...] = ()
+    pass_message = ""  # nosec B105 - assertion copy, not a password.
+    fail_message = ""
+    # When True the assertion passes if the found_key value is falsy.
+    invert = False
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        result = await ctx.api.query(
+            ctx.world, {"type": self.query_type, **params}
+        )
+        if result.get("unsupported"):
+            return AssertionOutcome(
+                type=self.type,
+                status="unsupported",
+                message=result.get(
+                    "reason", f"adapter does not support {self.query_type}"
+                ),
+                evidence={},
+            )
+        observed = bool(result.get(self.found_key))
+        passed = (not observed) if self.invert else observed
+        evidence = {
+            key: result.get(key)
+            for key in self.evidence_keys
+            if result.get(key) is not None
+        }
+        if result.get("evidence"):
+            evidence["query_evidence"] = result["evidence"]
+        if passed:
+            return AssertionOutcome(
+                type=self.type,
+                status="passed",
+                message=self.pass_message,
+                evidence=evidence,
+            )
+        return AssertionOutcome(
+            type=self.type,
+            status="failed",
+            message=self.fail_message,
+            evidence={**params, **evidence},
+        )
+
+
+class CourseExistsAssertion(_ApiQueryAssertion):
     type = "api.course_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "course_exists", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="course exists",
-                evidence={"course_id": result.get("course_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching course found",
-            evidence=params,
-        )
+    query_type = "course_exists"
+    evidence_keys = ("course_id",)
+    pass_message = "course exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching course found"
 
 
-class PurchaseExistsAssertion(Assertion):
+class PurchaseExistsAssertion(_ApiQueryAssertion):
     type = "api.purchase_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "purchase_exists", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="purchase exists",
-                evidence={"purchase_id": result.get("purchase_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching purchase found",
-            evidence=params,
-        )
+    query_type = "purchase_exists"
+    evidence_keys = ("purchase_id",)
+    pass_message = "purchase exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching purchase found"
 
 
-class ReviewExistsAssertion(Assertion):
+class ReviewExistsAssertion(_ApiQueryAssertion):
     type = "api.review_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "review_exists", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="review exists",
-                evidence={"review_id": result.get("review_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching review found",
-            evidence=params,
-        )
+    query_type = "review_exists"
+    evidence_keys = ("review_id",)
+    pass_message = "review exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching review found"
 
 
-class UsageReportExistsAssertion(Assertion):
+class UsageReportExistsAssertion(_ApiQueryAssertion):
     type = "api.usage_report_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "usage_report_exists", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="usage report exists",
-                evidence={"report_id": result.get("report_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching usage report found",
-            evidence=params,
-        )
+    query_type = "usage_report_exists"
+    evidence_keys = ("report_id",)
+    pass_message = "usage report exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching usage report found"
 
 
-class BountyExistsAssertion(Assertion):
+class BountyExistsAssertion(_ApiQueryAssertion):
     type = "api.bounty_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "bounty_exists", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="bounty exists",
-                evidence={"bounty_id": result.get("bounty_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching bounty found",
-            evidence=params,
-        )
+    query_type = "bounty_exists"
+    evidence_keys = ("bounty_id",)
+    pass_message = "bounty exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching bounty found"
 
 
-class BountySubmissionExistsAssertion(Assertion):
+class BountySubmissionExistsAssertion(_ApiQueryAssertion):
     type = "api.bounty_submission_exists"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world,
-            {"type": "bounty_submission_exists", **params},
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="bounty submission exists",
-                evidence={"submission_id": result.get("submission_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no matching bounty submission found",
-            evidence=params,
-        )
+    query_type = "bounty_submission_exists"
+    evidence_keys = ("submission_id",)
+    pass_message = "bounty submission exists"  # nosec B105 - assertion copy.
+    fail_message = "no matching bounty submission found"
 
 
-class BountyAcceptedAssertion(Assertion):
+class BountyAcceptedAssertion(_ApiQueryAssertion):
     type = "api.bounty_accepted"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "bounty_accepted", **params}
-        )
-        if result.get("found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="bounty submission accepted",
-                evidence={"submission_id": result.get("submission_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no accepted bounty submission found",
-            evidence=params,
-        )
+    query_type = "bounty_accepted"
+    evidence_keys = ("submission_id", "bounty_id")
+    pass_message = "bounty submission accepted"  # nosec B105 - assertion copy.
+    fail_message = "no accepted bounty submission found"
 
 
-class CreditBalanceChangedAssertion(Assertion):
+class CreditBalanceChangedAssertion(_ApiQueryAssertion):
     type = "api.credit_balance_changed"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world, {"type": "credit_balance_changed", **params}
-        )
-        if result.get("changed"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="credit balance changed",
-                evidence={},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="credit balance did not change",
-            evidence=params,
-        )
+    query_type = "credit_balance_changed"
+    found_key = "changed"
+    pass_message = "credit balance changed"  # nosec B105 - assertion copy.
+    fail_message = "credit balance did not change"
 
 
-class NoDoubleCreditDebitAssertion(Assertion):
+class NoDoubleCreditDebitAssertion(_ApiQueryAssertion):
     type = "api.no_double_credit_debit"
-
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world,
-            {"type": "no_double_credit_debit", **params},
-        )
-        if not result.get("double_debit_found"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="no double credit debit found",
-                evidence={},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="double credit debit detected",
-            evidence=params,
-        )
+    query_type = "no_double_credit_debit"
+    found_key = "double_debit_found"
+    invert = True
+    pass_message = "no double credit debit found"  # nosec B105 - assertion copy.
+    fail_message = "double credit debit detected"
 
 
-class CourseRemainsPurchasableAssertion(Assertion):
+class CourseRemainsPurchasableAssertion(_ApiQueryAssertion):
     type = "api.course_remains_purchasable"
+    query_type = "course_remains_purchasable"
+    found_key = "purchasable"
+    evidence_keys = ("course_id",)
+    pass_message = "course remains purchasable"  # nosec B105 - assertion copy.
+    fail_message = "no published purchasable course found"
 
-    async def evaluate(
-        self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
-        result = await ctx.api.query(
-            ctx.world,
-            {"type": "course_remains_purchasable", **params},
-        )
-        if result.get("purchasable"):
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="course remains purchasable",
-                evidence={"course_id": result.get("course_id")},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="failed",
-            message="no published purchasable course found",
-            evidence=params,
-        )
+
+class AdminStateObservedAssertion(_ApiQueryAssertion):
+    type = "api.admin_state_observed"
+    query_type = "admin_state_observed"
+    pass_message = "admin/operator view observed consistent state"  # nosec B105
+    fail_message = "admin state could not be observed"

@@ -70,6 +70,7 @@ class MockLedgerEntry(BaseModel):
     user_id: str
     amount_cents: int
     kind: str
+    reference: str | None = None
 
 
 class MockWorldState(BaseModel):
@@ -212,7 +213,43 @@ class MockApiAdapter(ApiAdapter):
                     return {"found": True, "submission_id": sub.id}
                 return {"found": False}
             case "no_double_credit_debit":
-                return {"double_debit_found": False}
+                seen: dict[tuple[str, str, str], int] = {}
+                for entry in self._state.ledger:
+                    if entry.kind != "course_purchase_debit":
+                        continue
+                    marker = (
+                        entry.user_id,
+                        entry.kind,
+                        entry.reference or "",
+                    )
+                    seen[marker] = seen.get(marker, 0) + 1
+                duplicates = [
+                    {"user_id": m[0], "reference": m[2], "count": count}
+                    for m, count in seen.items()
+                    if count > 1
+                ]
+                return {
+                    "double_debit_found": bool(duplicates),
+                    "duplicates": duplicates,
+                }
+            case "admin_state_observed":
+                owner = query.get("course_owner_agent")
+                buyer = query.get("buyer_agent")
+                owner_course_seen = any(
+                    course.owner_agent_id == f"agent_{owner}"
+                    for course in self._state.courses.values()
+                )
+                buyer_purchase_seen = any(
+                    purchase.buyer_agent_id == f"agent_{buyer}"
+                    for purchase in self._state.purchases
+                )
+                return {
+                    "found": owner_course_seen and buyer_purchase_seen,
+                    "evidence": {
+                        "owner_course_seen": owner_course_seen,
+                        "buyer_purchase_seen": buyer_purchase_seen,
+                    },
+                }
             case "credit_balance_changed":
                 return {"changed": True}
             case "course_remains_purchasable":
@@ -223,7 +260,7 @@ class MockApiAdapter(ApiAdapter):
             case _:
                 return {"error": "unknown query type"}
 
-    def record_operation(
+    def record_operation(  # noqa: C901
         self, agent_id: str, operation: str, **kwargs: Any
     ) -> None:
         if operation == "create_usage_report":
@@ -249,6 +286,48 @@ class MockApiAdapter(ApiAdapter):
                 price_cents=kwargs.get("price_cents", 0),
                 version="v1",
             )
+        elif operation == "purchase_course":
+            course_id = kwargs.get("course_id")
+            if course_id is None:
+                published = [
+                    c
+                    for c in self._state.courses.values()
+                    if c.status == "published"
+                ]
+                course_id = published[0].id if published else "course_fixture"
+            course = self._state.courses.get(course_id)
+            price = kwargs.get(
+                "price_cents", course.price_cents if course else 0
+            )
+            self._state.purchases.append(
+                MockPurchase(
+                    id=f"purchase_{len(self._state.purchases)}",
+                    buyer_agent_id=f"agent_{agent_id}",
+                    course_id=course_id,
+                    price_cents=price,
+                )
+            )
+            self._state.ledger.append(
+                MockLedgerEntry(
+                    id=f"ledger_{len(self._state.ledger)}",
+                    user_id=f"user_{agent_id}",
+                    amount_cents=-price,
+                    kind="course_purchase_debit",
+                    reference=course_id,
+                )
+            )
+        elif operation == "create_review":
+            course_id = kwargs.get("course_id", "course_fixture")
+            course = self._state.courses.get(course_id)
+            self._state.reviews.append(
+                MockReview(
+                    id=f"review_{len(self._state.reviews)}",
+                    course_id=course_id,
+                    course_version=course.version if course else "v1",
+                    reviewer_agent_id=f"agent_{agent_id}",
+                    rating=kwargs.get("rating", 5),
+                )
+            )
         elif operation == "create_bounty":
             bounty_id = kwargs.get(
                 "bounty_id", f"bounty_{len(self._state.bounties)}"
@@ -272,10 +351,17 @@ class MockApiAdapter(ApiAdapter):
                     )
                 )
         elif operation == "accept_bounty_submission":
+            bounty_id = kwargs.get("bounty_id")
             for sub in self._state.bounty_submissions:
-                if sub.submitter_agent_id == f"agent_{agent_id}":
-                    sub.status = "accepted"
-                    break
+                if bounty_id and sub.bounty_id != bounty_id:
+                    continue
+                bounty = self._state.bounties.get(sub.bounty_id)
+                if bounty is None:
+                    continue
+                if bounty.creator_agent_id != f"agent_{agent_id}":
+                    continue
+                sub.status = "accepted"
+                break
 
     async def stop(self) -> None:
         pass

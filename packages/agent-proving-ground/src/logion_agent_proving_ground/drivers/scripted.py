@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from logion_agent_proving_ground.drivers.base import (
     AgentDriver,
@@ -9,12 +10,20 @@ from logion_agent_proving_ground.drivers.base import (
     AgentTurnResult,
 )
 
+ScriptedOperation = str | dict[str, Any]
+ApplyOperation = Callable[[str, str, dict[str, Any]], None]
+
 
 class ScriptedDriver(AgentDriver):
     name = "scripted"
 
-    def __init__(self, operations: dict[str, list[str]] | None = None) -> None:
+    def __init__(
+        self,
+        operations: dict[str, list[ScriptedOperation]] | None = None,
+        apply_operation: ApplyOperation | None = None,
+    ) -> None:
         self._operations = operations or {}
+        self._apply_operation = apply_operation
         self._launch: AgentLaunch | None = None
         self._transcript: Path | None = None
 
@@ -50,7 +59,16 @@ class ScriptedDriver(AgentDriver):
         if ops:
             lines.append("Actions:")
             for op in ops:
-                lines.append(f"- {op}")
+                if isinstance(op, dict):
+                    name = str(op.get("operation", ""))
+                    params = dict(op.get("params", {}))
+                    if name and self._apply_operation is not None:
+                        self._apply_operation(
+                            self._launch.agent_id, name, params
+                        )
+                    lines.append(f"- {name} {params}")
+                else:
+                    lines.append(f"- {op}")
         else:
             lines.append("Actions: none")
         lines.append("")

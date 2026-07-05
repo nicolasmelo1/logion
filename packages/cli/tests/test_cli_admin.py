@@ -89,8 +89,9 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
 # ── Visibility gating ─────────────────────────────────────────────
 
 
-def test_admin_hidden_by_default() -> None:
+def test_admin_hidden_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Without LOGION_ENABLE_ADMIN, admin subcommand exits with code 2."""
+    monkeypatch.delenv("LOGION_ENABLE_ADMIN", raising=False)
     code = main(["admin"])
     assert code == 2
 

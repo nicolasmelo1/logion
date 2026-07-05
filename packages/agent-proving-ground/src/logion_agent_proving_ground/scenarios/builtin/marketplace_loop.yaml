@@ -1,0 +1,104 @@
+schema_version: "1"
+name: marketplace_loop
+description: Full creator/learner marketplace loop.
+api_adapter: local-devrig
+
+agents:
+  - id: creator
+    role: Course creator and bounty sponsor
+    driver: codex
+    workspace: creator
+    devrig_role: seller
+    timeout_seconds: 1800
+  - id: learner
+    role: Course buyer, reviewer, and bounty contributor
+    driver: codex
+    workspace: learner
+    devrig_role: buyer
+    timeout_seconds: 1800
+  - id: operator
+    role: Admin/operator reviewer
+    driver: codex
+    workspace: operator
+    devrig_role: admin
+    timeout_seconds: 1200
+
+phases:
+  - id: creator_publishes_course
+    actor: creator
+    goal: |
+      I want to publish a small, useful course on Logion that teaches a
+      concrete CLI workflow. Keep it tiny, but make it real enough for
+      another agent to use. Submit it for publication.
+    assertions:
+      - type: api.course_exists
+        params: {owner_agent: creator}
+
+  - id: admin_approves_publication
+    actor: operator
+    goal: |
+      A course publication is waiting in the Logion review queue. Review
+      the pending course publication and approve it if it looks safe and
+      complete, or reject it with a reason if not.
+    assertions:
+      - type: api.course_exists
+        params: {owner_agent: creator, status: published}
+
+  - id: learner_buys_uses_reviews
+    actor: learner
+    goal: |
+      I want to buy the CLI workflow course on Logion, use it for a tiny
+      task, and leave usage feedback or a review when I finish.
+    assertions:
+      - type: api.purchase_exists
+        params: {buyer_agent: learner}
+      - type: api.usage_report_exists
+        params: {agent: learner}
+      - type: api.review_exists
+        params: {reviewer_agent: learner}
+
+  - id: creator_opens_bounty
+    actor: creator
+    goal: |
+      I want to open a bounded bounty on my Logion course asking for one
+      practical exercise to be added.
+    assertions:
+      - type: api.bounty_exists
+        params: {creator_agent: creator, status: open}
+
+  - id: learner_submits_bounty_work
+    actor: learner
+    goal: |
+      I want to claim the bounty on the CLI workflow course, add the
+      requested practical exercise, and submit the work for review.
+    assertions:
+      - type: api.bounty_submission_exists
+        params: {submitter_agent: learner}
+
+  - id: creator_accepts_bounty
+    actor: creator
+    goal: |
+      I want to review the bounty submission on my Logion course and
+      approve it if it satisfies the requested exercise.
+    assertions:
+      - type: api.bounty_accepted
+        params: {creator_agent: creator, submitter_agent: learner}
+
+  - id: admin_reviews_marketplace_state
+    actor: operator
+    goal: |
+      I want to check the Logion admin/operator view for this course,
+      purchase, review, bounty, submission, and approval flow, then flag
+      any inconsistent marketplace state.
+    assertions:
+      - type: api.admin_state_observed
+        params: {course_owner_agent: creator, buyer_agent: learner}
+
+final_assertions:
+  - type: api.no_double_credit_debit
+  - type: api.course_remains_purchasable
+  - type: logs.no_500s
+    optional: true
+  - type: db.exact_credit_ledger
+    optional: true
+  - type: timeline.no_unredacted_secret

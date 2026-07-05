@@ -69,8 +69,9 @@ def test_update_appears_in_help(
     assert "update" in capsys.readouterr().out
 
 
-def test_admin_hidden_by_default() -> None:
+def test_admin_hidden_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """admin subcommand exits 2 without LOGION_ENABLE_ADMIN."""
+    monkeypatch.delenv("LOGION_ENABLE_ADMIN", raising=False)
     code = main(["admin"])
     assert code == 2
 

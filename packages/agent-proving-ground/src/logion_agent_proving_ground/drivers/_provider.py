@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 from typing import Any, ClassVar
 
@@ -53,10 +54,14 @@ class ProviderDriver(AgentDriver):
 
         command = [executable, *self._effective_args()]
         transcript_path = self._launch.workspace / f"{phase_id}.md"
+        # Real provider CLIs need the invoking user's environment (HOME,
+        # PATH, provider auth config); the scenario/adapter env wins on
+        # conflicts.
+        env = {**os.environ, **self._launch.env}
         self._session = ChildProcessSession(
             command=command,
             cwd=self._launch.workspace,
-            env=self._launch.env,
+            env=env,
             transcript_path=transcript_path,
             timeout_seconds=timeout_seconds,
         )

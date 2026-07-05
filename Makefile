@@ -12,6 +12,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	check-installer-security \
 	update-generated-lock update-deps-lock \
 	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test agent-proving-ground-verify \
+	agent-proving-ground-smoke agent-proving-ground-release \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
 	install-sh-lint install-sh-test install-ps1-lint install-ps1-test install-test \
@@ -198,6 +199,26 @@ agent-proving-ground-test:
 	uv run pytest packages/agent-proving-ground/tests/ -q --no-header
 
 agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test
+
+# Real-agent proving-ground runs. Preconditions:
+#   make dev-up MODE=mock|prod ROLE=...   (writes .devrig/devrig.env)
+#   make doctor AGENT=...
+# Override the driver with LOGION_PROVING_GROUND_AGENT_DRIVER=opencode etc.
+LOGION_PROVING_GROUND_AGENT_DRIVER ?= codex
+
+agent-proving-ground-smoke:
+	uv run logion-agent-proving-ground run builtin:skill_report_contract \
+		--api-adapter local-devrig \
+		--devrig-root $(ROOT) \
+		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
+		--out .runs/proving-ground/smoke
+
+agent-proving-ground-release:
+	uv run logion-agent-proving-ground run builtin:marketplace_loop \
+		--api-adapter local-devrig \
+		--devrig-root $(ROOT) \
+		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
+		--out .runs/proving-ground/release
 
 bootstrap: install-hooks
 	uv sync --all-packages --all-groups

@@ -16,6 +16,10 @@ from logion_agent_proving_ground.api_adapters._http import (
     HealthCheckError,
     health_check_endpoint,
 )
+from logion_agent_proving_ground.api_adapters._queries import (
+    LogionApiQueries,
+    RoleKeyStore,
+)
 from logion_agent_proving_ground.api_adapters.base import ApiAdapter, World
 
 
@@ -46,11 +50,16 @@ class LocalDevrigAdapter(ApiAdapter):
             else self._root / ".devrig" / "prism.log"
         )
         self._base_env: dict[str, str] = {}
+        self._queries: LogionApiQueries | None = None
 
     async def start(self) -> None:
         self._base_env = parse_export_env_file(self._env_path)
         validate_devrig_env(self._base_env, label=str(self._env_path))
         await health_check_endpoint(self._base_env["LOGION_API_BASE_URL"])
+        self._queries = LogionApiQueries(
+            self._base_env["LOGION_API_BASE_URL"],
+            RoleKeyStore.from_env(self._base_env),
+        )
 
     async def create_world(
         self,
@@ -63,12 +72,21 @@ class LocalDevrigAdapter(ApiAdapter):
             self._base_env = parse_export_env_file(self._env_path)
             validate_devrig_env(self._base_env, label=str(self._env_path))
 
+        role_keys = RoleKeyStore.from_env(self._base_env)
         agent_env: dict[str, dict[str, str]] = {}
         for agent_id in agent_ids:
             role = (agent_roles or {}).get(agent_id)
-            agent_env[agent_id] = build_devrig_env_for_agent(
+            env = build_devrig_env_for_agent(
                 self._base_env, agent_id, role, run_id
             )
+            api_key = role_keys.api_key(env.get("LOGION_DEVRIG_ROLE"))
+            if api_key:
+                env["LOGION_API_KEY"] = api_key
+            agent_env[agent_id] = env
+        baseline = {}
+        if self._queries is not None and self._queries.configured:
+            baseline = await self._queries.baseline(agent_roles or {})
+
         return World(
             run_id=run_id,
             base_url=self._base_env["LOGION_API_BASE_URL"],
@@ -79,6 +97,7 @@ class LocalDevrigAdapter(ApiAdapter):
                 "devrig_env": env_file_description(self._base_env),
                 "api_log_present": self._api_log_path.is_file(),
                 "agent_roles": agent_roles or {},
+                "baseline": baseline,
             },
         )
 
@@ -96,7 +115,7 @@ class LocalDevrigAdapter(ApiAdapter):
 
     async def query(
         self,
-        world: World,  # noqa: ARG002
+        world: World,
         query: dict[str, Any],
     ) -> dict[str, Any]:
         query_type = query.get("type")
@@ -113,12 +132,22 @@ class LocalDevrigAdapter(ApiAdapter):
                 "found": self._api_log_path.is_file(),
                 "path": str(self._api_log_path),
             }
+        if self._queries is not None and self._queries.configured:
+            agent_roles = world.data.get("agent_roles") or {}
+            query_with_baseline = {
+                **query,
+                "_baseline": world.data.get("baseline") or {},
+            }
+            return await self._queries.query(
+                query_with_baseline, dict(agent_roles)
+            )
         return {
             "found": False,
             "unsupported": True,
             "reason": (
-                "local-devrig adapter does not implement this query; "
-                "use a DB/log observer assertion if configured"
+                "local-devrig adapter has no proving-ground API keys; "
+                "set LOGION_PROVING_GROUND_ROLE_KEYS_FILE or LOGION_API_KEY "
+                "to enable observed-effect queries"
             ),
         }
 
