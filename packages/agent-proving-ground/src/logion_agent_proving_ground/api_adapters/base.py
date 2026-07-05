@@ -15,6 +15,7 @@ class ApiAdapter(Protocol):
         run_id: str,
         scenario_name: str,
         agent_ids: list[str],
+        agent_roles: dict[str, str] | None = None,
     ) -> World: ...
 
     async def snapshot(self, world: World) -> dict[str, Any]: ...

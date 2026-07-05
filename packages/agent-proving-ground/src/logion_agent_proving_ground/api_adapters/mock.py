@@ -101,7 +101,9 @@ class MockApiAdapter(ApiAdapter):
         run_id: str,
         scenario_name: str,
         agent_ids: list[str],
+        agent_roles: dict[str, str] | None = None,
     ) -> World:
+        agent_roles = agent_roles or {}
         for agent_id in agent_ids:
             user = MockUser(
                 id=f"user_{agent_id}", email=f"{agent_id}@example.test"
@@ -125,7 +127,10 @@ class MockApiAdapter(ApiAdapter):
             root_dir=Path(),
             agent_env={aid: {} for aid in agent_ids},
             handles={aid: f"agent_{aid}" for aid in agent_ids},
-            data={"state": self._state.model_dump(mode="json")},
+            data={
+                "state": self._state.model_dump(mode="json"),
+                "agent_roles": agent_roles,
+            },
         )
 
     async def snapshot(self, world: World) -> dict[str, Any]:  # noqa: ARG002
