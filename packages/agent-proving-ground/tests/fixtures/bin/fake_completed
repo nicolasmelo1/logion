@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fake executable that reports success.
+read -r _prompt
+printf '%s\n' "RESULT: completed"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import shutil
 import sys
 from datetime import UTC
 from pathlib import Path
@@ -10,7 +11,6 @@ from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
 from logion_agent_proving_ground.artifacts import ArtifactStore
 from logion_agent_proving_ground.assertions.registry import AssertionRegistry
 from logion_agent_proving_ground.config import DEFAULT_RUNS_ROOT
-from logion_agent_proving_ground.drivers.scripted import ScriptedDriver
 from logion_agent_proving_ground.models import ScenarioResult
 from logion_agent_proving_ground.runner import (
     AgentDriverFactory,
@@ -21,6 +21,14 @@ from logion_agent_proving_ground.scenarios.loader import (
     load_scenario,
 )
 from logion_agent_proving_ground.timeline import Timeline
+
+_DRIVER_CHOICES = [
+    "scripted",
+    "local-process",
+    "opencode",
+    "codex",
+    "claude-code",
+]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,7 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd.add_argument("scenario", help="scenario file or builtin:NAME")
     run_cmd.add_argument("--api-adapter", default="mock", choices=["mock"])
     run_cmd.add_argument(
-        "--agent-driver", default="scripted", choices=["scripted"]
+        "--agent-driver",
+        default="scripted",
+        choices=_DRIVER_CHOICES,
     )
     run_cmd.add_argument("--out", help="artifact directory")
     run_cmd.set_defaults(func=_cmd_run)
@@ -84,7 +94,7 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     artifacts.write_text("scenario.yaml", _scenario_source(args.scenario))
 
     api = _build_api_adapter(args.api_adapter)
-    drivers = _build_driver_factory(args.agent_driver)
+    drivers = _build_driver_factory(scenario.driver_config, args.agent_driver)
     timeline = Timeline(artifacts.root / "timeline.jsonl")
     runner = ScenarioRunner(
         scenario=scenario,
@@ -126,7 +136,19 @@ async def _cmd_report(args: argparse.Namespace) -> int:
 
 async def _cmd_doctor(_args: argparse.Namespace) -> int:
     print("doctor: mock/scripted path available")
-    print("doctor: real drivers and remote adapters are not implemented yet")
+    executables = {
+        "local-process": None,
+        "opencode": "opencode",
+        "codex": "codex",
+        "claude-code": "claude",
+    }
+    for driver, executable in executables.items():
+        if executable is None:
+            print(f"doctor: {driver} requires a scenario agent command")
+            continue
+        path = shutil.which(executable)
+        status = f"available at {path}" if path else "not found"
+        print(f"doctor: {driver} ({executable}) {status}")
     return 0
 
 
@@ -153,10 +175,13 @@ def _build_api_adapter(name: str) -> MockApiAdapter:
     return MockApiAdapter()
 
 
-def _build_driver_factory(name: str) -> AgentDriverFactory:
-    if name != "scripted":
-        raise ValueError(f"unsupported agent driver: {name}")
-    return AgentDriverFactory({"scripted": ScriptedDriver})
+def _build_driver_factory(
+    driver_config: dict, override: str
+) -> AgentDriverFactory:
+    return AgentDriverFactory(
+        driver_config,
+        default_driver=override if override else "scripted",
+    )
 
 
 def _print_report(result: ScenarioResult) -> None:

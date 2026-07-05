@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fake executable that exits 0 without a result marker.
+read -r _prompt
+printf '%s\n' "some output without marker"

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fake executable that sleeps longer than any reasonable test timeout.
+read -r _prompt
+sleep 60
+printf '%s\n' "RESULT: completed"

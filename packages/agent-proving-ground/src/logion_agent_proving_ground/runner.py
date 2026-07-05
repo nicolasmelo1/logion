@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from logion_agent_proving_ground.api_adapters.base import ApiAdapter
 from logion_agent_proving_ground.artifacts import ArtifactStore
@@ -16,7 +15,16 @@ from logion_agent_proving_ground.config import (
     AssertionFailure,
     InconclusiveRun,
 )
+from logion_agent_proving_ground.drivers._provider import (
+    ClaudeCodeDriver,
+    CodexDriver,
+    OpencodeDriver,
+)
 from logion_agent_proving_ground.drivers.base import AgentDriver, AgentLaunch
+from logion_agent_proving_ground.drivers.local_process import (
+    LocalProcessDriver,
+)
+from logion_agent_proving_ground.drivers.scripted import ScriptedDriver
 from logion_agent_proving_ground.models import (
     ScenarioResult,
     World,
@@ -29,21 +37,47 @@ from logion_agent_proving_ground.scenarios.schema import (
 )
 from logion_agent_proving_ground.timeline import Timeline
 
+_DRIVER_CLASSES: dict[str, type[AgentDriver]] = {
+    "scripted": ScriptedDriver,
+    "local-process": LocalProcessDriver,
+    "opencode": OpencodeDriver,
+    "codex": CodexDriver,
+    "claude-code": ClaudeCodeDriver,
+}
+
 
 class AgentDriverFactory:
     def __init__(
         self,
-        drivers: dict[str, Callable[[], AgentDriver]],
+        driver_config: dict[str, Any],
+        *,
+        scripted_operations: dict[str, list[str]] | None = None,
+        default_driver: str = "scripted",
     ) -> None:
-        self._drivers = drivers
+        self._driver_config = driver_config
+        self._scripted_operations = scripted_operations
+        self._default_driver = default_driver
 
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
-        name = spec.driver or "scripted"
-        if name not in self._drivers:
+        name = spec.driver or self._default_driver
+        cls = _DRIVER_CLASSES.get(name)
+        if cls is None:
             raise InconclusiveRun(
                 f"unknown driver {name} for agent {agent_id}"
             )
-        return self._drivers[name]()
+        if name == "local-process":
+            return LocalProcessDriver(
+                command=list(spec.command) if spec.command else None
+            )
+        if name == "scripted":
+            return ScriptedDriver(operations=self._scripted_operations)
+        if name in {"opencode", "codex", "claude-code"}:
+            if name == "opencode":
+                return OpencodeDriver(driver_config=self._driver_config)
+            if name == "codex":
+                return CodexDriver(driver_config=self._driver_config)
+            return ClaudeCodeDriver(driver_config=self._driver_config)
+        return cls()
 
 
 class ScenarioRunner:
