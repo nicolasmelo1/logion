@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from logion_agent_proving_ground.assertions.api import (
+    AdminStateObservedAssertion,
     BountyAcceptedAssertion,
     BountyExistsAssertion,
     BountySubmissionExistsAssertion,
@@ -49,6 +50,7 @@ class AssertionRegistry:
             CreditBalanceChangedAssertion,
             NoDoubleCreditDebitAssertion,
             CourseRemainsPurchasableAssertion,
+            AdminStateObservedAssertion,
             TimelineNoUnredactedSecretAssertion,
             FileExistsAssertion,
             LogsNo500sAssertion,

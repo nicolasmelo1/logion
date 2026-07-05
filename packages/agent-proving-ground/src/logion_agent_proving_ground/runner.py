@@ -51,11 +51,13 @@ class AgentDriverFactory:
         self,
         driver_config: dict[str, Any],
         *,
-        scripted_operations: dict[str, list[str]] | None = None,
+        scripted_operations: dict[str, list] | None = None,
+        scripted_apply: Any = None,
         default_driver: str = "scripted",
     ) -> None:
         self._driver_config = driver_config
         self._scripted_operations = scripted_operations
+        self._scripted_apply = scripted_apply
         self._default_driver = default_driver
 
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
@@ -70,7 +72,10 @@ class AgentDriverFactory:
                 command=list(spec.command) if spec.command else None
             )
         if name == "scripted":
-            return ScriptedDriver(operations=self._scripted_operations)
+            return ScriptedDriver(
+                operations=self._scripted_operations,
+                apply_operation=self._scripted_apply,
+            )
         if name in {"opencode", "codex", "claude-code"}:
             if name == "opencode":
                 return OpencodeDriver(driver_config=self._driver_config)
@@ -224,14 +229,27 @@ class ScenarioRunner:
         self.artifacts.write_json("environment.json", env_by_agent)
 
     async def _run_phase(self, phase: PhaseSpec, world: World) -> dict:
+        import time
+
+        phase_started_at = utc_now_iso()
+        phase_clock = time.monotonic()
+
+        def _timed(result: dict) -> dict:
+            result["started_at"] = phase_started_at
+            result["finished_at"] = utc_now_iso()
+            result["duration_seconds"] = round(
+                time.monotonic() - phase_clock, 3
+            )
+            return result
+
         self.timeline.event("phase.started", phase_id=phase.id)
         driver = self._agents.get(phase.actor)
         if driver is None:
-            return {
+            return _timed({
                 "phase_id": phase.id,
                 "status": "failed",
                 "message": "actor not found",
-            }
+            })
         self.timeline.event(
             "agent.goal.sent",
             phase_id=phase.id,
@@ -252,11 +270,11 @@ class ScenarioRunner:
             summary=turn.summary,
         )
         if turn.status != "completed":
-            return {
+            return _timed({
                 "phase_id": phase.id,
                 "status": turn.status,
                 "message": f"agent turn {turn.status} for phase {phase.id}",
-            }
+            })
         snapshot = await self.api.snapshot(world)
         self.artifacts.write_json(f"snapshots/after-{phase.id}.json", snapshot)
         assertion_results = await self._run_assertions(
@@ -271,13 +289,13 @@ class ScenarioRunner:
             phase_id=phase.id,
             status=status,
         )
-        return {
+        return _timed({
             "phase_id": phase.id,
             "status": status,
             "assertion_results": [
                 a.model_dump(mode="json") for a in assertion_results
             ],
-        }
+        })
 
     async def _run_assertions(
         self,
@@ -368,6 +386,7 @@ class ScenarioRunner:
                 a.model_dump(mode="json") for a in result.assertion_results
             ],
             "failure_message": result.failure_message,
+            "artifact_root": str(result.artifact_root),
         }
         self.artifacts.write_json("report.json", report)
 

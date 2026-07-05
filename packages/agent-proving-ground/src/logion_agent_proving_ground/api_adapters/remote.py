@@ -8,6 +8,10 @@ from logion_agent_proving_ground.api_adapters._http import (
     HealthCheckError,
     health_check_endpoint,
 )
+from logion_agent_proving_ground.api_adapters._queries import (
+    LogionApiQueries,
+    RoleKeyStore,
+)
 from logion_agent_proving_ground.api_adapters.base import ApiAdapter, World
 
 
@@ -32,6 +36,9 @@ class RemoteApiAdapter(ApiAdapter):
         self._base_url = _resolve_base_url(base_url, api_config)
         self._admin_key = admin_key or _resolve_admin_key(api_config)
         self._api_config = api_config or {}
+        self._queries = LogionApiQueries(
+            self._base_url, RoleKeyStore.from_env()
+        )
 
     async def start(self) -> None:
         await health_check_endpoint(self._base_url)
@@ -54,6 +61,10 @@ class RemoteApiAdapter(ApiAdapter):
             if self._admin_key:
                 env["LOGION_PROVING_GROUND_ADMIN_KEY"] = self._admin_key
             agent_env[agent_id] = env
+        baseline = {}
+        if self._queries.configured:
+            baseline = await self._queries.baseline(agent_roles or {})
+
         return World(
             run_id=run_id,
             base_url=self._base_url,
@@ -63,6 +74,7 @@ class RemoteApiAdapter(ApiAdapter):
             data={
                 "api_config": self._api_config,
                 "agent_roles": agent_roles or {},
+                "baseline": baseline,
             },
         )
 
@@ -71,7 +83,7 @@ class RemoteApiAdapter(ApiAdapter):
 
     async def query(
         self,
-        world: World,  # noqa: ARG002
+        world: World,
         query: dict[str, Any],
     ) -> dict[str, Any]:
         query_type = query.get("type")
@@ -81,12 +93,23 @@ class RemoteApiAdapter(ApiAdapter):
             except HealthCheckError as exc:
                 return {"found": False, "error": str(exc)}
             return {"found": True, "evidence": {"source": "api"}}
+        if self._queries.configured:
+            agent_roles = world.data.get("agent_roles") or {}
+            query_with_baseline = {
+                **query,
+                "_baseline": world.data.get("baseline") or {},
+            }
+            return await self._queries.query(
+                query_with_baseline, dict(agent_roles)
+            )
         return {
             "found": False,
             "unsupported": True,
             "reason": (
-                "remote adapter does not implement this query without "
-                "a configured admin setup API"
+                "remote adapter has no proving-ground API keys; set "
+                "LOGION_PROVING_GROUND_ROLE_KEYS_FILE or "
+                "LOGION_PROVING_GROUND_API_KEY to enable "
+                "observed-effect queries"
             ),
         }
 

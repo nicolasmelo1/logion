@@ -43,6 +43,31 @@ logion-agent-proving-ground run builtin:skill_report_contract \
 logion-agent-proving-ground report .runs/proving-ground/<run-id>
 ```
 
+## Release gate: `marketplace_loop`
+
+`builtin:marketplace_loop` is the full creator/learner/operator product
+loop (publish → purchase → use → review → bounty → approve → admin
+check). It is a release-gate proof, not normal PR CI. From the repo root:
+
+```bash
+make dev-up MODE=prod ROLE=admin   # or MODE=mock for mechanics only
+make doctor AGENT=codex
+make agent-proving-ground-release  # LOGION_PROVING_GROUND_AGENT_DRIVER=... to override
+```
+
+Observed-effect assertions against a real API need credentials:
+
+- `LOGION_PROVING_GROUND_ROLE_KEYS_FILE` — JSON mapping devrig roles to
+  `{"api_key": "...", "agent_id": "..."}` (agent_id optional), or
+- a single `LOGION_PROVING_GROUND_API_KEY` / `LOGION_API_KEY` shared by
+  all personas (personal-account contributor mode).
+
+Without keys, API assertions report `unsupported`: required ones fail
+the run, `optional: true` ones are skipped. Admin assertions are
+capability-gated the same way. See
+[`docs/release-checklist.md`](../../docs/release-checklist.md) for the
+release policy and waiver format.
+
 ## Authoring scenarios
 
 Scenarios live in YAML:
