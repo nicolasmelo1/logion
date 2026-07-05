@@ -114,13 +114,18 @@ class ScenarioRunner:
         self.timeline.event(
             "run.started", run_id=self.run_id, scenario=self.scenario.name
         )
-        await self.api.start()
-        self.timeline.event("api.started", api_adapter=self.api.name)
         try:
+            await self.api.start()
+            self.timeline.event("api.started", api_adapter=self.api.name)
             world = await self.api.create_world(
                 self.run_id,
                 self.scenario.name,
                 [a.id for a in self.scenario.agents],
+                agent_roles={
+                    a.id: a.devrig_role
+                    for a in self.scenario.agents
+                    if a.devrig_role
+                },
             )
             self.timeline.event("world.created", world_base_url=world.base_url)
             await self._start_agents(world)

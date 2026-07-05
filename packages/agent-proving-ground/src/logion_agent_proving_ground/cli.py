@@ -7,10 +7,18 @@ import sys
 from datetime import UTC
 from pathlib import Path
 
+from logion_agent_proving_ground.api_adapters.base import ApiAdapter
+from logion_agent_proving_ground.api_adapters.local_devrig import (
+    LocalDevrigAdapter,
+)
 from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
+from logion_agent_proving_ground.api_adapters.remote import RemoteApiAdapter
 from logion_agent_proving_ground.artifacts import ArtifactStore
 from logion_agent_proving_ground.assertions.registry import AssertionRegistry
-from logion_agent_proving_ground.config import DEFAULT_RUNS_ROOT
+from logion_agent_proving_ground.config import (
+    DEFAULT_RUNS_ROOT,
+    InconclusiveRun,
+)
 from logion_agent_proving_ground.models import ScenarioResult
 from logion_agent_proving_ground.runner import (
     AgentDriverFactory,
@@ -22,6 +30,7 @@ from logion_agent_proving_ground.scenarios.loader import (
 )
 from logion_agent_proving_ground.timeline import Timeline
 
+_API_ADAPTER_CHOICES = ["mock", "remote", "local-devrig"]
 _DRIVER_CHOICES = [
     "scripted",
     "local-process",
@@ -47,7 +56,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_cmd = sub.add_parser("run", help="run a scenario")
     run_cmd.add_argument("scenario", help="scenario file or builtin:NAME")
-    run_cmd.add_argument("--api-adapter", default="mock", choices=["mock"])
+    run_cmd.add_argument(
+        "--api-adapter",
+        default="mock",
+        choices=_API_ADAPTER_CHOICES,
+    )
+    run_cmd.add_argument(
+        "--api-base-url",
+        default=None,
+        help="override the remote adapter base URL",
+    )
+    run_cmd.add_argument(
+        "--devrig-root",
+        default=None,
+        help="path to the public logion repo root for local-devrig",
+    )
     run_cmd.add_argument(
         "--agent-driver",
         default="scripted",
@@ -93,7 +116,11 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     artifacts = ArtifactStore(artifact_root)
     artifacts.write_text("scenario.yaml", _scenario_source(args.scenario))
 
-    api = _build_api_adapter(args.api_adapter)
+    try:
+        api = _build_api_adapter(args)
+    except InconclusiveRun as exc:
+        print(f"run setup failed: {exc}", file=sys.stderr)
+        return 2
     drivers = _build_driver_factory(scenario.driver_config, args.agent_driver)
     timeline = Timeline(artifacts.root / "timeline.jsonl")
     runner = ScenarioRunner(
@@ -169,10 +196,17 @@ def _scenario_source(source: str) -> str:
     return Path(source).read_text(encoding="utf-8")
 
 
-def _build_api_adapter(name: str) -> MockApiAdapter:
-    if name != "mock":
-        raise ValueError(f"unsupported api adapter: {name}")
-    return MockApiAdapter()
+def _build_api_adapter(args: argparse.Namespace) -> ApiAdapter:
+    name = args.api_adapter
+    if name == "mock":
+        return MockApiAdapter()
+    if name == "remote":
+        return RemoteApiAdapter(base_url=args.api_base_url)
+    if name == "local-devrig":
+        return LocalDevrigAdapter(
+            devrig_root=args.devrig_root,
+        )
+    raise ValueError(f"unsupported api adapter: {name}")
 
 
 def _build_driver_factory(

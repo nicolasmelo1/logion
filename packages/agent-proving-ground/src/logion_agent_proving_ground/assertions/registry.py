@@ -17,7 +17,16 @@ from logion_agent_proving_ground.assertions.base import (
     AssertionContext,
     AssertionOutcome,
 )
+from logion_agent_proving_ground.assertions.db import (
+    DbExactCreditLedgerAssertion,
+    DbRowExistsAssertion,
+    EventsOutboxContainsAssertion,
+)
 from logion_agent_proving_ground.assertions.files import FileExistsAssertion
+from logion_agent_proving_ground.assertions.logs import (
+    LogsContainsRequestAssertion,
+    LogsNo500sAssertion,
+)
 from logion_agent_proving_ground.assertions.timeline import (
     TimelineNoUnredactedSecretAssertion,
 )
@@ -42,6 +51,11 @@ class AssertionRegistry:
             CourseRemainsPurchasableAssertion,
             TimelineNoUnredactedSecretAssertion,
             FileExistsAssertion,
+            LogsNo500sAssertion,
+            LogsContainsRequestAssertion,
+            DbRowExistsAssertion,
+            DbExactCreditLedgerAssertion,
+            EventsOutboxContainsAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance
