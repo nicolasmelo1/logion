@@ -339,6 +339,24 @@ class MockApiAdapter(ApiAdapter):
                 status="open",
                 amount_cents=kwargs.get("amount_cents", 0),
             )
+        elif operation == "fund_bounty":
+            bounty_id = kwargs.get("bounty_id")
+            bounty = (
+                self._state.bounties.get(bounty_id)
+                if isinstance(bounty_id, str)
+                else None
+            )
+            if bounty is not None and bounty.status == "open":
+                bounty.status = "funded"
+                self._state.ledger.append(
+                    MockLedgerEntry(
+                        id=f"ledger_{len(self._state.ledger)}",
+                        user_id=f"user_{agent_id}",
+                        amount_cents=-bounty.amount_cents,
+                        kind="bounty_funding_debit",
+                        reference=bounty.id,
+                    )
+                )
         elif operation == "submit_bounty":
             bounty_id = kwargs.get("bounty_id")
             if bounty_id in self._state.bounties:

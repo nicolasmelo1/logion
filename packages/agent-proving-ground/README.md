@@ -70,19 +70,15 @@ release policy and waiver format.
 
 ### Reproducing the e2e run
 
-For a complete, reproducible setup guide including DB migration, credit
-seeding, stale data cleanup, and troubleshooting, see
-[`docs/e2e-marketplace-loop.md`](../../docs/e2e-marketplace-loop.md).
+Key prerequisites for a clean e2e run against a live local API:
 
-Key prerequisites for a clean e2e run:
-
-1. Run `alembic upgrade head` in `logion-private` (ensures schema is current).
-2. Seed the database with `dev_seed` and grant credits to seller-a and
-   buyer-a (bounty funding requires creator credits).
+1. The API schema must be fully migrated before running.
+2. Seed the database and grant credits to the seller and buyer personas
+   (bounty funding requires creator credits).
 3. Truncate marketplace tables between runs to avoid stale data causing
    false assertion passes.
 4. The `hermes` driver needs `LOGION_PROVING_GROUND_ROLE_KEYS_FILE` pointing
-   to the workspace devrig role keys JSON.
+   to the devrig role keys JSON.
 
 ## Authoring scenarios
 
