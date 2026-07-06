@@ -82,9 +82,10 @@ phases:
     success_hint: |
       Identify your course from this run, then use `logion bounties create`
       with a clear title and description asking for one practical exercise.
+      After creating the bounty, fund it with `logion bounties fund BOUNTY_ID --yes`.
     assertions:
       - type: api.bounty_exists
-        params: {creator_agent: creator, status: open}
+        params: {creator_agent: creator, status: funded}
 
   - id: learner_submits_bounty_work
     actor: learner
@@ -105,8 +106,7 @@ phases:
       I want to review the bounty submission on my Logion course and
       approve it if it satisfies the requested exercise.
     success_hint: |
-      First fund the bounty with `logion bounties fund BOUNTY_ID --yes`,
-      then list submissions with `logion bounties submissions list BOUNTY_ID`,
+      List submissions with `logion bounties submissions list BOUNTY_ID`,
       and accept the learner's submission with
       `logion bounties submissions accept SUBMISSION_ID --yes`.
     assertions:
