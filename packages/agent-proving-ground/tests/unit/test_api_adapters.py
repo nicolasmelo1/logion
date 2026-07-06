@@ -66,8 +66,17 @@ async def test_remote_missing_base_url_is_inconclusive() -> None:
             os.environ["LOGION_PROVING_GROUND_BASE_URL"] = old
 
 
-async def test_remote_query_returns_unsupported_for_unknown() -> None:
-    adapter = RemoteApiAdapter(base_url="http://127.0.0.1:9")
+async def test_remote_query_returns_unsupported_for_unknown(
+    fake_api_server,
+    monkeypatch,
+) -> None:
+    for name in (
+        "LOGION_PROVING_GROUND_ROLE_KEYS_FILE",
+        "LOGION_PROVING_GROUND_API_KEY",
+        "LOGION_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    adapter = RemoteApiAdapter(base_url=fake_api_server)
     world = await adapter.create_world("run-1", "test", ["a"])
     result = await adapter.query(world, {"type": "course_exists"})
     assert result.get("unsupported") is True
@@ -139,6 +148,68 @@ async def test_local_devrig_reads_env_and_applies_role_overrides(
     assert world.base_url == fake_api_server
     assert world.agent_env["creator"]["LOGION_DEVRIG_ROLE"] == "seller"
     assert world.agent_env["learner"]["LOGION_DEVRIG_ROLE"] == "buyer"
+
+
+async def test_local_devrig_loads_role_specific_keys_and_homes(
+    tmp_path, fake_api_server, monkeypatch
+) -> None:
+    for name in (
+        "LOGION_PROVING_GROUND_ROLE_KEYS_FILE",
+        "LOGION_PROVING_GROUND_API_KEY",
+        "LOGION_API_KEY",
+        "LOGION_HOME",
+        "LOGION_PUBLIC_REPO_PATH",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    devrig_dir = tmp_path / ".devrig"
+    devrig_dir.mkdir()
+    (devrig_dir / "devrig.env").write_text(
+        f"export LOGION_DEVRIG_MODE=mock\n"
+        f"export LOGION_BASE_URL={fake_api_server}\n"
+        f"export LOGION_API_BASE_URL={fake_api_server}\n"
+        f"export LOGION_DEVRIG_ROLE=seller\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "scripts" / "devrig.py").parent.mkdir(parents=True)
+    (tmp_path / "scripts" / "devrig.py").write_text("# placeholder")
+
+    role_values = {
+        "seller": "seller-value",
+        "buyer": "buyer-value",
+    }  # pragma: allowlist secret
+    for role in ("seller", "buyer"):
+        role_dir = devrig_dir / role
+        (role_dir / "logion-home").mkdir(parents=True)
+        (role_dir / ".api-key").write_text(
+            role_values[role],
+            encoding="utf-8",
+        )
+        (role_dir / "logion-home" / "credentials.json").write_text(
+            json.dumps({
+                "api_key": f"{role}-credentials-value",
+                "agent_id": f"{role}-agent",
+            }),
+            encoding="utf-8",
+        )
+
+    adapter = LocalDevrigAdapter(devrig_root=tmp_path)
+    await adapter.start()
+    world = await adapter.create_world(
+        "run-1",
+        "test",
+        ["creator", "learner"],
+        agent_roles={"creator": "seller", "learner": "buyer"},
+    )
+
+    api_key_field = "LOGION_API_KEY"  # pragma: allowlist secret
+    assert world.agent_env["creator"][api_key_field] == role_values["seller"]
+    assert world.agent_env["learner"][api_key_field] == role_values["buyer"]
+    assert world.agent_env["creator"]["LOGION_HOME"].endswith(
+        "/.devrig/seller/logion-home"
+    )
+    assert world.agent_env["learner"]["LOGION_HOME"].endswith(
+        "/.devrig/buyer/logion-home"
+    )
 
 
 async def test_local_devrig_missing_env_is_inconclusive(tmp_path) -> None:

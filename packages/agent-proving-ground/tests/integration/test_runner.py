@@ -7,11 +7,13 @@ import pytest
 from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
 from logion_agent_proving_ground.artifacts import ArtifactStore
 from logion_agent_proving_ground.assertions.registry import AssertionRegistry
+from logion_agent_proving_ground.drivers.hermes import HermesDriver
 from logion_agent_proving_ground.runner import (
     AgentDriverFactory,
     ScenarioRunner,
 )
 from logion_agent_proving_ground.scenarios.loader import load_scenario
+from logion_agent_proving_ground.scenarios.schema import AgentSpec
 from logion_agent_proving_ground.timeline import Timeline
 
 
@@ -163,3 +165,12 @@ phases:
     assert "reviewer goal" not in learner_transcript
     assert "reviewer goal" in reviewer_transcript
     assert "learner goal" not in reviewer_transcript
+
+
+def test_agent_driver_factory_override_takes_precedence() -> None:
+    factory = AgentDriverFactory({}, default_driver="hermes")
+    driver = factory.get(
+        "creator",
+        AgentSpec(id="creator", role="seller", driver="scripted"),
+    )
+    assert isinstance(driver, HermesDriver)
