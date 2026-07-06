@@ -180,6 +180,51 @@ class TestHappyPath:
         assert rc == 0
         assert "Pushed 3/3 files" in out.out
 
+    def test_push_unwraps_v1_envelope(
+        self,
+        tmp_path: Path,
+        course_id: str,
+        version_id: str,
+        bundle: dict[str, Path],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Session JSON from ``uploads create --json`` is wrapped in a
+        ``{"version": "v1", "kind": "...", "data": {...}}`` envelope.
+        The push command must unwrap it to reach the ``uploads`` list."""
+        inner = _make_session(course_id, version_id, bundle)
+        envelope = {
+            "version": "v1",
+            "kind": "logion.courses.uploads.create",
+            "data": inner,
+        }
+        session_path = tmp_path / "session.json"
+        session_path.write_text(json.dumps(envelope), encoding="utf-8")
+        _patch_client(monkeypatch)
+        _patch_httpx_seq(
+            monkeypatch,
+            [_FakeResponse(200), _FakeResponse(200), _FakeResponse(200)],
+        )
+
+        rc = main([
+            "courses",
+            "uploads",
+            "push",
+            course_id,
+            version_id,
+            "--session-file",
+            str(session_path),
+            "--file",
+            f"SKILL.md={bundle['SKILL.md']}",
+            "--file",
+            f"LICENSE={bundle['LICENSE']}",
+            "--file",
+            f"course/capabilities.yaml={bundle['course/capabilities.yaml']}",
+        ])
+        out = capsys.readouterr()
+        assert rc == 0
+        assert "Pushed 3/3 files" in out.out
+
 
 # ---------------------------------------------------------------------------
 # Validation failures

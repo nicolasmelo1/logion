@@ -48,6 +48,12 @@ def _read_session(path: str) -> dict[str, Any] | None:
     if not isinstance(data, dict):
         print_err("session JSON must be an object")
         return None
+    # Unwrap the v1 envelope emitted by ``logion courses uploads create
+    # --json``.  The envelope looks like ``{"version": "v1", "kind":
+    # "...", "data": {...}}`` while the push logic expects the inner
+    # object with an ``uploads`` key.
+    if isinstance(data.get("data"), dict) and "kind" in data:
+        data = data["data"]
     return data
 
 
