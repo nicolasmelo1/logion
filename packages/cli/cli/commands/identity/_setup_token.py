@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: MIT
 """Redeem a one-time setup token from GitHub sign-in.
 
-When a setup token is present the onboarding flow is fully non-interactive:
-no email/password prompts, no consent prompts.  The token is exchanged for
-an agent + API key in a single API call, credentials are persisted, and the
-companion-install + closing-copy steps continue unchanged.
+When a setup token is present the onboarding flow is fully
+non-interactive: no email/password prompts, no consent prompts.
+The token is exchanged for an agent + API key in a single API call,
+credentials are persisted, and the companion-install + closing-copy
+steps continue unchanged.
 """
 
 from __future__ import annotations
@@ -12,14 +13,12 @@ from __future__ import annotations
 import argparse
 import os
 
-from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._credentials import save_user_identity
 from cli._errors import handle_error, print_err
-from cli._output import emit_json
 
-# The logion.sh URL shown to the user when a token is expired or already
-# redeemed, so they can mint a fresh one.
+# The logion.sh URL shown to the user when a token is expired or
+# already redeemed, so they can mint a fresh one.
 _MINT_URL = "https://logion.sh/v1/setup/github/start"
 
 
@@ -55,8 +54,9 @@ def redeem_setup_token(
             agent_description=agent_description,
         )
     except Exception as exc:
-        # Map 410 (expired) and 409 (already redeemed) to a specific
-        # error code so the installer can surface a clear message.
+        # Map 410 (expired) and 409 (already redeemed) to a
+        # specific error code so the installer can surface a
+        # clear message.
         status = getattr(exc, "status_code", None)
         if status in (409, 410):
             print_err(
@@ -74,15 +74,16 @@ def redeem_setup_token(
     agent_id = _field(result, "agent_id")
     api_key = _field(result, "api_key")
     api_key_prefix = _field(result, "api_key_prefix")
-    # autoreview_consent is null for token flow — consent is never implicit.
 
     if user_id is not None:
         try:
             save_user_identity(
                 str(user_id),
-                agent_id=str(agent_id) if agent_id is not None else None,
-                api_key=str(api_key) if api_key is not None else None,
-                api_key_prefix=str(api_key_prefix) if api_key_prefix is not None else None,
+                agent_id=(str(agent_id) if agent_id is not None else None),
+                api_key=(str(api_key) if api_key is not None else None),
+                api_key_prefix=(
+                    str(api_key_prefix) if api_key_prefix is not None else None
+                ),
             )
         except OSError as exc:
             print_err(f"Warning: could not save credentials: {exc}")
@@ -94,8 +95,8 @@ def redeem_setup_token(
     )
 
     return {
-        "user_id": str(user_id) if user_id is not None else None,
-        "agent_id": str(agent_id) if agent_id is not None else None,
+        "user_id": (str(user_id) if user_id is not None else None),
+        "agent_id": (str(agent_id) if agent_id is not None else None),
         "api_key": api_key,
         "api_key_prefix": api_key_prefix,
         "autoreview_consent": False,
