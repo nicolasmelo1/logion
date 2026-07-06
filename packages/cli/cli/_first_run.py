@@ -81,10 +81,11 @@ def decide(argv: list[str], args: argparse.Namespace) -> TriggerDecision:
         return TriggerDecision(should_run=False, reason="unknown-command")
     if is_onboarded():
         return TriggerDecision(should_run=False, reason="already-onboarded")
-    # --setup-token bypasses the non-interactive guard because the token
-    # flow needs no prompts.  Check raw argv because argparse has not
-    # populated args yet when decide() is called from main.
-    if "--setup-token" in argv or os.getenv("LOGION_SETUP_TOKEN"):
+    # LOGION_SETUP_TOKEN env var bypasses the non-interactive guard because
+    # the token flow needs no prompts.  (The --setup-token CLI flag cannot
+    # reach decide() from top-level commands because it is only defined on
+    # the onboarding subparser, so argparse rejects it before this point.)
+    if os.getenv("LOGION_SETUP_TOKEN"):
         return TriggerDecision(should_run=True, reason="setup-token")
     if is_noninteractive():
         return TriggerDecision(should_run=False, reason="noninteractive-env")

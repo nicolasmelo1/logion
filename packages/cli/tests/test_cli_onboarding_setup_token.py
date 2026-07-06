@@ -63,26 +63,6 @@ class TestFirstRunSetupToken:
     """--setup-token and LOGION_SETUP_TOKEN allow
     onboarding in non-TTY."""
 
-    def test_setup_token_flag_allows_noninteractive(self):
-        args = MagicMock(
-            no_onboarding=False,
-            json_output=False,
-            command="courses",
-        )
-        with (
-            patch("cli._first_run.is_onboarded", return_value=False),
-            patch(
-                "cli._first_run.is_noninteractive",
-                return_value=True,
-            ),
-        ):
-            decision = decide(
-                ["logion", "courses", "--setup-token", "st_abc"],
-                args,
-            )
-        assert decision.should_run is True
-        assert decision.reason == "setup-token"
-
     def test_setup_token_env_allows_noninteractive(self):
         args = MagicMock(
             no_onboarding=False,

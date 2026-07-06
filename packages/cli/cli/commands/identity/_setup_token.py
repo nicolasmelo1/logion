@@ -19,7 +19,7 @@ from cli._errors import handle_error, print_err
 
 # The logion.sh URL shown to the user when a token is expired or
 # already redeemed, so they can mint a fresh one.
-_MINT_URL = "https://logion.sh/v1/setup/github/start"
+_MINT_URL = "https://api.logion.sh/v1/setup/github/start"
 
 
 def resolve_setup_token(args: argparse.Namespace) -> str | None:
@@ -48,7 +48,7 @@ def redeem_setup_token(
 
     client = make_client(config)  # type: ignore[arg-type]
     try:
-        result = client.v1.setup_tokens.redeem(
+        result = client.v1.setup_tokens.redeem(  # type: ignore[attr-defined]
             setup_token=token,
             agent_name=agent_name,
             agent_description=agent_description,
@@ -87,12 +87,6 @@ def redeem_setup_token(
             )
         except OSError as exc:
             print_err(f"Warning: could not save credentials: {exc}")
-
-    # Token flow never grants auto-review consent.
-    print_err(
-        "Auto-review not enabled. Enable later with "
-        "`logion identity onboarding --enable-autopost`."
-    )
 
     return {
         "user_id": (str(user_id) if user_id is not None else None),

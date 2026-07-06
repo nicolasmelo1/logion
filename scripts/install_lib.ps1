@@ -763,7 +763,8 @@ function Run-Onboarding {
     if ($Opts.SetupToken) {
         $onboardingArgs += "--setup-token", $Opts.SetupToken
         $maskedToken = $Opts.SetupToken.Substring(0, [Math]::Min(3, $Opts.SetupToken.Length)) + "****"
-        $rerun = "logion onboarding --setup-token $maskedToken"
+        # Append to $rerun rather than overwrite so --no-companion is preserved.
+        $rerun += " --setup-token $maskedToken"
         Info -Message "Running onboarding with setup token ($maskedToken) ..."
     } elseif (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
         Info -Message "Non-interactive; run '$rerun' to finish setup."
