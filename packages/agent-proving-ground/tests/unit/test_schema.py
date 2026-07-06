@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from logion_agent_proving_ground.scenarios.schema import (
+from agent_proving_ground.scenarios.schema import (
     ScenarioSpec,
     validate_assertions,
 )

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
-from logion_agent_proving_ground.assertions.base import AssertionContext
-from logion_agent_proving_ground.assertions.timeline import (
+from agent_proving_ground.api_adapters.mock import MockApiAdapter
+from agent_proving_ground.assertions.base import AssertionContext
+from agent_proving_ground.assertions.timeline import (
     TimelineNoUnredactedSecretAssertion,
 )
-from logion_agent_proving_ground.models import World
-from logion_agent_proving_ground.redaction import redact_json, redact_text
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.models import World
+from agent_proving_ground.redaction import redact_json, redact_text
+from agent_proving_ground.timeline import Timeline
 
 
 def test_redacts_bearer_token() -> None:

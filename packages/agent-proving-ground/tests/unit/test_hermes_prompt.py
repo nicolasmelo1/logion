@@ -7,7 +7,7 @@ and NOT into reviewer, learner, admin, or bounty phases.
 
 from __future__ import annotations
 
-from logion_agent_proving_ground.drivers.hermes import (
+from agent_proving_ground.drivers.hermes import (
     _build_prompt,
     _phase_scaffolding,
 )

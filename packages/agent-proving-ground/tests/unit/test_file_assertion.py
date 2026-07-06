@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
-from logion_agent_proving_ground.assertions.base import AssertionContext
-from logion_agent_proving_ground.assertions.files import FileExistsAssertion
-from logion_agent_proving_ground.models import World
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.api_adapters.mock import MockApiAdapter
+from agent_proving_ground.assertions.base import AssertionContext
+from agent_proving_ground.assertions.files import FileExistsAssertion
+from agent_proving_ground.models import World
+from agent_proving_ground.timeline import Timeline
 
 
 async def test_files_exists_rejects_absolute_path(tmp_path) -> None:

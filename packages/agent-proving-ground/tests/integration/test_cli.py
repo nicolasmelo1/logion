@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from logion_agent_proving_ground import cli
-from logion_agent_proving_ground.cli import main
+from agent_proving_ground import cli
+from agent_proving_ground.cli import main
 
 
 def test_validate_builtin_skill_report_contract() -> None:

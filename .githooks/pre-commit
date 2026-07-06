@@ -89,10 +89,10 @@ if [ -n "${npm_staged}" ]; then
 	)
 fi
 
-# ── agent-proving-ground checks — keep the package strongly typed and tested.
-# Only run when files under packages/agent-proving-ground/** are staged.
+# ── agent-proving-ground checks — mirror the agent-proving-ground job in
+# pr-safety.yml. Also run when the local hook, Makefile, or workflow changes.
 agent_pg_staged="$(git diff --cached --name-only --diff-filter=ACMR \
-    | grep -E '^packages/agent-proving-ground/' || true)"
+    | grep -E '^(packages/agent-proving-ground/|Makefile|\.githooks/pre-commit|\.github/workflows/pr-safety\.yml)$' || true)"
 if [ -n "${agent_pg_staged}" ]; then
 	echo "agent-proving-ground files staged — running package verification..."
 	make agent-proving-ground-verify

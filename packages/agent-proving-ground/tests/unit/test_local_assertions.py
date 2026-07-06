@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from logion_agent_proving_ground.assertions.base import AssertionContext
-from logion_agent_proving_ground.assertions.db import (
+from agent_proving_ground.assertions.base import AssertionContext
+from agent_proving_ground.assertions.db import (
     DbExactCreditLedgerAssertion,
     DbRowExistsAssertion,
     EventsOutboxContainsAssertion,
 )
-from logion_agent_proving_ground.assertions.logs import (
+from agent_proving_ground.assertions.logs import (
     LogsContainsRequestAssertion,
     LogsNo500sAssertion,
 )
-from logion_agent_proving_ground.models import World
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.models import World
+from agent_proving_ground.timeline import Timeline
 
 
 async def _ctx(tmp_path: Path, data: dict | None = None) -> AssertionContext:

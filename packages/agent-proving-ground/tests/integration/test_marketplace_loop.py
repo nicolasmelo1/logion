@@ -4,15 +4,15 @@ import json
 
 import pytest
 
-from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
-from logion_agent_proving_ground.artifacts import ArtifactStore
-from logion_agent_proving_ground.assertions.registry import AssertionRegistry
-from logion_agent_proving_ground.runner import (
+from agent_proving_ground.api_adapters.mock import MockApiAdapter
+from agent_proving_ground.artifacts import ArtifactStore
+from agent_proving_ground.assertions.registry import AssertionRegistry
+from agent_proving_ground.runner import (
     AgentDriverFactory,
     ScenarioRunner,
 )
-from logion_agent_proving_ground.scenarios.loader import load_scenario
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.scenarios.loader import load_scenario
+from agent_proving_ground.timeline import Timeline
 
 COURSE_ID = "course_cli_workflow"
 BOUNTY_ID = "bounty_exercise"

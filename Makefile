@@ -11,7 +11,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security \
 	update-generated-lock update-deps-lock \
-	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test agent-proving-ground-verify \
+	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-dead-code agent-proving-ground-test agent-proving-ground-verify \
 	agent-proving-ground-smoke agent-proving-ground-release \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
 	npm-test npm-pack npm-build \
@@ -193,12 +193,15 @@ agent-proving-ground-lint:
 	uv run ruff format --check packages/agent-proving-ground/
 
 agent-proving-ground-typecheck:
-	uv run mypy --config-file packages/agent-proving-ground/pyproject.toml packages/agent-proving-ground/src
+	uv run mypy --config-file packages/agent-proving-ground/pyproject.toml packages/agent-proving-ground/agent_proving_ground
+
+agent-proving-ground-dead-code:
+	uv run vulture packages/agent-proving-ground/agent_proving_ground packages/agent-proving-ground/tests --min-confidence 80
 
 agent-proving-ground-test:
 	uv run pytest packages/agent-proving-ground/tests/ -q --no-header
 
-agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-test
+agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-dead-code agent-proving-ground-test
 
 # Real-agent proving-ground runs. Preconditions:
 #   make dev-up MODE=mock|prod ROLE=...   (writes .devrig/devrig.env)

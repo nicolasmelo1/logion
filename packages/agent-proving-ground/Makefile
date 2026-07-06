@@ -6,10 +6,10 @@ test:
 	uv run pytest -q
 
 lint:
-	uv run ruff check src tests
+	uv run ruff check agent_proving_ground tests
 
 type-check:
-	uv run mypy src
+	uv run mypy agent_proving_ground
 
 format-check:
-	uv run ruff format --check src tests
+	uv run ruff format --check agent_proving_ground tests
