@@ -13,6 +13,20 @@ from logion_agent_proving_ground.drivers.local_process import _build_prompt
 from logion_agent_proving_ground.drivers.process import ChildProcessSession
 
 
+def _override_flag(args: list[str], flag: str, value: str) -> list[str]:
+    """Replace the value after *flag* in *args*, or append flag+value."""
+    result = list(args)
+    try:
+        idx = result.index(flag)
+        if idx + 1 < len(result):
+            result[idx + 1] = value
+        else:
+            result.extend([flag, value])
+    except ValueError:
+        result.extend([flag, value])
+    return result
+
+
 class ProviderDriver(AgentDriver):
     """Base for real provider CLIs (opencode, codex, claude-code)."""
 
@@ -85,7 +99,14 @@ class ProviderDriver(AgentDriver):
             provider_cfg.get("args", self.default_args)
         )
         extra = self._coerce_arg_list(provider_cfg.get("extra_args", []))
-        return [*args, *extra]
+        combined = [*args, *extra]
+        model = provider_cfg.get("model")
+        provider = provider_cfg.get("provider")
+        if model:
+            combined = _override_flag(combined, "--model", model)
+        if provider:
+            combined = _override_flag(combined, "--provider", provider)
+        return combined
 
     @staticmethod
     def _coerce_arg_list(value: Any) -> list[str]:

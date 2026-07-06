@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
+from logion_agent_proving_ground.drivers._provider import _override_flag
 from logion_agent_proving_ground.drivers.base import (
     AgentDriver,
     AgentLaunch,
@@ -324,7 +325,14 @@ class HermesDriver(AgentDriver):
             provider_cfg.get("args", self.default_args)
         )
         extra = self._coerce_arg_list(provider_cfg.get("extra_args", []))
-        return [*args, *extra]
+        combined = [*args, *extra]
+        model = provider_cfg.get("model")
+        provider = provider_cfg.get("provider")
+        if model:
+            combined = _override_flag(combined, "--model", model)
+        if provider:
+            combined = _override_flag(combined, "--provider", provider)
+        return combined
 
     @staticmethod
     def _coerce_arg_list(value: Any) -> list[str]:

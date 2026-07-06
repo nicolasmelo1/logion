@@ -207,3 +207,55 @@ async def test_claude_driver_defaults(tmp_path) -> None:
     assert driver.provider_name == "claude-code"
     assert driver.default_command == "claude"
     assert driver.default_args
+
+
+class TestProviderDriverModelProvider:
+    """Model and provider config are forwarded as --model/--provider flags."""
+
+    def test_provider_model_and_provider_in_args(self) -> None:
+        driver = CodexDriver(
+            driver_config={
+                "codex": {
+                    "model": "gpt-5.4-mini",
+                    "provider": "openai",
+                }
+            }
+        )
+        args = driver._effective_args()
+        assert "--model" in args
+        idx = args.index("--model")
+        assert args[idx + 1] == "gpt-5.4-mini"
+        assert "--provider" in args
+        pidx = args.index("--provider")
+        assert args[pidx + 1] == "openai"
+
+    def test_provider_model_only(self) -> None:
+        driver = OpencodeDriver(
+            driver_config={"opencode": {"model": "qwen/qwen3-coder"}}
+        )
+        args = driver._effective_args()
+        assert "--model" in args
+        assert "qwen/qwen3-coder" in args
+        assert "--provider" not in args
+
+    def test_provider_no_model_no_provider(self) -> None:
+        driver = ClaudeCodeDriver(driver_config={})
+        args = driver._effective_args()
+        # default_args already contain --model; we just don't override it
+        assert "--model" in args
+        idx = args.index("--model")
+        assert args[idx + 1] == "claude-sonnet-4-20250514"
+
+    def test_provider_extra_args_combined_with_model(self) -> None:
+        driver = CodexDriver(
+            driver_config={
+                "codex": {
+                    "model": "gpt-5.4-mini",
+                    "extra_args": ["--verbose"],
+                }
+            }
+        )
+        args = driver._effective_args()
+        assert "--model" in args
+        assert "gpt-5.4-mini" in args
+        assert "--verbose" in args

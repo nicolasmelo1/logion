@@ -2,6 +2,10 @@ schema_version: "1"
 name: marketplace_loop
 description: Full creator/learner marketplace loop.
 api_adapter: local-devrig
+driver_config:
+  hermes:
+    model: glm-5.1
+    provider: ollama-cloud
 
 agents:
   - id: creator

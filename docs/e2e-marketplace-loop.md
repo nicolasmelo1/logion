@@ -130,6 +130,66 @@ env -u VIRTUAL_ENV uv run logion-agent-proving-ground run \
   --out .runs/proving-ground/marketplace
 ```
 
+## Choosing a model / provider
+
+The `driver_config` field in the scenario YAML controls which LLM model and
+provider the agent driver uses. This is the cheapest way to reduce e2e cost.
+
+### Via the YAML (recommended)
+
+Edit `driver_config` in `marketplace_loop.yaml` (or a custom scenario file):
+
+```yaml
+driver_config:
+  hermes:
+    model: glm-5.1          # any model supported by the provider
+    provider: ollama-cloud   # hermes provider name (openrouter, anthropic, etc.)
+```
+
+### Via CLI override
+
+The `--agent-driver` flag overrides the driver type for all agents, but **does
+not** change model/provider — those come from `driver_config`. To use a
+different driver with its own default model:
+
+```bash
+# Use Codex Device with GPT-5.4-mini
+logion-agent-proving-ground run builtin:marketplace_loop \
+  --api-adapter local-devrig \
+  --agent-driver codex
+
+# Use Claude Code
+logion-agent-proving-ground run builtin:marketplace_loop \
+  --api-adapter local-devrig \
+  --agent-driver claude-code
+```
+
+To override the model for a provider driver, add it to `driver_config`:
+
+```yaml
+driver_config:
+  codex:
+    model: gpt-5.4-mini
+  hermes:
+    model: glm-5.1
+    provider: ollama-cloud
+```
+
+The `model` and `provider` keys override any `--model` / `--provider` flags
+that the driver's `default_args` may include. This works for **all** driver
+types: `hermes`, `codex`, `claude-code`, and `opencode`.
+
+### Cost comparison
+
+| Driver | Default model | Approx. cost/run |
+|--------|--------------|------------------|
+| hermes + ollama-cloud | glm-5.1 | ~$0.01 |
+| hermes + openrouter | varies | ~$0.10–$0.50 |
+| codex | gpt-5-codex | ~$1–$3 |
+| claude-code | claude-sonnet-4 | ~$2–$5 |
+
+Costs are approximate; actual spend depends on model pricing and turn count.
+
 ## Expected result
 
 All 7 phases and all assertions must pass:
