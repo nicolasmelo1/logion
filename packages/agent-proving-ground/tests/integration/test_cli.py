@@ -2,12 +2,25 @@ from __future__ import annotations
 
 import json
 
-from logion_agent_proving_ground import cli
-from logion_agent_proving_ground.cli import main
+from agent_proving_ground import cli
+from agent_proving_ground.cli import main
+from agent_proving_ground.scenarios.loader import load_scenario
 
 
 def test_validate_builtin_skill_report_contract() -> None:
     assert main(["validate", "builtin:skill_report_contract"]) == 0
+
+
+def test_skill_report_contract_does_not_prompt_for_usage_review() -> None:
+    scenario = load_scenario("builtin:skill_report_contract")
+    phase = scenario.phases[0]
+    visible_prompt = "\n".join(
+        part for part in [phase.goal, phase.success_hint or ""] if part
+    )
+    assert "report-usage" not in visible_prompt
+    assert "usage feedback" not in visible_prompt
+    assert "file usage" not in visible_prompt
+    assert any(a.type == "api.usage_report_exists" for a in phase.assertions)
 
 
 def test_run_writes_report_and_assertions(tmp_path) -> None:

@@ -68,7 +68,7 @@ jobs:
         run: uv run detect-secrets scan --baseline .secrets.baseline
 
   agent-proving-ground:
-    name: Agent proving ground (lint, types, tests)
+    name: Agent proving ground (lint, types, dead code, tests)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from logion_agent_proving_ground.artifacts import (
+from agent_proving_ground.artifacts import (
     ArtifactStore,
     resolve_artifact_path,
 )

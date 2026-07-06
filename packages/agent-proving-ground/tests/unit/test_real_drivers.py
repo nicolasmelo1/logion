@@ -5,16 +5,16 @@ from unittest.mock import patch
 
 import pytest
 
-from logion_agent_proving_ground.drivers._provider import (
+from agent_proving_ground.drivers._provider import (
     ClaudeCodeDriver,
     CodexDriver,
     OpencodeDriver,
 )
-from logion_agent_proving_ground.drivers.base import AgentLaunch
-from logion_agent_proving_ground.drivers.local_process import (
+from agent_proving_ground.drivers.base import AgentLaunch
+from agent_proving_ground.drivers.local_process import (
     LocalProcessDriver,
 )
-from logion_agent_proving_ground.drivers.process import ChildProcessSession
+from agent_proving_ground.drivers.process import ChildProcessSession
 
 
 @pytest.fixture
@@ -175,7 +175,7 @@ async def test_provider_driver_inconclusive_when_missing_executable(
     tmp_path,
 ) -> None:
     with patch(
-        "logion_agent_proving_ground.drivers._provider.shutil.which",
+        "agent_proving_ground.drivers._provider.shutil.which",
         return_value=None,
     ):
         driver = CodexDriver(driver_config={})
@@ -244,7 +244,7 @@ class TestProviderDriverModelProvider:
         # default_args already contain --model; we just don't override it
         assert "--model" in args
         idx = args.index("--model")
-        assert args[idx + 1] == "claude-sonnet-4-20250514"
+        assert args[idx + 1] == "claude-haiku-4-5"
 
     def test_provider_extra_args_combined_with_model(self) -> None:
         driver = CodexDriver(
