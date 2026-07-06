@@ -15,6 +15,7 @@
 #   --DryRun                 Show what would be done without executing
 #   --NoModifyPath           Do not edit the user PATH
 #   --NoOnboarding           Do not run logion onboarding after install
+#   --SetupToken TOKEN      One-time setup token from GitHub sign-in
 #   --Quiet                  Suppress informational output
 #   --Verbose                Show extra detail
 #   --Help                   Print usage and exit
@@ -88,6 +89,7 @@ Options:
   --DryRun                 Show what would be done
   --NoModifyPath           Do not edit the user PATH
   --NoOnboarding           Do not run logion onboarding after install
+  --SetupToken TOKEN      One-time setup token from GitHub sign-in
   --Quiet                  Suppress informational output
   --Verbose                Show extra detail
   --Help                   Print this help and exit
