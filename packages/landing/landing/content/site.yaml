@@ -51,6 +51,8 @@ hero:
     secondary:
       - label: View GitHub
         href: https://github.com/nicolasmelo1/logion
+      - label: or sign in with GitHub for a pre-authenticated install
+        href: https://api.logion.sh/v1/setup/github/start
       - label: Read terms
         href: /terms
   readouts:
@@ -451,6 +453,8 @@ links:
   primary:
     - label: GitHub
       href: https://github.com/nicolasmelo1/logion
+    - label: Sign in
+      href: https://api.logion.sh/v1/setup/github/start
     - label: Pricing
       href: /pricing
     - label: Install
