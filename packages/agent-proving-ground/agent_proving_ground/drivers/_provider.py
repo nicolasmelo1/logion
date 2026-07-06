@@ -138,8 +138,13 @@ class ClaudeCodeDriver(ProviderDriver):
     provider_name = "claude-code"
     default_command = "claude"
     # Haiku keeps full e2e runs cheap; override via driver_config for
-    # scenarios that need a stronger model.
+    # scenarios that need a stronger model. Non-interactive runs cannot
+    # answer permission prompts, so the tools the e2e needs (logion CLI
+    # plus workspace file ops) are pre-approved via a scoped allowlist.
     default_args: ClassVar[list[str]] = [
+        "--print",
+        "--allowedTools",
+        "Bash(logion:*),Read,Write,Edit,Glob,Grep",
         "--model",
         "claude-haiku-4-5",
     ]

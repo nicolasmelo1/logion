@@ -188,7 +188,14 @@ class LogionApiQueries:
         owner_role = self._role_of(query.get("owner_agent"), agent_roles)
         wanted_status = query.get("status")
         baseline_course_ids = _baseline_ids(query, "course_ids")
-        courses = await self._my_courses(owner_role)
+        if owner_role is not None:
+            courses = await self._my_courses(owner_role)
+        else:
+            # No owner constraint: look across every role that can own
+            # courses, not just the (unauthenticated) default.
+            courses = []
+            for role in dict.fromkeys([*agent_roles.values(), "seller"]):
+                courses.extend(await self._my_courses(role))
         for course in courses:
             course_id = str(course.get("id") or "")
             if course_id in baseline_course_ids:
@@ -480,6 +487,10 @@ def _unsupported(reason: str) -> dict[str, Any]:
 
 
 def _baseline_ids(query: dict[str, Any], key: str) -> set[str]:
+    # Scenarios that rely on pre-seeded fixtures (e.g. a published
+    # fixture course) opt out of baseline-delta filtering per assertion.
+    if query.get("include_baseline"):
+        return set()
     baseline = query.get("_baseline")
     if not isinstance(baseline, dict):
         return set()

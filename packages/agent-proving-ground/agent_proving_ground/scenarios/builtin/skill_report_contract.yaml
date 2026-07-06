@@ -1,6 +1,6 @@
 schema_version: "1"
 name: skill_report_contract
-description: Agent uses a course and must report usage afterward.
+description: Agent uses a course; companion policy should report usage.
 api_adapter: mock
 
 agents:
@@ -8,19 +8,26 @@ agents:
     role: Learner using a Logion course
     driver: scripted
     workspace: learner
+    devrig_role: buyer
 
 phases:
   - id: use_course_and_report
     actor: learner
     goal: |
-      Install/use the fixture course for a tiny task. When done, follow the
-      Logion companion rule and file usage feedback for the exact course and
-      version you used.
+      Install and use the fixture course for a tiny task.
+    success_hint: |
+      Find the fixture course with `logion listings search`. Purchase it
+      first with `logion courses purchase COURSE_ID` — even for a free
+      course, the purchase creates the entitlement needed after use. Then
+      install it with `logion skills install`, do a tiny task with it, and
+      finish normally.
     assertions:
+      # The fixture course pre-exists the run, so both assertions opt out
+      # of the baseline-delta filter used by creation-flow scenarios.
       - type: api.course_exists
-        params: {status: published}
+        params: {status: published, include_baseline: true}
       - type: api.usage_report_exists
-        params: {agent: learner}
+        params: {agent: learner, include_baseline: true}
 
 final_assertions:
   - type: timeline.no_unredacted_secret

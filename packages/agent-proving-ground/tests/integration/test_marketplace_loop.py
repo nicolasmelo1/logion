@@ -90,6 +90,21 @@ def _without(operations: dict[str, list], phase: str, op_name: str) -> dict:
     return trimmed
 
 
+def test_learner_phase_does_not_prompt_for_usage_review() -> None:
+    scenario = load_scenario("builtin:marketplace_loop")
+    phase = next(
+        p for p in scenario.phases if p.id == "learner_buys_uses_reviews"
+    )
+    visible_prompt = "\n".join(
+        part for part in [phase.goal, phase.success_hint or ""] if part
+    )
+    assert "report-usage" not in visible_prompt
+    assert "usage feedback" not in visible_prompt
+    assert "leave usage" not in visible_prompt
+    assert "review when I finish" not in visible_prompt
+    assert any(a.type == "api.usage_report_exists" for a in phase.assertions)
+
+
 async def test_marketplace_loop_passes_in_scripted_mock(
     loop_runner_factory,
 ) -> None:

@@ -67,13 +67,13 @@ phases:
   - id: learner_buys_uses_reviews
     actor: learner
     goal: |
-      I want to buy the CLI workflow course on Logion, use it for a tiny
-      task, and leave usage feedback or a review when I finish.
+      I want to buy the CLI workflow course on Logion and use it for a tiny
+      task.
     success_hint: |
       Search for the course created by the creator agent in this run (use its
       unique slug or title). Purchase it with `logion courses purchase`, then
-      install the skill with `logion skills install`. Run the course and submit
-      a usage report with `logion courses report-usage` including a rating.
+      install the skill with `logion skills install`. Run the course to
+      complete a small task, then finish normally.
     assertions:
       - type: api.purchase_exists
         params: {buyer_agent: learner}
