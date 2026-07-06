@@ -135,8 +135,41 @@ def _classify_turn(
     )
 
 
+def _phase_scaffolding(phase_id: str, unique_slug: str) -> list[str]:
+    """Return phase-specific scaffolding lines for the prompt.
+
+    Only creator/publisher phases need course-creation and bundle-upload
+    hints.  Reviewer, learner, and bounty phases must NOT receive these
+    hints — otherwise the agent creates a brand-new course instead of
+    reviewing or purchasing the existing one.
+    """
+    creator_phases = {
+        "creator_publishes_course",
+        "publisher_publishes_course",
+    }
+    if phase_id not in creator_phases:
+        return []
+    return [
+        "",
+        "Create a NEW course with a unique slug. Base the slug on this run "
+        f"identifier: '{unique_slug}'.",
+        "Keep the course minimal: one short description, one SKILL.md with a "
+        "single tiny exercise, and a LICENSE file. No extra lessons.",
+        "When uploading bundle files with `logion courses uploads push`, use "
+        "the explicit mapping syntax:",
+        "  --file course/capabilities.yaml=/path/to/course/capabilities.yaml",
+        "  --file SKILL.md=/path/to/SKILL.md",
+        "  --file LICENSE=/path/to/LICENSE",
+        "so the upload key preserves the required `course/capabilities.yaml` "
+        "path.",
+    ]
+
+
 def _build_prompt(
-    goal: str, unique_slug: str, success_hint: str | None = None
+    goal: str,
+    unique_slug: str,
+    success_hint: str | None = None,
+    phase_id: str = "",
 ) -> str:
     parts = [
         "User request:",
@@ -153,19 +186,8 @@ def _build_prompt(
         "- If blocked, state RESULT: blocked and explain the observable",
         "  blocker.",
         "- Do not print secrets.",
-        "",
-        "Create a NEW course with a unique slug. Base the slug on this run "
-        f"identifier: '{unique_slug}'.",
-        "Keep the course minimal: one short description, one SKILL.md with a "
-        "single tiny exercise, and a LICENSE file. No extra lessons.",
-        "When uploading bundle files with `logion courses uploads push`, use "
-        "the explicit mapping syntax:",
-        "  --file course/capabilities.yaml=/path/to/course/capabilities.yaml",
-        "  --file SKILL.md=/path/to/SKILL.md",
-        "  --file LICENSE=/path/to/LICENSE",
-        "so the upload key preserves the required `course/capabilities.yaml` "
-        "path.",
     ]
+    parts.extend(_phase_scaffolding(phase_id, unique_slug))
     if success_hint:
         parts.extend(["", f"Success hint: {success_hint}"])
     return "\n".join(parts) + "\n"
@@ -238,7 +260,7 @@ class HermesDriver(AgentDriver):
         ]
         unique_slug = f"{role_slug}-{agent_slug}-{run_unique}"[:64]
 
-        prompt = _build_prompt(goal, unique_slug, success_hint)
+        prompt = _build_prompt(goal, unique_slug, success_hint, phase_id)
         command = [
             executable,
             *self._effective_args(),

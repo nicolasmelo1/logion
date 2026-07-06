@@ -343,13 +343,22 @@ class LogionApiQueries:
             query.get("submitter_agent"), agent_roles
         )
         submitter_agent_id = self._keys.agent_id(submitter_role)
+        # The API restricts /v1/bounties and
+        # /v1/bounties/{id}/submissions to the bounty creator, so
+        # we must list bounties and fetch submissions using the
+        # creator role — not the submitter role.
+        creator_role = self._role_of(query.get("creator_agent"), agent_roles)
+        bounty_list_role = creator_role or submitter_role
         baseline_bounty_ids = _baseline_ids(query, "bounty_ids")
-        for bounty in await self._bounties(submitter_role):
+        for bounty in await self._bounties(bounty_list_role):
             bounty_id = str(bounty.get("id") or "")
             if bounty_id in baseline_bounty_ids:
                 continue
+            # Fetch submissions as the bounty creator (the only role
+            # authorised to list them).
             status, data = await self._get(
-                f"/v1/bounties/{bounty_id}/submissions", submitter_role
+                f"/v1/bounties/{bounty_id}/submissions",
+                bounty_list_role,
             )
             if status != 200:
                 continue
