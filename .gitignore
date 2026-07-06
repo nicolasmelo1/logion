@@ -243,3 +243,8 @@ __marimo__/
 packages/cli/.artifacts/
 
 .DS_Store
+
+# Proving ground run artifacts
+.runs/
+review-bundles/
+.logion/

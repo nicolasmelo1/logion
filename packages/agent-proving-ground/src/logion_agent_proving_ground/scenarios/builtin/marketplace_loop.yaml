@@ -97,7 +97,7 @@ phases:
       and submit it with `logion bounties submit`.
     assertions:
       - type: api.bounty_submission_exists
-        params: {submitter_agent: learner}
+        params: {submitter_agent: learner, creator_agent: creator}
 
   - id: creator_accepts_bounty
     actor: creator
