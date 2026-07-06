@@ -42,6 +42,7 @@ param(
     [switch]$DryRun,
     [switch]$NoModifyPath,
     [switch]$NoOnboarding,
+    [string]$SetupToken,
     [switch]$Quiet,
     [switch]$Verbose,
     [switch]$Help
@@ -62,6 +63,7 @@ if ($Installer)   { $argList.AddRange(@("--Installer", $Installer)) }
 if ($DryRun)      { $argList.Add("--DryRun") | Out-Null }
 if ($NoModifyPath){ $argList.Add("--NoModifyPath") | Out-Null }
 if ($NoOnboarding) { $argList.Add("--NoOnboarding") | Out-Null }
+if ($SetupToken)  { $argList.AddRange(@("--SetupToken", $SetupToken)) }
 if ($Quiet)       { $argList.Add("--Quiet") | Out-Null }
 if ($Verbose)     { $argList.Add("--Verbose") | Out-Null }
 if ($Help)        { $argList.Add("--Help") | Out-Null }

@@ -143,6 +143,7 @@ function Parse-Args {
         DryRun       = $false
         NoModifyPath = $false
         NoOnboarding = $false
+        SetupToken   = $null
         Quiet        = $false
         Verbose      = $false
         Help         = $false
@@ -193,6 +194,12 @@ function Parse-Args {
             "^--DryRun$"     { $opts.DryRun = $true }
             "^--NoModifyPath$" { $opts.NoModifyPath = $true }
             "^--NoOnboarding$" { $opts.NoOnboarding = $true }
+            "^--SetupToken$" {
+                $i++
+                if ($i -ge $ArgList.Count) { Die -Message "--SetupToken requires a value" -ExitCode $script:EXIT_INVALID_ARGS }
+                $opts.SetupToken = $ArgList[$i]
+            }
+            "^--SetupToken=(.+)$" { $opts.SetupToken = $Matches[1] }
             "^--Quiet$"      { $opts.Quiet = $true; $script:Quiet = $true }
             "^--Verbose$"    { $opts.Verbose = $true }
             "^--Help$"       { $opts.Help = $true }
