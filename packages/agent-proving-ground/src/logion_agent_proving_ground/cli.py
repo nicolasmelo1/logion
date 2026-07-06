@@ -37,6 +37,7 @@ _DRIVER_CHOICES = [
     "opencode",
     "codex",
     "claude-code",
+    "hermes",
 ]
 
 
@@ -73,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_cmd.add_argument(
         "--agent-driver",
-        default="scripted",
+        default=None,
         choices=_DRIVER_CHOICES,
     )
     run_cmd.add_argument("--out", help="artifact directory")
@@ -168,6 +169,7 @@ async def _cmd_doctor(_args: argparse.Namespace) -> int:
         "opencode": "opencode",
         "codex": "codex",
         "claude-code": "claude",
+        "hermes": "hermes",
     }
     for driver, executable in executables.items():
         if executable is None:
@@ -210,11 +212,11 @@ def _build_api_adapter(args: argparse.Namespace) -> ApiAdapter:
 
 
 def _build_driver_factory(
-    driver_config: dict, override: str
+    driver_config: dict, override: str | None
 ) -> AgentDriverFactory:
     return AgentDriverFactory(
         driver_config,
-        default_driver=override if override else "scripted",
+        default_driver=override,
     )
 
 

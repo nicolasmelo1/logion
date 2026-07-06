@@ -21,6 +21,7 @@ from logion_agent_proving_ground.drivers._provider import (
     OpencodeDriver,
 )
 from logion_agent_proving_ground.drivers.base import AgentDriver, AgentLaunch
+from logion_agent_proving_ground.drivers.hermes import HermesDriver
 from logion_agent_proving_ground.drivers.local_process import (
     LocalProcessDriver,
 )
@@ -43,6 +44,7 @@ _DRIVER_CLASSES: dict[str, type[AgentDriver]] = {
     "opencode": OpencodeDriver,
     "codex": CodexDriver,
     "claude-code": ClaudeCodeDriver,
+    "hermes": HermesDriver,
 }
 
 
@@ -53,7 +55,7 @@ class AgentDriverFactory:
         *,
         scripted_operations: dict[str, list] | None = None,
         scripted_apply: Any = None,
-        default_driver: str = "scripted",
+        default_driver: str | None = None,
     ) -> None:
         self._driver_config = driver_config
         self._scripted_operations = scripted_operations
@@ -61,7 +63,7 @@ class AgentDriverFactory:
         self._default_driver = default_driver
 
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
-        name = spec.driver or self._default_driver
+        name = self._default_driver or spec.driver or "scripted"
         cls = _DRIVER_CLASSES.get(name)
         if cls is None:
             raise InconclusiveRun(
@@ -82,6 +84,8 @@ class AgentDriverFactory:
             if name == "codex":
                 return CodexDriver(driver_config=self._driver_config)
             return ClaudeCodeDriver(driver_config=self._driver_config)
+        if name == "hermes":
+            return HermesDriver(driver_config=self._driver_config)
         return cls()
 
 

@@ -27,9 +27,17 @@ phases:
   - id: creator_publishes_course
     actor: creator
     goal: |
-      I want to publish a small, useful course on Logion that teaches a
-      concrete CLI workflow. Keep it tiny, but make it real enough for
-      another agent to use. Submit it for publication.
+      Publish a minimal Logion course that teaches exactly one CLI command.
+      The course must contain only: a 2-line description, a single SKILL.md
+      with one short exercise, and a LICENSE file. Use the CLI to create the
+      course, upload the bundle, and request publication review.
+    success_hint: |
+      Use a unique course slug based on the run identifier. After creating the
+      course, run `logion courses uploads create`, then push with explicit file
+      mappings: `--file course/capabilities.yaml=/abs/path/to/course/capabilities.yaml`
+      `--file SKILL.md=/abs/path/to/SKILL.md` `--file LICENSE=/abs/path/to/LICENSE`.
+      Finish by requesting publication review with `logion courses request-publish`.
+    timeout_seconds: 600
     assertions:
       - type: api.course_exists
         params: {owner_agent: creator}
@@ -40,6 +48,10 @@ phases:
       A course publication is waiting in the Logion review queue. Review
       the pending course publication and approve it if it looks safe and
       complete, or reject it with a reason if not.
+    success_hint: |
+      Find the pending review with `logion course-reviews list`, then approve
+      it with `logion course-reviews approve REVIEW_ID --yes`. The course
+      should end up with status `published`.
     assertions:
       - type: api.course_exists
         params: {owner_agent: creator, status: published}
@@ -49,6 +61,11 @@ phases:
     goal: |
       I want to buy the CLI workflow course on Logion, use it for a tiny
       task, and leave usage feedback or a review when I finish.
+    success_hint: |
+      Search for the course created by the creator agent in this run (use its
+      unique slug or title). Purchase it with `logion courses purchase`, then
+      install the skill with `logion skills install`. Run the course and submit
+      a usage report with `logion courses report-usage` including a rating.
     assertions:
       - type: api.purchase_exists
         params: {buyer_agent: learner}
@@ -62,6 +79,9 @@ phases:
     goal: |
       I want to open a bounded bounty on my Logion course asking for one
       practical exercise to be added.
+    success_hint: |
+      Identify your course from this run, then use `logion bounties create`
+      with a clear title and description asking for one practical exercise.
     assertions:
       - type: api.bounty_exists
         params: {creator_agent: creator, status: open}
@@ -71,6 +91,10 @@ phases:
     goal: |
       I want to claim the bounty on the CLI workflow course, add the
       requested practical exercise, and submit the work for review.
+    success_hint: |
+      Find the open bounty created by the creator in this run, claim it with
+      `logion bounties claim`, prepare a bundle with the additional exercise,
+      and submit it with `logion bounties submit`.
     assertions:
       - type: api.bounty_submission_exists
         params: {submitter_agent: learner}
@@ -80,6 +104,9 @@ phases:
     goal: |
       I want to review the bounty submission on my Logion course and
       approve it if it satisfies the requested exercise.
+    success_hint: |
+      List your bounties with `logion bounties list`, find the submission from
+      the learner agent, and accept it with `logion bounties accept SUBMISSION_ID`.
     assertions:
       - type: api.bounty_accepted
         params: {creator_agent: creator, submitter_agent: learner}
@@ -90,6 +117,10 @@ phases:
       I want to check the Logion admin/operator view for this course,
       purchase, review, bounty, submission, and approval flow, then flag
       any inconsistent marketplace state.
+    success_hint: |
+      Use `logion course-reviews list`, `logion bounties list`, and `logion
+      listings search` to verify the course, purchase, review, bounty,
+      submission, and acceptance are all consistent.
     assertions:
       - type: api.admin_state_observed
         params: {course_owner_agent: creator, buyer_agent: learner}

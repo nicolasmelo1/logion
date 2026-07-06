@@ -141,9 +141,12 @@ class LogionApiQueries:
     async def _get(self, path: str, role: str | None) -> tuple[int, Any]:
         key = self._keys.api_key(role)
         headers = {"Authorization": f"Bearer {key}"} if key else {}
-        return await http_request_json(
-            "GET", f"{self._base_url}{path}", headers=headers
-        )
+        try:
+            return await http_request_json(
+                "GET", f"{self._base_url}{path}", headers=headers
+            )
+        except Exception as exc:
+            return 0, {"error": str(exc)}
 
     def _role_of(
         self, agent_id: str | None, agent_roles: dict[str, str]
