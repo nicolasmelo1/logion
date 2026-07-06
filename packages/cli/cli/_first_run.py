@@ -81,6 +81,11 @@ def decide(argv: list[str], args: argparse.Namespace) -> TriggerDecision:
         return TriggerDecision(should_run=False, reason="unknown-command")
     if is_onboarded():
         return TriggerDecision(should_run=False, reason="already-onboarded")
+    # --setup-token bypasses the non-interactive guard because the token
+    # flow needs no prompts.  Check raw argv because argparse has not
+    # populated args yet when decide() is called from main.
+    if "--setup-token" in argv or os.getenv("LOGION_SETUP_TOKEN"):
+        return TriggerDecision(should_run=True, reason="setup-token")
     if is_noninteractive():
         return TriggerDecision(should_run=False, reason="noninteractive-env")
     # ``--json`` means a machine consumer is piping stdout; never

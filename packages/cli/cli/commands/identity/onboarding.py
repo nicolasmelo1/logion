@@ -23,6 +23,7 @@ from ._closing_copy import CLOSING_COPY, ONBOARDING_NEXT_STEPS
 from ._harness_select import select_harnesses
 from ._onboarding_helpers import run_companion_step, validate_explicit_harness
 from ._provisioning import provision_identity
+from ._setup_token import redeem_setup_token, resolve_setup_token
 from .handlers import _resolve_password
 
 
@@ -51,27 +52,36 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     summary: dict[str, object] = {}
 
-    existing = stored_user_id()
-    if existing is None:
-        identity = provision_identity(args, config)
-        if identity is None:
+    # --- Setup-token path: fully non-interactive, no email/password ---
+    setup_token = resolve_setup_token(args)
+    if setup_token:
+        result = redeem_setup_token(args, config, setup_token)
+        if result is None:
             return 2
-        summary.update(identity)
+        summary.update(result)
     else:
-        print_err(f"Already onboarded (user {existing}).")
-        summary.update({"user_id": existing, "created": False})
-        existing_api_key = stored_api_key()
-        if existing_api_key is None:
-            print_err("Stored Logion API key missing; repairing credentials.")
-            repaired = _repair_missing_api_key(args, config, existing)
-            if repaired is None:
+        # --- Standard interactive path ---
+        existing = stored_user_id()
+        if existing is None:
+            identity = provision_identity(args, config)
+            if identity is None:
                 return 2
-            summary["credentials"] = repaired
+            summary.update(identity)
         else:
-            summary["credentials"] = {
-                "api_key_persisted": True,
-                "api_key_prefix": stored_api_key_prefix(),
-            }
+            print_err(f"Already onboarded (user {existing}).")
+            summary.update({"user_id": existing, "created": False})
+            existing_api_key = stored_api_key()
+            if existing_api_key is None:
+                print_err("Stored Logion API key missing; repairing credentials.")
+                repaired = _repair_missing_api_key(args, config, existing)
+                if repaired is None:
+                    return 2
+                summary["credentials"] = repaired
+            else:
+                summary["credentials"] = {
+                    "api_key_persisted": True,
+                    "api_key_prefix": stored_api_key_prefix(),
+                }
 
     # Validate an explicitly-requested harness up-front so an unknown
     # name is a hard error before autopost or the companion step runs.
@@ -187,6 +197,12 @@ def register_onboarding(sub: argparse._SubParsersAction) -> None:
         "--no-companion",
         action="store_true",
         help="Skip the companion install/sync step.",
+    )
+    parser.add_argument(
+        "--setup-token",
+        default=None,
+        help="One-time setup token from GitHub sign-in (bypasses "
+        "email/password prompts). Also read from LOGION_SETUP_TOKEN.",
     )
     # ``--no-onboarding`` is inherited from COMMON_PARSER; no need to
     # re-declare it here.

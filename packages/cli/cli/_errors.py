@@ -15,6 +15,7 @@ ALLOWED_ERROR_CODES = frozenset({
     "entitlement_expired",
     "github_identity_conflict",
     "github_oauth_unconfigured",
+    "setup_token_invalid",
     "unsafe_identifier",
     "not_found",
     "validation_failed",
