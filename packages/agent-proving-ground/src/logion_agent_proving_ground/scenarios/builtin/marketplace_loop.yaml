@@ -105,8 +105,10 @@ phases:
       I want to review the bounty submission on my Logion course and
       approve it if it satisfies the requested exercise.
     success_hint: |
-      List your bounties with `logion bounties list`, find the submission from
-      the learner agent, and accept it with `logion bounties accept SUBMISSION_ID`.
+      First fund the bounty with `logion bounties fund BOUNTY_ID --yes`,
+      then list submissions with `logion bounties submissions list BOUNTY_ID`,
+      and accept the learner's submission with
+      `logion bounties submissions accept SUBMISSION_ID --yes`.
     assertions:
       - type: api.bounty_accepted
         params: {creator_agent: creator, submitter_agent: learner}

@@ -216,7 +216,7 @@ class HermesDriver(AgentDriver):
         "--source",
         "tool",
         "--max-turns",
-        "50",
+        "80",
         "--toolsets",
         "web,terminal,file",
     ]
