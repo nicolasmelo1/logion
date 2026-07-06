@@ -143,6 +143,7 @@ function Parse-Args {
         DryRun       = $false
         NoModifyPath = $false
         NoOnboarding = $false
+        SetupToken   = $null
         Quiet        = $false
         Verbose      = $false
         Help         = $false
@@ -193,6 +194,12 @@ function Parse-Args {
             "^--DryRun$"     { $opts.DryRun = $true }
             "^--NoModifyPath$" { $opts.NoModifyPath = $true }
             "^--NoOnboarding$" { $opts.NoOnboarding = $true }
+            "^--SetupToken$" {
+                $i++
+                if ($i -ge $ArgList.Count) { Die -Message "--SetupToken requires a value" -ExitCode $script:EXIT_INVALID_ARGS }
+                $opts.SetupToken = $ArgList[$i]
+            }
+            "^--SetupToken=(.+)$" { $opts.SetupToken = $Matches[1] }
             "^--Quiet$"      { $opts.Quiet = $true; $script:Quiet = $true }
             "^--Verbose$"    { $opts.Verbose = $true }
             "^--Help$"       { $opts.Help = $true }
@@ -751,12 +758,22 @@ function Run-Onboarding {
         if ($Failed) { $Failed.Value = $true }
         return
     }
-    if (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
+    # When a setup token is present, skip the non-interactive guard — the
+    # token flow needs no TTY prompts.  Mask the raw value in output.
+    if ($Opts.SetupToken) {
+        $onboardingArgs += "--setup-token", $Opts.SetupToken
+        $maskedToken = $Opts.SetupToken.Substring(0, [Math]::Min(3, $Opts.SetupToken.Length)) + "****"
+        # Append to $rerun rather than overwrite so --no-companion is preserved.
+        $rerun += " --setup-token $maskedToken"
+        Info -Message "Running onboarding with setup token ($maskedToken) ..."
+    } elseif (-not [Environment]::UserInteractive -or $env:LOGION_NONINTERACTIVE -or $env:CI) {
         Info -Message "Non-interactive; run '$rerun' to finish setup."
         return
     }
 
-    Info -Message "Running '$rerun' ..."
+    if (-not $Opts.SetupToken) {
+        Info -Message "Running '$rerun' ..."
+    }
     try {
         & $logion.Source @onboardingArgs
         if ($LASTEXITCODE -ne 0) {

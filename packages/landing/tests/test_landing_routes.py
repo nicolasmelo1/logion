@@ -698,3 +698,29 @@ def test_vercel_analytics_renders_on_every_public_page() -> None:
         body = client.get(path).text
         assert "/_vercel/insights/script.js" in body, path
         assert "window.va = window.va" in body, path
+
+
+def test_signin_cta_present_on_all_surfaces() -> None:
+    """GitHub sign-in CTA must appear on every public surface."""
+    signin_href = "https://api.logion.sh/v1/setup/github/start"
+
+    # 1. HTML homepage
+    html = client.get("/").text
+    assert signin_href in html, "sign-in href missing from HTML homepage"
+    assert "Sign in" in html, "'Sign in' label missing from HTML homepage"
+    assert "sign in with GitHub" in html, "hero CTA text missing from HTML"
+
+    # 2. Markdown version
+    md = client.get("/", headers={"Accept": "text/markdown"}).text
+    assert signin_href in md, "sign-in href missing from markdown surface"
+
+    # 3. llms-full.txt
+    llms_full = client.get("/llms-full.txt").text
+    assert signin_href in llms_full, "sign-in href missing from llms-full.txt"
+
+    # 4. llms.txt (the sign-in link is in site.yaml links.primary,
+    #    which feeds the nav, not the llms.txt index — but the hero CTA
+    #    text appears in the landing markdown that feeds llms-full.txt.
+    #    Verify the sign-in nav link appears in the HTML nav at minimum.)
+    nav = client.get("/").text
+    assert 'href="https://api.logion.sh/v1/setup/github/start"' in nav

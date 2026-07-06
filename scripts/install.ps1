@@ -15,6 +15,7 @@
 #   --DryRun                 Show what would be done without executing
 #   --NoModifyPath           Do not edit the user PATH
 #   --NoOnboarding           Do not run logion onboarding after install
+#   --SetupToken TOKEN      One-time setup token from GitHub sign-in
 #   --Quiet                  Suppress informational output
 #   --Verbose                Show extra detail
 #   --Help                   Print usage and exit
@@ -42,6 +43,7 @@ param(
     [switch]$DryRun,
     [switch]$NoModifyPath,
     [switch]$NoOnboarding,
+    [string]$SetupToken,
     [switch]$Quiet,
     [switch]$Verbose,
     [switch]$Help
@@ -62,6 +64,7 @@ if ($Installer)   { $argList.AddRange(@("--Installer", $Installer)) }
 if ($DryRun)      { $argList.Add("--DryRun") | Out-Null }
 if ($NoModifyPath){ $argList.Add("--NoModifyPath") | Out-Null }
 if ($NoOnboarding) { $argList.Add("--NoOnboarding") | Out-Null }
+if ($SetupToken)  { $argList.AddRange(@("--SetupToken", $SetupToken)) }
 if ($Quiet)       { $argList.Add("--Quiet") | Out-Null }
 if ($Verbose)     { $argList.Add("--Verbose") | Out-Null }
 if ($Help)        { $argList.Add("--Help") | Out-Null }
@@ -86,6 +89,7 @@ Options:
   --DryRun                 Show what would be done
   --NoModifyPath           Do not edit the user PATH
   --NoOnboarding           Do not run logion onboarding after install
+  --SetupToken TOKEN      One-time setup token from GitHub sign-in
   --Quiet                  Suppress informational output
   --Verbose                Show extra detail
   --Help                   Print this help and exit

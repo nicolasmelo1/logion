@@ -122,6 +122,7 @@ parse_args() {
     INSTALL_DRY_RUN=0
     INSTALL_NO_MODIFY_PATH=0
     INSTALL_NO_ONBOARDING=0
+    INSTALL_SETUP_TOKEN="${INSTALL_SETUP_TOKEN:-}"
     INSTALL_ONBOARDING_FAILED=0
     INSTALL_IS_UPDATE=0
     INSTALL_QUIET=0
@@ -198,6 +199,17 @@ parse_args() {
                 INSTALL_NO_ONBOARDING=1
                 shift
                 ;;
+            --setup-token)
+                shift
+                [ $# -gt 0 ] || die 2 "--setup-token requires an argument"
+                INSTALL_SETUP_TOKEN="$1"
+                shift
+                ;;
+            --setup-token=*)
+                INSTALL_SETUP_TOKEN="${1#--setup-token=}"
+                [ -n "${INSTALL_SETUP_TOKEN}" ] || die 2 "--setup-token requires an argument"
+                shift
+                ;;
             --update)
                 INSTALL_IS_UPDATE=1
                 INSTALL_NO_ONBOARDING=1
@@ -224,6 +236,7 @@ parse_args() {
                 info "  --dry-run          Show what would be done without doing it"
                 info "  --no-modify-path   Do not modify shell RC files"
                 info "  --no-onboarding    Do not run 'logion onboarding' at the end"
+                info "  --setup-token TOKEN  One-time setup token from GitHub sign-in"
                 info "  --quiet            Suppress informational output"
                 info "  --verbose          Show extra detail"
                 info "  --help             Show this help"
@@ -262,7 +275,7 @@ parse_args() {
 
     export INSTALL_CHANNEL INSTALL_VERSION INSTALL_CLI_ONLY INSTALL_SKILL_ONLY
     export INSTALL_PREFIX INSTALL_PREFIX_EXPLICIT INSTALL_INSTALLER INSTALL_DRY_RUN
-    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_ONBOARDING_FAILED INSTALL_IS_UPDATE INSTALL_QUIET INSTALL_VERBOSE
+    export INSTALL_NO_MODIFY_PATH INSTALL_NO_ONBOARDING INSTALL_SETUP_TOKEN INSTALL_ONBOARDING_FAILED INSTALL_IS_UPDATE INSTALL_QUIET INSTALL_VERBOSE
 }
 
 # --- resolve_url helper -----------------------------------------------------
@@ -943,13 +956,24 @@ verify_install() {
 # run_onboarding invokes `logion onboarding` unless opted out or unsafe.
 # It is best-effort: warn on failures, but never hard-fail the installer.
 run_onboarding() {
-    # Honor --cli-only: onboarding installs/syncs the companion by default, so
-    # forward --no-companion to avoid re-adding what --cli-only opted out of.
-    _onboarding_arg=""
+    # Build the onboarding argument list and a masked display command.
+    _onboarding_args=""
     _onboarding_cmd="logion onboarding"
     if [ "${INSTALL_CLI_ONLY}" = 1 ]; then
-        _onboarding_arg="--no-companion"
+        _onboarding_args="--no-companion"
         _onboarding_cmd="logion onboarding --no-companion"
+    fi
+
+    # When a setup token is present, append it and mask it in output.
+    if [ -n "${INSTALL_SETUP_TOKEN}" ]; then
+        _onboarding_args="${_onboarding_args}${_onboarding_args:+ }--setup-token ${INSTALL_SETUP_TOKEN}"
+        # Mask the token in banner output: show only the prefix (e.g. "st_****").
+        _token_prefix="$(printf '%s' "${INSTALL_SETUP_TOKEN}" | cut -c1-3)"
+        # Reconstruct the display command from parts rather than string
+        # manipulation so --no-companion is never accidentally dropped.
+        _onboarding_cmd="logion onboarding"
+        [ "${INSTALL_CLI_ONLY}" = 1 ] && _onboarding_cmd="${_onboarding_cmd} --no-companion"
+        _onboarding_cmd="${_onboarding_cmd} --setup-token ${_token_prefix}****"
     fi
 
     if [ "${INSTALL_NO_ONBOARDING}" = 1 ]; then
@@ -966,14 +990,18 @@ run_onboarding() {
         export INSTALL_ONBOARDING_FAILED
         return 0
     fi
-    if [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
-        info "Non-interactive shell; run '${_onboarding_cmd}' to finish setup."
-        return 0
+    # A setup token enables non-interactive onboarding — do not skip when
+    # one is present even if stdin/stdout are not a TTY.
+    if [ -z "${INSTALL_SETUP_TOKEN}" ]; then
+        if [ ! -t 0 ] || [ ! -t 1 ] || [ -n "${LOGION_NONINTERACTIVE:-}" ] || [ -n "${CI:-}" ]; then
+            info "Non-interactive shell; run '${_onboarding_cmd}' to finish setup."
+            return 0
+        fi
     fi
 
     info "Running '${_onboarding_cmd}' ..."
-    # shellcheck disable=SC2086 # _onboarding_arg is a single optional flag
-    if ! logion onboarding ${_onboarding_arg}; then
+    # shellcheck disable=SC2086 # _onboarding_args may contain multiple tokens
+    if ! logion onboarding ${_onboarding_args}; then
         warn "onboarding did not complete; run '${_onboarding_cmd}' later."
         INSTALL_ONBOARDING_FAILED=1
         export INSTALL_ONBOARDING_FAILED
