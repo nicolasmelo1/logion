@@ -114,7 +114,7 @@ work.
 ## Project structure
 
 ```text
-src/logion_agent_proving_ground/
+agent_proving_ground/
   cli.py              # command-line interface
   config.py           # constants and exceptions
   models.py           # shared Pydantic models

@@ -4,15 +4,15 @@ import json
 
 import pytest
 
-from logion_agent_proving_ground.api_adapters.mock import MockApiAdapter
-from logion_agent_proving_ground.artifacts import ArtifactStore
-from logion_agent_proving_ground.assertions.registry import AssertionRegistry
-from logion_agent_proving_ground.runner import (
+from agent_proving_ground.api_adapters.mock import MockApiAdapter
+from agent_proving_ground.artifacts import ArtifactStore
+from agent_proving_ground.assertions.registry import AssertionRegistry
+from agent_proving_ground.runner import (
     AgentDriverFactory,
     ScenarioRunner,
 )
-from logion_agent_proving_ground.scenarios.loader import load_scenario
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.scenarios.loader import load_scenario
+from agent_proving_ground.timeline import Timeline
 
 COURSE_ID = "course_cli_workflow"
 BOUNTY_ID = "bounty_exercise"
@@ -88,6 +88,21 @@ def _without(operations: dict[str, list], phase: str, op_name: str) -> dict:
         op for op in trimmed[phase] if op.get("operation") != op_name
     ]
     return trimmed
+
+
+def test_learner_phase_does_not_prompt_for_usage_review() -> None:
+    scenario = load_scenario("builtin:marketplace_loop")
+    phase = next(
+        p for p in scenario.phases if p.id == "learner_buys_uses_reviews"
+    )
+    visible_prompt = "\n".join(
+        part for part in [phase.goal, phase.success_hint or ""] if part
+    )
+    assert "report-usage" not in visible_prompt
+    assert "usage feedback" not in visible_prompt
+    assert "leave usage" not in visible_prompt
+    assert "review when I finish" not in visible_prompt
+    assert any(a.type == "api.usage_report_exists" for a in phase.assertions)
 
 
 async def test_marketplace_loop_passes_in_scripted_mock(

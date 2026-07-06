@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from logion_agent_proving_ground.drivers.hermes import HermesDriver
+from agent_proving_ground.drivers.hermes import HermesDriver
 
 
 class TestHermesDriverEffectiveArgs:

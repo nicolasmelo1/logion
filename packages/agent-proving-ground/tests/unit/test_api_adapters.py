@@ -7,26 +7,26 @@ from threading import Thread
 
 import pytest
 
-from logion_agent_proving_ground.api_adapters._env import (
+from agent_proving_ground.api_adapters._env import (
     build_devrig_env_for_agent,
     parse_export_env_file,
     validate_devrig_env,
 )
-from logion_agent_proving_ground.api_adapters._http import (
+from agent_proving_ground.api_adapters._http import (
     HealthCheckError,
 )
-from logion_agent_proving_ground.api_adapters.local_devrig import (
+from agent_proving_ground.api_adapters.local_devrig import (
     LocalDevrigAdapter,
 )
-from logion_agent_proving_ground.api_adapters.remote import RemoteApiAdapter
-from logion_agent_proving_ground.config import InconclusiveRun
+from agent_proving_ground.api_adapters.remote import RemoteApiAdapter
+from agent_proving_ground.config import InconclusiveRun
 
 
 class _HealthHandler(BaseHTTPRequestHandler):
     def log_message(
         self,
-        format: str,  # noqa: A002
-        *args: object,
+        _format: str,
+        *_args: object,
     ) -> None:
         pass
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from logion_agent_proving_ground.timeline import Timeline
+from agent_proving_ground.timeline import Timeline
 
 
 def test_timeline_writes_valid_jsonl_in_order(tmp_path) -> None:
