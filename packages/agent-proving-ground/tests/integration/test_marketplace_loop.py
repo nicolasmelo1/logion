@@ -39,6 +39,7 @@ FULL_LOOP_OPERATIONS: dict[str, list] = {
     ],
     "creator_opens_bounty": [
         _op("create_bounty", bounty_id=BOUNTY_ID, course_id=COURSE_ID),
+        _op("fund_bounty", bounty_id=BOUNTY_ID),
     ],
     "learner_submits_bounty_work": [
         _op("submit_bounty", bounty_id=BOUNTY_ID),
