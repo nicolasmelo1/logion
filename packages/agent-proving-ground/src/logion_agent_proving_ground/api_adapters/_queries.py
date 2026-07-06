@@ -223,7 +223,8 @@ class LogionApiQueries:
         # "my purchases" listing, so fall back to the acquisition count
         # on candidate courses (weaker identity match, real observed
         # effect).
-        for course_id in await self._candidate_course_ids(query, agent_roles):
+        candidates = await self._candidate_course_ids(query, agent_roles)
+        for course_id in candidates:
             status, data = await self._get(
                 f"/v1/courses/{course_id}", buyer_role
             )
