@@ -24,18 +24,6 @@
       ]
     }
   },
-  "packages/skillmap/pyproject.toml": {
-    "dependencies": [
-      "pyyaml>=6.0"
-    ],
-    "dependency-groups": {
-      "dev": [
-        "pytest>=9.0.3,<9.1.0",
-        "ruff>=0.15.12,<0.16.0"
-      ]
-    },
-    "optional-dependencies": {}
-  },
   "packages/cli/pyproject.toml": {
     "dependencies": [
       "logion-client",
@@ -86,6 +74,18 @@
         "httpx>=0.28.0,<0.29.0",
         "pytest>=9.0.3,<9.1.0",
         "python-semantic-release>=10.5.3,<10.6.0",
+        "ruff>=0.15.12,<0.16.0"
+      ]
+    },
+    "optional-dependencies": {}
+  },
+  "packages/skillmap/pyproject.toml": {
+    "dependencies": [
+      "pyyaml>=6.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "pytest>=9.0.3,<9.1.0",
         "ruff>=0.15.12,<0.16.0"
       ]
     },
