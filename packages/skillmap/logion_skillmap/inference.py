@@ -47,16 +47,6 @@ _EXCLUDED_SEGMENTS = frozenset({
     ".github",
 })
 
-_MIRROR_PREFIXES = (
-    ".claude/skills/",
-    ".agents/skills/",
-    ".codex/",
-    ".opencode/",
-    ".cursor/",
-    ".cursorrules/",
-    "plugins/",
-)
-
 _LOGION_FILE_RE = re.compile(
     r"(?:^|/)logion-package-map\.ya?ml$", re.IGNORECASE
 )
@@ -112,7 +102,23 @@ def _parse_frontmatter(content: str) -> dict:
     text = content.strip()
     if not text.startswith("---"):
         return {}
-    end = text.find("---", 3)
+    # Find closing --- on its own line to avoid false matches inside YAML.
+    # The opening --- may be followed by a newline, so we search from
+    # position 3 onward for a line that is exactly ---.
+    end = -1
+    for pos in range(3, len(text)):
+        if text[pos] != "\n":
+            continue
+        # Check if the next line starts with ---
+        next_line_start = pos + 1
+        next_newline = text.find("\n", next_line_start)
+        if next_newline >= 0:
+            line = text[next_line_start:next_newline]
+        else:
+            line = text[next_line_start:]
+        if line.strip() == "---":
+            end = pos
+            break
     if end < 0:
         return {}
     fm = text[3:end]
@@ -154,7 +160,7 @@ def infer(
             validate_package_map,
         )
 
-        pm = parse_package_map(blob.decode("utf-8"))
+        pm = parse_package_map(blob.decode("utf-8", errors="replace"))
         components = tuple(
             InferredComponent(
                 name=cap.name,

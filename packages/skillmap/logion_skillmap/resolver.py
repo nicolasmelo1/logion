@@ -48,7 +48,7 @@ def resolve_includes(pm: PackageMap, root: Path) -> ResolvedFileSet:
     for path in root.rglob("*"):
         if not path.is_file():
             continue
-        rel = str(path.relative_to(root))
+        rel = path.relative_to(root).as_posix()
         # Validate: no traversal
         if _is_traversal(rel):
             continue

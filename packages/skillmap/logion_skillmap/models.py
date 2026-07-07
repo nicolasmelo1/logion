@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class CapabilityEntry:
 class EvalsBlock:
     include: tuple[str, ...] = ()
     exclude: tuple[str, ...] = ()
-    commands: dict[str, str] = field(default_factory=dict)  # NEVER executed
+    commands: tuple[tuple[str, str], ...] = ()  # NEVER executed
 
 
 @dataclass(frozen=True)

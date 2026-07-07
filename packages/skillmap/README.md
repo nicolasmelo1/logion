@@ -2,8 +2,9 @@
 
 Deterministic package-map inference engine for Logion.
 
-This package is stdlib-only (no external dependencies). It infers a
-`PackageMap` from repository trees by checking for:
+This package depends on [PyYAML](https://pypi.org/project/PyYAML/) as its
+single runtime dependency. It infers a `PackageMap` from repository trees
+by checking for:
 
 1. An explicit `logion-package-map.yaml` at the repo root (author map).
 2. A `.claude-plugin/plugin.json` or `.claude-plugin/marketplace.json`

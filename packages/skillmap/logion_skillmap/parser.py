@@ -1,9 +1,8 @@
 """Package-map YAML parser and validator.
 
-The skillmap package is stdlib-only, but PyYAML is available at the
-call-site (the CLI layer loads the YAML and passes the text).  However,
-``parse_package_map`` does accept raw YAML text and uses
-``yaml.safe_load`` because the workspace already depends on PyYAML.
+The skillmap package uses PyYAML for YAML parsing.  When the raw YAML
+data is available, call :func:`check_unknown_keys_raw` to validate
+unknown keys before constructing the structured model.
 """
 
 from __future__ import annotations
@@ -108,7 +107,7 @@ def _build_evals(e: dict) -> EvalsBlock:
     return EvalsBlock(
         include=tuple(e.get("include", []) or []),
         exclude=tuple(e.get("exclude", []) or []),
-        commands=dict(e.get("commands", {}) or {}),
+        commands=tuple(sorted((e.get("commands") or {}).items())),
     )
 
 
@@ -118,7 +117,13 @@ def _build_evals(e: dict) -> EvalsBlock:
 
 
 def validate_package_map(pm: PackageMap) -> list[MapWarning]:
-    """Run all validation checks on *pm*, returning warnings."""
+    """Run all post-parse validation checks on *pm*, returning warnings.
+
+    .. note::
+        Unknown-key validation is performed at parse time by
+        :func:`check_unknown_keys_raw` when the raw YAML data is still
+        available.  This function validates the structured model only.
+    """
     warnings: list[MapWarning] = []
     warnings.extend(_check_unknown_keys(pm))
     warnings.extend(_check_version(pm))

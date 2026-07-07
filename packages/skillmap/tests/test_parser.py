@@ -93,8 +93,8 @@ class TestParsePackageMap:
     def test_parse_preserves_evals_commands(self):
         pm = parse_package_map(VALID_FULL_YAML)
         assert pm.evals is not None
-        assert "lint" in pm.evals.commands
-        assert pm.evals.commands["lint"] == "ruff check ."
+        assert ("lint", "ruff check .") in pm.evals.commands
+        assert ("test", "pytest") in pm.evals.commands
 
 
 # Validation: unknown keys
@@ -346,7 +346,7 @@ class TestCommandsNotExecuted:
     def test_commands_flagged(self):
         pm = PackageMap(
             capabilities=(CapabilityEntry(name="c", entrypoint="a.py"),),
-            evals=EvalsBlock(commands={"test": "pytest"}),
+            evals=EvalsBlock(commands=(("test", "pytest"),)),
         )
         warnings = validate_package_map(pm)
         codes = [w.code for w in warnings]
