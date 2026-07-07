@@ -2,12 +2,11 @@
 """Tests for ``--setup-token`` onboarding path.
 
 Covers:
-- prompt-free path when --setup-token is provided
-- credentials written with 0600 permissions
-- autoreview consent defaults to false
-- 410 → exit 2, error message includes logion.sh URL
-- env-var fallback LOGION_SETUP_TOKEN
-- non-TTY allowed with --setup-token (first-run trigger)
+- setup token resolution precedence (flag over env var)
+- non-interactive first-run allowance via ``LOGION_SETUP_TOKEN``
+- 409/410 redeem failures returning ``None``
+- token flow defaulting auto-review consent to ``False``
+- refusal to overwrite existing stored credentials
 """
 
 from __future__ import annotations
@@ -110,7 +109,7 @@ class TestRedeemSetupTokenErrors:
     """410 (expired) and 409 (already redeemed)
     map to exit 2."""
 
-    def test_410_expired_returns_none(self):
+    def test_410_expired_returns_none_and_prints_mint_url(self):
         from cli.commands.identity._setup_token import (
             redeem_setup_token,
         )
@@ -126,13 +125,21 @@ class TestRedeemSetupTokenErrors:
         exc.status_code = 410  # type: ignore[attr-defined]
         mock_client.v1.setup_tokens.redeem.side_effect = exc
 
-        with patch(
-            "cli.commands.identity._setup_token.make_client",
-            return_value=mock_client,
+        with (
+            patch(
+                "cli.commands.identity._setup_token.make_client",
+                return_value=mock_client,
+            ),
+            patch("cli.commands.identity._setup_token.print_err") as print_err,
         ):
             result = redeem_setup_token(args, config, "st_expired_token")
 
         assert result is None
+        print_err.assert_called_once()
+        assert (
+            "https://api.logion.sh/v1/setup/github/start"
+            in (print_err.call_args.args[0])
+        )
 
     def test_409_redeemed_returns_none(self):
         from cli.commands.identity._setup_token import (
@@ -182,8 +189,8 @@ class TestSetupTokenConsent:
         mock_response = MagicMock(
             user_id="user-123",
             agent_id="agent-456",
-            api_key="ak_live_test",
-            api_key_prefix="ak_live_",
+            api_key="ak_live_test",  # pragma: allowlist secret
+            api_key_prefix="ak_live_",  # pragma: allowlist secret
         )
         mock_client.v1.setup_tokens.redeem.return_value = mock_response
 
@@ -199,3 +206,40 @@ class TestSetupTokenConsent:
 
         assert result is not None
         assert result["autoreview_consent"] is False
+
+
+class TestHandleOnboardingSetupToken:
+    """Onboarding should refuse setup-token runs
+    that would clobber credentials."""
+
+    def test_existing_credentials_block_setup_token_path(self):
+        from cli.commands.identity.onboarding import handle_onboarding
+
+        args = MagicMock()
+        with (
+            patch(
+                "cli.commands.identity.onboarding.resolve_config_from_args",
+                return_value=MagicMock(json_output=False),
+            ),
+            patch(
+                "cli.commands.identity.onboarding.resolve_setup_token",
+                return_value="st_existing",
+            ),
+            patch(
+                "cli.commands.identity.onboarding.stored_user_id",
+                return_value="user-existing",
+            ),
+            patch(
+                "cli.commands.identity.onboarding.redeem_setup_token"
+            ) as redeem,
+            patch("cli.commands.identity.onboarding.print_err") as print_err,
+        ):
+            rc = handle_onboarding(args)
+
+        assert rc == 2
+        redeem.assert_not_called()
+        print_err.assert_called_once()
+        assert (
+            "Refusing to overwrite stored credentials"
+            in (print_err.call_args.args[0])
+        )

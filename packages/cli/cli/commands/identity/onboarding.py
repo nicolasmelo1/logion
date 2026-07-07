@@ -96,6 +96,14 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     # --- Setup-token path: non-interactive, no email/password ---
     setup_token = resolve_setup_token(args)
     if setup_token:
+        existing = stored_user_id()
+        if existing is not None:
+            print_err(
+                "Refusing to overwrite stored credentials with a setup token. "
+                "Remove existing Logion credentials first or use a fresh "
+                "machine."
+            )
+            return 2
         result = redeem_setup_token(args, config, setup_token)
         if result is None:
             return 2

@@ -956,21 +956,20 @@ verify_install() {
 # run_onboarding invokes `logion onboarding` unless opted out or unsafe.
 # It is best-effort: warn on failures, but never hard-fail the installer.
 run_onboarding() {
-    # Build the onboarding argument list and a masked display command.
-    _onboarding_args=""
+    # Build the onboarding argv and a masked display command separately so the
+    # setup token is always passed as a single argument.
+    set --
     _onboarding_cmd="logion onboarding"
     if [ "${INSTALL_CLI_ONLY}" = 1 ]; then
-        _onboarding_args="--no-companion"
+        set -- "$@" --no-companion
         _onboarding_cmd="logion onboarding --no-companion"
     fi
 
     # When a setup token is present, append it and mask it in output.
     if [ -n "${INSTALL_SETUP_TOKEN}" ]; then
-        _onboarding_args="${_onboarding_args}${_onboarding_args:+ }--setup-token ${INSTALL_SETUP_TOKEN}"
+        set -- "$@" --setup-token "${INSTALL_SETUP_TOKEN}"
         # Mask the token in banner output: show only the prefix (e.g. "st_****").
         _token_prefix="$(printf '%s' "${INSTALL_SETUP_TOKEN}" | cut -c1-3)"
-        # Reconstruct the display command from parts rather than string
-        # manipulation so --no-companion is never accidentally dropped.
         _onboarding_cmd="logion onboarding"
         [ "${INSTALL_CLI_ONLY}" = 1 ] && _onboarding_cmd="${_onboarding_cmd} --no-companion"
         _onboarding_cmd="${_onboarding_cmd} --setup-token ${_token_prefix}****"
@@ -1000,8 +999,7 @@ run_onboarding() {
     fi
 
     info "Running '${_onboarding_cmd}' ..."
-    # shellcheck disable=SC2086 # _onboarding_args may contain multiple tokens
-    if ! logion onboarding ${_onboarding_args}; then
+    if ! logion onboarding "$@"; then
         warn "onboarding did not complete; run '${_onboarding_cmd}' later."
         INSTALL_ONBOARDING_FAILED=1
         export INSTALL_ONBOARDING_FAILED
