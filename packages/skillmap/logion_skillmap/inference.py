@@ -160,7 +160,8 @@ def infer(
             validate_package_map,
         )
 
-        pm = parse_package_map(blob.decode("utf-8", errors="replace"))
+        text = blob.decode("utf-8", errors="replace")
+        pm, parse_warnings = parse_package_map(text)
         components = tuple(
             InferredComponent(
                 name=cap.name,
@@ -179,7 +180,7 @@ def infer(
         warnings = validate_package_map(pm)
         review_flags = tuple(
             ReviewFlag(code=w.code, path=w.path, message=w.message)
-            for w in warnings
+            for w in parse_warnings + warnings
         )
         return InferenceResult(
             package_map=pm,
@@ -277,7 +278,10 @@ def _build_from_candidates(
     )
 
     # Check for logion files inside skill directories
-    review_flags.extend(_check_logion_files_in_skills(tree, canonical_set))
+    all_skill_dirs = set(canonical_set)
+    for mirror_dirs in mirrors_map.values():
+        all_skill_dirs.update(mirror_dirs)
+    review_flags.extend(_check_logion_files_in_skills(tree, all_skill_dirs))
 
     # Determine slug
     slug = _infer_slug(tree)

@@ -245,3 +245,29 @@ class TestLogionFileInsideSkill:
             if f.code == "skillmap_logion_file_inside_skill"
         ]
         assert len(flags) > 0
+
+    def test_logion_file_inside_mirror_skill_flagged(self):
+        """Logion files inside mirror skill dirs are flagged."""
+        skill_content = b"---\nname: my-skill\n---\nSkill content."
+        tree = _make_tree([
+            ("skills/my-skill/SKILL.md", "blob", 30),
+            (".claude/skills/my-skill/SKILL.md", "blob", 30),
+            (".claude/skills/my-skill/logion-package-map.yaml", "blob", 20),
+        ])
+        blobs = {
+            "skills/my-skill/SKILL.md": skill_content,
+            ".claude/skills/my-skill/SKILL.md": skill_content,
+            ".claude/skills/my-skill/logion-package-map.yaml": b"version: 1\n",
+        }
+        result = infer(tree, _blob_store(blobs))
+        flags = [
+            f
+            for f in result.needs_review
+            if f.code == "skillmap_logion_file_inside_skill"
+        ]
+        assert len(flags) > 0
+        # The flag should reference the mirror path
+        assert any(
+            ".claude/skills/my-skill/logion-package-map.yaml" in f.path
+            for f in flags
+        )

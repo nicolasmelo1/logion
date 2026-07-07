@@ -23,8 +23,10 @@ pip install logion-skillmap
 from logion_skillmap import infer, parse_package_map, validate_package_map
 
 # Parse and validate an author-provided map
-pm = parse_package_map(yaml_text)
-warnings = validate_package_map(pm)
+# parse_package_map now returns (PackageMap, list[MapWarning]) which
+# includes unknown-key warnings automatically.
+pm, parse_warnings = parse_package_map(yaml_text)
+warnings = parse_warnings + validate_package_map(pm)
 
 # Or infer from a repository tree
 result = infer(tree_entries, read_blob_callback)

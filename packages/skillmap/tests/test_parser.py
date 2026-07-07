@@ -65,7 +65,7 @@ evals:
 
 class TestParsePackageMap:
     def test_parse_minimal(self):
-        pm = parse_package_map(VALID_MINIMAL_YAML)
+        pm, _ = parse_package_map(VALID_MINIMAL_YAML)
         assert pm.version == 1
         assert pm.slug == "my-pkg"
         assert len(pm.capabilities) == 1
@@ -73,7 +73,7 @@ class TestParsePackageMap:
         assert pm.capabilities[0].entrypoint == "src/main.py"
 
     def test_parse_full(self):
-        pm = parse_package_map(VALID_FULL_YAML)
+        pm, _ = parse_package_map(VALID_FULL_YAML)
         assert pm.version == 1
         assert pm.slug == "my-pkg"
         assert len(pm.capabilities) == 2
@@ -82,7 +82,7 @@ class TestParsePackageMap:
         assert pm.evals is not None
 
     def test_parse_empty_string(self):
-        pm = parse_package_map("")
+        pm, _ = parse_package_map("")
         assert pm.version == 1
         assert pm.capabilities == ()
 
@@ -91,7 +91,7 @@ class TestParsePackageMap:
             parse_package_map("42")
 
     def test_parse_preserves_evals_commands(self):
-        pm = parse_package_map(VALID_FULL_YAML)
+        pm, _ = parse_package_map(VALID_FULL_YAML)
         assert pm.evals is not None
         assert ("lint", "ruff check .") in pm.evals.commands
         assert ("test", "pytest") in pm.evals.commands
@@ -121,6 +121,17 @@ class TestUnknownKeys:
         codes = [w.code for w in warnings]
         assert "package_map_unknown_keys" not in codes
 
+    def test_parse_package_map_includes_unknown_key_warnings(self):
+        yaml_text = (
+            "version: 1\nslug: x\ncapabilities:\n"
+            "  - name: c\n    entrypoint: a.py\n"
+            "bogus_key: true\n"
+        )
+        pm, warnings = parse_package_map(yaml_text)
+        codes = [w.code for w in warnings]
+        assert "package_map_unknown_keys" in codes
+        assert pm.slug == "x"
+
 
 class TestUnsupportedVersion:
     def test_version_2_warns(self):
@@ -128,13 +139,13 @@ class TestUnsupportedVersion:
             "version: 2\nslug: x\ncapabilities:\n"
             "  - name: c\n    entrypoint: a.py\n"
         )
-        pm = parse_package_map(yaml_text)
-        warnings = validate_package_map(pm)
+        pm, parse_warnings = parse_package_map(yaml_text)
+        warnings = parse_warnings + validate_package_map(pm)
         codes = [w.code for w in warnings]
         assert "package_map_unsupported_version" in codes
 
     def test_version_1_ok(self):
-        pm = parse_package_map(VALID_MINIMAL_YAML)
+        pm, _ = parse_package_map(VALID_MINIMAL_YAML)
         warnings = validate_package_map(pm)
         codes = [w.code for w in warnings]
         assert "package_map_unsupported_version" not in codes
@@ -146,13 +157,13 @@ class TestUnsupportedVersion:
 class TestEmptyCapabilities:
     def test_empty_capabilities_warns(self):
         yaml_text = "version: 1\nslug: x\ncapabilities: []\n"
-        pm = parse_package_map(yaml_text)
-        warnings = validate_package_map(pm)
+        pm, parse_warnings = parse_package_map(yaml_text)
+        warnings = parse_warnings + validate_package_map(pm)
         codes = [w.code for w in warnings]
         assert "package_map_empty_capabilities" in codes
 
     def test_non_empty_capabilities_ok(self):
-        pm = parse_package_map(VALID_MINIMAL_YAML)
+        pm, _ = parse_package_map(VALID_MINIMAL_YAML)
         warnings = validate_package_map(pm)
         codes = [w.code for w in warnings]
         assert "package_map_empty_capabilities" not in codes

@@ -39,8 +39,13 @@ _GLOB_RE = re.compile(r"^[A-Za-z0-9_.\-*/]+$")
 # ---------------------------------------------------------------------------
 
 
-def parse_package_map(text: str) -> PackageMap:
-    """Parse a YAML string into a :class:`PackageMap`."""
+def parse_package_map(text: str) -> tuple[PackageMap, list[MapWarning]]:
+    """Parse a YAML string into a :class:`PackageMap` and return a
+    ``(PackageMap, list[MapWarning])`` tuple.
+
+    Unknown top-level keys are validated via :func:`check_unknown_keys_raw`
+    and included in the returned warning list so callers never miss them.
+    """
     data = yaml.safe_load(text)
     if data is None:
         data = {}
@@ -49,7 +54,9 @@ def parse_package_map(text: str) -> PackageMap:
             "package map YAML must resolve to a mapping, "
             f"got {type(data).__name__}"
         )
-    return _build_package_map(data)
+    warnings = check_unknown_keys_raw(data)
+    pm = _build_package_map(data)
+    return pm, warnings
 
 
 def _build_package_map(data: dict) -> PackageMap:
@@ -120,9 +127,11 @@ def validate_package_map(pm: PackageMap) -> list[MapWarning]:
     """Run all post-parse validation checks on *pm*, returning warnings.
 
     .. note::
-        Unknown-key validation is performed at parse time by
-        :func:`check_unknown_keys_raw` when the raw YAML data is still
-        available.  This function validates the structured model only.
+        Unknown-key validation is now performed automatically inside
+        :func:`parse_package_map` via :func:`check_unknown_keys_raw`.
+        The warnings from that check are returned alongside the parsed
+        ``PackageMap`` and need not be obtained separately.
+        This function validates the structured model only.
     """
     warnings: list[MapWarning] = []
     warnings.extend(_check_unknown_keys(pm))
