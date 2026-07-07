@@ -27,6 +27,7 @@
   "packages/cli/pyproject.toml": {
     "dependencies": [
       "logion-client",
+      "logion-skillmap",
       "pydantic>=2.7,<3.0.0",
       "pyyaml>=6.0,<7.0",
       "shtab>=1.7,<2.0"

@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "logion-client",
+    "logion-skillmap",
     "pydantic>=2.7,<3.0.0",
     "pyyaml>=6.0,<7.0",
     "shtab>=1.7,<2.0",
@@ -36,6 +37,7 @@ recall = ["rapidfuzz>=3.9,<4.0"]
 
 [tool.uv.sources]
 logion-client = { workspace = true }
+logion-skillmap = { workspace = true }
 
 [project.scripts]
 logion = "cli.main:main"
@@ -118,6 +120,7 @@ ignore = [
 "cli/commands/recall/handlers.py" = ["T201"]
 "cli/commands/identity/github.py" = ["T201"]
 "cli/commands/completion.py" = ["T201"]
+"cli/commands/courses/package_map.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
 "scripts/sync_docs.py" = ["T201"]
 

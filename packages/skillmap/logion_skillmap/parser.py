@@ -1,8 +1,24 @@
 """Package-map YAML parser and validator.
 
+The map is nested::
+
+    version: 1
+    package:
+      slug: my-package
+    components:
+      capabilities:            # mapping keyed by capability name
+        pr-review:
+          entrypoint: skills/pr-review/SKILL.md
+          dependencies:
+            - capability: diff-reading
+              reason: "delegates hunk parsing"
+      runtime: {include, exclude, entrypoint}
+      source:  {include, exclude}
+      evals:   {include, exclude, commands}
+
 The skillmap package uses PyYAML for YAML parsing.  When the raw YAML
 data is available, call :func:`check_unknown_keys_raw` to validate
-unknown keys before constructing the structured model.
+unknown keys before/after constructing the structured model.
 """
 
 from __future__ import annotations
@@ -13,10 +29,14 @@ from collections.abc import Sequence
 
 import yaml
 
+from .constants import PACKAGE_MAP_SCHEMA_VERSION
 from .models import (
     CapabilityEntry,
+    Components,
+    Dependency,
     EvalsBlock,
     MapWarning,
+    Package,
     PackageMap,
     RuntimeBlock,
     SourceBlock,
@@ -24,7 +44,11 @@ from .models import (
 
 _KNOWN_TOP_KEYS: frozenset[str] = frozenset({
     "version",
-    "slug",
+    "package",
+    "components",
+})
+_KNOWN_PACKAGE_KEYS: frozenset[str] = frozenset({"slug"})
+_KNOWN_COMPONENTS_KEYS: frozenset[str] = frozenset({
     "capabilities",
     "runtime",
     "source",
@@ -39,12 +63,14 @@ _GLOB_RE = re.compile(r"^[A-Za-z0-9_.\-*/]+$")
 # ---------------------------------------------------------------------------
 
 
-def parse_package_map(text: str) -> tuple[PackageMap, list[MapWarning]]:
-    """Parse a YAML string into a :class:`PackageMap` and return a
-    ``(PackageMap, list[MapWarning])`` tuple.
+def parse_package_map(text: str) -> PackageMap:
+    """Parse a YAML string into a :class:`PackageMap`.
 
-    Unknown top-level keys are validated via :func:`check_unknown_keys_raw`
-    and included in the returned warning list so callers never miss them.
+    Raises :class:`TypeError` when the YAML does not resolve to a
+    mapping.  Structural warnings (unknown keys, unsupported version,
+    traversal, …) are *not* raised here — obtain them from
+    :func:`validate_package_map` (and :func:`check_unknown_keys_raw`
+    when the raw YAML is available).
     """
     data = yaml.safe_load(text)
     if data is None:
@@ -54,45 +80,87 @@ def parse_package_map(text: str) -> tuple[PackageMap, list[MapWarning]]:
             "package map YAML must resolve to a mapping, "
             f"got {type(data).__name__}"
         )
-    warnings = check_unknown_keys_raw(data)
-    pm = _build_package_map(data)
-    return pm, warnings
+    return _build_package_map(data)
 
 
 def _build_package_map(data: dict) -> PackageMap:
-    caps_raw = data.get("capabilities", []) or []
-    capabilities = tuple(_build_capability(c) for c in caps_raw)
+    package_raw = data.get("package") or {}
+    components_raw = data.get("components") or {}
 
-    runtime = None
-    if "runtime" in data and data["runtime"] is not None:
-        runtime = _build_runtime(data["runtime"])
+    slug = ""
+    if isinstance(package_raw, dict):
+        slug = str(package_raw.get("slug", ""))
 
-    source = None
-    if "source" in data and data["source"] is not None:
-        source = _build_source(data["source"])
+    caps_raw: object = {}
+    runtime = source = evals = None
+    if isinstance(components_raw, dict):
+        caps_raw = components_raw.get("capabilities") or {}
+        if components_raw.get("runtime") is not None:
+            runtime = _build_runtime(components_raw["runtime"])
+        if components_raw.get("source") is not None:
+            source = _build_source(components_raw["source"])
+        if components_raw.get("evals") is not None:
+            evals = _build_evals(components_raw["evals"])
 
-    evals = None
-    if "evals" in data and data["evals"] is not None:
-        evals = _build_evals(data["evals"])
+    capabilities = _build_capabilities(caps_raw)
 
     return PackageMap(
-        version=int(data.get("version", 1)),
-        slug=str(data.get("slug", "")),
-        capabilities=capabilities,
-        runtime=runtime,
-        source=source,
-        evals=evals,
+        version=int(data.get("version", PACKAGE_MAP_SCHEMA_VERSION)),
+        package=Package(slug=slug),
+        components=Components(
+            capabilities=capabilities,
+            runtime=runtime,
+            source=source,
+            evals=evals,
+        ),
     )
 
 
-def _build_capability(c: dict) -> CapabilityEntry:
+def _build_capabilities(caps_raw: object) -> tuple[CapabilityEntry, ...]:
+    """Build capability entries from the ``capabilities`` mapping.
+
+    The canonical form is a mapping ``name -> {entrypoint, ...}``; a list
+    of ``{name, ...}`` dicts is also accepted for forward tolerance.
+    """
+    entries: list[CapabilityEntry] = []
+    if isinstance(caps_raw, dict):
+        for name, body in caps_raw.items():
+            entries.append(_build_capability(str(name), body or {}))
+    elif isinstance(caps_raw, list):
+        for body in caps_raw:
+            if not isinstance(body, dict):
+                continue
+            entries.append(_build_capability(str(body.get("name", "")), body))
+    return tuple(entries)
+
+
+def _build_capability(name: str, c: dict) -> CapabilityEntry:
     return CapabilityEntry(
-        name=str(c.get("name", "")),
+        name=name,
         entrypoint=str(c.get("entrypoint", "")),
         capabilities_manifest=c.get("capabilities_manifest"),
-        dependencies=tuple(str(d) for d in (c.get("dependencies") or [])),
+        dependencies=_build_dependencies(c.get("dependencies")),
         description=c.get("description"),
+        include=tuple(str(p) for p in (c.get("include") or [])),
+        exclude=tuple(str(p) for p in (c.get("exclude") or [])),
     )
+
+
+def _build_dependencies(deps_raw: object) -> tuple[Dependency, ...]:
+    if not isinstance(deps_raw, (list, tuple)):
+        return ()
+    deps: list[Dependency] = []
+    for d in deps_raw:
+        if isinstance(d, dict):
+            deps.append(
+                Dependency(
+                    capability=str(d.get("capability", "")),
+                    reason=str(d.get("reason", "")),
+                )
+            )
+        else:
+            deps.append(Dependency(capability=str(d)))
+    return tuple(deps)
 
 
 def _build_runtime(r: dict) -> RuntimeBlock:
@@ -126,15 +194,11 @@ def _build_evals(e: dict) -> EvalsBlock:
 def validate_package_map(pm: PackageMap) -> list[MapWarning]:
     """Run all post-parse validation checks on *pm*, returning warnings.
 
-    .. note::
-        Unknown-key validation is now performed automatically inside
-        :func:`parse_package_map` via :func:`check_unknown_keys_raw`.
-        The warnings from that check are returned alongside the parsed
-        ``PackageMap`` and need not be obtained separately.
-        This function validates the structured model only.
+    Unknown-key validation needs the raw YAML mapping and lives in
+    :func:`check_unknown_keys_raw`; everything derivable from the parsed
+    model is checked here.
     """
     warnings: list[MapWarning] = []
-    warnings.extend(_check_unknown_keys(pm))
     warnings.extend(_check_version(pm))
     warnings.extend(_check_empty_capabilities(pm))
     warnings.extend(_check_entrypoint_traversal(pm))
@@ -153,18 +217,8 @@ def _warn(code: str, path: str, message: str) -> MapWarning:
 # -- individual checks -----------------------------------------------------
 
 
-def _check_unknown_keys(pm: PackageMap) -> list[MapWarning]:  # noqa: ARG001
-    """Reject unknown top-level keys.
-
-    Unknown keys are caught at parse time by ``check_unknown_keys_raw``
-    when raw YAML data is available.  This stub exists so the check
-    name is always represented in the validator dispatch table.
-    """
-    return []
-
-
 def check_unknown_keys_raw(data: dict) -> list[MapWarning]:
-    """Validate unknown top-level keys from raw YAML data."""
+    """Validate unknown keys (top-level + nested) from raw YAML data."""
     warnings: list[MapWarning] = []
     for key in data:
         if key not in _KNOWN_TOP_KEYS:
@@ -175,17 +229,39 @@ def check_unknown_keys_raw(data: dict) -> list[MapWarning]:
                     f"unknown top-level key: {key!r}",
                 )
             )
+    package_raw = data.get("package")
+    if isinstance(package_raw, dict):
+        for key in package_raw:
+            if key not in _KNOWN_PACKAGE_KEYS:
+                warnings.append(
+                    _warn(
+                        "package_map_unknown_keys",
+                        f"package.{key}",
+                        f"unknown package key: {key!r}",
+                    )
+                )
+    components_raw = data.get("components")
+    if isinstance(components_raw, dict):
+        for key in components_raw:
+            if key not in _KNOWN_COMPONENTS_KEYS:
+                warnings.append(
+                    _warn(
+                        "package_map_unknown_keys",
+                        f"components.{key}",
+                        f"unknown components key: {key!r}",
+                    )
+                )
     return warnings
 
 
 def _check_version(pm: PackageMap) -> list[MapWarning]:
-    if pm.version != 1:
+    if pm.version != PACKAGE_MAP_SCHEMA_VERSION:
         return [
             _warn(
                 "package_map_unsupported_version",
                 "version",
-                f"unsupported version: {pm.version} (only version 1 "
-                "is supported)",
+                f"unsupported version: {pm.version} (only version "
+                f"{PACKAGE_MAP_SCHEMA_VERSION} is supported)",
             )
         ]
     return []
@@ -196,8 +272,8 @@ def _check_empty_capabilities(pm: PackageMap) -> list[MapWarning]:
         return [
             _warn(
                 "package_map_empty_capabilities",
-                "capabilities",
-                "capabilities list must not be empty",
+                "components.capabilities",
+                "capabilities must not be empty",
             )
         ]
     return []
@@ -210,64 +286,62 @@ def _check_entrypoint_traversal(pm: PackageMap) -> list[MapWarning]:
             ("entrypoint", cap.entrypoint),
             ("capabilities_manifest", cap.capabilities_manifest),
         ]:
-            if value is None:
-                continue
-            if value.startswith("/"):
-                warnings.append(
-                    _warn(
-                        "package_map_entrypoint_traversal",
-                        f"capabilities.{cap.name}.{label}",
-                        f"{label} must be relative, got absolute "
-                        f"path: {value!r}",
-                    )
+            warnings.extend(
+                _traversal_warnings(
+                    value, f"components.capabilities.{cap.name}.{label}", label
                 )
-            if ".." in value.split("/"):
-                warnings.append(
-                    _warn(
-                        "package_map_entrypoint_traversal",
-                        f"capabilities.{cap.name}.{label}",
-                        f"{label} must not contain '..' traversal: {value!r}",
-                    )
-                )
-    # Also check runtime.entrypoint
+            )
     if pm.runtime and pm.runtime.entrypoint:
-        ep = pm.runtime.entrypoint
-        if ep.startswith("/"):
-            warnings.append(
-                _warn(
-                    "package_map_entrypoint_traversal",
-                    "runtime.entrypoint",
-                    f"runtime.entrypoint must be relative, "
-                    f"got absolute path: {ep!r}",
-                )
+        warnings.extend(
+            _traversal_warnings(
+                pm.runtime.entrypoint,
+                "components.runtime.entrypoint",
+                "runtime.entrypoint",
             )
-        if ".." in ep.split("/"):
-            warnings.append(
-                _warn(
-                    "package_map_entrypoint_traversal",
-                    "runtime.entrypoint",
-                    f"runtime.entrypoint must not contain '..' "
-                    f"traversal: {ep!r}",
-                )
+        )
+    return warnings
+
+
+def _traversal_warnings(
+    value: str | None, path: str, label: str
+) -> list[MapWarning]:
+    if not value:
+        return []
+    warnings: list[MapWarning] = []
+    if value.startswith("/"):
+        warnings.append(
+            _warn(
+                "package_map_entrypoint_traversal",
+                path,
+                f"{label} must be relative, got absolute path: {value!r}",
             )
+        )
+    if ".." in value.split("/"):
+        warnings.append(
+            _warn(
+                "package_map_entrypoint_traversal",
+                path,
+                f"{label} must not contain '..' traversal: {value!r}",
+            )
+        )
     return warnings
 
 
 def _check_entrypoint_not_matched(pm: PackageMap) -> list[MapWarning]:
     warnings: list[MapWarning] = []
-    all_includes = _collect_includes(pm)
     for cap in pm.capabilities:
+        includes = _collect_includes(pm, cap)
         for label, value in [
             ("entrypoint", cap.entrypoint),
             ("capabilities_manifest", cap.capabilities_manifest),
         ]:
-            if value is None or not value:
+            if not value:
                 continue
-            if not _path_matches_any(value, all_includes):
+            if not _path_matches_any(value, includes):
                 warnings.append(
                     _warn(
                         "package_map_entrypoint_not_matched",
-                        f"capabilities.{cap.name}.{label}",
+                        f"components.capabilities.{cap.name}.{label}",
                         f"{label} {value!r} is not matched by any "
                         "include pattern",
                     )
@@ -275,8 +349,8 @@ def _check_entrypoint_not_matched(pm: PackageMap) -> list[MapWarning]:
     return warnings
 
 
-def _collect_includes(pm: PackageMap) -> list[str]:
-    includes: list[str] = []
+def _collect_includes(pm: PackageMap, cap: CapabilityEntry) -> list[str]:
+    includes: list[str] = list(cap.include)
     if pm.source and pm.source.include:
         includes.extend(pm.source.include)
     if pm.runtime and pm.runtime.include:
@@ -297,12 +371,12 @@ def _check_dependency_unknown(pm: PackageMap) -> list[MapWarning]:
     known = {cap.name for cap in pm.capabilities}
     for cap in pm.capabilities:
         for dep in cap.dependencies:
-            if dep not in known:
+            if dep.capability not in known:
                 warnings.append(
                     _warn(
                         "package_map_dependency_unknown",
-                        f"capabilities.{cap.name}.dependencies",
-                        f"dependency {dep!r} references an "
+                        f"components.capabilities.{cap.name}.dependencies",
+                        f"dependency {dep.capability!r} references an "
                         "undeclared capability",
                     )
                 )
@@ -312,7 +386,8 @@ def _check_dependency_unknown(pm: PackageMap) -> list[MapWarning]:
 def _check_dependency_cycle(pm: PackageMap) -> list[MapWarning]:
     """Detect dependency cycles using DFS."""
     graph: dict[str, set[str]] = {
-        cap.name: set(cap.dependencies) for cap in pm.capabilities
+        cap.name: {dep.capability for dep in cap.dependencies}
+        for cap in pm.capabilities
     }
     if not graph:
         return []
@@ -324,7 +399,7 @@ def _check_dependency_cycle(pm: PackageMap) -> list[MapWarning]:
     return [
         _warn(
             "package_map_dependency_cycle",
-            "capabilities",
+            "components.capabilities",
             f"dependency cycle detected among: {sorted(cycle_nodes)}",
         )
     ]
@@ -360,8 +435,7 @@ def _find_cycle_nodes(
 
 def _check_glob_invalid(pm: PackageMap) -> list[MapWarning]:
     warnings: list[MapWarning] = []
-    all_patterns = _collect_all_patterns(pm)
-    for location, pattern in all_patterns:
+    for location, pattern in _collect_all_patterns(pm):
         if not _GLOB_RE.match(pattern):
             warnings.append(
                 _warn(
@@ -373,34 +447,34 @@ def _check_glob_invalid(pm: PackageMap) -> list[MapWarning]:
     return warnings
 
 
+def _pat(location: str, patterns: Sequence[str]) -> list[tuple[str, str]]:
+    return [(location, p) for p in patterns]
+
+
 def _collect_all_patterns(pm: PackageMap) -> list[tuple[str, str]]:
     results: list[tuple[str, str]] = []
-    if pm.source:
-        for p in pm.source.include:
-            results.append(("source.include", p))
-        for p in pm.source.exclude:
-            results.append(("source.exclude", p))
-    if pm.runtime:
-        for p in pm.runtime.include:
-            results.append(("runtime.include", p))
-        for p in pm.runtime.exclude:
-            results.append(("runtime.exclude", p))
-    if pm.evals:
-        for p in pm.evals.include:
-            results.append(("evals.include", p))
-        for p in pm.evals.exclude:
-            results.append(("evals.exclude", p))
+    for cap in pm.capabilities:
+        prefix = f"components.capabilities.{cap.name}"
+        results += _pat(f"{prefix}.include", cap.include)
+        results += _pat(f"{prefix}.exclude", cap.exclude)
+    for block, name in (
+        (pm.source, "source"),
+        (pm.runtime, "runtime"),
+        (pm.evals, "evals"),
+    ):
+        if block is not None:
+            results += _pat(f"components.{name}.include", block.include)
+            results += _pat(f"components.{name}.exclude", block.exclude)
     return results
 
 
 def _check_commands_not_executed(pm: PackageMap) -> list[MapWarning]:
-    warnings: list[MapWarning] = []
     if pm.evals and pm.evals.commands:
-        warnings.append(
+        return [
             _warn(
                 "package_map_commands_not_executed",
-                "evals.commands",
+                "components.evals.commands",
                 "evals.commands are stored but will not be executed locally",
             )
-        )
-    return warnings
+        ]
+    return []
