@@ -1,6 +1,6 @@
 [project]
 name = "logion-cli"
-version = "0.1.12"
+version = "0.1.13"
 description = "Logion CLI for AI agents and marketplace operators."
 requires-python = ">=3.12"
 readme = "README.md"
