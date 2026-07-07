@@ -32,11 +32,16 @@ def _build_parser() -> argparse.ArgumentParser:
     d_post.add_argument(
         "--channel",
         required=True,
-        choices=["announcements", "general", "support", "creators"],
+        choices=["announcements", "general", "support", "creators", "alerts"],
     )
     d_post.add_argument("--text", required=True)
     d_post.add_argument("--dry-run", action="store_true")
     d_read = dsub.add_parser("read")
+    d_read.add_argument(
+        "--channel",
+        choices=["support", "alerts"],
+        default="support",
+    )
     d_read.add_argument("--limit", type=int, default=20)
     d_read.add_argument("--dry-run", action="store_true")
 
@@ -86,10 +91,14 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
             )
         return 0
     if args.discord_cmd == "read":  # type: ignore[attr-defined]
-        channel_id = config.discord_channel_support
+        channel_map = {
+            "support": config.discord_channel_support,
+            "alerts": config.discord_channel_alerts,
+        }
+        channel_id = channel_map.get(args.channel)  # type: ignore[attr-defined]
         if not channel_id and not args.dry_run:  # type: ignore[attr-defined]
             print(
-                "error: DISCORD_CHANNEL_SUPPORT not set",
+                f"error: DISCORD_CHANNEL_{args.channel.upper()} not set",  # type: ignore[attr-defined]
                 file=sys.stderr,
             )
             return 2
@@ -104,6 +113,7 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
             return 2
         for msg in messages:
             print(f"[{msg.created_at}] {msg.author}: {msg.content}")
+        print(f"({len(messages)} messages from #{args.channel})")  # type: ignore[attr-defined]
         return 0
     return 2
 

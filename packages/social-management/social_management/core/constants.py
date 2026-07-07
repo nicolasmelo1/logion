@@ -11,6 +11,7 @@ WEBHOOK_ENV_BY_CHANNEL: dict[str, str] = {
     "general": "DISCORD_WEBHOOK_GENERAL",
     "support": "DISCORD_WEBHOOK_SUPPORT",
     "creators": "DISCORD_WEBHOOK_CREATORS",
+    "alerts": "DISCORD_WEBHOOK_ALERTS",
 }
 
 CONTENT_DIR_NAME = "content"

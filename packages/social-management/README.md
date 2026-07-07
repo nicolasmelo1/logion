@@ -44,6 +44,9 @@ uv run logion-social discord post --channel general --text "gm"
 # Discord read recent messages (requires bot token)
 uv run logion-social discord read --limit 50
 
+# Discord read alerts channel
+uv run logion-social discord read --channel alerts --limit 20
+
 # Content queue
 uv run logion-social queue add --platform x --target x --text "draft"
 uv run logion-social queue list
@@ -64,10 +67,12 @@ file; existing env vars take precedence over the file).
 | `DISCORD_WEBHOOK_GENERAL` | Incoming webhook URL for the `general` slot |
 | `DISCORD_WEBHOOK_SUPPORT` | Incoming webhook URL for the `support` slot |
 | `DISCORD_WEBHOOK_CREATORS` | Incoming webhook URL for the `creators` slot |
-| `DISCORD_CHANNEL_SUPPORT` | Channel id used by `discord read` |
+| `DISCORD_WEBHOOK_ALERTS` | Incoming webhook URL for the `alerts` slot |
+| `DISCORD_CHANNEL_SUPPORT` | Channel id used by `discord read --channel support` |
+| `DISCORD_CHANNEL_ALERTS` | Channel id used by `discord read --channel alerts` |
 
-The four webhook slots (`announcements`, `general`, `support`,
-`creators`) are the CLI's stable `--channel` vocabulary. Each env var
+The five webhook slots (`announcements`, `general`, `support`,
+`creators`, `alerts`) are the CLI's stable `--channel` vocabulary. Each env var
 holds a webhook URL pointing at whatever Discord channel you created
 the webhook in — the slot name and the channel name need not match.
 See the operational setup guide for the real slot-to-channel mapping.
