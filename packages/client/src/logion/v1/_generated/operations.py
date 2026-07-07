@@ -77,6 +77,8 @@ from logion.v1._types.generated.v1 import (
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    RedeemSetupTokenRequest,
+    RedeemSetupTokenResponse,
     RejectBountySubmissionResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
@@ -1207,4 +1209,71 @@ def create_report(
         "/v1/reports",
         CreateReportResponse,
         json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def redeem_setup_token(
+    http: HttpClient,
+    *,
+    body: RedeemSetupTokenRequest,
+) -> RedeemSetupTokenResponse:
+    """Call the redeem_setup_token API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/setup-tokens/redeem",
+        RedeemSetupTokenResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_setup_token_status(
+    http: HttpClient,
+    *,
+    prefix: str,
+) -> dict[str, str]:
+    """Call the get_setup_token_status API operation."""
+    return cast(
+        dict[str, str],
+        http.request(
+            "GET",
+            f"/v1/setup-tokens/{prefix}",
+        ),
+    )
+
+
+def setup_github_callback(
+    http: HttpClient,
+    *,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    """Call the setup_github_callback API operation."""
+    params: dict[str, Any] = {}
+    if code is not None:
+        params["code"] = code
+    if state is not None:
+        params["state"] = state
+    if error is not None:
+        params["error"] = error
+    return cast(
+        dict[str, Any],
+        http.request(
+            "GET",
+            "/v1/setup/github/callback",
+            params=params,
+        ),
+    )
+
+
+def setup_github_start(
+    http: HttpClient,
+) -> dict[str, Any]:
+    """Call the setup_github_start API operation."""
+    return cast(
+        dict[str, Any],
+        http.request(
+            "GET",
+            "/v1/setup/github/start",
+        ),
     )
