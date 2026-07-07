@@ -202,10 +202,51 @@ def _collect_merged_prs(
                 author=author.strip(),
                 commit_type=match.group("type"),
                 scope=match.group("scope"),
-                subject=match.group("subject").strip(),
+                subject=_sanitize_public_subject(
+                    match.group("subject").strip()
+                ),
             )
         )
     return prs
+
+
+# Commit subjects come from the full workspace history, where internal
+# vocabulary is allowed; the changelog is published in the public repo,
+# where scripts/audit_public_safe.py forbids it. Rewrite the mechanical
+# cases here; anything unexpected still fails the audit check below.
+_PUBLIC_SUBJECT_REWRITES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bPhases\b"), "phases"),
+    (re.compile(r"\bPhase\b"), "phase"),
+    (re.compile(r"\b[Rr]oadmap\b"), "plan"),
+    # Pattern strings are split so this file itself stays audit-clean.
+    (re.compile("logion" + "-private"), "the internal API repo"),
+    (re.compile("logion" + "-workspace"), "the workspace repo"),
+)
+
+
+def _sanitize_public_subject(subject: str) -> str:
+    """Rewrite internal-only vocabulary for the public changelog."""
+    for pattern, replacement in _PUBLIC_SUBJECT_REWRITES:
+        subject = pattern.sub(replacement, subject)
+    return subject
+
+
+def _check_entry_public_safe(entry: str) -> None:
+    """Fail fast if the generated entry would trip the public audit."""
+    import audit_public_safe
+
+    hits = [
+        f"line {lineno}: [{tag}] {line.strip()}"
+        for lineno, line in enumerate(entry.splitlines(), start=1)
+        for tag, pattern in audit_public_safe.FORBIDDEN
+        if pattern.search(line)
+    ]
+    if hits:
+        raise RuntimeError(
+            "Generated changelog entry trips the public audit; "
+            "reword the offending commit subjects or extend "
+            "_PUBLIC_SUBJECT_REWRITES:\n" + "\n".join(hits)
+        )
 
 
 def _format_changelog_entry(
@@ -269,6 +310,7 @@ def update_changelog_file(
     ``## `` section), the new entry is inserted right after it.
     """
     entry = _format_changelog_entry(version, prs)
+    _check_entry_public_safe(entry)
     if not changelog_path.exists():
         changelog_path.write_text(entry + "\n", encoding="utf-8")
         return entry

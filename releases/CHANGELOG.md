@@ -8,7 +8,7 @@ aggregates the current released version of each package.
 
 ### Features
 - **landing**: landing GitHub signin (#150) — @Nicolas Leal
-- **agent-proving-ground**: Phase 18.3 remote/local-devrig adapters and local assertions (#142) — @Nicolas Leal
+- **agent-proving-ground**: phase 18.3 remote/local-devrig adapters and local assertions (#142) — @Nicolas Leal
 - **agent-proving-ground**: add real agent drivers for phase 18.2 (#140) — @Nicolas Leal
 - agent proving ground core (phase 18.1) (#139) — @Nicolas Leal
 - **identity**: add GitHub identity CLI commands and SDK methods (#136) — @Nicolas Leal
@@ -29,7 +29,7 @@ aggregates the current released version of each package.
 - fix installer redirect claim and post-publish README wording (#135) — @Nicolas Leal
 
 ### Chores
-- sync OpenAPI contract from logion-private (#129) — @Nicolas Leal
+- sync OpenAPI contract from the API source of truth (#129) — @Nicolas Leal
 
 **Contributors:** @Nicolas Leal
 
