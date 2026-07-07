@@ -21,6 +21,7 @@ dependencies = [
     "logion-client",
     "pydantic>=2.7,<3.0.0",
     "pyyaml>=6.0,<7.0",
+    "shtab>=1.7,<2.0",
 ]
 
 [project.urls]
@@ -116,6 +117,7 @@ ignore = [
 "cli/commands/docs/handlers.py" = ["T201"]
 "cli/commands/recall/handlers.py" = ["T201"]
 "cli/commands/identity/github.py" = ["T201"]
+"cli/commands/completion.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
 "scripts/sync_docs.py" = ["T201"]
 

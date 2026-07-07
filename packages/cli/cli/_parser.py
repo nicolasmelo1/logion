@@ -9,6 +9,7 @@ from cli._version import __version__
 from cli.commands import (
     admin,
     bounties,
+    completion,
     course_reviews,
     courses,
     docs,
@@ -67,6 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     skills.register(subparsers)
     recall.register(subparsers)
     update.register(subparsers)
+    completion.register(subparsers)
 
     # Top-level `logion onboarding` alias — same handler as
     # `logion identity onboarding`.

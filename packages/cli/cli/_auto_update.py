@@ -112,7 +112,11 @@ def _is_npm_managed_python() -> bool:
 def maybe_auto_update(args: argparse.Namespace) -> None:
     """Increment usage counters and run auto-update when policy is due."""
     command = getattr(args, "command", "")
-    if command in {"update", "onboarding"}:
+    # ``completion`` prints a shell script to stdout that is typically
+    # eval'd or redirected to a file; an auto-update subprocess here would
+    # be an unwanted side effect (and could interleave stderr noise), so
+    # skip it alongside the explicit update/onboarding flows.
+    if command in {"update", "onboarding", "completion"}:
         return
 
     data = _read_state()
