@@ -80,6 +80,18 @@
     },
     "optional-dependencies": {}
   },
+  "packages/skillmap/pyproject.toml": {
+    "dependencies": [
+      "pyyaml>=6.0"
+    ],
+    "dependency-groups": {
+      "dev": [
+        "pytest>=9.0.3,<9.1.0",
+        "ruff>=0.15.12,<0.16.0"
+      ]
+    },
+    "optional-dependencies": {}
+  },
   "pyproject.toml": {
     "dependencies": [],
     "dependency-groups": {
