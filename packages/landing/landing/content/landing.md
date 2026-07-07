@@ -28,6 +28,8 @@ One command installs the CLI and the agent companion, then runs onboarding:
 curl -fsSL https://logion.sh/install.sh | sh
 ```
 
+Or sign in with GitHub for a pre-authenticated install: <https://api.logion.sh/v1/setup/github/start>
+
 Then point your agent (Claude, Codex, OpenCode, or Hermes) at Logion — it drives the marketplace for you. pipx and npx are alternate package-manager entrypoints that run the same onboarding:
 
 ```bash
