@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json, handle_error, print_err
 from cli._output import emit_json, to_data
+from cli.commands.identity._browser import device_prompt_line
 from logion import APIError
 
 _CONNECT_KIND = "logion.identity.github.connect"
@@ -88,7 +90,15 @@ def handle_connect(args: argparse.Namespace) -> int:
                 },
             )
         else:
-            print(f"Open {verification_uri} and enter code: {user_code}")
+            print(
+                device_prompt_line(
+                    begin,
+                    verification_uri,
+                    user_code,
+                    no_browser=getattr(args, "no_browser", False),
+                    is_tty=sys.stdout.isatty(),
+                )
+            )
             print(f"Waiting for authorization (expires in {expires_in}s)...")
 
         deadline = time.monotonic() + expires_in
@@ -205,6 +215,14 @@ def register_github(sub: argparse._SubParsersAction) -> None:
         "--scope-tier",
         choices=["identity", "repo"],
         default="identity",
+    )
+    connect.add_argument(
+        "--no-browser",
+        action="store_true",
+        help=(
+            "Do not open the authorization URL in a browser; print the "
+            "code to enter manually instead."
+        ),
     )
     connect.set_defaults(handler=handle_connect)
 

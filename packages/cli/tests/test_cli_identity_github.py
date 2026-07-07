@@ -268,6 +268,120 @@ def test_connect_device_flow_text_mode(
     assert "octouser" in out
 
 
+def _force_tty(monkeypatch: pytest.MonkeyPatch, value: bool = True) -> None:
+    """Make ``sys.stdout.isatty()`` report *value* for the connect flow."""
+    import sys as _sys
+
+    monkeypatch.setattr(_sys.stdout, "isatty", lambda: value, raising=False)
+
+
+def test_connect_opens_browser_on_tty(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """On an interactive TTY, connect auto-opens the browser."""
+    identity = FakeGithubIdentityResource()
+    _patch_client(monkeypatch, identity)
+    _force_tty(monkeypatch)
+
+    opened: list[str] = []
+
+    def _record(url: str, new: int = 0) -> bool:  # noqa: ARG001
+        opened.append(url)
+        return True
+
+    monkeypatch.setattr("webbrowser.open", _record)
+
+    code = main(["identity", "github", "connect"])
+    assert code == 0
+
+    out = capsys.readouterr().out
+    # Browser was launched with a code-prefilled URL.
+    assert len(opened) == 1
+    assert "ABCD-1234" in opened[0]
+    assert opened[0].startswith("https://github.com/login/device")
+    # Human still sees the code to confirm, not copy-paste instructions.
+    assert "Opened" in out
+    assert "ABCD-1234" in out
+    assert "enter code" not in out
+
+
+def test_connect_prefers_verification_uri_complete(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A ``verification_uri_complete`` from the API is opened verbatim."""
+    identity = FakeGithubIdentityResource()
+    identity.begin_response = SimpleNamespace(
+        device_code="dev-code-123",
+        user_code="ABCD-1234",
+        verification_uri="https://github.com/login/device",
+        verification_uri_complete=(
+            "https://github.com/login/device?user_code=ABCD-1234"
+        ),
+        expires_in=900,
+        interval=1,
+    )
+    _patch_client(monkeypatch, identity)
+    _force_tty(monkeypatch)
+
+    opened: list[str] = []
+
+    def _record(url: str, new: int = 0) -> bool:  # noqa: ARG001
+        opened.append(url)
+        return True
+
+    monkeypatch.setattr("webbrowser.open", _record)
+
+    code = main(["identity", "github", "connect"])
+    assert code == 0
+    capsys.readouterr()
+
+    assert opened == ["https://github.com/login/device?user_code=ABCD-1234"]
+
+
+def test_connect_no_browser_flag_skips_launch(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--no-browser prints copy-paste instructions and never launches."""
+    identity = FakeGithubIdentityResource()
+    _patch_client(monkeypatch, identity)
+    _force_tty(monkeypatch)
+
+    def _boom(url: str, new: int = 0) -> bool:  # noqa: ARG001
+        raise AssertionError("browser must not open with --no-browser")
+
+    monkeypatch.setattr("webbrowser.open", _boom)
+
+    code = main(["identity", "github", "connect", "--no-browser"])
+    assert code == 0
+
+    out = capsys.readouterr().out
+    assert "and enter code: ABCD-1234" in out
+
+
+def test_connect_no_tty_prints_manual_instructions(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Without a TTY (agent/CI), connect falls back to copy-paste."""
+    identity = FakeGithubIdentityResource()
+    _patch_client(monkeypatch, identity)
+    _force_tty(monkeypatch, value=False)
+
+    def _boom(url: str, new: int = 0) -> bool:  # noqa: ARG001
+        raise AssertionError("browser must not open without a TTY")
+
+    monkeypatch.setattr("webbrowser.open", _boom)
+
+    code = main(["identity", "github", "connect"])
+    assert code == 0
+
+    out = capsys.readouterr().out
+    assert "enter code: ABCD-1234" in out
+
+
 def test_connect_forwards_scope_tier(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
