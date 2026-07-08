@@ -29,14 +29,11 @@ uv run logion-social --help
 ## Usage
 
 ```bash
-# X post dry-run (no network, no cost)
-uv run logion-social x post --text "Smarter, together." --dry-run
-
-# X post with confirmation (spends money)
-uv run logion-social x post --text "Smarter, together." --confirm
-
 # Discord webhook post (dry-run)
 uv run logion-social discord post --channel general --text "gm" --dry-run
+
+# Discord webhook post from a file (preserves newlines)
+uv run logion-social discord post --channel announcements --file /path/to/post.txt --dry-run
 
 # Discord webhook post (live)
 uv run logion-social discord post --channel general --text "gm"
@@ -47,17 +44,21 @@ uv run logion-social discord read --limit 50
 # Discord read alerts channel
 uv run logion-social discord read --channel alerts --limit 20
 
+# X post dry-run (no network, no cost)
+uv run logion-social x post --text "Smarter, together." --dry-run
+
+# X post from a file (preserves newlines)
+uv run logion-social x post --file /path/to/post.txt --dry-run
+
+# X post with confirmation (spends money)
+uv run logion-social x post --text "Smarter, together." --confirm
+
 # Content queue
 uv run logion-social queue add --platform x --target x --text "draft"
 uv run logion-social queue list
 ```
 
 ## Environment variables
-
-All loaded from the environment or `.env.local` (a simple `KEY=value`
-file; existing env vars take precedence over the file).
-
-### Discord
 
 | Env var | Meaning |
 | --- | --- |

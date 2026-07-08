@@ -34,7 +34,8 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=["announcements", "general", "support", "creators", "alerts"],
     )
-    d_post.add_argument("--text", required=True)
+    d_post.add_argument("--text", required=False)
+    d_post.add_argument("--file", required=False, type=argparse.FileType("r"))
     d_post.add_argument("--dry-run", action="store_true")
     d_read = dsub.add_parser("read")
     d_read.add_argument(
@@ -49,7 +50,8 @@ def _build_parser() -> argparse.ArgumentParser:
     xp = sub.add_parser("x", help="Post to X via the official API (gated)")
     xsub = xp.add_subparsers(dest="x_cmd", required=True)
     x_post = xsub.add_parser("post")
-    x_post.add_argument("--text", required=True)
+    x_post.add_argument("--text", required=False)
+    x_post.add_argument("--file", required=False, type=argparse.FileType("r"))
     x_post.add_argument(
         "--confirm",
         action="store_true",
@@ -72,10 +74,17 @@ def _build_parser() -> argparse.ArgumentParser:
 def _handle_discord(args: object, config: SocialConfig) -> int:
     client = DiscordClient(config)
     if args.discord_cmd == "post":  # type: ignore[attr-defined]
+        text = args.text  # type: ignore[attr-defined]
+        file = getattr(args, "file", None)
+        if file is not None:
+            text = file.read()
+        if not text:
+            print("error: --text or --file required", file=sys.stderr)
+            return 2
         try:
             result = client.post_webhook(
                 args.channel,  # type: ignore[attr-defined]
-                args.text,  # type: ignore[attr-defined]
+                text,
                 dry_run=args.dry_run,  # type: ignore[attr-defined]
             )
         except MissingCredentialsError as exc:
@@ -120,9 +129,16 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
 
 def _handle_x(args: object, config: SocialConfig) -> int:
     client = XClient(config)
+    text = args.text  # type: ignore[attr-defined]
+    file = getattr(args, "file", None)
+    if file is not None:
+        text = file.read()
+    if not text:
+        print("error: --text or --file required", file=sys.stderr)
+        return 2
     try:
         result = client.post(
-            args.text,  # type: ignore[attr-defined]
+            text,
             confirm=args.confirm,  # type: ignore[attr-defined]
             dry_run=args.dry_run,  # type: ignore[attr-defined]
         )
