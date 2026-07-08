@@ -72,6 +72,78 @@ def test_x_post_no_confirm_exit_1(
     assert "--confirm" in captured.err
 
 
+def test_x_post_from_file_preserves_newlines(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    post_file = tmp_path / "post.txt"
+    post_file.write_text("line one\nline two\nline three")
+    code = main([
+        "x",
+        "post",
+        "--file",
+        str(post_file),
+        "--dry-run",
+    ])
+    assert code == 0
+    captured = capsys.readouterr()
+    assert "line one\nline two\nline three" in captured.out
+
+
+def test_x_post_requires_text_or_file(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    code = main(["x", "post", "--dry-run"])
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "--text or --file required" in captured.err
+
+
 def test_discord_post_dry_run_exit_0(
     env,
     capsys,
@@ -103,6 +175,66 @@ def test_discord_post_dry_run_exit_0(
     assert code == 0
     captured = capsys.readouterr()
     assert "hi" in captured.out
+
+
+def test_discord_post_from_file_preserves_newlines(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(DISCORD_WEBHOOK_GENERAL="https://discord.com/api/webhooks/abc")
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    post_file = tmp_path / "post.txt"
+    post_file.write_text("line one\nline two\nline three")
+    code = main([
+        "discord",
+        "post",
+        "--channel",
+        "general",
+        "--file",
+        str(post_file),
+        "--dry-run",
+    ])
+    assert code == 0
+    captured = capsys.readouterr()
+    assert "line one\nline two\nline three" in captured.out
+
+
+def test_discord_post_requires_text_or_file(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(DISCORD_WEBHOOK_GENERAL="https://discord.com/api/webhooks/abc")
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    code = main(["discord", "post", "--channel", "general", "--dry-run"])
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "--text or --file required" in captured.err
 
 
 def test_queue_add_then_list(
