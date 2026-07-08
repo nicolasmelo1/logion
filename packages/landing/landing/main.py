@@ -56,6 +56,7 @@ _readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
 
 PUBLIC_PATHS = (
     "/",
+    "/setup/complete",
     "/pricing",
     "/terms",
     "/privacy",
@@ -301,6 +302,11 @@ def _ctx(**extra: Any) -> dict[str, Any]:
     ctx.setdefault("breadcrumbs", content.get("breadcrumbs", {}))
     ctx.setdefault("page_date_modified", None)
     ctx.setdefault("release_readout", _fallback_readout())
+    ctx.setdefault("setup_mode", False)
+    ctx.setdefault(
+        "api_base",
+        os.environ.get("LOGION_API_BASE_URL", "https://api.logion.sh"),
+    )
     ctx.update(extra)
     return ctx
 
@@ -433,6 +439,25 @@ def index(request: Request) -> Response:
         )
     return templates.TemplateResponse(
         request, "index.html", _ctx(release_readout=release_readout())
+    )
+
+
+@app.get("/setup/complete", response_class=HTMLResponse)
+def setup_complete(request: Request) -> Response:
+    """Render the hero page in setup mode after GitHub OAuth.
+
+    The raw setup token is never in the URL; a single-use handoff id is
+    carried in the fragment (#hid=...) and claimed by browser JS directly
+    against the API. This route only serves the shell; personalization is
+    injected client-side.
+    """
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        _ctx(
+            release_readout=release_readout(),
+            setup_mode=True,
+        ),
     )
 
 

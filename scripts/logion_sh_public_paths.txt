@@ -27,3 +27,4 @@
 /schemas/release-manifest/v1.json
 /static
 /static/*
+/setup/complete

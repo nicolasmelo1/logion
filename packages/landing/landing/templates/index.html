@@ -86,12 +86,14 @@
       {% endif %}
 
       <div class="cta-row">
-        <div class="copy-cta">
+        <div class="copy-cta{% if setup_mode %} copy-cta--setup{% endif %}">
           <button
-            class="cta cta--primary"
+            class="cta cta--primary{% if setup_mode %} cta--setup{% endif %}"
             type="button"
-            data-copy-command="{{ hero.cta.primary.command }}"
+            data-copy-command="{% if setup_mode %}{{ setup_complete.masked_command }}{% else %}{{ hero.cta.primary.command }}{% endif %}"
+            data-setup-copy
             aria-describedby="copy-status"
+            {% if setup_mode %}disabled{% endif %}
           >
             <svg
               class="cta-icon"
@@ -102,18 +104,24 @@
               <rect x="9" y="9" width="11" height="11" rx="2"></rect>
               <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
             </svg>
-            <span class="cta-label">{{ hero.cta.primary.label }}</span>
-            <code class="cta-cmd">{{ hero.cta.primary.command }}</code>
+            <span class="cta-label">{% if setup_mode %}{{ setup_complete.cta_label }}{% else %}{{ hero.cta.primary.label }}{% endif %}</span>
+            <code class="cta-cmd" data-setup-cmd>{% if setup_mode %}{{ setup_complete.masked_command }}{% else %}{{ hero.cta.primary.command }}{% endif %}</code>
           </button>
           <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+          <p class="setup-warning" data-setup-warning hidden>{{ setup_complete.warning }}</p>
+          <p class="setup-expired" data-setup-expired hidden>{{ setup_complete.expired }}</p>
+          <p class="setup-claiming" data-setup-claiming>{{ setup_complete.claiming }}</p>
+          <a class="cta cta--ghost setup-retry" href="{{ setup_complete.retry_href }}" data-setup-retry hidden>{{ setup_complete.retry_label }}</a>
         </div>
         {% for link in hero.cta.secondary %}
+          {% if not setup_mode or not link.get('setup_hide') %}
           <a class="cta cta--ghost" href="{{ link.href }}">
             {{ link.label }}
           </a>
+          {% endif %}
         {% endfor %}
       </div>
-      {% if hero.release_note %}<p class="release-note">{{ hero.release_note }}</p>{% endif %}
+      {% if hero.release_note and not setup_mode %}<p class="release-note">{{ hero.release_note }}</p>{% endif %}
 
       <p class="hero-body">{{ hero.body }}</p>
 
@@ -301,8 +309,9 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/ascii/hero_frames.js"></script>
-  <script src="/static/app.js"></script>
-  <script src="/static/terminal-demo.js"></script>
-  <script src="/static/marketplace-loop.js"></script>
+<script src="/static/ascii/hero_frames.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/terminal-demo.js"></script>
+<script src="/static/marketplace-loop.js"></script>
+{% if setup_mode %}<script src="/static/setup-complete.js" data-api-base="{{ api_base }}"></script>{% endif %}
 {% endblock %}
