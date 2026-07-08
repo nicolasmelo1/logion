@@ -134,6 +134,7 @@ def _handle_x(args: object, config: SocialConfig) -> int:
     file = getattr(args, "file", None)
     if file is not None:
         text = file.read()
+        file.close()
     if not text:
         print("error: --text or --file required", file=sys.stderr)
         return 2
