@@ -9,6 +9,7 @@ from cli._options import COMMON_PARSER
 
 from .handlers import handle_feedback, handle_versions_get
 from .listing import register_mine
+from .package_map import register_package_map
 from .parser_capabilities import register_capabilities
 from .parser_sections import (
     CMD_HELP,
@@ -44,6 +45,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     register_reviews(sub)
     register_report_usage(sub)
     register_capabilities(sub)
+    register_package_map(sub)
     register_taxonomy(sub)
     feedback = sub.add_parser(
         "feedback",

@@ -42,6 +42,7 @@ class SocialConfig(BaseModel):
     discord_bot_token: str | None = None
     discord_guild_id: str | None = None
     discord_channel_support: str | None = None
+    discord_channel_alerts: str | None = None
     discord_webhooks: dict[str, str] = Field(default_factory=dict)
     x_backend: XBackend = "off"
     x_api_key: str | None = None
@@ -77,6 +78,7 @@ class SocialConfig(BaseModel):
             discord_bot_token=os.environ.get("DISCORD_BOT_TOKEN"),
             discord_guild_id=os.environ.get("DISCORD_GUILD_ID"),
             discord_channel_support=os.environ.get("DISCORD_CHANNEL_SUPPORT"),
+            discord_channel_alerts=os.environ.get("DISCORD_CHANNEL_ALERTS"),
             discord_webhooks=webhooks,
             x_backend=raw_backend,  # type: ignore[arg-type]
             x_api_key=os.environ.get("X_API_KEY"),

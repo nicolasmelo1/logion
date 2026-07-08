@@ -55,16 +55,15 @@ def validate_skill_frontmatter(
             )
         )
 
-    # description: if present, 1-1024 chars non-empty
-    if description is not None and (
-        len(description) < 1 or len(description) > 1024
-    ):
+    # description: required, 1-1024 chars non-empty (a missing description
+    # is treated as length 0 and flagged).
+    desc_len = len(description) if description is not None else 0
+    if desc_len < 1 or desc_len > 1024:
         flags.append(
             ReviewFlag(
                 code="spec_nonconformant:description_length",
                 path=path,
-                message=f"description must be 1-1024 chars, "
-                f"got {len(description)}",
+                message=f"description must be 1-1024 chars, got {desc_len}",
             )
         )
 

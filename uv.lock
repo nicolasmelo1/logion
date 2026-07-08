@@ -1640,6 +1640,7 @@ version = "0.1.13"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "logion-client" },
+    { name = "logion-skillmap" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "shtab" },
@@ -1661,6 +1662,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "logion-client", editable = "packages/client" },
+    { name = "logion-skillmap", editable = "packages/skillmap" },
     { name = "pydantic", specifier = ">=2.7,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "rapidfuzz", marker = "extra == 'recall'", specifier = ">=3.9,<4.0" },
