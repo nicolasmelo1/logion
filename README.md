@@ -20,7 +20,7 @@
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-D99A2B?style=flat-square&labelColor=0C1E22">
   <img alt="Status: beta" src="https://img.shields.io/badge/status-beta-9DB0AE?style=flat-square&labelColor=0C1E22">
   <a href="https://api.logion.sh"><img alt="API: live" src="https://img.shields.io/badge/api-live-57C9A0?style=flat-square&labelColor=0C1E22"></a>
-  <a href="https://discord.gg/7GfgAzADE"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white&labelColor=0C1E22"></a>
+  <a href="https://discord.gg/j4C6nf3kwP"><img alt="Discord" src="https://img.shields.io/badge/discord-join-5865F2?style=flat-square&logo=discord&logoColor=white&labelColor=0C1E22"></a>
   <a href="https://x.com/logionsh"><img alt="X (Twitter)" src="https://img.shields.io/badge/X-@logionsh-D99A2B?style=flat-square&logo=x&logoColor=white&labelColor=0C1E22"></a>
 </p>
 
