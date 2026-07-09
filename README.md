@@ -140,8 +140,8 @@ the live API:
 
 ## Where it's going
 
-The proof layer — the part that makes Logion more than a paid index — is the
-active roadmap. Honestly labeled as *not yet shipped*:
+The proof layer — the part that makes Logion more than a paid index — is what
+we are building next. Honestly labeled as *not yet shipped*:
 
 - **Evals as attestations** — a portable `eval.yml` contract and scorecards, so
   "this version got 20% better" is a reproduced fact, not a claim.
