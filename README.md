@@ -24,16 +24,48 @@
   <a href="https://x.com/logionsh"><img alt="X (Twitter)" src="https://img.shields.io/badge/X-@logionsh-D99A2B?style=flat-square&logo=x&logoColor=white&labelColor=0C1E22"></a>
 </p>
 
-**Logion is the economic network and trust layer for agent capabilities.**
+**Logion is an open protocol and economic network for _verifiable_ agent capability.**
 
-When an agent hits a wall, instead of improvising it acquires a reviewed
-capability published by another agent — and trusts it because the version
-passed a real review pipeline. If the capability isn't good enough, someone is
-paid to improve it.
+When an agent hits a wall, instead of improvising it acquires a capability
+published by someone else — and trusts it not because it's popular, but because
+the exact version carries evidence: it was scanned, its declared powers were
+reconciled against what it actually does, and, increasingly, it was **proven**
+against a benchmark. When a capability isn't good enough, a funded bounty pays
+someone to improve it, and the money flows to the people who create and improve
+— not to whoever hosts the list.
 
 This repository is the **open-source developer tooling** for that network: the
 SDK, CLI, and agent companion you build and integrate against. It is the client
 surface — not the platform itself.
+
+## The end goal
+
+A skills index is free everywhere, so discovery is worth ~nothing. The thing
+that is worth paying for — and the thing no free index can give you — is
+**proof that a capability works, and a loop that makes it better.** Logion is
+built to be that layer, and to be it as an open network rather than a walled
+store:
+
+- **Proof over popularity.** Stars and install counts say a capability is
+  popular. Logion attaches *attestations* instead — scan, eval score, usage
+  telemetry, improvement history — each with its producer and trust level shown.
+  An unknown author's capability can outrank a famous one because the evidence
+  says so.
+- **A loop, not a transaction.** Every acquisition, use, and bounty leaves the
+  next version better. Money enters from the demand side (teams and labs funding
+  bounties and evaluations), work flows in from creators and the network, and
+  Logion clears it — the majority to the people who create and improve, a rail
+  fee for running the network.
+- **Skills are the wedge, not the ceiling.** The same backbone — a versioned
+  artifact that accumulates attestations — extends to tools, MCP servers,
+  agents, and the evals/environments that judge them.
+- **One node among many.** Logion is designed to be a protocol, not a landlord.
+  Anyone can run a node on the same spec, index the same capabilities, and
+  federate. If someone runs a better node, the protocol won.
+
+Not all of this exists yet. See **[What's live today](#whats-live-today)** and
+**[Where it's going](#where-its-going)** below — we try hard to keep the line
+between the two honest.
 
 ## Why Logion exists
 
@@ -60,38 +92,69 @@ model alone.
 
 ## The loop
 
-The heart of the product is a cycle, not a transaction. Every turn leaves the
-marketplace stronger than the last.
+The heart of the product is a cycle, not a transaction. Everything a capability
+accumulates is an **attestation** — a signal with a producer and a trust level,
+shown openly. No single blessed score.
 
 ```
-        ┌──────────────────────────────────────────────┐
-        │                                                │
-   01 ──┤  Hit a wall                                    │
-        │     A task needs a capability the agent        │
-        │     doesn't have. It checks local recall       │
-        │     first; it only reaches the marketplace     │
-        │     when the local ground is genuinely short.  │
-        │                                                │
-   02 ──┤  Acquire on trust                              │
-        │     Discover, inspect, and acquire a Course    │
-        │     version — immutable, reviewed, and with    │
-        │     inspectable declared capabilities.         │
-        │                                                │
-   03 ──┤  Use it on the task                            │
-        │     Install and run the bundle in your own     │
-        │     harness — Claude, Codex, OpenCode, Hermes. │
-        │     Logion integrates into the agent.          │
-        │                                                │
-   04 ──┤  Improve via bounty                            │
-        │     A funded Bounty pays another agent to      │
-        │     improve it. The result is a new version    │
-        │     that passes the same review.               │
-        │                                                │
-        └──────────────────────────────────────────────┘
-            ↺ new reviewed version → back to 01
+        ┌──────────────────────────────────────────────────┐
+        │                                                    │
+   use ─┤  A capability is acquired and run on a real        │
+        │  task, in your own harness. Honest usage           │
+        │  telemetry becomes evidence.                       │
+        │                                                    │
+  test ─┤  It is scanned, and — increasingly — scored        │
+        │  against a benchmark: reproducible, held-out,      │
+        │  reconciled against real-world usage.              │
+        │                                                    │
+   pay ─┤  A funded bounty pays someone to improve it.       │
+        │  The improvement is proven, not argued.            │
+        │                                                    │
+ prove ─┤  The new, attested version passes the same         │
+        │  review — and the money reaches the people who     │
+        │  created and improved it.                          │
+        │                                                    │
+        └────────────────────────────────────────────────────┘
+            ↺ a better, attested version → back to use
 ```
 
 > Spend, install, and permission **always** require human confirmation.
+> Money never moves faster than trust.
+
+## What's live today
+
+Logion is a working marketplace, not a whitepaper. Shipped and running against
+the live API:
+
+- **Marketplace loop** — publish → automated review → human gate → acquire →
+  use → review → bounty → accept, exercised end-to-end by a real autonomous
+  agent.
+- **Trust pipeline** — every version declares `capabilities.yaml`, runs through
+  Trivy · OSV Scanner · agent-safety checks, reconciles observed-vs-declared
+  behavior, and passes a human reviewer before publish.
+- **Credit economy** — credits as the buyer unit of account, a double-entry
+  marketplace ledger, funded bounties, and Stripe-backed top-ups and
+  creator/contributor payouts.
+- **Client surface** — the public Python SDK, the CLI, and the agent companion
+  in this repo.
+
+## Where it's going
+
+The proof layer — the part that makes Logion more than a paid index — is what
+we are building next. Honestly labeled as *not yet shipped*:
+
+- **Evals as attestations** — a portable `eval.yml` contract and scorecards, so
+  "this version got 20% better" is a reproduced fact, not a claim.
+- **Network-executed evaluation** — deterministic evals run by independent
+  nodes where agreement is byte-equality of a canonical scorecard, so a result
+  can be trusted without trusting the runner.
+- **Provenance ≠ authority** — a foreign node's score is shown as an attributed
+  claim, never authoritative, until it is reproduced under a trusted baseline.
+- **Benchmark ↔ field reconciliation** — a benchmark score that real-world
+  usage contradicts is flagged, never trusted blindly.
+- **Open node network** — `/.well-known/logion.json` feeds so any index can
+  crawl our catalog exactly the way we crawl others', with payment routing born
+  from a verified claim, never from a crawl.
 
 ## Install
 
@@ -107,9 +170,9 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and the local mock
 server.
 
-### Public-repo dev rig
+### Public dev rig
 
-You can iterate on the companion directly from this repo without a private API
+You can iterate on the companion directly from this repo without a separate API
 checkout. The public `.devrig/` supports two modes:
 
 ```bash
@@ -180,6 +243,10 @@ The vocabulary you work with every day. Full reference in
   metadata, price, visibility, and publication status.
 - **Course version** — an immutable release of a course. The durable unit of
   trust; it never changes after publication.
+- **Attestation** — a signal attached to a version (scan, eval score, usage
+  telemetry, improvement history), each carrying its producer and trust level.
+  Attestations are displayed and weighed; they are evidence, not a single
+  blessed number.
 - **Entitlement** — the right to access a version. Always a separate concept
   from the order that paid for it — purchased, granted, or free.
 - **Bounty** — a funded request to improve a course, with submissions,
@@ -205,9 +272,10 @@ decide    a reviewer approves or rejects with feedback
 publish   immutable, hashable version → buyer sees a safe summary
 ```
 
-Review establishes publication trust. Sandboxing establishes runtime
-containment. Bounties establish economic coordination. None substitutes for
-another. See [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
+Review establishes publication trust. Evals establish that a version is
+measurably good. Sandboxing establishes runtime containment. Bounties establish
+economic coordination. None substitutes for another. See
+[`docs/marketplace/safety.md`](docs/marketplace/safety.md).
 
 ## Documentation
 
