@@ -87,6 +87,16 @@
         "list_bounty_submissions"
       ]
     },
+    "bounties submissions open-pr": {
+      "operations": [
+        "open_submission_pr"
+      ]
+    },
+    "bounties submissions register-pr": {
+      "operations": [
+        "register_submission_pr"
+      ]
+    },
     "bounties submissions reject": {
       "operations": [
         "reject_bounty_submission"

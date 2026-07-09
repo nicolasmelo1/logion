@@ -185,6 +185,29 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     sw.add_argument("--yes", action="store_true")
     sw.set_defaults(handler=handle_submissions_withdraw)
 
+    # submissions open-pr
+    sop = sub_sub.add_parser(
+        "open-pr",
+        help="Open a draft GitHub PR for a submitted bounty submission",
+        parents=[COMMON_PARSER],
+    )
+    sop.add_argument("bounty_id", metavar="BOUNTY_ID")
+    sop.add_argument("submission_id", metavar="SUBMISSION_ID")
+    sop.set_defaults(handler=handle_submissions_open_pr)
+
+    # submissions register-pr
+    srp = sub_sub.add_parser(
+        "register-pr",
+        help=(
+            "Register an existing GitHub PR for a submitted bounty submission"
+        ),
+        parents=[COMMON_PARSER],
+    )
+    srp.add_argument("bounty_id", metavar="BOUNTY_ID")
+    srp.add_argument("submission_id", metavar="SUBMISSION_ID")
+    srp.add_argument("--pr-number", required=True, type=int)
+    srp.set_defaults(handler=handle_submissions_register_pr)
+
     # ── workspace sub-group ──────────────────────────────────────
     _workspace.register(sub)
 
@@ -482,6 +505,74 @@ def handle_submissions_withdraw(args: argparse.Namespace) -> int:
             submission_id=args.submission_id,
         )
         emit(result, json_output=config.json_output)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_submissions_open_pr(args: argparse.Namespace) -> int:
+    """Execute the bounties submissions open-pr command."""
+    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
+    if bad_id is not None:
+        return bad_id
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.bounties.open_pr(
+            bounty_id=args.bounty_id,
+            submission_id=args.submission_id,
+        )
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.submissions.open-pr", data)
+        else:
+            emit(result, json_output=False)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_submissions_register_pr(args: argparse.Namespace) -> int:
+    """Execute the bounties submissions register-pr command."""
+    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
+    if bad_id is not None:
+        return bad_id
+    bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
+    if bad_id is not None:
+        return bad_id
+    if args.pr_number <= 0:
+        print_err("Error: --pr-number must be a positive integer")
+        return 2
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.bounties.register_pr(
+            bounty_id=args.bounty_id,
+            submission_id=args.submission_id,
+            pr_number=args.pr_number,
+        )
+        if config.json_output:
+            data = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else to_data(result)
+            )
+            emit_json("logion.bounties.submissions.register-pr", data)
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:

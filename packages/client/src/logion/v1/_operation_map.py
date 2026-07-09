@@ -57,6 +57,8 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "fund_bounty": "client.v1.bounties.update_funding",
     "create_bounty_payout": ("client.v1.bounties.create_payout"),
     "open_bounty": "client.v1.bounties.update_status",
+    "open_submission_pr": "client.v1.bounties.open_pr",
+    "register_submission_pr": "client.v1.bounties.register_pr",
     "list_bounty_submissions": ("client.v1.bounties.list_submissions"),
     "create_bounty_submission": ("client.v1.bounties.create_submission"),
     "withdraw_bounty_submission": ("client.v1.bounties.delete_submission"),

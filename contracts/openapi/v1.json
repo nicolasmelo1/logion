@@ -6940,6 +6940,72 @@
         ],
         "title": "WithdrawBountySubmissionResponse",
         "type": "object"
+      },
+      "OpenSubmissionPrResponse": {
+        "properties": {
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url"
+          },
+          "head_branch": {
+            "title": "Head Branch",
+            "type": "string"
+          },
+          "fork_required": {
+            "title": "Fork Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pr_url",
+          "head_branch",
+          "fork_required"
+        ],
+        "title": "OpenSubmissionPrResponse",
+        "type": "object"
+      },
+      "RegisterSubmissionPrResponse": {
+        "properties": {
+          "pr_url": {
+            "title": "Pr Url",
+            "type": "string"
+          },
+          "head_branch": {
+            "title": "Head Branch",
+            "type": "string"
+          },
+          "pr_number": {
+            "title": "Pr Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pr_url",
+          "head_branch",
+          "pr_number"
+        ],
+        "title": "RegisterSubmissionPrResponse",
+        "type": "object"
+      },
+      "RegisterSubmissionPrRequest": {
+        "properties": {
+          "pr_number": {
+            "title": "Pr Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pr_number"
+        ],
+        "title": "RegisterSubmissionPrRequest",
+        "type": "object"
       }
     }
   },
@@ -13543,6 +13609,161 @@
         "tags": [
           "reports"
         ]
+      }
+    },
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/open-pr": {
+      "post": {
+        "operationId": "open_submission_pr",
+        "summary": "Open a draft GitHub PR for a bounty submission",
+        "tags": [
+          "bounties"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenSubmissionPrResponse"
+                }
+              }
+            },
+            "description": "Draft PR opened or existing PR returned"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/DomainError"
+          }
+        }
+      }
+    },
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/register-pr": {
+      "post": {
+        "operationId": "register_submission_pr",
+        "summary": "Register an existing GitHub PR for a bounty submission",
+        "tags": [
+          "bounties"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterSubmissionPrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterSubmissionPrResponse"
+                }
+              }
+            },
+            "description": "PR registered"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/DomainError"
+          }
+        }
       }
     }
   }

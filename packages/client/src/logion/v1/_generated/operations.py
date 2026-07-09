@@ -72,11 +72,14 @@ from logion.v1._types.generated.v1 import (
     ListReportsResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
+    OpenSubmissionPrResponse,
     OrderResponse,
     PurchaseCourseRequest,
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    RegisterSubmissionPrRequest,
+    RegisterSubmissionPrResponse,
     RejectBountySubmissionResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
@@ -498,6 +501,36 @@ def accept_bounty_submission(
         "PATCH",
         f"/v1/bounties/{bounty_id}/submissions/{submission_id}/acceptance",
         AcceptBountySubmissionResponse,
+    )
+
+
+def open_submission_pr(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+    submission_id: str | UUID,
+) -> OpenSubmissionPrResponse:
+    """Call the open_submission_pr API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/bounties/{bounty_id}/submissions/{submission_id}/open-pr",
+        OpenSubmissionPrResponse,
+    )
+
+
+def register_submission_pr(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+    submission_id: str | UUID,
+    body: RegisterSubmissionPrRequest,
+) -> RegisterSubmissionPrResponse:
+    """Call the register_submission_pr API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/bounties/{bounty_id}/submissions/{submission_id}/register-pr",
+        RegisterSubmissionPrResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 
