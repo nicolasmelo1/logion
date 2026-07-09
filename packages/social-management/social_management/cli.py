@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from social_management.content.queue import add, list_drafts
 from social_management.core.config import SocialConfig
@@ -34,8 +35,9 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=["announcements", "general", "support", "creators", "alerts"],
     )
-    d_post.add_argument("--text", required=False)
-    d_post.add_argument("--file", required=False, type=argparse.FileType("r"))
+    d_post_input = d_post.add_mutually_exclusive_group(required=True)
+    d_post_input.add_argument("--text")
+    d_post_input.add_argument("--file", type=Path)
     d_post.add_argument("--dry-run", action="store_true")
     d_read = dsub.add_parser("read")
     d_read.add_argument(
@@ -50,8 +52,9 @@ def _build_parser() -> argparse.ArgumentParser:
     xp = sub.add_parser("x", help="Post to X via the official API (gated)")
     xsub = xp.add_subparsers(dest="x_cmd", required=True)
     x_post = xsub.add_parser("post")
-    x_post.add_argument("--text", required=False)
-    x_post.add_argument("--file", required=False, type=argparse.FileType("r"))
+    x_post_input = x_post.add_mutually_exclusive_group(required=True)
+    x_post_input.add_argument("--text")
+    x_post_input.add_argument("--file", type=Path)
     x_post.add_argument(
         "--confirm",
         action="store_true",
@@ -74,13 +77,16 @@ def _build_parser() -> argparse.ArgumentParser:
 def _handle_discord(args: object, config: SocialConfig) -> int:
     client = DiscordClient(config)
     if args.discord_cmd == "post":  # type: ignore[attr-defined]
-        text = args.text  # type: ignore[attr-defined]
-        file = getattr(args, "file", None)
-        if file is not None:
-            text = file.read()
-            file.close()
+        try:
+            text = _post_text_from_args(args)
+        except OSError as exc:
+            print(f"error: could not read --file: {exc}", file=sys.stderr)
+            return 2
+        except UnicodeDecodeError:
+            print("error: --file must be valid UTF-8 text", file=sys.stderr)
+            return 2
         if not text:
-            print("error: --text or --file required", file=sys.stderr)
+            print("error: post text cannot be empty", file=sys.stderr)
             return 2
         try:
             result = client.post_webhook(
@@ -130,13 +136,16 @@ def _handle_discord(args: object, config: SocialConfig) -> int:
 
 def _handle_x(args: object, config: SocialConfig) -> int:
     client = XClient(config)
-    text = args.text  # type: ignore[attr-defined]
-    file = getattr(args, "file", None)
-    if file is not None:
-        text = file.read()
-        file.close()
+    try:
+        text = _post_text_from_args(args)
+    except OSError as exc:
+        print(f"error: could not read --file: {exc}", file=sys.stderr)
+        return 2
+    except UnicodeDecodeError:
+        print("error: --file must be valid UTF-8 text", file=sys.stderr)
+        return 2
     if not text:
-        print("error: --text or --file required", file=sys.stderr)
+        print("error: post text cannot be empty", file=sys.stderr)
         return 2
     try:
         result = client.post(
@@ -169,6 +178,14 @@ def _handle_x(args: object, config: SocialConfig) -> int:
         if result.note:
             print(f"note: {result.note}")
     return 0
+
+
+def _post_text_from_args(args: object) -> str:
+    text = args.text  # type: ignore[attr-defined]
+    path = args.file  # type: ignore[attr-defined]
+    if path is not None:
+        return path.read_text(encoding="utf-8")
+    return text
 
 
 def _handle_queue(args: object) -> int:

@@ -99,7 +99,7 @@ def test_x_post_from_file_preserves_newlines(
 
     monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
     post_file = tmp_path / "post.txt"
-    post_file.write_text("line one\nline two\nline three")
+    post_file.write_text("line one\nline two\nline three", encoding="utf-8")
     code = main([
         "x",
         "post",
@@ -110,6 +110,104 @@ def test_x_post_from_file_preserves_newlines(
     assert code == 0
     captured = capsys.readouterr()
     assert "line one\nline two\nline three" in captured.out
+
+
+def test_x_post_rejects_empty_text(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    code = main(["x", "post", "--text", "", "--dry-run"])
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "post text cannot be empty" in captured.err
+
+
+def test_x_post_rejects_missing_file(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    code = main(["x", "post", "--file", "missing.txt", "--dry-run"])
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "could not read --file" in captured.err
+
+
+def test_x_post_rejects_non_utf8_file(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    post_file = tmp_path / "post.txt"
+    post_file.write_bytes(b"\xff")
+    code = main(["x", "post", "--file", str(post_file), "--dry-run"])
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "valid UTF-8" in captured.err
 
 
 def test_x_post_requires_text_or_file(
@@ -138,10 +236,56 @@ def test_x_post_requires_text_or_file(
         return original_from_env(env_local=tmp_path / "nonexistent.env")
 
     monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
-    code = main(["x", "post", "--dry-run"])
-    assert code == 2
+    with pytest.raises(SystemExit) as exc_info:
+        main(["x", "post", "--dry-run"])
+    assert exc_info.value.code == 2
     captured = capsys.readouterr()
-    assert "--text or --file required" in captured.err
+    assert "--text" in captured.err
+    assert "--file" in captured.err
+    assert "required" in captured.err
+
+
+def test_x_post_rejects_text_and_file_together(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(
+        X_BACKEND="api",
+        X_API_KEY="k",
+        X_API_SECRET="s",
+        X_ACCESS_TOKEN="t",
+        X_ACCESS_SECRET="ts",  # pragma: allowlist secret
+        X_MONTHLY_BUDGET_CENTS="1000",
+    )
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    post_file = tmp_path / "post.txt"
+    post_file.write_text("line one", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc_info:
+        main([
+            "x",
+            "post",
+            "--text",
+            "hi",
+            "--file",
+            str(post_file),
+            "--dry-run",
+        ])
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "not allowed with argument" in captured.err
 
 
 def test_discord_post_dry_run_exit_0(
@@ -197,7 +341,7 @@ def test_discord_post_from_file_preserves_newlines(
 
     monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
     post_file = tmp_path / "post.txt"
-    post_file.write_text("line one\nline two\nline three")
+    post_file.write_text("line one\nline two\nline three", encoding="utf-8")
     code = main([
         "discord",
         "post",
@@ -231,10 +375,51 @@ def test_discord_post_requires_text_or_file(
         return original_from_env(env_local=tmp_path / "nonexistent.env")
 
     monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
-    code = main(["discord", "post", "--channel", "general", "--dry-run"])
-    assert code == 2
+    with pytest.raises(SystemExit) as exc_info:
+        main(["discord", "post", "--channel", "general", "--dry-run"])
+    assert exc_info.value.code == 2
     captured = capsys.readouterr()
-    assert "--text or --file required" in captured.err
+    assert "--text" in captured.err
+    assert "--file" in captured.err
+    assert "required" in captured.err
+
+
+def test_discord_post_rejects_text_and_file_together(
+    env,
+    capsys,
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    env(DISCORD_WEBHOOK_GENERAL="https://discord.com/api/webhooks/abc")
+    monkeypatch.chdir(tmp_path)
+    from social_management.core import config as cfg_module
+
+    original_from_env = cfg_module.SocialConfig.from_env
+
+    def patched_from_env(
+        *,
+        env_local=None,  # type: ignore[no-untyped-def]
+    ):
+        return original_from_env(env_local=tmp_path / "nonexistent.env")
+
+    monkeypatch.setattr(cfg_module.SocialConfig, "from_env", patched_from_env)
+    post_file = tmp_path / "post.txt"
+    post_file.write_text("line one", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc_info:
+        main([
+            "discord",
+            "post",
+            "--channel",
+            "general",
+            "--text",
+            "hi",
+            "--file",
+            str(post_file),
+            "--dry-run",
+        ])
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "not allowed with argument" in captured.err
 
 
 def test_queue_add_then_list(

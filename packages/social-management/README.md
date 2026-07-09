@@ -60,6 +60,11 @@ uv run logion-social queue list
 
 ## Environment variables
 
+All loaded from the environment or `.env.local` (a simple `KEY=value`
+file; existing env vars take precedence over the file).
+
+### Discord
+
 | Env var | Meaning |
 | --- | --- |
 | `DISCORD_BOT_TOKEN` | Bot token for read-only triage (optional) |
