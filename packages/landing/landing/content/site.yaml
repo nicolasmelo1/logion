@@ -53,6 +53,7 @@ hero:
         href: https://github.com/nicolasmelo1/logion
       - label: or sign in with GitHub for a pre-authenticated install
         href: https://api.logion.sh/v1/setup/github/start
+        setup_hide: true
       - label: Read terms
         href: /terms
   readouts:
@@ -170,6 +171,25 @@ hero:
             text: >-
               Funded. Accepted work ships as a new reviewed version — every
               buyer benefits, and the contributor cashes out via Stripe Connect.
+
+setup_complete:
+  nav_status: connected
+  heading: GitHub linked
+  cta_label: Your personalized install
+  claiming: linking your GitHub account…
+  masked_command: "curl -fsSL https://logion.sh/install.sh | sh -s -- --setup-token ••••••••"
+  warning: >-
+    Keep this token private. It grants access to your account and this page
+    will not be shown again. If you lose it, sign in again at logion.sh to
+    mint a new one.
+  expired: >-
+    This link was already used or has expired. Sign in with GitHub again to
+    get a fresh install command.
+  retry_label: sign in with GitHub again
+  retry_href: https://api.logion.sh/v1/setup/github/start
+  noscript: >-
+    JavaScript is required to receive your one-time install token. Enable it
+    and reload, or sign in again from logion.sh.
 
 sections:
   - id: ethos
@@ -455,6 +475,7 @@ links:
       href: https://github.com/nicolasmelo1/logion
     - label: Sign in
       href: https://api.logion.sh/v1/setup/github/start
+      setup_swap: nav_status
     - label: Pricing
       href: /pricing
     - label: Install

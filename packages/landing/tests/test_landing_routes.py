@@ -458,6 +458,40 @@ def test_pricing_route_renders_credits_and_split() -> None:
     assert "monthly subscription" not in text.lower()
 
 
+def test_setup_complete_route_renders_setup_mode() -> None:
+    response = client.get("/setup/complete")
+    assert response.status_code == 200
+    text = response.text
+    assert "GitHub linked" in text
+    assert "Your personalized install" in text
+    assert "data-setup-copy" in text
+    assert "data-setup-cmd" in text
+    assert "setup-complete.js" in text
+    assert "data-api-base" in text
+    # Secondary "sign in with GitHub" CTA is hidden in setup mode.
+    assert "or sign in with GitHub for a pre-authenticated install" not in text
+    # Release note is hidden in setup mode.
+    assert "One command sets up" not in text
+
+
+def test_setup_complete_swaps_nav_signin_for_status() -> None:
+    text = client.get("/setup/complete").text
+    assert "connected" in text
+    # The primary nav link is replaced by the connected status; the retry link
+    # in the expired state is still allowed.
+    assert 'class="nav-status"' in text
+    assert 'href="https://api.logion.sh/v1/setup/github/start"' in text
+    # But it should only appear once (the retry link), not in the primary nav.
+    assert (
+        text.count('href="https://api.logion.sh/v1/setup/github/start"') == 1
+    )
+
+
+def test_setup_complete_is_listed_in_sitemap() -> None:
+    text = client.get("/sitemap.xml").text
+    assert "https://logion.sh/setup/complete" in text
+
+
 def test_terms_route_renders_product_terms() -> None:
     response = client.get("/terms")
     assert response.status_code == 200

@@ -141,9 +141,14 @@
         </a>
         <nav class="site-nav" aria-label="Primary">
           {% for link in links.primary %}
+            {% if setup_mode and link.get('setup_swap') == 'nav_status' %}
+            <span class="nav-status">{{ setup_complete.nav_status }}</span>
+            {% else %}
             <a href="{{ link.href }}">{{ link.label }}</a>
+            {% endif %}
           {% endfor %}
         </nav>
+        <span class="setup-heading" data-setup-heading{% if not setup_mode %} hidden{% endif %}>{{ setup_complete.heading }}</span>
       </header>
       <main id="main">
         {% block main %}{% endblock %}
