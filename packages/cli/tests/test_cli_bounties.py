@@ -70,6 +70,20 @@ class FakeBountiesResource:
         self.last_call = ("delete_submission", kwargs)
         return {"id": kwargs.get("submission_id", ""), "status": "withdrawn"}
 
+    def open_pr(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("open_submission_pr", kwargs)
+        return {
+            "pr_number": kwargs.get("submission_id", "")[-4:] or "1",
+            "pr_url": "https://github.com/owner/repo/pull/1",
+        }
+
+    def register_pr(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_call = ("register_submission_pr", kwargs)
+        return {
+            "pr_number": kwargs.get("pr_number", 1),
+            "pr_url": "https://github.com/owner/repo/pull/1",
+        }
+
 
 class FakeV1Namespace:
     def __init__(self, bounties: FakeBountiesResource) -> None:
@@ -627,3 +641,69 @@ def test_submissions_create_evidence_invalid_json(
     ])
     assert code == 2
     assert bounties.last_call == ("", {})
+
+
+def test_submissions_open_pr_calls_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """bounties submissions open-pr forwards ids to SDK."""
+    bounties = FakeBountiesResource()
+    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "bounties",
+        "submissions",
+        "open-pr",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = bounties.last_call
+    assert method == "open_submission_pr"
+    assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
+
+
+def test_submissions_register_pr_requires_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """bounties submissions register-pr requires --pr-number."""
+    bounties = FakeBountiesResource()
+    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
+    _patch_client(monkeypatch, fake)
+    with pytest.raises(SystemExit) as excinfo:
+        main([
+            "bounties",
+            "submissions",
+            "register-pr",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "660e8400-e29b-41d4-a716-446655440001",
+            "--json",
+        ])
+    assert excinfo.value.code == 2
+
+
+def test_submissions_register_pr_calls_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """bounties submissions register-pr forwards ids and pr-number to SDK."""
+    bounties = FakeBountiesResource()
+    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
+    _patch_client(monkeypatch, fake)
+    code = main([
+        "bounties",
+        "submissions",
+        "register-pr",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001",
+        "--pr-number",
+        "42",
+        "--json",
+    ])
+    assert code == 0
+    method, kwargs = bounties.last_call
+    assert method == "register_submission_pr"
+    assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert kwargs["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
+    assert kwargs["pr_number"] == 42

@@ -57,12 +57,24 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "fund_bounty": "client.v1.bounties.update_funding",
     "create_bounty_payout": ("client.v1.bounties.create_payout"),
     "open_bounty": "client.v1.bounties.update_status",
+    "open_submission_pr": "client.v1.bounties.open_pr",
+    "register_submission_pr": "client.v1.bounties.register_pr",
     "list_bounty_submissions": ("client.v1.bounties.list_submissions"),
     "create_bounty_submission": ("client.v1.bounties.create_submission"),
     "withdraw_bounty_submission": ("client.v1.bounties.delete_submission"),
     "get_bounty_submission": "client.v1.bounties.get_submission",
     "accept_bounty_submission": ("client.v1.bounties.accept_submission"),
     "reject_bounty_submission": ("client.v1.bounties.reject_submission"),
+    # GitHub setup (landing companion)
+    "setup_github_start": "client.v1.github_setup.start",
+    "setup_github_callback": (  # pragma: allowlist secret
+        "client.v1.github_setup.callback"
+    ),
+    "claim_setup_handoff": "client.v1.github_setup.claim_handoff",
+    "redeem_setup_token": "client.v1.github_setup.redeem_token",
+    "get_setup_token_status": (  # pragma: allowlist secret
+        "client.v1.github_setup.get_token_status"
+    ),
     # Course reviews
     "list_human_review_queue": ("client.v1.course_reviews.list"),
     "get_review_bundle": "client.v1.course_reviews.get_bundle",

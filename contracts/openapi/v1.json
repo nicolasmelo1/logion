@@ -764,6 +764,54 @@
         "title": "CapabilitySummaryResponse",
         "type": "object"
       },
+      "ClaimSetupHandoffRequest": {
+        "properties": {
+          "handoff_id": {
+            "description": "Raw bearer handoff secret from the setup-complete URL fragment.",
+            "title": "Handoff Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "handoff_id"
+        ],
+        "title": "ClaimSetupHandoffRequest",
+        "type": "object"
+      },
+      "ClaimSetupHandoffResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "github_login": {
+            "title": "Github Login",
+            "type": "string"
+          },
+          "install_command": {
+            "title": "Install Command",
+            "type": "string"
+          },
+          "setup_token": {
+            "title": "Setup Token",
+            "type": "string"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "setup_token",
+          "token_prefix",
+          "expires_at",
+          "github_login",
+          "install_command"
+        ],
+        "title": "ClaimSetupHandoffResponse",
+        "type": "object"
+      },
       "CompleteCourseVersionUploadSessionResponse": {
         "properties": {
           "assets": {
@@ -5059,6 +5107,36 @@
         "title": "OpenBountyResponse",
         "type": "object"
       },
+      "OpenSubmissionPrResponse": {
+        "properties": {
+          "fork_required": {
+            "title": "Fork Required",
+            "type": "boolean"
+          },
+          "head_branch": {
+            "title": "Head Branch",
+            "type": "string"
+          },
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url"
+          }
+        },
+        "required": [
+          "pr_url",
+          "head_branch",
+          "fork_required"
+        ],
+        "title": "OpenSubmissionPrResponse",
+        "type": "object"
+      },
       "OrderResponse": {
         "properties": {
           "amount_cents": {
@@ -5407,6 +5485,108 @@
           "status"
         ],
         "title": "ReactivateUserResponse",
+        "type": "object"
+      },
+      "RedeemSetupTokenRequest": {
+        "properties": {
+          "agent_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Description"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "setup_token": {
+            "title": "Setup Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "setup_token",
+          "agent_name"
+        ],
+        "title": "RedeemSetupTokenRequest",
+        "type": "object"
+      },
+      "RedeemSetupTokenResponse": {
+        "properties": {
+          "agent_id": {
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "api_key": {
+            "title": "Api Key",
+            "type": "string"
+          },
+          "api_key_prefix": {
+            "title": "Api Key Prefix",
+            "type": "string"
+          },
+          "autoreview_consent": {
+            "title": "Autoreview Consent",
+            "type": "null"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "agent_id",
+          "agent_name",
+          "api_key",
+          "api_key_prefix"
+        ],
+        "title": "RedeemSetupTokenResponse",
+        "type": "object"
+      },
+      "RegisterSubmissionPrRequest": {
+        "properties": {
+          "pr_number": {
+            "title": "Pr Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pr_number"
+        ],
+        "title": "RegisterSubmissionPrRequest",
+        "type": "object"
+      },
+      "RegisterSubmissionPrResponse": {
+        "properties": {
+          "head_branch": {
+            "title": "Head Branch",
+            "type": "string"
+          },
+          "pr_number": {
+            "title": "Pr Number",
+            "type": "integer"
+          },
+          "pr_url": {
+            "title": "Pr Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pr_url",
+          "head_branch",
+          "pr_number"
+        ],
+        "title": "RegisterSubmissionPrResponse",
         "type": "object"
       },
       "RejectBountySubmissionResponse": {
@@ -9496,6 +9676,214 @@
         ]
       }
     },
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/open-pr": {
+      "post": {
+        "operationId": "open_submission_pr",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenSubmissionPrResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation or domain error"
+          }
+        },
+        "summary": "Open a draft GitHub PR for a bounty submission.",
+        "tags": [
+          "bounties"
+        ]
+      }
+    },
+    "/v1/bounties/{bounty_id}/submissions/{submission_id}/register-pr": {
+      "post": {
+        "operationId": "register_submission_pr",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterSubmissionPrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterSubmissionPrResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation or domain error"
+          }
+        },
+        "summary": "Register an existing GitHub PR for a bounty submission.",
+        "tags": [
+          "bounties"
+        ]
+      }
+    },
     "/v1/bounties/{bounty_id}/submissions/{submission_id}/rejection": {
       "patch": {
         "operationId": "reject_bounty_submission",
@@ -13542,6 +13930,326 @@
         "summary": "Create report",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/v1/setup-tokens/redeem": {
+      "post": {
+        "description": "Redeem a one-time setup token to create an agent and API key.",
+        "operationId": "redeem_setup_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemSetupTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemSetupTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Setup token already redeemed"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Setup token expired or revoked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Redeem a setup token for onboarding",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/v1/setup-tokens/{prefix}": {
+      "get": {
+        "description": "Return the status of a setup token by its prefix (owner-only).",
+        "operationId": "get_setup_token_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prefix",
+            "required": true,
+            "schema": {
+              "title": "Prefix",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Setup Token Status",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Token prefix not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check setup token status",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/v1/setup/github/callback": {
+      "get": {
+        "description": "Handle the GitHub callback for the setup/install flow.\n\nFor the setup flow (redirect_target=install, user_id=None on state),\nprovisions or links a user from GitHub identity, mints a setup token,\nand returns HTML showing the personalized install command.",
+        "operationId": "setup_github_callback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "State",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "303": {
+            "description": "Redirect to setup-complete handoff page"
+          },
+          "400": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid state"
+          },
+          "409": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "GitHub OAuth callback for setup flow",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/v1/setup/github/start": {
+      "get": {
+        "description": "Redirect to GitHub OAuth authorize for setup/install flow.",
+        "operationId": "setup_github_start",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "GitHub OAuth unconfigured"
+          }
+        },
+        "summary": "Start GitHub OAuth for setup flow",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/v1/setup/handoff/claim": {
+      "post": {
+        "description": "Claim a single-use handoff and mint a setup token.",
+        "operationId": "claim_setup_handoff",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimSetupHandoffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimSetupHandoffResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Handoff invalid, expired, or already consumed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Claim a setup handoff to receive a setup token",
+        "tags": [
+          "setup"
         ]
       }
     }
