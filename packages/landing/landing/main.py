@@ -56,7 +56,6 @@ _readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
 
 PUBLIC_PATHS = (
     "/",
-    "/setup/complete",
     "/pricing",
     "/terms",
     "/privacy",
@@ -114,12 +113,14 @@ def robots_txt() -> str:
     lines = [
         "User-agent: *",
         "Allow: /",
+        "Disallow: /setup/",
         "",
     ]
     for crawler in AI_CRAWLERS:
         lines.extend([
             f"User-agent: {crawler}",
             "Allow: /",
+            "Disallow: /setup/",
             "",
         ])
     lines.append(f"Sitemap: {canonical_url('/sitemap.xml')}")
@@ -451,7 +452,7 @@ def setup_complete(request: Request) -> Response:
     against the API. This route only serves the shell; personalization is
     injected client-side.
     """
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "index.html",
         _ctx(
@@ -459,6 +460,10 @@ def setup_complete(request: Request) -> Response:
             setup_mode=True,
         ),
     )
+    # Transitional OAuth-flow page: never cache, never index.
+    response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
 
 
 @app.get("/pricing", response_class=HTMLResponse)

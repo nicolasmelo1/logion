@@ -63,10 +63,16 @@
 
   function run() {
     var handoffId = parseHandoff();
-    if (!handoffId) return;
 
-    // Strip the fragment so it does not survive in browser history or Referer.
+    // Strip the fragment so it does not survive in browser history or
+    // Referer — even when it is malformed or missing.
     history.replaceState(null, "", window.location.pathname + window.location.search);
+
+    // Direct visit or refresh after a claim: nothing to redeem.
+    if (!handoffId) {
+      showExpired();
+      return;
+    }
 
     setVisible("[data-setup-claiming]", true);
 
@@ -83,8 +89,10 @@
         setButtonReady(button, command);
         setVisible("[data-setup-claiming]", false);
         setVisible("[data-setup-warning]", true);
-        var heading = document.querySelector("[data-setup-heading]");
-        if (heading && !heading.hidden) heading.textContent = data.github_login || heading.textContent;
+        var navStatus = document.querySelector("[data-setup-nav-status]");
+        if (navStatus && data.github_login) {
+          navStatus.textContent = "@" + data.github_login;
+        }
       })
       .catch(function () {
         showExpired();
