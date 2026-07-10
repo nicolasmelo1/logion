@@ -75,6 +75,7 @@ def test_sitemap_xml_lists_public_routes() -> None:
     assert "https://logion.sh/privacy" in locs
     assert "https://logion.sh/credits-terms" in locs
     assert "https://logion.sh/referrals-terms" in locs
+    assert "https://logion.sh/how-it-works" in locs
     assert "https://logion.sh/llms.txt" in locs
     assert "https://logion.sh/design.txt" in locs
 
@@ -185,6 +186,10 @@ def test_llms_txt_lists_agent_readable_entrypoints() -> None:
         in response.text
     )
     assert (
+        "[How it works](https://logion.sh/how-it-works)"
+        in response.text
+    )
+    assert (
         "[GitHub repository](https://github.com/nicolasmelo1/logion)"
         in response.text
     )
@@ -205,6 +210,45 @@ def test_llms_txt_groups_public_source_and_agent_surfaces() -> None:
     assert "/robots.txt" in text
     assert "/sitemap.xml" in text
     assert "Accept: text/markdown" in text
+
+
+def test_how_it_works_route_renders_html() -> None:
+    response = client.get("/how-it-works")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    # Reuses the legal-page shell.
+    assert "How Logion works" in response.text
+    # Core loop and the audience-first framing required by #163.
+    assert "marketplace loop" in response.text.lower()
+    assert "The marketplace loop" in response.text
+    assert "First steps by audience" in response.text
+    assert "Buyer / user" in response.text
+    assert "Creator" in response.text
+    assert "Contributor" in response.text
+    assert "Reviewer / operator" in response.text
+    # Trust model must stay honest (no runtime sandbox overclaim).
+    assert "Runtime sandbox enforcement is future runtime work" in response.text
+
+
+def test_how_it_works_route_serves_markdown() -> None:
+    response = client.get("/how-it-works", headers={"Accept": "text/markdown"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    text = response.text
+    assert "# How Logion works" in text
+    assert "The marketplace loop" in text
+    assert "course/capabilities.yaml" in text
+    # Real, copy-pasteable CLI verbs (no invented commands).
+    assert "logion listings search" in text
+    assert "logion courses purchase" in text
+    assert "logion skills install" in text
+    assert "logion bounties create" in text
+
+
+def test_how_it_works_folded_into_llms_full() -> None:
+    text = client.get("/llms-full.txt").text
+    assert "## /how-it-works" in text
+    assert "The marketplace loop" in text
 
 
 def test_homepage_includes_logion() -> None:

@@ -57,6 +57,7 @@ _readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
 PUBLIC_PATHS = (
     "/",
     "/setup/complete",
+    "/how-it-works",
     "/pricing",
     "/terms",
     "/privacy",
@@ -179,11 +180,11 @@ def llms_txt() -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def legal_page(slug: str) -> dict[str, str]:
-    page = content.get("legal", {}).get(slug, {})
+def legal_page(slug: str, block: str = "legal") -> dict[str, str]:
+    page = content.get(block, {}).get(slug, {})
     markdown_name = page.get("markdown")
     if not isinstance(markdown_name, str):
-        raise TypeError(f"legal page {slug!r} must define a markdown file")
+        raise TypeError(f"page {slug!r} in block {block!r} must define a markdown file")
     resolved = (CONTENT_DIR / markdown_name).resolve()
     if not resolved.is_relative_to(CONTENT_DIR.resolve()):
         raise ValueError(f"legal page {slug!r} path escapes content directory")
@@ -311,8 +312,8 @@ def _ctx(**extra: Any) -> dict[str, Any]:
     return ctx
 
 
-def _legal_date_modified(slug: str) -> str | None:
-    page = content.get("legal", {}).get(slug, {})
+def _legal_date_modified(slug: str, block: str = "legal") -> str | None:
+    page = content.get(block, {}).get(slug, {})
     markdown_name = page.get("markdown")
     if not isinstance(markdown_name, str):
         return None
@@ -332,8 +333,8 @@ def _wants_markdown(request: Request) -> bool:
     return "text/markdown" in request.headers.get("accept", "")
 
 
-def _legal_markdown_response(slug: str) -> PlainTextResponse:
-    page = legal_page(slug)
+def _legal_markdown_response(slug: str, block: str = "legal") -> PlainTextResponse:
+    page = legal_page(slug, block=block)
     return PlainTextResponse(
         page["markdown"],
         media_type="text/markdown; charset=utf-8",
@@ -359,6 +360,15 @@ def llms_full_txt() -> str:
             continue
         sections.append(f"## {path}\n")
         sections.append(page["markdown"].strip() + "\n")
+    # Public "How Logion works" page — folded into the one-fetch
+    # concatenation so agents get the full product explanation without a CLI.
+    try:
+        how = legal_page("how_it_works", block="how_it_works")
+    except (OSError, TypeError, ValueError) as exc:
+        sections.append(f"## /how-it-works\n\n_unavailable: {exc}_\n")
+    else:
+        sections.append("## /how-it-works\n")
+        sections.append(how["markdown"].strip() + "\n")
     faq_block = content.get("faq", {})
     if faq_block.get("items"):
         sections.append("## FAQ\n")
@@ -531,6 +541,26 @@ def referrals_terms(request: Request) -> Response:
         _ctx(
             page=legal_page("referrals"),
             page_date_modified=_legal_date_modified("referrals"),
+        ),
+    )
+
+
+@app.get("/how-it-works", response_class=HTMLResponse)
+def how_it_works(request: Request) -> Response:
+    """Public "How Logion works" docs page for visitors without the CLI.
+
+    Reuses the legal-page rendering path (a markdown file under
+    ``content/`` referenced from ``site.yaml``), so the surface stays
+    consistent with the legal routes and is folded into ``llms-full.txt``.
+    """
+    if _wants_markdown(request):
+        return _legal_markdown_response("how_it_works", block="how_it_works")
+    return templates.TemplateResponse(
+        request,
+        "legal.html",
+        _ctx(
+            page=legal_page("how_it_works", block="how_it_works"),
+            page_date_modified=_legal_date_modified("how_it_works", block="how_it_works"),
         ),
     )
 

@@ -480,6 +480,8 @@ links:
       href: /pricing
     - label: Install
       href: /#install
+    - label: How it works
+      href: /how-it-works
   legal:
     - label: Terms
       href: /terms
@@ -513,6 +515,11 @@ legal:
   referrals:
     heading: Referral Program Terms
     markdown: legal/referrals.md
+
+how_it_works:
+  how_it_works:
+    heading: How Logion works
+    markdown: how-it-works.md
 
 seo:
   canonical_base: https://logion.sh
@@ -625,6 +632,9 @@ ai:
     - title: GitHub repository
       href: https://github.com/nicolasmelo1/logion
       description: Source for the CLI, marketplace, and bundles.
+    - title: How it works
+      href: /how-it-works
+      description: The marketplace loop, course bundles, capabilities, and first steps by audience.
   llms_txt_sections:
     - heading: Public Source
       links:
@@ -803,6 +813,9 @@ breadcrumbs:
     - { label: Home, href: / }
     - { label: Legal, href: /referrals-terms }
     - { label: Referral Program Terms, href: /referrals-terms }
+  "/how-it-works":
+    - { label: Home, href: / }
+    - { label: How it works, href: /how-it-works }
 
 # SoftwareApplication metadata for /. Lets Google understand the product
 # as a developer-facing application with credit-based monetization.
