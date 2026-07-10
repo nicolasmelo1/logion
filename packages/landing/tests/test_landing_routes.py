@@ -461,6 +461,9 @@ def test_pricing_route_renders_credits_and_split() -> None:
 def test_setup_complete_route_renders_setup_mode() -> None:
     response = client.get("/setup/complete")
     assert response.status_code == 200
+    # Transitional OAuth-flow page: never cached, never indexed.
+    assert response.headers["cache-control"] == "no-store, no-cache, max-age=0"
+    assert response.headers["x-robots-tag"] == "noindex"
     text = response.text
     assert "GitHub linked" in text
     assert "Your personalized install" in text
@@ -479,7 +482,8 @@ def test_setup_complete_swaps_nav_signin_for_status() -> None:
     assert "connected" in text
     # The primary nav link is replaced by the connected status; the retry link
     # in the expired state is still allowed.
-    assert 'class="nav-status"' in text
+    # JS hook for swapping the static status for "@<login>" after the claim.
+    assert 'class="nav-status" data-setup-nav-status' in text
     assert 'href="https://api.logion.sh/v1/setup/github/start"' in text
     # But it should only appear once (the retry link), not in the primary nav.
     assert (
@@ -487,9 +491,15 @@ def test_setup_complete_swaps_nav_signin_for_status() -> None:
     )
 
 
-def test_setup_complete_is_listed_in_sitemap() -> None:
+def test_setup_complete_is_not_listed_in_sitemap() -> None:
     text = client.get("/sitemap.xml").text
-    assert "https://logion.sh/setup/complete" in text
+    assert "/setup/complete" not in text
+
+
+def test_robots_disallows_setup_paths() -> None:
+    text = client.get("/robots.txt").text
+    # Every user-agent group must exclude the transitional setup flow.
+    assert text.count("Disallow: /setup/") == text.count("User-agent:")
 
 
 def test_terms_route_renders_product_terms() -> None:
