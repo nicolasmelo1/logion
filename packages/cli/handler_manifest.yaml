@@ -72,6 +72,10 @@ commands:
     operations: [reject_bounty_submission]
   bounties submissions withdraw:
     operations: [withdraw_bounty_submission]
+  bounties submissions open-pr:
+    operations: [open_submission_pr]
+  bounties submissions register-pr:
+    operations: [register_submission_pr]
 
   course-reviews download:
     operations: []

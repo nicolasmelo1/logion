@@ -14,6 +14,9 @@ from logion.v1._types.generated.v1 import (
     CreateBountySubmissionResponse,
     GetBountySubmissionResponse,
     ListBountySubmissionsResponse,
+    OpenSubmissionPrResponse,
+    RegisterSubmissionPrRequest,
+    RegisterSubmissionPrResponse,
     RejectBountySubmissionResponse,
     WithdrawBountySubmissionResponse,
 )
@@ -105,4 +108,32 @@ class _BountySubmissionsMixin(_BountyResourceBase):
             self._http,
             bounty_id=bounty_id,
             submission_id=submission_id,
+        )
+
+    def open_pr(
+        self,
+        bounty_id: str | UUID,
+        submission_id: str | UUID,
+    ) -> OpenSubmissionPrResponse:
+        """Open a draft GitHub PR for a submitted bounty submission."""
+        return operations.open_submission_pr(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
+        )
+
+    def register_pr(
+        self,
+        bounty_id: str | UUID,
+        submission_id: str | UUID,
+        *,
+        pr_number: int,
+    ) -> RegisterSubmissionPrResponse:
+        """Register an existing GitHub PR for a submitted bounty submission."""
+        body = RegisterSubmissionPrRequest(pr_number=pr_number)
+        return operations.register_submission_pr(
+            self._http,
+            bounty_id=bounty_id,
+            submission_id=submission_id,
+            body=body,
         )
