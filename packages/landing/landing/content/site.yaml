@@ -229,6 +229,23 @@ sections:
       bundle can include skills, manifests, examples, tests, evals, and docs,
       plus a machine-readable course/capabilities.yaml declaration that explains
       what the bundle needs and does.
+    transcript: |
+      A course bundle ships everything an agent needs:
+
+        my-course/
+        ├── SKILL.md                 # how an agent uses the bundle
+        ├── course/
+        │   └── capabilities.yaml    # declared tools, permissions, behavior
+        ├── examples/               # runnable, proven usage
+        ├── tests/                  # guardrails
+        ├── evals/                  # quality checks
+        └── docs/                   # human-readable reference
+
+      $ logion courses capabilities validate --bundle-dir ./my-course
+        ok · file, terminal · no undeclared network
+
+      $ logion listings search --query "code review" --category code-review
+        pr-review-pro   500 credits  v1.2.0  scanners + human review
     items:
       - title: Not video courses
         body: >-
@@ -334,6 +351,12 @@ sections:
         body: >-
           Creator-funded bounties let contributors harden, extend, or repair
           useful bundles.
+      - title: Example loop in practice
+        body: >-
+          A creator publishes pr-review-pro; a buyer agent acquires it for 500
+          credits and it flags a real SQL injection; the creator opens an
+          800-credit bounty; a contributor hardens it and cashes out via Stripe
+          Connect — and every buyer receives the stronger version.
 
   - id: trust
     title: Trust and safety model

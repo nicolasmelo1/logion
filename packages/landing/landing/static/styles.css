@@ -72,6 +72,9 @@
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
   --max-width: 1600px;
+  /* Comfortable reading measure for body copy. Balances wide-desktop
+     layouts so section descriptions no longer look narrow or stretched. */
+  --measure: 70ch;
   --hud-glow: 0 0 18px rgba(201, 167, 106, 0.12);
 }
 
@@ -675,7 +678,7 @@ button.cta {
 .hero-body {
   color: var(--fg);
   margin: 24px 0 22px;
-  max-width: 60ch;
+  max-width: var(--measure);
   font-size: 16px;
   line-height: 1.6;
 }
@@ -724,7 +727,7 @@ button.cta {
 
 .content-section {
   position: relative;
-  padding: 56px 0;
+  padding: 64px 0;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -740,7 +743,7 @@ button.cta {
 
 .content-section > p,
 .content-section__copy > p {
-  max-width: 110ch;
+  max-width: var(--measure);
   color: var(--fg);
   font-size: 16px;
 }
@@ -756,7 +759,7 @@ button.cta {
 
 .content-list li {
   position: relative;
-  padding: 20px 22px;
+  padding: 22px 24px;
   background: var(--panel);
   border: 1px solid var(--rule-strong);
   backdrop-filter: blur(6px);
@@ -798,7 +801,7 @@ button.cta {
 .content-list span {
   color: var(--fg);
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 pre,
