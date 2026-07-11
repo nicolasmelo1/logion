@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Pinned reply templates for the issue-mention bounty bot.
 
 All amounts are credits. No template in this module renders a dollar sign or
@@ -106,6 +107,22 @@ def reply_refused_course_ambiguous(*, slugs: list[str] | None = None) -> str:
         "This repository is linked to multiple courses. Pick one by "
         "adding `course:<slug>` to the bounty command."
     )
+
+
+def reply_refused_course_slug_not_found(
+    *,
+    slug: str | None = None,
+    slugs: list[str] | None = None,
+) -> str:
+    names = ", ".join(f"`{s}`" for s in slugs or [])
+    head = (
+        f"No linked course matches `{slug}`."
+        if slug
+        else "The requested course is not linked to this repository."
+    )
+    if names:
+        return f"{head} Available: {names}."
+    return head
 
 
 def reply_refused_course_not_published() -> str:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Pure, zero-I/O parser for issue-mention bot commands."""
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from .commands import (
 )
 
 _FENCE_RE = re.compile(r"```[\s\S]*?```")
+_FENCE_MARK = "```"
 _COURSE_PREFIX_LEN = len(ISSUE_BOUNTY_COURSE_TOKEN_PREFIX)
 
 
@@ -38,6 +40,10 @@ def _parse_bounty_amount(tokens: list[str]) -> tuple[int | None, str | None]:
             course_slug = nxt[_COURSE_PREFIX_LEN:]
             continue
         if re.match(ISSUE_BOUNTY_AMOUNT_RE, nxt):
+            if amount is not None:
+                # A second amount token is ambiguous input, not a retry.
+                amount = None
+                break
             amount = int(nxt)
             continue
         # Any other token after a candidate amount invalidates it.
@@ -51,6 +57,9 @@ def parse_issue_bot_command(
 ) -> IssueBotCommand | None:
     """Parse one comment/issue body into at most one bot command."""
     text = _FENCE_RE.sub("", body)
+    # An unterminated fence renders as code to the end of the body, so
+    # anything after it must be ignored too.
+    text = text.split(_FENCE_MARK, 1)[0]
     tokens = text.split()
     mention = f"@{bot_login}".lower()
     try:

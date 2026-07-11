@@ -18,3 +18,5 @@
 {"body": "@logion-bot bounty 10000000", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
 {"body": "@logion-bot bounty 0", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
 {"body": "@logion-bot bounty 250 course:a course:b", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": "b"}}
+{"body": "```\n@logion-bot bounty 250", "expected": null}
+{"body": "@logion-bot bounty 10 20", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}

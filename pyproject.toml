@@ -89,7 +89,7 @@ ignore = [
 "packages/landing/scripts/gen_og_image.py" = ["T201", "RUF001"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion", "logion_scanners", "social_management", "logion_bot"]
+known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners", "social_management"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12

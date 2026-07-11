@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Command grammar and pinned comment copy for the issue-mention bot.
 
 All user-facing amounts are credits. Never render USD here.

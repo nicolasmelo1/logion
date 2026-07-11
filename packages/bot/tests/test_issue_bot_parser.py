@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tests for the pure issue-mention bot parser."""
 
 from __future__ import annotations
@@ -82,6 +83,15 @@ def test_malformed_amounts_yield_no_amount():
         assert _parse(body) == IssueBotCommand(kind="bounty"), body
 
 
+def test_multiple_amount_tokens_yield_no_amount():
+    """Money-safety pin: two amounts is ambiguous input, never last-wins."""
+    for body in (
+        "@logion-bot bounty 10 20",
+        "@logion-bot bounty 10 credits 20",
+    ):
+        assert _parse(body) == IssueBotCommand(kind="bounty"), body
+
+
 def test_confirm_command():
     assert _parse("@logion-bot confirm") == IssueBotCommand(kind="confirm")
 
@@ -117,6 +127,16 @@ def test_mention_in_code_block_ignored():
 def test_mention_in_inline_code_ignored():
     body = "`@logion-bot bounty 250`"
     assert _parse(body) is None
+
+
+def test_mention_after_unterminated_fence_ignored():
+    body = "```\n@logion-bot bounty 250"
+    assert _parse(body) is None
+
+
+def test_mention_before_unterminated_fence_still_parses():
+    body = "@logion-bot bounty 250\n```\nsome code"
+    assert _parse(body) == IssueBotCommand(kind="bounty", amount_credits=250)
 
 
 def test_substring_login_does_not_match():
