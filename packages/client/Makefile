@@ -1,5 +1,7 @@
 SHELL := /bin/bash
-ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+# env -u: git exports GIT_DIR/GIT_INDEX_FILE to hook subprocesses, which
+# makes --show-toplevel resolve to this directory instead of the repo root.
+ROOT := $(shell env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git rev-parse --show-toplevel 2>/dev/null || pwd)
 SPEC := $(ROOT)/contracts/openapi/v1.json
 GEN_DIR := src/logion/v1/_types/generated
 GEN_FILE := $(GEN_DIR)/v1.py

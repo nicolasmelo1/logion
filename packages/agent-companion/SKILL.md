@@ -224,6 +224,8 @@ logion courses report-usage COURSE_ID VERSION_ID --rating N
 logion credits top-up --amount 1000 --yes --json
 logion payments cash-out --dry-run --json
 logion payments cash-out --expected-gross-payout-cents N --yes --json
+logion bounties submissions open-pr BOUNTY_ID SUBMISSION_ID --yes --json
+logion bounties submissions register-pr BOUNTY_ID SUBMISSION_ID --pr-number N --yes --json
 ```
 
 Creator commands (require explicit approval for destructive actions):

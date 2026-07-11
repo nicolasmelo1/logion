@@ -120,6 +120,7 @@ ignore = [
 "cli/commands/recall/handlers.py" = ["T201"]
 "cli/commands/identity/github.py" = ["T201"]
 "cli/commands/completion.py" = ["T201"]
+"cli/commands/bounties.py" = ["T201"]
 "cli/commands/courses/package_map.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
 "scripts/sync_docs.py" = ["T201"]
