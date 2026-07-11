@@ -193,6 +193,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sop.add_argument("bounty_id", metavar="BOUNTY_ID")
     sop.add_argument("submission_id", metavar="SUBMISSION_ID")
+    sop.add_argument("--yes", action="store_true")
     sop.set_defaults(handler=handle_submissions_open_pr)
 
     # submissions register-pr
@@ -204,6 +205,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     srp.add_argument("bounty_id", metavar="BOUNTY_ID")
     srp.add_argument("submission_id", metavar="SUBMISSION_ID")
     srp.add_argument("--pr-number", required=True, type=int)
+    srp.add_argument("--yes", action="store_true")
     srp.set_defaults(handler=handle_submissions_register_pr)
 
     # ── workspace sub-group ──────────────────────────────────────
@@ -511,6 +513,16 @@ def handle_submissions_withdraw(args: argparse.Namespace) -> int:
         client.close()
 
 
+FORK_NEXT_STEPS = """\
+This repository requires a fork:
+  1. Fork the repository on GitHub and push your work to branch:
+       {head_branch}
+  2. Open a PR from your fork; keep the Logion marker in the PR body.
+  3. Run: logion bounties submissions register-pr {bounty_id} \
+{submission_id} --pr-number N --yes
+"""
+
+
 def handle_submissions_open_pr(args: argparse.Namespace) -> int:
     """Execute the bounties submissions open-pr command."""
     bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
@@ -519,6 +531,9 @@ def handle_submissions_open_pr(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
     if bad_id is not None:
         return bad_id
+    refusal = require_yes(args.yes, "open a draft PR for this submission")
+    if refusal is not None:
+        return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -526,7 +541,19 @@ def handle_submissions_open_pr(args: argparse.Namespace) -> int:
             bounty_id=args.bounty_id,
             submission_id=args.submission_id,
         )
-        emit(result, json_output=config.json_output)
+        data = to_data(result)
+        if config.json_output:
+            emit_json("logion.bounties.submissions.open-pr", data)
+        elif isinstance(data, dict) and data.get("fork_required"):
+            print(
+                FORK_NEXT_STEPS.format(
+                    head_branch=data.get("head_branch", ""),
+                    bounty_id=args.bounty_id,
+                    submission_id=args.submission_id,
+                )
+            )
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -543,6 +570,9 @@ def handle_submissions_register_pr(args: argparse.Namespace) -> int:
     bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
     if bad_id is not None:
         return bad_id
+    refusal = require_yes(args.yes, "register this PR for the submission")
+    if refusal is not None:
+        return refusal
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
@@ -551,7 +581,12 @@ def handle_submissions_register_pr(args: argparse.Namespace) -> int:
             submission_id=args.submission_id,
             pr_number=args.pr_number,
         )
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            emit_json(
+                "logion.bounties.submissions.register-pr", to_data(result)
+            )
+        else:
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
