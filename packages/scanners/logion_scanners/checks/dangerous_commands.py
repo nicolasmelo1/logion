@@ -50,12 +50,22 @@ _DANGEROUS_PATTERNS: list[tuple[str, str, str]] = [
     (
         r"\bcurl\b.*\|\s*(?:ba)?sh\b",
         "AGENT-REMOTE-PIPE-SHELL",
-        "Piping remote content to shell (remote code exec)",
+        "Executing remote content with a shell (remote code execution)",
     ),
     (
         r"\bwget\b.*\|\s*(?:ba)?sh\b",
         "AGENT-REMOTE-PIPE-SHELL",
-        "Piping remote content to shell (remote code exec)",
+        "Executing remote content with a shell (remote code execution)",
+    ),
+    (
+        r"\b(?:ba)?sh\s*<\s*\(\s*(?:curl|wget)\b",
+        "AGENT-REMOTE-PIPE-SHELL",
+        "Executing remote content with a shell (remote code execution)",
+    ),
+    (
+        r"\b(?:curl|wget)\b.*\|\s*(?:python(?:\d(?:\.\d+)?)?|node|ruby|perl)\b",
+        "AGENT-REMOTE-PIPE-INTERPRETER",
+        "Piping remote content to an interpreter (remote code execution)",
     ),
     (
         r"\bsudo\s+",
@@ -86,6 +96,7 @@ class DangerousCommandsCheck(BaseCheck):
     EXPECTED_RULE_IDS: frozenset[str] = frozenset({
         "AGENT-DANGEROUS-RM-RF",
         "AGENT-REMOTE-PIPE-SHELL",
+        "AGENT-REMOTE-PIPE-INTERPRETER",
         "AGENT-SUDO-PRIVILEGE-ESCALATION",
         "AGENT-INSECURE-PERMISSIONS",
         "AGENT-FORK-BOMB",
