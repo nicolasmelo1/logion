@@ -85,7 +85,7 @@ _INSTALL_PATTERNS: list[tuple[str, str, str]] = [
         "Course attempts to install or run a pipx tool at runtime",
     ),
     (
-        r"\b(?:uv\s+(?:sync|pip\s+install|tool\s+(?:install|run)|add|run\s+--with(?:=|\s))|uvx)\b",
+        r"\buvx\b|\buv\s+(?:sync\b|pip\s+install\b|tool\s+(?:install|run)\b|add\b|run\s+--with(?:=|\s))",
         "AGENT-RUNTIME-INSTALL-UV",
         "Course attempts to provision Python dependencies via uv at runtime",
     ),
