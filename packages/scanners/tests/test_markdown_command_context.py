@@ -34,6 +34,13 @@ pip install requests
 ```
 """
 
+UV_SYNC_FENCED_MD = """# Setup
+
+```bash
+uv sync
+```
+"""
+
 
 def _write_bundle(tmp_path: Path, name: str, content: str) -> Path:
     bundle = tmp_path / name
@@ -61,6 +68,13 @@ class TestMarkdownProse:
             f.rule_id for f in RuntimeInstallAttemptCheck().run(bundle)
         }
         assert rule_ids == {"AGENT-RUNTIME-INSTALL-PIP"}
+
+    def test_fenced_uv_sync_still_flags(self, tmp_path: Path) -> None:
+        bundle = _write_bundle(tmp_path, "uv-sync", UV_SYNC_FENCED_MD)
+        rule_ids = {
+            f.rule_id for f in RuntimeInstallAttemptCheck().run(bundle)
+        }
+        assert rule_ids == {"AGENT-RUNTIME-INSTALL-UV"}
 
     def test_shell_files_scan_every_line(self, tmp_path: Path) -> None:
         bundle = tmp_path / "shell"

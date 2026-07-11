@@ -86,6 +86,7 @@ FIXTURE_RULE_IDS: dict[str, frozenset[str]] = {
     "dangerous_commands": frozenset({
         "AGENT-DANGEROUS-RM-RF",
         "AGENT-INSECURE-PERMISSIONS",
+        "AGENT-REMOTE-PIPE-INTERPRETER",
         "AGENT-REMOTE-PIPE-SHELL",
         "AGENT-SUDO-PRIVILEGE-ESCALATION",
     }),
@@ -111,6 +112,8 @@ FIXTURE_RULE_IDS: dict[str, frozenset[str]] = {
         "AGENT-RUNTIME-INSTALL-BREW",
         "AGENT-RUNTIME-INSTALL-NPM",
         "AGENT-RUNTIME-INSTALL-PIP",
+        "AGENT-RUNTIME-INSTALL-UV",
+        "AGENT-RUNTIME-REMOTE-CODE-FETCH",
     }),
     "secrets_detection": frozenset({
         "AGENT-AWS-ACCESS-KEY",

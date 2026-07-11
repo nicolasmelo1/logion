@@ -1,13 +1,11 @@
-"""Runtime install attempt detection — package-manager install
-commands that extend the environment at runtime.
+"""Runtime environment acquisition detection.
 
-These are not *dangerous* commands in the destructive sense (users run
-`npm install` daily); they are **trust-surface-expanding** commands that
-contradict the bundle's declared capability manifest. A course bundle
-must be self-contained: it may assume an environment, but it may not
-extend it. Anything installed at runtime is invisible to the capability
-scanner, unpinned, and mutable after publication review approved the
-bundle (the ClawHub supply-chain pattern).
+Package-manager installs and remote source fetches are not *dangerous* in
+the destructive sense; they are **trust-surface-expanding** actions that
+contradict the bundle's declared capability manifest. A course bundle must
+be self-contained: it may assume an environment, but it may not extend it
+or fetch executable source at runtime. Anything acquired after publication
+review is invisible to the capability scanner, unpinned, and mutable.
 
 `curl | sh` / `wget | sh` are intentionally NOT covered here — they are
 already flagged by dangerous_commands.py.
@@ -87,9 +85,9 @@ _INSTALL_PATTERNS: list[tuple[str, str, str]] = [
         "Course attempts to install or run a pipx tool at runtime",
     ),
     (
-        r"\buv\s+(?:pip\s+install|tool\s+(?:install|run)|add)\b",
+        r"\b(?:uv\s+(?:sync|pip\s+install|tool\s+(?:install|run)|add|run\s+--with(?:=|\s))|uvx)\b",
         "AGENT-RUNTIME-INSTALL-UV",
-        "Course attempts to install a Python package via uv at runtime",
+        "Course attempts to provision Python dependencies via uv at runtime",
     ),
     (
         r"\bpython\d?(?:\.\d+)?\s+-m\s+pip\s+install\b",
@@ -199,6 +197,13 @@ _INSTALL_PATTERNS: list[tuple[str, str, str]] = [
         "AGENT-RUNTIME-INSTALL-CPAN",
         "Course attempts a cpan install at runtime",
     ),
+    # Fetching a repository for execution has the same mutable, unreviewed
+    # dependency surface as a package-manager install.
+    (
+        r"\bgit\s+clone\b",
+        "AGENT-RUNTIME-REMOTE-CODE-FETCH",
+        "Course fetches remote source code at runtime via git clone",
+    ),
 ]
 
 
@@ -235,6 +240,7 @@ class RuntimeInstallAttemptCheck(BaseCheck):
         "AGENT-RUNTIME-INSTALL-COMPOSER",
         "AGENT-RUNTIME-INSTALL-DOTNET",
         "AGENT-RUNTIME-INSTALL-CPAN",
+        "AGENT-RUNTIME-REMOTE-CODE-FETCH",
     })
 
     name = "runtime-install-attempt"

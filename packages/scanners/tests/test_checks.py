@@ -92,6 +92,8 @@ class TestRuntimeInstallAttemptCheck:
         assert "AGENT-RUNTIME-INSTALL-NPM" in rule_ids
         assert "AGENT-RUNTIME-INSTALL-PIP" in rule_ids
         assert "AGENT-RUNTIME-INSTALL-BREW" in rule_ids
+        assert "AGENT-RUNTIME-INSTALL-UV" in rule_ids
+        assert "AGENT-RUNTIME-REMOTE-CODE-FETCH" in rule_ids
 
 
 class TestSecretsDetectionCheck:
