@@ -175,7 +175,6 @@ hero:
 
 setup_complete:
   nav_status: connected
-  heading: GitHub linked
   cta_label: Your personalized install
   claiming: linking your GitHub account…
   masked_command: "curl -fsSL https://logion.sh/install.sh | sh -s -- --setup-token ••••••••"
@@ -183,9 +182,6 @@ setup_complete:
     Keep this token private. It grants access to your account and this page
     will not be shown again. If you lose it, sign in again at logion.sh to
     mint a new one.
-  expired: >-
-    This link was already used or has expired. Sign in with GitHub below to
-    get a fresh install command.
   noscript: >-
     JavaScript is required to receive your one-time install token. Enable it
     and reload, or sign in again from logion.sh.

@@ -117,6 +117,37 @@ def test_primary_copy_command_does_not_truncate() -> None:
     assert "text-overflow: ellipsis" not in cta_cmd_block
 
 
+def test_setup_command_truncates_with_scroll_and_gold_warning() -> None:
+    # The personalized install command (with setup token) is much longer
+    # than the standard curl line: one line, ellipsis, horizontal scroll.
+    # The base .cta-cmd (homepage curl) must stay untruncated — guarded by
+    # test_primary_copy_command_does_not_truncate above.
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    setup_cmd_block = text.split(".cta--setup .cta-cmd {", maxsplit=1)[
+        1
+    ].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    assert "text-overflow: ellipsis" in setup_cmd_block
+    assert "overflow-x: auto" in setup_cmd_block
+    # Token-safety warning renders in the design's bright accent gold.
+    warning_block = text.split(".setup-warning {", maxsplit=1)[1].split(
+        "}",
+        maxsplit=1,
+    )[0]
+    assert "color: var(--accent-bright)" in warning_block
+
+
+def test_setup_complete_js_redirects_home_on_bad_handoff() -> None:
+    # Invalid/expired/used handoffs (and direct visits) bounce back to the
+    # home page — there is no in-page expired/retry state.
+    text = (STATIC_DIR / "setup-complete.js").read_text(encoding="utf-8")
+    assert 'window.location.replace("/")' in text
+    assert "showExpired" not in text
+    assert "data-setup-retry" not in text
+
+
 def test_hero_frames_exports_multiple_frames() -> None:
     text = (STATIC_DIR / "ascii" / "hero_frames.js").read_text(
         encoding="utf-8"

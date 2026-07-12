@@ -478,6 +478,25 @@ button.cta {
   text-align: left;
 }
 
+/* The personalized install command carries a setup token and is far longer
+   than the standard curl line: keep it on one line, truncate with an
+   ellipsis, and let the user scroll horizontally to see the whole thing. */
+.cta--setup .cta-cmd {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  text-overflow: ellipsis;
+}
+
+/* Token-safety notice in the design's bright accent gold. */
+.setup-warning {
+  color: var(--accent-bright);
+  font-family: var(--mono);
+  font-size: 13px;
+  max-width: 620px;
+}
+
 .cta--ghost {
   align-self: flex-start;
   border: 1px solid var(--rule-strong);

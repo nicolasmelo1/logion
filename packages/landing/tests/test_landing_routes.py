@@ -474,17 +474,19 @@ def test_setup_complete_route_renders_setup_mode() -> None:
     assert response.headers["cache-control"] == "no-store, no-cache, max-age=0"
     assert response.headers["x-robots-tag"] == "noindex"
     text = response.text
-    assert "GitHub linked" in text
     assert "Your personalized install" in text
     assert "data-setup-copy" in text
     assert "data-setup-cmd" in text
     assert "setup-complete.js" in text
     assert "data-api-base" in text
-    # The sign-in CTA renders hidden and doubles as the retry link on the
-    # expired state — there is no separate "sign in with GitHub again" CTA.
+    # No sign-in CTA of any kind in setup mode — the visitor is already
+    # authenticated, and a bad handoff redirects home instead of retrying.
     assert "sign in with GitHub again" not in text
-    assert "data-setup-retry hidden" in text
-    assert "or sign in with GitHub for a pre-authenticated install" in text
+    assert "or sign in with GitHub for a pre-authenticated install" not in text
+    # The header carries no redundant "GitHub linked" status heading; the
+    # nav swap plus the personalized CTA are the confirmation.
+    assert "GitHub linked" not in text
+    assert "setup-heading" not in text
     # Release note is hidden in setup mode.
     assert "One command sets up" not in text
 
@@ -492,14 +494,13 @@ def test_setup_complete_route_renders_setup_mode() -> None:
 def test_setup_complete_swaps_nav_signin_for_status() -> None:
     text = client.get("/setup/complete").text
     assert "connected" in text
-    # The primary nav link is replaced by the connected status; the retry link
-    # in the expired state is still allowed.
+    # The primary nav link is replaced by the connected status.
     # JS hook for swapping the static status for "@<login>" after the claim.
     assert 'class="nav-status" data-setup-nav-status' in text
-    assert 'href="https://api.logion.sh/v1/setup/github/start"' in text
-    # But it should only appear once (the retry link), not in the primary nav.
+    # With the retry CTA gone, no sign-in href should render anywhere in
+    # setup mode.
     assert (
-        text.count('href="https://api.logion.sh/v1/setup/github/start"') == 1
+        text.count('href="https://api.logion.sh/v1/setup/github/start"') == 0
     )
 
 

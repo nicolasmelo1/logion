@@ -109,18 +109,13 @@
           </button>
           <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
           <p class="setup-warning" data-setup-warning hidden>{{ setup_complete.warning }}</p>
-          <p class="setup-expired" data-setup-expired hidden>{{ setup_complete.expired }}</p>
           <p class="setup-claiming" data-setup-claiming{% if not setup_mode %} hidden{% endif %}>{{ setup_complete.claiming }}</p>
         </div>
+        {# No sign-in CTA in setup mode: the visitor is already
+           authenticated, and an invalid/expired/used handoff redirects
+           straight back to the home page instead of rendering a retry. #}
         {% for link in hero.cta.secondary %}
-          {% if setup_mode and link.get('setup_hide') %}
-          {# In setup mode the sign-in CTA starts hidden; setup-complete.js
-             reveals it as the retry path when the handoff is expired. One
-             link serves both jobs — no duplicate "sign in again" CTA. #}
-          <a class="cta cta--ghost" href="{{ link.href }}" data-setup-retry hidden>
-            {{ link.label }}
-          </a>
-          {% else %}
+          {% if not setup_mode or not link.get('setup_hide') %}
           <a class="cta cta--ghost" href="{{ link.href }}">
             {{ link.label }}
           </a>
