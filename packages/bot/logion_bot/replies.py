@@ -44,11 +44,12 @@ def reply_opened(*, bounty_url: str, amount_credits: int) -> str:
 
 
 def reply_opened_unfunded(*, bounty_url: str, bounty_id: str) -> str:
+    base = bounty_url.split("/bounties", 1)[0]
     return (
         "Bounty is open but unfunded — your Logion balance does not have "
         "enough credits.\n"
         f"{bounty_url}\n\n"
-        "Top up at https://logion.sh, then fund it with:\n"
+        f"Top up at {base}, then fund it with:\n"
         f"`logion bounties fund {bounty_id} --yes`"
     )
 
