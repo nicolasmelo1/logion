@@ -1,0 +1,22 @@
+{"body": "@logion-bot bounty 250", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": null}}
+{"body": "@logion-bot bounty 250 credits", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": null}}
+{"body": "@logion-bot bounty 250 course:my-slug", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": "my-slug"}}
+{"body": "@logion-bot bounty", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot bounty $250", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot bounty 250.50", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot bounty 250 USD", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot confirm", "expected": {"kind": "confirm", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot cancel", "expected": {"kind": "cancel", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot help", "expected": {"kind": "help", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot", "expected": null}
+{"body": "@logion-bot bounty 250 confirm", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": null}}
+{"body": "hello @logion-bot-fan bounty 5", "expected": null}
+{"body": "```\n@logion-bot bounty 250\n```", "expected": null}
+{"body": "@Logion-Bot BOUNTY 250", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": null}}
+{"body": "pre @logion-bot post bounty 1", "expected": {"kind": "bounty", "amount_credits": 1, "course_slug": null}}
+{"body": "@logion-bot bounty 9999999", "expected": {"kind": "bounty", "amount_credits": 9999999, "course_slug": null}}
+{"body": "@logion-bot bounty 10000000", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot bounty 0", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}
+{"body": "@logion-bot bounty 250 course:a course:b", "expected": {"kind": "bounty", "amount_credits": 250, "course_slug": "b"}}
+{"body": "```\n@logion-bot bounty 250", "expected": null}
+{"body": "@logion-bot bounty 10 20", "expected": {"kind": "bounty", "amount_credits": null, "course_slug": null}}

@@ -59,11 +59,16 @@ def test_detect_present_per_harness(tmp_path: Path) -> None:
     original_all = harness_mod.all_adapters
 
     def fake_all():
+        kwargs = {
+            "home_dir": tmp_path / "home",
+            # Isolate cwd-based detection from any real project .claude dir.
+            "project_dir": tmp_path / "proj",
+        }
         return [
-            ClaudeCodeAdapter(home_dir=tmp_path / "home"),
-            CodexAdapter(home_dir=tmp_path / "home"),
-            OpenCodeAdapter(home_dir=tmp_path / "home"),
-            HermesAdapter(home_dir=tmp_path / "home"),
+            ClaudeCodeAdapter(**kwargs),
+            CodexAdapter(**kwargs),
+            OpenCodeAdapter(**kwargs),
+            HermesAdapter(**kwargs),
         ]
 
     harness_mod.all_adapters = fake_all

@@ -15,6 +15,7 @@ members = [
     "packages/scanners",
     "packages/social-management",
     "packages/skillmap",
+    "packages/bot",
 ]
 
 [dependency-groups]
@@ -88,13 +89,13 @@ ignore = [
 "packages/landing/scripts/gen_og_image.py" = ["T201", "RUF001"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion", "logion_scanners", "social_management"]
+known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners", "social_management"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "."]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "packages/bot", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [

@@ -30,6 +30,7 @@ LOCK_PATH = os.path.join(ROOT, ".deps.lock.json")
 PYPROJECTS = [
     "pyproject.toml",
     "packages/agent-companion/pyproject.toml",
+    "packages/bot/pyproject.toml",
     "packages/cli/pyproject.toml",
     "packages/client/pyproject.toml",
     "packages/landing/pyproject.toml",
