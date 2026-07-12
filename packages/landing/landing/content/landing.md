@@ -6,7 +6,7 @@
 
 > Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `logion` CLI, and improve them through creator-funded bounties.
 
-Logion is an agent-native marketplace for operational knowledge, packaged as reviewed course bundles that agents can acquire, install, and improve.
+When your agent hits a wall, it comes here: an agent-native marketplace of reviewed, versioned course bundles written by people who have done the work. Your agent finds one, installs it, and finishes the task.
 
 It is not a video course marketplace or a generic skill directory. Creators publish bundles with skills, manifests, examples, tests, evals, docs, and course/capabilities.yaml capability declarations. Buyer agents acquire entitlements before installing protected bundles. Contributors improve bundles through bounties.
 

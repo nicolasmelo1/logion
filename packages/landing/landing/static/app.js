@@ -19,10 +19,15 @@
     ? window.matchMedia("(prefers-reduced-motion: reduce)")
     : { matches: false, addEventListener: function () {} };
   // Touch / small-viewport: no pointer parallax (there is no mouse to track
-  // and it reads as jitter on mobile).
+  // and it reads as jitter on mobile), lower scene density, and a 30fps
+  // frame budget — phone-class CPUs saturate at the desktop workload.
   var coarse = window.matchMedia
     ? window.matchMedia("(max-width: 768px), (pointer: coarse)")
     : { matches: false, addEventListener: function () {} };
+  var lightScheme = window.matchMedia
+    ? window.matchMedia("(prefers-color-scheme: light)")
+    : { matches: false, addEventListener: function () {} };
+  var COARSE_FRAME_INTERVAL = 33; // ms — ~30fps cap on coarse pointers
 
   // ----- ASCII decode intro (hidden, but real) --------------------------
   if (ascii && frames.length) {
@@ -131,8 +136,9 @@
     var w = dim.w;
     var h = dim.h;
 
-    // Glyph columns (Matrix-style rain).
-    var columnWidth = 14;
+    // Glyph columns (Matrix-style rain). Wider spacing on coarse pointers:
+    // fewer columns → fewer fillText calls per frame.
+    var columnWidth = coarse.matches ? 22 : 14;
     var cols = Math.ceil(w / columnWidth);
     var rain = [];
     for (var i = 0; i < cols; i++) {
@@ -148,7 +154,9 @@
 
     // Static-ish starfield.
     var stars = [];
-    var density = Math.min(260, Math.floor((w * h) / 6000));
+    var density = coarse.matches
+      ? Math.min(120, Math.floor((w * h) / 12000))
+      : Math.min(260, Math.floor((w * h) / 6000));
     for (var s = 0; s < density; s++) {
       stars.push({
         x: rand(0, w),
@@ -213,10 +221,9 @@
 
     // Trail-clear: light overlay instead of clearRect for ghost trails.
     // Pick a trail colour that matches current theme so light mode does
-    // not accumulate a dark wash over the page background.
-    var lightMode =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: light)").matches;
+    // not accumulate a dark wash over the page background. (Cached
+    // MediaQueryList — constructing one per frame is measurable overhead.)
+    var lightMode = lightScheme.matches;
     // Near-neutral warm gray rain; barely tinted so it stays quiet on
     // both themes and reads as ink/dust rather than gold.
     var rainHead = lightMode ? "95, 92, 86" : "215, 213, 207";
@@ -312,6 +319,14 @@
   // ----- Hero canvas (Zeus particle figure) ------------------------------
   var heroCanvas = document.getElementById("hero-canvas");
   var heroState = null;
+  // Skip hero drawing entirely once the hero scrolls out of view — the
+  // particles are the most expensive draw and invisible while reading.
+  var heroVisible = true;
+  if (heroCanvas && "IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      heroVisible = entries[entries.length - 1].isIntersecting;
+    }).observe(heroCanvas);
+  }
 
   function silhouette(x, y, w, h) {
     var cx = w / 2;
@@ -341,9 +356,11 @@
     var w = dim.w;
     var h = dim.h;
 
-    // Sample particle home positions over the silhouette.
+    // Sample particle home positions over the silhouette. Coarser sampling
+    // on coarse pointers: ~half the particles, same figure.
     var particles = [];
-    var step = 6;
+    var step = coarse.matches ? 9 : 6;
+    var driftChance = coarse.matches ? 0 : 0.012;
     for (var y = 0; y < h; y += step) {
       for (var x = 0; x < w; x += step) {
         if (silhouette(x, y, w, h)) {
@@ -359,7 +376,7 @@
               edge: edgeWeight(x, y, w, h),
             });
           }
-        } else if (Math.random() < 0.012) {
+        } else if (Math.random() < driftChance) {
           // sparse drift particles outside silhouette
           particles.push({
             hx: x,
@@ -401,7 +418,7 @@
   }
 
   function drawHero(dt, now) {
-    if (!heroState) return;
+    if (!heroState || !heroVisible) return;
     var ctx = heroState.ctx;
     var w = heroState.w;
     var h = heroState.h;
@@ -511,6 +528,11 @@
       LOG("frame fired but running=false, exiting", { now: now });
       return;
     }
+    // 30fps budget on coarse pointers: skip the draw, keep the loop alive.
+    if (coarse.matches && now - last < COARSE_FRAME_INTERVAL) {
+      frameHandle = window.requestAnimationFrame(frame);
+      return;
+    }
     var dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     frameCount++;
@@ -534,8 +556,29 @@
     frameHandle = window.requestAnimationFrame(frame);
   }
 
+  // Reduced motion: no animation loop at all — one composed frame, done.
+  // (This is what the header comment always promised; previously the rAF
+  // loop kept running at full rate with slower parameters.)
+  function renderStaticFrame() {
+    var now = performance.now();
+    if (heroState) {
+      var parts = heroState.particles;
+      for (var i = 0; i < parts.length; i++) {
+        parts[i].x = parts[i].hx;
+        parts[i].y = parts[i].hy;
+      }
+    }
+    drawScene(0.016, now);
+    drawHero(0.016, now);
+  }
+
   function startLoop() {
     LOG("startLoop called", { running: running, hidden: document.hidden, frameHandle: frameHandle });
+    if (reduced.matches) {
+      LOG("startLoop: reduced motion, rendering static frame");
+      renderStaticFrame();
+      return;
+    }
     if (running) {
       LOG("startLoop: already running, no-op");
       return;
@@ -586,12 +629,14 @@
   }
 
   function renderSilhouette() {
-    var el = document.getElementById("silhouette");
+    if (!silEl) silEl = document.getElementById("silhouette");
+    var el = silEl;
     if (!el || !silhouetteText) return;
     if (el.textContent !== silhouetteText) {
       el.textContent = silhouetteText;
     }
     el.style.transform = "translateY(-50%)";
+    silLastTransform = "translateY(-50%)";
     var rows = silLines.length;
     var cols = 0;
     for (var i = 0; i < silLines.length; i++) {
@@ -611,20 +656,28 @@
   }
 
   // ----- Silhouette parallax (cheap CSS transform) ----------------------
+  // The silhouette is a full-screen text element holding the whole ASCII
+  // figure; every style write invalidates that huge text layer. So: cache
+  // the element, never run parallax on coarse/reduced (the target is 0
+  // anyway), and skip the write entirely when the eased value is unchanged
+  // — otherwise Gecko on mobile repaints the figure 60 times a second.
+  var silEl = null;
   var silParX = 0;
   var silParY = 0;
+  var silLastTransform = "";
   function updateSilhouetteParallax(dt) {
-    var el = document.getElementById("silhouette");
-    if (!el) return;
-    var noParallax = reduced.matches || coarse.matches;
-    var targetX = noParallax ? 0 : -mouse.x * 36;
-    var targetY = noParallax ? 0 : -mouse.y * 22;
-    var k = Math.min(1, dt * (reduced.matches ? 12 : 3.5));
-    silParX += (targetX - silParX) * k;
-    silParY += (targetY - silParY) * k;
-    el.style.transform =
+    if (reduced.matches || coarse.matches) return;
+    if (!silEl) silEl = document.getElementById("silhouette");
+    if (!silEl) return;
+    var k = Math.min(1, dt * 3.5);
+    silParX += (-mouse.x * 36 - silParX) * k;
+    silParY += (-mouse.y * 22 - silParY) * k;
+    var next =
       "translate(" + silParX.toFixed(2) + "px, calc(-50% + " +
       silParY.toFixed(2) + "px))";
+    if (next === silLastTransform) return;
+    silLastTransform = next;
+    silEl.style.transform = next;
   }
 
   function start() {
@@ -657,9 +710,14 @@
   // React to reduced-motion changes.
   if (reduced.addEventListener) {
     reduced.addEventListener("change", function () {
-      // re-init so steady-state honors new preference
+      // re-init so steady-state honors new preference, then either resume
+      // the loop or settle on a fresh static frame.
+      stopLoop();
       initScene();
       initHero();
+      if (!document.hidden) {
+        startLoop();
+      }
     });
   }
 
