@@ -27,8 +27,9 @@ hero:
     Teach the agents what you know. Keep it owned, credited, and compounding.
   motto: Smarter, together.
   subheading: >-
-    An agent-native marketplace for operational knowledge, packaged as reviewed
-    course bundles that agents can acquire, install, and improve.
+    When your agent hits a wall, it comes here: a marketplace of reviewed,
+    versioned playbooks written by people who have done the work. Your agent
+    finds one, installs it, and finishes the task.
   # Honest trust signals shown above the fold — every item is already true and
   # documented elsewhere on the page. Not testimonials; real proof points.
   signals:
@@ -37,9 +38,9 @@ hero:
     - Immutable, versioned bundles
     - Creators keep 85%
   body: >-
-    Logion is not a video course marketplace or a generic skill directory. It
-    packages reusable operating knowledge for agents as bundles with manifests,
-    examples, tests, evals, docs, and explicit capability declarations.
+    A course bundle is operating knowledge your agent can run — skills,
+    examples, tests, evals, and docs, with a manifest that declares exactly
+    what it needs to touch. Not videos to watch; capability to use.
   release_note: >-
     One command sets up the CLI and the agent companion and runs onboarding so
     your agent can use Logion — going live with the first public release.
@@ -183,10 +184,8 @@ setup_complete:
     will not be shown again. If you lose it, sign in again at logion.sh to
     mint a new one.
   expired: >-
-    This link was already used or has expired. Sign in with GitHub again to
+    This link was already used or has expired. Sign in with GitHub below to
     get a fresh install command.
-  retry_label: sign in with GitHub again
-  retry_href: https://api.logion.sh/v1/setup/github/start
   noscript: >-
     JavaScript is required to receive your one-time install token. Enable it
     and reload, or sign in again from logion.sh.
@@ -225,26 +224,21 @@ sections:
   - id: what
     title: What Logion is
     body: >-
-      Logion packages operational knowledge for agents as course bundles. A
-      bundle can include skills, manifests, examples, tests, evals, and docs,
-      plus a machine-readable course/capabilities.yaml declaration that explains
-      what the bundle needs and does.
-    items:
-      - title: Not video courses
-        body: >-
-          The product is for agent execution, not passive human learning.
-      - title: Not a generic skill directory
-        body: >-
-          Listings are reviewed, versioned marketplace artifacts with explicit
-          acquisition and entitlement state.
+      Logion packages operational knowledge for agents as course bundles —
+      skills, manifests, examples, tests, evals, and docs, plus a
+      machine-readable course/capabilities.yaml declaration that explains what
+      the bundle needs and does. It is not a video course marketplace and
+      not a generic skill directory: every listing is reviewed before publication,
+      versioned immutably after it, and acquired through an explicit
+      entitlement your agent can reason about.
 
   - id: agent-flow
     title: Agent acquisition flow
     layout: split
     body: >-
-      A buyer agent searches the marketplace, gets details on a reviewed
-      course, spends credits to purchase the entitlement, and installs the
-      bundle into LOGION_HOME. The same CLI verbs power vendor integrations.
+      Your agent searches the marketplace, inspects a reviewed course, spends
+      credits to purchase the entitlement, and installs the bundle — five CLI
+      verbs, end to end. The same verbs power vendor integrations.
     transcript: |
       $ logion listings search --query "database migrations" --category data
         migration-safety-review     900 credits   v1.0.2
@@ -275,9 +269,14 @@ sections:
     title: Security is the authority
     layout: split
     body: >-
-      Security and review are the central authority surfaces of the marketplace,
-      not decorative claims. Listings are reviewable before acquisition and
-      accountable after publication.
+      Trust is the product surface, not a badge. Every listing is reviewable
+      before acquisition and accountable after publication: capability
+      declarations say what a bundle touches, automated scanners and human
+      publication review gate every version, and published versions are
+      immutable. The Open-source trust layer backs it up — the client and
+      integration surface are public for inspection, so you can audit what an
+      agent runs locally and what it sends to the marketplace. No MCP setup is
+      required for the first workflow.
     proofs:
       - course/capabilities.yaml declarations
       - automated scanners
@@ -286,17 +285,6 @@ sections:
       - buyer-safe capability summaries
       - reports, takedowns, access revocation
       - execution policy export path
-    caveat: >-
-      Runtime sandbox enforcement remains future runtime work; the landing must
-      not claim it is already solved.
-
-  - id: open-source-trust
-    title: Open-source trust layer
-    body: >-
-      The API implementation is private; the client and integration surface
-      are public for inspection. Audit what an agent runs locally and what it
-      sends to the marketplace. No MCP setup is required for the first
-      workflow.
     links:
       - label: CLI source
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
@@ -310,6 +298,10 @@ sections:
         href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
       - label: release manifests
         href: https://github.com/nicolasmelo1/logion/tree/main/releases
+    caveat: >-
+      Runtime sandbox enforcement is future runtime work — we don't claim it
+      is solved. Until then, trust comes from review before publication and
+      accountability after it.
 
   - id: loop
     title: How the marketplace loop works
@@ -317,10 +309,8 @@ sections:
     body: >-
       The heart of the product is a loop, not a transaction. An agent hits a
       wall, acquires a reviewed capability on trust, uses it on the task, and a
-      creator-funded bounty improves it — and every turn leaves the marketplace
-      stronger than the last. creator publishes -> Logion reviews -> buyer agent
-      acquires entitlement -> agent installs/uses -> contributors improve through
-      bounties
+      creator-funded bounty improves it — every turn leaves the marketplace
+      stronger than the last.
     items:
       - title: Creator publishes
         body: >-
@@ -335,87 +325,25 @@ sections:
           Creator-funded bounties let contributors harden, extend, or repair
           useful bundles.
 
-  - id: trust
-    title: Trust and safety model
-    body: >-
-      Logion makes bundle behavior reviewable before acquisition and accountable
-      after publication. Runtime sandbox enforcement is future runtime work, not
-      a current landing claim.
-    items:
-      - title: Immutable versions
-        body: >-
-          Published versions are immutable so buyers can reason about exactly
-          what their agent installed.
-      - title: course/capabilities.yaml
-        body: >-
-          Capability declarations make permissions, tools, and expected behavior
-          visible to reviewers and buyer agents.
-      - title: Automated scanners
-        body: >-
-          Scanner results inform publication review and update history.
-      - title: Human publication review
-        body: >-
-          New and updated bundles pass through human review before marketplace
-          availability.
-      - title: Buyer-safe summaries
-        body: >-
-          Listings summarize capabilities in language buyers can evaluate before
-          granting access.
-      - title: Reports and moderation
-        body: >-
-          Abuse reports, takedown paths, listing removal, access revocation, and
-          account suspension protect the marketplace.
-      - title: Execution policy path
-        body: >-
-          Execution policy is documented as the path toward runtime enforcement
-          without claiming that sandboxing is already solved.
-
   - id: economy
     title: Credits, referrals, and bounties
     layout: split
     body: >-
-      No platform subscription gate. Buyers top up credits and pay for courses
-      in credits with no Stripe redirect per purchase. Free courses cost zero
-      credits. Creators keep 85% and the platform fee is 15%. Referrers can
-      earn credits through the referral program. Bounty funders fund with
-      credits; bounty contributors cash out through Stripe Connect after
-      acceptance.
-    items:
-      - title: 100 credits = $1
-        body: >-
-          Credits are denominated at 100 credits per US dollar at top-up. All
-          marketplace pricing is shown in credits.
-      - title: Free and paid acquisition
-        body: >-
-          Free courses cost zero credits. Paid course purchases spend credits
-          without a Stripe redirect.
-      - title: Creators keep 85%
-        body: >-
-          Creators keep 85% of paid course revenue. The platform fee is 15%.
-      - title: Referral rewards
-        body: >-
-          Referrers can earn credits through the referral program subject to
-          attribution, qualifying purchase, and anti-abuse rules.
-      - title: Bounties
-        body: >-
-          Bounty funders fund bounties with credits. Contributors cash out
-          through Stripe Connect after acceptance.
+      No platform subscription gate. Buyers top up credits (100 credits = $1)
+      and spend them in-marketplace with no Stripe redirect per purchase; free
+      courses cost zero credits. Creators keep 85% — the platform fee is 15%.
+      Referrers can earn credits through the referral program, bounties are
+      funded in credits, and bounty contributors cash out through Stripe
+      Connect after acceptance.
 
   - id: install
     title: Install
     body: >-
       One line installs the Logion CLI and the agent companion, then runs
       onboarding. Point your agent — Claude, Codex, OpenCode, or Hermes — at
-      Logion and it drives the marketplace for you. pipx and npx are alternate
-      package-manager entrypoints that run the same onboarding.
-
-  - id: harness
-    title: Harness-native workflow
-    body: >-
-      The CLI is the execution layer. Vendor integrations should be thin wrappers
-      over the CLI, and Logion is designed for harnesses such as Hermes Agent,
-      Claude Code, Codex, and OpenCode where the integration is not already
-      present.
+      Logion and it drives the marketplace for you: the CLI is the execution
+      layer, and vendor integrations are thin wrappers over it. pipx and npx
+      are alternate package-manager entrypoints that run the same onboarding.
 
 cli:
   heading: Install

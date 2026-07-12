@@ -36,6 +36,15 @@ def test_index_renders_hero_hook_and_signals() -> None:
     assert "Creators keep 85%" in html
 
 
+def test_index_hides_setup_claiming_state() -> None:
+    # Regression: the "linking your GitHub account…" paragraph is only
+    # unhidden by setup-complete.js, which loads solely in setup mode. On the
+    # plain homepage it must render hidden or every visitor sees a stuck
+    # loading state under the primary CTA.
+    html = client.get("/").text
+    assert "data-setup-claiming hidden" in html
+
+
 def test_health_returns_ok() -> None:
     response = client.get("/health")
     assert response.status_code == 200
@@ -471,8 +480,11 @@ def test_setup_complete_route_renders_setup_mode() -> None:
     assert "data-setup-cmd" in text
     assert "setup-complete.js" in text
     assert "data-api-base" in text
-    # Secondary "sign in with GitHub" CTA is hidden in setup mode.
-    assert "or sign in with GitHub for a pre-authenticated install" not in text
+    # The sign-in CTA renders hidden and doubles as the retry link on the
+    # expired state — there is no separate "sign in with GitHub again" CTA.
+    assert "sign in with GitHub again" not in text
+    assert "data-setup-retry hidden" in text
+    assert "or sign in with GitHub for a pre-authenticated install" in text
     # Release note is hidden in setup mode.
     assert "One command sets up" not in text
 

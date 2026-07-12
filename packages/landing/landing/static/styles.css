@@ -402,6 +402,12 @@ button.cta {
   font-family: inherit;
 }
 
+/* display: inline-flex above would otherwise defeat the hidden attribute
+   that setup-complete.js toggles on the retry CTA. */
+.cta[hidden] {
+  display: none;
+}
+
 .cta--primary {
   width: 100%;
   max-width: 100%;

@@ -153,6 +153,26 @@ def test_app_js_pauses_animation_without_horizon_line_on_tab_return() -> None:
     assert "pagehide" in text
 
 
+def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
+    # Perf contract for mobile Firefox (issue #174): coarse pointers get a
+    # capped frame budget and lower scene density; reduced motion renders a
+    # single static frame instead of running the rAF loop; the full-screen
+    # ASCII silhouette must never take per-frame style writes when the
+    # eased parallax value is unchanged (each write invalidates a huge
+    # text layer on Gecko).
+    text = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "pointer: coarse" in text
+    assert "COARSE_FRAME_INTERVAL" in text
+    assert "renderStaticFrame" in text
+    assert "silLastTransform" in text
+    # Parallax bails out before touching the silhouette on coarse/reduced.
+    assert "if (reduced.matches || coarse.matches) return;" in text
+    # Hero particles stop drawing when scrolled out of view.
+    assert "IntersectionObserver" in text
+    # The light-mode media query must not be constructed per frame.
+    assert text.count('matchMedia("(prefers-color-scheme: light)")') == 1
+
+
 def test_vercel_entrypoint_exports_landing_app() -> None:
     assert vercel_app is app
 

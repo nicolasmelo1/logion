@@ -110,11 +110,17 @@
           <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
           <p class="setup-warning" data-setup-warning hidden>{{ setup_complete.warning }}</p>
           <p class="setup-expired" data-setup-expired hidden>{{ setup_complete.expired }}</p>
-          <p class="setup-claiming" data-setup-claiming>{{ setup_complete.claiming }}</p>
-          <a class="cta cta--ghost setup-retry" href="{{ setup_complete.retry_href }}" data-setup-retry hidden>{{ setup_complete.retry_label }}</a>
+          <p class="setup-claiming" data-setup-claiming{% if not setup_mode %} hidden{% endif %}>{{ setup_complete.claiming }}</p>
         </div>
         {% for link in hero.cta.secondary %}
-          {% if not setup_mode or not link.get('setup_hide') %}
+          {% if setup_mode and link.get('setup_hide') %}
+          {# In setup mode the sign-in CTA starts hidden; setup-complete.js
+             reveals it as the retry path when the handoff is expired. One
+             link serves both jobs — no duplicate "sign in again" CTA. #}
+          <a class="cta cta--ghost" href="{{ link.href }}" data-setup-retry hidden>
+            {{ link.label }}
+          </a>
+          {% else %}
           <a class="cta cta--ghost" href="{{ link.href }}">
             {{ link.label }}
           </a>
