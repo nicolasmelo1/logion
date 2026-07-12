@@ -289,13 +289,6 @@ def _bounty_github_pr_line(data: dict[str, object]) -> str:
     return f"GitHub PRs: {'enabled' if enabled else 'disabled'}"
 
 
-def _render_bounty(result: dict[str, object]) -> None:
-    """Render bounty details with the GitHub PR lane flag."""
-    print(_bounty_github_pr_line(result))
-    # Default emit handles the rest of the fields.
-    emit(result, json_output=False)
-
-
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the bounties create command."""
     bad_id = validate_uuid_id(args.course_id, "--course-id")
@@ -323,6 +316,9 @@ def handle_create(args: argparse.Namespace) -> int:
         )
         kwargs["accepts_github_prs"] = args.accepts_github_prs
         result = client.v1.bounties.create(**kwargs)
+        if not config.json_output:
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -344,6 +340,9 @@ def handle_update(args: argparse.Namespace) -> int:
             bounty_id=args.bounty_id,
             accepts_github_prs=args.accepts_github_prs,
         )
+        if not config.json_output:
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -397,7 +396,9 @@ def handle_get(args: argparse.Namespace) -> int:
             )
             emit_json("logion.bounties.get", data)
         else:
-            _render_bounty(to_data(result))
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
+            emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
     else:
