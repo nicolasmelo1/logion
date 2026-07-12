@@ -58,8 +58,11 @@ commands:
     operations: [get_bounty]
   bounties list:
     operations: [list_bounties]
+  bounties update:
+    operations: [update_bounty]
   bounties open:
-    operations: []
+    operations: [open_bounty]
+
   bounties submissions accept:
     operations: [accept_bounty_submission]
   bounties submissions create:
@@ -74,8 +77,6 @@ commands:
     operations: [withdraw_bounty_submission]
   bounties submissions open-pr:
     operations: [open_submission_pr]
-  bounties submissions register-pr:
-    operations: [register_submission_pr]
 
   course-reviews download:
     operations: []

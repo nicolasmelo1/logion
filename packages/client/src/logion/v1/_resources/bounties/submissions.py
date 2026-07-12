@@ -15,8 +15,6 @@ from logion.v1._types.generated.v1 import (
     GetBountySubmissionResponse,
     ListBountySubmissionsResponse,
     OpenSubmissionPrResponse,
-    RegisterSubmissionPrRequest,
-    RegisterSubmissionPrResponse,
     RejectBountySubmissionResponse,
     WithdrawBountySubmissionResponse,
 )
@@ -33,6 +31,7 @@ class _BountySubmissionsMixin(_BountyResourceBase):
         description: str,
         evidence: dict[str, Any] | None = None,
         proposed_course_version_id: str | UUID | None = None,
+        github_pr: bool | None = None,
     ) -> CreateBountySubmissionResponse:
         """Submit work for a bounty."""
         body = CreateBountySubmissionRequest(
@@ -45,6 +44,7 @@ class _BountySubmissionsMixin(_BountyResourceBase):
                 or isinstance(proposed_course_version_id, UUID)
                 else UUID(proposed_course_version_id)
             ),
+            github_pr=github_pr,
         )
         return operations.create_bounty_submission(
             self._http,
@@ -115,25 +115,9 @@ class _BountySubmissionsMixin(_BountyResourceBase):
         bounty_id: str | UUID,
         submission_id: str | UUID,
     ) -> OpenSubmissionPrResponse:
-        """Open a draft GitHub PR for a submitted bounty submission."""
+        """Retry GitHub PR materialization for a submission (repair)."""
         return operations.open_submission_pr(
             self._http,
             bounty_id=bounty_id,
             submission_id=submission_id,
-        )
-
-    def register_pr(
-        self,
-        bounty_id: str | UUID,
-        submission_id: str | UUID,
-        *,
-        pr_number: int,
-    ) -> RegisterSubmissionPrResponse:
-        """Register an existing GitHub PR for a submitted bounty submission."""
-        body = RegisterSubmissionPrRequest(pr_number=pr_number)
-        return operations.register_submission_pr(
-            self._http,
-            bounty_id=bounty_id,
-            submission_id=submission_id,
-            body=body,
         )

@@ -82,8 +82,6 @@ from logion.v1._types.generated.v1 import (
     ReactivateUserResponse,
     RedeemSetupTokenRequest,
     RedeemSetupTokenResponse,
-    RegisterSubmissionPrRequest,
-    RegisterSubmissionPrResponse,
     RejectBountySubmissionResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
@@ -100,6 +98,8 @@ from logion.v1._types.generated.v1 import (
     SetReferralAttributionStatusResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
+    UpdateBountyRequest,
+    UpdateBountyResponse,
     UpdateCourseRequest,
     UpdateCourseResponse,
     UpsertCourseReviewRequest,
@@ -397,6 +397,21 @@ def get_bounty(
     )
 
 
+def update_bounty(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+    body: UpdateBountyRequest,
+) -> UpdateBountyResponse:
+    """Call the update_bounty API operation."""
+    return http.request_model(
+        "PATCH",
+        f"/v1/bounties/{bounty_id}",
+        UpdateBountyResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
 def fund_bounty(
     http: HttpClient,
     *,
@@ -519,22 +534,6 @@ def open_submission_pr(
         "POST",
         f"/v1/bounties/{bounty_id}/submissions/{submission_id}/open-pr",
         OpenSubmissionPrResponse,
-    )
-
-
-def register_submission_pr(
-    http: HttpClient,
-    *,
-    bounty_id: str | UUID,
-    submission_id: str | UUID,
-    body: RegisterSubmissionPrRequest,
-) -> RegisterSubmissionPrResponse:
-    """Call the register_submission_pr API operation."""
-    return http.request_model(
-        "POST",
-        f"/v1/bounties/{bounty_id}/submissions/{submission_id}/register-pr",
-        RegisterSubmissionPrResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

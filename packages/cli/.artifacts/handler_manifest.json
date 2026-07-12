@@ -65,7 +65,9 @@
       ]
     },
     "bounties open": {
-      "operations": []
+      "operations": [
+        "open_bounty"
+      ]
     },
     "bounties submissions accept": {
       "operations": [
@@ -92,11 +94,6 @@
         "open_submission_pr"
       ]
     },
-    "bounties submissions register-pr": {
-      "operations": [
-        "register_submission_pr"
-      ]
-    },
     "bounties submissions reject": {
       "operations": [
         "reject_bounty_submission"
@@ -105,6 +102,11 @@
     "bounties submissions withdraw": {
       "operations": [
         "withdraw_bounty_submission"
+      ]
+    },
+    "bounties update": {
+      "operations": [
+        "update_bounty"
       ]
     },
     "course-reviews approve": {

@@ -67,7 +67,29 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     create.add_argument("--reward-cents", required=True, type=int)
     create.add_argument("--currency")
     create.add_argument("--submission-deadline")
+    create.add_argument(
+        "--no-github-prs",
+        dest="accepts_github_prs",
+        action="store_false",
+        default=True,
+        help="Disable the automatic GitHub PR lane for this bounty",
+    )
     create.set_defaults(handler=handle_create)
+
+    # ── update ──────────────────────────────────────────────────
+    update = sub.add_parser(
+        "update",
+        help="Update a bounty (creator-only)",
+        parents=[COMMON_PARSER],
+    )
+    update.add_argument("bounty_id", metavar="BOUNTY_ID")
+    update.add_argument(
+        "--accepts-github-prs",
+        type=_parse_bool,
+        required=True,
+        help="Enable or disable the automatic GitHub PR lane",
+    )
+    update.set_defaults(handler=handle_update)
 
     # ── list ────────────────────────────────────────────────────
     ls = sub.add_parser(
@@ -131,6 +153,21 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     sc.add_argument("--description")
     sc.add_argument("--evidence-json", type=Path, metavar="PATH")
     sc.add_argument("--proposed-course-version-id")
+    pr_group = sc.add_mutually_exclusive_group()
+    pr_group.add_argument(
+        "--github-pr",
+        dest="github_pr",
+        action="store_const",
+        const=True,
+        help="Require automatic GitHub PR materialization",
+    )
+    pr_group.add_argument(
+        "--no-github-pr",
+        dest="github_pr",
+        action="store_const",
+        const=False,
+        help="Skip automatic GitHub PR materialization",
+    )
     sc.set_defaults(handler=handle_submissions_create)
 
     # submissions list
@@ -188,7 +225,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # submissions open-pr
     sop = sub_sub.add_parser(
         "open-pr",
-        help="Open a GitHub PR for a submission",
+        help=(
+            "Open or retry GitHub PR materialization for a submission (repair)"
+        ),
         parents=[COMMON_PARSER],
     )
     sop.add_argument("bounty_id", metavar="BOUNTY_ID")
@@ -196,20 +235,18 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     sop.add_argument("--yes", action="store_true")
     sop.set_defaults(handler=handle_submissions_open_pr)
 
-    # submissions register-pr
-    srp = sub_sub.add_parser(
-        "register-pr",
-        help="Register an existing GitHub PR for a submission",
-        parents=[COMMON_PARSER],
-    )
-    srp.add_argument("bounty_id", metavar="BOUNTY_ID")
-    srp.add_argument("submission_id", metavar="SUBMISSION_ID")
-    srp.add_argument("--pr-number", required=True, type=int)
-    srp.add_argument("--yes", action="store_true")
-    srp.set_defaults(handler=handle_submissions_register_pr)
-
     # ── workspace sub-group ──────────────────────────────────────
     _workspace.register(sub)
+
+
+def _parse_bool(value: str) -> bool:
+    """Parse a boolean flag string for argparse."""
+    lowered = value.strip().lower()
+    if lowered in {"true", "1", "yes", "on"}:
+        return True
+    if lowered in {"false", "0", "no", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value!r}")
 
 
 # ── Lifecycle handler factory ────────────────────────────────────
@@ -246,6 +283,12 @@ def _make_lifecycle_handler(cmd: str, sdk_method: str, action: str):
 # ── Handlers ──────────────────────────────────────────────────────
 
 
+def _bounty_github_pr_line(data: dict[str, object]) -> str:
+    """Return a human-readable GitHub PR enabled line."""
+    enabled = data.get("github_pr_enabled")
+    return f"GitHub PRs: {'enabled' if enabled else 'disabled'}"
+
+
 def handle_create(args: argparse.Namespace) -> int:
     """Execute the bounties create command."""
     bad_id = validate_uuid_id(args.course_id, "--course-id")
@@ -271,7 +314,35 @@ def handle_create(args: argparse.Namespace) -> int:
             currency=args.currency,
             submission_deadline=parse_datetime(args.submission_deadline),
         )
+        kwargs["accepts_github_prs"] = args.accepts_github_prs
         result = client.v1.bounties.create(**kwargs)
+        if not config.json_output:
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
+        emit(result, json_output=config.json_output)
+    except Exception as exc:
+        return handle_error(exc)
+    else:
+        return 0
+    finally:
+        client.close()
+
+
+def handle_update(args: argparse.Namespace) -> int:
+    """Execute the bounties update command."""
+    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
+    if bad_id is not None:
+        return bad_id
+    config = resolve_config_from_args(args)
+    client = make_client(config)
+    try:
+        result = client.v1.bounties.update(
+            bounty_id=args.bounty_id,
+            accepts_github_prs=args.accepts_github_prs,
+        )
+        if not config.json_output:
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
         emit(result, json_output=config.json_output)
     except Exception as exc:
         return handle_error(exc)
@@ -325,6 +396,8 @@ def handle_get(args: argparse.Namespace) -> int:
             )
             emit_json("logion.bounties.get", data)
         else:
+            data = to_data(result)
+            print(_bounty_github_pr_line(data))
             emit(result, json_output=False)
     except Exception as exc:
         return handle_error(exc)
@@ -335,6 +408,39 @@ def handle_get(args: argparse.Namespace) -> int:
 
 
 # ── Submission handlers ──────────────────────────────────────────
+
+
+def _render_github_pr_block(
+    block: dict[str, object], *, indent: str = "  "
+) -> None:
+    """Render the github_pr block returned by submissions create."""
+    status = block.get("status")
+    pr_url = block.get("pr_url")
+    head_branch = block.get("head_branch")
+    pr_body = block.get("pr_body")
+    reason = block.get("reason")
+
+    if status == "opened" and pr_url:
+        print(f"{indent}PR opened: {pr_url}")
+    elif status == "fork_required":
+        print(f"{indent}This repository requires a fork:")
+        print(f"{indent}  1. Fork the repository on GitHub.")
+        print(f"{indent}  2. Push your work to branch:")
+        print(f"{indent}       {head_branch}")
+        print(
+            f"{indent}  3. Open a PR from your fork with the Logion marker "
+            "in the body; Logion registers it automatically."
+        )
+        if pr_body:
+            print(f"\n{indent}Paste-ready PR body:\n{pr_body}")
+    elif status == "disabled":
+        print(f"{indent}GitHub PR disabled: {reason}")
+    elif status == "skipped":
+        print(f"{indent}GitHub PR skipped: {reason}")
+    elif status == "failed":
+        print(f"{indent}GitHub PR failed: {reason}")
+    else:
+        print(f"{indent}GitHub PR: {status}")
 
 
 def handle_submissions_create(args: argparse.Namespace) -> int:
@@ -363,9 +469,18 @@ def handle_submissions_create(args: argparse.Namespace) -> int:
             description=args.description,
             evidence=evidence,
             proposed_course_version_id=args.proposed_course_version_id,
+            github_pr=args.github_pr,
         )
         result = client.v1.bounties.create_submission(**kwargs)
-        emit(result, json_output=config.json_output)
+        if config.json_output:
+            data = to_data(result)
+            emit_json("logion.bounties.submissions.create", data)
+        else:
+            data = to_data(result)
+            print(f"Submission created: {data.get('id')}")
+            gh_block = data.get("github_pr")
+            if isinstance(gh_block, dict):
+                _render_github_pr_block(gh_block)
     except Exception as exc:
         return handle_error(exc)
     else:
@@ -513,16 +628,6 @@ def handle_submissions_withdraw(args: argparse.Namespace) -> int:
         client.close()
 
 
-FORK_NEXT_STEPS = """\
-This repository requires a fork:
-  1. Fork the repository on GitHub and push your work to branch:
-       {head_branch}
-  2. Open a PR from your fork; keep the Logion marker in the PR body.
-  3. Run: logion bounties submissions register-pr {bounty_id} \
-{submission_id} --pr-number N --yes
-"""
-
-
 def handle_submissions_open_pr(args: argparse.Namespace) -> int:
     """Execute the bounties submissions open-pr command."""
     bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
@@ -546,45 +651,16 @@ def handle_submissions_open_pr(args: argparse.Namespace) -> int:
             emit_json("logion.bounties.submissions.open-pr", data)
         elif isinstance(data, dict) and data.get("fork_required"):
             print(
-                FORK_NEXT_STEPS.format(
-                    head_branch=data.get("head_branch", ""),
-                    bounty_id=args.bounty_id,
-                    submission_id=args.submission_id,
-                )
+                "This repository requires a fork:\n"
+                "  1. Fork the repository on GitHub.\n"
+                "  2. Push your work to branch:\n"
+                f"       {data.get('head_branch', '')}\n"
+                "  3. Open a PR from your fork with the Logion marker "
+                "in the body; Logion registers it automatically."
             )
-        else:
-            emit(result, json_output=False)
-    except Exception as exc:
-        return handle_error(exc)
-    else:
-        return 0
-    finally:
-        client.close()
-
-
-def handle_submissions_register_pr(args: argparse.Namespace) -> int:
-    """Execute the bounties submissions register-pr command."""
-    bad_id = validate_uuid_id(args.bounty_id, "BOUNTY_ID")
-    if bad_id is not None:
-        return bad_id
-    bad_id = validate_uuid_id(args.submission_id, "SUBMISSION_ID")
-    if bad_id is not None:
-        return bad_id
-    refusal = require_yes(args.yes, "register this PR for the submission")
-    if refusal is not None:
-        return refusal
-    config = resolve_config_from_args(args)
-    client = make_client(config)
-    try:
-        result = client.v1.bounties.register_pr(
-            bounty_id=args.bounty_id,
-            submission_id=args.submission_id,
-            pr_number=args.pr_number,
-        )
-        if config.json_output:
-            emit_json(
-                "logion.bounties.submissions.register-pr", to_data(result)
-            )
+            pr_body = data.get("pr_body")
+            if pr_body:
+                print(f"\nPaste-ready PR body:\n{pr_body}")
         else:
             emit(result, json_output=False)
     except Exception as exc:
