@@ -225,7 +225,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # submissions open-pr
     sop = sub_sub.add_parser(
         "open-pr",
-        help="Retry GitHub PR materialization for a submission (repair)",
+        help=(
+            "Open or retry GitHub PR materialization for a submission (repair)"
+        ),
         parents=[COMMON_PARSER],
     )
     sop.add_argument("bounty_id", metavar="BOUNTY_ID")

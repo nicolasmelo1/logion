@@ -78,13 +78,6 @@ class FakeBountiesResource:
         self.last_call = ("open_submission_pr", kwargs)
         return self.open_pr_response
 
-    def register_pr(self, **kwargs: Any) -> dict[str, Any]:
-        self.last_call = ("register_submission_pr", kwargs)
-        return {
-            "pr_number": kwargs.get("pr_number", 1),
-            "pr_url": "https://github.com/owner/repo/pull/1",
-        }
-
 
 class FakeV1Namespace:
     def __init__(self, bounties: FakeBountiesResource) -> None:
@@ -733,16 +726,13 @@ def test_submissions_open_pr_fork_rendering(
     out = capsys.readouterr().out
     assert "requires a fork" in out
     assert "logion/bounty-x" in out
-    assert "register-pr" in out
+    assert "Logion registers it automatically" in out
 
 
-def test_submissions_register_pr_requires_number(
-    monkeypatch: pytest.MonkeyPatch,
+def test_submissions_register_pr_command_gone(
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """bounties submissions register-pr requires --pr-number."""
-    bounties = FakeBountiesResource()
-    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
-    _patch_client(monkeypatch, fake)
+    """bounties submissions register-pr no longer exists."""
     with pytest.raises(SystemExit) as excinfo:
         main([
             "bounties",
@@ -753,74 +743,4 @@ def test_submissions_register_pr_requires_number(
             "--json",
         ])
     assert excinfo.value.code == 2
-
-
-def test_submissions_register_pr_calls_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """bounties submissions register-pr forwards ids and pr-number to SDK."""
-    bounties = FakeBountiesResource()
-    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "bounties",
-        "submissions",
-        "register-pr",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "660e8400-e29b-41d4-a716-446655440001",
-        "--pr-number",
-        "42",
-        "--yes",
-        "--json",
-    ])
-    assert code == 0
-    method, kwargs = bounties.last_call
-    assert method == "register_submission_pr"
-    assert kwargs["bounty_id"] == "550e8400-e29b-41d4-a716-446655440000"
-    assert kwargs["submission_id"] == "660e8400-e29b-41d4-a716-446655440001"
-    assert kwargs["pr_number"] == 42
-
-
-def test_submissions_register_pr_requires_yes(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """bounties submissions register-pr refuses without --yes."""
-    bounties = FakeBountiesResource()
-    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "bounties",
-        "submissions",
-        "register-pr",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "660e8400-e29b-41d4-a716-446655440001",
-        "--pr-number",
-        "42",
-        "--json",
-    ])
-    assert code == 2
-    assert bounties.last_call == ("", {})
-
-
-def test_submissions_register_pr_json_envelope(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """bounties submissions register-pr emits the v1 JSON envelope."""
-    bounties = FakeBountiesResource()
-    fake = FakeClient(v1=FakeV1Namespace(bounties=bounties))
-    _patch_client(monkeypatch, fake)
-    code = main([
-        "bounties",
-        "submissions",
-        "register-pr",
-        "550e8400-e29b-41d4-a716-446655440000",
-        "660e8400-e29b-41d4-a716-446655440001",
-        "--pr-number",
-        "42",
-        "--yes",
-        "--json",
-    ])
-    assert code == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["kind"] == "logion.bounties.submissions.register-pr"
+    assert "invalid choice" in capsys.readouterr().err
