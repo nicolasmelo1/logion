@@ -62,6 +62,15 @@ def _write_state(data: dict[str, Any], home: Path | None = None) -> None:
         os.chmod(path, 0o600)
 
 
+def _try_write_state(data: dict[str, Any], home: Path | None = None) -> bool:
+    """Best-effort state write for automatic update bookkeeping."""
+    try:
+        _write_state(data, home)
+    except OSError:
+        return False
+    return True
+
+
 def is_enabled(home: Path | None = None) -> bool:
     """Return whether auto-update is enabled."""
     return bool(_read_state(home).get("enabled", True))
@@ -126,8 +135,11 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
         int(data.get("commands_since_check", 0) or 0) + 1
     )
 
-    if not data["enabled"] or os.environ.get("LOGION_AUTO_UPDATE") == "0":
-        _write_state(data)
+    if os.environ.get("LOGION_AUTO_UPDATE") == "0":
+        return
+
+    if not data["enabled"]:
+        _try_write_state(data)
         return
 
     if _is_npm_managed_python():
@@ -136,15 +148,16 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
         data["last_skip_reason"] = (
             "npm-managed install is updated by npm postinstall"
         )
-        _write_state(data)
+        _try_write_state(data)
         return
 
     if not _is_due(data):
-        _write_state(data)
+        _try_write_state(data)
         return
 
     data["last_attempt_at"] = _now().isoformat()
-    _write_state(data)
+    if not _try_write_state(data):
+        return
 
     try:
         result = _run_update(args)
@@ -153,7 +166,7 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
         data["last_checked_at"] = _now().isoformat()
         data["commands_since_check"] = 0
         data["last_error"] = str(exc)
-        _write_state(data)
+        _try_write_state(data)
         sys.stderr.write("logion: auto-update failed; continuing.\n")
         return
 
@@ -167,7 +180,7 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
     else:
         data["last_error"] = (result.stderr or result.stdout)[-1000:]
         sys.stderr.write("logion: auto-update failed; continuing.\n")
-    _write_state(data)
+    _try_write_state(data)
 
 
 def _is_due(data: dict[str, Any]) -> bool:
