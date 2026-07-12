@@ -42,13 +42,12 @@
     if (cmdEl) cmdEl.textContent = command;
   }
 
-  function showExpired() {
-    setVisible("[data-setup-claiming]", false);
-    setVisible("[data-setup-warning]", false);
-    setVisible("[data-setup-expired]", true);
-    setVisible("[data-setup-retry]", true);
-    var button = document.querySelector("[data-setup-copy]");
-    if (button) button.disabled = true;
+  // Invalid, expired, or already-used handoff (or a direct visit with no
+  // handoff at all): there is nothing to show here — go back to the home
+  // page, where the normal sign-in CTA lives. replace() keeps the dead
+  // /setup/complete entry out of the back-button history.
+  function goHome() {
+    window.location.replace("/");
   }
 
   function claimHandoff(handoffId) {
@@ -70,7 +69,7 @@
 
     // Direct visit or refresh after a claim: nothing to redeem.
     if (!handoffId) {
-      showExpired();
+      goHome();
       return;
     }
 
@@ -95,7 +94,7 @@
         }
       })
       .catch(function () {
-        showExpired();
+        goHome();
       });
   }
 
