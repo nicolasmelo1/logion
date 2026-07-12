@@ -9,6 +9,7 @@ from pathlib import Path
 
 from logion_bot.commands import ISSUE_BOUNTY_AMOUNT_RE
 from logion_bot.parser import IssueBotCommand, parse_issue_bot_command
+from logion_bot.replies import reply_opened_unfunded
 
 BOT = "logion-bot"
 FIXTURES = Path(__file__).parent.parent / "logion_bot" / "fixtures"
@@ -183,3 +184,21 @@ class TestNoUsdInReplies:
     def test_no_usd_string_in_replies_source(self):
         src = REPLIES_SOURCE.read_text()
         assert "USD" not in src
+
+
+class TestRepliesGolden:
+    """Golden pins for reply copy (parity: identical in both repos)."""
+
+    def test_opened_unfunded_top_up_url_derives_from_bounty_url(self):
+        reply = reply_opened_unfunded(
+            bounty_url="https://staging.logion.sh/bounties/b-123",
+            bounty_id="b-123",
+        )
+        assert "https://staging.logion.sh/bounties/b-123" in reply
+        assert "Top up at https://staging.logion.sh," in reply
+        assert "`logion bounties fund b-123 --yes`" in reply
+
+    def test_no_hardcoded_host_in_replies_source(self):
+        """The top-up host must derive from bounty_url, never be pinned."""
+        src = REPLIES_SOURCE.read_text()
+        assert "https://logion.sh" not in src
