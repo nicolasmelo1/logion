@@ -1009,6 +1009,11 @@
       },
       "CreateBountyRequest": {
         "properties": {
+          "accepts_github_prs": {
+            "default": true,
+            "title": "Accepts Github Prs",
+            "type": "boolean"
+          },
           "course_id": {
             "format": "uuid",
             "title": "Course Id",
@@ -1066,6 +1071,10 @@
               }
             ],
             "title": "Accepted Submission Id"
+          },
+          "accepts_github_prs": {
+            "title": "Accepts Github Prs",
+            "type": "boolean"
           },
           "course_id": {
             "format": "uuid",
@@ -1129,6 +1138,10 @@
             ],
             "title": "Funding Status"
           },
+          "github_pr_enabled": {
+            "title": "Github Pr Enabled",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1174,6 +1187,8 @@
           "reward_amount_cents",
           "currency",
           "funding_mode",
+          "accepts_github_prs",
+          "github_pr_enabled",
           "submission_deadline",
           "accepted_submission_id",
           "created_at",
@@ -1199,6 +1214,17 @@
               }
             ],
             "title": "Evidence"
+          },
+          "github_pr": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Pr"
           },
           "proposed_course_version_id": {
             "anyOf": [
@@ -1245,6 +1271,9 @@
             "title": "Evidence",
             "type": "object"
           },
+          "github_pr": {
+            "$ref": "#/components/schemas/SubmissionGithubPrBlock"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1290,6 +1319,7 @@
           "status",
           "proposed_course_version_id",
           "evidence",
+          "github_pr",
           "created_at",
           "updated_at"
         ],
@@ -2349,6 +2379,10 @@
             ],
             "title": "Accepted Submission Id"
           },
+          "accepts_github_prs": {
+            "title": "Accepts Github Prs",
+            "type": "boolean"
+          },
           "course_id": {
             "format": "uuid",
             "title": "Course Id",
@@ -2411,6 +2445,10 @@
             ],
             "title": "Funding Status"
           },
+          "github_pr_enabled": {
+            "title": "Github Pr Enabled",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2456,6 +2494,8 @@
           "reward_amount_cents",
           "currency",
           "funding_mode",
+          "accepts_github_prs",
+          "github_pr_enabled",
           "submission_deadline",
           "accepted_submission_id",
           "created_at",
@@ -4045,6 +4085,10 @@
             ],
             "title": "Accepted Submission Id"
           },
+          "accepts_github_prs": {
+            "title": "Accepts Github Prs",
+            "type": "boolean"
+          },
           "course_id": {
             "format": "uuid",
             "title": "Course Id",
@@ -4107,6 +4151,10 @@
             ],
             "title": "Funding Status"
           },
+          "github_pr_enabled": {
+            "title": "Github Pr Enabled",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4152,6 +4200,8 @@
           "reward_amount_cents",
           "currency",
           "funding_mode",
+          "accepts_github_prs",
+          "github_pr_enabled",
           "submission_deadline",
           "accepted_submission_id",
           "created_at",
@@ -5553,42 +5603,6 @@
         "title": "RedeemSetupTokenResponse",
         "type": "object"
       },
-      "RegisterSubmissionPrRequest": {
-        "properties": {
-          "pr_number": {
-            "title": "Pr Number",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "pr_number"
-        ],
-        "title": "RegisterSubmissionPrRequest",
-        "type": "object"
-      },
-      "RegisterSubmissionPrResponse": {
-        "properties": {
-          "head_branch": {
-            "title": "Head Branch",
-            "type": "string"
-          },
-          "pr_number": {
-            "title": "Pr Number",
-            "type": "integer"
-          },
-          "pr_url": {
-            "title": "Pr Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "pr_url",
-          "head_branch",
-          "pr_number"
-        ],
-        "title": "RegisterSubmissionPrResponse",
-        "type": "object"
-      },
       "RejectBountySubmissionResponse": {
         "properties": {
           "bounty_id": {
@@ -6255,6 +6269,63 @@
         "title": "SetReferralAttributionStatusResponse",
         "type": "object"
       },
+      "SubmissionGithubPrBlock": {
+        "properties": {
+          "head_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Branch"
+          },
+          "pr_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Body"
+          },
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SubmissionGithubPrBlock",
+        "type": "object"
+      },
       "SuspendAgentResponse": {
         "properties": {
           "agent_id": {
@@ -6296,6 +6367,158 @@
           "status"
         ],
         "title": "SuspendUserResponse",
+        "type": "object"
+      },
+      "UpdateBountyRequest": {
+        "properties": {
+          "accepts_github_prs": {
+            "title": "Accepts Github Prs",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepts_github_prs"
+        ],
+        "title": "UpdateBountyRequest",
+        "type": "object"
+      },
+      "UpdateBountyResponse": {
+        "properties": {
+          "accepted_submission_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Submission Id"
+          },
+          "accepts_github_prs": {
+            "title": "Accepts Github Prs",
+            "type": "boolean"
+          },
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator_agent_id": {
+            "format": "uuid",
+            "title": "Creator Agent Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "funded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funded At"
+          },
+          "funding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Id"
+          },
+          "funding_mode": {
+            "title": "Funding Mode",
+            "type": "string"
+          },
+          "funding_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Status"
+          },
+          "github_pr_enabled": {
+            "title": "Github Pr Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reward_amount_cents": {
+            "title": "Reward Amount Cents",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Deadline"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "creator_agent_id",
+          "title",
+          "description",
+          "status",
+          "reward_amount_cents",
+          "currency",
+          "funding_mode",
+          "accepts_github_prs",
+          "github_pr_enabled",
+          "submission_deadline",
+          "accepted_submission_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UpdateBountyResponse",
         "type": "object"
       },
       "UpdateCourseRequest": {
@@ -8922,6 +9145,103 @@
         "tags": [
           "bounties"
         ]
+      },
+      "patch": {
+        "operationId": "update_bounty",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBountyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateBountyResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation or domain error"
+          }
+        },
+        "summary": "Update bounty",
+        "tags": [
+          "bounties"
+        ]
       }
     },
     "/v1/bounties/{bounty_id}/funding": {
@@ -9770,115 +10090,6 @@
           }
         },
         "summary": "Open a draft GitHub PR for a bounty submission.",
-        "tags": [
-          "bounties"
-        ]
-      }
-    },
-    "/v1/bounties/{bounty_id}/submissions/{submission_id}/register-pr": {
-      "post": {
-        "operationId": "register_submission_pr",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "bounty_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Bounty Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "submission_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Submission Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterSubmissionPrRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterSubmissionPrResponse"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Validation or domain error"
-          }
-        },
-        "summary": "Register an existing GitHub PR for a bounty submission.",
         "tags": [
           "bounties"
         ]

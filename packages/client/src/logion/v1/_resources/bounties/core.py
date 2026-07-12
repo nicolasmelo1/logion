@@ -17,6 +17,8 @@ from logion.v1._types.generated.v1 import (
     GetBountyResponse,
     ListBountiesResponse,
     OpenBountyResponse,
+    UpdateBountyRequest,
+    UpdateBountyResponse,
 )
 
 from .shared import VALID_SCOPE_VALUES, _BountyResourceBase
@@ -32,6 +34,7 @@ class _BountyCoreMixin(_BountyResourceBase):
         reward_amount_cents: int,
         currency: str | None = None,
         submission_deadline: datetime | None = None,
+        accepts_github_prs: bool = True,
     ) -> CreateBountyResponse:
         """Create a new bounty."""
         body = CreateBountyRequest(
@@ -43,8 +46,21 @@ class _BountyCoreMixin(_BountyResourceBase):
             reward_amount_cents=reward_amount_cents,
             currency=currency,
             submission_deadline=submission_deadline,
+            accepts_github_prs=accepts_github_prs,
         )
         return operations.create_bounty(self._http, body=body)
+
+    def update(
+        self,
+        bounty_id: str | UUID,
+        *,
+        accepts_github_prs: bool,
+    ) -> UpdateBountyResponse:
+        """Update mutable bounty fields (creator-only)."""
+        body = UpdateBountyRequest(accepts_github_prs=accepts_github_prs)
+        return operations.update_bounty(
+            self._http, bounty_id=bounty_id, body=body
+        )
 
     def list(
         self,
