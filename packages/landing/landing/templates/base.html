@@ -31,10 +31,10 @@
     <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms-full.txt" title="llms-full.txt (full content)">
     <link rel="sitemap" type="application/xml" href="{{ seo.canonical_base }}/sitemap.xml">
     <link rel="me" href="https://github.com/nicolasmelo1/logion">
-    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/static/favicon.svg?v={{ asset_v }}" type="image/svg+xml">
     <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" href="/static/favicon.svg">
-    <link rel="mask-icon" href="/static/favicon.svg" color="#c9a76a">
+    <link rel="apple-touch-icon" href="/static/favicon.svg?v={{ asset_v }}">
+    <link rel="mask-icon" href="/static/favicon.svg?v={{ asset_v }}" color="#c9a76a">
 
     <meta property="og:type" content="{{ og_type_value }}">
     <meta property="og:site_name" content="{{ seo.organization.name }}">
@@ -120,7 +120,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}">
     {% block extra_head %}{% endblock %}
   </head>
   <body>

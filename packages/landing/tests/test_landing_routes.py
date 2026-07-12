@@ -300,6 +300,37 @@ def test_installer_routes_do_not_shadow_content_routes() -> None:
         assert client.get(path).status_code == 200, path
 
 
+def test_static_asset_urls_carry_content_fingerprint() -> None:
+    # /static responses are cached for hours at the edge and in browsers.
+    # Every template reference must carry the ?v=<content-hash> fingerprint
+    # or deploys ship fresh HTML against stale CSS/JS (real prod incident:
+    # setup-complete fixes invisible for up to 4h after deploy).
+    import re as _re
+
+    from landing.main import ASSET_VERSION
+
+    assert _re.fullmatch(r"[0-9a-f]{12}", ASSET_VERSION)
+    for path in ("/", "/setup/complete", "/pricing", "/terms"):
+        html = client.get(path).text
+        refs = _re.findall(r'(?:href|src)="(/static/[^"]+)"', html)
+        assert refs, f"no static refs found on {path}"
+        for ref in refs:
+            assert ref.endswith(f"?v={ASSET_VERSION}"), (
+                f"unfingerprinted static ref on {path}: {ref}"
+            )
+
+
+def test_hero_engraving_is_served_and_referenced() -> None:
+    response = client.get("/static/brand/hero-engraving.png")
+    assert response.status_code == 200
+    assert response.content[:8] == b"\x89PNG\r\n\x1a\n"
+    html = client.get("/").text
+    assert "hero-demo__engraving" in html
+    assert "/static/brand/hero-engraving.png?v=" in html
+    # Sits in the demo column, outside the terminal panel chrome.
+    assert html.index("</aside>") < html.index("hero-demo__engraving")
+
+
 def test_og_image_asset_is_served() -> None:
     response = client.get("/static/og-image.png")
     assert response.status_code == 200

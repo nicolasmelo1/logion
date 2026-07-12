@@ -1523,6 +1523,39 @@ pre code {
   color: var(--fg-dim);
 }
 
+/* Alchemical engraving in the demo column, right below the terminal
+   panel. The PNG is gold linework (--accent) on transparency — white
+   background and terracota fills were removed at the asset level.
+   .hero-demo-col wraps panel + engraving into a single grid item so the
+   engraving hugs the panel instead of landing in its own grid row. */
+.hero-demo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+
+.hero-demo__engraving {
+  display: block;
+  width: min(100%, 460px);
+  height: auto;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: light) {
+  /* Darken the flat gold linework toward the light-theme accent. */
+  .hero-demo__engraving {
+    filter: brightness(0.58);
+  }
+}
+
+@media (max-width: 980px) {
+  /* Follows the terminal demo, which is hidden on small screens. */
+  .hero-demo__engraving {
+    display: none;
+  }
+}
+
 /* ---- scroll reveal (JS-gated so no-JS keeps content visible) ---- */
 .js .reveal {
   opacity: 0;

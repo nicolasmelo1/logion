@@ -8,6 +8,7 @@ can be edited without touching Python.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -196,6 +197,24 @@ def legal_page(slug: str) -> dict[str, str]:
     }
 
 
+def _static_fingerprint() -> str:
+    """Short content hash over every served static asset.
+
+    Templates append it to /static URLs as ?v=<hash>, so browsers fetch a
+    fresh copy exactly when a deploy changes any asset. Without it, the
+    long-lived edge/browser cache on /static (hours) keeps serving stale
+    CSS/JS against freshly deployed HTML.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(STATIC_DIR.rglob("*")):
+        if path.is_file():
+            digest.update(path.relative_to(STATIC_DIR).as_posix().encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+ASSET_VERSION = _static_fingerprint()
+
 app = FastAPI(title="Logion")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -308,6 +327,7 @@ def _ctx(**extra: Any) -> dict[str, Any]:
         "api_base",
         os.environ.get("LOGION_API_BASE_URL", "https://api.logion.sh"),
     )
+    ctx.setdefault("asset_v", ASSET_VERSION)
     ctx.update(extra)
     return ctx
 
