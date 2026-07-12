@@ -111,6 +111,47 @@ def test_auto_update_skips_npm_managed_venv(
     assert data.get("last_error") is None
 
 
+def test_auto_update_skips_when_state_is_not_writable(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.delenv("LOGION_AUTO_UPDATE", raising=False)
+    monkeypatch.setattr(_auto_update, "DEFAULT_COMMAND_THRESHOLD", 1)
+    calls: list[argparse.Namespace] = []
+
+    def fail_write(
+        _data: dict[str, Any],
+        _home: Path | None = None,
+    ) -> None:
+        raise PermissionError("state directory is not writable")
+
+    def fake_run(args: argparse.Namespace) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(["sh"], 0, "", "")
+
+    monkeypatch.setattr(_auto_update, "_write_state", fail_write)
+    monkeypatch.setattr(_auto_update, "_run_update", fake_run)
+
+    _auto_update.maybe_auto_update(argparse.Namespace(command="docs"))
+
+    assert calls == []
+
+
+def test_auto_update_env_disable_does_not_write_state(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.setenv("LOGION_AUTO_UPDATE", "0")
+
+    def fail_write(
+        _data: dict[str, Any],
+        _home: Path | None = None,
+    ) -> None:
+        raise AssertionError("disabled auto-update should not write state")
+
+    monkeypatch.setattr(_auto_update, "_write_state", fail_write)
+
+    _auto_update.maybe_auto_update(argparse.Namespace(command="docs"))
+
+
 def test_update_can_disable_auto_update(
     monkeypatch: Any,
     tmp_path: Path,
