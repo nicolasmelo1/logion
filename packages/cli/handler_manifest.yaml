@@ -58,8 +58,11 @@ commands:
     operations: [get_bounty]
   bounties list:
     operations: [list_bounties]
+  bounties update:
+    operations: [update_bounty]
   bounties open:
-    operations: []
+    operations: [open_bounty]
+
   bounties submissions accept:
     operations: [accept_bounty_submission]
   bounties submissions create:
