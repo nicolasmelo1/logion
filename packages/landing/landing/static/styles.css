@@ -51,6 +51,16 @@
     url("/static/fonts/LibreBaskerville-Italic.woff2") format("woff2");
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 :root {
   interpolate-size: allow-keywords;
   --bg: #050608;
@@ -731,6 +741,25 @@ button.cta {
   position: relative;
   padding: 56px 0;
   border-bottom: 1px solid var(--rule);
+}
+
+/* Section stacking: each content section pins near the top of the
+   viewport and the next one slides up over it. Sections keep a
+   transparent background (the ambient scene and zeus stay visible);
+   app.js fades the pinned section out as the next one covers it, and
+   sets the sticky top per section (0 for short sections; negative for
+   sections taller than the viewport so they pin only after being fully
+   readable). Sticky siblings paint in DOM order — no z-index dance. */
+main > .content-section {
+  position: sticky;
+  top: 0;
+}
+
+/* The entrance reveal animates transform only on stacked sections —
+   their opacity belongs to the scroll-driven stacking fade. */
+.js main > .content-section.reveal {
+  opacity: 1;
+  transition: transform 0.7s ease;
 }
 
 .content-section h2 {
