@@ -23,6 +23,18 @@ from logion_scanners.models import (
 logger = logging.getLogger(__name__)
 _OUTPUT_SNIPPET_LIMIT = 500
 
+# Trivy pulls its vulnerability DB from an OCI registry when the local cache is
+# empty or stale. Trivy's built-in default (ghcr.io/aquasecurity/trivy-db) is
+# aggressively rate-limited (TOOMANYREQUESTS) under community-wide load, which
+# can make a scan burn its whole timeout budget — or fail outright — on the DB
+# download. Pull from the Google-hosted mirror first (no rate limit) and fall
+# back to GHCR only on transient 429/5xx. Passing --db-repository overrides
+# the built-in default list, so GHCR is named explicitly as the fallback.
+_DEFAULT_DB_REPOSITORIES: tuple[str, ...] = (
+    "mirror.gcr.io/aquasec/trivy-db",
+    "ghcr.io/aquasecurity/trivy-db",
+)
+
 _SEVERITY_MAP: dict[str, str] = {
     "CRITICAL": "critical",
     "HIGH": "high",
@@ -55,6 +67,7 @@ class TrivyScanner(BaseScanner):
         docker_image: str = "aquasec/trivy:latest",
         binary_path: str | None = None,
         timeout_seconds: int = 300,
+        db_repositories: tuple[str, ...] = _DEFAULT_DB_REPOSITORIES,
     ) -> None:
         # When ``binary_path`` is set, the native binary is invoked
         # directly and Docker is never used.  This is the hosted-worker
@@ -62,6 +75,7 @@ class TrivyScanner(BaseScanner):
         self._image = docker_image
         self._binary_path = binary_path
         self._timeout = timeout_seconds
+        self._db_repositories = db_repositories
 
     @property
     def _native(self) -> bool:
@@ -75,6 +89,10 @@ class TrivyScanner(BaseScanner):
             "--severity",
             "CRITICAL,HIGH,MEDIUM,LOW",
         ]
+        # Pull the vuln DB from the rate-limit-free mirror first, GHCR as
+        # fallback (repeated --db-repository = ordered fallback on 429/5xx).
+        for repo in self._db_repositories:
+            scan_args += ["--db-repository", repo]
         if self._binary_path is not None:
             # Native binary scans the host path directly — no mount.
             return [self._binary_path, *scan_args, str(abs_bundle)]
