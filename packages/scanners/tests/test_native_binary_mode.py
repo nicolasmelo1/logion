@@ -46,6 +46,49 @@ def test_trivy_native_builds_binary_command(monkeypatch, tmp_path):
     assert result.passed is True
 
 
+def test_trivy_uses_mirror_db_repository_with_ghcr_fallback(
+    monkeypatch, tmp_path
+):
+    """The vuln DB is pulled from the rate-limit-free mirror first, GHCR as
+    an explicit ordered fallback — in both native and docker modes."""
+    captured: dict = {}
+
+    def fake_run(cmd, **_kwargs):
+        captured["cmd"] = cmd
+        return _FakeProc(0, stdout=json.dumps({"Results": []}))
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    for scanner in (TrivyScanner(binary_path="trivy"), TrivyScanner()):
+        scanner.scan(tmp_path)
+        cmd = captured["cmd"]
+        # Repeated --db-repository = ordered fallback; mirror before GHCR.
+        assert cmd.count("--db-repository") == 2
+        mirror_i = cmd.index("mirror.gcr.io/aquasec/trivy-db")
+        ghcr_i = cmd.index("ghcr.io/aquasecurity/trivy-db")
+        assert mirror_i < ghcr_i
+
+
+def test_trivy_db_repositories_are_overridable(monkeypatch, tmp_path):
+    captured: dict = {}
+
+    def fake_run(cmd, **_kwargs):
+        captured["cmd"] = cmd
+        return _FakeProc(0, stdout=json.dumps({"Results": []}))
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    TrivyScanner(
+        binary_path="trivy",
+        db_repositories=("my.registry.local/trivy-db",),
+    ).scan(tmp_path)
+
+    cmd = captured["cmd"]
+    assert cmd.count("--db-repository") == 1
+    assert "my.registry.local/trivy-db" in cmd
+    assert "mirror.gcr.io/aquasec/trivy-db" not in cmd
+
+
 def test_trivy_native_parses_json_wrapped_by_progress_output(
     monkeypatch, tmp_path
 ):
