@@ -556,6 +556,31 @@
     frameHandle = window.requestAnimationFrame(frame);
   }
 
+  // ----- Zeus backdrop parallax --------------------------------------
+  // The backdrop is a raster <img>, so the eased pointer parallax is a
+  // cheap compositor transform. Still: never on coarse/reduced (the
+  // target is 0 there), and skip the write when the eased value hasn't
+  // changed.
+  var silEl = null;
+  var silParX = 0;
+  var silParY = 0;
+  var silLastTransform = "";
+  function updateSilhouetteParallax(dt) {
+    if (reduced.matches || coarse.matches) return;
+    if (!silEl) silEl = document.getElementById("silhouette");
+    if (!silEl) return;
+    var k = Math.min(1, dt * 3.5);
+    silParX += (-mouse.x * 36 - silParX) * k;
+    // Vertical target clamped to >= 0: the figure is flush with the
+    // viewport bottom, so it may dip below the edge but never lift off it.
+    silParY += (Math.max(0, -mouse.y * 22) - silParY) * k;
+    var next =
+      "translate(" + silParX.toFixed(2) + "px, " + silParY.toFixed(2) + "px)";
+    if (next === silLastTransform) return;
+    silLastTransform = next;
+    silEl.style.transform = next;
+  }
+
   // Reduced motion: no animation loop at all — one composed frame, done.
   // (This is what the header comment always promised; previously the rAF
   // loop kept running at full rate with slower parameters.)
@@ -598,93 +623,10 @@
     }
   }
 
-  // ----- Static full-screen ASCII silhouette ----------------------------
-  // The figure is a handcrafted ASCII piece served from static. We fetch
-  // it once, then autoscale the font size so it fills the viewport.
-  // On mouse hover the cells near the cursor are scrambled and partly
-  // erased so the figure visibly deforms beneath the pointer.
-  var SILHOUETTE_URL = "/static/ascii/zeus.txt";
-  var silhouetteText = null;
-  var silLines = null; // original lines for fast re-comparison
-  var silCellW = 0;
-  var silCellH = 0;
-
-  function loadSilhouette() {
-    if (silhouetteText) {
-      renderSilhouette();
-      return;
-    }
-    fetch(SILHOUETTE_URL)
-      .then(function (r) {
-        return r.text();
-      })
-      .then(function (txt) {
-        silhouetteText = txt.replace(/\s+$/g, "");
-        silLines = silhouetteText.split("\n");
-        renderSilhouette();
-      })
-      .catch(function () {
-        /* silently skip on failure */
-      });
-  }
-
-  function renderSilhouette() {
-    if (!silEl) silEl = document.getElementById("silhouette");
-    var el = silEl;
-    if (!el || !silhouetteText) return;
-    if (el.textContent !== silhouetteText) {
-      el.textContent = silhouetteText;
-    }
-    el.style.transform = "translateY(-50%)";
-    silLastTransform = "translateY(-50%)";
-    var rows = silLines.length;
-    var cols = 0;
-    for (var i = 0; i < silLines.length; i++) {
-      if (silLines[i].length > cols) cols = silLines[i].length;
-    }
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    // Monospace char width ≈ 0.6 × font-size.
-    var fitByH = vh / rows;
-    var fitByW = vw / (cols * 0.6);
-    var fontSize = Math.min(fitByH, fitByW) * 0.98;
-    fontSize = Math.max(4, Math.min(14, fontSize));
-    el.style.fontSize = fontSize.toFixed(2) + "px";
-    el.style.lineHeight = "1";
-    silCellW = fontSize * 0.6;
-    silCellH = fontSize;
-  }
-
-  // ----- Silhouette parallax (cheap CSS transform) ----------------------
-  // The silhouette is a full-screen text element holding the whole ASCII
-  // figure; every style write invalidates that huge text layer. So: cache
-  // the element, never run parallax on coarse/reduced (the target is 0
-  // anyway), and skip the write entirely when the eased value is unchanged
-  // — otherwise Gecko on mobile repaints the figure 60 times a second.
-  var silEl = null;
-  var silParX = 0;
-  var silParY = 0;
-  var silLastTransform = "";
-  function updateSilhouetteParallax(dt) {
-    if (reduced.matches || coarse.matches) return;
-    if (!silEl) silEl = document.getElementById("silhouette");
-    if (!silEl) return;
-    var k = Math.min(1, dt * 3.5);
-    silParX += (-mouse.x * 36 - silParX) * k;
-    silParY += (-mouse.y * 22 - silParY) * k;
-    var next =
-      "translate(" + silParX.toFixed(2) + "px, calc(-50% + " +
-      silParY.toFixed(2) + "px))";
-    if (next === silLastTransform) return;
-    silLastTransform = next;
-    silEl.style.transform = next;
-  }
-
   function start() {
     initCopyButtons();
     initScene();
     initHero();
-    loadSilhouette();
     if (!document.hidden) {
       startLoop();
     }
@@ -703,7 +645,6 @@
     resizeHandle = window.setTimeout(function () {
       initScene();
       initHero();
-      renderSilhouette();
     }, 160);
   });
 

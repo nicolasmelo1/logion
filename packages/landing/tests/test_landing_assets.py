@@ -195,13 +195,16 @@ def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
     assert "pointer: coarse" in text
     assert "COARSE_FRAME_INTERVAL" in text
     assert "renderStaticFrame" in text
-    assert "silLastTransform" in text
-    # Parallax bails out before touching the silhouette on coarse/reduced.
-    assert "if (reduced.matches || coarse.matches) return;" in text
     # Hero particles stop drawing when scrolled out of view.
     assert "IntersectionObserver" in text
     # The light-mode media query must not be constructed per frame.
     assert text.count('matchMedia("(prefers-color-scheme: light)")') == 1
+    # The zeus backdrop is a pre-rendered raster (zeus.webp); the text
+    # asset is never fetched or laid out. Its parallax bails out on
+    # coarse/reduced and only writes when the eased transform changed.
+    assert "zeus.txt" not in text
+    assert "silLastTransform" in text
+    assert "if (reduced.matches || coarse.matches) return;" in text
 
 
 def test_vercel_entrypoint_exports_landing_app() -> None:

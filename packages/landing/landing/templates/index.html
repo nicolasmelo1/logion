@@ -135,6 +135,14 @@
     </div>
 
     {% if hero.demo %}
+      <div class="hero-demo-col">
+      <img
+        class="hero-demo__engraving"
+        src="/static/brand/hero-engraving.png?v={{ asset_v }}"
+        alt="Engraving of a sage handing knowledge to an apprentice across the Logion lambda"
+        width="920"
+        height="646"
+      >
       <aside
         class="hero-demo"
         data-terminal-demo
@@ -195,6 +203,7 @@
         </div>
         <p class="hero-demo__intro">{{ hero.demo.intro }}</p>
       </aside>
+      </div>
     {% endif %}
 
     <span class="hero-readout br">{{ release_readout or hero.readouts.bottom }}</span>
@@ -310,9 +319,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/ascii/hero_frames.js"></script>
-<script src="/static/app.js"></script>
-<script src="/static/terminal-demo.js"></script>
-<script src="/static/marketplace-loop.js"></script>
-{% if setup_mode %}<script src="/static/setup-complete.js" data-api-base="{{ api_base }}"></script>{% endif %}
+<script src="/static/ascii/hero_frames.js?v={{ asset_v }}"></script>
+<script src="/static/app.js?v={{ asset_v }}"></script>
+<script src="/static/terminal-demo.js?v={{ asset_v }}"></script>
+<script src="/static/marketplace-loop.js?v={{ asset_v }}"></script>
+{% if setup_mode %}<script src="/static/setup-complete.js?v={{ asset_v }}" data-api-base="{{ api_base }}"></script>{% endif %}
 {% endblock %}
