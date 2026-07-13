@@ -217,9 +217,9 @@ a:hover {
    fixed to the right edge like the original. */
 #silhouette {
   position: fixed;
-  /* Anchored to the bottom edge; the negative offset is slack so the
-     parallax translate (±26px) never reveals a gap under the figure. */
-  bottom: -26px;
+  /* Flush with the bottom edge; the parallax only ever translates the
+     figure downward/sideways, so no gap opens beneath it. */
+  bottom: 0;
   right: 0;
   max-height: 100vh;
   width: auto;

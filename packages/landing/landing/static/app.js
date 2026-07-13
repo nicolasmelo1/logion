@@ -571,7 +571,9 @@
     if (!silEl) return;
     var k = Math.min(1, dt * 3.5);
     silParX += (-mouse.x * 36 - silParX) * k;
-    silParY += (-mouse.y * 22 - silParY) * k;
+    // Vertical target clamped to >= 0: the figure is flush with the
+    // viewport bottom, so it may dip below the edge but never lift off it.
+    silParY += (Math.max(0, -mouse.y * 22) - silParY) * k;
     var next =
       "translate(" + silParX.toFixed(2) + "px, " + silParY.toFixed(2) + "px)";
     if (next === silLastTransform) return;
