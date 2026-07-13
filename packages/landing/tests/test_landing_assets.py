@@ -184,6 +184,27 @@ def test_app_js_pauses_animation_without_horizon_line_on_tab_return() -> None:
     assert "pagehide" in text
 
 
+def test_styles_smooth_scroll_respects_reduced_motion() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "scroll-behavior: smooth" in text
+    # Reduced motion must fall back to instant jumps.
+    assert "scroll-behavior: auto" in text
+
+
+def test_section_stacking_is_wired() -> None:
+    # Sections pin and stack over each other; app.js sets per-section
+    # sticky tops (negative for sections taller than the viewport so
+    # nothing becomes unreadable), fades the pinned section as the next
+    # covers it (no opaque background — the zeus backdrop stays visible),
+    # and recomputes when heights change.
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "position: sticky" in css
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "initSectionStack" in js
+    assert "updateSectionFade" in js
+    assert 'addEventListener("toggle", initSectionStack)' in js
+
+
 def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
     # Perf contract for mobile Firefox (issue #174): coarse pointers get a
     # capped frame budget and lower scene density; reduced motion renders a

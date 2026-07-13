@@ -623,10 +623,69 @@
     }
   }
 
+  // ----- Section stacking ---------------------------------------------
+  // Content sections are position: sticky so each pins and the next one
+  // slides over it. Short sections pin at the top of the viewport; a
+  // section taller than the viewport gets a negative top so it pins only
+  // once its bottom has been reached (nothing becomes unreadable).
+  var stackBound = false;
+  var stackSections = [];
+
+  // As the next section slides up over the pinned one, fade the pinned
+  // one out — sections have no background (the ambient scene stays
+  // visible), so the fade is what keeps the overlap legible.
+  function updateSectionFade() {
+    var vh = window.innerHeight;
+    for (var i = 0; i < stackSections.length - 1; i++) {
+      var rect = stackSections[i].getBoundingClientRect();
+      var nextTop = stackSections[i + 1].getBoundingClientRect().top;
+      var covered = rect.bottom - nextTop;
+      // Accelerated fade: fully gone once ~60% covered, so the two
+      // texts never sit legibly on top of each other.
+      var span = (Math.min(rect.height, vh) || 1) * 0.6;
+      var p = Math.max(0, Math.min(1, covered / span));
+      stackSections[i].style.opacity = (1 - p).toFixed(3);
+    }
+  }
+
+  var fadeQueued = false;
+  function queueSectionFade() {
+    if (fadeQueued) return;
+    fadeQueued = true;
+    window.requestAnimationFrame(function () {
+      fadeQueued = false;
+      updateSectionFade();
+    });
+  }
+
+  function initSectionStack() {
+    stackSections = Array.prototype.slice.call(
+      document.querySelectorAll("main > .content-section")
+    );
+    var vh = window.innerHeight;
+    for (var i = 0; i < stackSections.length; i++) {
+      var overflow = stackSections[i].offsetHeight - vh;
+      stackSections[i].style.top = (overflow > 0 ? -overflow : 0) + "px";
+    }
+    updateSectionFade();
+    if (!stackBound) {
+      stackBound = true;
+      window.addEventListener("scroll", queueSectionFade, { passive: true });
+      // Section heights change after load: FAQ answers expanding and
+      // images finishing their fetch both need a recompute.
+      var faqs = document.querySelectorAll(".faq-item");
+      for (var f = 0; f < faqs.length; f++) {
+        faqs[f].addEventListener("toggle", initSectionStack);
+      }
+      window.addEventListener("load", initSectionStack);
+    }
+  }
+
   function start() {
     initCopyButtons();
     initScene();
     initHero();
+    initSectionStack();
     if (!document.hidden) {
       startLoop();
     }
@@ -645,6 +704,7 @@
     resizeHandle = window.setTimeout(function () {
       initScene();
       initHero();
+      initSectionStack();
     }, 160);
   });
 
