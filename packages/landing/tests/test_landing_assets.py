@@ -199,10 +199,12 @@ def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
     assert "IntersectionObserver" in text
     # The light-mode media query must not be constructed per frame.
     assert text.count('matchMedia("(prefers-color-scheme: light)")') == 1
-    # The full-screen ASCII zeus silhouette was removed from the site; the
-    # asset stays in the repo but nothing may fetch or render it.
+    # The zeus backdrop is a pre-rendered raster (zeus.webp); the text
+    # asset is never fetched or laid out. Its parallax bails out on
+    # coarse/reduced and only writes when the eased transform changed.
     assert "zeus.txt" not in text
-    assert 'getElementById("silhouette")' not in text
+    assert "silLastTransform" in text
+    assert "if (reduced.matches || coarse.matches) return;" in text
 
 
 def test_vercel_entrypoint_exports_landing_app() -> None:

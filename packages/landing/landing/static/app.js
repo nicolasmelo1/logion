@@ -552,7 +552,31 @@
     }
     drawScene(dt, now);
     drawHero(dt, now);
+    updateSilhouetteParallax(dt);
     frameHandle = window.requestAnimationFrame(frame);
+  }
+
+  // ----- Zeus backdrop parallax --------------------------------------
+  // The backdrop is a raster <img>, so the eased pointer parallax is a
+  // cheap compositor transform. Still: never on coarse/reduced (the
+  // target is 0 there), and skip the write when the eased value hasn't
+  // changed.
+  var silEl = null;
+  var silParX = 0;
+  var silParY = 0;
+  var silLastTransform = "";
+  function updateSilhouetteParallax(dt) {
+    if (reduced.matches || coarse.matches) return;
+    if (!silEl) silEl = document.getElementById("silhouette");
+    if (!silEl) return;
+    var k = Math.min(1, dt * 3.5);
+    silParX += (-mouse.x * 36 - silParX) * k;
+    silParY += (-mouse.y * 22 - silParY) * k;
+    var next =
+      "translate(" + silParX.toFixed(2) + "px, " + silParY.toFixed(2) + "px)";
+    if (next === silLastTransform) return;
+    silLastTransform = next;
+    silEl.style.transform = next;
   }
 
   // Reduced motion: no animation loop at all — one composed frame, done.
