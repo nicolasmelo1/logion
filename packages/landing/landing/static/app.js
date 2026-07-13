@@ -681,11 +681,73 @@
     }
   }
 
+  // ----- Smooth wheel scrolling -----------------------------------------
+  // CSS scroll-behavior only smooths anchor/programmatic scrolls; wheel
+  // input stays native. This eases wheel deltas toward a target with a
+  // rAF lerp for the buttery feel. Deliberately NOT active for: coarse
+  // pointers (touch scrolling is already smooth and must stay native),
+  // reduced motion, and ctrl+wheel (browser zoom).
+  function initSmoothWheel() {
+    if (reduced.matches || coarse.matches) return;
+    var targetY = window.scrollY;
+    var currentY = targetY;
+    var animating = false;
+
+    function maxScroll() {
+      return Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+    }
+
+    function tick() {
+      currentY += (targetY - currentY) * 0.14;
+      if (Math.abs(targetY - currentY) < 0.6) {
+        currentY = targetY;
+        animating = false;
+      }
+      // behavior: "instant" bypasses the CSS smooth behavior — without it
+      // every tick would itself be smoothed and the scroll would lag.
+      window.scrollTo({ top: currentY, behavior: "instant" });
+      if (animating) window.requestAnimationFrame(tick);
+    }
+
+    window.addEventListener(
+      "wheel",
+      function (e) {
+        if (e.ctrlKey || e.defaultPrevented) return;
+        e.preventDefault();
+        var delta = e.deltaY;
+        if (e.deltaMode === 1) delta *= 16; // line mode → px
+        targetY = Math.max(0, Math.min(maxScroll(), targetY + delta));
+        if (!animating) {
+          animating = true;
+          window.requestAnimationFrame(tick);
+        }
+      },
+      { passive: false }
+    );
+
+    // Keyboard, scrollbar drags, and anchor jumps move the page without
+    // us — resync so the next wheel tick starts from reality.
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (!animating) {
+          targetY = window.scrollY;
+          currentY = targetY;
+        }
+      },
+      { passive: true }
+    );
+  }
+
   function start() {
     initCopyButtons();
     initScene();
     initHero();
     initSectionStack();
+    initSmoothWheel();
     if (!document.hidden) {
       startLoop();
     }

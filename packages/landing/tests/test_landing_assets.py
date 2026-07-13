@@ -203,6 +203,10 @@ def test_section_stacking_is_wired() -> None:
     assert "initSectionStack" in js
     assert "updateSectionFade" in js
     assert 'addEventListener("toggle", initSectionStack)' in js
+    # Wheel smoothing: rAF-lerped, never hijacking touch/zoom/reduced.
+    assert "initSmoothWheel" in js
+    assert "if (reduced.matches || coarse.matches) return;" in js
+    assert "if (e.ctrlKey || e.defaultPrevented) return;" in js
 
 
 def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
