@@ -136,6 +136,13 @@
 
     {% if hero.demo %}
       <div class="hero-demo-col">
+      <img
+        class="hero-demo__engraving"
+        src="/static/brand/hero-engraving.png?v={{ asset_v }}"
+        alt="Engraving of a sage handing knowledge to an apprentice across the Logion lambda"
+        width="920"
+        height="646"
+      >
       <aside
         class="hero-demo"
         data-terminal-demo
@@ -196,14 +203,6 @@
         </div>
         <p class="hero-demo__intro">{{ hero.demo.intro }}</p>
       </aside>
-      <img
-        class="hero-demo__engraving"
-        src="/static/brand/hero-engraving.png?v={{ asset_v }}"
-        alt="Engraving of a sage handing knowledge to an apprentice across the Logion lambda"
-        width="920"
-        height="646"
-        loading="lazy"
-      >
       </div>
     {% endif %}
 

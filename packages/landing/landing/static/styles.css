@@ -212,50 +212,27 @@ a:hover {
   pointer-events: none;
 }
 
+/* Zeus backdrop — the ASCII figure pre-rendered as a raster (the live
+   text version cost real layout/paint on mobile Gecko). Faint gray,
+   fixed to the right edge like the original. */
 #silhouette {
   position: fixed;
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  width: max-content;
-  height: max-content;
-  max-width: 100vw;
   max-height: 100vh;
-  margin: 0;
-  padding: 0;
+  width: auto;
   z-index: 1;
   pointer-events: none;
-  overflow: hidden;
-  white-space: pre;
-  font-family: var(--mono);
-  font-size: 10px; /* JS overrides with computed fit-to-viewport size */
-  line-height: 1;
-  letter-spacing: 0;
-  color: rgba(201, 167, 106, 0.92);
-  text-shadow:
-    0 0 14px rgba(201, 167, 106, 0.35),
-    0 0 38px rgba(201, 167, 106, 0.16);
-  background: transparent;
-  border: 0;
+  opacity: 0.7;
   -webkit-user-select: none;
   user-select: none;
-}
-
-#silhouette::before {
-  content: none;
-}
-
-@media (prefers-color-scheme: light) {
-  #silhouette {
-    color: rgba(90, 69, 23, 0.86);
-    text-shadow: 0 0 16px rgba(138, 106, 43, 0.14);
-  }
 }
 
 .site-header {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 28px 32px 16px;
+  padding: 10px 32px 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -277,8 +254,8 @@ a:hover {
 }
 
 .site-brand__mark {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   align-self: center;
   color: var(--accent-bright);
   filter: drop-shadow(0 0 8px rgba(201, 167, 106, 0.28));
@@ -286,7 +263,7 @@ a:hover {
 }
 
 .site-brand .greek {
-  font-size: 22px;
+  font-size: 16px;
   color: var(--accent-bright);
   letter-spacing: 0.34em;
   text-shadow: var(--hud-glow);
@@ -1523,10 +1500,10 @@ pre code {
   color: var(--fg-dim);
 }
 
-/* Alchemical engraving in the demo column, right below the terminal
+/* Alchemical engraving in the demo column, right above the terminal
    panel. The PNG is gold linework (--accent) on transparency — white
    background and terracota fills were removed at the asset level.
-   .hero-demo-col wraps panel + engraving into a single grid item so the
+   .hero-demo-col wraps engraving + panel into a single grid item so the
    engraving hugs the panel instead of landing in its own grid row. */
 .hero-demo-col {
   display: flex;

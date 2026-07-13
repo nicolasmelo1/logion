@@ -327,8 +327,8 @@ def test_hero_engraving_is_served_and_referenced() -> None:
     html = client.get("/").text
     assert "hero-demo__engraving" in html
     assert "/static/brand/hero-engraving.png?v=" in html
-    # Sits in the demo column, outside the terminal panel chrome.
-    assert html.index("</aside>") < html.index("hero-demo__engraving")
+    # Sits in the demo column, above the terminal panel, outside its chrome.
+    assert html.index("hero-demo__engraving") < html.index("<aside")
 
 
 def test_og_image_asset_is_served() -> None:
