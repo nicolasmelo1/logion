@@ -217,9 +217,11 @@ a:hover {
    fixed to the right edge like the original. */
 #silhouette {
   position: fixed;
-  /* Flush with the bottom edge; the parallax only ever translates the
-     figure downward/sideways, so no gap opens beneath it. */
-  bottom: 0;
+  /* Sunk into the bottom edge: the lower ~fifth of the figure sits below
+     the viewport, so it reads as rising from the bottom of the screen.
+     The parallax only ever translates it further down/sideways, so no
+     gap opens beneath it. */
+  bottom: -18vh;
   right: 0;
   max-height: 100vh;
   width: auto;
