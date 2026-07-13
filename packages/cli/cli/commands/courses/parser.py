@@ -24,6 +24,7 @@ from .parser_sections import (
 from .report_usage import (
     register_report_usage,
 )
+from .source_link import register_source_link
 from .taxonomy_handler import register_taxonomy
 
 
@@ -46,6 +47,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     register_report_usage(sub)
     register_capabilities(sub)
     register_package_map(sub)
+    register_source_link(sub)
     register_taxonomy(sub)
     feedback = sub.add_parser(
         "feedback",

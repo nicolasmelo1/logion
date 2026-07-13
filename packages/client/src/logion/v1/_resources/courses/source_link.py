@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: MIT
+"""Course source-link resource methods."""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from logion.v1._generated import operations
+from logion.v1._types.generated.v1 import (
+    SetSourceLinkRequest,
+    SourceLinkResponse,
+)
+
+from .shared import _CoursesResourceBase
+
+
+class _CoursesSourceLinkMixin(_CoursesResourceBase):
+    def set_source_link(
+        self,
+        *,
+        course_id: str | UUID,
+        repository: str,
+        ref: str = "main",
+        package_map_path: str | None = None,
+    ) -> SourceLinkResponse:
+        """Set or update the GitHub source link for a course."""
+        body = SetSourceLinkRequest(
+            repository=repository,
+            ref=ref,
+            package_map_path=package_map_path,
+        )
+        return operations.set_course_source_link(
+            self._http,
+            course_id=course_id,
+            body=body,
+        )
+
+    def get_source_link(
+        self,
+        *,
+        course_id: str | UUID,
+    ) -> SourceLinkResponse:
+        """Get the source link for a course."""
+        return operations.get_course_source_link(
+            self._http,
+            course_id=course_id,
+        )
+
+    def delete_source_link(
+        self,
+        *,
+        course_id: str | UUID,
+    ) -> None:
+        """Revoke the source link for a course (idempotent)."""
+        operations.delete_course_source_link(
+            self._http,
+            course_id=course_id,
+        )

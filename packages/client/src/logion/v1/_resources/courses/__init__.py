@@ -8,10 +8,12 @@ from logion._http import HttpClient
 from .core import _CoursesCoreMixin
 from .publication import _CoursesPublicationMixin
 from .reviews import _CoursesReviewsMixin
+from .source_link import _CoursesSourceLinkMixin
 
 
 class CoursesResource(
     _CoursesCoreMixin,
+    _CoursesSourceLinkMixin,
     _CoursesReviewsMixin,
     _CoursesPublicationMixin,
 ):

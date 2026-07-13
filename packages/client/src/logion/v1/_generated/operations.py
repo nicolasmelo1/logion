@@ -96,6 +96,8 @@ from logion.v1._types.generated.v1 import (
     SellerReadinessResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
+    SetSourceLinkRequest,
+    SourceLinkResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
     UpdateBountyRequest,
@@ -793,6 +795,49 @@ def list_course_reviews(
         f"/v1/courses/{course_id}/reviews",
         ListCourseReviewsResponse,
         params=params,
+    )
+
+
+def delete_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+) -> dict[str, Any]:
+    """Call the delete_course_source_link API operation."""
+    return cast(
+        dict[str, Any],
+        http.request(
+            "DELETE",
+            f"/v1/courses/{course_id}/source-link",
+        ),
+    )
+
+
+def get_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+) -> SourceLinkResponse:
+    """Call the get_course_source_link API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/courses/{course_id}/source-link",
+        SourceLinkResponse,
+    )
+
+
+def set_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+    body: SetSourceLinkRequest,
+) -> SourceLinkResponse:
+    """Call the set_course_source_link API operation."""
+    return http.request_model(
+        "PUT",
+        f"/v1/courses/{course_id}/source-link",
+        SourceLinkResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

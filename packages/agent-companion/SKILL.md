@@ -220,6 +220,8 @@ logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --f
 logion courses uploads complete COURSE_ID VERSION_ID --json
 logion courses publication request COURSE_ID --json
 logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion courses source-link set COURSE_ID --repository owner/repo --ref main --json
+logion courses source-link remove COURSE_ID --yes --json
 logion courses report-usage COURSE_ID VERSION_ID --rating N
 logion credits top-up --amount 1000 --yes --json
 logion payments cash-out --dry-run --json
