@@ -481,6 +481,119 @@ class LogionApiQueries:
             },
         }
 
+    async def _q_source_link_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        course_id = query.get("course")
+        if not course_id:
+            return {"found": False, "evidence": {"source": "api"}}
+        owner_role = self._role_of(query.get("owner_agent"), agent_roles)
+        status, data = await self._get(
+            f"/v1/courses/{course_id}/source-link", owner_role
+        )
+        if status == 200 and isinstance(data, dict):
+            repository = data.get("repository")
+            wanted_repo = query.get("repository")
+            if wanted_repo and repository != wanted_repo:
+                return {"found": False, "evidence": {"source": "api"}}
+            return {
+                "found": True,
+                "course_id": course_id,
+                "evidence": {
+                    "source": "api",
+                    "endpoint": f"/v1/courses/{course_id}/source-link",
+                },
+            }
+        return {"found": False, "evidence": {"source": "api"}}
+
+    async def _q_bounty_submission_pr_opened(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        creator_role = self._role_of(query.get("creator_agent"), agent_roles)
+        bounty_id = query.get("bounty")
+        if not bounty_id:
+            return {"opened": False, "evidence": {"source": "api"}}
+        status, data = await self._get(
+            f"/v1/bounties/{bounty_id}/submissions", creator_role
+        )
+        if status != 200 or not isinstance(data, list):
+            return {"opened": False, "evidence": {"source": "api"}}
+        submission_id = query.get("submission")
+        for sub in data:
+            if submission_id and sub.get("id") != submission_id:
+                continue
+            github_pr = sub.get("github_pr")
+            if (
+                isinstance(github_pr, dict)
+                and github_pr.get("status") == "opened"
+            ):
+                return {
+                    "opened": True,
+                    "evidence": {
+                        "source": "api",
+                        "pr_url": github_pr.get("pr_url"),
+                    },
+                }
+        return {"opened": False, "evidence": {"source": "api"}}
+
+    async def _q_bounty_submission_accepted(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        creator_role = self._role_of(query.get("creator_agent"), agent_roles)
+        bounty_id = query.get("bounty")
+        if not bounty_id:
+            return {"accepted": False, "evidence": {"source": "api"}}
+        status, data = await self._get(
+            f"/v1/bounties/{bounty_id}/submissions", creator_role
+        )
+        if status != 200 or not isinstance(data, list):
+            return {"accepted": False, "evidence": {"source": "api"}}
+        submission_id = query.get("submission")
+        for sub in data:
+            if submission_id and sub.get("id") != submission_id:
+                continue
+            if sub.get("status") == "accepted":
+                return {
+                    "accepted": True,
+                    "evidence": {"source": "api", "bounty_id": bounty_id},
+                }
+        return {"accepted": False, "evidence": {"source": "api"}}
+
+    async def _q_bounty_submission_rejected(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        creator_role = self._role_of(query.get("creator_agent"), agent_roles)
+        bounty_id = query.get("bounty")
+        if not bounty_id:
+            return {"rejected": False, "evidence": {"source": "api"}}
+        status, data = await self._get(
+            f"/v1/bounties/{bounty_id}/submissions", creator_role
+        )
+        if status != 200 or not isinstance(data, list):
+            return {"rejected": False, "evidence": {"source": "api"}}
+        submission_id = query.get("submission")
+        for sub in data:
+            if submission_id and sub.get("id") != submission_id:
+                continue
+            if sub.get("status") in ("rejected", "withdrawn"):
+                return {
+                    "rejected": True,
+                    "evidence": {
+                        "source": "api",
+                        "bounty_id": bounty_id,
+                        "status": sub.get("status"),
+                    },
+                }
+        return {"rejected": False, "evidence": {"source": "api"}}
+
 
 def _unsupported(reason: str) -> dict[str, Any]:
     return {"found": False, "unsupported": True, "reason": reason}

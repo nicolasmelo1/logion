@@ -1,0 +1,79 @@
+schema_version: "1"
+name: github_bounty_e2e
+description: >-
+  Full GitHub-native loop — publish, link repo, issue-mention bounty,
+  PR, merge/accept, close/reject. Requires real GitHub App, local API,
+  and two GitHub accounts. Run manually; never in CI.
+api_adapter: local-devrig
+agents:
+  - id: creator
+    role: Course creator/owner
+    driver: claude-code
+    devrig_role: seller
+  - id: buyer
+    role: Buyer/worker
+    driver: claude-code
+    devrig_role: buyer
+  - id: operator
+    role: Admin observer
+    driver: scripted
+    devrig_role: admin
+phases:
+  - id: link_repo
+    actor: creator
+    goal: "Link the published course to the test repo via `logion courses source-link set`."
+    assertions:
+      - type: api.source_link_exists
+        params:
+          course: "${COURSE_ID}"
+          repository: "${REPO}"
+  - id: issue_bounty
+    actor: creator
+    goal: "Open an issue and comment `@<bot> bounty 250`, then `@<bot> confirm`."
+    assertions:
+      - type: github.issue_bot_comment_matches
+        params:
+          issue: "${ISSUE_1}"
+          pattern: "confirm|250 credits"
+      - type: api.bounty_exists
+        params:
+          status: funded
+  - id: submit_pr
+    actor: buyer
+    goal: "Do the work and `logion bounties submissions create <BOUNTY> --github-pr`."
+    assertions:
+      - type: api.bounty_submission_pr_opened
+        params:
+          bounty: "${BOUNTY_1}"
+          submission: "${SUB_1}"
+      - type: github.pr_exists
+        params:
+          marker: "logion:bounty_submission"
+  - id: merge_accept
+    actor: creator
+    goal: "Merge the PR as the course owner."
+    assertions:
+      - type: github.pr_merged
+        params:
+          pr_number: "${PR_1}"
+      - type: api.bounty_submission_accepted
+        params:
+          bounty: "${BOUNTY_1}"
+          submission: "${SUB_1}"
+      - type: api.credit_balance_changed
+        params:
+          role: buyer
+          direction: increase
+  - id: close_reject
+    actor: creator
+    goal: "Close the second PR without merging."
+    assertions:
+      - type: github.pr_closed_unmerged
+        params:
+          pr_number: "${PR_2}"
+      - type: api.bounty_submission_rejected
+        params:
+          bounty: "${BOUNTY_2}"
+          submission: "${SUB_2}"
+final_assertions:
+  - type: timeline.no_unredacted_secret

@@ -257,6 +257,21 @@ class MockApiAdapter(ApiAdapter):
                     if course.status == "published":
                         return {"purchasable": True, "course_id": course.id}
                 return {"purchasable": False}
+            case "source_link_exists":
+                course_id = query.get("course")
+                if course_id and course_id in self._state.courses:
+                    return {
+                        "found": True,
+                        "course_id": course_id,
+                        "evidence": {"source": "mock"},
+                    }
+                return {"found": False}
+            case "bounty_submission_pr_opened":
+                return {"opened": True}
+            case "bounty_submission_accepted":
+                return {"accepted": True}
+            case "bounty_submission_rejected":
+                return {"rejected": True}
             case _:
                 return {"error": "unknown query type"}
 
