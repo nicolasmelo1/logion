@@ -5,8 +5,9 @@ is an OBSERVER used by assertions — it does NOT replace
 the Logion adapter.
 
 Token env keys: ``LOGION_PROVING_GROUND_GH_TOKEN_CREATOR``,
-``LOGION_PROVING_GROUND_GH_TOKEN_BUYER``. If a token is absent, observer
-methods return a sentinel that makes dependent assertions
+``LOGION_PROVING_GROUND_GH_TOKEN_BUYER``. The repository can be supplied
+explicitly or through ``LOGION_PROVING_GROUND_GH_REPO``. If a token is
+absent, observer methods return a sentinel that makes dependent assertions
 ``unsupported`` (skipped if ``optional: true``, failed otherwise) —
 mirroring the ``RoleKeyStore`` missing-key behavior.
 """
@@ -103,6 +104,21 @@ class GithubObserver:
         except Exception:
             return None
 
+    def _get_all_pages(self, url: str) -> list[Any] | None:
+        """Fetch every page from a GitHub list endpoint."""
+        items: list[Any] = []
+        separator = "&" if "?" in url else "?"
+        page = 1
+        while True:
+            page_url = f"{url}{separator}per_page=100&page={page}"
+            batch = self._get_raw(page_url)
+            if not isinstance(batch, list):
+                return None
+            items.extend(batch)
+            if len(batch) < 100:
+                return items
+            page += 1
+
     def pr_exists(
         self,
         *,
@@ -118,7 +134,7 @@ class GithubObserver:
             )
         path = f"pulls?{urllib.parse.urlencode(query)}"
         url = f"{GITHUB_API_BASE}/repos/{self._repo}/{path}"
-        prs = self._get_raw(url)
+        prs = self._get_all_pages(url)
         if not isinstance(prs, list):
             return None
         for pr in prs:
@@ -154,7 +170,7 @@ class GithubObserver:
             f"{GITHUB_API_BASE}/repos/{self._repo}"
             f"/issues/{issue_number}/comments"
         )
-        comments = self._get_raw(url)
+        comments = self._get_all_pages(url)
         if not isinstance(comments, list):
             return []
         return [c for c in comments if isinstance(c, dict)]

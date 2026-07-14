@@ -140,6 +140,42 @@ def test_observer_qualifies_and_encodes_head_branch(
     assert "head=owner%3Afeature%2Fbranch" in requested_urls[0]
 
 
+def test_observer_paginates_pull_requests_and_issue_comments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observer = GithubObserver(token="token", repo="owner/repo")
+    requested_urls: list[str] = []
+
+    def fake_get(url: str) -> list[dict[str, object]]:
+        requested_urls.append(url)
+        if "pulls?" in url:
+            if url.endswith("page=1"):
+                return [
+                    {"number": number, "state": "open", "body": ""}
+                    for number in range(100)
+                ]
+            return [
+                {
+                    "number": 101,
+                    "state": "open",
+                    "body": "target-marker",
+                }
+            ]
+        if url.endswith("page=1"):
+            return [{"id": number} for number in range(100)]
+        return [{"id": 101}]
+
+    monkeypatch.setattr(observer, "_get_raw", fake_get)
+
+    pr = observer.pr_exists(marker="target-marker")
+    comments = observer.issue_comments(7)
+
+    assert pr is not None
+    assert pr["number"] == 101
+    assert len(comments) == 101
+    assert any("per_page=100&page=2" in url for url in requested_urls)
+
+
 @pytest.mark.parametrize(
     "assertion",
     [GithubPrMergedAssertion(), GithubPrClosedUnmergedAssertion()],
