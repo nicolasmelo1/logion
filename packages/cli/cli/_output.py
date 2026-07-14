@@ -7,11 +7,11 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
-from pydantic import BaseModel
-
 
 def to_data(value: Any) -> Any:
     """Recursively convert Pydantic models to plain JSON-safe data."""
+    from pydantic import BaseModel
+
     if isinstance(value, BaseModel):
         return value.model_dump(mode="json")
     if isinstance(value, SimpleNamespace):
