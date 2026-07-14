@@ -47,7 +47,7 @@ class GithubPrExistsAssertion(_GithubAssertionBase):
         marker = params.get("marker")
         head_branch = params.get("head_branch")
         pr = observer.pr_exists(head_branch=head_branch, marker=marker)
-        if pr is not None:
+        if pr is not None and pr.get("state") == "open":
             return AssertionOutcome(
                 type=self.type,
                 status="passed",

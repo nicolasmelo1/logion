@@ -117,7 +117,7 @@ class GithubObserver:
         if not isinstance(prs, list):
             return None
         for pr in prs:
-            if not isinstance(pr, dict):
+            if not isinstance(pr, dict) or pr.get("state") != "open":
                 continue
             if marker:
                 body = pr.get("body") or ""
@@ -128,10 +128,10 @@ class GithubObserver:
         return None
 
     def pr_state(self, pr_number: int) -> str:
-        """Return 'open', 'merged', or 'closed'."""
+        """Return 'open', 'merged', 'closed', or 'unknown'."""
         pr = self._get(f"pulls/{pr_number}")
         if pr is None:
-            return "closed"
+            return "unknown"
         if pr.get("merged_at"):
             return "merged"
         if pr.get("state") == "open":
