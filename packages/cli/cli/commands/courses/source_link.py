@@ -67,8 +67,7 @@ def handle_show(args: argparse.Namespace) -> int:
             _emit_show_human(data)
     except Exception as exc:
         status_code = getattr(exc, "status_code", None)
-        detail = str(getattr(exc, "detail", ""))
-        if status_code == 404 or "not found" in detail.lower():
+        if status_code == 404:
             print_err(f"No source link found for course {args.course_id}.")
             return 1
         return handle_error(exc)

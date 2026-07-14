@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from cli.main import main
-from logion._errors import NotFoundError
+from logion._errors import ForbiddenError, NotFoundError
 
 CID = "550e8400-e29b-41d4-a716-446655440000"
 
@@ -17,6 +17,7 @@ class FakeCoursesResource:
     def __init__(self) -> None:
         self.last_call: tuple[str, dict[str, Any]] = ("", {})
         self._source_link: dict[str, Any] | None = None
+        self.get_error: Exception | None = None
         self.deleted = False
 
     def set_source_link(self, **kw: Any) -> dict[str, Any]:
@@ -35,6 +36,8 @@ class FakeCoursesResource:
 
     def get_source_link(self, **kw: Any) -> dict[str, Any]:
         self.last_call = ("get_source_link", kw)
+        if self.get_error is not None:
+            raise self.get_error
         if self._source_link is None:
             raise NotFoundError(404, "Source link not found for this course")
         return dict(self._source_link)
@@ -144,6 +147,23 @@ def test_show_404_exits_nonzero(
     assert code == 1
     err = capsys.readouterr().err
     assert "No source link found" in err
+
+
+def test_show_does_not_misclassify_non_404_not_found_detail(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    courses = FakeCoursesResource()
+    courses.get_error = ForbiddenError(403, "Repository not found")
+    fake = FakeClient(v1=FakeV1Namespace(courses=courses))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["courses", "source-link", "show", CID])
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "No source link found" not in captured.err
+    assert "Repository not found" in captured.err
 
 
 def test_remove_requires_yes(

@@ -1,7 +1,7 @@
 """GitHub observer for proving-ground assertions.
 
-Queries github.com via the ``gh`` CLI or GitHub REST API with a token
-from env. This is an OBSERVER used by assertions — it does NOT replace
+Queries github.com via the GitHub REST API with a token from env. This
+is an OBSERVER used by assertions — it does NOT replace
 the Logion adapter.
 
 Token env keys: ``LOGION_PROVING_GROUND_GH_TOKEN_CREATOR``,
@@ -42,8 +42,13 @@ class GithubObserver:
         repo: str | None = None,
         extra_env: dict[str, str] | None = None,
     ) -> GithubObserver | None:
-        env: dict[str, str] = {**(extra_env or {}), **os.environ}
-        token_key = CREATOR_TOKEN_ENV if role == "creator" else BUYER_TOKEN_ENV
+        env: dict[str, str] = {**os.environ, **(extra_env or {})}
+        if role == "creator":
+            token_key = CREATOR_TOKEN_ENV
+        elif role == "buyer":
+            token_key = BUYER_TOKEN_ENV
+        else:
+            return None
         token = env.get(token_key)
         if not token:
             return None
@@ -148,12 +153,3 @@ class GithubObserver:
         if not isinstance(comments, list):
             return []
         return [c for c in comments if isinstance(c, dict)]
-
-    def installation_delivered(self) -> bool:
-        """Check if the GitHub App installation webhook was delivered.
-
-        This is best-effort and always returns True when the observer
-        has a valid token — the actual delivery check requires App
-        admin access which is not available via user tokens.
-        """
-        return self._token is not None and bool(self._repo)

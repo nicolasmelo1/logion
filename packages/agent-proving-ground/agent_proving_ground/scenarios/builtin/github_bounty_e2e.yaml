@@ -27,6 +27,7 @@ phases:
         params:
           course: "${COURSE_ID}"
           repository: "${REPO}"
+          owner_agent: creator
   - id: issue_bounty
     actor: creator
     goal: "Open an issue and comment `@<bot> bounty 250`, then `@<bot> confirm`."
@@ -38,6 +39,7 @@ phases:
       - type: api.bounty_exists
         params:
           status: funded
+          creator_agent: creator
   - id: submit_pr
     actor: buyer
     goal: "Do the work and `logion bounties submissions create <BOUNTY> --github-pr`."
@@ -46,6 +48,7 @@ phases:
         params:
           bounty: "${BOUNTY_1}"
           submission: "${SUB_1}"
+          creator_agent: creator
       - type: github.pr_exists
         params:
           marker: "logion:bounty_submission"
@@ -60,6 +63,7 @@ phases:
         params:
           bounty: "${BOUNTY_1}"
           submission: "${SUB_1}"
+          creator_agent: creator
       - type: api.credit_balance_changed
         params:
           role: buyer
@@ -75,5 +79,6 @@ phases:
         params:
           bounty: "${BOUNTY_2}"
           submission: "${SUB_2}"
+          creator_agent: creator
 final_assertions:
   - type: timeline.no_unredacted_secret

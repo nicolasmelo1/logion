@@ -211,16 +211,9 @@ class GithubInstallationDeliveredAssertion(_GithubAssertionBase):
                 message="GitHub token or repo not configured",
                 evidence={},
             )
-        if observer.installation_delivered():
-            return AssertionOutcome(
-                type=self.type,
-                status="passed",
-                message="Installation delivery appears active",
-                evidence={},
-            )
         return AssertionOutcome(
             type=self.type,
-            status="failed",
-            message="Installation delivery not confirmed",
+            status="unsupported",
+            message="Installation delivery requires GitHub App admin access",
             evidence={},
         )
