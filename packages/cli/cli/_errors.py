@@ -7,8 +7,6 @@ import json
 import sys
 from uuid import UUID
 
-from logion import APIError, LogionError
-
 ALLOWED_ERROR_CODES = frozenset({
     "auth_missing",
     "entitlement_missing",
@@ -27,6 +25,8 @@ ALLOWED_ERROR_CODES = frozenset({
 
 def handle_error(exc: Exception) -> int:
     """Map an exception to an exit code and print a user-facing message."""
+    from logion import APIError, LogionError
+
     if isinstance(exc, APIError):
         detail = getattr(exc, "detail", str(exc))
         if isinstance(detail, list):

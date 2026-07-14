@@ -7,8 +7,6 @@ import argparse
 import json
 import sys
 
-from pydantic import BaseModel
-
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
@@ -131,10 +129,13 @@ def handle_reject(args: argparse.Namespace) -> int:
 
 def _to_data(value: object) -> dict:
     """Convert a Pydantic model or dict to a plain dict."""
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
     if isinstance(value, dict):
         return value
+
+    from pydantic import BaseModel
+
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
     return json.loads(json.dumps(value))
 
 
