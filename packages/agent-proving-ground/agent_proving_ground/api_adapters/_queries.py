@@ -620,7 +620,7 @@ class LogionApiQueries:
             return {"accepted": False, "evidence": {"source": "api"}}
         submission_id = query.get("submission")
         for sub in data:
-            if submission_id and sub.get("id") != submission_id:
+            if submission_id and str(sub.get("id")) != str(submission_id):
                 continue
             if sub.get("status") == "accepted":
                 return {
@@ -645,7 +645,7 @@ class LogionApiQueries:
             return {"rejected": False, "evidence": {"source": "api"}}
         submission_id = query.get("submission")
         for sub in data:
-            if submission_id and sub.get("id") != submission_id:
+            if submission_id and str(sub.get("id")) != str(submission_id):
                 continue
             if sub.get("status") in ("rejected", "withdrawn"):
                 return {

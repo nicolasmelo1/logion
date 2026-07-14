@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -109,9 +110,13 @@ class GithubObserver:
         marker: str | None = None,
     ) -> dict[str, Any] | None:
         """Find an open PR matching head_branch or body marker."""
-        path = "pulls?state=all"
+        query = {"state": "open"}
         if head_branch:
-            path += f"&head={head_branch}"
+            owner = self._repo.split("/", 1)[0]
+            query["head"] = (
+                head_branch if ":" in head_branch else f"{owner}:{head_branch}"
+            )
+        path = f"pulls?{urllib.parse.urlencode(query)}"
         url = f"{GITHUB_API_BASE}/repos/{self._repo}/{path}"
         prs = self._get_raw(url)
         if not isinstance(prs, list):

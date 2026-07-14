@@ -15,6 +15,13 @@ from agent_proving_ground.assertions.base import (
 )
 
 
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 class _GithubAssertionBase(Assertion):
     """Shared logic for GitHub-observed assertions."""
 
@@ -79,12 +86,12 @@ class GithubPrMergedAssertion(_GithubAssertionBase):
                 message="GitHub token or repo not configured",
                 evidence={},
             )
-        pr_number = int(params.get("pr_number", 0))
+        pr_number = _as_int(params.get("pr_number", 0))
         if not pr_number:
             marker = params.get("marker")
             pr = observer.pr_exists(marker=marker)
             if pr is not None:
-                pr_number = int(pr.get("number", 0))
+                pr_number = _as_int(pr.get("number", 0))
         if not pr_number:
             return AssertionOutcome(
                 type=self.type,
@@ -122,7 +129,7 @@ class GithubPrClosedUnmergedAssertion(_GithubAssertionBase):
                 message="GitHub token or repo not configured",
                 evidence={},
             )
-        pr_number = int(params.get("pr_number", 0))
+        pr_number = _as_int(params.get("pr_number", 0))
         if not pr_number:
             return AssertionOutcome(
                 type=self.type,
@@ -152,10 +159,7 @@ class GithubIssueBotCommentMatchAssertion(_GithubAssertionBase):
     async def evaluate(
         self, ctx: AssertionContext, params: dict[str, Any]
     ) -> AssertionOutcome:
-        try:
-            issue_number = int(params.get("issue", 0))
-        except (TypeError, ValueError):
-            issue_number = 0
+        issue_number = _as_int(params.get("issue", 0))
         pattern = str(params.get("pattern", ""))
         if not issue_number or not pattern:
             return AssertionOutcome(

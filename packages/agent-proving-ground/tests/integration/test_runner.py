@@ -220,6 +220,42 @@ phases:
     )
 
 
+async def test_sensitive_environment_parameters_are_not_interpolated(
+    runner_factory,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    secret = "must-not-reach-artifacts"
+    monkeypatch.setenv("SCENARIO_API_TOKEN", secret)
+    text = """
+schema_version: "1"
+name: sensitive_parameter
+description: test
+api_adapter: mock
+agents:
+  - id: a
+    role: r
+    driver: scripted
+phases:
+  - id: p
+    actor: a
+    goal: inspect ${SCENARIO_API_TOKEN}
+    assertions: []
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+
+    result = await runner_factory(str(scenario_path)).run()
+
+    assert result.status == "inconclusive"
+    assert result.failure_message == (
+        "unresolved scenario parameters: SCENARIO_API_TOKEN"
+    )
+    assert secret not in (tmp_path / "timeline.jsonl").read_text(
+        encoding="utf-8"
+    )
+
+
 async def test_multi_agent_scenario_uses_isolated_driver_instances(
     runner_factory,
     tmp_path,

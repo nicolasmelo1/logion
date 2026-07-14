@@ -50,19 +50,29 @@ _DRIVER_CLASSES: dict[str, type[AgentDriver]] = {
 }
 
 _PARAMETER_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
+_SENSITIVE_BINDING_RE = re.compile(
+    r"(?:TOKEN|SECRET|PASSWORD|AUTH|API_KEY|PRIVATE_KEY)", re.IGNORECASE
+)
 
 
 def _scenario_bindings(world: World) -> dict[str, str]:
-    bindings = dict(os.environ)
+    bindings = {
+        key: value
+        for key, value in os.environ.items()
+        if not _SENSITIVE_BINDING_RE.search(key)
+    }
     bindings.update({
         key: str(value)
         for key, value in (world.data or {}).items()
         if isinstance(value, (str, int, float))
+        and not _SENSITIVE_BINDING_RE.search(key)
     })
     scenario_vars = (world.data or {}).get("scenario_vars")
     if isinstance(scenario_vars, dict):
         bindings.update({
-            str(key): str(value) for key, value in scenario_vars.items()
+            str(key): str(value)
+            for key, value in scenario_vars.items()
+            if not _SENSITIVE_BINDING_RE.search(str(key))
         })
     return bindings
 
