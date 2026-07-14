@@ -8,6 +8,7 @@ from uuid import UUID
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     GetCourseSourceLinkResponse,
+    PackageMapPath,
     SetCourseSourceLinkRequest,
     SetCourseSourceLinkResponse,
 )
@@ -28,7 +29,11 @@ class _CoursesSourceLinkMixin(_CoursesResourceBase):
         body = SetCourseSourceLinkRequest(
             repository=repository,
             ref=ref,
-            package_map_path=package_map_path,
+            package_map_path=(
+                PackageMapPath(root=package_map_path)
+                if package_map_path is not None
+                else None
+            ),
         )
         return operations.set_course_source_link(
             self._http,
