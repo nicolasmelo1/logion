@@ -16,6 +16,8 @@ from agent_proving_ground.assertions.base import (
 
 
 def _as_int(value: Any) -> int:
+    if isinstance(value, bool):
+        return 0
     try:
         return int(value)
     except (TypeError, ValueError):

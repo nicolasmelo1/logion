@@ -176,12 +176,14 @@ def test_observer_paginates_pull_requests_and_issue_comments(
     assert any("per_page=100&page=2" in url for url in requested_urls)
 
 
+@pytest.mark.parametrize("invalid_pr_number", ["not-a-number", True, False])
 @pytest.mark.parametrize(
     "assertion",
     [GithubPrMergedAssertion(), GithubPrClosedUnmergedAssertion()],
 )
 async def test_pr_state_assertions_reject_invalid_numbers(
     assertion: GithubPrMergedAssertion | GithubPrClosedUnmergedAssertion,
+    invalid_pr_number: str | bool,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -199,7 +201,7 @@ async def test_pr_state_assertions_reject_invalid_numbers(
     )
 
     result = await assertion.evaluate(
-        _context(tmp_path), {"pr_number": "not-a-number"}
+        _context(tmp_path), {"pr_number": invalid_pr_number}
     )
 
     assert result.status == "failed"

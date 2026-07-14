@@ -16,6 +16,7 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import (
+    ALLOWED_ERROR_CODES,
     emit_error_json,
     handle_error,
     print_err,
@@ -27,6 +28,31 @@ from cli._output import emit_json, to_data
 _SET_KIND = "logion.courses.source-link.set"
 _SHOW_KIND = "logion.courses.source-link.show"
 _REMOVE_KIND = "logion.courses.source-link.remove"
+
+
+def _handle_source_link_error(exc: Exception, *, json_output: bool) -> int:
+    if not json_output:
+        return handle_error(exc)
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code is None:
+        return handle_error(exc)
+    detail = getattr(exc, "detail", str(exc))
+    if isinstance(detail, list):
+        detail = "; ".join(str(item) for item in detail)
+    message = str(detail)
+    if message in ALLOWED_ERROR_CODES:
+        code = message
+    elif status_code == 401:
+        code = "auth_missing"
+    elif status_code == 404:
+        code = "not_found"
+    elif status_code >= 500:
+        code = "server_error"
+    else:
+        code = "validation_failed"
+    emit_error_json(code, message, 1)
+    return 1
 
 
 def handle_set(args: argparse.Namespace) -> int:
@@ -48,7 +74,9 @@ def handle_set(args: argparse.Namespace) -> int:
         else:
             _emit_set_human(data)
     except Exception as exc:
-        return handle_error(exc)
+        return _handle_source_link_error(
+            exc, json_output=config.json_output
+        )
     else:
         return 0
     finally:
@@ -79,7 +107,9 @@ def handle_show(args: argparse.Namespace) -> int:
             else:
                 print_err(message)
             return 1
-        return handle_error(exc)
+        return _handle_source_link_error(
+            exc, json_output=config.json_output
+        )
     else:
         return 0
     finally:
@@ -108,7 +138,9 @@ def handle_remove(args: argparse.Namespace) -> int:
                 f"Source link revoked for course {args.course_id}.\n"
             )
     except Exception as exc:
-        return handle_error(exc)
+        return _handle_source_link_error(
+            exc, json_output=config.json_output
+        )
     else:
         return 0
     finally:

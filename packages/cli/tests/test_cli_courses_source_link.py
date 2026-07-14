@@ -18,11 +18,15 @@ class FakeCoursesResource:
     def __init__(self) -> None:
         self.last_call: tuple[str, dict[str, Any]] = ("", {})
         self._source_link: dict[str, Any] | None = None
+        self.set_error: Exception | None = None
         self.get_error: Exception | None = None
+        self.delete_error: Exception | None = None
         self.deleted = False
 
     def set_source_link(self, **kw: Any) -> dict[str, Any]:
         self.last_call = ("set_source_link", kw)
+        if self.set_error is not None:
+            raise self.set_error
         self._source_link = {
             "course_id": str(kw.get("course_id", CID)),
             "provider": "github",
@@ -45,6 +49,8 @@ class FakeCoursesResource:
 
     def delete_source_link(self, **kw: Any) -> None:
         self.last_call = ("delete_source_link", kw)
+        if self.delete_error is not None:
+            raise self.delete_error
         self.deleted = True
 
 
@@ -163,6 +169,64 @@ def test_show_404_emits_json_error_envelope(
     payload = json.loads(capsys.readouterr().err)
     assert payload["kind"] == "logion.error"
     assert payload["data"]["code"] == "not_found"
+    assert payload["data"]["exit_code"] == 1
+
+
+@pytest.mark.parametrize(
+    ("error_attribute", "arguments"),
+    [
+        (
+            "set_error",
+            [
+                "courses",
+                "source-link",
+                "set",
+                CID,
+                "--repository",
+                "owner/repo",
+                "--json",
+            ],
+        ),
+        (
+            "get_error",
+            ["courses", "source-link", "show", CID, "--json"],
+        ),
+        (
+            "delete_error",
+            [
+                "courses",
+                "source-link",
+                "remove",
+                CID,
+                "--yes",
+                "--json",
+            ],
+        ),
+    ],
+)
+def test_json_api_failures_use_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error_attribute: str,
+    arguments: list[str],
+) -> None:
+    courses = FakeCoursesResource()
+    setattr(
+        courses,
+        error_attribute,
+        ForbiddenError(403, "github_repository_inaccessible"),
+    )
+    _patch_client(
+        monkeypatch,
+        FakeClient(v1=FakeV1Namespace(courses=courses)),
+    )
+
+    code = main(arguments)
+
+    assert code == 1
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "github_repository_inaccessible"
     assert payload["data"]["exit_code"] == 1
 
 
