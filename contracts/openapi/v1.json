@@ -6271,6 +6271,8 @@
           "package_map_path": {
             "anyOf": [
               {
+                "maxLength": 512,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -6281,10 +6283,14 @@
           },
           "ref": {
             "default": "main",
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Ref",
             "type": "string"
           },
           "repository": {
+            "maxLength": 255,
+            "minLength": 3,
             "title": "Repository",
             "type": "string"
           }
@@ -11782,6 +11788,16 @@
             },
             "description": "Forbidden"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11926,6 +11942,16 @@
             },
             "description": "Source link set"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
           "403": {
             "content": {
               "application/json": {
@@ -11965,6 +11991,16 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
           }
         },
         "summary": "Set or update course source link",
