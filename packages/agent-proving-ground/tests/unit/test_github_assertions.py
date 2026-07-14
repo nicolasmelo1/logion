@@ -13,6 +13,7 @@ from agent_proving_ground.api_adapters.mock import MockApiAdapter
 from agent_proving_ground.assertions.base import AssertionContext
 from agent_proving_ground.assertions.github import (
     GithubInstallationDeliveredAssertion,
+    GithubIssueBotCommentMatchAssertion,
     GithubPrExistsAssertion,
 )
 from agent_proving_ground.assertions.registry import AssertionRegistry
@@ -80,6 +81,17 @@ async def test_pr_exists_assertion_rejects_closed_match(
     )
 
     assert result.status == "failed"
+
+
+async def test_issue_comment_invalid_regex_fails_without_crashing(
+    tmp_path: Path,
+) -> None:
+    result = await GithubIssueBotCommentMatchAssertion().evaluate(
+        _context(tmp_path), {"issue": 1, "pattern": "[invalid"}
+    )
+
+    assert result.status == "failed"
+    assert "Invalid regex pattern" in result.message
 
 
 def test_observer_pr_exists_ignores_closed_matches(

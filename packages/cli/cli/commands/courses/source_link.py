@@ -15,7 +15,12 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
-from cli._errors import handle_error, print_err, validate_uuid_id
+from cli._errors import (
+    emit_error_json,
+    handle_error,
+    print_err,
+    validate_uuid_id,
+)
 from cli._options import COMMON_PARSER
 from cli._output import emit_json, to_data
 
@@ -68,7 +73,11 @@ def handle_show(args: argparse.Namespace) -> int:
     except Exception as exc:
         status_code = getattr(exc, "status_code", None)
         if status_code == 404:
-            print_err(f"No source link found for course {args.course_id}.")
+            message = f"No source link found for course {args.course_id}."
+            if config.json_output:
+                emit_error_json("not_found", message, 1)
+            else:
+                print_err(message)
             return 1
         return handle_error(exc)
     else:

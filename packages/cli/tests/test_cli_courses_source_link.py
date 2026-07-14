@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -147,6 +148,22 @@ def test_show_404_exits_nonzero(
     assert code == 1
     err = capsys.readouterr().err
     assert "No source link found" in err
+
+
+def test_show_404_emits_json_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake = FakeClient(v1=FakeV1Namespace(courses=FakeCoursesResource()))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["courses", "source-link", "show", CID, "--json"])
+
+    assert code == 1
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "not_found"
+    assert payload["data"]["exit_code"] == 1
 
 
 def test_show_does_not_misclassify_non_404_not_found_detail(

@@ -152,6 +152,28 @@ class GithubIssueBotCommentMatchAssertion(_GithubAssertionBase):
     async def evaluate(
         self, ctx: AssertionContext, params: dict[str, Any]
     ) -> AssertionOutcome:
+        try:
+            issue_number = int(params.get("issue", 0))
+        except (TypeError, ValueError):
+            issue_number = 0
+        pattern = str(params.get("pattern", ""))
+        if not issue_number or not pattern:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="Missing issue number or pattern",
+                evidence={**params},
+            )
+        try:
+            regex = re.compile(pattern, re.IGNORECASE)
+        except re.error as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"Invalid regex pattern: {exc}",
+                evidence={**params},
+            )
+
         observer = self._observer(ctx, params)
         if observer is None:
             return AssertionOutcome(
@@ -160,18 +182,8 @@ class GithubIssueBotCommentMatchAssertion(_GithubAssertionBase):
                 message="GitHub token or repo not configured",
                 evidence={},
             )
-        issue_number = int(params.get("issue", 0))
-        pattern = params.get("pattern", "")
-        if not issue_number or not pattern:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="Missing issue number or pattern",
-                evidence={**params},
-            )
         comments = observer.issue_comments(issue_number)
         bot_suffix = "[bot]"
-        regex = re.compile(pattern, re.IGNORECASE)
         for comment in comments:
             author = str(comment.get("user", {}).get("login", ""))
             body = str(comment.get("body", ""))

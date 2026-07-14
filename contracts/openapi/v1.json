@@ -2955,9 +2955,16 @@
             "type": "string"
           },
           "github_identity_id": {
-            "format": "uuid",
-            "title": "Github Identity Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Identity Id"
           },
           "package_map_path": {
             "title": "Package Map Path",
@@ -2982,8 +2989,7 @@
           "repository",
           "default_ref",
           "package_map_path",
-          "status",
-          "github_identity_id"
+          "status"
         ],
         "title": "GetCourseSourceLinkResponse",
         "type": "object"
