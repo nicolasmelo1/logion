@@ -57,7 +57,7 @@ def _scenario_bindings(world: World) -> dict[str, str]:
     bindings.update({
         key: str(value)
         for key, value in (world.data or {}).items()
-        if isinstance(value, str | int | float)
+        if isinstance(value, (str, int, float))
     })
     scenario_vars = (world.data or {}).get("scenario_vars")
     if isinstance(scenario_vars, dict):
