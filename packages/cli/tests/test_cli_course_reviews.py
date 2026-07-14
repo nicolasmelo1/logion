@@ -400,7 +400,7 @@ def test_course_reviews_download_writes_bundle_files(
     cr.bundle_files = files
     _patch_client(monkeypatch, FakeClient(v1=FakeV1Namespace(cr)))
     monkeypatch.setattr(
-        "httpx.Client",
+        "cli.commands.course_reviews._download_handler.httpx.Client",
         lambda **_: FakeStreamClient(),
     )
 
@@ -441,7 +441,7 @@ def test_course_reviews_download_refuses_path_escape(
     cr.bundle_files = files
     _patch_client(monkeypatch, FakeClient(v1=FakeV1Namespace(cr)))
     monkeypatch.setattr(
-        "httpx.Client",
+        "cli.commands.course_reviews._download_handler.httpx.Client",
         lambda **_: FakeStreamClient(),
     )
 

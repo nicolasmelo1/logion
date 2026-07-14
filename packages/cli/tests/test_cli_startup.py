@@ -4,15 +4,25 @@
 from __future__ import annotations
 
 import json
+import os
 import statistics
 import subprocess
 import sys
 import time
+from pathlib import Path
 from textwrap import dedent
+from typing import get_type_hints
 
 _MAX_PYTHON_STARTUP_MULTIPLIER = 15
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _SUBPROCESS_TIMEOUT_SECONDS = 10
 _TIMING_ROUNDS = 7
+_SUBPROCESS_ENV = dict(os.environ)
+_SUBPROCESS_ENV["PYTHONPATH"] = os.pathsep.join([
+    str(_REPO_ROOT / "packages" / "cli"),
+    str(_REPO_ROOT / "packages" / "client" / "src"),
+    str(_REPO_ROOT / "packages" / "skillmap"),
+])
 
 
 def test_parser_build_does_not_load_runtime_dependencies() -> None:
@@ -45,6 +55,8 @@ def test_parser_build_does_not_load_runtime_dependencies() -> None:
         [sys.executable, "-c", probe],
         check=True,
         capture_output=True,
+        cwd=_REPO_ROOT,
+        env=_SUBPROCESS_ENV,
         text=True,
         timeout=_SUBPROCESS_TIMEOUT_SECONDS,
     )
@@ -80,8 +92,27 @@ def test_client_factory_loads_sdk_only_when_called() -> None:
     subprocess.run(
         [sys.executable, "-c", probe],
         check=True,
+        cwd=_REPO_ROOT,
+        env=_SUBPROCESS_ENV,
         timeout=_SUBPROCESS_TIMEOUT_SECONDS,
     )
+
+
+def test_lazy_runtime_type_hints_remain_resolvable() -> None:
+    """Lazy imports preserve runtime type-introspection behavior."""
+    import httpx
+
+    from cli._context import _LogionClientFactory, make_client
+    from cli.commands.course_reviews._download_handler import _download_files
+    from cli.commands.credits.handlers import _poll_top_up
+    from logion import LogionClient
+
+    assert get_type_hints(make_client)["return"] is LogionClient
+    assert (
+        get_type_hints(_LogionClientFactory.__call__)["return"] is LogionClient
+    )
+    assert get_type_hints(_download_files)["http"] is httpx.Client
+    assert get_type_hints(_poll_top_up)["client"] is LogionClient
 
 
 def _elapsed(command: list[str]) -> float:
@@ -89,6 +120,8 @@ def _elapsed(command: list[str]) -> float:
     subprocess.run(
         command,
         check=True,
+        cwd=_REPO_ROOT,
+        env=_SUBPROCESS_ENV,
         stderr=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         timeout=_SUBPROCESS_TIMEOUT_SECONDS,

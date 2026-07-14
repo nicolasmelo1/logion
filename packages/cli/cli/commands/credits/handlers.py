@@ -12,6 +12,7 @@ from cli._config import CliConfig, resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._lazy_import import LazyModule
 from cli._output import emit_json, to_data
 
 from ._helpers import (
@@ -24,7 +25,9 @@ from ._helpers import (
 )
 
 if TYPE_CHECKING:
-    from logion import LogionClient
+    import logion
+else:
+    logion = LazyModule("logion")
 
 
 def _run(
@@ -105,7 +108,7 @@ def handle_credits_top_up(args: argparse.Namespace) -> int:
 def _poll_top_up(
     args: argparse.Namespace,
     config: CliConfig,
-    client: LogionClient,
+    client: logion.LogionClient,
     initial_payload: dict[str, Any],
 ) -> int:
     """Poll a top-up until terminal state or timeout."""

@@ -23,16 +23,17 @@ from typing import TYPE_CHECKING, Any
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
+from cli._lazy_import import LazyModule
 from cli._output import emit
 
 if TYPE_CHECKING:
     import httpx
+else:
+    httpx = LazyModule("httpx")
 
 
 def handle_download(args: argparse.Namespace) -> int:
     """Execute course-reviews download — fetch bundle for review."""
-    import httpx
-
     bad_id = validate_uuid_id(args.review_id, "REVIEW_ID")
     if bad_id is not None:
         return bad_id

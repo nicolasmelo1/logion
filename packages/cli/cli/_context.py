@@ -6,25 +6,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from cli._config import CliConfig
+from cli._lazy_import import LazyModule
 
 if TYPE_CHECKING:
-    from logion import LogionClient as Client
+    import logion
 else:
-    Client = object
+    logion = LazyModule("logion")
 
 
 class _LogionClientFactory:
-    def __call__(self, **kwargs: Any) -> Client:
-        from logion import LogionClient as ClientImpl
-
-        return ClientImpl(**kwargs)
+    def __call__(self, **kwargs: Any) -> logion.LogionClient:
+        return logion.LogionClient(**kwargs)
 
 
 # Keep the existing monkeypatch seam without importing the SDK at startup.
 LogionClient = _LogionClientFactory()
 
 
-def make_client(config: CliConfig) -> Client:
+def make_client(config: CliConfig) -> logion.LogionClient:
     """Create a LogionClient from resolved CLI configuration."""
     return LogionClient(
         api_key=config.api_key,
