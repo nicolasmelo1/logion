@@ -18,14 +18,18 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
-
-import httpx
+from typing import TYPE_CHECKING, Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
+from cli._lazy_import import LazyModule
 from cli._output import emit
+
+if TYPE_CHECKING:
+    import httpx
+else:
+    httpx = LazyModule("httpx")
 
 
 def handle_download(args: argparse.Namespace) -> int:

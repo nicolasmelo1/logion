@@ -9,10 +9,10 @@ import time
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import emit_error_json, handle_error, print_err
+from cli._errors import emit_error_json, print_err
 from cli._output import emit_json, to_data
 from cli.commands.identity._browser import device_prompt_line
-from logion import APIError
+from cli.commands.identity._github_errors import handle_github_exception
 
 _CONNECT_KIND = "logion.identity.github.connect"
 _STATUS_KIND = "logion.identity.github.status"
@@ -31,35 +31,6 @@ def _require_yes(yes: bool, action: str, json_output: bool) -> int | None:
     else:
         print_err(message)
     return 2
-
-
-def _detail_text(detail: str | list[dict[str, object]]) -> str:
-    if isinstance(detail, list):
-        return "; ".join(str(item) for item in detail)
-    return str(detail)
-
-
-def _api_error_code(exc: APIError) -> str:
-    detail_text = _detail_text(exc.detail).lower()
-    if exc.status_code == 401:
-        return "auth_missing"
-    if "github_oauth_unconfigured" in detail_text or exc.status_code == 503:
-        return "github_oauth_unconfigured"
-    if "github_identity_conflict" in detail_text or exc.status_code == 409:
-        return "github_identity_conflict"
-    if exc.status_code == 404:
-        return "not_found"
-    if exc.status_code == 422:
-        return "validation_failed"
-    return "server_error"
-
-
-def _handle_api_error(exc: APIError, json_output: bool) -> int:
-    if json_output:
-        emit_error_json(_api_error_code(exc), _detail_text(exc.detail), 1)
-    else:
-        return handle_error(exc)
-    return 1
 
 
 def handle_connect(args: argparse.Namespace) -> int:
@@ -131,10 +102,8 @@ def handle_connect(args: argparse.Namespace) -> int:
             )
         else:
             print_err("Device flow timed out before authorization completed.")
-    except APIError as exc:
-        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_github_exception(exc, config.json_output)
     else:
         return 2
     finally:
@@ -157,10 +126,8 @@ def handle_status(args: argparse.Namespace) -> int:
                 print(f"Connected as @{login}")
             else:
                 print("Not connected")
-    except APIError as exc:
-        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_github_exception(exc, config.json_output)
     else:
         return 0
     finally:
@@ -185,10 +152,8 @@ def handle_disconnect(args: argparse.Namespace) -> int:
             emit_json(_DISCONNECT_KIND, data)
         else:
             print("GitHub identity disconnected.")
-    except APIError as exc:
-        return _handle_api_error(exc, config.json_output)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_github_exception(exc, config.json_output)
     else:
         return 0
     finally:
