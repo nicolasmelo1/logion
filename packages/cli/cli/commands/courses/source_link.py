@@ -74,9 +74,7 @@ def handle_set(args: argparse.Namespace) -> int:
         else:
             _emit_set_human(data)
     except Exception as exc:
-        return _handle_source_link_error(
-            exc, json_output=config.json_output
-        )
+        return _handle_source_link_error(exc, json_output=config.json_output)
     else:
         return 0
     finally:
@@ -107,9 +105,7 @@ def handle_show(args: argparse.Namespace) -> int:
             else:
                 print_err(message)
             return 1
-        return _handle_source_link_error(
-            exc, json_output=config.json_output
-        )
+        return _handle_source_link_error(exc, json_output=config.json_output)
     else:
         return 0
     finally:
@@ -138,9 +134,7 @@ def handle_remove(args: argparse.Namespace) -> int:
                 f"Source link revoked for course {args.course_id}.\n"
             )
     except Exception as exc:
-        return _handle_source_link_error(
-            exc, json_output=config.json_output
-        )
+        return _handle_source_link_error(exc, json_output=config.json_output)
     else:
         return 0
     finally:
