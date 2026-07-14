@@ -11,7 +11,10 @@ import sys
 import time
 from pathlib import Path
 from textwrap import dedent
+from types import ModuleType
 from typing import get_type_hints
+
+import pytest
 
 _MAX_PYTHON_STARTUP_MULTIPLIER = 15
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -23,6 +26,29 @@ _SUBPROCESS_ENV["PYTHONPATH"] = os.pathsep.join([
     str(_REPO_ROOT / "packages" / "client" / "src"),
     str(_REPO_ROOT / "packages" / "skillmap"),
 ])
+
+
+def test_lazy_module_caches_loaded_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated attribute access reuses the first imported module."""
+    from cli import _lazy_import
+
+    calls: list[str] = []
+    module = ModuleType("example_runtime")
+    token = object()
+    module.__dict__["token"] = token
+
+    def load_module(name: str) -> ModuleType:
+        calls.append(name)
+        return module
+
+    monkeypatch.setattr(_lazy_import, "import_module", load_module)
+    lazy_module = _lazy_import.LazyModule("example_runtime")
+
+    assert lazy_module.token is token
+    assert lazy_module.token is token
+    assert calls == ["example_runtime"]
 
 
 def test_parser_build_does_not_load_runtime_dependencies() -> None:
