@@ -129,12 +129,13 @@ def handle_reject(args: argparse.Namespace) -> int:
 
 def _to_data(value: object) -> dict:
     """Convert a Pydantic model or dict to a plain dict."""
+    if isinstance(value, dict):
+        return value
+
     from pydantic import BaseModel
 
     if isinstance(value, BaseModel):
         return value.model_dump(mode="json")
-    if isinstance(value, dict):
-        return value
     return json.loads(json.dumps(value))
 
 
