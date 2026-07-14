@@ -113,8 +113,12 @@ class LogionApiQueries:
         course_ids: set[str] = set()
         review_ids: set[str] = set()
         bounty_ids: set[str] = set()
+        credit_balances: dict[str, int] = {}
         roles = dict.fromkeys([*agent_roles.values(), "seller", "buyer"])
         for role in roles:
+            balance = await self._credit_balance(role)
+            if balance is not None:
+                credit_balances[role] = balance
             for course in await self._my_courses(role):
                 course_id = course.get("id")
                 if course_id:
@@ -136,6 +140,7 @@ class LogionApiQueries:
             "course_ids": sorted(course_ids),
             "review_ids": sorted(review_ids),
             "bounty_ids": sorted(bounty_ids),
+            "credit_balances": credit_balances,
         }
 
     async def _get(self, path: str, role: str | None) -> tuple[int, Any]:
@@ -161,6 +166,13 @@ class LogionApiQueries:
             return []
         courses = data.get("courses")
         return courses if isinstance(courses, list) else []
+
+    async def _credit_balance(self, role: str | None) -> int | None:
+        status, data = await self._get("/v1/credits/balance", role)
+        if status != 200 or not isinstance(data, dict):
+            return None
+        balance = data.get("balance_cents")
+        return balance if isinstance(balance, int) else None
 
     async def _ledger(self, role: str | None) -> list[dict[str, Any]]:
         status, data = await self._get("/v1/credits/ledger", role)
@@ -319,6 +331,7 @@ class LogionApiQueries:
     ) -> dict[str, Any]:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         wanted_status = query.get("status")
+        wanted_bounty_id = query.get("bounty")
         creator_agent_id = self._keys.agent_id(creator_role)
         creator_courses = {
             c.get("id") for c in await self._my_courses(creator_role)
@@ -327,6 +340,8 @@ class LogionApiQueries:
         for bounty in await self._bounties(creator_role):
             bounty_id = str(bounty.get("id") or "")
             if bounty_id in baseline_bounty_ids:
+                continue
+            if wanted_bounty_id and bounty_id != str(wanted_bounty_id):
                 continue
             if wanted_status and bounty.get("status") != wanted_status:
                 continue
@@ -357,10 +372,14 @@ class LogionApiQueries:
         # creator role — not the submitter role.
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         bounty_list_role = creator_role or submitter_role
+        wanted_bounty_id = query.get("bounty")
+        wanted_submission_id = query.get("submission")
         baseline_bounty_ids = _baseline_ids(query, "bounty_ids")
         for bounty in await self._bounties(bounty_list_role):
             bounty_id = str(bounty.get("id") or "")
             if bounty_id in baseline_bounty_ids:
+                continue
+            if wanted_bounty_id and bounty_id != str(wanted_bounty_id):
                 continue
             # Fetch submissions as the bounty creator (the only role
             # authorised to list them).
@@ -372,13 +391,18 @@ class LogionApiQueries:
                 continue
             items = data if isinstance(data, list) else []
             for submission in items:
+                submission_id = str(submission.get("id") or "")
+                if wanted_submission_id and submission_id != str(
+                    wanted_submission_id
+                ):
+                    continue
                 if submitter_agent_id and (
                     submission.get("submitter_agent_id") != submitter_agent_id
                 ):
                     continue
                 return {
                     "found": True,
-                    "submission_id": submission.get("id"),
+                    "submission_id": submission_id,
                     "evidence": {
                         "source": "api",
                         "bounty_id": bounty_id,
@@ -481,6 +505,43 @@ class LogionApiQueries:
             },
         }
 
+    async def _q_credit_balance_changed(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        requested_role = str(query.get("role") or "buyer")
+        role = self._role_of(requested_role, agent_roles) or requested_role
+        baseline = query.get("_baseline")
+        balances = (
+            baseline.get("credit_balances")
+            if isinstance(baseline, dict)
+            else None
+        )
+        previous = balances.get(role) if isinstance(balances, dict) else None
+        if not isinstance(previous, int):
+            return _unsupported(f"no credit balance baseline for role {role}")
+        current = await self._credit_balance(role)
+        if current is None:
+            return _unsupported(f"credit balance unavailable for role {role}")
+
+        direction = query.get("direction")
+        if direction == "increase":
+            changed = current > previous
+        elif direction == "decrease":
+            changed = current < previous
+        else:
+            changed = current != previous
+        return {
+            "changed": changed,
+            "evidence": {
+                "source": "api",
+                "role": role,
+                "before_cents": previous,
+                "after_cents": current,
+            },
+        }
+
     async def _q_source_link_exists(
         self,
         query: dict[str, Any],
@@ -524,7 +585,7 @@ class LogionApiQueries:
             return {"opened": False, "evidence": {"source": "api"}}
         submission_id = query.get("submission")
         for sub in data:
-            if submission_id and sub.get("id") != submission_id:
+            if submission_id and str(sub.get("id")) != str(submission_id):
                 continue
             github_pr = sub.get("github_pr")
             if (
@@ -533,8 +594,11 @@ class LogionApiQueries:
             ):
                 return {
                     "opened": True,
+                    "submission_id": sub.get("id"),
+                    "pr_url": github_pr.get("pr_url"),
                     "evidence": {
                         "source": "api",
+                        "submission_id": sub.get("id"),
                         "pr_url": github_pr.get("pr_url"),
                     },
                 }

@@ -55,6 +55,22 @@ class AssertionSpec(BaseModel):
     type: str
     params: dict = Field(default_factory=dict)
     optional: bool = False
+    capture: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("capture")
+    @classmethod
+    def _capture_names_are_valid(cls, value: dict[str, str]) -> dict[str, str]:
+        invalid = [
+            name
+            for name in value
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", name)
+        ]
+        if invalid:
+            raise ValueError(
+                "capture names must use uppercase "
+                "environment-variable syntax: " + ", ".join(sorted(invalid))
+            )
+        return value
 
 
 class PhaseSpec(BaseModel):

@@ -15,6 +15,7 @@ from agent_proving_ground.assertions.github import (
     GithubInstallationDeliveredAssertion,
     GithubPrExistsAssertion,
 )
+from agent_proving_ground.assertions.registry import AssertionRegistry
 from agent_proving_ground.models import World
 from agent_proving_ground.scenarios.loader import load_scenario
 from agent_proving_ground.timeline import Timeline
@@ -115,6 +116,19 @@ def test_observer_pr_state_is_unknown_when_pr_is_inaccessible(
     monkeypatch.setattr(observer, "_get", lambda _path: None)
 
     assert observer.pr_state(7) == "unknown"
+
+
+async def test_bounty_submission_pr_opened_remains_registered(
+    tmp_path: Path,
+) -> None:
+    result = await AssertionRegistry().evaluate(
+        _context(tmp_path),
+        "api.bounty_submission_pr_opened",
+        {"bounty": "bounty-1", "submission": "submission-1"},
+    )
+
+    assert result.status == "passed"
+    assert result.evidence["submission_id"] == "submission-1"
 
 
 def test_github_scenario_api_assertions_declare_agents() -> None:

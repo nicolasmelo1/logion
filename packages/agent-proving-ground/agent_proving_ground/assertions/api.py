@@ -165,6 +165,7 @@ class BountySubmissionPrOpenedAssertion(_ApiQueryAssertion):
     type = "api.bounty_submission_pr_opened"
     query_type = "bounty_submission_pr_opened"
     found_key = "opened"
+    evidence_keys = ("submission_id", "pr_url")
     pass_message = "bounty submission PR is opened"
     fail_message = "bounty submission PR is not opened"
 

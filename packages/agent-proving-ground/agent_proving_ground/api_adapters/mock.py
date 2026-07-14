@@ -267,7 +267,11 @@ class MockApiAdapter(ApiAdapter):
                     }
                 return {"found": False}
             case "bounty_submission_pr_opened":
-                return {"opened": True}
+                return {
+                    "opened": True,
+                    "submission_id": query.get("submission") or "submission_1",
+                    "pr_url": "https://github.com/owner/repo/pull/1",
+                }
             case "bounty_submission_accepted":
                 return {"accepted": True}
             case "bounty_submission_rejected":
