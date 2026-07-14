@@ -2943,6 +2943,51 @@
         "title": "GetCourseReviewFeedbackResponse",
         "type": "object"
       },
+      "GetCourseSourceLinkResponse": {
+        "properties": {
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "default_ref": {
+            "title": "Default Ref",
+            "type": "string"
+          },
+          "github_identity_id": {
+            "format": "uuid",
+            "title": "Github Identity Id",
+            "type": "string"
+          },
+          "package_map_path": {
+            "title": "Package Map Path",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "repository": {
+            "title": "Repository",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "provider",
+          "repository",
+          "default_ref",
+          "package_map_path",
+          "status",
+          "github_identity_id"
+        ],
+        "title": "GetCourseSourceLinkResponse",
+        "type": "object"
+      },
       "GetCourseVersionResponse": {
         "properties": {
           "approved_capabilities_summary": {
@@ -6221,6 +6266,80 @@
         "title": "SellerReadinessResponse",
         "type": "object"
       },
+      "SetCourseSourceLinkRequest": {
+        "properties": {
+          "package_map_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Map Path"
+          },
+          "ref": {
+            "default": "main",
+            "title": "Ref",
+            "type": "string"
+          },
+          "repository": {
+            "title": "Repository",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository"
+        ],
+        "title": "SetCourseSourceLinkRequest",
+        "type": "object"
+      },
+      "SetCourseSourceLinkResponse": {
+        "properties": {
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "default_ref": {
+            "title": "Default Ref",
+            "type": "string"
+          },
+          "github_identity_id": {
+            "format": "uuid",
+            "title": "Github Identity Id",
+            "type": "string"
+          },
+          "package_map_path": {
+            "title": "Package Map Path",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "repository": {
+            "title": "Repository",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "provider",
+          "repository",
+          "default_ref",
+          "package_map_path",
+          "status",
+          "github_identity_id"
+        ],
+        "title": "SetCourseSourceLinkResponse",
+        "type": "object"
+      },
       "SetReferralAttributionStatusRequest": {
         "properties": {
           "reason": {
@@ -6267,80 +6386,6 @@
           "status"
         ],
         "title": "SetReferralAttributionStatusResponse",
-        "type": "object"
-      },
-      "SetSourceLinkRequest": {
-        "properties": {
-          "package_map_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Package Map Path"
-          },
-          "ref": {
-            "default": "main",
-            "title": "Ref",
-            "type": "string"
-          },
-          "repository": {
-            "title": "Repository",
-            "type": "string"
-          }
-        },
-        "required": [
-          "repository"
-        ],
-        "title": "SetSourceLinkRequest",
-        "type": "object"
-      },
-      "SourceLinkResponse": {
-        "properties": {
-          "course_id": {
-            "format": "uuid",
-            "title": "Course Id",
-            "type": "string"
-          },
-          "default_ref": {
-            "title": "Default Ref",
-            "type": "string"
-          },
-          "github_identity_id": {
-            "format": "uuid",
-            "title": "Github Identity Id",
-            "type": "string"
-          },
-          "package_map_path": {
-            "title": "Package Map Path",
-            "type": "string"
-          },
-          "provider": {
-            "title": "Provider",
-            "type": "string"
-          },
-          "repository": {
-            "title": "Repository",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "course_id",
-          "provider",
-          "repository",
-          "default_ref",
-          "package_map_path",
-          "status",
-          "github_identity_id"
-        ],
-        "title": "SourceLinkResponse",
         "type": "object"
       },
       "SubmissionGithubPrBlock": {
@@ -11788,7 +11833,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SourceLinkResponse"
+                  "$ref": "#/components/schemas/GetCourseSourceLinkResponse"
                 }
               }
             },
@@ -11864,7 +11909,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetSourceLinkRequest"
+                "$ref": "#/components/schemas/SetCourseSourceLinkRequest"
               }
             }
           },
@@ -11875,7 +11920,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SourceLinkResponse"
+                  "$ref": "#/components/schemas/SetCourseSourceLinkResponse"
                 }
               }
             },

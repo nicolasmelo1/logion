@@ -7,8 +7,9 @@ from uuid import UUID
 
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
-    SetSourceLinkRequest,
-    SourceLinkResponse,
+    GetCourseSourceLinkResponse,
+    SetCourseSourceLinkRequest,
+    SetCourseSourceLinkResponse,
 )
 
 from .shared import _CoursesResourceBase
@@ -22,9 +23,9 @@ class _CoursesSourceLinkMixin(_CoursesResourceBase):
         repository: str,
         ref: str = "main",
         package_map_path: str | None = None,
-    ) -> SourceLinkResponse:
+    ) -> SetCourseSourceLinkResponse:
         """Set or update the GitHub source link for a course."""
-        body = SetSourceLinkRequest(
+        body = SetCourseSourceLinkRequest(
             repository=repository,
             ref=ref,
             package_map_path=package_map_path,
@@ -39,7 +40,7 @@ class _CoursesSourceLinkMixin(_CoursesResourceBase):
         self,
         *,
         course_id: str | UUID,
-    ) -> SourceLinkResponse:
+    ) -> GetCourseSourceLinkResponse:
         """Get the source link for a course."""
         return operations.get_course_source_link(
             self._http,
