@@ -104,6 +104,12 @@ commands:
     operations: [request_publication]
   courses purchase:
     operations: []
+  courses source-link remove:
+    operations: [delete_course_source_link]
+  courses source-link set:
+    operations: [set_course_source_link]
+  courses source-link show:
+    operations: [get_course_source_link]
   courses reviews list:
     operations: [list_course_reviews]
   courses reviews mine:

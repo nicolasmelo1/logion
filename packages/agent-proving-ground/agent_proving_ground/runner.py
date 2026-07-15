@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -46,6 +48,51 @@ _DRIVER_CLASSES: dict[str, type[AgentDriver]] = {
     "claude-code": ClaudeCodeDriver,
     "hermes": HermesDriver,
 }
+
+_PARAMETER_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
+_SENSITIVE_BINDING_RE = re.compile(
+    r"(?:TOKEN|SECRET|PASSWORD|AUTH|API_KEY|PRIVATE_KEY)", re.IGNORECASE
+)
+
+
+def _scenario_bindings(world: World) -> dict[str, str]:
+    bindings = {
+        key: value
+        for key, value in os.environ.items()
+        if not _SENSITIVE_BINDING_RE.search(key)
+    }
+    bindings.update({
+        key: str(value)
+        for key, value in (world.data or {}).items()
+        if isinstance(value, (str, int, float))
+        and not _SENSITIVE_BINDING_RE.search(key)
+    })
+    scenario_vars = (world.data or {}).get("scenario_vars")
+    if isinstance(scenario_vars, dict):
+        bindings.update({
+            str(key): str(value)
+            for key, value in scenario_vars.items()
+            if not _SENSITIVE_BINDING_RE.search(str(key))
+        })
+    return bindings
+
+
+def _resolve_scenario_value(value: Any, bindings: dict[str, str]) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _resolve_scenario_value(item, bindings)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_resolve_scenario_value(item, bindings) for item in value]
+    if not isinstance(value, str):
+        return value
+
+    missing = sorted(set(_PARAMETER_RE.findall(value)) - bindings.keys())
+    if missing:
+        names = ", ".join(missing)
+        raise InconclusiveRun(f"unresolved scenario parameters: {names}")
+    return _PARAMETER_RE.sub(lambda match: bindings[match.group(1)], value)
 
 
 class AgentDriverFactory:
@@ -136,6 +183,7 @@ class ScenarioRunner:
                     if a.devrig_role
                 },
             )
+            self._validate_scenario_parameters(world)
             self.timeline.event("world.created", world_base_url=world.base_url)
             await self._start_agents(world)
             for phase in self.scenario.phases:
@@ -232,6 +280,17 @@ class ScenarioRunner:
             )
         self.artifacts.write_json("environment.json", env_by_agent)
 
+    def _validate_scenario_parameters(self, world: World) -> None:
+        bindings = _scenario_bindings(world)
+        for phase in self.scenario.phases:
+            _resolve_scenario_value(phase.goal, bindings)
+            _resolve_scenario_value(phase.success_hint, bindings)
+            for assertion in phase.assertions:
+                _resolve_scenario_value(assertion.params, bindings)
+                bindings.update({name: name for name in assertion.capture})
+        for assertion in self.scenario.final_assertions:
+            _resolve_scenario_value(assertion.params, bindings)
+
     async def _run_phase(self, phase: PhaseSpec, world: World) -> dict:
         import time
 
@@ -254,16 +313,19 @@ class ScenarioRunner:
                 "status": "failed",
                 "message": "actor not found",
             })
+        bindings = _scenario_bindings(world)
+        goal = _resolve_scenario_value(phase.goal, bindings)
+        success_hint = _resolve_scenario_value(phase.success_hint, bindings)
         self.timeline.event(
             "agent.goal.sent",
             phase_id=phase.id,
             agent_id=phase.actor,
-            goal=phase.goal,
+            goal=goal,
         )
         turn = await driver.send_goal(
             phase_id=phase.id,
-            goal=phase.goal,
-            success_hint=phase.success_hint,
+            goal=goal,
+            success_hint=success_hint,
             timeout_seconds=phase.timeout_seconds,
         )
         self.timeline.event(
@@ -301,6 +363,42 @@ class ScenarioRunner:
             ],
         })
 
+    def _capture_assertion_outputs(
+        self,
+        *,
+        capture: dict[str, str],
+        outcome: AssertionOutcome,
+        world: World,
+    ) -> AssertionOutcome:
+        if not capture or outcome.status != "passed":
+            return outcome
+        missing = [
+            evidence_key
+            for evidence_key in capture.values()
+            if outcome.evidence.get(evidence_key) is None
+        ]
+        if missing:
+            return AssertionOutcome(
+                type=outcome.type,
+                status="failed",
+                message=(
+                    "assertion capture missing evidence: "
+                    + ", ".join(sorted(missing))
+                ),
+                evidence=outcome.evidence,
+            )
+        scenario_vars = world.data.setdefault("scenario_vars", {})
+        if not isinstance(scenario_vars, dict):
+            return AssertionOutcome(
+                type=outcome.type,
+                status="failed",
+                message="world scenario_vars is not a mapping",
+                evidence=outcome.evidence,
+            )
+        for name, evidence_key in capture.items():
+            scenario_vars[name] = outcome.evidence[evidence_key]
+        return outcome
+
     async def _run_assertions(
         self,
         assertions: list,
@@ -320,7 +418,9 @@ class ScenarioRunner:
             outcome = await self.assertions.evaluate(
                 ctx,
                 assertion_spec.type,
-                assertion_spec.params,
+                _resolve_scenario_value(
+                    assertion_spec.params, _scenario_bindings(world)
+                ),
             )
             if outcome.status == "unsupported" and assertion_spec.optional:
                 outcome = AssertionOutcome(
@@ -341,6 +441,11 @@ class ScenarioRunner:
                     ),
                     evidence={},
                 )
+            outcome = self._capture_assertion_outputs(
+                capture=assertion_spec.capture,
+                outcome=outcome,
+                world=world,
+            )
             self.timeline.event(
                 "assertion.completed",
                 phase_id=phase_id,

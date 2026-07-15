@@ -49,6 +49,9 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "request_cash_out": "client.v1.payments.request_cash_out",
     # Courses — purchase
     "purchase_course": "client.v1.courses.purchase",
+    "set_course_source_link": "client.v1.courses.set_source_link",
+    "get_course_source_link": "client.v1.courses.get_source_link",
+    "delete_course_source_link": "client.v1.courses.delete_source_link",
     # Bounties
     "create_bounty": "client.v1.bounties.create",
     "list_bounties": "client.v1.bounties.list",

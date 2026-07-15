@@ -151,3 +151,36 @@ class AdminStateObservedAssertion(_ApiQueryAssertion):
     query_type = "admin_state_observed"
     pass_message = "admin/operator view observed consistent state"  # nosec B105
     fail_message = "admin state could not be observed"
+
+
+class SourceLinkExistsAssertion(_ApiQueryAssertion):
+    type = "api.source_link_exists"
+    query_type = "source_link_exists"
+    evidence_keys = ("course_id",)
+    pass_message = "source link exists"
+    fail_message = "no matching source link found"
+
+
+class BountySubmissionPrOpenedAssertion(_ApiQueryAssertion):
+    type = "api.bounty_submission_pr_opened"
+    query_type = "bounty_submission_pr_opened"
+    found_key = "opened"
+    evidence_keys = ("submission_id", "pr_url")
+    pass_message = "bounty submission PR is opened"
+    fail_message = "bounty submission PR is not opened"
+
+
+class BountySubmissionAcceptedAssertion(_ApiQueryAssertion):
+    type = "api.bounty_submission_accepted"
+    query_type = "bounty_submission_accepted"
+    found_key = "accepted"
+    pass_message = "bounty submission is accepted"
+    fail_message = "bounty submission is not accepted"
+
+
+class BountySubmissionRejectedAssertion(_ApiQueryAssertion):
+    type = "api.bounty_submission_rejected"
+    query_type = "bounty_submission_rejected"
+    found_key = "rejected"
+    pass_message = "bounty submission is rejected"
+    fail_message = "bounty submission is not rejected"

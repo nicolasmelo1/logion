@@ -47,6 +47,7 @@ from logion.v1._types.generated.v1 import (
     GetCourseDetailResponse,
     GetCourseResponse,
     GetCourseReviewFeedbackResponse,
+    GetCourseSourceLinkResponse,
     GetCourseVersionResponse,
     GetCreatorEarningsResponse,
     GetCreditBalanceResponse,
@@ -94,6 +95,8 @@ from logion.v1._types.generated.v1 import (
     RotateAgentApiKeyResponse,
     SearchListingsResponse,
     SellerReadinessResponse,
+    SetCourseSourceLinkRequest,
+    SetCourseSourceLinkResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
     SuspendAgentResponse,
@@ -793,6 +796,49 @@ def list_course_reviews(
         f"/v1/courses/{course_id}/reviews",
         ListCourseReviewsResponse,
         params=params,
+    )
+
+
+def delete_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+) -> dict[str, Any]:
+    """Call the delete_course_source_link API operation."""
+    return cast(
+        dict[str, Any],
+        http.request(
+            "DELETE",
+            f"/v1/courses/{course_id}/source-link",
+        ),
+    )
+
+
+def get_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+) -> GetCourseSourceLinkResponse:
+    """Call the get_course_source_link API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/courses/{course_id}/source-link",
+        GetCourseSourceLinkResponse,
+    )
+
+
+def set_course_source_link(
+    http: HttpClient,
+    *,
+    course_id: str | UUID,
+    body: SetCourseSourceLinkRequest,
+) -> SetCourseSourceLinkResponse:
+    """Call the set_course_source_link API operation."""
+    return http.request_model(
+        "PUT",
+        f"/v1/courses/{course_id}/source-link",
+        SetCourseSourceLinkResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

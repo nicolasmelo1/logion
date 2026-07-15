@@ -188,6 +188,21 @@
         "upsert_course_review"
       ]
     },
+    "courses source-link remove": {
+      "operations": [
+        "delete_course_source_link"
+      ]
+    },
+    "courses source-link set": {
+      "operations": [
+        "set_course_source_link"
+      ]
+    },
+    "courses source-link show": {
+      "operations": [
+        "get_course_source_link"
+      ]
+    },
     "courses update": {
       "operations": [
         "update_course"

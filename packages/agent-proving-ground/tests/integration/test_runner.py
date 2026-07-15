@@ -117,6 +117,145 @@ phases:
     assert result.status == "passed"
 
 
+async def test_scenario_parameters_are_resolved_from_environment(
+    runner_factory,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    (tmp_path / "marker.txt").write_text("ok", encoding="utf-8")
+    monkeypatch.setenv("ASSERTION_PATH", "marker.txt")
+    text = """
+schema_version: "1"
+name: parameter_resolution
+description: test
+api_adapter: mock
+agents:
+  - id: a
+    role: r
+    driver: scripted
+phases:
+  - id: p
+    actor: a
+    goal: inspect ${ASSERTION_PATH}
+    assertions:
+      - type: files.exists
+        params:
+          path: ${ASSERTION_PATH}
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+
+    result = await runner_factory(str(scenario_path)).run()
+
+    assert result.status == "passed"
+
+
+async def test_assertion_outputs_feed_later_parameters(
+    runner_factory,
+    tmp_path,
+) -> None:
+    text = """
+schema_version: "1"
+name: skill_report_contract
+description: test
+api_adapter: mock
+agents:
+  - id: a
+    role: r
+    driver: scripted
+phases:
+  - id: p
+    actor: a
+    goal: test capture
+    assertions:
+      - type: api.course_exists
+        params:
+          status: published
+        capture:
+          COURSE_ID: course_id
+      - type: api.source_link_exists
+        params:
+          course: ${COURSE_ID}
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+
+    result = await runner_factory(str(scenario_path)).run()
+
+    assert result.status == "passed"
+
+
+async def test_unresolved_scenario_parameters_are_inconclusive(
+    runner_factory,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("MISSING_SCENARIO_VALUE", raising=False)
+    text = """
+schema_version: "1"
+name: unresolved_parameter
+description: test
+api_adapter: mock
+agents:
+  - id: a
+    role: r
+    driver: scripted
+phases:
+  - id: p
+    actor: a
+    goal: test
+    assertions:
+      - type: files.exists
+        params:
+          path: ${MISSING_SCENARIO_VALUE}
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+
+    result = await runner_factory(str(scenario_path)).run()
+
+    assert result.status == "inconclusive"
+    assert result.failure_message == (
+        "unresolved scenario parameters: MISSING_SCENARIO_VALUE"
+    )
+
+
+async def test_sensitive_environment_parameters_are_not_interpolated(
+    runner_factory,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    secret = "must-not-reach-artifacts"
+    monkeypatch.setenv("SCENARIO_API_TOKEN", secret)
+    text = """
+schema_version: "1"
+name: sensitive_parameter
+description: test
+api_adapter: mock
+agents:
+  - id: a
+    role: r
+    driver: scripted
+phases:
+  - id: p
+    actor: a
+    goal: inspect ${SCENARIO_API_TOKEN}
+    assertions: []
+"""
+    scenario_path = tmp_path / "scenario.yaml"
+    scenario_path.write_text(text, encoding="utf-8")
+
+    result = await runner_factory(str(scenario_path)).run()
+
+    assert result.status == "inconclusive"
+    assert result.failure_message == (
+        "unresolved scenario parameters: SCENARIO_API_TOKEN"
+    )
+    assert secret not in (tmp_path / "timeline.jsonl").read_text(
+        encoding="utf-8"
+    )
+
+
 async def test_multi_agent_scenario_uses_isolated_driver_instances(
     runner_factory,
     tmp_path,

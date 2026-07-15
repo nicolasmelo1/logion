@@ -4,13 +4,17 @@ from agent_proving_ground.assertions.api import (
     AdminStateObservedAssertion,
     BountyAcceptedAssertion,
     BountyExistsAssertion,
+    BountySubmissionAcceptedAssertion,
     BountySubmissionExistsAssertion,
+    BountySubmissionPrOpenedAssertion,
+    BountySubmissionRejectedAssertion,
     CourseExistsAssertion,
     CourseRemainsPurchasableAssertion,
     CreditBalanceChangedAssertion,
     NoDoubleCreditDebitAssertion,
     PurchaseExistsAssertion,
     ReviewExistsAssertion,
+    SourceLinkExistsAssertion,
     UsageReportExistsAssertion,
 )
 from agent_proving_ground.assertions.base import (
@@ -24,6 +28,13 @@ from agent_proving_ground.assertions.db import (
     EventsOutboxContainsAssertion,
 )
 from agent_proving_ground.assertions.files import FileExistsAssertion
+from agent_proving_ground.assertions.github import (
+    GithubInstallationDeliveredAssertion,
+    GithubIssueBotCommentMatchAssertion,
+    GithubPrClosedUnmergedAssertion,
+    GithubPrExistsAssertion,
+    GithubPrMergedAssertion,
+)
 from agent_proving_ground.assertions.logs import (
     LogsContainsRequestAssertion,
     LogsNo500sAssertion,
@@ -58,6 +69,15 @@ class AssertionRegistry:
             DbRowExistsAssertion,
             DbExactCreditLedgerAssertion,
             EventsOutboxContainsAssertion,
+            SourceLinkExistsAssertion,
+            BountySubmissionPrOpenedAssertion,
+            BountySubmissionAcceptedAssertion,
+            BountySubmissionRejectedAssertion,
+            GithubPrExistsAssertion,
+            GithubPrMergedAssertion,
+            GithubPrClosedUnmergedAssertion,
+            GithubIssueBotCommentMatchAssertion,
+            GithubInstallationDeliveredAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance
