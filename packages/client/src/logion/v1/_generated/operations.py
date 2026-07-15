@@ -14,11 +14,17 @@ from logion.v1._types.generated.v1 import (
     ApproveHumanReviewResponse,
     AuthorizeRequest,
     AuthorizeResponse,
+    BatchUpsertListingsRequest,
+    BatchUpsertListingsResponse,
     BlockCourseResponse,
     CancelBountyResponse,
     ClaimSetupHandoffRequest,
     ClaimSetupHandoffResponse,
     CompleteCourseVersionUploadSessionResponse,
+    CompleteIndexedBundleUploadRequest,
+    CompleteIndexedBundleUploadResponse,
+    CompleteIndexingRunRequest,
+    CompleteIndexingRunResponse,
     CreateBountyPayoutResponse,
     CreateBountyRequest,
     CreateBountyResponse,
@@ -30,6 +36,7 @@ from logion.v1._types.generated.v1 import (
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
+    CreateIndexedBundleUploadResponse,
     CreateReportRequest,
     CreateReportResponse,
     CreateUserWithAgentRequest,
@@ -53,6 +60,7 @@ from logion.v1._types.generated.v1 import (
     GetCreditBalanceResponse,
     GetCreditTopUpResponse,
     GetHumanReviewDetailResponse,
+    GetKnownIndexedSourcesResponse,
     GetMyCourseReviewResponse,
     GetReferralCodeResponse,
     GetReferralLinkResponse,
@@ -75,6 +83,7 @@ from logion.v1._types.generated.v1 import (
     ListReportsResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
+    OpenIndexingRunResponse,
     OpenSubmissionPrResponse,
     OrderResponse,
     PurchaseCourseRequest,
@@ -212,6 +221,91 @@ def block_course(
         "PATCH",
         f"/v1/admin/courses/{course_id}/status",
         BlockCourseResponse,
+    )
+
+
+def get_known_indexed_sources(
+    http: HttpClient,
+    *,
+    ids: list[str],
+) -> GetKnownIndexedSourcesResponse:
+    """Call the get_known_indexed_sources API operation."""
+    params: dict[str, Any] = {}
+    if ids is not None:
+        params["ids"] = ids
+    return http.request_model(
+        "GET",
+        "/v1/admin/indexing/known",
+        GetKnownIndexedSourcesResponse,
+        params=params,
+    )
+
+
+def create_indexed_bundle_upload(
+    http: HttpClient,
+    *,
+    listing_id: str | UUID,
+) -> CreateIndexedBundleUploadResponse:
+    """Call the create_indexed_bundle_upload API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/admin/indexing/listings/{listing_id}/bundle-upload",
+        CreateIndexedBundleUploadResponse,
+    )
+
+
+def complete_indexed_bundle_upload(
+    http: HttpClient,
+    *,
+    listing_id: str | UUID,
+    body: CompleteIndexedBundleUploadRequest,
+) -> CompleteIndexedBundleUploadResponse:
+    """Call the complete_indexed_bundle_upload API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/admin/indexing/listings/{listing_id}/bundle-upload/completion",
+        CompleteIndexedBundleUploadResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def batch_upsert_listings(
+    http: HttpClient,
+    *,
+    body: BatchUpsertListingsRequest,
+) -> BatchUpsertListingsResponse:
+    """Call the batch_upsert_listings API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/admin/indexing/listings:batch-upsert",
+        BatchUpsertListingsResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def open_indexing_run(
+    http: HttpClient,
+) -> OpenIndexingRunResponse:
+    """Call the open_indexing_run API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/admin/indexing/runs",
+        OpenIndexingRunResponse,
+    )
+
+
+def complete_indexing_run(
+    http: HttpClient,
+    *,
+    run_id: str | UUID,
+    body: CompleteIndexingRunRequest,
+) -> CompleteIndexingRunResponse:
+    """Call the complete_indexing_run API operation."""
+    return http.request_model(
+        "PATCH",
+        f"/v1/admin/indexing/runs/{run_id}/completion",
+        CompleteIndexingRunResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 
