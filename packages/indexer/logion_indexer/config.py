@@ -64,10 +64,10 @@ class IndexerConfig:
             seed_file=str(seed_file) if seed_file else "",
             only=str(only) if only else None,
             limit=int(limit)
-            if limit is not None and isinstance(limit, int | str)
+            if limit is not None and isinstance(limit, (int, str))
             else None,
             rps=float(rps)
-            if rps is not None and isinstance(rps, int | float | str)
+            if rps is not None and isinstance(rps, (int, float, str))
             else 1.0,
             dry_run=bool(dry_run),
         )

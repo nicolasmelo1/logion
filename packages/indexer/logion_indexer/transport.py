@@ -6,6 +6,7 @@ import json
 import urllib.request
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -93,12 +94,15 @@ class Transport:
             return HttpResponse(status, body, resp_headers)
 
         req = urllib.request.Request(url, headers=h, method="GET")
-        with urllib.request.urlopen(req) as resp:
-            data = resp.read()
-            resp_headers = dict(resp.headers)
-            if use_cache:
-                self._cache[url] = (resp.status, data, resp_headers)
-            return HttpResponse(resp.status, data, resp_headers)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                data = resp.read()
+                resp_headers = dict(resp.headers)
+                if use_cache:
+                    self._cache[url] = (resp.status, data, resp_headers)
+                return HttpResponse(resp.status, data, resp_headers)
+        except HTTPError as e:
+            return HttpResponse(e.code, e.read())
 
     def post(
         self,
@@ -123,9 +127,12 @@ class Transport:
             data = json.dumps(dict(json_body)).encode("utf-8")
 
         req = urllib.request.Request(url, data=data, headers=h, method="POST")
-        with urllib.request.urlopen(req) as resp:
-            body = resp.read()
-            return HttpResponse(resp.status, body, dict(resp.headers))
+        try:
+            with urllib.request.urlopen(req) as resp:
+                body = resp.read()
+                return HttpResponse(resp.status, body, dict(resp.headers))
+        except HTTPError as e:
+            return HttpResponse(e.code, e.read())
 
     def patch(
         self,
@@ -150,9 +157,12 @@ class Transport:
             data = json.dumps(dict(json_body)).encode("utf-8")
 
         req = urllib.request.Request(url, data=data, headers=h, method="PATCH")
-        with urllib.request.urlopen(req) as resp:
-            body = resp.read()
-            return HttpResponse(resp.status, body, dict(resp.headers))
+        try:
+            with urllib.request.urlopen(req) as resp:
+                body = resp.read()
+                return HttpResponse(resp.status, body, dict(resp.headers))
+        except HTTPError as e:
+            return HttpResponse(e.code, e.read())
 
     def put(
         self,
@@ -171,9 +181,12 @@ class Transport:
             h.update(dict(headers))
 
         req = urllib.request.Request(url, data=body, headers=h, method="PUT")
-        with urllib.request.urlopen(req) as resp:
-            resp_body = resp.read()
-            return HttpResponse(resp.status, resp_body, dict(resp.headers))
+        try:
+            with urllib.request.urlopen(req) as resp:
+                resp_body = resp.read()
+                return HttpResponse(resp.status, resp_body, dict(resp.headers))
+        except HTTPError as e:
+            return HttpResponse(e.code, e.read())
 
     @property
     def call_log(self) -> list[str]:

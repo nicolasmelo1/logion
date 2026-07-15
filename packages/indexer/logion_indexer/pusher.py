@@ -6,6 +6,7 @@ partial-failure accounting.  Run lifecycle: open → push → close.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -47,8 +48,7 @@ class Pusher:
     """Batch-upsert client for the Logion admin ingestion API.
 
     All HTTP goes through :class:`Transport` so tests can fake it.
-    API keys are never logged — the transport redacts Authorization
-    headers in error output.
+    The transport stores method+URL in call_log for debugging.
     """
 
     def __init__(
@@ -66,7 +66,10 @@ class Pusher:
         resp = self.transport.post(url, json_body={})
         if resp.status not in (200, 201):
             raise RuntimeError(f"failed to open run: HTTP {resp.status}")
-        data = resp.json()
+        try:
+            data = resp.json()
+        except (ValueError, json.JSONDecodeError):
+            raise RuntimeError("invalid JSON response from server") from None
         run_id = data.get("run_id", "") if isinstance(data, dict) else ""
         if not run_id:
             raise RuntimeError("open_run: response did not contain a run_id")
@@ -121,7 +124,15 @@ class Pusher:
                 })
                 continue
 
-            data = resp.json()
+            try:
+                data = resp.json()
+            except (ValueError, json.JSONDecodeError):
+                result.errors += len(chunk)
+                result.error_details.append({
+                    "status": resp.status,
+                    "body": resp.text[:500],
+                })
+                continue
             if not isinstance(data, dict):
                 result.errors += len(chunk)
                 result.error_details.append({
@@ -176,7 +187,10 @@ class Pusher:
         )
         if resp.status not in (200, 201):
             return False
-        data = resp.json()
+        try:
+            data = resp.json()
+        except (ValueError, json.JSONDecodeError):
+            return False
         if not isinstance(data, dict):
             return False
         presigned_url = data.get("presigned_url", "")
