@@ -76,6 +76,7 @@ class BrowseShAdapter:
 
     def _fetch_page(self, url: str) -> str:
         try:
-            return self.crawler.fetch_page(url)
+            html = self.crawler.fetch_page(url)
         except (PermissionError, RuntimeError):
             return ""
+        return html if html is not None else ""

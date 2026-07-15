@@ -76,12 +76,21 @@ class Crawler:
                 return False
         return True
 
-    def fetch_page(self, url: str) -> str:
-        """Fetch a page with rate limiting and robots.txt respect."""
+    def fetch_page(self, url: str) -> str | None:
+        """Fetch a page with rate limiting and robots.txt respect.
+
+        Returns the page text on success, or ``None`` if the network
+        request failed (e.g., transient URLError/DNS error).  HTTP non-200
+        still raises ``RuntimeError`` and robots.txt blocks raise
+        ``PermissionError``.
+        """
         if not self.is_allowed(url):
             raise PermissionError(f"blocked by robots.txt: {url}")
         self.rate_limiter.wait(url)
-        resp = self.transport.get(url)
+        try:
+            resp = self.transport.get(url)
+        except Exception:
+            return None
         if resp.status != 200:
             raise RuntimeError(f"HTTP {resp.status} for {url}")
         return resp.text

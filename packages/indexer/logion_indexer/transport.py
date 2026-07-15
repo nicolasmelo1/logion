@@ -88,6 +88,8 @@ class Transport:
             h.update(dict(headers))
         if self.github_token and self._is_github_host(url):
             h["Authorization"] = f"Bearer {self.github_token}"
+        if self.api_key and self._is_api_host(url):
+            h["Authorization"] = f"Bearer {self.api_key}"
 
         if use_cache and url in self._cache:
             status, body, resp_headers = self._cache[url]

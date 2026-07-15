@@ -80,9 +80,10 @@ class SkillsShAdapter:
     def _fetch_page(self, url: str) -> str:
         """Fetch a page via the crawler (robots.txt + rate limit)."""
         try:
-            return self.crawler.fetch_page(url)
+            html = self.crawler.fetch_page(url)
         except (PermissionError, RuntimeError):
             return ""
+        return html if html is not None else ""
 
     def _resolve_skill_page(
         self, url: str

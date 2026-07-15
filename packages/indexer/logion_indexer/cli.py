@@ -146,6 +146,10 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
 
     stats = RunStats(skipped=skip_count)
 
+    # Plan files only carry canonical id strings, so the DiscoveredSkill
+    # objects built here are minimal (empty title/summary/tags/channels).
+    # The batch-upsert endpoint treats empty/missing fields as "no change"
+    # rather than "clear", so existing listing metadata is preserved.
     if create_ids:
         create_items = [_skill_from_canonical(cid) for cid in create_ids]
         result = pusher.push_batch(create_items, run_id=run_id)

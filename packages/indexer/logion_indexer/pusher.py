@@ -58,6 +58,7 @@ class Pusher:
     ) -> None:
         self.transport = transport
         self.base_url = base_url.rstrip("/")
+        self.transport.set_api_base_url(base_url)
         self._run_id: str | None = None
 
     def open_run(self) -> str:
