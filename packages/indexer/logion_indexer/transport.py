@@ -62,9 +62,10 @@ class Transport:
         return host in ("github.com", "api.github.com")
 
     def _is_api_host(self, url: str) -> bool:
-        """True if the URL's hostname matches the configured API base host."""
+        """True if the URL's hostname matches the configured API host."""
         host = (urlparse(url).hostname or "").lower()
-        return bool(self.api_base_host) and host == self.api_base_host.lower()
+        api_host = self.api_base_host or ""
+        return bool(api_host) and host == api_host.lower()
 
     def get(
         self,
