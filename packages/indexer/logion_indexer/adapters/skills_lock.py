@@ -15,9 +15,8 @@ Parses a ``skills-lock.json`` file with format::
 
 Only ``sourceType == "github"`` entries are accepted; others are
 dropped with reason ``unsupported_source_type``.  The lockfile's
-``computedHash`` is stored on the discovery channel and compared
-against our own bundle hash at HEAD — mismatch is recorded as channel
-metadata ``lock_drift=true``.
+``computedHash`` is stored on the discovery channel's ``metadata``
+dict for later drift comparison by the caller.
 
 Unknown ``version`` values → adapter hard-fail.
 """
@@ -87,7 +86,7 @@ class SkillsLockAdapter:
             if not source:
                 continue
 
-            info.get("computedHash", "")
+            computed_hash = info.get("computedHash", "")
 
             try:
                 canonical = CanonicalSkillId.from_str(source)
@@ -98,6 +97,9 @@ class SkillsLockAdapter:
                 hub_slug=self.hub_slug,
                 hub_url=target,
                 hub_verified=False,
+                metadata=(("computedHash", computed_hash),)
+                if computed_hash
+                else (),
             )
 
             yield DiscoveredSkill(

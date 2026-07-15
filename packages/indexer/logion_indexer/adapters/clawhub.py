@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from ..crawl import Crawler
 from ..github_resolver import resolve_hub_page
 from ..models import DiscoveredSkill, DiscoveryChannel
+from ..rate_limit import RateLimiter
 from ..transport import Transport
 
 # Match skill card entries on ClawHub.
@@ -24,9 +25,13 @@ class ClawhubAdapter:
 
     hub_slug = "clawhub"
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(
+        self,
+        transport: Transport,
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
         self.transport = transport
-        self.crawler = Crawler(transport)
+        self.crawler = Crawler(transport, rate_limiter=rate_limiter)
 
     def discover(
         self,

@@ -38,7 +38,13 @@ class IndexerConfig:
 
     @classmethod
     def from_env(cls, **overrides: object) -> IndexerConfig:
-        """Load config from environment variables."""
+        """Load config from environment variables.
+
+        CLI-only overrides (``seed_file``, ``only``, ``limit``, ``rps``,
+        ``dry_run``) are accepted here for convenience but are not
+        env-based — they come from argparse and are passed through so
+        the rest of the code can read them from the config object.
+        """
         github_token = overrides.get(
             "github_token", _env("LOGION_INDEXER_GITHUB_TOKEN")
         )
@@ -47,11 +53,19 @@ class IndexerConfig:
         seed_file = overrides.get(
             "seed_file", _env("LOGION_INDEXER_SEED_FILE")
         )
+        only = overrides.get("only")
+        limit = overrides.get("limit")
+        rps = overrides.get("rps")
+        dry_run = overrides.get("dry_run", False)
         return cls(
             github_token=str(github_token) if github_token else "",
             api_key=str(api_key) if api_key else "",
             base_url=str(base_url) if base_url else "",
             seed_file=str(seed_file) if seed_file else "",
+            only=str(only) if only else None,
+            limit=int(limit) if limit is not None else None,  # type: ignore[arg-type]
+            rps=float(rps) if rps else 1.0,  # type: ignore[arg-type]
+            dry_run=bool(dry_run),
         )
 
     @property

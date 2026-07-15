@@ -68,6 +68,8 @@ class Pusher:
             raise RuntimeError(f"failed to open run: HTTP {resp.status}")
         data = resp.json()
         run_id = data.get("run_id", "") if isinstance(data, dict) else ""
+        if not run_id:
+            raise RuntimeError("open_run: response did not contain a run_id")
         self._run_id = run_id
         return run_id
 
@@ -121,9 +123,19 @@ class Pusher:
 
             data = resp.json()
             if not isinstance(data, dict):
+                result.errors += len(chunk)
+                result.error_details.append({
+                    "status": resp.status,
+                    "error": "malformed response: expected JSON object",
+                })
                 continue
             results = data.get("results") or []
             if not isinstance(results, list):
+                result.errors += len(chunk)
+                result.error_details.append({
+                    "status": resp.status,
+                    "error": "malformed response: results is not a list",
+                })
                 continue
             for item_result in results:
                 if not isinstance(item_result, dict):
@@ -207,6 +219,7 @@ def _serialize_item(item: DiscoveredSkill) -> dict:
                 "hub_slug": ch.hub_slug,
                 "hub_url": ch.hub_url,
                 "hub_verified": ch.hub_verified,
+                "metadata": ch.metadata,
             }
             for ch in item.channels
         ],

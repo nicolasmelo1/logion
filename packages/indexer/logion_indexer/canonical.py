@@ -20,6 +20,9 @@ _GITHUB_URL_RE = re.compile(
 _GITHUB_SSH_RE = re.compile(
     r"^git@github\.com:([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/.*)?$"
 )
+# Matches /tree/<branch>/ or /blob/<branch>/ prefixes in GitHub URLs.
+# Captures the subpath after the branch, or empty if just tree/<branch>.
+_TREE_BLOB_PREFIX_RE = re.compile(r"^(?:tree|blob)/[^/]+(?:/(.*))?$")
 
 
 def _strip_github_url(raw: str) -> str:
@@ -129,4 +132,10 @@ class CanonicalSkillId:
         owner = parts[0]
         repo = parts[1]
         subpath = parts[2] if len(parts) > 2 else ""
+        # Strip /tree/<branch>/ or /blob/<branch>/ prefix so that
+        # .../tree/main/skills/foo → subpath="skills/foo".
+        if subpath:
+            tree_match = _TREE_BLOB_PREFIX_RE.match(subpath)
+            if tree_match:
+                subpath = tree_match.group(1)
         return cls(owner=owner, repo=repo, subpath=subpath)

@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
 from ..models import DiscoveredSkill, DiscoveryChannel
+from ..rate_limit import RateLimiter
 from ..transport import Transport
 
 # Match GitHub repo links in the docs pages.
@@ -26,9 +27,13 @@ class HermesDocsAdapter:
 
     hub_slug = "hermes_docs"
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(
+        self,
+        transport: Transport,
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
         self.transport = transport
-        self.crawler = Crawler(transport)
+        self.crawler = Crawler(transport, rate_limiter=rate_limiter)
 
     def discover(
         self,

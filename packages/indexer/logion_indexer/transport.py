@@ -6,6 +6,7 @@ import json
 import urllib.request
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -44,8 +45,26 @@ class Transport:
         self.user_agent = user_agent
         self.github_token = github_token
         self.api_key = api_key
+        self.api_base_host = urlparse(
+            "https://api.logion.sh"
+        ).hostname  # default API host
         self._cache: dict[str, tuple[int, bytes, dict[str, str]]] = {}
         self._call_log: list[str] = []
+
+    def set_api_base_url(self, base_url: str) -> None:
+        """Update the expected API host so API keys are only sent there."""
+        self.api_base_host = urlparse(base_url).hostname or ""
+
+    @staticmethod
+    def _is_github_host(url: str) -> bool:
+        """True if the URL hostname is github.com or api.github.com."""
+        host = (urlparse(url).hostname or "").lower()
+        return host in ("github.com", "api.github.com")
+
+    def _is_api_host(self, url: str) -> bool:
+        """True if the URL's hostname matches the configured API base host."""
+        host = (urlparse(url).hostname or "").lower()
+        return bool(self.api_base_host) and host == self.api_base_host.lower()
 
     def get(
         self,
@@ -59,7 +78,7 @@ class Transport:
         h = {"User-Agent": self.user_agent}
         if headers:
             h.update(dict(headers))
-        if self.github_token and "github.com" in url:
+        if self.github_token and self._is_github_host(url):
             h["Authorization"] = f"Bearer {self.github_token}"
 
         if use_cache and url in self._cache:
@@ -89,7 +108,7 @@ class Transport:
         }
         if headers:
             h.update(dict(headers))
-        if self.api_key and "logion" in url:
+        if self.api_key and self._is_api_host(url):
             h["Authorization"] = f"Bearer {self.api_key}"
 
         data = b""
@@ -116,7 +135,7 @@ class Transport:
         }
         if headers:
             h.update(dict(headers))
-        if self.api_key and "logion" in url:
+        if self.api_key and self._is_api_host(url):
             h["Authorization"] = f"Bearer {self.api_key}"
 
         data = b""

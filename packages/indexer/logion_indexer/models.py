@@ -15,11 +15,14 @@ class DiscoveryChannel:
         hub_slug: Short identifier for the hub (e.g. ``lobehub``).
         hub_url: The URL where the skill was listed on this hub.
         hub_verified: Whether the hub marks this listing as verified.
+        metadata: Optional adapter-specific metadata (e.g. lockfile
+            ``computedHash`` for the skills-lock adapter).
     """
 
     hub_slug: str
     hub_url: str
     hub_verified: bool = False
+    metadata: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

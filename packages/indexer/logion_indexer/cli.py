@@ -8,19 +8,23 @@ import json
 import sys
 from pathlib import Path
 
+from .canonical import CanonicalSkillId
 from .config import IndexerConfig, SeedFile
 from .dedup import dedup, dry_run_plan
-from .models import DiscoveredSkill
+from .models import DiscoveredSkill, DiscoveryChannel
 from .pusher import Pusher, RunStats
+from .rate_limit import RateLimiter
 from .transport import Transport
 
 
 def _build_transport(config: IndexerConfig) -> Transport:
-    return Transport(
+    transport = Transport(
         user_agent=config.user_agent,
         github_token=config.github_token or None,
         api_key=config.api_key or None,
     )
+    transport.set_api_base_url(config.api_base_url)
+    return transport
 
 
 def _load_seed(config: IndexerConfig) -> SeedFile:
@@ -31,6 +35,7 @@ def _load_seed(config: IndexerConfig) -> SeedFile:
 def _get_adapter(
     adapter_name: str,
     transport: Transport,
+    rate_limiter: RateLimiter | None = None,
 ):
     """Instantiate an adapter by name."""
     if adapter_name == "github_direct":
@@ -40,23 +45,25 @@ def _get_adapter(
     if adapter_name == "skills_sh":
         from .adapters.skills_sh import SkillsShAdapter
 
-        return SkillsShAdapter(transport=transport)
+        return SkillsShAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "clawhub":
         from .adapters.clawhub import ClawhubAdapter
 
-        return ClawhubAdapter(transport=transport)
+        return ClawhubAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "lobehub":
         from .adapters.lobehub import LobehubAdapter
 
-        return LobehubAdapter(transport=transport)
+        return LobehubAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "browse_sh":
         from .adapters.browse_sh import BrowseShAdapter
 
-        return BrowseShAdapter(transport=transport)
+        return BrowseShAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "hermes_docs":
         from .adapters.hermes_docs import HermesDocsAdapter
 
-        return HermesDocsAdapter(transport=transport)
+        return HermesDocsAdapter(
+            transport=transport, rate_limiter=rate_limiter
+        )
     if adapter_name == "skills_lock":
         from .adapters.skills_lock import SkillsLockAdapter
 
@@ -71,11 +78,12 @@ def _discover_all(
     """Run all adapters from the seed file and collect discoveries."""
     seed = _load_seed(config)
     all_discoveries: list[DiscoveredSkill] = []
+    rate_limiter = RateLimiter(default_rps=config.rps)
 
     for source in seed.sources:
         if config.only and source.adapter != config.only:
             continue
-        adapter = _get_adapter(source.adapter, transport)
+        adapter = _get_adapter(source.adapter, transport, rate_limiter)
         kwargs: dict = {}
         if source.mode:
             kwargs["mode"] = source.mode
@@ -124,16 +132,55 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
     plan_path = Path(args.plan)
     with open(plan_path) as fh:
         plan_data = json.load(fh)
+    create_ids = plan_data.get("create", [])
+    update_ids = plan_data.get("update", [])
+    skip_count = len(plan_data.get("skip", []))
     print(f"push: loaded plan from {plan_path}")
-    print(f"  create: {len(plan_data.get('create', []))}")
-    print(f"  update: {len(plan_data.get('update', []))}")
-    print(f"  skip: {len(plan_data.get('skip', []))}")
+    print(f"  create: {len(create_ids)}")
+    print(f"  update: {len(update_ids)}")
+    print(f"  skip: {skip_count}")
+
     pusher = Pusher(transport, config.api_base_url)
     run_id = pusher.open_run()
     print(f"  run_id: {run_id}")
-    stats = RunStats()
+
+    stats = RunStats(skipped=skip_count)
+
+    if create_ids:
+        create_items = [_skill_from_canonical(cid) for cid in create_ids]
+        result = pusher.push_batch(create_items, run_id=run_id)
+        stats.created = result.created
+        stats.errors += result.errors
+        if result.errors:
+            stats.partial = True
+
+    if update_ids:
+        update_items = [_skill_from_canonical(cid) for cid in update_ids]
+        result = pusher.push_batch(update_items, run_id=run_id)
+        stats.updated = result.updated
+        stats.errors += result.errors
+        if result.errors:
+            stats.partial = True
+
     pusher.close_run(stats)
-    return 0
+    _print_stats(stats)
+    return 1 if stats.partial else 0
+
+
+def _skill_from_canonical(cid_str: str) -> DiscoveredSkill:
+    """Build a minimal DiscoveredSkill from a canonical id string."""
+    cid = CanonicalSkillId.from_str(cid_str)
+    return DiscoveredSkill(
+        canonical=cid,
+        title="",
+        original_author=cid.owner,
+        channels=(
+            DiscoveryChannel(
+                hub_slug="plan",
+                hub_url=f"https://github.com/{cid.owner}/{cid.repo}",
+            ),
+        ),
+    )
 
 
 def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001

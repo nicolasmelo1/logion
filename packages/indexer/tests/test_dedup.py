@@ -122,7 +122,8 @@ class TestDryRun:
     def test_dry_run_zero_posts(self) -> None:
         transport = FakeTransport()
         transport.set_response(
-            "https://api.logion.sh/v1/admin/indexing/known?ids=gh:octocat/hello",
+            "https://api.logion.sh/v1/admin/indexing/known"
+            "?ids=gh%3Aoctocat%2Fhello",
             HttpResponse(200, b'{"known": {}}'),
         )
         d = _make_skill()
@@ -135,7 +136,8 @@ class TestDryRun:
     def test_dry_run_queries_get(self) -> None:
         transport = FakeTransport()
         transport.set_response(
-            "https://api.logion.sh/v1/admin/indexing/known?ids=gh:octocat/hello",
+            "https://api.logion.sh/v1/admin/indexing/known"
+            "?ids=gh%3Aoctocat%2Fhello",
             HttpResponse(200, b'{"known": {}}'),
         )
         d = _make_skill()

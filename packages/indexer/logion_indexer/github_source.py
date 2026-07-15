@@ -182,9 +182,10 @@ class GithubSource:
 
         # Build per-component inferred skills, filtered by subpath.
         skills: list[InferredSkill] = []
+        subpath_lower = subpath.strip("/").lower() if subpath else ""
         for comp in result.components:
-            if subpath and not comp.root.startswith(
-                subpath.strip("/").lower()
+            if subpath_lower and not comp.root.lower().startswith(
+                subpath_lower
             ):
                 continue
 

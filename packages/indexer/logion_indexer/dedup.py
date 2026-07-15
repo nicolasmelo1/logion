@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from urllib.parse import quote
 
 from .canonical import CanonicalSkillId
 from .models import DiscoveredSkill
@@ -110,7 +111,7 @@ def query_known(
     if not canonical_ids:
         return {}
 
-    ids_param = ",".join(str(cid) for cid in canonical_ids)
+    ids_param = ",".join(quote(str(cid), safe="") for cid in canonical_ids)
     url = f"{base_url.rstrip('/')}/v1/admin/indexing/known"
     # Pass ids as query parameter.
     full_url = f"{url}?ids={ids_param}"

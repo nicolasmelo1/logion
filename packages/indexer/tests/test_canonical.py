@@ -112,7 +112,23 @@ class TestFromGithubUrl:
         )
         assert cid.owner == "octocat"
         assert cid.repo == "hello-world"
-        assert cid.subpath == "tree/main/skills/foo"
+        assert cid.subpath == "skills/foo"
+
+    def test_blob_url_with_subpath(self) -> None:
+        cid = CanonicalSkillId.from_github_url(
+            "https://github.com/octocat/hello-world/blob/main/skills/foo/SKILL.md"
+        )
+        assert cid.owner == "octocat"
+        assert cid.repo == "hello-world"
+        assert cid.subpath == "skills/foo/skill.md"
+
+    def test_tree_url_no_subpath(self) -> None:
+        cid = CanonicalSkillId.from_github_url(
+            "https://github.com/octocat/hello-world/tree/main"
+        )
+        assert cid.owner == "octocat"
+        assert cid.repo == "hello-world"
+        assert cid.subpath == ""
 
     def test_dotgit_url(self) -> None:
         cid = CanonicalSkillId.from_github_url(

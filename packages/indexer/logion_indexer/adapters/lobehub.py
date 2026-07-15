@@ -9,6 +9,7 @@ from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
 from ..github_resolver import resolve_hub_page
 from ..models import DiscoveredSkill, DiscoveryChannel
+from ..rate_limit import RateLimiter
 from ..transport import Transport
 
 # LobeHub may serve JSON or HTML.
@@ -26,9 +27,13 @@ class LobehubAdapter:
 
     hub_slug = "lobehub"
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(
+        self,
+        transport: Transport,
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
         self.transport = transport
-        self.crawler = Crawler(transport)
+        self.crawler = Crawler(transport, rate_limiter=rate_limiter)
 
     def discover(
         self,
@@ -64,18 +69,16 @@ class LobehubAdapter:
         for full_url, owner, repo in matches:
             if limit is not None and count >= limit:
                 break
-            title_match = _TITLE_FIELD_RE.search(
-                html[
-                    max(0, matches[0][0].find(full_url) - 500) : matches[0][
-                        0
-                    ].find(full_url)
-                    + 500
-                ]
-                if full_url in html
-                else ""
-            )
+            # Search within the page HTML for the URL position to
+            # extract a surrounding window for title/verified detection.
+            url_pos = html.find(full_url)
+            if url_pos >= 0:
+                window = html[max(0, url_pos - 500) : url_pos + 500]
+            else:
+                window = ""
+            title_match = _TITLE_FIELD_RE.search(window)
             title = title_match.group(1) if title_match else ""
-            verified = bool(_VERIFIED_RE.search(html))
+            verified = bool(_VERIFIED_RE.search(window))
             channel = DiscoveryChannel(
                 hub_slug=self.hub_slug,
                 hub_url=f"{base_url}/skills/{owner}/{repo}",
