@@ -74,7 +74,13 @@ class Transport:
         headers: Mapping[str, str] | None = None,
         use_cache: bool = True,
     ) -> HttpResponse:
-        """Perform an HTTP GET, with optional ETag/Last-Modified cache."""
+        """Perform an HTTP GET, with optional in-memory URL cache.
+
+        When ``use_cache`` is True, successful responses are stored in
+        an in-memory dict keyed by URL and returned on subsequent calls
+        without hitting the network.  No conditional requests (ETag /
+        If-None-Match / If-Modified-Since) are performed.
+        """
         self._call_log.append(f"GET {url}")
         h = {"User-Agent": self.user_agent}
         if headers:

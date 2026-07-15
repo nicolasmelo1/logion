@@ -17,10 +17,6 @@ _SKILL_LINK_RE = re.compile(
     r'<a[^>]+href="(/skill[s]?/[^"]+)"[^>]*>([^<]*)</a>',
     re.IGNORECASE,
 )
-_GITHUB_LINK_RE = re.compile(
-    r'href="(https?://github\.com/([^/"]+)/([^/"]+))"',
-    re.IGNORECASE,
-)
 
 
 class SkillsShAdapter:
@@ -56,13 +52,12 @@ class SkillsShAdapter:
             skill_url = f"{base_url}{path}"
             resolved = self._resolve_skill_page(skill_url)
             if resolved:
-                canonical, page_html = resolved
-                # Look for GitHub link in the skill page.
-                github_match = _GITHUB_LINK_RE.search(page_html)
-                if github_match:
-                    owner = github_match.group(2)
-                    repo = github_match.group(3)
-                    canonical = CanonicalSkillId(owner=owner, repo=repo)
+                canonical, _page_html = resolved
+                # resolve_hub_page already produced a canonical id
+                # (possibly with a subpath).  Only fall back to the
+                # regex if it somehow returned without resolving.
+                # (The _resolve_skill_page helper guarantees resolution,
+                # so this branch is defensive.)
                 channel = DiscoveryChannel(
                     hub_slug=self.hub_slug,
                     hub_url=skill_url,

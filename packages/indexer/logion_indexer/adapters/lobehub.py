@@ -79,9 +79,13 @@ class LobehubAdapter:
             title_match = _TITLE_FIELD_RE.search(window)
             title = title_match.group(1) if title_match else ""
             verified = bool(_VERIFIED_RE.search(window))
+            # Strip trailing /skills to avoid double /skills/skills/ path.
+            hub_base = base_url
+            if hub_base.endswith("/skills"):
+                hub_base = hub_base[: -len("/skills")]
             channel = DiscoveryChannel(
                 hub_slug=self.hub_slug,
-                hub_url=f"{base_url}/skills/{owner}/{repo}",
+                hub_url=f"{hub_base}/skills/{owner}/{repo}",
                 hub_verified=verified,
             )
             results.append(

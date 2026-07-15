@@ -79,7 +79,8 @@ class GithubSource:
             owner=owner,
             repo=repo,
             default_branch=data.get("default_branch", "main") or "main",
-            size_bytes=data.get("size", 0) or 0,
+            # GitHub API returns size in KB; convert to bytes.
+            size_bytes=(data.get("size", 0) or 0) * 1024,
             license_spdx=license_spdx,
         )
 

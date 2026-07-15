@@ -1,4 +1,4 @@
-"""Hub adapter protocol — re-exported for clarity."""
+"""Hub adapter protocol."""
 
 from __future__ import annotations
 

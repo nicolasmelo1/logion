@@ -1,4 +1,4 @@
-"""Crawl orchestration: robots.txt, rate limiter, ETag cache, UA."""
+"""Crawl orchestration: robots.txt, rate limiter, in-memory cache, UA."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class Crawler:
     - respect robots.txt ``Disallow`` rules
     - rate-limit per host (default 1 req/s)
     - identified User-Agent
-    - ETag/Last-Modified cache (handled by Transport)
+    - in-memory URL cache (handled by Transport)
     """
 
     def __init__(
@@ -96,8 +96,11 @@ def _parse_robots_txt(text: str, user_agent: str) -> RobotsRule:
     """
     ua_lower = user_agent.lower()
     disallowed: list[str] = []
-    current_agents: list[str] = []
+    # Collect consecutive User-agent lines before a Disallow/Allow group.
+    # If ANY of them match our agent, the group applies to us.
+    group_agents: list[str] = []
     applies_to_us = False
+    in_rule_group = False
 
     for line in text.splitlines():
         line = line.strip()
@@ -112,18 +115,22 @@ def _parse_robots_txt(text: str, user_agent: str) -> RobotsRule:
         value = value.strip()
 
         if field_name == "user-agent":
-            # New section starts.
-            if current_agents and applies_to_us:
-                # Already collected disallows for a matching section.
-                pass
-            current_agents = [value.lower()]
-            applies_to_us = (
+            # If we were collecting disallows for a previous group,
+            # a new User-agent line starts a fresh group.
+            if in_rule_group:
+                group_agents = []
+                applies_to_us = False
+                in_rule_group = False
+            group_agents.append(value.lower())
+            if (
                 value == "*"
                 or value.lower() in ua_lower
                 or ua_lower.startswith(value.lower())
-            )
-        elif field_name == "disallow":
-            if applies_to_us and value:
+            ):
+                applies_to_us = True
+        elif field_name in ("disallow", "allow"):
+            in_rule_group = True
+            if field_name == "disallow" and applies_to_us and value:
                 disallowed.append(value)
 
     return RobotsRule(allowed=True, disallowed_paths=disallowed)
