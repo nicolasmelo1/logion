@@ -1,0 +1,21 @@
+version: 1
+sources:
+  - {adapter: github_direct, mode: repo,         target: anthropics/skills}
+  - {adapter: github_direct, mode: repo,         target: openai/skills}
+  - {adapter: github_direct, mode: repo,         target: huggingface/skills}
+  - {adapter: github_direct, mode: repo,         target: nvidia/skills}
+  - {adapter: github_direct, mode: repo_subpath, target: stripe/ai, subpath: skills}
+  - {adapter: github_direct, mode: owner,        target: zarazhangrui}
+  - {adapter: github_direct, mode: repo,         target: mattpocock/skills}
+  - {adapter: github_direct, mode: repo,         target: MiniMax-AI/skills}
+  - {adapter: github_direct, mode: repo,         target: andrewyng/context-hub}
+  - {adapter: github_direct, mode: repo,         target: uphiago/recon-skills}
+  - {adapter: github_direct, mode: repo,         target: affaan-m/ECC}
+  - {adapter: github_direct, mode: repo,         target: ComposioHQ/awesome-claude-skills}
+  - {adapter: github_direct, mode: repo,         target: garrytan/gstack}
+  - {adapter: github_direct, mode: repo,         target: obra/superpowers}
+  - {adapter: skills_sh,   target: "https://www.skills.sh/"}
+  - {adapter: clawhub,     target: "https://clawhub.ai/"}
+  - {adapter: lobehub,     target: "https://lobehub.com/skills"}
+  - {adapter: browse_sh,   target: "https://browse.sh/"}
+  - {adapter: hermes_docs, target: "https://hermes-agent.nousresearch.com/docs/skills"}

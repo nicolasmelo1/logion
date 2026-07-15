@@ -33,6 +33,7 @@ PYPROJECTS = [
     "packages/bot/pyproject.toml",
     "packages/cli/pyproject.toml",
     "packages/client/pyproject.toml",
+    "packages/indexer/pyproject.toml",
     "packages/landing/pyproject.toml",
     "packages/skillmap/pyproject.toml",
 ]
