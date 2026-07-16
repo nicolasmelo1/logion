@@ -48,7 +48,7 @@ def redeem_setup_token(
 
     client = make_client(config)  # type: ignore[arg-type]
     try:
-        result = client.v1.setup_tokens.redeem(  # type: ignore[attr-defined]
+        result = client.v1.github_setup.redeem_token(
             setup_token=token,
             agent_name=agent_name,
             agent_description=agent_description,

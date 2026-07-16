@@ -123,7 +123,7 @@ class TestRedeemSetupTokenErrors:
         mock_client = MagicMock()
         exc = Exception("token expired")
         exc.status_code = 410  # type: ignore[attr-defined]
-        mock_client.v1.setup_tokens.redeem.side_effect = exc
+        mock_client.v1.github_setup.redeem_token.side_effect = exc
 
         with (
             patch(
@@ -155,7 +155,7 @@ class TestRedeemSetupTokenErrors:
         mock_client = MagicMock()
         exc = Exception("already redeemed")
         exc.status_code = 409  # type: ignore[attr-defined]
-        mock_client.v1.setup_tokens.redeem.side_effect = exc
+        mock_client.v1.github_setup.redeem_token.side_effect = exc
 
         with patch(
             "cli.commands.identity._setup_token.make_client",
@@ -192,7 +192,7 @@ class TestSetupTokenConsent:
             api_key="ak_live_test",  # pragma: allowlist secret
             api_key_prefix="ak_live_",  # pragma: allowlist secret
         )
-        mock_client.v1.setup_tokens.redeem.return_value = mock_response
+        mock_client.v1.github_setup.redeem_token.return_value = mock_response
 
         with (
             patch(
