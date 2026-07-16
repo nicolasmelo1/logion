@@ -30,21 +30,30 @@ SKIP_REASONS = {
 
 @dataclass
 class DedupPlan:
-    """Plan output: what to create, update, and skip."""
+    """Plan output: what to create, update, and skip.
+
+    ``create`` / ``update`` hold full :class:`DiscoveredSkill` objects and
+    are serialized verbatim in :meth:`to_dict` (the same serialization the
+    pusher sends), so a plan file is a complete, resume-able push payload.
+    """
 
     create: list[DiscoveredSkill] = field(default_factory=list)
     update: list[DiscoveredSkill] = field(default_factory=list)
     skip: list[dict] = field(default_factory=list)
+    partial: bool = False
 
     @property
     def total(self) -> int:
         return len(self.create) + len(self.update) + len(self.skip)
 
     def to_dict(self) -> dict:
+        from .pusher import serialize_item
+
         return {
-            "create": [str(s.canonical) for s in self.create],
-            "update": [str(s.canonical) for s in self.update],
+            "create": [serialize_item(s) for s in self.create],
+            "update": [serialize_item(s) for s in self.update],
             "skip": self.skip,
+            "partial": self.partial,
         }
 
     def to_json(self) -> str:
@@ -83,6 +92,7 @@ def merge_discoveries(
             map_flags = tuple(
                 sorted(set(existing.map_flags) | set(d.map_flags))
             )
+            bundle = existing.bundle or d.bundle
             merged[key] = DiscoveredSkill(
                 canonical=key,
                 title=title,
@@ -94,6 +104,7 @@ def merge_discoveries(
                 channels=tuple(all_channels),
                 inferred_map=inferred_map,
                 map_flags=map_flags,
+                bundle=bundle,
             )
 
     return list(merged.values())
