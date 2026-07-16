@@ -41,6 +41,8 @@ class DiscoveredSkill:
         inferred_map: Per-skill package-map fragment (15.3 schema),
             or None if inference failed.
         map_flags: Skillmap needs_review codes, verbatim.
+        bundle: Mirrored-bundle metadata ``{sha256, size_bytes}`` when a
+            permissive-license bundle was mirrored, else None (link-only).
     """
 
     canonical: CanonicalSkillId
@@ -53,3 +55,4 @@ class DiscoveredSkill:
     channels: tuple[DiscoveryChannel, ...] = field(default_factory=tuple)
     inferred_map: dict | None = None
     map_flags: tuple[str, ...] = field(default_factory=tuple)
+    bundle: dict | None = None
