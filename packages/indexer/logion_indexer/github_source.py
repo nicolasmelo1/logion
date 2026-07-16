@@ -221,6 +221,22 @@ class GithubSource:
         meta = self.fetch_repo_metadata(owner, repo)
         return meta.license_spdx
 
+    def fetch_tarball(self, owner: str, repo: str, sha: str) -> bytes | None:
+        """Download the GitHub tarball for a commit, or None on failure.
+
+        The response is not cached in memory (tarballs are large and only
+        needed once per run) and is capped at ``BUNDLE_SIZE_CAP_BYTES``.
+        """
+        if not sha:
+            return None
+        url = f"https://api.github.com/repos/{owner}/{repo}/tarball/{sha}"
+        resp = self.transport.get(url, use_cache=False)
+        if resp.status != 200:
+            return None
+        if len(resp.body) > BUNDLE_SIZE_CAP_BYTES:
+            return None
+        return resp.body
+
 
 def _build_component_fragment(
     result: InferenceResult,

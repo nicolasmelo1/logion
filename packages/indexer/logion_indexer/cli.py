@@ -7,12 +7,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
-from .canonical import CanonicalSkillId
 from .config import IndexerConfig, SeedFile
-from .dedup import dedup, dry_run_plan
-from .models import DiscoveredSkill, DiscoveryChannel
-from .pusher import Pusher, RunStats
+from .crawl import Crawler
+from .mirror import BundleArtifact
+from .models import DiscoveredSkill
+from .pipeline import build_indexing_plan
+from .pusher import Pusher, PushResult, RunStats
 from .rate_limit import RateLimiter
 from .transport import Transport
 
@@ -22,6 +24,7 @@ def _build_transport(config: IndexerConfig) -> Transport:
         user_agent=config.user_agent,
         github_token=config.github_token or None,
         api_key=config.api_key or None,
+        cache_dir=config.resolved_cache_dir,
     )
     transport.set_api_base_url(config.api_base_url)
     return transport
@@ -103,16 +106,26 @@ def _discover_all(
 
 
 def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
-    """Crawl hubs, produce a plan (no push)."""
+    """Crawl hubs, produce a plan (no push).
+
+    With ``--out plan.json`` the full plan (create/update items serialized
+    verbatim) is written for a later ``push --plan``; ``--json`` prints the
+    same payload to stdout.
+    """
     transport = _build_transport(config)
     discoveries = _discover_all(config, transport)
-    plan = dry_run_plan(discoveries, transport, config.api_base_url)
+    plan, _ = build_indexing_plan(discoveries, transport, config.api_base_url)
     print(f"discovered: {len(discoveries)}")
     print(f"create: {len(plan.create)}")
     print(f"update: {len(plan.update)}")
     print(f"skip: {len(plan.skip)}")
+    print(f"partial: {'yes' if plan.partial else 'no'}")
+    plan_dict = plan.to_dict()
+    if args.out:
+        Path(args.out).write_text(json.dumps(plan_dict, indent=2))
+        print(f"wrote plan: {args.out}")
     if args.json:
-        print(json.dumps(plan.to_dict(), indent=2))
+        print(json.dumps(plan_dict, indent=2))
     return 0
 
 
@@ -127,17 +140,24 @@ def cmd_resolve(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa
 
 
 def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
-    """Push a pre-built plan to the API."""
+    """Push a pre-built plan file to the API, verbatim.
+
+    The plan file carries the full serialized items (the same
+    serialization the pusher sends), so items are pushed as-is with no
+    degenerate rebuilds.  Bundle bytes are not in the plan file, so
+    ``push --plan`` is link/metadata only; the full ``run`` path mirrors
+    bundles.
+    """
     transport = _build_transport(config)
     plan_path = Path(args.plan)
     with open(plan_path) as fh:
         plan_data = json.load(fh)
-    create_ids = plan_data.get("create", [])
-    update_ids = plan_data.get("update", [])
+    create_items = plan_data.get("create", [])
+    update_items = plan_data.get("update", [])
     skip_count = len(plan_data.get("skip", []))
     print(f"push: loaded plan from {plan_path}")
-    print(f"  create: {len(create_ids)}")
-    print(f"  update: {len(update_ids)}")
+    print(f"  create: {len(create_items)}")
+    print(f"  update: {len(update_items)}")
     print(f"  skip: {skip_count}")
 
     pusher = Pusher(transport, config.api_base_url)
@@ -145,22 +165,17 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
     print(f"  run_id: {run_id}")
 
     stats = RunStats(skipped=skip_count)
+    stats.partial = bool(plan_data.get("partial", False))
 
-    # Plan files only carry canonical id strings, so the DiscoveredSkill
-    # objects built here are minimal (empty title/summary/tags/channels).
-    # The batch-upsert endpoint treats empty/missing fields as "no change"
-    # rather than "clear", so existing listing metadata is preserved.
-    if create_ids:
-        create_items = [_skill_from_canonical(cid) for cid in create_ids]
-        result = pusher.push_batch(create_items, run_id=run_id)
+    if create_items:
+        result = pusher.push_serialized(create_items, run_id=run_id)
         stats.created = result.created
         stats.errors += result.errors
         if result.errors:
             stats.partial = True
 
-    if update_ids:
-        update_items = [_skill_from_canonical(cid) for cid in update_ids]
-        result = pusher.push_batch(update_items, run_id=run_id)
+    if update_items:
+        result = pusher.push_serialized(update_items, run_id=run_id)
         stats.updated = result.updated
         stats.errors += result.errors
         if result.errors:
@@ -171,41 +186,24 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
     return 1 if stats.partial else 0
 
 
-def _skill_from_canonical(cid_str: str) -> DiscoveredSkill:
-    """Build a minimal DiscoveredSkill from a canonical id string."""
-    cid = CanonicalSkillId.from_str(cid_str)
-    return DiscoveredSkill(
-        canonical=cid,
-        title="",
-        original_author=cid.owner,
-        channels=(
-            DiscoveryChannel(
-                hub_slug="plan",
-                hub_url=f"https://github.com/{cid.owner}/{cid.repo}",
-            ),
-        ),
-    )
-
-
 def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
-    """Full pipeline: crawl → resolve → dedup → push → stats."""
+    """Full pipeline: crawl → enrich → validate → mirror → push → stats."""
     transport = _build_transport(config)
     discoveries = _discover_all(config, transport)
     stats = RunStats(discovered=len(discoveries))
 
+    plan, artifacts = build_indexing_plan(
+        discoveries, transport, config.api_base_url
+    )
+    stats.deduped = plan.total
+    stats.skipped = len(plan.skip)
+    stats.partial = plan.partial
+
     if config.dry_run:
-        plan = dry_run_plan(discoveries, transport, config.api_base_url)
         stats.created = len(plan.create)
         stats.updated = len(plan.update)
-        stats.skipped = len(plan.skip)
         _print_stats(stats)
         return 0
-
-    plan = dedup(discoveries, transport, config.api_base_url)
-    stats.deduped = plan.total
-    stats.created = len(plan.create)
-    stats.updated = len(plan.update)
-    stats.skipped = len(plan.skip)
 
     pusher = Pusher(transport, config.api_base_url)
     run_id = pusher.open_run()
@@ -215,16 +213,31 @@ def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: AR
         stats.errors += result.errors
         if result.errors:
             stats.partial = True
+        _upload_bundles(pusher, result, artifacts)
     if plan.update:
         result = pusher.push_batch(plan.update, run_id=run_id)
         stats.updated = result.updated
         stats.errors += result.errors
         if result.errors:
             stats.partial = True
+        _upload_bundles(pusher, result, artifacts)
 
     pusher.close_run(stats)
     _print_stats(stats)
     return 1 if stats.partial else 0
+
+
+def _upload_bundles(
+    pusher: Pusher,
+    result: PushResult,
+    artifacts: dict[str, BundleArtifact],
+) -> None:
+    """Upload mirrored bundles for upserted listings via presigned PUT."""
+    for canonical, listing_id in result.listing_ids.items():
+        artifact = artifacts.get(canonical)
+        if artifact is None:
+            continue
+        pusher.upload_bundle(listing_id, artifact.data, artifact.sha256)
 
 
 def cmd_doctor(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
@@ -243,8 +256,32 @@ def cmd_doctor(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa:
         print(f"  api: unreachable ({e})")
         return 1
 
+    _check_robots(config, transport)
+
     print("doctor: ok")
     return 0
+
+
+def _check_robots(config: IndexerConfig, transport: Transport) -> None:
+    """Report robots.txt fetchability for each non-GitHub seed hub."""
+    try:
+        seed = _load_seed(config)
+    except (FileNotFoundError, ImportError, TypeError) as e:
+        print(f"  robots: seed file unreadable ({e})")
+        return
+    crawler = Crawler(transport)
+    seen: set[str] = set()
+    print("  robots:")
+    for source in seed.sources:
+        if source.adapter == "github_direct":
+            continue
+        host = urlparse(source.target).hostname or ""
+        if not host or host in seen:
+            continue
+        seen.add(host)
+        rule = crawler.fetch_robots_txt(source.target)
+        disallowed = len(rule.disallowed_paths)
+        print(f"    {host}: reachable (disallow rules: {disallowed})")
 
 
 def _print_stats(stats: RunStats) -> None:
@@ -288,6 +325,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="rate limit (requests per second, per host)",
     )
     parser.add_argument(
+        "--cache-dir",
+        default=None,
+        help="on-disk HTTP cache dir (default: ~/.cache/logion-indexer)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="plan only, no push",
@@ -300,7 +342,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("crawl", help="crawl hubs, print plan")
+    crawl_parser = subparsers.add_parser(
+        "crawl", help="crawl hubs, print plan"
+    )
+    crawl_parser.add_argument(
+        "--out",
+        default=None,
+        help="write the full plan to this JSON file (for push --plan)",
+    )
     subparsers.add_parser("resolve", help="resolve hub pages to GitHub")
     subparsers.add_parser("run", help="full pipeline: crawl → push")
     subparsers.add_parser("doctor", help="check creds, robots, API")
@@ -315,13 +364,16 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    config = IndexerConfig.from_env(
-        seed_file=args.seed_file,
-        only=args.only,
-        limit=args.limit,
-        rps=args.rps,
-        dry_run=args.dry_run,
-    )
+    from_env_kwargs: dict = {
+        "seed_file": args.seed_file,
+        "only": args.only,
+        "limit": args.limit,
+        "rps": args.rps,
+        "dry_run": args.dry_run,
+    }
+    if args.cache_dir is not None:
+        from_env_kwargs["cache_dir"] = args.cache_dir
+    config = IndexerConfig.from_env(**from_env_kwargs)
 
     if args.command == "crawl":
         sys.exit(cmd_crawl(config, args))

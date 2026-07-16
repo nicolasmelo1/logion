@@ -30,6 +30,7 @@ class IndexerConfig:
     api_key: str = ""
     base_url: str = ""
     seed_file: str = ""
+    cache_dir: str = ""
     user_agent: str = "logion-indexer/0.1 (+https://logion.sh)"
     rps: float = 1.0
     dry_run: bool = False
@@ -53,6 +54,9 @@ class IndexerConfig:
         seed_file = overrides.get(
             "seed_file", _env("LOGION_INDEXER_SEED_FILE")
         )
+        cache_dir = overrides.get(
+            "cache_dir", _env("LOGION_INDEXER_CACHE_DIR")
+        )
         only = overrides.get("only")
         limit = overrides.get("limit")
         rps = overrides.get("rps")
@@ -62,6 +66,7 @@ class IndexerConfig:
             api_key=str(api_key) if api_key else "",
             base_url=str(base_url) if base_url else "",
             seed_file=str(seed_file) if seed_file else "",
+            cache_dir=str(cache_dir) if cache_dir else "",
             only=str(only) if only else None,
             limit=int(limit)
             if limit is not None and isinstance(limit, (int, str))
@@ -78,6 +83,15 @@ class IndexerConfig:
             return self.base_url.rstrip("/")
         return "https://api.logion.sh"
 
+    @property
+    def resolved_cache_dir(self) -> str:
+        """Effective disk-cache directory (default under ~/.cache)."""
+        if self.cache_dir:
+            return self.cache_dir
+        from .http_cache import default_cache_dir
+
+        return str(default_cache_dir())
+
     def redact(self) -> dict[str, str]:
         """Return a safe dict for logging (secrets redacted)."""
         return {
@@ -85,6 +99,7 @@ class IndexerConfig:
             "api_key": _redact(self.api_key),
             "base_url": self.base_url or "(unset)",
             "seed_file": self.seed_file or "(default)",
+            "cache_dir": self.resolved_cache_dir,
         }
 
 

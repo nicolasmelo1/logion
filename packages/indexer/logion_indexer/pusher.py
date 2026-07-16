@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .models import DiscoveredSkill
-from .transport import Transport
+from .transport import HttpResponse, Transport
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -28,6 +28,8 @@ class PushResult:
     skipped: int = 0
     errors: int = 0
     error_details: list[dict] = field(default_factory=list)
+    # Maps canonical id string -> listing id, for follow-up bundle upload.
+    listing_ids: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -106,64 +108,61 @@ class Pusher:
 
         Batches are capped at ``BATCH_SIZE`` (100) items per call.
         """
+        return self.push_serialized(
+            [_serialize_item(item) for item in items], run_id=run_id
+        )
+
+    def push_serialized(
+        self,
+        items: Sequence[dict],
+        run_id: str | None = None,
+    ) -> PushResult:
+        """Push already-serialized batch items verbatim.
+
+        This is the failure-resume path: a plan file carries the full
+        serialized items and is pushed here without rebuilding them.
+        """
         rid = run_id or self._run_id or ""
         url = f"{self.base_url}/v1/admin/indexing/listings:batch-upsert"
         result = PushResult()
 
         for i in range(0, len(items), BATCH_SIZE):
             chunk = items[i : i + BATCH_SIZE]
-            payload = {
-                "run_id": rid,
-                "items": [_serialize_item(item) for item in chunk],
-            }
+            payload = {"run_id": rid, "items": list(chunk)}
             resp = self.transport.post(url, json_body=payload)
-            if resp.status not in (200, 201):
-                result.errors += len(chunk)
-                result.error_details.append({
-                    "status": resp.status,
-                    "body": resp.text[:500],
-                })
-                continue
-
-            try:
-                data = resp.json()
-            except (ValueError, json.JSONDecodeError):
-                result.errors += len(chunk)
-                result.error_details.append({
-                    "status": resp.status,
-                    "body": resp.text[:500],
-                })
-                continue
-            if not isinstance(data, dict):
-                result.errors += len(chunk)
-                result.error_details.append({
-                    "status": resp.status,
-                    "error": "malformed response: expected JSON object",
-                })
-                continue
-            results = data.get("results") or []
-            if not isinstance(results, list):
-                result.errors += len(chunk)
-                result.error_details.append({
-                    "status": resp.status,
-                    "error": "malformed response: results is not a list",
-                })
-                continue
-            for item_result in results:
-                if not isinstance(item_result, dict):
-                    continue
-                status = item_result.get("status", "")
-                if status == "created":
-                    result.created += 1
-                elif status == "updated":
-                    result.updated += 1
-                elif status == "skipped":
-                    result.skipped += 1
-                elif status == "error":
-                    result.errors += 1
-                    result.error_details.append(item_result)
+            self._absorb_response(resp, len(chunk), result)
 
         return result
+
+    def _absorb_response(
+        self, resp: HttpResponse, chunk_len: int, result: PushResult
+    ) -> None:
+        """Fold one batch-upsert HTTP response into *result*."""
+        results = _parse_batch_results(resp)
+        if results is None:
+            result.errors += chunk_len
+            result.error_details.append({
+                "status": resp.status,
+                "body": resp.text[:500],
+            })
+            return
+        for item_result in results:
+            if not isinstance(item_result, dict):
+                continue
+            canonical = item_result.get("canonical", "")
+            listing_id = item_result.get("id") or item_result.get("listing_id")
+            if canonical and listing_id:
+                result.listing_ids[str(canonical)] = str(listing_id)
+            status = item_result.get("status", "")
+            if status == "created":
+                result.created += 1
+            elif status == "updated":
+                result.updated += 1
+            elif status == "skipped":
+                result.skipped += 1
+            elif status == "error":
+                result.errors += 1
+                result.error_details.append(item_result)
 
     def upload_bundle(
         self,
@@ -219,6 +218,22 @@ class Pusher:
         return complete_resp.status in (200, 204)
 
 
+def _parse_batch_results(resp: HttpResponse) -> list | None:
+    """Return the ``results`` list, or None on any malformed response."""
+    if resp.status not in (200, 201):
+        return None
+    try:
+        data = resp.json()
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    results = data.get("results") or []
+    if not isinstance(results, list):
+        return None
+    return results
+
+
 def _serialize_item(item: DiscoveredSkill) -> dict:
     """Serialize a DiscoveredSkill for the batch-upsert payload."""
     return {
@@ -240,7 +255,7 @@ def _serialize_item(item: DiscoveredSkill) -> dict:
         ],
         "inferred_map": item.inferred_map,
         "map_flags": list(item.map_flags),
-        "bundle": None,
+        "bundle": item.bundle,
     }
 
 

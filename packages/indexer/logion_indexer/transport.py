@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from urllib.error import HTTPError
 from urllib.parse import urlparse
 
+from .http_cache import DiskCache
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -42,6 +44,7 @@ class Transport:
         user_agent: str = "logion-indexer/0.1 (+https://logion.sh)",
         github_token: str | None = None,
         api_key: str | None = None,
+        cache_dir: str | None = None,
     ) -> None:
         self.user_agent = user_agent
         self.github_token = github_token
@@ -51,6 +54,7 @@ class Transport:
         ).hostname  # default API host
         self._cache: dict[str, tuple[int, bytes, dict[str, str]]] = {}
         self._call_log: list[str] = []
+        self._disk_cache = DiskCache(cache_dir) if cache_dir else None
 
     def set_api_base_url(self, base_url: str) -> None:
         """Update the expected API host so API keys are only sent there."""
@@ -75,12 +79,14 @@ class Transport:
         headers: Mapping[str, str] | None = None,
         use_cache: bool = True,
     ) -> HttpResponse:
-        """Perform an HTTP GET, with optional in-memory URL cache.
+        """Perform an HTTP GET, with in-memory and on-disk caching.
 
         When ``use_cache`` is True, successful responses are stored in
         an in-memory dict keyed by URL and returned on subsequent calls
-        without hitting the network.  No conditional requests (ETag /
-        If-None-Match / If-Modified-Since) are performed.
+        within the same run without hitting the network.  When a disk
+        cache is configured, a stored ``ETag`` / ``Last-Modified`` is
+        sent as ``If-None-Match`` / ``If-Modified-Since``; a ``304 Not
+        Modified`` serves the cached body.
         """
         self._call_log.append(f"GET {url}")
         h = {"User-Agent": self.user_agent}
@@ -95,16 +101,33 @@ class Transport:
             status, body, resp_headers = self._cache[url]
             return HttpResponse(status, body, resp_headers)
 
-        req = urllib.request.Request(url, headers=h, method="GET")
+        entry = self._disk_cache.get(url) if self._disk_cache else None
+        if entry is not None:
+            if entry.etag:
+                h["If-None-Match"] = entry.etag
+            if entry.last_modified:
+                h["If-Modified-Since"] = entry.last_modified
+
+        resp = self._raw_get(url, h)
+
+        if resp.status == 304 and entry is not None:
+            resp = HttpResponse(200, entry.body, entry.headers)
+        elif resp.status == 200 and self._disk_cache is not None:
+            self._disk_cache.store(url, resp.status, resp.body, resp.headers)
+
+        if use_cache and resp.status == 200:
+            self._cache[url] = (resp.status, resp.body, resp.headers)
+        return resp
+
+    def _raw_get(self, url: str, headers: Mapping[str, str]) -> HttpResponse:
+        """Perform the underlying GET (network seam for tests)."""
+        req = urllib.request.Request(url, headers=dict(headers), method="GET")
         try:
             with urllib.request.urlopen(req) as resp:
                 data = resp.read()
-                resp_headers = dict(resp.headers)
-                if use_cache:
-                    self._cache[url] = (resp.status, data, resp_headers)
-                return HttpResponse(resp.status, data, resp_headers)
+                return HttpResponse(resp.status, data, dict(resp.headers))
         except HTTPError as e:
-            return HttpResponse(e.code, e.read())
+            return HttpResponse(e.code, e.read(), dict(e.headers or {}))
 
     def post(
         self,
