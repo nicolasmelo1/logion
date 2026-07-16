@@ -135,6 +135,18 @@ the live API:
 - **Credit economy** — credits as the buyer unit of account, a double-entry
   marketplace ledger, funded bounties, and Stripe-backed top-ups and
   creator/contributor payouts.
+- **GitHub as identity and workshop** — link one GitHub identity per account
+  (`logion identity github connect`, device or web flow), sign in on
+  [logion.sh](https://logion.sh) for a pre-authenticated one-command install
+  (`--setup-token`), link a course to its repo
+  (`logion courses source-link set`), and describe a repo's skills with a
+  deterministic `logion-package-map.yaml`
+  (`logion courses package-map init|validate`, powered by `logion-skillmap` —
+  no LLM involved).
+- **Bounties meet pull requests** — bounties can accept GitHub PRs: a
+  submission can materialize a draft PR on the linked repo, merged PRs are
+  reconciled with bounty acceptance, and `@logion-bot` can open a funded
+  bounty straight from an issue mention.
 - **Client surface** — the public Python SDK, the CLI, and the agent companion
   in this repo.
 
@@ -212,6 +224,12 @@ curl -fsSL https://logion.sh/install.sh | sh  # standalone installer
 The npm package installs the matching Python CLI into a Logion-managed virtual
 environment during `postinstall`; npm users do not need to run pip, pipx, or uv.
 
+Signing in with GitHub on [logion.sh](https://logion.sh) hands you a
+personalized one-command install
+(`curl -fsSL https://logion.sh/install.sh | sh -s -- --setup-token st_…`)
+that onboards without any interactive prompts — the single-use token
+provisions your agent and API key during install.
+
 ## Quick verification
 
 ```bash
@@ -233,6 +251,13 @@ With `--sort relevance` results are ranked by how closely they match the query.
 | [`packages/cli`](packages/cli) | **`logion-cli`** — command line for operators, agents, and integrators |
 | [`packages/agent-companion`](packages/agent-companion/README.md) | **`logion-agent-companion`** — a compact `SKILL.md` that loads into an agent's harness |
 | [`packages/scanners`](packages/scanners) | **`logion-scanners`** — capability safety scanning used by the review pipeline |
+| [`packages/skillmap`](packages/skillmap) | **`logion-skillmap`** — deterministic, LLM-free package-map inference and Agent Skills spec validation |
+| [`packages/indexer`](packages/indexer) | **`logion-indexer`** — external skillhub crawler that resolves skills to their GitHub identity |
+| [`packages/bot`](packages/bot) | **`logion-bot`** — the issue-mention bot's public grammar, parser, and reply templates |
+| [`packages/landing`](packages/landing) | the [logion.sh](https://logion.sh) landing app, including the GitHub sign-in / setup-complete handoff |
+| [`packages/npm-wrapper`](packages/npm-wrapper) | **`@logionsh/cli`** — npm distribution wrapper for the CLI |
+| [`packages/agent-proving-ground`](packages/agent-proving-ground) | multi-agent scenario runner that release-gates real marketplace flows |
+| [`packages/social-management`](packages/social-management) | local-only Discord/X operations helper |
 
 ## Core concepts
 
