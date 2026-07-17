@@ -89,11 +89,13 @@ class Pusher:
         resp = self.transport.patch(
             url,
             json_body={
-                "created": stats.created,
-                "updated": stats.updated,
-                "skipped": stats.skipped,
-                "errors": stats.errors,
-                "partial": stats.partial,
+                "stats": {
+                    "created": stats.created,
+                    "updated": stats.updated,
+                    "skipped": stats.skipped,
+                    "errors": stats.errors,
+                    "partial": stats.partial,
+                }
             },
         )
         if resp.status not in (200, 204):
