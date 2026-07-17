@@ -120,3 +120,21 @@ def test_cmd_run_prints_safe_push_error_details(monkeypatch, capsys) -> None:
     assert "error=rejected Bearer [redacted]" in output.err
     assert 'body={"token":"[redacted]"}' in output.err
     assert secret not in output.err
+
+
+def test_push_error_details_are_bounded(capsys) -> None:
+    details = [
+        {"canonical": f"gh:octocat/broken-{index}", "status": "error"}
+        for index in range(25)
+    ]
+
+    cli._print_push_errors(
+        PushResult(errors=len(details), error_details=details),
+        IndexerConfig(),
+    )
+
+    output = capsys.readouterr()
+    assert output.err.count("push error: canonical=") == 20
+    assert "canonical=gh:octocat/broken-19" in output.err
+    assert "canonical=gh:octocat/broken-20" not in output.err
+    assert "push errors: omitted=5 additional details" in output.err

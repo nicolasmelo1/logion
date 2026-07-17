@@ -20,6 +20,8 @@ from .pusher import Pusher, PushResult, RunStats
 from .rate_limit import RateLimiter
 from .transport import Transport
 
+MAX_PUSH_ERROR_DETAILS = 20
+
 
 @dataclass(frozen=True)
 class AdapterFailure:
@@ -275,7 +277,7 @@ def _print_push_errors(result: PushResult, config: IndexerConfig) -> None:
     secrets = tuple(
         secret for secret in (config.github_token, config.api_key) if secret
     )
-    for detail in result.error_details:
+    for detail in result.error_details[:MAX_PUSH_ERROR_DETAILS]:
         canonical = _safe_detail(detail.get("canonical"), secrets)
         status = _safe_detail(detail.get("status"), secrets)
         error = _safe_detail(
@@ -285,6 +287,12 @@ def _print_push_errors(result: PushResult, config: IndexerConfig) -> None:
         print(
             "push error: "
             f"canonical={canonical} status={status} error={error} body={body}",
+            file=sys.stderr,
+        )
+    omitted = len(result.error_details) - MAX_PUSH_ERROR_DETAILS
+    if omitted > 0:
+        print(
+            f"push errors: omitted={omitted} additional details",
             file=sys.stderr,
         )
 
