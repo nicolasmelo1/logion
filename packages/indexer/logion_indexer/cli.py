@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,6 +19,25 @@ from .pipeline import build_indexing_plan
 from .pusher import Pusher, PushResult, RunStats
 from .rate_limit import RateLimiter
 from .transport import Transport
+
+MAX_PUSH_ERROR_DETAILS = 20
+
+
+@dataclass(frozen=True)
+class AdapterFailure:
+    """Failure returned by one discovery adapter."""
+
+    adapter: str
+    target: str
+    error: str
+
+
+@dataclass
+class DiscoveryResult:
+    """Discoveries and adapter failures from one crawl."""
+
+    discoveries: list[DiscoveredSkill] = field(default_factory=list)
+    failures: list[AdapterFailure] = field(default_factory=list)
 
 
 def _build_transport(config: IndexerConfig) -> Transport:
@@ -77,32 +98,35 @@ def _get_adapter(
 def _discover_all(
     config: IndexerConfig,
     transport: Transport,
-) -> list[DiscoveredSkill]:
+) -> DiscoveryResult:
     """Run all adapters from the seed file and collect discoveries."""
     seed = _load_seed(config)
-    all_discoveries: list[DiscoveredSkill] = []
+    result = DiscoveryResult()
     rate_limiter = RateLimiter(default_rps=config.rps)
 
     for source in seed.sources:
         if config.only and source.adapter != config.only:
             continue
-        adapter = _get_adapter(source.adapter, transport, rate_limiter)
-        kwargs: dict = {}
-        if source.mode:
-            kwargs["mode"] = source.mode
-        if source.subpath:
-            kwargs["subpath"] = source.subpath
         try:
+            adapter = _get_adapter(source.adapter, transport, rate_limiter)
+            kwargs: dict = {}
+            if source.mode:
+                kwargs["mode"] = source.mode
+            if source.subpath:
+                kwargs["subpath"] = source.subpath
             for skill in adapter.discover(
                 source.target,
                 limit=config.limit,
                 **kwargs,
             ):
-                all_discoveries.append(skill)
+                result.discoveries.append(skill)
         except Exception as e:
+            result.failures.append(
+                AdapterFailure(source.adapter, source.target, str(e))
+            )
             print(f"adapter {source.adapter} error: {e}", file=sys.stderr)
 
-    return all_discoveries
+    return result
 
 
 def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
@@ -113,17 +137,21 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     same payload to stdout.
     """
     transport = _build_transport(config)
-    discoveries = _discover_all(config, transport)
-    plan, _ = build_indexing_plan(discoveries, transport, config.api_base_url)
-    print(f"discovered: {len(discoveries)}")
-    print(f"create: {len(plan.create)}")
-    print(f"update: {len(plan.update)}")
-    print(f"skip: {len(plan.skip)}")
-    print(f"partial: {'yes' if plan.partial else 'no'}")
+    discovery = _discover_all(config, transport)
+    plan, _ = build_indexing_plan(
+        discovery.discoveries, transport, config.api_base_url
+    )
+    plan.partial = plan.partial or bool(discovery.failures)
+    diagnostics = sys.stderr if args.json else sys.stdout
+    print(f"discovered: {len(discovery.discoveries)}", file=diagnostics)
+    print(f"create: {len(plan.create)}", file=diagnostics)
+    print(f"update: {len(plan.update)}", file=diagnostics)
+    print(f"skip: {len(plan.skip)}", file=diagnostics)
+    print(f"partial: {'yes' if plan.partial else 'no'}", file=diagnostics)
     plan_dict = plan.to_dict()
     if args.out:
         Path(args.out).write_text(json.dumps(plan_dict, indent=2))
-        print(f"wrote plan: {args.out}")
+        print(f"wrote plan: {args.out}", file=diagnostics)
     if args.json:
         print(json.dumps(plan_dict, indent=2))
     return 0
@@ -132,11 +160,11 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
 def cmd_resolve(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
     """Resolve hub pages to GitHub identities (debug command)."""
     transport = _build_transport(config)
-    discoveries = _discover_all(config, transport)
-    print(f"resolved: {len(discoveries)} skills")
-    for d in discoveries[:20]:
+    discovery = _discover_all(config, transport)
+    print(f"resolved: {len(discovery.discoveries)} skills")
+    for d in discovery.discoveries[:20]:
         print(f"  {d.canonical} — {d.title or '(no title)'}")
-    return 0
+    return 1 if discovery.failures else 0
 
 
 def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
@@ -171,6 +199,7 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
         result = pusher.push_serialized(create_items, run_id=run_id)
         stats.created = result.created
         stats.errors += result.errors
+        _print_push_errors(result, config)
         if result.errors:
             stats.partial = True
 
@@ -178,6 +207,7 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
         result = pusher.push_serialized(update_items, run_id=run_id)
         stats.updated = result.updated
         stats.errors += result.errors
+        _print_push_errors(result, config)
         if result.errors:
             stats.partial = True
 
@@ -189,21 +219,21 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
 def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
     """Full pipeline: crawl → enrich → validate → mirror → push → stats."""
     transport = _build_transport(config)
-    discoveries = _discover_all(config, transport)
-    stats = RunStats(discovered=len(discoveries))
+    discovery = _discover_all(config, transport)
+    stats = RunStats(discovered=len(discovery.discoveries))
 
     plan, artifacts = build_indexing_plan(
-        discoveries, transport, config.api_base_url
+        discovery.discoveries, transport, config.api_base_url
     )
     stats.deduped = plan.total
     stats.skipped = len(plan.skip)
-    stats.partial = plan.partial
+    stats.partial = plan.partial or bool(discovery.failures)
 
     if config.dry_run:
         stats.created = len(plan.create)
         stats.updated = len(plan.update)
         _print_stats(stats)
-        return 0
+        return 1 if stats.partial else 0
 
     pusher = Pusher(transport, config.api_base_url)
     run_id = pusher.open_run()
@@ -211,6 +241,7 @@ def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: AR
         result = pusher.push_batch(plan.create, run_id=run_id)
         stats.created = result.created
         stats.errors += result.errors
+        _print_push_errors(result, config)
         if result.errors:
             stats.partial = True
         _upload_bundles(pusher, result, artifacts)
@@ -218,6 +249,7 @@ def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: AR
         result = pusher.push_batch(plan.update, run_id=run_id)
         stats.updated = result.updated
         stats.errors += result.errors
+        _print_push_errors(result, config)
         if result.errors:
             stats.partial = True
         _upload_bundles(pusher, result, artifacts)
@@ -238,6 +270,52 @@ def _upload_bundles(
         if artifact is None:
             continue
         pusher.upload_bundle(listing_id, artifact.data, artifact.sha256)
+
+
+def _print_push_errors(result: PushResult, config: IndexerConfig) -> None:
+    """Print bounded, redacted per-item push diagnostics to stderr."""
+    secrets = tuple(
+        secret for secret in (config.github_token, config.api_key) if secret
+    )
+    for detail in result.error_details[:MAX_PUSH_ERROR_DETAILS]:
+        canonical = _safe_detail(detail.get("canonical"), secrets)
+        status = _safe_detail(detail.get("status"), secrets)
+        error = _safe_detail(
+            detail.get("error") or detail.get("message"), secrets
+        )
+        body = _safe_detail(detail.get("body"), secrets)
+        print(
+            "push error: "
+            f"canonical={canonical} status={status} error={error} body={body}",
+            file=sys.stderr,
+        )
+    omitted = len(result.error_details) - MAX_PUSH_ERROR_DETAILS
+    if omitted > 0:
+        print(
+            f"push errors: omitted={omitted} additional details",
+            file=sys.stderr,
+        )
+
+
+def _safe_detail(value: object, secrets: tuple[str, ...]) -> str:
+    """Render one diagnostic field without multiline or credential leakage."""
+    if value is None or value == "":
+        return "(unknown)"
+    if isinstance(value, (dict, list)):
+        rendered = json.dumps(value, separators=(",", ":"), default=str)
+    else:
+        rendered = str(value)
+    for secret in secrets:
+        rendered = rendered.replace(secret, "[redacted]")
+    rendered = re.sub(
+        r"(?i)\bBearer\s+[^\s,;\"'}]+", "Bearer [redacted]", rendered
+    )
+    rendered = re.sub(
+        r"\b(?:gh[pousr]_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]+)\b",
+        "[redacted]",
+        rendered,
+    )
+    return rendered.replace("\r", "\\r").replace("\n", "\\n")[:500]
 
 
 def cmd_doctor(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001

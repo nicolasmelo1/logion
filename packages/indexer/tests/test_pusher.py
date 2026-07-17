@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 from logion_indexer.canonical import CanonicalSkillId
 from logion_indexer.models import DiscoveredSkill, DiscoveryChannel
@@ -134,7 +135,23 @@ class TestPartialFailure:
 
 class TestRunLifecycle:
     def test_open_and_close(self) -> None:
-        transport = FakeTransport()
+        class _CapturingPatchTransport(FakeTransport):
+            def __init__(self) -> None:
+                super().__init__()
+                self.patched: list[dict[str, object]] = []
+
+            def patch(
+                self,
+                url: str,
+                *,
+                json_body: Mapping[str, object] | None = None,
+                headers: Mapping[str, str] | None = None,
+            ) -> HttpResponse:
+                if json_body is not None:
+                    self.patched.append(dict(json_body))
+                return super().patch(url, json_body=json_body, headers=headers)
+
+        transport = _CapturingPatchTransport()
         transport.set_post_response(
             "https://api.logion.sh/v1/admin/indexing/runs",
             HttpResponse(201, json.dumps({"run_id": "run-1"}).encode()),
@@ -150,6 +167,17 @@ class TestRunLifecycle:
         pusher.close_run(stats)
         patches = [c for c in transport.call_log if c.startswith("PATCH")]
         assert len(patches) == 1
+        assert transport.patched == [
+            {
+                "stats": {
+                    "created": 5,
+                    "updated": 3,
+                    "skipped": 0,
+                    "errors": 0,
+                    "partial": False,
+                }
+            }
+        ]
 
 
 class TestPresignedPut:
