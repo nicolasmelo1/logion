@@ -43,6 +43,28 @@ def test_adapter_failure_marks_crawl_plan_and_run_partial(
     assert "adapter github_direct error: request timed out" in run_output.err
 
 
+def test_adapter_construction_failure_marks_run_partial(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    seed = tmp_path / "sources.yaml"
+    seed.write_text(
+        "version: 1\nsources:\n  - adapter: unavailable\n"
+        "    target: https://example.com/skills\n"
+    )
+    config = IndexerConfig(seed_file=str(seed), dry_run=True)
+
+    def _raise_during_construction(*_args):
+        raise ImportError("adapter dependency unavailable")
+
+    monkeypatch.setattr(cli, "_get_adapter", _raise_during_construction)
+
+    assert cli.cmd_run(config, argparse.Namespace()) == 1
+    output = capsys.readouterr()
+    assert "partial=yes" in output.out
+    expected = "adapter unavailable error: adapter dependency unavailable"
+    assert expected in output.err
+
+
 def test_cmd_run_prints_safe_push_error_details(monkeypatch, capsys) -> None:
     secret = "ghp_super_secret_token"
     skill = DiscoveredSkill(

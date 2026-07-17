@@ -105,13 +105,13 @@ def _discover_all(
     for source in seed.sources:
         if config.only and source.adapter != config.only:
             continue
-        adapter = _get_adapter(source.adapter, transport, rate_limiter)
-        kwargs: dict = {}
-        if source.mode:
-            kwargs["mode"] = source.mode
-        if source.subpath:
-            kwargs["subpath"] = source.subpath
         try:
+            adapter = _get_adapter(source.adapter, transport, rate_limiter)
+            kwargs: dict = {}
+            if source.mode:
+                kwargs["mode"] = source.mode
+            if source.subpath:
+                kwargs["subpath"] = source.subpath
             for skill in adapter.discover(
                 source.target,
                 limit=config.limit,
