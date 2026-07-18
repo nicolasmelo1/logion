@@ -43,6 +43,18 @@ logion-agent-proving-ground run builtin:skill_report_contract \
 logion-agent-proving-ground report .runs/proving-ground/<run-id>
 ```
 
+## Session-lifecycle proof: `cross_session_skill_use`
+
+`builtin:cross_session_skill_use` splits the buyer journey across two
+agent sessions: session one purchases and installs a course skill and
+stops; session two is a fresh process with no conversational memory
+that must rediscover the installed skill, use it, and still satisfy the
+companion report contract (usage report + review). The final ledger
+assertion proves the fresh session reused its entitlement instead of
+buying the course again. `marketplace_loop` proves the transaction
+loop inside single sessions; this scenario proves the lifecycle
+survives session loss.
+
 ## Release gate: `marketplace_loop`
 
 `builtin:marketplace_loop` is the full creator/learner/operator product

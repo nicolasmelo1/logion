@@ -1,0 +1,58 @@
+schema_version: "1"
+name: cross_session_skill_use
+description: >-
+  Purchase and use happen in different agent sessions. Session one buys and
+  installs a course skill and stops. Session two is a fresh process with no
+  conversational memory: it must rediscover the installed skill from disk and
+  account state, use it for a task, and the companion report contract must
+  still produce a usage report and review. Proves entitlements and installs
+  survive session loss and that reporting does not depend on the purchasing
+  session's context. The final ledger assertion proves the fresh session
+  reused the entitlement instead of buying the course again.
+api_adapter: mock
+
+agents:
+  - id: learner
+    role: Learner buying in one session and using in a later one
+    driver: scripted
+    workspace: learner
+    devrig_role: buyer
+    timeout_seconds: 1800
+
+phases:
+  - id: buy_and_install
+    actor: learner
+    goal: |
+      Buy the fixture course on Logion and install its skill, then stop.
+      Do not use the skill yet — the task it is needed for comes later.
+    success_hint: |
+      Find the fixture course with `logion listings search`, purchase it
+      with `logion courses purchase COURSE_ID`, and install the skill with
+      `logion skills install`. Finish immediately after the install
+      succeeds.
+    assertions:
+      # The fixture course pre-exists the run, so course-scoped assertions
+      # opt out of the baseline-delta filter (same rule as
+      # skill_report_contract).
+      - type: api.purchase_exists
+        params: {buyer_agent: learner, include_baseline: true}
+
+  - id: fresh_session_use
+    actor: learner
+    goal: |
+      Use the course skill installed from Logion to complete a tiny task.
+      This is a new session: you have no memory of previous conversations,
+      only what is on disk and in your Logion account.
+    success_hint: |
+      Rediscover what is installed with `logion skills list` (or recall) and
+      confirm the course and version it came from. Then use the skill for a
+      small task and finish normally.
+    assertions:
+      - type: api.usage_report_exists
+        params: {agent: learner, include_baseline: true}
+      - type: api.review_exists
+        params: {reviewer_agent: learner, include_baseline: true}
+
+final_assertions:
+  - type: api.no_double_credit_debit
+  - type: timeline.no_unredacted_secret
