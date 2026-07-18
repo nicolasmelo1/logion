@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+import pytest
+
 from logion_indexer.canonical import CanonicalSkillId
 from logion_indexer.dedup import (
     build_plan,
@@ -105,6 +107,31 @@ class TestKnownMap:
         query_known(canonical_ids, transport, "https://api.logion.sh")
 
         assert transport.use_cache_values == [False, False]
+
+    def test_query_known_fails_closed_on_http_error(self) -> None:
+        transport = FakeTransport()
+
+        with pytest.raises(RuntimeError, match="HTTP 404"):
+            query_known(
+                [CanonicalSkillId(owner="owner", repo="repo")],
+                transport,
+                "https://api.logion.sh",
+            )
+
+    def test_query_known_fails_closed_on_invalid_payload(self) -> None:
+        transport = FakeTransport()
+        transport.set_response(
+            "https://api.logion.sh/v1/admin/indexing/known"
+            "?ids=gh%3Aowner%2Frepo",
+            HttpResponse(200, b'{"unexpected": {}}'),
+        )
+
+        with pytest.raises(TypeError, match="omitted known map"):
+            query_known(
+                [CanonicalSkillId(owner="owner", repo="repo")],
+                transport,
+                "https://api.logion.sh",
+            )
 
     def test_update_existing_listing(self) -> None:
         merged = [_make_skill()]

@@ -132,6 +132,7 @@ class ClawhubAdapter:
                 item
                 for item in candidates
                 if isinstance(item, dict)
+                and item.get("sourceRef") == "public-github"
                 and isinstance(item.get("github"), dict)
             ),
             None,

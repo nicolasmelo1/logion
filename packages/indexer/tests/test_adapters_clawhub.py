@@ -80,7 +80,17 @@ class TestClawhubAdapter:
     def test_skips_hosted_unavailable_and_duplicate_entries(self) -> None:
         hosted = {
             "state": "available",
-            "install": {"candidates": [{"sourceRef": "public-clawhub"}]},
+            "install": {
+                "candidates": [
+                    {
+                        "sourceRef": "public-clawhub",
+                        "github": {
+                            "repo": "unverified/repo",
+                            "path": "skill",
+                        },
+                    }
+                ]
+            },
         }
         transport = _transport()
         transport.set_response(

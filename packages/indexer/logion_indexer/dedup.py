@@ -133,14 +133,21 @@ def query_known(
             use_cache=False,
         )
         if resp.status != 200:
-            continue
+            raise RuntimeError(
+                f"known-listing lookup failed: HTTP {resp.status}"
+            )
 
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise RuntimeError(
+                "known-listing lookup returned invalid JSON"
+            ) from exc
         if not isinstance(data, dict):
-            continue
-        batch_known = data.get("known") or {}
+            raise TypeError("known-listing lookup returned invalid data")
+        batch_known = data.get("known")
         if not isinstance(batch_known, dict):
-            continue
+            raise TypeError("known-listing lookup omitted known map")
         known.update(
             (canonical, info)
             for canonical, info in batch_known.items()
