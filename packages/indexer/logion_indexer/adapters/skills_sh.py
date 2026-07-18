@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+import html
+import re
 from collections.abc import Iterable
 from urllib.parse import urljoin, urlparse
 
@@ -84,16 +85,18 @@ class SkillsShAdapter:
         text = self.crawler.fetch_page(url)
         if text is None:
             raise RuntimeError(f"skills.sh sitemap fetch failed: {url}")
-        try:
-            root = ET.fromstring(text)
-        except ET.ParseError as exc:
+        root_pattern = r"<(?:[A-Za-z_][\w.-]*:)?(?:sitemapindex|urlset)\b"
+        if re.search(root_pattern, text, re.IGNORECASE) is None:
             raise RuntimeError(
                 f"skills.sh sitemap returned invalid XML: {url}"
-            ) from exc
+            )
+        locations = re.findall(
+            r"<(?:[A-Za-z_][\w.-]*:)?loc\b[^>]*>\s*(.*?)\s*</(?:[A-Za-z_][\w.-]*:)?loc>",
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
         return [
-            urljoin(url, element.text.strip())
-            for element in root.iter()
-            if element.tag.endswith("loc")
-            and element.text
-            and element.text.strip()
+            urljoin(url, html.unescape(location.strip()))
+            for location in locations
+            if location.strip()
         ]
