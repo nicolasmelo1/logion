@@ -166,6 +166,9 @@ commands:
   listings search:
     operations: [search_listings]
 
+  indexed get:
+    operations: [get_indexed_listing]
+
   notifications list:
     operations: [list_notifications]
   notifications peek:

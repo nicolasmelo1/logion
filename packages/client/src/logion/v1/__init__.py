@@ -12,6 +12,7 @@ from logion.v1._resources.credits import CreditsResource
 from logion.v1._resources.github_setup import GithubSetupResource
 from logion.v1._resources.health import HealthResource
 from logion.v1._resources.identity import IdentityResource
+from logion.v1._resources.indexed_listings import IndexedListingsResource
 from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.notifications import NotificationsResource
 from logion.v1._resources.payments import PaymentsResource
@@ -26,6 +27,7 @@ class V1Namespace:
         self.health = HealthResource(http)
         self.identity = IdentityResource(http)
         self.listings = ListingsResource(http)
+        self.indexed_listings = IndexedListingsResource(http)
         self.courses = CoursesResource(http)
         self.credits = CreditsResource(http)
         self.payments = PaymentsResource(http)

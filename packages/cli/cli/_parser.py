@@ -16,6 +16,7 @@ from cli.commands import (
     doctor,
     health,
     identity,
+    indexed,
     listings,
     notifications,
     payments,
@@ -54,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     health.register(subparsers)
     doctor.register(subparsers)
     identity.register(subparsers)
+    indexed.register(subparsers)
     listings.register(subparsers)
     notifications.register(subparsers)
     courses.register(subparsers)

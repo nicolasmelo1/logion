@@ -124,8 +124,34 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
                 "category": {"type": "string"},
                 "tag": {"type": "string"},
                 "limit": {"type": "integer", "minimum": 1},
+                "include_indexed": {
+                    "type": "boolean",
+                    "description": (
+                        "Also include indexed external listings that have not "
+                        "been claimed or published as courses."
+                    ),
+                },
+                "tier": {
+                    "type": "string",
+                    "enum": ["indexed", "improving", "published"],
+                    "description": "Filter by listing tier.",
+                },
             },
             "required": [],
+            "additionalProperties": False,
+        },
+    ),
+    ToolSpec(
+        name="logion_indexed_get",
+        description=(
+            "Run `logion indexed get LISTING_ID` to inspect an indexed "
+            "external listing. Indexed listings are read-only discovery "
+            "items and cannot be installed directly."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"listing_id": {"type": "string"}},
+            "required": ["listing_id"],
             "additionalProperties": False,
         },
     ),

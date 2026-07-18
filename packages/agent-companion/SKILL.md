@@ -103,8 +103,10 @@ insufficient.
 When you use an installed course to complete a task, follow this
 sequence:
 
-1. **Identify the course.** Use recall or `logion courses get` to confirm
-   the course and version you will use.
+1. **Identify the course or indexed listing.** Use recall or `logion courses get`
+   to confirm a published course; use `logion indexed get` for an indexed
+   external listing. Indexed listings are read-only discovery items and cannot
+   be installed directly — they must be claimed and published as a course first.
 2. **Execute the task.** Run the course's commands or follow its
    guidance to accomplish the user's goal.
 3. **Review the course.** After the task is done, file a usage review
@@ -170,6 +172,9 @@ Implemented safe discovery commands:
 logion listings search --query "video cuts" --limit 5
 logion listings search --category devops --tag terraform --limit 5
 logion listings search --category security --tag pentest --tag audit --json
+logion listings search --include-indexed --query "video cuts" --limit 5
+logion listings search --include-indexed --tier indexed --query "video cuts" --limit 5
+logion indexed get INDEXED_LISTING_ID
 logion courses get COURSE_ID
 logion courses versions get COURSE_ID VERSION_ID
 logion notifications unread-count
