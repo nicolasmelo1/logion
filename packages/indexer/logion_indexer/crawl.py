@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from .rate_limit import RateLimiter
 from .transport import Transport
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass
@@ -76,7 +80,13 @@ class Crawler:
                 return False
         return True
 
-    def fetch_page(self, url: str) -> str | None:
+    def fetch_page(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        use_cache: bool = True,
+    ) -> str | None:
         """Fetch a page with rate limiting and robots.txt respect.
 
         Returns the page text on success, or ``None`` if the network
@@ -88,7 +98,11 @@ class Crawler:
             raise PermissionError(f"blocked by robots.txt: {url}")
         self.rate_limiter.wait(url)
         try:
-            resp = self.transport.get(url)
+            resp = self.transport.get(
+                url,
+                headers=headers,
+                use_cache=use_cache,
+            )
         except Exception:
             return None
         if resp.status != 200:

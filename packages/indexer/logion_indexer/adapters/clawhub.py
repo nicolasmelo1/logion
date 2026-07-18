@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-import re
+import json
 from collections.abc import Iterable
 
+from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
-from ..github_resolver import resolve_hub_page
 from ..models import DiscoveredSkill, DiscoveryChannel
 from ..rate_limit import RateLimiter
 from ..transport import Transport
 
-# Match skill card entries on ClawHub.
-_CARD_RE = re.compile(
-    r'(<div[^>]*class="[^"]*skill[^"]*"[^>]*>.*?</div>)',
-    re.DOTALL | re.IGNORECASE,
-)
-_TITLE_RE = re.compile(r"<h[23][^>]*>(.*?)</h[23]>", re.DOTALL | re.IGNORECASE)
-_VERIFIED_RE = re.compile(r'class="[^"]*verified[^"]*"', re.IGNORECASE)
+_FEED_PATH = "/v1/feeds/skills"
 
 
 class ClawhubAdapter:
-    """Adapter for ClawHub (clawhub.ai)."""
+    """Discover verified GitHub-backed skills from ClawHub's public feed."""
 
     hub_slug = "clawhub"
 
@@ -39,47 +33,106 @@ class ClawhubAdapter:
         *,
         limit: int | None = None,
     ) -> Iterable[DiscoveredSkill]:
-        """Crawl clawhub.ai, extract GitHub links from skill cards."""
+        """Fetch the official feed and emit GitHub-backed candidates."""
         base_url = target.rstrip("/")
-        html = self._fetch_page(base_url)
-        if not html:
-            return
-
-        cards = _CARD_RE.findall(html)
+        entries = self._fetch_entries(f"{base_url}{_FEED_PATH}")
+        seen: set[CanonicalSkillId] = set()
         count = 0
-        for card_html in cards:
+
+        for entry in entries:
             if limit is not None and count >= limit:
                 return
-            resolved = resolve_hub_page(base_url, card_html)
-            if not resolved.resolved or resolved.canonical is None:
+            skill = self._parse_entry(entry, base_url)
+            if skill is None or skill.canonical in seen:
                 continue
-
-            title_match = _TITLE_RE.search(card_html)
-            title = title_match.group(1).strip() if title_match else ""
-            verified = bool(_VERIFIED_RE.search(card_html))
-
-            channel = DiscoveryChannel(
-                hub_slug=self.hub_slug,
-                hub_url=base_url,
-                hub_verified=verified,
-            )
-            yield DiscoveredSkill(
-                canonical=resolved.canonical,
-                title=title,
-                summary="",
-                original_author=resolved.canonical.owner,
-                license_spdx=None,
-                source_commit=None,
-                tags=(),
-                channels=(channel,),
-                inferred_map=None,
-                map_flags=(),
-            )
+            seen.add(skill.canonical)
+            yield skill
             count += 1
 
-    def _fetch_page(self, url: str) -> str:
+    def _fetch_entries(self, feed_url: str) -> list:
+        text = self.crawler.fetch_page(feed_url)
+        if text is None:
+            raise RuntimeError("ClawHub skills feed fetch failed")
         try:
-            html = self.crawler.fetch_page(url)
-        except (PermissionError, RuntimeError):
-            return ""
-        return html if html is not None else ""
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                "ClawHub skills feed returned invalid JSON"
+            ) from exc
+        if not isinstance(data, dict):
+            raise TypeError("ClawHub skills feed returned invalid data")
+        entries = data.get("entries")
+        if not isinstance(entries, list):
+            raise TypeError("ClawHub skills feed has no entries list")
+        return entries
+
+    def _parse_entry(
+        self,
+        entry: object,
+        base_url: str,
+    ) -> DiscoveredSkill | None:
+        if not isinstance(entry, dict) or entry.get("state") != "available":
+            return None
+        candidate = self._github_candidate(entry)
+        if candidate is None:
+            return None
+        github = candidate["github"]
+        repo_ref = github.get("repo")
+        path = github.get("path")
+        if not isinstance(repo_ref, str) or not isinstance(path, str):
+            return None
+        repo_parts = repo_ref.split("/")
+        if len(repo_parts) != 2 or not all(repo_parts) or not path:
+            return None
+        owner, repo = repo_parts
+        canonical = CanonicalSkillId(owner=owner, repo=repo, subpath=path)
+
+        title = entry.get("title")
+        summary = entry.get("description")
+        commit = github.get("commit")
+        metadata = tuple(
+            (key, value)
+            for key, value in (
+                ("version", candidate.get("version")),
+                ("integrity", candidate.get("integrity")),
+                ("contentHash", github.get("contentHash")),
+            )
+            if isinstance(value, str) and value
+        )
+        channel = DiscoveryChannel(
+            hub_slug=self.hub_slug,
+            hub_url=base_url,
+            hub_verified=True,
+            metadata=metadata,
+        )
+        return DiscoveredSkill(
+            canonical=canonical,
+            title=title if isinstance(title, str) else "",
+            summary=summary if isinstance(summary, str) else "",
+            original_author=owner,
+            license_spdx=None,
+            source_commit=commit if isinstance(commit, str) else None,
+            tags=(),
+            channels=(channel,),
+            inferred_map=None,
+            map_flags=(),
+            bundle=None,
+        )
+
+    @staticmethod
+    def _github_candidate(entry: dict) -> dict | None:
+        install = entry.get("install")
+        if not isinstance(install, dict):
+            return None
+        candidates = install.get("candidates")
+        if not isinstance(candidates, list):
+            return None
+        return next(
+            (
+                item
+                for item in candidates
+                if isinstance(item, dict)
+                and isinstance(item.get("github"), dict)
+            ),
+            None,
+        )

@@ -7,6 +7,7 @@ from logion_indexer.dedup import (
     build_plan,
     dry_run_plan,
     merge_discoveries,
+    query_known,
 )
 from logion_indexer.models import DiscoveredSkill, DiscoveryChannel
 from logion_indexer.transport import FakeTransport, HttpResponse
@@ -76,6 +77,18 @@ class TestMergeDiscoveries:
 
 
 class TestKnownMap:
+    def test_query_known_batches_large_catalogs(self) -> None:
+        transport = FakeTransport()
+        canonical_ids = [
+            CanonicalSkillId(owner="owner", repo=f"repo-{index}")
+            for index in range(26)
+        ]
+
+        query_known(canonical_ids, transport, "https://api.logion.sh")
+
+        gets = [call for call in transport.call_log if call.startswith("GET")]
+        assert len(gets) == 2
+
     def test_update_existing_listing(self) -> None:
         merged = [_make_skill()]
         known = {"gh:octocat/hello": {"kind": "indexed_listing", "id": "abc"}}

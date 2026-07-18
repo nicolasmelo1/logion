@@ -106,7 +106,11 @@ class Transport:
             status, body, resp_headers = self._cache[url]
             return HttpResponse(status, body, resp_headers)
 
-        entry = self._disk_cache.get(url) if self._disk_cache else None
+        entry = (
+            self._disk_cache.get(url)
+            if use_cache and self._disk_cache
+            else None
+        )
         if entry is not None:
             if entry.etag:
                 h["If-None-Match"] = entry.etag
@@ -117,7 +121,7 @@ class Transport:
 
         if resp.status == 304 and entry is not None:
             resp = HttpResponse(200, entry.body, entry.headers)
-        elif resp.status == 200 and self._disk_cache is not None:
+        elif resp.status == 200 and use_cache and self._disk_cache is not None:
             self._disk_cache.store(url, resp.status, resp.body, resp.headers)
 
         if use_cache and resp.status == 200:

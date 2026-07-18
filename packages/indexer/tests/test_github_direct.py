@@ -146,7 +146,7 @@ class TestOwnerMode:
         transport = FakeTransport()
         # List repos for owner.
         transport.set_response(
-            "https://api.github.com/users/octocat/repos?per_page=100&sort=updated",
+            "https://api.github.com/users/octocat/repos?per_page=100&sort=updated&page=1",
             HttpResponse(
                 200,
                 json.dumps([
@@ -158,6 +158,41 @@ class TestOwnerMode:
         adapter = GithubDirectAdapter(transport=transport)
         results = list(adapter.discover("octocat", mode="owner", limit=5))
         assert len(results) >= 1
+
+    def test_owner_enum_paginates_repos(self) -> None:
+        transport = FakeTransport()
+        page_1 = (
+            "https://api.github.com/users/octocat/repos"
+            "?per_page=100&sort=updated&page=1"
+        )
+        page_2 = (
+            "https://api.github.com/users/octocat/repos"
+            "?per_page=100&sort=updated&page=2"
+        )
+        transport.set_response(
+            page_1,
+            HttpResponse(200, json.dumps([{}] * 100).encode()),
+        )
+        transport.set_response(
+            page_2,
+            HttpResponse(
+                200,
+                json.dumps([
+                    {"name": "hello", "license": {"spdx_id": "MIT"}},
+                ]).encode(),
+            ),
+        )
+        _setup_github_responses(transport)
+
+        results = list(
+            GithubDirectAdapter(transport=transport).discover(
+                "octocat",
+                mode="owner",
+            )
+        )
+
+        assert len(results) >= 1
+        assert f"GET {page_2}" in transport.call_log
 
 
 class TestMirrorSubtree:

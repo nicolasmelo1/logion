@@ -98,43 +98,61 @@ class GithubDirectAdapter:
         limit: int | None = None,
     ) -> Iterable[DiscoveredSkill]:
         """Enumerate an owner's repos that contain SKILL.md files."""
-        url = (
-            f"https://api.github.com/users/{owner.strip()}/repos"
-            f"?per_page=100&sort=updated"
-        )
-        resp = self.transport.get(url)
-        if resp.status != 200:
-            return
-        data = resp.json()
-        if not isinstance(data, list):
-            return
-
         count = 0
-        for repo_info in data:
-            if not isinstance(repo_info, dict):
-                continue
-            repo = repo_info.get("name", "")
-            if not repo:
-                continue
-            sha = self.source.fetch_head_sha(owner, repo)
-            if not sha:
-                continue
-            _, skills = self.source.infer_skills(owner, repo, sha=sha)
-            for skill in skills:
-                if limit is not None and count >= limit:
-                    return
-                license_spdx = None
-                license_info = repo_info.get("license") or {}
-                if isinstance(license_info, dict):
-                    license_spdx = license_info.get("spdx_id")
-                yield from self._emit_skill(
-                    skill,
-                    owner=owner,
-                    repo=repo,
-                    license_spdx=license_spdx,
-                    source_commit=sha,
-                )
-                count += 1
+        page = 1
+        while True:
+            url = (
+                f"https://api.github.com/users/{owner.strip()}/repos"
+                f"?per_page=100&sort=updated&page={page}"
+            )
+            resp = self.transport.get(url)
+            if resp.status != 200:
+                return
+            data = resp.json()
+            if not isinstance(data, list):
+                return
+            if not data:
+                return
+
+            for repo_info in data:
+                for skill in self._discover_owner_repo(owner, repo_info):
+                    if limit is not None and count >= limit:
+                        return
+                    yield skill
+                    count += 1
+
+            if len(data) < 100:
+                return
+            page += 1
+
+    def _discover_owner_repo(
+        self,
+        owner: str,
+        repo_info: object,
+    ) -> Iterable[DiscoveredSkill]:
+        if not isinstance(repo_info, dict):
+            return
+        repo = repo_info.get("name", "")
+        if not isinstance(repo, str) or not repo:
+            return
+        sha = self.source.fetch_head_sha(owner, repo)
+        if not sha:
+            return
+        _, skills = self.source.infer_skills(owner, repo, sha=sha)
+        license_spdx = None
+        license_info = repo_info.get("license") or {}
+        if isinstance(license_info, dict):
+            value = license_info.get("spdx_id")
+            if isinstance(value, str):
+                license_spdx = value
+        for skill in skills:
+            yield from self._emit_skill(
+                skill,
+                owner=owner,
+                repo=repo,
+                license_spdx=license_spdx,
+                source_commit=sha,
+            )
 
     def _emit_skill(
         self,

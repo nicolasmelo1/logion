@@ -26,6 +26,7 @@ SKIP_REASONS = {
     "already_claimed": "already_claimed",
     "no_change": "no_change",
 }
+KNOWN_BATCH_SIZE = 25
 
 
 @dataclass
@@ -122,20 +123,26 @@ def query_known(
     if not canonical_ids:
         return {}
 
-    ids_param = ",".join(quote(str(cid), safe="") for cid in canonical_ids)
+    known: dict[str, dict] = {}
     url = f"{base_url.rstrip('/')}/v1/admin/indexing/known"
-    # Pass ids as query parameter.
-    full_url = f"{url}?ids={ids_param}"
-    resp = transport.get(full_url)
-    if resp.status != 200:
-        return {}
+    for offset in range(0, len(canonical_ids), KNOWN_BATCH_SIZE):
+        batch = canonical_ids[offset : offset + KNOWN_BATCH_SIZE]
+        ids_param = ",".join(quote(str(cid), safe="") for cid in batch)
+        resp = transport.get(f"{url}?ids={ids_param}")
+        if resp.status != 200:
+            continue
 
-    data = resp.json()
-    if not isinstance(data, dict):
-        return {}
-    known = data.get("known") or {}
-    if not isinstance(known, dict):
-        return {}
+        data = resp.json()
+        if not isinstance(data, dict):
+            continue
+        batch_known = data.get("known") or {}
+        if not isinstance(batch_known, dict):
+            continue
+        known.update(
+            (canonical, info)
+            for canonical, info in batch_known.items()
+            if isinstance(canonical, str) and isinstance(info, dict)
+        )
     return known
 
 
