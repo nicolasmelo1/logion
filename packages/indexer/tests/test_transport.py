@@ -58,31 +58,36 @@ def test_get_retries_transient_errors_then_succeeds() -> None:
 
 def test_get_retries_transient_http_status_then_succeeds() -> None:
     response = _response()
+    transient_error = _http_error(503)
     with (
         patch(
             "logion_indexer.transport.urllib.request.urlopen",
-            side_effect=[_http_error(503), response],
+            side_effect=[transient_error, response],
         ) as urlopen,
         patch("logion_indexer.transport.time.sleep") as sleep,
     ):
         result = Transport().get("https://example.com/archive.tar.gz")
 
     assert result.status == 200
+    assert transient_error.closed
     assert urlopen.call_count == 2
     sleep.assert_called_once_with(1)
 
 
 def test_get_does_not_retry_permanent_http_status() -> None:
+    permanent_error = _http_error(404)
     with (
         patch(
             "logion_indexer.transport.urllib.request.urlopen",
-            side_effect=_http_error(404),
+            side_effect=permanent_error,
         ) as urlopen,
         patch("logion_indexer.transport.time.sleep") as sleep,
     ):
         result = Transport().get("https://example.com/missing.tar.gz")
 
     assert result.status == 404
+    assert result.body == b"error"
+    assert permanent_error.closed
     assert urlopen.call_count == 1
     sleep.assert_not_called()
 

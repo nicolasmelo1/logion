@@ -135,13 +135,21 @@ class Transport:
                     data = resp.read()
                     return HttpResponse(resp.status, data, dict(resp.headers))
             except HTTPError as exc:
-                if (
-                    exc.code not in GET_RETRY_STATUSES
-                    or attempt + 1 == GET_MAX_ATTEMPTS
-                ):
-                    return HttpResponse(
-                        exc.code, exc.read(), dict(exc.headers or {})
-                    )
+                should_retry = (
+                    exc.code in GET_RETRY_STATUSES
+                    and attempt + 1 < GET_MAX_ATTEMPTS
+                )
+                if should_retry:
+                    exc.close()
+                else:
+                    try:
+                        return HttpResponse(
+                            exc.code,
+                            exc.read(),
+                            dict(exc.headers or {}),
+                        )
+                    finally:
+                        exc.close()
             except (URLError, TimeoutError):
                 if attempt + 1 == GET_MAX_ATTEMPTS:
                     raise
