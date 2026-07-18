@@ -2,28 +2,28 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Iterable
+from urllib.parse import urlencode, urlparse
 
 from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
-from ..github_resolver import resolve_hub_page
 from ..models import DiscoveredSkill, DiscoveryChannel
 from ..rate_limit import RateLimiter
 from ..transport import Transport
 
-# LobeHub may serve JSON or HTML.
-_LOBEHUB_SKILL_RE = re.compile(
-    r'"(?:github_url|source_url|repo_url)":\s*'
-    r'"(https?://github\.com/([^/"]+)/([^/"]+))"',
-    re.IGNORECASE,
+_RSC_CHUNK_RE = re.compile(
+    r'self\.__next_f\.push\(\[1,("(?:\\.|[^"\\])*")\]\)</script>'
 )
-_TITLE_FIELD_RE = re.compile(r'"(?:title|name)":\s*"([^"]*)"', re.IGNORECASE)
-_VERIFIED_RE = re.compile(r'"(?:verified|featured)":\s*true', re.IGNORECASE)
+_PAGE_META_RE = re.compile(
+    r'"currentPage":(\d+),"pageSize":(\d+),'
+    r'"tab":"skills","total":(\d+)'
+)
 
 
 class LobehubAdapter:
-    """Adapter for LobeHub (lobehub.com/skills)."""
+    """Discover GitHub repositories from LobeHub's paginated SSR catalog."""
 
     hub_slug = "lobehub"
 
@@ -41,104 +41,150 @@ class LobehubAdapter:
         *,
         limit: int | None = None,
     ) -> Iterable[DiscoveredSkill]:
-        """Crawl lobehub.com/skills, extract GitHub links from listings."""
-        base_url = target.rstrip("/")
-        html = self._fetch_page(base_url)
-        if not html:
-            return
-
-        # Try JSON first (LobeHub may embed JSON data).
-        skills = self._parse_json(html, base_url, limit)
-        if skills:
-            yield from skills
-            return
-
-        # Fall back to HTML parsing.
-        yield from self._parse_html(html, base_url, limit)
-
-    def _parse_json(
-        self,
-        html: str,
-        base_url: str,
-        limit: int | None,
-    ) -> list[DiscoveredSkill]:
-        """Parse JSON-embedded skill data from the page."""
-        results: list[DiscoveredSkill] = []
-        matches = _LOBEHUB_SKILL_RE.findall(html)
-        count = 0
-        for full_url, owner, repo in matches:
-            if limit is not None and count >= limit:
-                break
-            # Search within the page HTML for the URL position to
-            # extract a surrounding window for title/verified detection.
-            url_pos = html.find(full_url)
-            if url_pos >= 0:
-                window = html[max(0, url_pos - 500) : url_pos + 500]
-            else:
-                window = ""
-            title_match = _TITLE_FIELD_RE.search(window)
-            title = title_match.group(1) if title_match else ""
-            verified = bool(_VERIFIED_RE.search(window))
-            # Strip trailing /skills to avoid double /skills/skills/ path.
-            hub_base = base_url
-            if hub_base.endswith("/skills"):
-                hub_base = hub_base[: -len("/skills")]
-            channel = DiscoveryChannel(
-                hub_slug=self.hub_slug,
-                hub_url=f"{hub_base}/skills/{owner}/{repo}",
-                hub_verified=verified,
-            )
-            results.append(
-                DiscoveredSkill(
-                    canonical=CanonicalSkillId(owner=owner, repo=repo),
-                    title=title,
-                    summary="",
-                    original_author=owner,
-                    license_spdx=None,
-                    source_commit=None,
-                    tags=(),
-                    channels=(channel,),
-                    inferred_map=None,
-                    map_flags=(),
-                )
-            )
-            count += 1  # noqa: SIM113
-        return results
-
-    def _parse_html(
-        self,
-        html: str,
-        base_url: str,
-        limit: int | None,
-    ) -> Iterable[DiscoveredSkill]:
-        """Parse HTML skill listings."""
-        resolved = resolve_hub_page(base_url, html)
-        if not resolved.resolved or resolved.canonical is None:
-            return
+        """Crawl every catalog page and emit each GitHub repository once."""
         if limit is not None and limit < 1:
             return
-        verified = bool(_VERIFIED_RE.search(html))
+        base_url = target.rstrip("/")
+        parsed_base = urlparse(base_url)
+        seen_repos: set[CanonicalSkillId] = set()
+        page = 1
+        count = 0
+
+        while True:
+            items, current_page, page_size, total = self._fetch_catalog_page(
+                base_url,
+                parsed_base.path,
+                page,
+            )
+            if current_page != page:
+                raise RuntimeError(
+                    f"LobeHub returned page {current_page} for request {page}"
+                )
+
+            for item in items:
+                skill = self._repo_discovery(item, base_url)
+                if skill is None or skill.canonical in seen_repos:
+                    continue
+                if limit is not None and count >= limit:
+                    return
+                seen_repos.add(skill.canonical)
+                yield skill
+                count += 1
+
+            if limit is not None and count >= limit:
+                return
+            if page * page_size >= total:
+                return
+            if not items:
+                raise RuntimeError(
+                    f"LobeHub page {page} was empty before catalog end"
+                )
+            page += 1
+
+    def _repo_discovery(
+        self,
+        item: dict,
+        base_url: str,
+    ) -> DiscoveredSkill | None:
+        github = item.get("github")
+        if not isinstance(github, dict):
+            return None
+        repo_url = github.get("url")
+        if not isinstance(repo_url, str):
+            return None
+        try:
+            source = CanonicalSkillId.from_github_url(repo_url)
+        except ValueError:
+            return None
+        canonical = CanonicalSkillId(owner=source.owner, repo=source.repo)
+        title = item.get("name")
+        summary = item.get("description")
+        license_spdx = item.get("license")
         channel = DiscoveryChannel(
             hub_slug=self.hub_slug,
             hub_url=base_url,
-            hub_verified=verified,
+            hub_verified=False,
         )
-        yield DiscoveredSkill(
-            canonical=resolved.canonical,
-            title="",
-            summary="",
-            original_author=resolved.canonical.owner,
-            license_spdx=None,
+        return DiscoveredSkill(
+            canonical=canonical,
+            title=title if isinstance(title, str) else "",
+            summary=summary if isinstance(summary, str) else "",
+            original_author=canonical.owner,
+            license_spdx=(
+                license_spdx if isinstance(license_spdx, str) else None
+            ),
             source_commit=None,
             tags=(),
             channels=(channel,),
             inferred_map=None,
             map_flags=(),
+            bundle=None,
         )
 
-    def _fetch_page(self, url: str) -> str:
-        try:
-            html = self.crawler.fetch_page(url)
-        except (PermissionError, RuntimeError):
-            return ""
-        return html if html is not None else ""
+    def _fetch_catalog_page(
+        self,
+        base_url: str,
+        base_path: str,
+        page: int,
+    ) -> tuple[list[dict], int, int, int]:
+        page_url = f"{base_url}?{urlencode({'page': page})}"
+        last_error: RuntimeError | None = None
+        for _ in range(3):
+            text = self.crawler.fetch_page(
+                page_url,
+                headers={
+                    "Accept": "text/x-component",
+                    "RSC": "1",
+                    "Next-Url": f"{base_path}?page={page}",
+                },
+                use_cache=False,
+            )
+            if text is None:
+                last_error = RuntimeError(f"LobeHub page {page} fetch failed")
+                continue
+            try:
+                return self._parse_page(text)
+            except RuntimeError as exc:
+                last_error = exc
+        raise last_error or RuntimeError(f"LobeHub page {page} fetch failed")
+
+    @staticmethod
+    def _parse_page(text: str) -> tuple[list[dict], int, int, int]:
+        chunks: list[str] = []
+        for match in _RSC_CHUNK_RE.finditer(text):
+            try:
+                chunks.append(json.loads(match.group(1)))
+            except json.JSONDecodeError:
+                continue
+        payload = "".join(chunks) if chunks else text
+
+        items: list[dict] = []
+        decoder = json.JSONDecoder()
+        position = 0
+        marker = '"data":['
+        while True:
+            found = payload.find(marker, position)
+            if found < 0:
+                break
+            start = found + len('"data":')
+            try:
+                value, _ = decoder.raw_decode(payload, start)
+            except json.JSONDecodeError:
+                position = start + 1
+                continue
+            if (
+                isinstance(value, list)
+                and value
+                and isinstance(value[0], dict)
+                and "identifier" in value[0]
+            ):
+                items.extend(item for item in value if isinstance(item, dict))
+            position = start + 1
+
+        metadata = _PAGE_META_RE.findall(payload)
+        if not metadata:
+            raise RuntimeError("LobeHub page has no pagination metadata")
+        current_page, page_size, total = (int(value) for value in metadata[-1])
+        if current_page < 1 or page_size < 1 or total < 0:
+            raise RuntimeError("LobeHub page has invalid pagination metadata")
+        return items, current_page, page_size, total

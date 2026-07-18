@@ -73,3 +73,15 @@ class TestConditionalGet:
         resp = t.get(URL)
         assert resp.status == 200
         assert "If-None-Match" not in t.seen_headers[0]
+
+    def test_use_cache_false_bypasses_memory_and_disk(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        transport = _ConditionalTransport(cache_dir=str(tmp_path))
+
+        transport.get(URL, use_cache=False)
+        transport.get(URL, use_cache=False)
+
+        assert len(transport.seen_headers) == 2
+        assert DiskCache(tmp_path).get(URL) is None

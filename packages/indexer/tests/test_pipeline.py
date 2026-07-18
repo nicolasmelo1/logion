@@ -16,6 +16,11 @@ from logion_indexer.transport import FakeTransport, HttpResponse
 from logion_indexer.validation import INFERRED_MAP_INVALID
 
 BASE = "https://api.logion.sh"
+KNOWN_FOO = (
+    BASE
+    + "/v1/admin/indexing/known"
+    + "?ids=gh%3Aoctocat%2Fhello%23skills%2Ffoo"
+)
 
 FRAGMENT = {
     "version": 1,
@@ -80,6 +85,7 @@ class TestMirrorAndLockDrift:
             "https://api.github.com/repos/octocat/hello/tarball/abc123",
             HttpResponse(200, _tarball()),
         )
+        transport.set_response(KNOWN_FOO, HttpResponse(200, b'{"known": {}}'))
         source = GithubSource(transport=transport)
         plan, artifacts = build_indexing_plan(
             [skill], transport, BASE, source=source, mirror=True
@@ -104,6 +110,7 @@ class TestMirrorAndLockDrift:
             inferred_map=FRAGMENT,
         )
         transport = FakeTransport()
+        transport.set_response(KNOWN_FOO, HttpResponse(200, b'{"known": {}}'))
         source = GithubSource(transport=transport)
         with patch.object(source, "fetch_tarball") as fetch_tarball:
             plan, artifacts = build_indexing_plan(
@@ -124,6 +131,7 @@ class TestMirrorAndLockDrift:
             inferred_map=FRAGMENT,
         )
         transport = FakeTransport()
+        transport.set_response(KNOWN_FOO, HttpResponse(200, b'{"known": {}}'))
         source = GithubSource(transport=transport)
 
         with patch.object(

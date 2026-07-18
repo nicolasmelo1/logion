@@ -139,7 +139,10 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     transport = _build_transport(config)
     discovery = _discover_all(config, transport)
     plan, _ = build_indexing_plan(
-        discovery.discoveries, transport, config.api_base_url
+        discovery.discoveries,
+        transport,
+        config.api_base_url,
+        mirror=False,
     )
     plan.partial = plan.partial or bool(discovery.failures)
     diagnostics = sys.stderr if args.json else sys.stdout
@@ -216,14 +219,17 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
     return 1 if stats.partial else 0
 
 
-def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
+def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:
     """Full pipeline: crawl → enrich → validate → mirror → push → stats."""
     transport = _build_transport(config)
     discovery = _discover_all(config, transport)
     stats = RunStats(discovered=len(discovery.discoveries))
 
     plan, artifacts = build_indexing_plan(
-        discovery.discoveries, transport, config.api_base_url
+        discovery.discoveries,
+        transport,
+        config.api_base_url,
+        mirror=not getattr(args, "link_only", False),
     )
     stats.deduped = plan.total
     stats.skipped = len(plan.skip)
@@ -429,7 +435,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the full plan to this JSON file (for push --plan)",
     )
     subparsers.add_parser("resolve", help="resolve hub pages to GitHub")
-    subparsers.add_parser("run", help="full pipeline: crawl → push")
+    run_parser = subparsers.add_parser(
+        "run", help="full pipeline: crawl → push"
+    )
+    run_parser.add_argument(
+        "--link-only",
+        action="store_true",
+        help="skip bundle mirroring and ingest metadata/provenance only",
+    )
     subparsers.add_parser("doctor", help="check creds, robots, API")
 
     push_parser = subparsers.add_parser("push", help="push a plan file")

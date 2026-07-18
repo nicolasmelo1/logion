@@ -14,6 +14,13 @@ from logion_indexer.pusher import PushResult
 from logion_indexer.transport import FakeTransport
 
 
+def test_run_parser_accepts_link_only() -> None:
+    args = cli.build_parser().parse_args(["run", "--link-only"])
+
+    assert args.command == "run"
+    assert args.link_only is True
+
+
 class _FailingAdapter:
     def discover(self, target: str, **kwargs: object):  # noqa: ARG002
         raise TimeoutError("request timed out")
@@ -105,7 +112,7 @@ def test_cmd_run_prints_safe_push_error_details(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         cli,
         "build_indexing_plan",
-        lambda _discoveries, _transport, _base_url: (
+        lambda _discoveries, _transport, _base_url, **_kwargs: (
             DedupPlan(create=[skill]),
             {},
         ),

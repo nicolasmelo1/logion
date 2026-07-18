@@ -1,71 +1,140 @@
-"""Tests for clawhub adapter: fixture-driven parsing, robots, rate limiter."""
+"""Tests for the ClawHub public skills feed adapter."""
 
 from __future__ import annotations
+
+import json
+
+import pytest
 
 from logion_indexer.adapters.clawhub import ClawhubAdapter
 from logion_indexer.transport import FakeTransport, HttpResponse
 
-CLAWHUB_HTML = """
-<html><body>
-  <div class="skill-card">
-    <h3>Awesome Skill</h3>
-    <a href="https://github.com/octocat/awesome">GitHub</a>
-  </div>
-  <div class="skill-card verified">
-    <h3>Verified Skill</h3>
-    <a href="https://github.com/anthropics/skills">GitHub</a>
-  </div>
-</body></html>
-"""
+BASE = "https://clawhub.ai"
+ROBOTS = f"{BASE}/robots.txt"
+FEED = f"{BASE}/v1/feeds/skills"
+
+
+def _transport() -> FakeTransport:
+    transport = FakeTransport()
+    transport.set_response(ROBOTS, HttpResponse(200, b""))
+    return transport
+
+
+def _feed(entries: list[dict]) -> HttpResponse:
+    return HttpResponse(
+        200,
+        json.dumps({"schemaVersion": 1, "entries": entries}).encode(),
+    )
+
+
+def _entry(
+    *,
+    title: str = "Deploy",
+    state: str = "available",
+    repo: str = "acme/skills",
+    path: str = "skills/deploy",
+) -> dict:
+    return {
+        "type": "skill",
+        "id": "@acme/deploy",
+        "title": title,
+        "description": "Deploy safely",
+        "state": state,
+        "install": {
+            "candidates": [
+                {
+                    "sourceRef": "public-github",
+                    "version": "abc123",
+                    "integrity": "sha256:integrity",
+                    "github": {
+                        "repo": repo,
+                        "path": path,
+                        "commit": "abc123",
+                        "contentHash": "content-hash",
+                    },
+                }
+            ],
+        },
+    }
 
 
 class TestClawhubAdapter:
-    def test_parse_skill_cards(self) -> None:
-        transport = FakeTransport()
-        transport.set_response(
-            "https://clawhub.ai/robots.txt",
-            HttpResponse(200, b""),
-        )
-        transport.set_response(
-            "https://clawhub.ai",
-            HttpResponse(200, CLAWHUB_HTML.encode()),
-        )
-        adapter = ClawhubAdapter(transport)
-        results = list(adapter.discover("https://clawhub.ai/"))
-        assert len(results) >= 1
-        titles = [r.title for r in results]
-        assert "Awesome Skill" in titles
+    def test_reads_verified_github_candidates(self) -> None:
+        transport = _transport()
+        transport.set_response(FEED, _feed([_entry()]))
 
-    def test_verified_flag(self) -> None:
-        transport = FakeTransport()
-        transport.set_response(
-            "https://clawhub.ai/robots.txt",
-            HttpResponse(200, b""),
-        )
-        transport.set_response(
-            "https://clawhub.ai",
-            HttpResponse(200, CLAWHUB_HTML.encode()),
-        )
-        adapter = ClawhubAdapter(transport)
-        results = list(adapter.discover("https://clawhub.ai/"))
-        verified = [r for r in results if r.channels[0].hub_verified]
-        assert len(verified) >= 1
+        results = list(ClawhubAdapter(transport).discover(f"{BASE}/"))
 
-    def test_no_github_source_dropped(self) -> None:
-        html = """
-        <div class="skill-card">
-          <h3>No Link Skill</h3>
-        </div>
-        """
+        assert len(results) == 1
+        skill = results[0]
+        assert str(skill.canonical) == "gh:acme/skills#skills/deploy"
+        assert skill.source_commit == "abc123"
+        assert skill.summary == "Deploy safely"
+        assert skill.channels[0].hub_verified is True
+        assert dict(skill.channels[0].metadata) == {
+            "version": "abc123",
+            "integrity": "sha256:integrity",
+            "contentHash": "content-hash",
+        }
+
+    def test_skips_hosted_unavailable_and_duplicate_entries(self) -> None:
+        hosted = {
+            "state": "available",
+            "install": {
+                "candidates": [
+                    {
+                        "sourceRef": "public-clawhub",
+                        "github": {
+                            "repo": "unverified/repo",
+                            "path": "skill",
+                        },
+                    }
+                ]
+            },
+        }
+        transport = _transport()
+        transport.set_response(
+            FEED,
+            _feed([
+                hosted,
+                _entry(state="unavailable"),
+                _entry(),
+                _entry(title="Duplicate"),
+            ]),
+        )
+
+        results = list(ClawhubAdapter(transport).discover(BASE))
+
+        assert len(results) == 1
+        assert results[0].title == "Deploy"
+
+    def test_limit_stops_immediately(self) -> None:
+        transport = _transport()
+        transport.set_response(
+            FEED,
+            _feed([
+                _entry(),
+                _entry(repo="other/skills", path="skills/other"),
+            ]),
+        )
+
+        results = list(ClawhubAdapter(transport).discover(BASE, limit=1))
+
+        assert len(results) == 1
+
+    def test_invalid_json_is_reported(self) -> None:
+        transport = _transport()
+        transport.set_response(FEED, HttpResponse(200, b"not-json"))
+
+        with pytest.raises(RuntimeError, match="invalid JSON"):
+            list(ClawhubAdapter(transport).discover(BASE))
+
+    def test_robots_disallow_is_reported(self) -> None:
         transport = FakeTransport()
         transport.set_response(
-            "https://clawhub.ai/robots.txt",
-            HttpResponse(200, b""),
+            ROBOTS,
+            HttpResponse(200, b"User-agent: *\nDisallow: /v1/\n"),
         )
-        transport.set_response(
-            "https://clawhub.ai",
-            HttpResponse(200, html.encode()),
-        )
-        adapter = ClawhubAdapter(transport)
-        results = list(adapter.discover("https://clawhub.ai/"))
-        assert len(results) == 0
+
+        with pytest.raises(PermissionError, match=r"blocked by robots\.txt"):
+            list(ClawhubAdapter(transport).discover(BASE))

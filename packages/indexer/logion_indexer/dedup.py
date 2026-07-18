@@ -26,6 +26,7 @@ SKIP_REASONS = {
     "already_claimed": "already_claimed",
     "no_change": "no_change",
 }
+KNOWN_BATCH_SIZE = 25
 
 
 @dataclass
@@ -122,20 +123,37 @@ def query_known(
     if not canonical_ids:
         return {}
 
-    ids_param = ",".join(quote(str(cid), safe="") for cid in canonical_ids)
+    known: dict[str, dict] = {}
     url = f"{base_url.rstrip('/')}/v1/admin/indexing/known"
-    # Pass ids as query parameter.
-    full_url = f"{url}?ids={ids_param}"
-    resp = transport.get(full_url)
-    if resp.status != 200:
-        return {}
+    for offset in range(0, len(canonical_ids), KNOWN_BATCH_SIZE):
+        batch = canonical_ids[offset : offset + KNOWN_BATCH_SIZE]
+        ids_param = ",".join(quote(str(cid), safe="") for cid in batch)
+        resp = transport.get(
+            f"{url}?ids={ids_param}",
+            use_cache=False,
+        )
+        if resp.status != 200:
+            raise RuntimeError(
+                f"known-listing lookup failed: HTTP {resp.status}"
+            )
 
-    data = resp.json()
-    if not isinstance(data, dict):
-        return {}
-    known = data.get("known") or {}
-    if not isinstance(known, dict):
-        return {}
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise RuntimeError(
+                "known-listing lookup returned invalid JSON"
+            ) from exc
+        if not isinstance(data, dict):
+            raise TypeError("known-listing lookup returned invalid data")
+        batch_known = data.get("known")
+        if not isinstance(batch_known, dict):
+            raise TypeError("known-listing lookup omitted known map")
+        for canonical, info in batch_known.items():
+            if not isinstance(canonical, str) or not isinstance(info, dict):
+                raise TypeError(
+                    "known-listing lookup returned an invalid map entry"
+                )
+            known[canonical] = info
     return known
 
 
