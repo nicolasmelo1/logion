@@ -294,6 +294,9 @@
         "create_user_with_agent"
       ]
     },
+    "indexed get": {
+      "operations": []
+    },
     "listings search": {
       "operations": [
         "search_listings"

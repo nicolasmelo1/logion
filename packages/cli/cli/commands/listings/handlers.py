@@ -30,7 +30,13 @@ def _compact_match(item: dict[str, object]) -> dict[str, object]:
             "amount_cents": item.get("price_cents"),
             "currency": item.get("currency"),
         },
-        "status": item.get("status", "published"),
+        "status": (
+            item["tier"] if "tier" in item else item.get("status", "published")
+        ),
+        "external": item.get("external", False),
+        "source_url": item.get("source_url"),
+        "source_hub": item.get("source_hub"),
+        "license_spdx": item.get("license_spdx"),
     }
 
 
@@ -88,7 +94,12 @@ def _print_human(payload: dict[str, object]) -> None:
         if amount is not None and currency:
             line += f" [{amount} {currency}]"
         line += f" [{status}]"
+        if match.get("external"):
+            line += " [external]"
         stdout.write(f"{line}\n")
+        source_url = match.get("source_url")
+        if isinstance(source_url, str) and source_url:
+            stdout.write(f"    Source: {source_url}\n")
         if isinstance(summary, str) and summary:
             stdout.write(f"    {summary}\n")
 
@@ -117,6 +128,8 @@ def handle_search(args: argparse.Namespace) -> int:
             sort=args.sort,
             limit=limit,
             cursor=getattr(args, "cursor", None),
+            include_indexed=getattr(args, "include_indexed", False),
+            tier=getattr(args, "tier", None),
         )
         payload = _format_search_payload(
             result,

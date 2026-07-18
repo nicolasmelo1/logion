@@ -93,6 +93,10 @@ def test_listings_search_compact_summary_truncated(
         "tags",
         "price",
         "status",
+        "external",
+        "source_url",
+        "source_hub",
+        "license_spdx",
     }
 
 
@@ -192,3 +196,26 @@ def test_listings_search_limit_above_fifty_is_clamped(
     assert code == 0
     json.loads(capsys.readouterr().out)
     assert listings.calls[-1]["limit"] == 50
+
+
+def test_listings_search_forwards_indexed_flags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listings = FakeListingsResource([])
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "listings",
+        "search",
+        "--query",
+        "video",
+        "--include-indexed",
+        "--tier",
+        "indexed",
+        "--json",
+    ])
+
+    assert code == 0
+    assert listings.calls[-1]["include_indexed"] is True
+    assert listings.calls[-1]["tier"] == "indexed"

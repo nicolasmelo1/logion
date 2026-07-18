@@ -114,3 +114,39 @@ scenarios:
           args: {bounty_id: bounty-video-1}
       final_answer: "Accepting a bounty submission is a payment event, not a publication event. The accepted work still goes through publication review before buyers see it. Please confirm before I accept."
       selected_course_ids: []
+
+  # 6. Indexed listings require explicit opt-in and a separate get path.
+  - id: loop-search-indexed-opt-in
+    prompt: "Find an external Terraform deployment course."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: true
+      should_run_recall: true
+      required_tools: [logion_listings_search]
+      must_mention: [external, indexed]
+    fake_trace:
+      calls:
+        - tool: logion_recall_search
+          args: {query: "terraform deployment", limit: 5}
+        - tool: logion_listings_search
+          args: {query: "terraform deployment", include_indexed: true, limit: 5}
+      final_answer: "Found indexed gh:external/terraform-course — external listing, no purchase yet."
+      selected_course_ids: []
+
+  # 7. Indexed listing detail uses indexed get, not courses get.
+  - id: loop-indexed-get-not-course
+    prompt: "Inspect the indexed listing idx-terraform-course."
+    installed_capabilities: []
+    local_recall: []
+    catalog_fixture: fake-marketplace.yaml
+    expected:
+      should_query_marketplace: false
+      should_run_recall: false
+      required_tools: [logion_indexed_get]
+    fake_trace:
+      calls:
+        - tool: logion_indexed_get
+          args: {listing_id: idx-terraform-course}
+      final_answer: "gh:external/terraform-course is an indexed external listing; it cannot be installed directly."

@@ -19,7 +19,9 @@ _SORT_CHOICES = [
 ]
 
 
-def register(subparsers: argparse._SubParsersAction) -> None:
+def register(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     """Register the ``listings`` subcommand group."""
     parser = subparsers.add_parser("listings", help="Search course listings")
     sub = parser.add_subparsers(
@@ -54,4 +56,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     search.add_argument("--limit", type=int, default=5)
     search.add_argument("--verbose", action="store_true", default=False)
     search.add_argument("--cursor")
+    search.add_argument(
+        "--include-indexed",
+        action="store_true",
+        default=False,
+        help="Include indexed external listings in search results",
+    )
+    search.add_argument(
+        "--tier",
+        choices=["published", "indexed", "improving"],
+        help=(
+            "Filter by listing tier: published (default), "
+            "indexed, or improving"
+        ),
+    )
     search.set_defaults(handler=handle_search)
+
+    return parser

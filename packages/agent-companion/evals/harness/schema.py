@@ -38,6 +38,7 @@ KNOWN_TOOLS = {
     "logion_notifications_list",
     "logion_notifications_unread_count",
     "logion_credits_top_up",
+    "logion_indexed_get",
     "logion_payments_onboarding_link",
     "logion_payments_orders_get",
     "logion_payments_seller_readiness",
