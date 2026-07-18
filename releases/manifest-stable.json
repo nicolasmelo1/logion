@@ -1,6 +1,6 @@
 {
   "channel": "stable",
-  "generated_at": "2026-07-07T16:52:18+00:00",
+  "generated_at": "2026-07-18T18:15:14+00:00",
   "git_commit": "0000000000000000000000000000000000000000",
   "packages": {
     "logion-cli": {
@@ -21,8 +21,8 @@
       "course_id": "5ddf32c6-e139-4056-ac94-c4a231bfd932",
       "minimum_cli": "0.1.2",
       "minimum_python": "3.12",
-      "tag": "logion-companion-v0.1.13",
-      "version": "0.1.13",
+      "tag": "logion-companion-v0.1.14",
+      "version": "0.1.14",
       "version_id": null
     }
   },

@@ -64,6 +64,17 @@ def test_plan_includes_all_three_package_tags() -> None:
     assert "logion-companion-v0.1.99" in tags
 
 
+def test_version_bump_targets_pass_config_before_subcommand() -> None:
+    """semantic-release global config option precedes its subcommand."""
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    for package in ("cli", "client", "agent-companion"):
+        expected = (
+            f"uv run semantic-release -c packages/{package}/pyproject.toml "
+            "version"
+        )
+        assert expected in makefile
+
+
 def test_plan_normalizes_leading_v_for_tags() -> None:
     """Friendly v-prefixed input must not create vv-prefixed tags."""
     planner = ReleasePlanner(repo_root=REPO_ROOT)
