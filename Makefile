@@ -126,13 +126,13 @@ npm-build:
 	cd packages/npm-wrapper && npm ci --ignore-scripts && npm run build && node dist/scripts/version-from-manifest.js && npm pack --dry-run && git checkout package.json
 
 version-bump-cli:
-	uv run semantic-release version -c packages/cli/pyproject.toml
+	uv run semantic-release -c packages/cli/pyproject.toml version
 
 version-bump-client:
-	uv run semantic-release version -c packages/client/pyproject.toml
+	uv run semantic-release -c packages/client/pyproject.toml version
 
 version-bump-companion:
-	uv run semantic-release version -c packages/agent-companion/pyproject.toml
+	uv run semantic-release -c packages/agent-companion/pyproject.toml version
 
 build-check:
 	rm -rf dist/

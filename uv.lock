@@ -1557,7 +1557,7 @@ dev = [
 
 [[package]]
 name = "logion-agent-companion"
-version = "0.1.13"
+version = "0.1.14"
 source = { editable = "packages/agent-companion" }
 dependencies = [
     { name = "pyyaml" },

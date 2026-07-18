@@ -4,6 +4,14 @@ All notable changes to the Logion packages are documented in per-package
 CHANGELOG files below their respective directories. This top-level file
 aggregates the current released version of each package.
 
+## 0.1.14
+
+### Bug Fixes
+- **scanners**: avoid executable-code findings for full-line comments (#205) — @Nicolas Leal
+- **release**: pass the semantic-release config option before the subcommand (#206) — @Nicolas Leal
+
+**Contributors:** @Nicolas Leal
+
 ## 0.1.13
 
 ### Features
