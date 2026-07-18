@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
+from urllib.parse import urlparse
 
 from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
@@ -123,7 +124,7 @@ class SkillsLockAdapter:
 
     def _load_lockfile(self, target: str) -> dict:
         """Load a skills-lock.json from URL or local path."""
-        if target.startswith("http"):
+        if urlparse(target).scheme in {"http", "https"}:
             text = self.crawler.fetch_page(target)
             if text is None:
                 raise RuntimeError(f"skills-lock fetch failed: {target}")
