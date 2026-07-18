@@ -21,6 +21,7 @@ serialized into the plan file.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from urllib.error import URLError
 
 from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
 from .enrichment import enrich_discoveries
@@ -92,7 +93,7 @@ def _mirror_and_flag(
                 skill.canonical.repo,
                 skill.source_commit,
             )
-        except OSError:
+        except (URLError, TimeoutError):
             # Network exhaustion keeps the listing link-only; a single CDN
             # failure must not discard metadata for the entire run.
             tarball = None

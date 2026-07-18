@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 GET_TIMEOUT_SECONDS = 30
 GET_MAX_ATTEMPTS = 3
+GET_RETRY_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 @dataclass
@@ -134,13 +135,17 @@ class Transport:
                     data = resp.read()
                     return HttpResponse(resp.status, data, dict(resp.headers))
             except HTTPError as exc:
-                return HttpResponse(
-                    exc.code, exc.read(), dict(exc.headers or {})
-                )
+                if (
+                    exc.code not in GET_RETRY_STATUSES
+                    or attempt + 1 == GET_MAX_ATTEMPTS
+                ):
+                    return HttpResponse(
+                        exc.code, exc.read(), dict(exc.headers or {})
+                    )
             except (URLError, TimeoutError):
                 if attempt + 1 == GET_MAX_ATTEMPTS:
                     raise
-                time.sleep(2**attempt)
+            time.sleep(2**attempt)
         raise AssertionError("unreachable")
 
     def post(
