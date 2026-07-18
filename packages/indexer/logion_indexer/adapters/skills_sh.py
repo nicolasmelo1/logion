@@ -2,25 +2,19 @@
 
 from __future__ import annotations
 
-import re
+import xml.etree.ElementTree as ET
 from collections.abc import Iterable
+from urllib.parse import urljoin, urlparse
 
 from ..canonical import CanonicalSkillId
 from ..crawl import Crawler
-from ..github_resolver import resolve_hub_page
 from ..models import DiscoveredSkill, DiscoveryChannel
 from ..rate_limit import RateLimiter
 from ..transport import Transport
 
-# Match skill listing entries on skills.sh pages.
-_SKILL_LINK_RE = re.compile(
-    r'<a[^>]+href="(/skill[s]?/[^"]+)"[^>]*>([^<]*)</a>',
-    re.IGNORECASE,
-)
-
 
 class SkillsShAdapter:
-    """Adapter for skills.sh hub."""
+    """Discover GitHub repositories from the published skills.sh sitemaps."""
 
     hub_slug = "skills_sh"
 
@@ -38,61 +32,68 @@ class SkillsShAdapter:
         *,
         limit: int | None = None,
     ) -> Iterable[DiscoveredSkill]:
-        """Crawl skills.sh, extract GitHub links from each listing."""
+        """Fetch skill sitemaps and emit each GitHub repository once."""
         base_url = target.rstrip("/")
-        html = self._fetch_page(base_url)
-        if not html:
-            return
-
-        skill_links = _SKILL_LINK_RE.findall(html)
+        base = urlparse(base_url)
+        index_url = f"{base_url}/sitemap.xml"
+        sitemap_urls = self._xml_locations(index_url)
+        seen_repos: set[tuple[str, str]] = set()
         count = 0
-        for path, title in skill_links:
-            if limit is not None and count >= limit:
-                return
-            skill_url = f"{base_url}{path}"
-            resolved = self._resolve_skill_page(skill_url)
-            if resolved:
-                canonical, _page_html = resolved
-                # resolve_hub_page already produced a canonical id
-                # (possibly with a subpath).  Only fall back to the
-                # regex if it somehow returned without resolving.
-                # (The _resolve_skill_page helper guarantees resolution,
-                # so this branch is defensive.)
+
+        for sitemap_url in sitemap_urls:
+            parsed_sitemap = urlparse(sitemap_url)
+            if (
+                parsed_sitemap.scheme != base.scheme
+                or parsed_sitemap.hostname != base.hostname
+                or not parsed_sitemap.path.startswith("/sitemap-skills-")
+            ):
+                continue
+
+            for skill_url in self._xml_locations(sitemap_url):
+                parsed_skill = urlparse(skill_url)
+                if (
+                    parsed_skill.scheme != base.scheme
+                    or parsed_skill.hostname != base.hostname
+                ):
+                    continue
+                parts = [part for part in parsed_skill.path.split("/") if part]
+                if len(parts) != 3:
+                    continue
+                owner, repo, skill_name = parts
+                repo_key = (owner.lower(), repo.lower())
+                if repo_key in seen_repos:
+                    continue
+                if limit is not None and count >= limit:
+                    return
+                seen_repos.add(repo_key)
+
                 channel = DiscoveryChannel(
                     hub_slug=self.hub_slug,
-                    hub_url=skill_url,
+                    hub_url=base_url,
                     hub_verified=False,
                 )
                 yield DiscoveredSkill(
-                    canonical=canonical,
-                    title=title.strip(),
-                    summary="",
-                    original_author=canonical.owner,
-                    license_spdx=None,
-                    source_commit=None,
-                    tags=(),
+                    canonical=CanonicalSkillId(owner=owner, repo=repo),
+                    title=skill_name,
+                    original_author=owner,
                     channels=(channel,),
-                    inferred_map=None,
-                    map_flags=(),
                 )
                 count += 1
 
-    def _fetch_page(self, url: str) -> str:
-        """Fetch a page via the crawler (robots.txt + rate limit)."""
+    def _xml_locations(self, url: str) -> list[str]:
+        text = self.crawler.fetch_page(url)
+        if text is None:
+            raise RuntimeError(f"skills.sh sitemap fetch failed: {url}")
         try:
-            html = self.crawler.fetch_page(url)
-        except (PermissionError, RuntimeError):
-            return ""
-        return html if html is not None else ""
-
-    def _resolve_skill_page(
-        self, url: str
-    ) -> tuple[CanonicalSkillId, str] | None:
-        """Fetch a skill page and extract a GitHub link."""
-        html = self._fetch_page(url)
-        if not html:
-            return None
-        resolved = resolve_hub_page(url, html)
-        if not resolved.resolved or resolved.canonical is None:
-            return None
-        return resolved.canonical, html
+            root = ET.fromstring(text)
+        except ET.ParseError as exc:
+            raise RuntimeError(
+                f"skills.sh sitemap returned invalid XML: {url}"
+            ) from exc
+        return [
+            urljoin(url, element.text.strip())
+            for element in root.iter()
+            if element.tag.endswith("loc")
+            and element.text
+            and element.text.strip()
+        ]

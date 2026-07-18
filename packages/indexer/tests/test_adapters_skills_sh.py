@@ -1,91 +1,105 @@
-"""Tests for skills.sh adapter: fixture-driven parsing."""
+"""Tests for the skills.sh sitemap adapter."""
 
 from __future__ import annotations
+
+import pytest
 
 from logion_indexer.adapters.skills_sh import SkillsShAdapter
 from logion_indexer.transport import FakeTransport, HttpResponse
 
-SKILLS_SH_HTML = """
-<html><body>
-  <a href="/skills/foo-skill">Foo Skill</a>
-  <a href="/skills/bar-skill">Bar Skill</a>
-</body></html>
-"""
+BASE = "https://www.skills.sh"
+ROBOTS = f"{BASE}/robots.txt"
+INDEX = f"{BASE}/sitemap.xml"
+SKILLS_1 = f"{BASE}/sitemap-skills-1.xml"
+SKILLS_2 = f"{BASE}/sitemap-skills-2.xml"
 
-SKILL_DETAIL_HTML = """
-<html><body>
-  <a href="https://github.com/octocat/foo-repo">GitHub</a>
-</body></html>
-"""
 
-ROBOTS_DISALLOW = """
-User-agent: *
-Disallow: /skills/bar-skill
-"""
+def _sitemap(*urls: str, index: bool = False) -> HttpResponse:
+    root = "sitemapindex" if index else "urlset"
+    item = "sitemap" if index else "url"
+    body = "".join(f"<{item}><loc>{url}</loc></{item}>" for url in urls)
+    return HttpResponse(200, f"<{root}>{body}</{root}>".encode())
+
+
+def _transport() -> FakeTransport:
+    transport = FakeTransport()
+    transport.set_response(ROBOTS, HttpResponse(200, b""))
+    return transport
 
 
 class TestSkillsShAdapter:
-    def test_parse_skill_links(self) -> None:
-        transport = FakeTransport()
+    def test_reads_skill_sitemaps_and_emits_each_repo_once(self) -> None:
+        transport = _transport()
         transport.set_response(
-            "https://www.skills.sh/robots.txt",
-            HttpResponse(200, b""),
+            INDEX,
+            _sitemap(
+                f"{BASE}/sitemap-misc.xml",
+                SKILLS_1,
+                "https://evil.example/sitemap-skills-1.xml",
+                SKILLS_2,
+                index=True,
+            ),
         )
         transport.set_response(
-            "https://www.skills.sh",
-            HttpResponse(200, SKILLS_SH_HTML.encode()),
+            SKILLS_1,
+            _sitemap(
+                f"{BASE}/octocat/skills/foo",
+                f"{BASE}/octocat/skills/bar",
+                "https://evil.example/acme/agents/injected",
+            ),
         )
         transport.set_response(
-            "https://www.skills.sh/skills/foo-skill",
-            HttpResponse(200, SKILL_DETAIL_HTML.encode()),
+            SKILLS_2,
+            _sitemap(f"{BASE}/acme/agents/deploy"),
         )
-        transport.set_response(
-            "https://www.skills.sh/skills/bar-skill",
-            HttpResponse(200, SKILL_DETAIL_HTML.encode()),
-        )
-        adapter = SkillsShAdapter(transport)
-        results = list(adapter.discover("https://www.skills.sh/"))
-        # At least one skill should be discovered from the GitHub link.
-        assert len(results) >= 1
-        assert results[0].canonical.owner == "octocat"
-        assert results[0].canonical.repo == "foo-repo"
-        assert results[0].channels[0].hub_slug == "skills_sh"
 
-    def test_robots_disallow(self) -> None:
-        transport = FakeTransport()
-        transport.set_response(
-            "https://www.skills.sh/robots.txt",
-            HttpResponse(200, ROBOTS_DISALLOW.encode()),
-        )
-        transport.set_response(
-            "https://www.skills.sh",
-            HttpResponse(200, SKILLS_SH_HTML.encode()),
-        )
-        transport.set_response(
-            "https://www.skills.sh/skills/foo-skill",
-            HttpResponse(200, SKILL_DETAIL_HTML.encode()),
-        )
-        adapter = SkillsShAdapter(transport)
-        results = list(adapter.discover("https://www.skills.sh/"))
-        # bar-skill is disallowed; only foo-skill should be discovered.
-        for r in results:
-            assert "bar-skill" not in str(r.canonical)
+        results = list(SkillsShAdapter(transport).discover(f"{BASE}/"))
 
-    def test_rate_limiter_called(self) -> None:
+        assert [str(item.canonical) for item in results] == [
+            "gh:octocat/skills",
+            "gh:acme/agents",
+        ]
+        assert all(
+            item.channels[0].hub_slug == "skills_sh" for item in results
+        )
+        assert all(item.channels[0].hub_url == BASE for item in results)
+        assert f"GET {SKILLS_1}" in transport.call_log
+        assert f"GET {SKILLS_2}" in transport.call_log
+        assert not any("evil.example" in call for call in transport.call_log)
+        assert not any("sitemap-misc" in call for call in transport.call_log)
+
+    def test_limit_stops_without_fetching_next_sitemap(self) -> None:
+        transport = _transport()
+        transport.set_response(
+            INDEX,
+            _sitemap(SKILLS_1, SKILLS_2, index=True),
+        )
+        transport.set_response(
+            SKILLS_1,
+            _sitemap(
+                f"{BASE}/one/repo/first",
+                f"{BASE}/two/repo/second",
+            ),
+        )
+
+        results = list(SkillsShAdapter(transport).discover(BASE, limit=1))
+
+        assert len(results) == 1
+        assert f"GET {SKILLS_2}" not in transport.call_log
+
+    def test_invalid_sitemap_xml_is_reported(self) -> None:
+        transport = _transport()
+        transport.set_response(INDEX, HttpResponse(200, b"not-xml"))
+
+        with pytest.raises(RuntimeError, match="invalid XML"):
+            list(SkillsShAdapter(transport).discover(BASE))
+
+    def test_robots_disallow_is_reported(self) -> None:
         transport = FakeTransport()
         transport.set_response(
-            "https://www.skills.sh/robots.txt",
-            HttpResponse(200, b""),
+            ROBOTS,
+            HttpResponse(200, b"User-agent: *\nDisallow: /sitemap.xml\n"),
         )
-        transport.set_response(
-            "https://www.skills.sh",
-            HttpResponse(200, SKILLS_SH_HTML.encode()),
-        )
-        transport.set_response(
-            "https://www.skills.sh/skills/foo-skill",
-            HttpResponse(200, SKILL_DETAIL_HTML.encode()),
-        )
-        adapter = SkillsShAdapter(transport)
-        # Rate limiter is set up by Crawler; verify no exceptions.
-        list(adapter.discover("https://www.skills.sh/"))
-        assert len(transport.call_log) > 0
+
+        with pytest.raises(PermissionError, match=r"blocked by robots\.txt"):
+            list(SkillsShAdapter(transport).discover(BASE))
