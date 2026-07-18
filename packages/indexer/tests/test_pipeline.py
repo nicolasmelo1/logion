@@ -105,9 +105,11 @@ class TestMirrorAndLockDrift:
         )
         transport = FakeTransport()
         source = GithubSource(transport=transport)
-        plan, artifacts = build_indexing_plan(
-            [skill], transport, BASE, source=source, mirror=True
-        )
+        with patch.object(source, "fetch_tarball") as fetch_tarball:
+            plan, artifacts = build_indexing_plan(
+                [skill], transport, BASE, source=source, mirror=True
+            )
+        fetch_tarball.assert_not_called()
         assert len(plan.create) == 1
         assert plan.create[0].bundle is None
         assert artifacts == {}

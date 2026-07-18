@@ -24,7 +24,7 @@ from collections.abc import Iterable
 
 from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
 from .enrichment import enrich_discoveries
-from .github_source import GithubSource
+from .github_source import GithubSource, is_permissive_license
 from .mirror import BundleArtifact, mirror_bundle_for
 from .models import DiscoveredSkill, DiscoveryChannel
 from .transport import Transport
@@ -85,7 +85,7 @@ def _mirror_and_flag(
     """
     canonical = str(skill.canonical)
     tarball = None
-    if skill.source_commit:
+    if skill.source_commit and is_permissive_license(skill.license_spdx):
         try:
             tarball = source.fetch_tarball(
                 skill.canonical.owner,
