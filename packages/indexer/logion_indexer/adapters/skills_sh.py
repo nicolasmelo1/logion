@@ -45,16 +45,18 @@ class SkillsShAdapter:
             parsed_sitemap = urlparse(sitemap_url)
             if (
                 parsed_sitemap.scheme != base.scheme
-                or parsed_sitemap.hostname != base.hostname
+                or parsed_sitemap.netloc != base.netloc
                 or not parsed_sitemap.path.startswith("/sitemap-skills-")
             ):
                 continue
 
             for skill_url in self._xml_locations(sitemap_url):
+                if limit is not None and count >= limit:
+                    return
                 parsed_skill = urlparse(skill_url)
                 if (
                     parsed_skill.scheme != base.scheme
-                    or parsed_skill.hostname != base.hostname
+                    or parsed_skill.netloc != base.netloc
                 ):
                     continue
                 parts = [part for part in parsed_skill.path.split("/") if part]
@@ -64,8 +66,6 @@ class SkillsShAdapter:
                 repo_key = (owner.lower(), repo.lower())
                 if repo_key in seen_repos:
                     continue
-                if limit is not None and count >= limit:
-                    return
                 seen_repos.add(repo_key)
 
                 channel = DiscoveryChannel(
@@ -76,8 +76,15 @@ class SkillsShAdapter:
                 yield DiscoveredSkill(
                     canonical=CanonicalSkillId(owner=owner, repo=repo),
                     title=skill_name,
+                    summary="",
                     original_author=owner,
+                    license_spdx=None,
+                    source_commit=None,
+                    tags=(),
                     channels=(channel,),
+                    inferred_map=None,
+                    map_flags=(),
+                    bundle=None,
                 )
                 count += 1
 

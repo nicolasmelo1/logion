@@ -35,6 +35,7 @@ class TestSkillsShAdapter:
             _sitemap(
                 f"{BASE}/sitemap-misc.xml",
                 SKILLS_1,
+                "https://www.skills.sh:444/sitemap-skills-1.xml",
                 "https://evil.example/sitemap-skills-1.xml",
                 SKILLS_2,
                 index=True,
@@ -45,6 +46,7 @@ class TestSkillsShAdapter:
             _sitemap(
                 f"{BASE}/octocat/skills/foo",
                 f"{BASE}/octocat/skills/bar",
+                "https://www.skills.sh:444/acme/agents/injected",
                 "https://evil.example/acme/agents/injected",
             ),
         )
@@ -66,6 +68,7 @@ class TestSkillsShAdapter:
         assert f"GET {SKILLS_1}" in transport.call_log
         assert f"GET {SKILLS_2}" in transport.call_log
         assert not any("evil.example" in call for call in transport.call_log)
+        assert not any(":444" in call for call in transport.call_log)
         assert not any("sitemap-misc" in call for call in transport.call_log)
 
     def test_limit_stops_without_fetching_next_sitemap(self) -> None:
@@ -78,7 +81,7 @@ class TestSkillsShAdapter:
             SKILLS_1,
             _sitemap(
                 f"{BASE}/one/repo/first",
-                f"{BASE}/two/repo/second",
+                f"{BASE}/one/repo/duplicate",
             ),
         )
 
