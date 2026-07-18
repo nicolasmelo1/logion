@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from logion_indexer.canonical import CanonicalSkillId
 from logion_indexer.dedup import (
     build_plan,
@@ -76,9 +78,25 @@ class TestMergeDiscoveries:
         assert set(merged[0].tags) == {"coding", "python", "testing"}
 
 
+class _CacheSpyTransport(FakeTransport):
+    def __init__(self) -> None:
+        super().__init__()
+        self.use_cache_values: list[bool] = []
+
+    def get(
+        self,
+        url: str,  # noqa: ARG002
+        *,
+        headers: Mapping[str, str] | None = None,  # noqa: ARG002
+        use_cache: bool = True,
+    ) -> HttpResponse:
+        self.use_cache_values.append(use_cache)
+        return HttpResponse(200, b'{"known": {}}')
+
+
 class TestKnownMap:
-    def test_query_known_batches_large_catalogs(self) -> None:
-        transport = FakeTransport()
+    def test_query_known_batches_without_caching(self) -> None:
+        transport = _CacheSpyTransport()
         canonical_ids = [
             CanonicalSkillId(owner="owner", repo=f"repo-{index}")
             for index in range(26)
@@ -86,8 +104,7 @@ class TestKnownMap:
 
         query_known(canonical_ids, transport, "https://api.logion.sh")
 
-        gets = [call for call in transport.call_log if call.startswith("GET")]
-        assert len(gets) == 2
+        assert transport.use_cache_values == [False, False]
 
     def test_update_existing_listing(self) -> None:
         merged = [_make_skill()]

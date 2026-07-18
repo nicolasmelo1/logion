@@ -128,7 +128,10 @@ def query_known(
     for offset in range(0, len(canonical_ids), KNOWN_BATCH_SIZE):
         batch = canonical_ids[offset : offset + KNOWN_BATCH_SIZE]
         ids_param = ",".join(quote(str(cid), safe="") for cid in batch)
-        resp = transport.get(f"{url}?ids={ids_param}")
+        resp = transport.get(
+            f"{url}?ids={ids_param}",
+            use_cache=False,
+        )
         if resp.status != 200:
             continue
 
