@@ -61,8 +61,8 @@ class TestInvalidMapDropsRunPartial:
         assert any(s["reason"] == INFERRED_MAP_INVALID for s in plan.skip)
 
 
-class TestMirrorAndLockDrift:
-    def test_permissive_bundle_and_lock_drift(self) -> None:
+class TestMirror:
+    def test_permissive_bundle_preserves_lock_metadata(self) -> None:
         skill = DiscoveredSkill(
             canonical=CanonicalSkillId(
                 owner="octocat", repo="hello", subpath="skills/foo"
@@ -96,9 +96,8 @@ class TestMirrorAndLockDrift:
         assert item.bundle is not None
         assert item.bundle["sha256"].startswith("sha256:")
         assert str(item.canonical) in artifacts
-        # Lock drift flagged on the skills_lock channel (hash mismatch).
         meta = dict(item.channels[0].metadata)
-        assert meta.get("lock_drift") == "true"
+        assert meta == {"computedHash": "sha256:stale"}
 
     def test_restricted_license_no_bundle(self) -> None:
         skill = DiscoveredSkill(
