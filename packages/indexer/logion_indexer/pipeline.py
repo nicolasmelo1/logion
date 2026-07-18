@@ -86,9 +86,16 @@ def _mirror_and_flag(
     canonical = str(skill.canonical)
     tarball = None
     if skill.source_commit:
-        tarball = source.fetch_tarball(
-            skill.canonical.owner, skill.canonical.repo, skill.source_commit
-        )
+        try:
+            tarball = source.fetch_tarball(
+                skill.canonical.owner,
+                skill.canonical.repo,
+                skill.source_commit,
+            )
+        except OSError:
+            # Network exhaustion keeps the listing link-only; a single CDN
+            # failure must not discard metadata for the entire run.
+            tarball = None
     artifact, reason = mirror_bundle_for(
         canonical, skill.license_spdx, skill.inferred_map, tarball
     )
