@@ -93,3 +93,18 @@ class TestSkillsLockV1:
 
         with pytest.raises(RuntimeError, match="invalid skills-lock JSON"):
             list(SkillsLockAdapter(transport).discover(target))
+
+    def test_local_filename_starting_with_http_is_not_a_url(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        target = Path("http_skills-lock.json")
+        target.write_text(json.dumps(LOCKFILE_V1))
+
+        results = list(
+            SkillsLockAdapter(FakeTransport()).discover(str(target))
+        )
+
+        assert len(results) == 2
