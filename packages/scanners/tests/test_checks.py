@@ -169,6 +169,37 @@ class TestObfuscationCheck:
         assert "AGENT-EVAL-EXEC" in rule_ids
         assert "AGENT-BASE64-PAYLOAD" in rule_ids
 
+    def test_ignores_eval_wording_in_comment_lines(self) -> None:
+        check = ObfuscationCheck()
+        files = [
+            (
+                Path("README.md"),
+                "README.md",
+                "# Fast deterministic eval (fake provider)\n"
+                "  # Local LM eval (Qwen3)\n",
+            )
+        ]
+
+        findings = check.run(Path("."), files=files)
+
+        assert not any(f.rule_id == "AGENT-EVAL-EXEC" for f in findings)
+
+    def test_still_detects_executable_eval_calls(self) -> None:
+        check = ObfuscationCheck()
+        files = [
+            (
+                Path("runner.py"),
+                "runner.py",
+                "result = eval (untrusted_input)  # unsafe\n",
+            )
+        ]
+
+        findings = check.run(Path("."), files=files)
+
+        eval_findings = [f for f in findings if f.rule_id == "AGENT-EVAL-EXEC"]
+        assert len(eval_findings) == 1
+        assert eval_findings[0].line_number == 1
+
 
 class TestPromptInjectionCheck:
     def test_clean_course_passes(self) -> None:

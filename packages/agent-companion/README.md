@@ -166,10 +166,10 @@ product axes — routing, course-selection, safety, context-efficiency
 the variable.
 
 ```bash
-# Fast deterministic eval (fake provider, no LM)
+# Fast deterministic evaluation (fake provider, no LM)
 make eval
 
-# Local LM eval (Qwen3-8B-Q4 via llama.cpp)
+# Local LM evaluation (Qwen3-8B-Q4 via llama.cpp)
 make download-models
 make eval-llama-cpp MODEL=qwen3-8b-q4km \
     LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"

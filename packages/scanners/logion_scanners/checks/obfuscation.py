@@ -86,6 +86,9 @@ class ObfuscationCheck(BaseCheck):
                     for line_no, line in enumerate(
                         content.splitlines(), start=1
                     ):
+                        is_comment = line.lstrip().startswith(("#", "//"))
+                        if pattern.rule_id == "AGENT-EVAL-EXEC" and is_comment:
+                            continue
                         if re.search(pattern.regex, line):
                             findings.append(
                                 ScannerFinding(
