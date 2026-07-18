@@ -176,7 +176,8 @@ class TestObfuscationCheck:
                 Path("README.md"),
                 "README.md",
                 "# Fast deterministic eval (fake provider)\n"
-                "  # Local LM eval (Qwen3)\n",
+                "  # Local LM eval (Qwen3)\n"
+                "// JavaScript eval (documented example)\n",
             )
         ]
 
