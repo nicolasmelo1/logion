@@ -185,4 +185,6 @@ class LobehubAdapter:
         if not metadata:
             raise RuntimeError("LobeHub page has no pagination metadata")
         current_page, page_size, total = (int(value) for value in metadata[-1])
+        if current_page < 1 or page_size < 1 or total < 0:
+            raise RuntimeError("LobeHub page has invalid pagination metadata")
         return items, current_page, page_size, total

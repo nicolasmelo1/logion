@@ -98,11 +98,12 @@ class GithubDirectAdapter:
         limit: int | None = None,
     ) -> Iterable[DiscoveredSkill]:
         """Enumerate an owner's repos that contain SKILL.md files."""
+        owner = owner.strip()
         count = 0
         page = 1
         while True:
             url = (
-                f"https://api.github.com/users/{owner.strip()}/repos"
+                f"https://api.github.com/users/{owner}/repos"
                 f"?per_page=100&sort=updated&page={page}"
             )
             resp = self.transport.get(url)

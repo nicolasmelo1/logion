@@ -156,7 +156,7 @@ class TestOwnerMode:
         )
         _setup_github_responses(transport)
         adapter = GithubDirectAdapter(transport=transport)
-        results = list(adapter.discover("octocat", mode="owner", limit=5))
+        results = list(adapter.discover(" octocat ", mode="owner", limit=5))
         assert len(results) >= 1
 
     def test_owner_enum_paginates_repos(self) -> None:

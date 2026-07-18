@@ -133,6 +133,21 @@ class TestKnownMap:
                 "https://api.logion.sh",
             )
 
+    def test_query_known_fails_closed_on_invalid_map_entry(self) -> None:
+        transport = FakeTransport()
+        transport.set_response(
+            "https://api.logion.sh/v1/admin/indexing/known"
+            "?ids=gh%3Aowner%2Frepo",
+            HttpResponse(200, b'{"known": {"gh:owner/repo": null}}'),
+        )
+
+        with pytest.raises(TypeError, match="invalid map entry"):
+            query_known(
+                [CanonicalSkillId(owner="owner", repo="repo")],
+                transport,
+                "https://api.logion.sh",
+            )
+
     def test_update_existing_listing(self) -> None:
         merged = [_make_skill()]
         known = {"gh:octocat/hello": {"kind": "indexed_listing", "id": "abc"}}

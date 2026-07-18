@@ -124,6 +124,17 @@ class TestLobehubAdapter:
         with pytest.raises(RuntimeError, match="pagination metadata"):
             list(LobehubAdapter(transport).discover(BASE))
 
+    @pytest.mark.parametrize(("page", "page_size"), [(0, 21), (1, 0)])
+    def test_invalid_pagination_metadata_is_reported(
+        self,
+        page: int,
+        page_size: int,
+    ) -> None:
+        response = _page(page, [], page_size=page_size, total=1)
+
+        with pytest.raises(RuntimeError, match="invalid pagination metadata"):
+            LobehubAdapter._parse_page(response.text)
+
     def test_robots_disallow_is_reported(self) -> None:
         transport = FakeTransport()
         transport.set_response(

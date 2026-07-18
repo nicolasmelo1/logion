@@ -148,11 +148,12 @@ def query_known(
         batch_known = data.get("known")
         if not isinstance(batch_known, dict):
             raise TypeError("known-listing lookup omitted known map")
-        known.update(
-            (canonical, info)
-            for canonical, info in batch_known.items()
-            if isinstance(canonical, str) and isinstance(info, dict)
-        )
+        for canonical, info in batch_known.items():
+            if not isinstance(canonical, str) or not isinstance(info, dict):
+                raise TypeError(
+                    "known-listing lookup returned an invalid map entry"
+                )
+            known[canonical] = info
     return known
 
 
