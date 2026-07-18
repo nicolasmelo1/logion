@@ -21,6 +21,12 @@ class RateLimiter:
         interval = 1.0 / rps if rps > 0 else 0.0
         self._overrides[host] = interval
 
+    def cap_rps(self, host: str, max_rps: float) -> None:
+        """Apply a host ceiling without overriding a slower configured rate."""
+        minimum_interval = 1.0 / max_rps if max_rps > 0 else 0.0
+        current_interval = self._overrides.get(host, self._default_interval)
+        self._overrides[host] = max(current_interval, minimum_interval)
+
     def wait(self, url: str) -> None:
         """Block until the per-host interval has elapsed."""
         host = urlparse(url).hostname or url

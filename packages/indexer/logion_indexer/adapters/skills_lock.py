@@ -15,8 +15,7 @@ Parses a ``skills-lock.json`` file with format::
 
 Only ``sourceType == "github"`` entries are accepted; others are
 dropped with reason ``unsupported_source_type``.  The lockfile's
-``computedHash`` is stored on the discovery channel's ``metadata``
-dict for later drift comparison by the caller.
+``computedHash`` is preserved on the discovery channel's ``metadata``.
 
 Unknown ``version`` values → adapter hard-fail.
 """
@@ -27,7 +26,9 @@ import json
 from collections.abc import Iterable
 
 from ..canonical import CanonicalSkillId
+from ..crawl import Crawler
 from ..models import DiscoveredSkill, DiscoveryChannel
+from ..rate_limit import RateLimiter
 from ..transport import Transport
 
 SUPPORTED_VERSION = 1
@@ -38,8 +39,12 @@ class SkillsLockAdapter:
 
     hub_slug = "skills_lock"
 
-    def __init__(self, transport: Transport) -> None:
-        self.transport = transport
+    def __init__(
+        self,
+        transport: Transport,
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
+        self.crawler = Crawler(transport, rate_limiter=rate_limiter)
 
     def discover(
         self,
@@ -119,22 +124,14 @@ class SkillsLockAdapter:
     def _load_lockfile(self, target: str) -> dict:
         """Load a skills-lock.json from URL or local path."""
         if target.startswith("http"):
-            resp = self.transport.get(target)
-            if resp.status != 200:
-                return {}
-            data = resp.json()
-            return data if isinstance(data, dict) else {}
-        # Local file.
-        with open(target) as fh:
-            data = json.load(fh)
-            return data if isinstance(data, dict) else {}
-
-
-def check_lock_drift(
-    computed_hash: str,
-    our_hash: str,
-) -> bool:
-    """Return True if the lockfile hash differs from our own."""
-    if not computed_hash or not our_hash:
-        return False
-    return computed_hash != our_hash
+            text = self.crawler.fetch_page(target)
+            if text is None:
+                raise RuntimeError(f"skills-lock fetch failed: {target}")
+        else:
+            with open(target) as fh:
+                text = fh.read()
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"invalid skills-lock JSON: {target}") from exc
+        return data if isinstance(data, dict) else {}

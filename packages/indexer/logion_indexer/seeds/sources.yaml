@@ -18,5 +18,6 @@ sources:
   - {adapter: clawhub,     target: "https://clawhub.ai/"}
   - {adapter: lobehub,     target: "https://lobehub.com/skills"}
   - {adapter: browse_sh,   target: "https://browse.sh/"}
-  - {adapter: hermes_docs, target: "https://hermes-agent.nousresearch.com/docs/skills"}
+  - {adapter: skillsmp,    target: "https://skillsmp.com"}
+  - {adapter: smithery,    target: "https://smithery.ai"}
   - {adapter: skills_lock, target: "https://raw.githubusercontent.com/vercel-labs/open-agents/main/skills-lock.json"}

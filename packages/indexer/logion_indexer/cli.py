@@ -82,6 +82,14 @@ def _get_adapter(
         from .adapters.browse_sh import BrowseShAdapter
 
         return BrowseShAdapter(transport=transport, rate_limiter=rate_limiter)
+    if adapter_name == "skillsmp":
+        from .adapters.skillsmp import SkillsMpAdapter
+
+        return SkillsMpAdapter(transport=transport, rate_limiter=rate_limiter)
+    if adapter_name == "smithery":
+        from .adapters.smithery import SmitheryAdapter
+
+        return SmitheryAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "hermes_docs":
         from .adapters.hermes_docs import HermesDocsAdapter
 
@@ -91,7 +99,10 @@ def _get_adapter(
     if adapter_name == "skills_lock":
         from .adapters.skills_lock import SkillsLockAdapter
 
-        return SkillsLockAdapter(transport=transport)
+        return SkillsLockAdapter(
+            transport=transport,
+            rate_limiter=rate_limiter,
+        )
     raise ValueError(f"unknown adapter: {adapter_name}")
 
 
