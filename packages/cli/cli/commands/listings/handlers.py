@@ -30,7 +30,9 @@ def _compact_match(item: dict[str, object]) -> dict[str, object]:
             "amount_cents": item.get("price_cents"),
             "currency": item.get("currency"),
         },
-        "status": item.get("tier", "published"),
+        "status": (
+            item["tier"] if "tier" in item else item.get("status", "published")
+        ),
         "external": item.get("external", False),
         "source_url": item.get("source_url"),
         "source_hub": item.get("source_hub"),

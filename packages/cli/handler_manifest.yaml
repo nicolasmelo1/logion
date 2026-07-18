@@ -167,7 +167,7 @@ commands:
     operations: [search_listings]
 
   indexed get:
-    operations: [get_indexed_listing]
+    operations: []
 
   notifications list:
     operations: [list_notifications]

@@ -51,7 +51,7 @@ def _build_search_params(
     if cursor is not None:
         params["cursor"] = cursor
     if include_indexed:
-        params["include_indexed"] = "true"
+        params["include_indexed"] = True
     if tier is not None:
         params["tier"] = tier
     return params
@@ -114,6 +114,17 @@ class ListingsResource:
         if tier is not None and tier not in _VALID_TIER_VALUES:
             valid = ", ".join(_VALID_TIER_VALUES)
             msg = f"Invalid tier value {tier!r}. Must be one of: {valid}"
+            raise ValueError(msg)
+
+        if cursor is not None and include_indexed:
+            msg = (
+                "cursor pagination is not supported together"
+                " with include_indexed=True"
+            )
+            raise ValueError(msg)
+
+        if tier is not None and not include_indexed:
+            msg = "tier filter is only valid when include_indexed=True"
             raise ValueError(msg)
 
         params = _build_search_params(

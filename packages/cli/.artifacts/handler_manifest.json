@@ -295,9 +295,7 @@
       ]
     },
     "indexed get": {
-      "operations": [
-        "get_indexed_listing"
-      ]
+      "operations": []
     },
     "listings search": {
       "operations": [

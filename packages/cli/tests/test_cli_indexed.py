@@ -96,7 +96,7 @@ def test_indexed_get_human_output(
     assert "Another summary." in output
 
 
-def test_indexed_get_default_parser_limit() -> None:
+def test_indexed_get_parses_listing_id() -> None:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
     register(subparsers)
