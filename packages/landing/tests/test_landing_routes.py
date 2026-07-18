@@ -30,7 +30,7 @@ def test_index_renders_hero_hook_and_signals() -> None:
     # dropping them would otherwise pass silently).
     html = client.get("/").text
     assert 'class="hero-hook"' in html
-    assert "Teach the agents what you know." in html
+    assert "Logion proves which improvements" in html
     assert 'class="hero-signals"' in html
     assert "Open-source, auditable client" in html
     assert "Creators keep 85%" in html
