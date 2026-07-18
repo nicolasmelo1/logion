@@ -127,9 +127,11 @@ class SkillsLockAdapter:
             text = self.crawler.fetch_page(target)
             if text is None:
                 raise RuntimeError(f"skills-lock fetch failed: {target}")
+        else:
+            with open(target) as fh:
+                text = fh.read()
+        try:
             data = json.loads(text)
-            return data if isinstance(data, dict) else {}
-        # Local file.
-        with open(target) as fh:
-            data = json.load(fh)
-            return data if isinstance(data, dict) else {}
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"invalid skills-lock JSON: {target}") from exc
+        return data if isinstance(data, dict) else {}

@@ -85,3 +85,11 @@ class TestSkillsLockV1:
             adapter.discover("https://example.com/skills-lock.json")
         )
         assert len(results) == 2
+
+    def test_invalid_remote_json_has_contextual_error(self) -> None:
+        transport = FakeTransport()
+        target = "https://example.com/skills-lock.json"
+        transport.set_response(target, HttpResponse(200, b"not-json"))
+
+        with pytest.raises(RuntimeError, match="invalid skills-lock JSON"):
+            list(SkillsLockAdapter(transport).discover(target))
