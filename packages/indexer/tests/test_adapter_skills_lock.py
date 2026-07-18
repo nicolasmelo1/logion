@@ -7,10 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from logion_indexer.adapters.skills_lock import (
-    SkillsLockAdapter,
-    check_lock_drift,
-)
+from logion_indexer.adapters.skills_lock import SkillsLockAdapter
 from logion_indexer.transport import FakeTransport, HttpResponse
 
 LOCKFILE_V1 = {
@@ -88,15 +85,3 @@ class TestSkillsLockV1:
             adapter.discover("https://example.com/skills-lock.json")
         )
         assert len(results) == 2
-
-
-class TestLockDrift:
-    def test_drift_detected(self) -> None:
-        assert check_lock_drift("sha256:abc", "sha256:def") is True
-
-    def test_no_drift(self) -> None:
-        assert check_lock_drift("sha256:abc", "sha256:abc") is False
-
-    def test_empty_hash_no_drift(self) -> None:
-        assert check_lock_drift("", "sha256:abc") is False
-        assert check_lock_drift("sha256:abc", "") is False

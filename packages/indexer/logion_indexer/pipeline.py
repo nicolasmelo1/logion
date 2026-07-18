@@ -10,7 +10,7 @@ Ties the stages together so both ``crawl`` (plan only) and ``run`` (plan
 4. validate every ``inferred_map`` fragment through ``logion_skillmap``;
    drop invalid ones and mark the run partial,
 5. mirror permissive-license bundles (tarball -> runtime.include subtree
-   -> deterministic repack) and flag skills-lock drift,
+   -> deterministic repack),
 6. query the ``known`` endpoint and build the create/update/skip plan.
 
 The mirrored bundle *bytes* are returned alongside the plan (keyed by
@@ -27,7 +27,7 @@ from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
 from .enrichment import enrich_discoveries
 from .github_source import GithubSource, is_permissive_license
 from .mirror import BundleArtifact, mirror_bundle_for
-from .models import DiscoveredSkill, DiscoveryChannel
+from .models import DiscoveredSkill
 from .transport import Transport
 from .validation import INFERRED_MAP_INVALID, fragment_errors
 
@@ -63,7 +63,7 @@ def build_indexing_plan(
 
     artifacts: dict[str, BundleArtifact] = {}
     if mirror:
-        valid = [_mirror_and_flag(skill, source, artifacts) for skill in valid]
+        valid = [_mirror_skill(skill, source, artifacts) for skill in valid]
 
     known = query_known([s.canonical for s in valid], transport, base_url)
     plan = build_plan(valid, known)
@@ -72,17 +72,15 @@ def build_indexing_plan(
     return plan, artifacts
 
 
-def _mirror_and_flag(
+def _mirror_skill(
     skill: DiscoveredSkill,
     source: GithubSource,
     artifacts: dict[str, BundleArtifact],
 ) -> DiscoveredSkill:
-    """Mirror a permissive bundle and flag skills-lock drift.
+    """Mirror a permissive bundle when policy and source data allow it.
 
-    Returns the item with ``bundle`` metadata attached (when mirrored)
-    and any ``lock_drift`` channel signal set.  On a restricted license or
-    a failed/oversized mirror the item stays link-only, with the reason
-    recorded in ``map_flags``.
+    On a restricted license or a failed/oversized mirror the item stays
+    link-only, with the reason recorded in ``map_flags``.
     """
     canonical = str(skill.canonical)
     tarball = None
@@ -103,15 +101,11 @@ def _mirror_and_flag(
 
     bundle_meta = skill.bundle
     map_flags = skill.map_flags
-    bundle_sha = ""
     if artifact is not None:
         artifacts[canonical] = artifact
         bundle_meta = artifact.meta()
-        bundle_sha = artifact.sha256
     elif reason is not None:
         map_flags = tuple(sorted(set(map_flags) | {reason}))
-
-    channels = _apply_lock_drift(skill.channels, bundle_sha)
 
     return DiscoveredSkill(
         canonical=skill.canonical,
@@ -121,35 +115,8 @@ def _mirror_and_flag(
         license_spdx=skill.license_spdx,
         source_commit=skill.source_commit,
         tags=skill.tags,
-        channels=channels,
+        channels=skill.channels,
         inferred_map=skill.inferred_map,
         map_flags=map_flags,
         bundle=bundle_meta,
     )
-
-
-def _apply_lock_drift(
-    channels: tuple[DiscoveryChannel, ...],
-    bundle_sha: str,
-) -> tuple[DiscoveryChannel, ...]:
-    """Set ``lock_drift=true`` on skills-lock channels on hash mismatch.
-
-    Compares our mirrored bundle sha at HEAD against the lockfile's
-    ``computedHash``.  Display signal only — it gates nothing.
-    """
-    if not bundle_sha:
-        return channels
-    out: list[DiscoveryChannel] = []
-    for ch in channels:
-        meta = dict(ch.metadata)
-        computed = meta.get("computedHash", "")
-        if computed and computed != bundle_sha:
-            meta["lock_drift"] = "true"
-            ch = DiscoveryChannel(
-                hub_slug=ch.hub_slug,
-                hub_url=ch.hub_url,
-                hub_verified=ch.hub_verified,
-                metadata=tuple(sorted(meta.items())),
-            )
-        out.append(ch)
-    return tuple(out)
