@@ -21,10 +21,11 @@ serialized into the plan file.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from urllib.error import URLError
 
 from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
 from .enrichment import enrich_discoveries
-from .github_source import GithubSource
+from .github_source import GithubSource, is_permissive_license
 from .mirror import BundleArtifact, mirror_bundle_for
 from .models import DiscoveredSkill, DiscoveryChannel
 from .transport import Transport
@@ -85,10 +86,17 @@ def _mirror_and_flag(
     """
     canonical = str(skill.canonical)
     tarball = None
-    if skill.source_commit:
-        tarball = source.fetch_tarball(
-            skill.canonical.owner, skill.canonical.repo, skill.source_commit
-        )
+    if skill.source_commit and is_permissive_license(skill.license_spdx):
+        try:
+            tarball = source.fetch_tarball(
+                skill.canonical.owner,
+                skill.canonical.repo,
+                skill.source_commit,
+            )
+        except (URLError, TimeoutError):
+            # Network exhaustion keeps the listing link-only; a single CDN
+            # failure must not discard metadata for the entire run.
+            tarball = None
     artifact, reason = mirror_bundle_for(
         canonical, skill.license_spdx, skill.inferred_map, tarball
     )

@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
 from .http_cache import DiskCache
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+GET_TIMEOUT_SECONDS = 30
+GET_MAX_ATTEMPTS = 3
+GET_RETRY_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 @dataclass
@@ -120,14 +125,36 @@ class Transport:
         return resp
 
     def _raw_get(self, url: str, headers: Mapping[str, str]) -> HttpResponse:
-        """Perform the underlying GET (network seam for tests)."""
+        """Perform GET with bounded retries for transient failures."""
         req = urllib.request.Request(url, headers=dict(headers), method="GET")
-        try:
-            with urllib.request.urlopen(req) as resp:
-                data = resp.read()
-                return HttpResponse(resp.status, data, dict(resp.headers))
-        except HTTPError as e:
-            return HttpResponse(e.code, e.read(), dict(e.headers or {}))
+        for attempt in range(GET_MAX_ATTEMPTS):
+            try:
+                with urllib.request.urlopen(
+                    req, timeout=GET_TIMEOUT_SECONDS
+                ) as resp:
+                    data = resp.read()
+                    return HttpResponse(resp.status, data, dict(resp.headers))
+            except HTTPError as exc:
+                should_retry = (
+                    exc.code in GET_RETRY_STATUSES
+                    and attempt + 1 < GET_MAX_ATTEMPTS
+                )
+                if should_retry:
+                    exc.close()
+                else:
+                    try:
+                        return HttpResponse(
+                            exc.code,
+                            exc.read(),
+                            dict(exc.headers or {}),
+                        )
+                    finally:
+                        exc.close()
+            except (URLError, TimeoutError):
+                if attempt + 1 == GET_MAX_ATTEMPTS:
+                    raise
+            time.sleep(2**attempt)
+        raise AssertionError("unreachable")
 
     def post(
         self,

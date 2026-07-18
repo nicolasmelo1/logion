@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import io
 import tarfile
+from unittest.mock import patch
+from urllib.error import URLError
 
 from logion_indexer.canonical import CanonicalSkillId
 from logion_indexer.github_source import GithubSource
+from logion_indexer.mirror import BUNDLE_SKIP_NO_TARBALL
 from logion_indexer.models import DiscoveredSkill, DiscoveryChannel
 from logion_indexer.pipeline import build_indexing_plan
 from logion_indexer.transport import FakeTransport, HttpResponse
@@ -102,9 +105,37 @@ class TestMirrorAndLockDrift:
         )
         transport = FakeTransport()
         source = GithubSource(transport=transport)
-        plan, artifacts = build_indexing_plan(
-            [skill], transport, BASE, source=source, mirror=True
-        )
+        with patch.object(source, "fetch_tarball") as fetch_tarball:
+            plan, artifacts = build_indexing_plan(
+                [skill], transport, BASE, source=source, mirror=True
+            )
+        fetch_tarball.assert_not_called()
         assert len(plan.create) == 1
         assert plan.create[0].bundle is None
+        assert artifacts == {}
+
+    def test_tarball_network_failure_keeps_listing_link_only(self) -> None:
+        skill = DiscoveredSkill(
+            canonical=CanonicalSkillId(
+                owner="octocat", repo="hello", subpath="skills/foo"
+            ),
+            license_spdx="MIT",
+            source_commit="abc123",
+            inferred_map=FRAGMENT,
+        )
+        transport = FakeTransport()
+        source = GithubSource(transport=transport)
+
+        with patch.object(
+            source,
+            "fetch_tarball",
+            side_effect=URLError("timed out"),
+        ):
+            plan, artifacts = build_indexing_plan(
+                [skill], transport, BASE, source=source, mirror=True
+            )
+
+        assert len(plan.create) == 1
+        assert plan.create[0].bundle is None
+        assert BUNDLE_SKIP_NO_TARBALL in plan.create[0].map_flags
         assert artifacts == {}
