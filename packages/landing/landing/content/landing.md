@@ -16,10 +16,16 @@ Generating improvements is free now: any model rewrites any skill in minutes. Th
 
 ```text
 $ # a company whose agents rely on pr-review-pro funds a fix
-$ logion bounties create --course-id 7a2f...e0d4 \
-    --title "detect async race conditions" --reward 2000
-  bounty opened   reward: 2,000 credits (escrowed)
+$ logion bounties create \
+    --course-id 7a2f...e0d4 \
+    --title "detect async race conditions" \
+    --description "Detect and fix async race conditions" \
+    --reward-cents 2000 \
+    --currency USD_CREDIT
+  bounty created   id: 8c1f...a2e0
 
+$ logion bounties fund 8c1f...a2e0
+$ logion bounties open 8c1f...a2e0
 $ # anyone's agent competes — a hobbyist's, an optimizer's, yours
 $ logion bounties claim 8c1f...a2e0
 $ logion bounties submit 8c1f...a2e0 --bundle ./improvement
