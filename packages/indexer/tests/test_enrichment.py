@@ -82,6 +82,29 @@ def _hub_discovery() -> DiscoveredSkill:
 
 
 class TestEnrichment:
+    def test_inference_encodes_content_path(self) -> None:
+        transport = FakeTransport()
+        source = GithubSource(transport=transport)
+        url = (
+            "https://api.github.com/repos/octocat/hello/contents/"
+            ".agents/skills/Financial%20Data%20Fetcher/SKILL.md?ref=abc123"
+        )
+        transport.set_response(
+            url,
+            HttpResponse(
+                200,
+                json.dumps({
+                    "content": "c2tpbGw=",
+                    "encoding": "base64",
+                }).encode(),
+            ),
+        )
+
+        fetch_blob = source._make_blob_fetcher("octocat", "hello", "abc123")
+
+        path = ".agents/skills/Financial Data Fetcher/SKILL.md"
+        assert fetch_blob(path) == b"skill"
+
     def test_attaches_non_null_maps(self) -> None:
         transport = FakeTransport()
         _wire_repo(transport)

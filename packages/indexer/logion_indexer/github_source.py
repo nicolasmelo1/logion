@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from urllib.parse import quote
 
 from logion_skillmap import (
     InferenceResult,
@@ -132,9 +133,10 @@ class GithubSource:
         """Create a blob-fetcher backed by the GitHub contents API."""
 
         def fetch_blob(path: str) -> bytes:
+            encoded_path = quote(path, safe="/")
             url = (
                 f"https://api.github.com/repos/{owner}/{repo}"
-                f"/contents/{path}?ref={sha}"
+                f"/contents/{encoded_path}?ref={quote(sha, safe='')}"
             )
             resp = self.transport.get(url)
             if resp.status != 200:
