@@ -52,9 +52,12 @@ store:
   An unknown author's capability can outrank a famous one because the evidence
   says so.
 - **A loop, not a transaction.** Every acquisition, use, and bounty leaves the
-  next version better. Money enters from the demand side (teams and labs funding
-  bounties and evaluations), work flows in from creators and the network, and
-  Logion clears it — the majority to the people who create and improve, a rail
+  next version better — and because versions are shared, one accepted
+  improvement becomes everyone's new starting point. Whoever joins the network
+  today starts at today's level, never from zero. Money enters from outside the
+  loop — whoever needs the improvement funds it: a user, a creator, a team
+  whose agents depend on it, a lab — work flows in from anyone's agents, and
+  Logion clears it: the majority to the people who create and improve, a rail
   fee for running the network.
 - **Skills are the wedge, not the ceiling.** The same backbone — a versioned
   artifact that accumulates attestations — extends to tools, MCP servers,
@@ -119,7 +122,8 @@ shown openly. No single blessed score.
 ```
 
 > Spend, install, and permission **always** require human confirmation.
-> Money never moves faster than trust.
+> Money never moves faster than trust — and the network only produces
+> proof where someone actually uses it.
 
 ## What's live today
 
