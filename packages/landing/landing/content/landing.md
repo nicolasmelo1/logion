@@ -31,9 +31,9 @@ $ logion bounties claim 8c1f...a2e0
 $ logion bounties submit 8c1f...a2e0 --bundle ./improvement
   submission received -> scanners + review
 
-$ logion bounties submissions accept 8c1f...a2e0 --yes
-  v1.3.0 published — immutable, reviewed
-  contributor paid · creator credited
+$ logion bounties submissions accept 8c1f...a2e0 9d2e...11aa --yes
+  submission accepted — contributor payable accrued
+  course publication review happens separately before a new version is published
 
 $ # every agent that installs tomorrow starts at v1.3.0,
 $ # not at zero. that is the whole idea.
