@@ -27,8 +27,8 @@ def _full_skill() -> DiscoveredSkill:
         tags=("coding",),
         channels=(
             DiscoveryChannel(
-                hub_slug="lobehub",
-                hub_url="https://lobehub.com/skills/octocat/hello",
+                hub_slug="clawhub",
+                hub_url="https://clawhub.ai/skills/octocat/hello",
                 hub_verified=True,
             ),
         ),
@@ -87,7 +87,7 @@ class TestPlanRoundTrip:
         item = reloaded["create"][0]
         # No degenerate rebuild: real title, real channel, real map, bundle.
         assert item["title"] == "foo"
-        assert item["channels"][0]["hub_slug"] == "lobehub"
+        assert item["channels"][0]["hub_slug"] == "clawhub"
         assert item["channels"][0]["hub_slug"] != "plan"
         assert item["inferred_map"] is not None
         assert item["bundle"] == {

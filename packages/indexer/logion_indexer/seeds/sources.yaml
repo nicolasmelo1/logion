@@ -16,7 +16,6 @@ sources:
   - {adapter: github_direct, mode: repo,         target: obra/superpowers}
   - {adapter: skills_sh,   target: "https://www.skills.sh/"}
   - {adapter: clawhub,     target: "https://clawhub.ai/"}
-  - {adapter: lobehub,     target: "https://lobehub.com/skills"}
   - {adapter: browse_sh,   target: "https://browse.sh/"}
   - {adapter: skillsmp,    target: "https://skillsmp.com"}
   - {adapter: smithery,    target: "https://smithery.ai"}

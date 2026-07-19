@@ -12,7 +12,7 @@ class DiscoveryChannel:
     """A single hub where a skill was seen.
 
     Attributes:
-        hub_slug: Short identifier for the hub (e.g. ``lobehub``).
+        hub_slug: Short identifier for the hub (e.g. ``clawhub``).
         hub_url: The URL where the skill was listed on this hub.
         hub_verified: Whether the hub marks this listing as verified.
         metadata: Optional adapter-specific metadata (e.g. lockfile
