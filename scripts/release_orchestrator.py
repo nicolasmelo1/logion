@@ -571,12 +571,20 @@ class ReleaseExecutor:
         ):
             return False
         for tag in self._plan.tags_to_create:
-            result = self._runner.run(
-                ["git", "tag", "-l", tag],
-                cwd=self._root(),
-                check=False,
-            )
-            if result.stdout.strip() != tag:
+            # Prefer local tag; fall back to remote so a rerun from a fresh
+            # checkout can resume after tags were already pushed.
+            for remote in (False, True):
+                cmd = ["git", "tag", "-l", tag]
+                if remote:
+                    cmd = ["git", "ls-remote", "--tags", "origin", tag]
+                result = self._runner.run(
+                    cmd,
+                    cwd=self._root(),
+                    check=False,
+                )
+                if result.stdout.strip():
+                    break
+            else:
                 return False
         return True
 
