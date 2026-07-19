@@ -16,12 +16,15 @@ components, are dropped with a recorded skip reason.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from http.client import RemoteDisconnected
+from urllib.error import URLError
 
 from .github_source import GithubSource, InferredSkill
 from .models import DiscoveredSkill, DiscoveryChannel
 
 SKIP_NO_GITHUB_SOURCE = "no_github_source"
 SKIP_NO_COMPONENTS = "no_components"
+SKIP_GITHUB_NETWORK_ERROR = "github_network_error"
 
 
 def enrich_discoveries(
@@ -44,7 +47,14 @@ def enrich_discoveries(
 
         canonical = disc.canonical
         owner, repo = canonical.owner, canonical.repo
-        sha = source.fetch_head_sha(owner, repo)
+        try:
+            sha = source.fetch_head_sha(owner, repo)
+        except (RemoteDisconnected, URLError, TimeoutError):
+            skips.append({
+                "canonical": str(canonical),
+                "reason": SKIP_GITHUB_NETWORK_ERROR,
+            })
+            continue
         if not sha:
             skips.append({
                 "canonical": str(canonical),
@@ -52,10 +62,17 @@ def enrich_discoveries(
             })
             continue
 
-        license_spdx = source.fetch_license(owner, repo)
-        _, skills = source.infer_skills(
-            owner, repo, sha=sha, subpath=canonical.subpath
-        )
+        try:
+            license_spdx = source.fetch_license(owner, repo)
+            _, skills = source.infer_skills(
+                owner, repo, sha=sha, subpath=canonical.subpath
+            )
+        except (RemoteDisconnected, URLError, TimeoutError):
+            skips.append({
+                "canonical": str(canonical),
+                "reason": SKIP_GITHUB_NETWORK_ERROR,
+            })
+            continue
         if not skills:
             skips.append({
                 "canonical": str(canonical),
