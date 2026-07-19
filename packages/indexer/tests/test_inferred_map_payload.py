@@ -25,8 +25,8 @@ def _make_skill_with_map(
         tags=("coding",),
         channels=(
             DiscoveryChannel(
-                hub_slug="lobehub",
-                hub_url="https://lobehub.com/skills/foo",
+                hub_slug="clawhub",
+                hub_url="https://clawhub.ai/skills/foo",
                 hub_verified=True,
             ),
         ),
@@ -104,5 +104,5 @@ class TestInferredMapPayload:
         item = serialize_item(skill)
         assert len(item["channels"]) == 1
         ch = item["channels"][0]
-        assert ch["hub_slug"] == "lobehub"
+        assert ch["hub_slug"] == "clawhub"
         assert ch["hub_verified"] is True

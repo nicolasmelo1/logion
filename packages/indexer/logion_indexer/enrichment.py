@@ -1,6 +1,6 @@
 """Enrichment: attach inferred maps to hub discoveries.
 
-Hub adapters (lobehub, clawhub, skills.sh, browse.sh, hermes, skills-lock)
+Hub adapters (clawhub, skills.sh, browse.sh, hermes, skills-lock)
 resolve a listing to a GitHub identity but do not run inference, so they
 emit ``inferred_map=None``.  This stage makes every such discovery behave
 exactly like ``github_direct``: it fetches repo metadata and runs

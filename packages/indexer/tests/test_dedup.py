@@ -37,7 +37,7 @@ class TestMergeDiscoveries:
     def test_multi_hub_collapse(self) -> None:
         CanonicalSkillId(owner="octocat", repo="hello")
         ch1 = DiscoveryChannel(
-            hub_slug="lobehub", hub_url="https://lobehub.com/1"
+            hub_slug="browse_sh", hub_url="https://browse.sh/1"
         )
         ch2 = DiscoveryChannel(
             hub_slug="clawhub", hub_url="https://clawhub.ai/2"

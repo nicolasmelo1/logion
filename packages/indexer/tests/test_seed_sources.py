@@ -12,6 +12,7 @@ def test_default_seed_uses_registered_catalog_adapters() -> None:
 
     assert {"skillsmp", "smithery"} <= adapter_names
     assert "hermes_docs" not in adapter_names
+    assert "lobehub" not in adapter_names
 
     transport = FakeTransport()
     limiter = RateLimiter(default_rps=0)

@@ -74,10 +74,6 @@ def _get_adapter(
         from .adapters.clawhub import ClawhubAdapter
 
         return ClawhubAdapter(transport=transport, rate_limiter=rate_limiter)
-    if adapter_name == "lobehub":
-        from .adapters.lobehub import LobehubAdapter
-
-        return LobehubAdapter(transport=transport, rate_limiter=rate_limiter)
     if adapter_name == "browse_sh":
         from .adapters.browse_sh import BrowseShAdapter
 

@@ -27,7 +27,7 @@ or `LOGION_INDEXER_SEED_FILE`. Each entry names an adapter and a target:
 version: 1
 sources:
   - {adapter: github_direct, mode: repo, target: anthropics/skills}
-  - {adapter: lobehub,     target: "https://lobehub.com/skills"}
+  - {adapter: skills_sh,   target: "https://www.skills.sh/"}
   - {adapter: skills_lock, target: "https://raw.githubusercontent.com/vercel-labs/open-agents/main/skills-lock.json"}
 ```
 

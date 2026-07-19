@@ -70,8 +70,8 @@ def _hub_discovery() -> DiscoveredSkill:
         original_author="octocat",
         channels=(
             DiscoveryChannel(
-                hub_slug="lobehub",
-                hub_url="https://lobehub.com/skills/octocat/hello",
+                hub_slug="clawhub",
+                hub_url="https://clawhub.ai/skills/octocat/hello",
                 hub_verified=True,
             ),
         ),
@@ -106,7 +106,7 @@ class TestEnrichment:
         items, _ = enrich_discoveries([_hub_discovery()], source)
         for item in items:
             assert len(item.channels) == 1
-            assert item.channels[0].hub_slug == "lobehub"
+            assert item.channels[0].hub_slug == "clawhub"
             assert item.channels[0].hub_verified is True
 
     def test_frontmatter_title_over_hub_text(self) -> None:
