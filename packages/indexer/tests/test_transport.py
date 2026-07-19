@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from email.message import Message
+from http.client import RemoteDisconnected
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
@@ -54,6 +55,22 @@ def test_get_retries_transient_errors_then_succeeds() -> None:
         for call in urlopen.call_args_list
     )
     assert [call.args[0] for call in sleep.call_args_list] == [1, 2]
+
+
+def test_get_retries_remote_disconnect_then_succeeds() -> None:
+    response = _response()
+    with (
+        patch(
+            "logion_indexer.transport.urllib.request.urlopen",
+            side_effect=[RemoteDisconnected("closed"), response],
+        ) as urlopen,
+        patch("logion_indexer.transport.time.sleep") as sleep,
+    ):
+        result = Transport().get("https://api.github.com/repos/octocat/hello")
+
+    assert result.status == 200
+    assert urlopen.call_count == 2
+    sleep.assert_called_once_with(1)
 
 
 def test_get_retries_transient_http_status_then_succeeds() -> None:

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from http.client import RemoteDisconnected
 
 from logion_indexer.canonical import CanonicalSkillId
 from logion_indexer.enrichment import (
+    SKIP_GITHUB_NETWORK_ERROR,
     SKIP_NO_COMPONENTS,
     SKIP_NO_GITHUB_SOURCE,
     enrich_discoveries,
@@ -136,6 +138,30 @@ class TestEnrichment:
         assert len(skips) == 1
         assert skips[0]["reason"] == SKIP_NO_GITHUB_SOURCE
         assert skips[0]["canonical"] == "gh:octocat/hello"
+
+    def test_network_error_during_inference_is_recorded_as_skip(
+        self, monkeypatch
+    ) -> None:
+        source = GithubSource(transport=FakeTransport())
+        monkeypatch.setattr(source, "fetch_head_sha", lambda *_: "abc123")
+        monkeypatch.setattr(source, "fetch_license", lambda *_: "MIT")
+        monkeypatch.setattr(
+            source,
+            "infer_skills",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RemoteDisconnected("closed")
+            ),
+        )
+
+        items, skips = enrich_discoveries([_hub_discovery()], source)
+
+        assert items == []
+        assert skips == [
+            {
+                "canonical": "gh:octocat/hello",
+                "reason": SKIP_GITHUB_NETWORK_ERROR,
+            }
+        ]
 
     def test_no_components_skip(self) -> None:
         transport = FakeTransport()

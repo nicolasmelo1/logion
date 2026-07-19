@@ -6,6 +6,7 @@ import json
 import time
 import urllib.request
 from dataclasses import dataclass, field
+from http.client import RemoteDisconnected
 from typing import TYPE_CHECKING
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -154,7 +155,7 @@ class Transport:
                         )
                     finally:
                         exc.close()
-            except (URLError, TimeoutError):
+            except (RemoteDisconnected, URLError, TimeoutError):
                 if attempt + 1 == GET_MAX_ATTEMPTS:
                     raise
             time.sleep(2**attempt)
