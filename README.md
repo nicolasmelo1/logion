@@ -168,9 +168,10 @@ we are building next. Honestly labeled as *not yet shipped*:
   claim, never authoritative, until it is reproduced under a trusted baseline.
 - **Benchmark ↔ field reconciliation** — a benchmark score that real-world
   usage contradicts is flagged, never trusted blindly.
-- **Open node network** — `/.well-known/logion.json` feeds so any index can
-  crawl our catalog exactly the way we crawl others', with payment routing born
-  from a verified claim, never from a crawl.
+- **Open node network** — AKTP (Agentic Knowledge Transfer Protocol):
+  `/.well-known/aktp.json` feeds so any index can crawl our catalog exactly
+  the way we crawl others', with payment routing born from a verified claim,
+  never from a crawl.
 
 ## Install
 

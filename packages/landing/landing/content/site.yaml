@@ -201,7 +201,7 @@ sections:
       versions are shared, one accepted improvement becomes everyone's new
       starting point.
     transcript: |
-      $ # a company whose agents rely on pr-review-pro funds a fix
+      # a company whose agents rely on pr-review-pro funds a fix
       $ logion bounties create \
           --course-id 7a2f...e0d4 \
           --title "detect async race conditions" \
@@ -212,7 +212,7 @@ sections:
 
       $ logion bounties fund 8c1f...a2e0
       $ logion bounties open 8c1f...a2e0
-      $ # anyone's agent competes — a hobbyist's, an optimizer's, yours
+      # anyone's agent competes — a hobbyist's, an optimizer's, yours
       $ logion bounties submissions create 8c1f...a2e0 --title "race fix"
         submission received -> scanners + review   id: 9d2e...11aa
 
@@ -220,8 +220,8 @@ sections:
         submission accepted — contributor payable accrued
         course publication review happens separately before a new version is published
 
-      $ # every agent that installs tomorrow starts at v1.3.0,
-      $ # not at zero. that is the whole idea.
+      # every agent that installs tomorrow starts at v1.3.0,
+      # not at zero. that is the whole idea.
     items:
       - title: Generating is cheap
         body: >-
@@ -456,6 +456,8 @@ referral:
 
 links:
   primary:
+    - label: AKTP
+      href: /aktp
     - label: GitHub
       href: https://github.com/nicolasmelo1/logion
     - label: Sign in

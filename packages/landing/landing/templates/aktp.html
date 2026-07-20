@@ -1,0 +1,592 @@
+{% extends "base.html" %}
+
+{% block title %}AKTP — Agentic Knowledge Transfer Protocol — {{ site.name }}{% endblock %}
+{% block meta_description %}AKTP is an open protocol for AI agents to discover, verify, and transfer operational knowledge across independent domains: publish /.well-known/aktp.json on your domain and any index can find your work.{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* This page scrolls normally — opt out of the index's section
+     stacking (sticky pin + JS-driven fade). */
+  main > .content-section {
+    position: static !important;
+    opacity: 1 !important;
+  }
+
+  .aktp-hero { padding: 48px 0 8px; }
+  .aktp-hero h1 { margin-bottom: 4px; }
+  .aktp-hero .aktp-expansion {
+    display: block;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--fg-dim);
+    margin-bottom: 18px;
+  }
+  .aktp-lede { max-width: 720px; color: var(--fg-dim); }
+  .aktp-lede strong { color: var(--fg); }
+
+  .aktp-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin: 24px 0 0;
+  }
+  .aktp-card {
+    border: 1px solid var(--rule-strong);
+    background: var(--bg-soft);
+    padding: 18px 20px;
+  }
+  .aktp-card h4 { font-size: 14px; margin: 0 0 6px; color: var(--fg); }
+  .aktp-card p { font-size: 14px; color: var(--fg-dim); margin: 0; }
+
+  .aktp-quote {
+    border-left: 2px solid var(--accent);
+    background: var(--bg-soft);
+    padding: 14px 18px;
+    margin: 24px 0;
+    font-size: 15px;
+    color: var(--fg);
+  }
+
+  .aktp-fig {
+    border: 1px solid var(--rule-strong);
+    background: var(--bg-soft);
+    padding: 22px;
+    margin: 24px 0;
+  }
+  .aktp-fig figcaption {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    text-align: center;
+  }
+  .aktp-fig svg { width: 100%; height: auto; display: block; }
+  .aktp-fig svg text { font-family: inherit; }
+  .aktp-fig svg .mono { font-family: var(--mono); }
+
+  .aktp-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 24px 0 0;
+  }
+  @media (max-width: 720px) { .aktp-cols { grid-template-columns: 1fr; } }
+  .aktp-cols h4 { font-size: 14px; margin: 0 0 8px; }
+  .aktp-cols .terminal-transcript { margin-top: 0; }
+  .aktp-note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  .aktp-vs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--rule-strong);
+    margin: 24px 0;
+  }
+  @media (max-width: 720px) { .aktp-vs { grid-template-columns: 1fr; } }
+  .aktp-vs > div { padding: 20px 22px; background: var(--bg-soft); }
+  .aktp-vs > div:first-child { border-right: 1px solid var(--rule-strong); }
+  @media (max-width: 720px) {
+    .aktp-vs > div:first-child { border-right: none; border-bottom: 1px solid var(--rule-strong); }
+  }
+  .aktp-vs h4 {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .aktp-vs p { font-size: 14px; color: var(--fg-dim); margin: 0; }
+
+  .aktp-layer {
+    border: 1px solid var(--rule-strong);
+    background: var(--bg-soft);
+    padding: 12px 18px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+  .aktp-layer b { font-size: 15px; color: var(--fg); }
+  .aktp-layer span { font-family: var(--mono); font-size: 12px; color: var(--fg-dim); }
+  .aktp-layer--protocol { border-left: 3px solid var(--accent); }
+  .aktp-layer--node { border-left: 3px solid var(--fg-dim); }
+  .aktp-layer--namespace { border-left: 3px solid var(--accent-bright); }
+
+  .aktp-chips { margin: 14px 0 0; }
+  .aktp-chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule-strong);
+    margin: 3px 5px 3px 0;
+    color: var(--fg-dim);
+  }
+  .aktp-chip--keep { border-color: var(--accent); color: var(--accent); }
+  .aktp-chip--fail { border-color: var(--fg-dim); color: var(--fg); }
+
+  .aktp-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0 0; }
+  .aktp-table th {
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .aktp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    color: var(--fg-dim);
+    vertical-align: top;
+  }
+  .aktp-table td:first-child { color: var(--fg); font-weight: 600; white-space: nowrap; }
+
+  .aktp-steps { counter-reset: aktp-step; margin: 24px 0 0; padding: 0; list-style: none; }
+  .aktp-steps li { display: flex; gap: 14px; margin-bottom: 16px; }
+  .aktp-steps li::before {
+    counter-increment: aktp-step;
+    content: counter(aktp-step);
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 27px;
+    text-align: center;
+  }
+  .aktp-steps b { display: block; font-size: 15px; color: var(--fg); }
+  .aktp-steps span { font-size: 14px; color: var(--fg-dim); }
+</style>
+{% endblock %}
+
+{% block main %}
+  <section class="content-section aktp-hero" id="aktp">
+    <span class="hud-tag">§ protocol</span>
+    <h1>AKTP</h1>
+    <span class="aktp-expansion">Agentic Knowledge Transfer Protocol</span>
+    <p class="aktp-lede">
+      An open protocol for AI agents to <strong>discover, verify, and transfer
+      operational knowledge</strong> — skills, evals, environments, datasets —
+      across independent domains. What HTTP did for documents, AKTP does for
+      agent capability: <strong>anyone can host, anyone can index, anyone can
+      build on top.</strong> Federated networks like the AT Protocol served as
+      inspiration.
+    </p>
+  </section>
+
+  <section class="content-section" id="problem">
+    <span class="hud-tag">§ the problem</span>
+    <h2>Agents improve. Alone.</h2>
+    <p class="aktp-lede">
+      A good skill written today lives trapped in a repository, a proprietary
+      marketplace, or one tool's config directory. Whoever starts using an
+      agent today starts from zero — the knowledge the community has already
+      accumulated has no common format to circulate in, be verified with, or
+      be improved by strangers.
+    </p>
+    <div class="aktp-cards">
+      <div class="aktp-card">
+        <h4>Fragmented distribution</h4>
+        <p>Every harness has its own directory, format, and channel. There is
+        no common layer underneath.</p>
+      </div>
+      <div class="aktp-card">
+        <h4>Trust doesn't travel</h4>
+        <p>A security scan, a human review, or an eval score produced in one
+        place cannot be verified anywhere else.</p>
+      </div>
+      <div class="aktp-card">
+        <h4>Purchases aren't portable</h4>
+        <p>Buying access on a marketplace chains the buyer to that
+        marketplace. If it dies, the access dies with it.</p>
+      </div>
+    </div>
+    <div class="aktp-quote">
+      The central idea: <strong>the network exists, and the improvement loop
+      exists. Everything else is nodes talking to nodes.</strong> The network
+      must be able to exist without any one company — anyone may run a node,
+      build a client, or operate a competing index.
+    </div>
+  </section>
+
+  <section class="content-section" id="how">
+    <span class="hud-tag">§ how it works</span>
+    <h2>Two JSON documents over HTTPS</h2>
+    <p class="aktp-lede">
+      A node is anything that serves two JSON documents — a Next.js route, a
+      static file on a CDN, or a full backend are equally valid nodes. Indexes
+      crawl nodes permissionlessly; clients (CLIs, agents) consume whichever
+      view they prefer.
+    </p>
+
+    <figure class="aktp-fig">
+      <svg viewBox="0 0 820 330" role="img" aria-label="AKTP architecture: nodes publish feeds, indexes crawl, clients consume">
+        <defs>
+          <marker id="aktp-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0L10 5L0 10z" fill="var(--fg-dim)"/>
+          </marker>
+        </defs>
+        <g>
+          <rect x="20" y="30" width="200" height="78" rx="2" fill="none" stroke="var(--accent)"/>
+          <text x="120" y="56" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">Creator node</text>
+          <text x="120" y="76" text-anchor="middle" font-size="11" fill="var(--fg-dim)">aihero.dev</text>
+          <text x="120" y="94" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">/.well-known/aktp.json</text>
+
+          <rect x="20" y="128" width="200" height="78" rx="2" fill="none" stroke="var(--accent)"/>
+          <text x="120" y="154" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">Company node</text>
+          <text x="120" y="174" text-anchor="middle" font-size="11" fill="var(--fg-dim)">behind the firewall, private</text>
+          <text x="120" y="192" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">same spec, same stack</text>
+
+          <rect x="20" y="226" width="200" height="78" rx="2" fill="none" stroke="var(--accent)"/>
+          <text x="120" y="252" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">Static store</text>
+          <text x="120" y="272" text-anchor="middle" font-size="11" fill="var(--fg-dim)">JSON on a CDN — a valid node</text>
+          <text x="120" y="290" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">feed.json</text>
+        </g>
+        <line x1="222" y1="69" x2="330" y2="130" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <line x1="222" y1="167" x2="330" y2="160" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <line x1="222" y1="265" x2="330" y2="195" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <text x="272" y="118" font-size="10" fill="var(--fg-dim)" transform="rotate(-8 272 118)">permissionless crawl</text>
+        <g>
+          <rect x="335" y="105" width="190" height="120" rx="2" fill="none" stroke="var(--accent-bright)"/>
+          <text x="430" y="132" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">Indexes</text>
+          <text x="430" y="152" text-anchor="middle" font-size="11" fill="var(--fg-dim)">crawl · validate · rank</text>
+          <text x="430" y="170" text-anchor="middle" font-size="11" fill="var(--fg-dim)">apply their own moderation</text>
+          <text x="430" y="196" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">api.logion.sh = one of them</text>
+          <text x="430" y="212" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">(the reference index)</text>
+        </g>
+        <line x1="527" y1="140" x2="620" y2="80" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <line x1="527" y1="165" x2="620" y2="165" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <line x1="527" y1="190" x2="620" y2="255" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
+        <g>
+          <rect x="625" y="40" width="175" height="66" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="712" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="var(--fg)">CLI / companion</text>
+          <text x="712" y="86" text-anchor="middle" font-size="11" fill="var(--fg-dim)">installs into the harness</text>
+
+          <rect x="625" y="130" width="175" height="66" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="712" y="156" text-anchor="middle" font-size="13" font-weight="700" fill="var(--fg)">Agents / fleets</text>
+          <text x="712" y="176" text-anchor="middle" font-size="11" fill="var(--fg-dim)">consume capabilities</text>
+
+          <rect x="625" y="220" width="175" height="66" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="712" y="246" text-anchor="middle" font-size="13" font-weight="700" fill="var(--fg)">Third-party clients</text>
+          <text x="712" y="266" text-anchor="middle" font-size="11" fill="var(--fg-dim)">same public contract</text>
+        </g>
+      </svg>
+      <figcaption>Hosting is permissionless. Indexing is each index's policy. Consuming is each client's choice.</figcaption>
+    </figure>
+
+    <ol class="aktp-steps">
+      <li><div><b>Publish a discovery document on your domain</b>
+        <span>Owning the domain is owning the identity — no signup, no permission asked.</span></div></li>
+      <li><div><b>Point it at a feed of your listings</b>
+        <span>Each item declares source, bundle (sha256 hash), license, and purchase mode.</span></div></li>
+      <li><div><b>Indexes crawl and apply their own policy</b>
+        <span>Security scans, review, ranking — each index decides what it promotes. Rejection by one index never removes content from your node.</span></div></li>
+      <li><div><b>Agents discover, verify the hash, and install</b>
+        <span>Bundles are content-addressed: any mirror can serve them, integrity is verifiable offline.</span></div></li>
+    </ol>
+
+    <div class="aktp-cols">
+      <div>
+        <h4><code>GET https://{host}/.well-known/aktp.json</code></h4>
+        <pre class="terminal-transcript"><code>{
+  "aktp_node": 0,
+  "name": "AI Hero",
+  "operator_url": "https://www.aihero.dev",
+  "feed_url": "https://www.aihero.dev/feed.json",
+  "contact": "mailto:matt@aihero.dev"
+}</code></pre>
+        <p class="aktp-note">The discovery document: small (≤16 KiB), HTTPS
+        only, unknown fields ignored (forward compatibility).</p>
+      </div>
+      <div>
+        <h4>A feed listing item</h4>
+        <pre class="terminal-transcript"><code>{
+  "id": "evalite-basics",
+  "title": "Evalite Basics",
+  "original_author": "mattpocock",
+  "license_spdx": "MIT",
+  "source": {"type": "github", "owner": "mattpocock",
+             "repo": "skills", "subpath": "evalite"},
+  "bundle": {"url": "https://cdn…tar.gz",
+             "sha256": "9f2c…"},
+  "purchase": {"mode": "free"},
+  "content_type": "sh.logion.skill"
+}</code></pre>
+        <p class="aktp-note">Canonical identity: <code>gh:owner/repo#subpath</code>
+        when a repository exists, <code>node:{host}/{id}</code> when it doesn't.</p>
+      </div>
+    </div>
+
+    <div class="aktp-vs">
+      <div>
+        <h4>Hosting = speech (permissionless)</h4>
+        <p>Anyone runs a node with any content, any store rules, any payment
+        rails, any curation. Your node, your rules.</p>
+      </div>
+      <div>
+        <h4>Indexing = reach (policy)</h4>
+        <p>Appearing in an index is conditioned on that index's scanners and
+        moderation. Other indexes, other policies. Rejection never deletes
+        anything at the origin node.</p>
+      </div>
+    </div>
+
+    <div class="aktp-quote">
+      The authority rule that shapes everything: <strong>the right to route
+      payment is born from the claim, never from the crawl.</strong> Any index
+      may crawl any feed (attributed content, never sellable) — but only the
+      domain-verified owner can attach their own store as the purchase rail
+      for their own content.
+    </div>
+  </section>
+
+  <section class="content-section" id="attestations">
+    <span class="hud-tag">§ attestations</span>
+    <h2>Attested by anyone. Checked by everyone.</h2>
+    <p class="aktp-lede">
+      This is the core of the trust model. An artifact accumulates
+      <strong>attestations</strong> — signed statements about it that its
+      author does not control: it passed these scanners, a human reviewed it,
+      an eval scored it, a bounty improvement was accepted, it works, it is
+      safe. The protocol freezes only the <em>envelope</em> — what is signed
+      and how signatures verify. <strong>Which kinds of attestation exist is
+      an open vocabulary: any company can attest to any artifact under its
+      own domain, no permission asked.</strong>
+    </p>
+
+    <figure class="aktp-fig">
+      <svg viewBox="0 0 820 280" role="img" aria-label="One artifact accumulating attestations from independent issuers">
+        <defs>
+          <marker id="aktp-arr-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0L10 5L0 10z" fill="var(--fg-dim)"/>
+          </marker>
+        </defs>
+        <rect x="320" y="105" width="180" height="70" rx="2" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="410" y="133" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">artifact v1.3.0</text>
+        <text x="410" y="153" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">sha256: 9f2c…</text>
+
+        <g font-size="11">
+          <rect x="30" y="14" width="220" height="70" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="140" y="36" text-anchor="middle" font-weight="700" fill="var(--fg)">Logion index (reference)</text>
+          <text x="140" y="54" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">sh.logion.scan.observed</text>
+          <text x="140" y="70" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">sh.logion.review.human</text>
+
+          <rect x="30" y="196" width="220" height="70" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="140" y="222" text-anchor="middle" font-weight="700" fill="var(--fg)">A compliance attestor</text>
+          <text x="140" y="244" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">com.vanta.soc2</text>
+
+          <rect x="570" y="14" width="220" height="70" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="680" y="40" text-anchor="middle" font-weight="700" fill="var(--fg)">A security firm</text>
+          <text x="680" y="62" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">com.acme.audit.passed</text>
+
+          <rect x="570" y="196" width="220" height="70" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="680" y="218" text-anchor="middle" font-weight="700" fill="var(--fg)">A lab / an insurer</text>
+          <text x="680" y="236" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">ai.lab.eval.scored</text>
+          <text x="680" y="252" text-anchor="middle" class="mono" font-size="9.5" fill="var(--accent)">com.ins.covered</text>
+        </g>
+        <line x1="255" y1="80" x2="330" y2="112" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-a)"/>
+        <line x1="255" y1="200" x2="330" y2="168" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-a)"/>
+        <line x1="565" y1="80" x2="490" y2="112" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-a)"/>
+        <line x1="565" y1="200" x2="490" y2="168" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-a)"/>
+      </svg>
+      <figcaption>Attestation types are namespaced by domain ownership (reverse-DNS): owning a domain is owning a vocabulary. Nobody asks the protocol for permission.</figcaption>
+    </figure>
+
+    <div class="aktp-cards">
+      <div class="aktp-card">
+        <h4>Evidence anyone can produce</h4>
+        <p>Functionality, security, compliance, benchmark scores, insurance
+        coverage — each attested by whoever stakes their name on it, signed
+        with their key, bound to a content hash.</p>
+      </div>
+      <div class="aktp-card">
+        <h4>Judgment stays local</h4>
+        <p>Verifiers ignore attestation types they don't recognize. Each
+        index chooses which attestations carry ranking weight. Evidence is
+        global; judgment is each index's own.</p>
+      </div>
+      <div class="aktp-card">
+        <h4>No blessed authority</h4>
+        <p>There is no single score and no central gatekeeper of truth. A
+        network that taxed or licensed its attestors would depend on its
+        owner — which contradicts the thesis.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-section" id="layers">
+    <span class="hud-tag">§ layering</span>
+    <h2>What is protocol, what is business</h2>
+    <div>
+      <div class="aktp-layer aktp-layer--protocol">
+        <b>format + evidence = protocol</b>
+        <span>global, open — feeds, manifests, hashes, attestations, credentials</span>
+      </div>
+      <div class="aktp-layer aktp-layer--node">
+        <b>service + money = node-local</b>
+        <span>each node, its own rails — checkout, escrow, payout</span>
+      </div>
+      <div class="aktp-layer aktp-layer--namespace">
+        <b>vocabulary = namespace</b>
+        <span>permissionless — owning a domain is owning a namespace</span>
+      </div>
+    </div>
+    <p class="aktp-lede" style="margin-top:20px">
+      Money <strong>never crosses nodes</strong>; improvements, evidence, and
+      attestations do. The frozen core is tiny on purpose: canonical identity,
+      content addressing, the attestation envelope, and the must-ignore rule.
+      Everything else extends without asking.
+    </p>
+    <div class="aktp-chips">
+      <span class="aktp-chip">unknown purchase mode → kept, link-only</span>
+      <span class="aktp-chip">unknown content type → "unscanned format" label</span>
+      <span class="aktp-chip">unknown attestation → shown, zero ranking weight</span>
+      <span class="aktp-chip aktp-chip--keep">unknown field → ignored</span>
+      <span class="aktp-chip aktp-chip--fail">unknown protocol version → loud hard-fail, on purpose</span>
+    </div>
+  </section>
+
+  <section class="content-section" id="entitlements">
+    <span class="hud-tag">§ portable access</span>
+    <h2>Buy at any node. Install anywhere.</h2>
+    <p class="aktp-lede">
+      AKTP sells <strong>access</strong>, so it needs one object most open
+      protocols never defined: the <strong>signed entitlement
+      credential</strong> — a proof of purchase that any node or client can
+      verify offline, and that belongs to the buyer, not to the marketplace.
+    </p>
+    <figure class="aktp-fig">
+      <svg viewBox="0 0 820 250" role="img" aria-label="Entitlement credential lifecycle: issuance, possession, offline verification">
+        <defs>
+          <marker id="aktp-arr-e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0L10 5L0 10z" fill="var(--fg-dim)"/>
+          </marker>
+        </defs>
+        <rect x="20" y="40" width="240" height="100" rx="2" fill="none" stroke="var(--accent)"/>
+        <text x="140" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">1 · Issuance</text>
+        <text x="140" y="92" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the selling node signs</text>
+        <text x="140" y="108" text-anchor="middle" font-size="9.5" class="mono" fill="var(--accent)">(buyer, course, version)</text>
+        <text x="140" y="126" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">with its private key</text>
+
+        <line x1="262" y1="90" x2="286" y2="90" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-e)"/>
+
+        <rect x="290" y="40" width="240" height="100" rx="2" fill="none" stroke="var(--rule-strong)"/>
+        <text x="410" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">2 · Possession</text>
+        <text x="410" y="92" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the credential travels with</text>
+        <text x="410" y="108" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the buyer — in their client,</text>
+        <text x="410" y="124" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">never on the seller's server</text>
+
+        <line x1="532" y1="90" x2="556" y2="90" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-e)"/>
+
+        <rect x="560" y="40" width="240" height="100" rx="2" fill="none" stroke="var(--accent-bright)"/>
+        <text x="680" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">3 · Offline verification</text>
+        <text x="680" y="92" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">any node resolves the origin,</text>
+        <text x="680" y="108" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">looks up its public key,</text>
+        <text x="680" y="124" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">and checks the signature</text>
+
+        <rect x="20" y="164" width="780" height="72" rx="2" fill="none" stroke="var(--rule-strong)"/>
+        <text x="40" y="188" font-size="12" font-weight="700" fill="var(--fg)">Degradation chain — the purchase survives node death:</text>
+        <text x="40" y="208" font-size="10.5" class="mono" fill="var(--fg-dim)">valid credential → serve · none at hand → ask the origin node</text>
+        <text x="40" y="224" font-size="10.5" class="mono" fill="var(--fg-dim)">origin dead → verify against its archived key + serve from any hash-matching mirror</text>
+      </svg>
+      <figcaption>Refunds emit revocations on the node's event stream; buyers never present their own revocations. A public purchase graph is not acceptable by default — the credential travels with the buyer, never in a firehose.</figcaption>
+    </figure>
+  </section>
+
+  <section class="content-section" id="loop">
+    <span class="hud-tag">§ the loop</span>
+    <h2>A network that improves itself</h2>
+    <p class="aktp-lede">
+      Without the improvement loop, AKTP would be just a decentralized
+      marketplace. The point of the network is different: <strong>every
+      accepted improvement becomes the whole network's new starting
+      point</strong> — whoever joins today starts at today's level, never
+      from zero.
+    </p>
+    <figure class="aktp-fig">
+      <svg viewBox="0 0 820 260" role="img" aria-label="Improvement loop: publish, bounty, contribute, accept, new network baseline">
+        <defs>
+          <marker id="aktp-arr-l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0L10 5L0 10z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <g font-size="12">
+          <rect x="30" y="95" width="140" height="64" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="100" y="122" text-anchor="middle" font-weight="700" fill="var(--fg)">Artifact published</text>
+          <text x="100" y="140" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">at any node</text>
+
+          <rect x="230" y="30" width="150" height="58" rx="2" fill="none" stroke="var(--accent)"/>
+          <text x="305" y="54" text-anchor="middle" font-weight="700" fill="var(--fg)">Bounty opened</text>
+          <text x="305" y="72" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">global format, local escrow</text>
+
+          <rect x="440" y="30" width="150" height="58" rx="2" fill="none" stroke="var(--accent)"/>
+          <text x="515" y="54" text-anchor="middle" font-weight="700" fill="var(--fg)">Contribution</text>
+          <text x="515" y="72" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">agents improve, evals prove</text>
+
+          <rect x="630" y="95" width="175" height="64" rx="2" fill="none" stroke="var(--accent-bright)"/>
+          <text x="717" y="118" text-anchor="middle" font-weight="700" fill="var(--fg)">Accepted, paid</text>
+          <text x="717" y="136" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">portable attestation:</text>
+          <text x="717" y="151" text-anchor="middle" font-size="9" class="mono" fill="var(--accent)">sh.logion.bounty.accepted</text>
+
+          <rect x="335" y="170" width="150" height="58" rx="2" fill="none" stroke="var(--rule-strong)"/>
+          <text x="410" y="194" text-anchor="middle" font-weight="700" fill="var(--fg)">New baseline</text>
+          <text x="410" y="212" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">for the whole network</text>
+        </g>
+        <path d="M150 92 Q 175 55 227 55" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
+        <line x1="382" y1="59" x2="437" y2="59" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
+        <path d="M592 59 Q 660 60 705 92" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
+        <path d="M665 160 Q 590 200 488 199" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
+        <path d="M332 199 Q 220 200 115 162" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
+        <text x="410" y="250" text-anchor="middle" font-size="11" fill="var(--fg-dim)">whoever arrives tomorrow starts from here — and the cycle repeats</text>
+      </svg>
+      <figcaption>Bounties can never be disabled by a node — a creator chooses whether to fund them, never whether the community may open them. Divergence between original and community-improved versions is always disclosed.</figcaption>
+    </figure>
+  </section>
+
+  <section class="content-section" id="stages">
+    <span class="hud-tag">§ stages</span>
+    <h2>From static to federated</h2>
+    <table class="aktp-table">
+      <tr><th>Stage</th><th>What exists</th><th>Purchase story</th></tr>
+      <tr>
+        <td>v0 — indexed stores</td>
+        <td><code>/.well-known/aktp.json</code> + feed spec; permissionless
+        crawl; domain-verified claims route sales</td>
+        <td>No credential needed: purchase and consumption both happen at the
+        creator's node; the index links out</td>
+      </tr>
+      <tr>
+        <td>v1 — signed feeds</td>
+        <td>Per-node keys, signed feeds/manifests, node registry, readable
+        attestations</td>
+        <td>Still link-out; signatures make mirroring and tampering
+        detectable</td>
+      </tr>
+      <tr>
+        <td>v2 — portable entitlements</td>
+        <td>Credentials + revocation + archived keys; agent-native settlement
+        as one more adapter</td>
+        <td><strong>Buy at any node, install anywhere</strong></td>
+      </tr>
+      <tr>
+        <td>v3 — federation</td>
+        <td>Node sync, mirrors, trust levels, cross-node reads</td>
+        <td>Cross-node payments stay out of the protocol, by design</td>
+      </tr>
+    </table>
+    <p class="section-caveat">
+      Status today: the node-feed spec (v0) is in development in this
+      repository. Logion's marketplace already runs on the protocol-ready
+      foundations — immutable versions, content hashes, portable bundles.
+      Logion operates the reference index and the first client; a position
+      earned operationally, never imposed by the protocol. Namespaces like
+      <code>sh.logion.*</code> are that node's own identifiers — exactly what
+      the extension model gives every participant.
+    </p>
+  </section>
+{% endblock %}
