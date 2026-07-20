@@ -1050,6 +1050,23 @@ pre code {
   overflow-wrap: anywhere;
 }
 
+/* Transcript line colors: prompt, comment, output, quoted string. */
+.terminal-transcript .tl-p {
+  color: var(--accent);
+}
+
+.terminal-transcript .tl-c {
+  color: var(--muted);
+}
+
+.terminal-transcript .tl-o {
+  color: var(--fg-dim);
+}
+
+.terminal-transcript .tl-s {
+  color: var(--accent-bright);
+}
+
 .proof-list {
   list-style: none;
   padding: 0;

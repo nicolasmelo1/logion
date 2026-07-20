@@ -4,6 +4,7 @@
 # Keep this list in sync with packages/landing/landing/main.py and the
 # installer/release assets served from the landing app.
 /
+/aktp
 /credits-terms
 /design.txt
 /favicon.ico

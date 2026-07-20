@@ -812,3 +812,30 @@ def test_signin_cta_present_on_all_surfaces() -> None:
     #    Verify the sign-in nav link appears in the HTML nav at minimum.)
     nav = client.get("/").text
     assert 'href="https://api.logion.sh/v1/setup/github/start"' in nav
+
+
+def test_aktp_route_renders_protocol_page() -> None:
+    response = client.get("/aktp")
+    assert response.status_code == 200
+    text = response.text
+    assert "Agentic Knowledge Transfer Protocol" in text
+    assert "/.well-known/aktp.json" in text
+    assert "attestation" in text.lower()
+    # One inspiration mention only — no protocol-mapping deep dive.
+    assert text.count("AT Protocol") == 1
+
+
+def test_aktp_route_markdown_negotiation() -> None:
+    response = client.get("/aktp", headers={"Accept": "text/markdown"})
+    assert response.status_code == 200
+    assert "text/markdown" in response.headers["content-type"]
+    assert "AKTP" in response.text
+
+
+def test_transcript_comments_have_no_prompt_and_get_colored() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    text = response.text
+    assert '<span class="tl-c"># a company whose agents rely' in text
+    assert '<span class="tl-p">$</span> logion bounties create' in text
+    assert "$ #" not in text

@@ -241,7 +241,7 @@
         {% if section.get("transcript") or section.get("proofs") or section.get("links") %}
           <div class="content-section__aside">
             {% if section.get("transcript") %}
-              <pre class="terminal-transcript"><code>{{ section.transcript }}</code></pre>
+              <pre class="terminal-transcript"><code>{{ section.transcript | transcript_html }}</code></pre>
             {% endif %}
             {% if section.get("proofs") %}
               <ul class="proof-list">

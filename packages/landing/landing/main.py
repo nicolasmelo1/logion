@@ -32,6 +32,8 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
+from markupsafe import Markup
+from markupsafe import escape as markup_escape
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -56,6 +58,7 @@ _readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
 
 PUBLIC_PATHS = (
     "/",
+    "/aktp",
     "/pricing",
     "/terms",
     "/privacy",
@@ -94,6 +97,42 @@ def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
 
 def load_markdown(path: Path = MARKDOWN_PATH) -> str:
     return path.read_text(encoding="utf-8")
+
+
+_TRANSCRIPT_STRING_RE = re.compile(r"&#34;.*?&#34;")
+
+
+def transcript_html(text: str) -> Markup:
+    """Colorize a terminal transcript: prompt, command, comment, output.
+
+    Comment lines (leading ``#``) carry no prompt; command continuations
+    (previous line ending in ``\\``) stay command-colored.
+    """
+    out: list[str] = []
+    in_continuation = False
+    for raw in text.rstrip("\n").split("\n"):
+        line = str(markup_escape(raw))
+        stripped = raw.strip()
+        if stripped.startswith("#"):
+            out.append(f'<span class="tl-c">{line}</span>')
+            in_continuation = False
+            continue
+        if raw.startswith("$"):
+            body = _TRANSCRIPT_STRING_RE.sub(
+                lambda m: f'<span class="tl-s">{m.group(0)}</span>',
+                str(markup_escape(raw[1:])),
+            )
+            out.append(f'<span class="tl-p">$</span>{body}')
+            in_continuation = stripped.endswith("\\")
+            continue
+        if in_continuation:
+            out.append(line)
+            in_continuation = stripped.endswith("\\")
+            continue
+        out.append(f'<span class="tl-o">{line}</span>')
+    # Safe: every line is passed through markup_escape before span-wrapping;
+    # the only unescaped content is the literal span markup above.
+    return Markup("\n".join(out))  # nosec B704
 
 
 _md_renderer = MarkdownIt("commonmark", {"html": False})
@@ -217,8 +256,10 @@ ASSET_VERSION = _static_fingerprint()
 app = FastAPI(title="Logion")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.filters["transcript_html"] = transcript_html
 content = load_content()
 markdown_content = load_markdown()
+aktp_markdown_content = load_markdown(CONTENT_DIR / "aktp.md")
 FAVICON_BYTES = FAVICON_PATH.read_bytes()
 
 
@@ -481,6 +522,16 @@ def setup_complete(request: Request) -> Response:
     response.headers["Cache-Control"] = "no-store, no-cache, max-age=0"
     response.headers["X-Robots-Tag"] = "noindex"
     return response
+
+
+@app.get("/aktp", response_class=HTMLResponse)
+def aktp(request: Request) -> Response:
+    if _wants_markdown(request):
+        return PlainTextResponse(
+            aktp_markdown_content,
+            media_type="text/markdown; charset=utf-8",
+        )
+    return templates.TemplateResponse(request, "aktp.html", _ctx())
 
 
 @app.get("/pricing", response_class=HTMLResponse)
