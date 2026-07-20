@@ -185,7 +185,9 @@ class Transport:
 
         req = urllib.request.Request(url, data=data, headers=h, method="POST")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(
+                req, timeout=GET_TIMEOUT_SECONDS
+            ) as resp:
                 body = resp.read()
                 return HttpResponse(resp.status, body, dict(resp.headers))
         except HTTPError as e:
@@ -215,7 +217,9 @@ class Transport:
 
         req = urllib.request.Request(url, data=data, headers=h, method="PATCH")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(
+                req, timeout=GET_TIMEOUT_SECONDS
+            ) as resp:
                 body = resp.read()
                 return HttpResponse(resp.status, body, dict(resp.headers))
         except HTTPError as e:
@@ -239,7 +243,9 @@ class Transport:
 
         req = urllib.request.Request(url, data=body, headers=h, method="PUT")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(
+                req, timeout=GET_TIMEOUT_SECONDS
+            ) as resp:
                 resp_body = resp.read()
                 return HttpResponse(resp.status, resp_body, dict(resp.headers))
         except HTTPError as e:

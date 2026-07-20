@@ -121,3 +121,27 @@ def test_get_raises_after_retry_budget_is_exhausted() -> None:
         Transport().get("https://example.com/archive.tar.gz")
 
     assert urlopen.call_count == GET_MAX_ATTEMPTS
+
+
+@pytest.mark.parametrize(
+    ("method", "kwargs"),
+    [
+        ("post", {"json_body": {"name": "skill"}}),
+        ("patch", {"json_body": {"name": "skill"}}),
+        ("put", {"body": b"bundle"}),
+    ],
+)
+def test_write_requests_have_a_bounded_timeout(
+    method: str, kwargs: dict[str, object]
+) -> None:
+    response = _response()
+    with patch(
+        "logion_indexer.transport.urllib.request.urlopen",
+        return_value=response,
+    ) as urlopen:
+        result = getattr(Transport(), method)(
+            "https://api.logion.sh/v1/indexer/skills", **kwargs
+        )
+
+    assert result.status == 200
+    assert urlopen.call_args.kwargs["timeout"] == GET_TIMEOUT_SECONDS
