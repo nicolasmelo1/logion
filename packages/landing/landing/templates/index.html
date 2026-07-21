@@ -69,11 +69,7 @@
   <section class="hero" id="hero">
     <div class="hero-copy">
       <span class="hud-tag">{{ hero.readouts.top }}</span>
-      <h1>
-        <span>{{ hero.greek }}</span><br>
-        <span class="accent">{{ hero.heading }}</span>
-      </h1>
-      {% if hero.hook %}<p class="hero-hook">{{ hero.hook }}</p>{% endif %}
+      <h1>{{ hero.heading }}</h1>
       {% if hero.motto %}<p class="hero-motto">{{ hero.motto }}</p>{% endif %}
       <p class="hero-sub">{{ hero.subheading }}</p>
 
@@ -114,24 +110,15 @@
         {# No sign-in CTA in setup mode: the visitor is already
            authenticated, and an invalid/expired/used handoff redirects
            straight back to the home page instead of rendering a retry. #}
+      </div>
+      <nav class="hero-secondary" aria-label="Secondary actions">
         {% for link in hero.cta.secondary %}
           {% if not setup_mode or not link.get('setup_hide') %}
-          <a class="cta cta--ghost" href="{{ link.href }}">
-            {{ link.label }}
-          </a>
+          <a href="{{ link.href }}">{{ link.label }}</a>
           {% endif %}
         {% endfor %}
-      </div>
+      </nav>
       {% if hero.release_note and not setup_mode %}<p class="release-note">{{ hero.release_note }}</p>{% endif %}
-
-      <p class="hero-body">{{ hero.body }}</p>
-
-      <dl class="hero-meta">
-        {% for entry in hero.meta %}
-          <dt>{{ entry.term }}</dt>
-          <dd>{{ entry.value }}</dd>
-        {% endfor %}
-      </dl>
     </div>
 
     {% if hero.demo %}
@@ -210,7 +197,7 @@
   </section>
 
   {% for section in sections %}
-    {% set has_aside = section.get("transcript") or section.get("proofs") or section.get("links") or section.id == "loop" %}
+    {% set has_aside = section.get("transcript") or section.get("example") or section.get("proofs") or section.get("links") or section.id == "loop" %}
     {% set layout = section.get("layout", "stack") if has_aside else "stack" %}
     <section
       id="{{ section.id }}"
@@ -238,10 +225,29 @@
             <p class="section-caveat">{{ section.caveat }}</p>
           {% endif %}
         </div>
-        {% if section.get("transcript") or section.get("proofs") or section.get("links") %}
+        {% if section.get("transcript") or section.get("example") or section.get("proofs") or section.get("links") %}
           <div class="content-section__aside">
             {% if section.get("transcript") %}
               <pre class="terminal-transcript"><code>{{ section.transcript | transcript_html }}</code></pre>
+            {% endif %}
+            {% if section.get("example") %}
+              {% set example = section.example %}
+              <figure class="product-example">
+                <header class="product-example__header">
+                  <span>{{ example.eyebrow }}</span>
+                  {% if example.status %}<span class="product-example__status">{{ example.status }}</span>{% endif %}
+                </header>
+                <div class="product-example__body">
+                  <h3>{{ example.title }}</h3>
+                  <dl>
+                    {% for row in example.rows %}
+                      <dt>{{ row.label }}</dt>
+                      <dd>{{ row.value }}</dd>
+                    {% endfor %}
+                  </dl>
+                </div>
+                {% if example.caption %}<figcaption>{{ example.caption }}</figcaption>{% endif %}
+              </figure>
             {% endif %}
             {% if section.get("proofs") %}
               <ul class="proof-list">

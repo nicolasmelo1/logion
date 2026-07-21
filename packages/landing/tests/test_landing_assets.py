@@ -80,7 +80,7 @@ def test_base_template_has_no_external_preconnect() -> None:
         )
 
 
-def test_styles_make_section_titles_serif_italic_only() -> None:
+def test_styles_use_a_deliberate_two_family_heading_scale() -> None:
     text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
     section_title_block = text.split(".content-section h2 {", maxsplit=1)[
         1
@@ -92,9 +92,17 @@ def test_styles_make_section_titles_serif_italic_only() -> None:
     assert "--serif:" in text
     assert "Times New Roman" in text
     assert "font-family: var(--serif)" in section_title_block
-    assert "font-style: italic" in section_title_block
+    assert "font-style: normal" in section_title_block
     assert "font-family: var(--mono)" in hero_title_block
     assert "font-style: italic" not in hero_title_block
+
+
+def test_styles_make_product_examples_responsive() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".product-example {" in text
+    assert ".product-example__header {" in text
+    assert ".product-example dl {" in text
+    assert "grid-template-columns: 1fr" in text
 
 
 def test_primary_copy_command_does_not_truncate() -> None:

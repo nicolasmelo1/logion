@@ -24,16 +24,18 @@ def test_index_returns_200() -> None:
     assert response.status_code == 200
 
 
-def test_index_renders_hero_hook_and_signals() -> None:
-    # Guard the above-the-fold rework: the hook line and the trust-signal
-    # strip must actually render (missing YAML keys or a template refactor
-    # dropping them would otherwise pass silently).
+def test_index_renders_concise_hero_and_signals() -> None:
+    # Guard the above-the-fold hierarchy: one direct proposition, one brand
+    # anchor, and a short trust-signal strip.
     html = client.get("/").text
-    assert 'class="hero-hook"' in html
-    assert "Logion proves which improvements" in html
+    assert "<h1>AI capability, with proof.</h1>" in html
+    assert 'class="hero-hook"' not in html
+    assert html.count('class="greek"') == 1
+    assert 'class="latin"' not in html
     assert 'class="hero-signals"' in html
     assert "Open-source, auditable client" in html
-    assert "Creators keep 85%" in html
+    assert "Immutable versions" in html
+    assert 'class="hero-secondary"' in html
 
 
 def test_index_hides_setup_claiming_state() -> None:
@@ -436,6 +438,19 @@ def test_homepage_renders_security_authority_section() -> None:
     assert 'class="proof-list"' in text
     assert "course/capabilities.yaml" in text
     assert "immutable published versions" in text
+
+
+def test_homepage_interleaves_copy_with_product_examples() -> None:
+    text = client.get("/").text
+    assert text.count('class="product-example"') == 3
+    for example in (
+        "creator record",
+        "course bundle",
+        "acquisition receipt",
+    ):
+        assert example in text
+    assert "Ownership, version history" in text
+    assert "entitlement granted" in text
 
 
 def test_homepage_renders_open_source_trust_anchors() -> None:

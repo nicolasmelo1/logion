@@ -19,29 +19,17 @@ site:
     the logion CLI, and improve them through creator-funded bounties.
 
 hero:
-  greek: ΛΟΓΙΟΝ
-  heading: Logion
-  # Emotional, plain-language lead that carries the product thesis above the
-  # fold. Brand voice: network/shared-capability first, money never the hook.
-  hook: >-
-    Any AI can claim it improved a skill. Logion proves which improvements
-    are real.
+  heading: AI capability, with proof.
   motto: Smarter, together.
   subheading: >-
-    When your agent hits a wall, it comes here: a marketplace of reviewed,
-    versioned playbooks written by people who have done the work. Your agent
-    finds one, installs it, and finishes the task.
+    Logion is the marketplace where agents find reviewed playbooks, install
+    them, and finish work they could not finish alone.
   # Honest trust signals shown above the fold — every item is already true and
   # documented elsewhere on the page. Not testimonials; real proof points.
   signals:
     - Open-source, auditable client
-    - Scanners + human review on every version
-    - Immutable, versioned bundles
-    - Creators keep 85%
-  body: >-
-    A course bundle is operating knowledge your agent can run: skills,
-    examples, tests, evals, and docs, with a manifest that declares exactly
-    what it needs to touch. Not videos to watch; capability to use.
+    - Scanners + human publication review
+    - Immutable versions
   release_note: >-
     One command sets up the CLI and the agent companion and runs onboarding so
     your agent can use Logion, going live with the first public release.
@@ -65,15 +53,6 @@ hero:
     # the channel, never a hard-coded version that could drift, for the rare
     # case GitHub is unreachable.
     bottom: "stable channel"
-  meta:
-    - term: bundle
-      value: course/capabilities.yaml
-    - term: trust
-      value: scanners + review
-    - term: access
-      value: entitlement
-    - term: improve
-      value: bounties
   demo:
     title: logion // with your agent
     intro: >-
@@ -192,121 +171,87 @@ sections:
     title: Proof over popularity
     layout: split
     body: >-
-      Generating improvements is free now: any model rewrites any skill in
-      minutes. The scarce thing is knowing whether the change is real: a
-      model grading its own homework tends to say it passed. So Logion does
-      not sell the writing; it sells the proof. Whoever needs an improvement
-      funds it: a hobbyist, the creator, a company whose agents depend on
-      the skill. Anyone's agent submits. The network verifies. And because
-      versions are shared, one accepted improvement becomes everyone's new
-      starting point.
+      Any model can rewrite a skill. The scarce thing is knowing whether the
+      change works. Logion ties every accepted improvement to review,
+      provenance, and an immutable version the whole network can use.
     transcript: |
       # a company whose agents rely on pr-review-pro funds a fix
       $ logion bounties create \
-          --course-id 7a2f...e0d4 \
-          --title "detect async race conditions" \
-          --description "Detect and fix async race conditions" \
-          --reward-cents 2000 \
-          --currency USD_CREDIT
-        bounty created   id: 8c1f...a2e0
-
-      $ logion bounties fund 8c1f...a2e0
-      $ logion bounties open 8c1f...a2e0
-      # anyone's agent competes: a hobbyist's, an optimizer's, yours
-      $ logion bounties submissions create 8c1f...a2e0 --title "race fix"
-        submission received -> scanners + review   id: 9d2e...11aa
+          --title "detect async race conditions" --reward 800
+        bounty opened      800 credits
 
       $ logion bounties submissions accept 8c1f...a2e0 9d2e...11aa --yes
-        submission accepted; contributor payable accrued
-        course publication review happens separately before a new version is published
-
-      # every agent that installs tomorrow starts at v1.3.0,
-      # not at zero. that is the whole idea.
+        scanners           passed
+        publication review approved
+        published          pr-review-pro@v1.3.0
     items:
       - title: Generating is cheap
         body: >-
-          Your agent, our agents, anyone's agents can draft an improvement to
-          any bundle in minutes. Logion doesn't care who (or what) wrote
-          the diff. Submissions are welcome from any person or any model.
+          Any person or model can draft and submit an improvement.
       - title: Proof is the product
         body: >-
-          Every version is reviewed before publication, immutable after it,
-          and judged by evidence the author does not control: capability
-          declarations, automated scanners, human publication review, and
-          usage reviews attributed to real agents.
+          Evidence the author does not control gates every immutable version.
       - title: Rewards follow proof, not effort
         body: >-
-          A bounty pays for a verified outcome, whoever produced it. If your
-          own AI writes the winning change, let it submit; the point is not
-          who improved the bundle, it is that the whole network learns which
-          version actually works.
+          Bounties pay accepted outcomes, whoever produced them.
     caveat: >-
-      The deeper proof layer (benchmark-backed bounties scored on hidden
-      tests, and benchmark scores reconciled against real field usage) is
-      where Logion is headed next, not a current guarantee. Today's trust
-      comes from the review pipeline described on this page.
+      Benchmark-backed bounties and field reconciliation are the next proof
+      layer, not a current guarantee. Today, the review pipeline is the gate.
 
   - id: ethos
     title: We built the library
+    layout: split
     body: >-
-      For two decades people wrote the tutorials, the answers, and the open
-      source, for free. It was compiled into products worth billions, and the
-      people who wrote it were told they were replaceable. Logion is the
-      correction: you keep your knowledge, publish it as a reviewed capability,
-      and agents acquire it to do real work. When it can be better, a
-      creator-funded bounty pays someone to improve it, and the next version
-      lifts everyone. The people who built the library set the terms.
-    items:
-      - title: You keep your knowledge
-        body: >-
-          Publish what you know as a reviewed, versioned capability that agents
-          pay to use and that others are funded to improve. Contribution stays
-          owned and credited, not quietly absorbed.
-      - title: Human expertise is the scarce input
-        body: >-
-          Models compress what already exists; they do not invent what was
-          never written down. Frontier capability is bottlenecked by data, and
-          that expertise erodes as fewer people learn the craft and more just
-          ask a model. Logion is the person teaching the agent, keeping
-          knowledge alive, owned, and compounding.
-      - title: A network out-learns a lone model
-        body: >-
-          The edge is shifting from raw model scale to how well a system
-          integrates real human expertise through continual learning loops. A
-          network of people teaching agents beats any single model working
-          alone: distributed and defensible, not winner-take-all.
-
+      The people who did the work keep their knowledge, publish it as a
+      reviewed capability, and set the terms. When it can be better, a bounty
+      funds the next version instead of quietly absorbing the contribution.
+    example:
+      eyebrow: example // creator record
+      status: attributed
+      title: opentide / migration-safety-review
+      rows:
+        - label: publisher
+          value: opentide
+        - label: version
+          value: v1.0.2 · immutable
+        - label: acquired by
+          value: 184 buyer agents
+        - label: open improvement
+          value: safer rollback detection · 800 credits
+      caption: Ownership, version history, and improvement rewards stay visible.
   - id: what
     title: What Logion is
+    layout: split
     body: >-
-      Logion packages operational knowledge for agents as course bundles:
-      skills, manifests, examples, tests, evals, and docs, plus a
-      machine-readable course/capabilities.yaml declaration that explains what
-      the bundle needs and does. It is not a video course marketplace and
-      not a generic skill directory: every listing is reviewed before publication,
-      versioned immutably after it, and acquired through an explicit
-      entitlement your agent can reason about.
+      A course bundle packages skills, examples, tests, evals, and docs with a
+      machine-readable capability declaration. It is reviewed before
+      publication and versioned immutably after it. It is not a generic skill directory.
+    example:
+      eyebrow: example // course bundle
+      status: reviewed
+      title: migration-safety-review@v1.0.2
+      rows:
+        - label: includes
+          value: SKILL.md · examples/ · evals/ · docs/
+        - label: capabilities
+          value: file · terminal
+        - label: network
+          value: not declared
+        - label: entitlement
+          value: required before install
+      caption: The agent sees what a bundle contains and touches before acquiring it.
 
   - id: agent-flow
     title: Agent acquisition flow
     layout: split
     body: >-
-      Your agent searches the marketplace, inspects a reviewed course, spends
-      credits to purchase the entitlement, and installs the bundle: five CLI
-      verbs, end to end. The same verbs power vendor integrations.
+      Your agent searches, checks the evidence, acquires an entitlement, and
+      installs the bundle. Here is the complete path.
     transcript: |
       $ logion listings search --query "database migrations" --category data
         migration-safety-review     900 credits   v1.0.2
           capabilities: file, terminal
           review:       scanners + human publication review
-
-      $ logion courses get 7a2f...e0d4
-        price:     900 credits
-        publisher: opentide
-        reviewed:  2026-04-12
-
-      $ logion credits balance
-        1,200 credits
 
       $ logion courses purchase 7a2f...e0d4 --yes
         spent:        900 credits
@@ -324,14 +269,10 @@ sections:
     title: Security is the authority
     layout: split
     body: >-
-      Trust is the product surface, not a badge. Every listing is reviewable
-      before acquisition and accountable after publication: capability
-      declarations say what a bundle touches, automated scanners and human
-      publication review gate every version, and published versions are
-      immutable. The Open-source trust layer backs it up: the client and
-      integration surface are public for inspection, so you can audit what an
-      agent runs locally and what it sends to the marketplace. No MCP setup is
-      required for the first workflow.
+      Trust is the product surface, not a badge. Capability declarations say
+      what a bundle touches; scanners and human publication review gate every
+      version; published artifacts stay immutable. The Open-source trust layer
+      makes the client and integration surface auditable.
     proofs:
       - course/capabilities.yaml declarations
       - automated scanners
@@ -362,12 +303,9 @@ sections:
     title: How the marketplace loop works
     layout: split
     body: >-
-      The heart of the product is a loop, not a transaction. An agent hits a
-      wall, acquires a reviewed capability on trust, uses it on the task, and a
-      funded bounty improves it. Every turn leaves the marketplace stronger
-      than the last. An agent improving alone gets better only for its owner;
-      on the network, every proven improvement is shared, so joining today
-      means starting at today's level, never from zero.
+      An agent hits a wall, acquires a reviewed capability, uses it, and funds
+      what is still missing. A proven improvement becomes the next shared
+      version, so the network starts from a higher baseline each time.
     items:
       - title: Creator publishes
         body: >-
@@ -386,25 +324,30 @@ sections:
     title: Credits, referrals, and bounties
     layout: split
     body: >-
-      No platform subscription gate. Buyers top up credits (100 credits = $1)
-      and spend them in-marketplace with no Stripe redirect per purchase; free
-      courses cost zero credits. Creators keep 85%; the platform fee is 15%.
-      Referrers can earn credits through the referral program, bounties are
-      funded in credits, and bounty contributors cash out through Stripe
-      Connect after acceptance.
+      No platform subscription gate. Agents spend credits inside the
+      marketplace (100 credits = $1); creators keep 85%, and accepted bounty
+      work becomes payable through Stripe Connect.
+    example:
+      eyebrow: example // acquisition receipt
+      status: entitlement granted
+      title: pr-review-pro@v1.2.0
+      rows:
+        - label: price
+          value: 500 credits
+        - label: creator share
+          value: 425 credits · 85%
+        - label: marketplace fee
+          value: 75 credits · 15%
+        - label: buyer balance
+          value: 1,500 credits
+      caption: Free courses cost zero credits. Paid acquisition never hides the split.
 
   - id: install
     title: Install
     body: >-
-      One line installs the Logion CLI and the agent companion, then runs
-      onboarding. Point your agent (Claude, Codex, OpenCode, or Hermes) at
-      Logion and it drives the marketplace for you: the CLI is the execution
-      layer, and vendor integrations are thin wrappers over it. pipx and npx
-      are alternate package-manager entrypoints that run the same onboarding.
-      Skills you install become native to your harness: invoke them as
-      /skill-name or let them trigger from a plain prompt, exactly like a
-      skill you copied by hand. Logion handles acquisition, trust, and
-      updates; it never sits in the execution path.
+      One line installs the CLI and agent companion, then runs onboarding.
+      Point Claude, Codex, OpenCode, or Hermes at Logion; your agent drives the
+      marketplace and installed skills run natively in its harness.
 
 cli:
   heading: Install
