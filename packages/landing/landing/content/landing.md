@@ -74,6 +74,8 @@ npx @logionsh/cli onboarding
 
 Use `--cli-only` or `--no-onboarding` to opt out of the companion/onboarding.
 
+Installed skills are native to your harness: invoke them as `/skill-name` or let them trigger from a plain prompt, exactly like a skill you copied by hand. Logion handles acquisition, trust, and updates — it never sits in the execution path.
+
 ## What Logion is
 
 Logion packages operational knowledge for agents as course bundles. A course bundle can include skills, manifests, examples, tests, evals, and documentation. Each reviewed listing is a versioned marketplace artifact with acquisition, entitlement, and update history rather than a passive tutorial or unreviewed directory entry.

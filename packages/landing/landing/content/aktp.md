@@ -75,7 +75,7 @@ Artifact published at any node → bounty opened (global format, node-local escr
 ## Stages
 
 - v0 — indexed stores: well-known + feed spec, permissionless crawl, domain-verified claims route sales. No credential needed.
-- v1 — signed feeds: per-node keys, signed feeds/manifests, node registry, readable attestations.
+- v1 — signed feeds: per-node keys, signed feeds/manifests, node registry, append-only event logs (cursor-based incremental sync — updates propagate without recrawls), readable attestations.
 - v2 — portable entitlements: credentials + revocation + archived keys. Buy at any node, install anywhere.
 - v3 — federation: node sync, mirrors, trust levels, cross-node reads. Cross-node payments stay out of the protocol, by design.
 

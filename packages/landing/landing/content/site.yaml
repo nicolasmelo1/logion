@@ -401,6 +401,10 @@ sections:
       Logion and it drives the marketplace for you: the CLI is the execution
       layer, and vendor integrations are thin wrappers over it. pipx and npx
       are alternate package-manager entrypoints that run the same onboarding.
+      Skills you install become native to your harness — invoke them as
+      /skill-name or let them trigger from a plain prompt, exactly like a
+      skill you copied by hand. Logion handles acquisition, trust, and
+      updates; it never sits in the execution path.
 
 cli:
   heading: Install
