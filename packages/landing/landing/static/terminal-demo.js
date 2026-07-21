@@ -36,51 +36,6 @@
     };
   });
 
-  function reserveConversationHeight() {
-    if (!body) return;
-    const width = root.getBoundingClientRect().width;
-    if (!width) return;
-
-    const clone = root.cloneNode(true);
-    clone.removeAttribute("data-terminal-demo");
-    Object.assign(clone.style, {
-      display: "flex",
-      left: "-10000px",
-      margin: "0",
-      pointerEvents: "none",
-      position: "fixed",
-      top: "0",
-      visibility: "hidden",
-      width: `${width}px`,
-    });
-    const originalSegments = frames.flatMap((frame) => frame.segments);
-    clone.querySelectorAll("[data-seg]").forEach((segment, index) => {
-      segment.textContent = originalSegments[index].text;
-    });
-    clone.querySelectorAll(".hero-demo__turn").forEach((turn) => {
-      turn.style.display = "flex";
-    });
-    document.body.appendChild(clone);
-
-    const cloneBody = clone.querySelector(".hero-demo__body");
-    cloneBody.style.height = "auto";
-    cloneBody.style.minHeight = "0";
-    const heights = Array.from(
-      clone.querySelectorAll(".hero-demo__panel"),
-    ).map((panel) => {
-      Object.assign(panel.style, {
-        display: "block",
-        height: "auto",
-        minHeight: "0",
-        position: "static",
-      });
-      return panel.scrollHeight;
-    });
-    body.style.flex = "0 0 auto";
-    body.style.height = `${Math.ceil(Math.max(...heights))}px`;
-    clone.remove();
-  }
-
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
@@ -90,6 +45,22 @@
   let visible = false;
   let resumeTimer = null;
   let advanceTimer = null;
+  let scrollFrame = null;
+
+  function resetScroll() {
+    if (!body) return;
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+    scrollFrame = null;
+    body.scrollTop = 0;
+  }
+
+  function followOutput() {
+    if (!body || scrollFrame !== null) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = null;
+      body.scrollTop = body.scrollHeight;
+    });
+  }
 
   function clearTimers() {
     if (resumeTimer !== null) {
@@ -137,6 +108,7 @@
     // Park the cursor at the end of the conversation.
     const chat = frame.panel.querySelector(".hero-demo__chat");
     if (frame.cursor && chat) chat.appendChild(frame.cursor);
+    resetScroll();
   }
 
   function clearFrame(frame) {
@@ -144,6 +116,7 @@
       seg.el.textContent = "";
     });
     setTurnsHidden(frame, true);
+    resetScroll();
   }
 
   function sleep(ms) {
@@ -154,6 +127,7 @@
     for (let i = 0; i < text.length; i += 1) {
       if (myToken !== runToken || !visible) return false;
       el.textContent += text[i];
+      followOutput();
       const wait = text[i] === "\n" ? msPerChar * 5 : msPerChar;
       await sleep(wait);
     }
@@ -230,17 +204,6 @@
   });
 
   setActive(0);
-  reserveConversationHeight();
-  let resizeFrame = null;
-  window.addEventListener("resize", () => {
-    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(() => {
-      resizeFrame = null;
-      reserveConversationHeight();
-    });
-  });
-  if (document.fonts) document.fonts.ready.then(reserveConversationHeight);
-
   if (reducedMotion) {
     frames.forEach(renderStatic);
     return;

@@ -459,7 +459,8 @@ def test_homepage_renders_security_authority_section() -> None:
 
 def test_homepage_interleaves_copy_with_agent_examples() -> None:
     text = client.get("/").text
-    assert text.count('class="section-demo"') == 6
+    assert text.count("data-section-demo") == 6
+    assert text.count('aria-label="Scrollable terminal conversation"') == 7
     for example in (
         "proof // with your agent",
         "package // frontend-design",

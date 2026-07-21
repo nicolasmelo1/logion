@@ -215,6 +215,7 @@ def test_section_stacking_is_wired() -> None:
     assert "initSmoothWheel" in js
     assert "if (reduced.matches || coarse.matches) return;" in js
     assert "if (e.ctrlKey || e.defaultPrevented) return;" in js
+    assert 'e.target.closest(".hero-demo__body")' in js
 
 
 def test_hero_terminal_has_a_desktop_sticky_scroll_runway() -> None:
@@ -245,11 +246,10 @@ def test_all_terminal_animations_are_viewport_triggered() -> None:
         assert "IntersectionObserver" in js
         assert "entry.isIntersecting" in js
         assert "prefers-reduced-motion: reduce" in js
-        assert "reserveConversationHeight" in js
-        assert "body.style.height" in js
-        assert 'turn.style.display = "flex"' in js
-        assert 'body.style.flex = "0 0 auto"' in js
-        assert "document.fonts.ready" in js
+        assert "followOutput" in js
+        assert "body.scrollTop = body.scrollHeight" in js
+        assert "resetScroll" in js
+        assert "body.scrollTop = 0" in js
     assert "frames.forEach(clearFrame)" in section_js
     assert "typeInto" in section_js
     assert "scheduleAdvance" in section_js
@@ -259,6 +259,26 @@ def test_all_terminal_animations_are_viewport_triggered() -> None:
     assert "renderStatic(frames[index])" in section_js
     assert "scheduleAdvance(index, 5500)" in section_js
     assert "completed" not in section_js
+
+
+def test_terminal_bodies_use_a_compact_internal_scroller() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    match = re.search(r"(?m)^\.hero-demo__body \{([^}]+)\}", css)
+    assert match is not None
+    body_block = match.group(1)
+    assert "flex: 0 0 300px" in body_block
+    assert "height: 300px" in body_block
+    assert "overflow-y: auto" in body_block
+    assert "overscroll-behavior: contain" in body_block
+    assert "touch-action: pan-y" in body_block
+    assert "scrollbar-gutter: stable" in body_block
+
+
+def test_longer_conversation_terminals_have_more_room() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".section-demo--what .hero-demo__body" in css
+    assert ".section-demo--agent-flow .hero-demo__body" in css
+    assert "height: 380px" in css
 
 
 def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:

@@ -1277,11 +1277,19 @@ pre code {
 }
 
 .section-demo .hero-demo__body {
-  min-height: 330px;
+  height: 300px;
+  min-height: 300px;
+}
+
+.section-demo--what .hero-demo__body,
+.section-demo--agent-flow .hero-demo__body {
+  height: 380px;
+  min-height: 380px;
+  flex-basis: 380px;
 }
 
 .section-demo .hero-demo__panel {
-  min-height: 330px;
+  min-height: 100%;
   height: auto;
 }
 
@@ -1307,9 +1315,21 @@ pre code {
 }
 
 @media (max-width: 640px) {
-  .section-demo .hero-demo__body,
+  .section-demo .hero-demo__body {
+    height: 280px;
+    min-height: 280px;
+    flex-basis: 280px;
+  }
+
+  .section-demo--what .hero-demo__body,
+  .section-demo--agent-flow .hero-demo__body {
+    height: 340px;
+    min-height: 340px;
+    flex-basis: 340px;
+  }
+
   .section-demo .hero-demo__panel {
-    min-height: 0;
+    min-height: 100%;
   }
 
   .section-demo .hero-demo__panel {
@@ -1536,8 +1556,24 @@ pre code {
 
 .hero-demo__body {
   position: relative;
-  flex: 1;
-  min-height: 260px;
+  flex: 0 0 300px;
+  height: 300px;
+  min-height: 300px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-color: var(--rule-strong) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.hero-demo__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hero-demo__body::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
 }
 
 .hero-demo__panel {

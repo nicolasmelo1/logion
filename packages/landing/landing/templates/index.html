@@ -67,7 +67,7 @@
 
 {% macro conversation_demo(demo, demo_id) -%}
   <aside
-    class="section-demo"
+    class="section-demo section-demo--{{ demo_id }}"
     data-section-demo
     aria-label="{{ demo.aria_label or demo.title }}"
   >
@@ -90,7 +90,11 @@
         {% endfor %}
       </nav>
     {% endif %}
-    <div class="hero-demo__body">
+    <div
+      class="hero-demo__body"
+      tabindex="0"
+      aria-label="Scrollable terminal conversation"
+    >
       {% for tab in demo.tabs %}
         <section
           id="section-demo-{{ demo_id }}-{{ tab.id }}"
@@ -213,7 +217,11 @@
             >{{ tab.label }}</button>
           {% endfor %}
         </nav>
-        <div class="hero-demo__body">
+        <div
+          class="hero-demo__body"
+          tabindex="0"
+          aria-label="Scrollable terminal conversation"
+        >
           {% for tab in hero.demo.tabs %}
             <section
               id="demo-panel-{{ tab.id }}"
