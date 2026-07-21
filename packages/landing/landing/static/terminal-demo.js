@@ -15,6 +15,7 @@
 
   const tabs = Array.from(root.querySelectorAll(".hero-demo__tab"));
   const panels = Array.from(root.querySelectorAll(".hero-demo__panel"));
+  const body = root.querySelector(".hero-demo__body");
   if (!tabs.length || !panels.length) return;
 
   // Typing speed (ms per character) per conversation role.
@@ -34,6 +35,51 @@
       cursor: panel.querySelector(".hero-demo__cursor"),
     };
   });
+
+  function reserveConversationHeight() {
+    if (!body) return;
+    const width = root.getBoundingClientRect().width;
+    if (!width) return;
+
+    const clone = root.cloneNode(true);
+    clone.removeAttribute("data-terminal-demo");
+    Object.assign(clone.style, {
+      display: "flex",
+      left: "-10000px",
+      margin: "0",
+      pointerEvents: "none",
+      position: "fixed",
+      top: "0",
+      visibility: "hidden",
+      width: `${width}px`,
+    });
+    const originalSegments = frames.flatMap((frame) => frame.segments);
+    clone.querySelectorAll("[data-seg]").forEach((segment, index) => {
+      segment.textContent = originalSegments[index].text;
+    });
+    clone.querySelectorAll(".hero-demo__turn").forEach((turn) => {
+      turn.style.display = "flex";
+    });
+    document.body.appendChild(clone);
+
+    const cloneBody = clone.querySelector(".hero-demo__body");
+    cloneBody.style.height = "auto";
+    cloneBody.style.minHeight = "0";
+    const heights = Array.from(
+      clone.querySelectorAll(".hero-demo__panel"),
+    ).map((panel) => {
+      Object.assign(panel.style, {
+        display: "block",
+        height: "auto",
+        minHeight: "0",
+        position: "static",
+      });
+      return panel.scrollHeight;
+    });
+    body.style.flex = "0 0 auto";
+    body.style.height = `${Math.ceil(Math.max(...heights))}px`;
+    clone.remove();
+  }
 
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
@@ -184,6 +230,17 @@
   });
 
   setActive(0);
+  reserveConversationHeight();
+  let resizeFrame = null;
+  window.addEventListener("resize", () => {
+    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null;
+      reserveConversationHeight();
+    });
+  });
+  if (document.fonts) document.fonts.ready.then(reserveConversationHeight);
+
   if (reducedMotion) {
     frames.forEach(renderStatic);
     return;

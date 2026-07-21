@@ -857,6 +857,8 @@ def test_aktp_route_renders_protocol_page() -> None:
     assert "Agentic Knowledge Transfer Protocol" in text
     assert "/.well-known/aktp.json" in text
     assert "attestation" in text.lower()
+    assert ".content-section > .aktp-lede" in text
+    assert "max-width: none" in text
     # One inspiration mention only — no protocol-mapping deep dive.
     assert text.count("AT Protocol") == 1
 

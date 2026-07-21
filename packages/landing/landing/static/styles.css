@@ -1227,6 +1227,12 @@ pre code {
   }
 }
 
+@media (min-width: 981px) {
+  .content-section--split .content-section__aside {
+    margin-top: -58px;
+  }
+}
+
 .content-section--split .content-section__copy > p {
   max-width: 56ch;
 }
@@ -1691,6 +1697,7 @@ pre code {
   /* The hero terminal gets a short scroll runway: once it reaches the top
      edge it stays in view while the visitor finishes the opening story. */
   .hero-demo-col {
+    gap: 0;
     padding-bottom: 28vh;
   }
 
@@ -1698,6 +1705,7 @@ pre code {
     position: sticky;
     top: 24px;
     align-self: start;
+    margin-top: -110px;
   }
 }
 

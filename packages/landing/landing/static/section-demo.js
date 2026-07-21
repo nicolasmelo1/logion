@@ -12,6 +12,7 @@
   document.querySelectorAll("[data-section-demo]").forEach((root) => {
     const tabs = Array.from(root.querySelectorAll("[data-section-tab]"));
     const panels = Array.from(root.querySelectorAll("[data-section-panel]"));
+    const body = root.querySelector(".hero-demo__body");
     if (!panels.length) return;
 
     const frames = panels.map((panel) => ({
@@ -28,7 +29,51 @@
     let visible = false;
     let runToken = 0;
     let advanceTimer = null;
-    const completed = new Set();
+
+    function reserveConversationHeight() {
+      if (!body) return;
+      const width = root.getBoundingClientRect().width;
+      if (!width) return;
+
+      const clone = root.cloneNode(true);
+      clone.removeAttribute("data-section-demo");
+      Object.assign(clone.style, {
+        display: "block",
+        left: "-10000px",
+        margin: "0",
+        pointerEvents: "none",
+        position: "fixed",
+        top: "0",
+        visibility: "hidden",
+        width: `${width}px`,
+      });
+      const originalSegments = frames.flatMap((frame) => frame.segments);
+      clone.querySelectorAll("[data-seg]").forEach((segment, index) => {
+        segment.textContent = originalSegments[index].text;
+      });
+      clone.querySelectorAll(".hero-demo__turn").forEach((turn) => {
+        turn.style.display = "flex";
+      });
+      document.body.appendChild(clone);
+
+      const cloneBody = clone.querySelector(".hero-demo__body");
+      cloneBody.style.height = "auto";
+      cloneBody.style.minHeight = "0";
+      const heights = Array.from(
+        clone.querySelectorAll("[data-section-panel]"),
+      ).map((panel) => {
+        Object.assign(panel.style, {
+          display: "block",
+          height: "auto",
+          minHeight: "0",
+          position: "static",
+        });
+        return panel.scrollHeight;
+      });
+      body.style.flex = "0 0 auto";
+      body.style.height = `${Math.ceil(Math.max(...heights))}px`;
+      clone.remove();
+    }
 
     function clearAdvance() {
       if (advanceTimer !== null) {
@@ -76,7 +121,9 @@
       for (const character of segment.text) {
         if (token !== runToken || !visible) return false;
         segment.el.textContent += character;
-        await sleep(character === "\n" ? SPEED[segment.role] * 4 : SPEED[segment.role]);
+        await sleep(
+          character === "\n" ? SPEED[segment.role] * 4 : SPEED[segment.role],
+        );
       }
       return true;
     }
@@ -87,9 +134,8 @@
       runToken += 1;
       const token = runToken;
 
-      if (reducedMotion || completed.has(frame.panel)) {
+      if (reducedMotion) {
         renderStatic(frame);
-        if (!reducedMotion) scheduleAdvance(index, 4200);
         return;
       }
 
@@ -102,7 +148,6 @@
         if (!(await typeInto(segment, token))) return;
         await sleep(260);
       }
-      completed.add(frame.panel);
       scheduleAdvance(index);
     }
 
@@ -122,8 +167,16 @@
       if (animate && visible) play(index);
     }
 
+    function selectManually(index) {
+      runToken += 1;
+      clearAdvance();
+      activate(index, false);
+      renderStatic(frames[index]);
+      if (!reducedMotion && visible) scheduleAdvance(index, 5500);
+    }
+
     tabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => activate(index));
+      tab.addEventListener("click", () => selectManually(index));
       tab.addEventListener("keydown", (event) => {
         let next = index;
         if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
@@ -133,12 +186,23 @@
         else if (event.key === "End") next = tabs.length - 1;
         else return;
         event.preventDefault();
-        activate(next);
+        selectManually(next);
         tabs[next].focus();
       });
     });
 
     activate(0, false);
+    reserveConversationHeight();
+    let resizeFrame = null;
+    window.addEventListener("resize", () => {
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        reserveConversationHeight();
+      });
+    });
+    if (document.fonts) document.fonts.ready.then(reserveConversationHeight);
+
     if (reducedMotion) {
       frames.forEach(renderStatic);
       return;
@@ -168,8 +232,7 @@
       if (document.hidden) {
         runToken += 1;
         clearAdvance();
-      }
-      else if (visible) play(activeIndex);
+      } else if (visible) play(activeIndex);
     });
   });
 })();

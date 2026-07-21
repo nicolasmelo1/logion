@@ -223,6 +223,9 @@ def test_hero_terminal_has_a_desktop_sticky_scroll_runway() -> None:
     assert "padding-bottom: 28vh" in css
     assert "position: sticky" in css
     assert "top: 24px" in css
+    assert "margin-top: -110px" in css
+    assert ".content-section--split .content-section__aside" in css
+    assert "margin-top: -58px" in css
 
 
 def test_section_demo_tabs_are_accessible() -> None:
@@ -242,11 +245,20 @@ def test_all_terminal_animations_are_viewport_triggered() -> None:
         assert "IntersectionObserver" in js
         assert "entry.isIntersecting" in js
         assert "prefers-reduced-motion: reduce" in js
+        assert "reserveConversationHeight" in js
+        assert "body.style.height" in js
+        assert 'turn.style.display = "flex"' in js
+        assert 'body.style.flex = "0 0 auto"' in js
+        assert "document.fonts.ready" in js
     assert "frames.forEach(clearFrame)" in section_js
     assert "typeInto" in section_js
     assert "scheduleAdvance" in section_js
     assert "activate((index + 1) % tabs.length)" in section_js
     assert "clearAdvance" in section_js
+    assert "selectManually" in section_js
+    assert "renderStatic(frames[index])" in section_js
+    assert "scheduleAdvance(index, 5500)" in section_js
+    assert "completed" not in section_js
 
 
 def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:
