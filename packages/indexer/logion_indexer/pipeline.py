@@ -39,12 +39,13 @@ def build_indexing_plan(
     *,
     source: GithubSource | None = None,
     mirror: bool = True,
+    workers: int = 4,
 ) -> tuple[DedupPlan, dict[str, BundleArtifact]]:
     """Run the full pipeline and return ``(plan, bundle_artifacts)``."""
     source = source or GithubSource(transport=transport)
 
     merged = merge_discoveries(discoveries)
-    enriched, skips = enrich_discoveries(merged, source)
+    enriched, skips = enrich_discoveries(merged, source, workers=workers)
     remerged = merge_discoveries(enriched)
 
     valid: list[DiscoveredSkill] = []
