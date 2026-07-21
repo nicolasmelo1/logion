@@ -1582,6 +1582,27 @@ pre code {
   display: flex;
   gap: 10px;
   align-items: baseline;
+  margin-inline: -8px;
+  padding: 5px 8px;
+  border-left: 2px solid transparent;
+}
+
+.hero-demo__turn--user,
+.hero-demo__turn--you {
+  border-left-color: var(--accent);
+  background: rgba(201, 167, 106, 0.09);
+}
+
+.hero-demo__turn--agent {
+  border-left-color: var(--fg-dim);
+}
+
+.hero-demo__turn--run {
+  border-left-color: var(--accent-bright);
+}
+
+.hero-demo__turn--out {
+  border-left-color: var(--muted);
 }
 
 .hero-demo__who {

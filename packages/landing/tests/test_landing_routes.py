@@ -401,6 +401,13 @@ def test_homepage_includes_marketplace_terms() -> None:
     assert "bounties" in text
 
 
+def test_homepage_explains_agent_native_ranking_signals() -> None:
+    text = client.get("/").text
+    assert "popularity proxies such as stars and downloads" in text
+    assert "task completion, tool safety, and token efficiency" in text
+    assert "Anthropic or NVIDIA" in text
+
+
 def test_homepage_renders_agent_acquisition_demo() -> None:
     text = client.get("/").text
     assert "data-section-demo" in text

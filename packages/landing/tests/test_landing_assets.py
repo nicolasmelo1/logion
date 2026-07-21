@@ -262,6 +262,15 @@ def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:
     assert "color: var(--fg-dim)" in agent_block
     assert "color: var(--accent-bright)" in prompt_block
     assert "color: var(--muted)" in output_block
+    assert "background:" not in agent_block
+    assert "background:" not in prompt_block
+    assert "background:" not in output_block
+    assert ".hero-demo__turn--user," in css
+    assert ".hero-demo__turn--agent {" in css
+    assert ".hero-demo__turn--run {" in css
+    assert ".hero-demo__turn--out {" in css
+    assert "background: rgba(201, 167, 106, 0.09)" in css
+    assert css.count("background: rgba(201, 167, 106, 0.09)") == 1
 
 
 def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
