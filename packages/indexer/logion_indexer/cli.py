@@ -296,8 +296,19 @@ def cmd_run(  # noqa: C901 - terminal receipts share one lifecycle.
         if progress:
             progress.checkpoint("completed", status="failed")
         if pusher:
-            pusher.close_run(stats)
+            _close_run_safely(pusher, stats)
         raise
+
+
+def _close_run_safely(pusher: Pusher, stats: RunStats) -> None:
+    """Attempt terminal persistence without replacing the pipeline failure."""
+    try:
+        pusher.close_run(stats)
+    except Exception as exc:
+        print(
+            f"indexer-progress close-error: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _upload_bundles(

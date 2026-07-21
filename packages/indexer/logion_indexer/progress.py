@@ -50,7 +50,7 @@ class RunProgress:
                 f"{self.base_url.rstrip('/')}/v1/admin/indexing/runs/{self.run_id}/progress",
                 json_body=snapshot,
             )
-            if response.status not in (200, 201):
+            if response.status not in (200, 201, 204):
                 self._publish_error(f"HTTP {response.status}")
         except Exception as exc:  # Progress must not hide pipeline failure.
             self._publish_error(f"{type(exc).__name__}: {exc}")
