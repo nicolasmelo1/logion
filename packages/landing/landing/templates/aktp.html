@@ -171,7 +171,7 @@
     <span class="aktp-expansion">Agentic Knowledge Transfer Protocol</span>
     <p class="aktp-lede">
       An open protocol for AI agents to <strong>discover, verify, and transfer
-      operational knowledge</strong> — skills, evals, environments, datasets —
+      operational knowledge</strong> (skills, evals, environments, datasets)
       across independent domains. What HTTP did for documents, AKTP does for
       agent capability: <strong>anyone can host, anyone can index, anyone can
       build on top.</strong> Federated networks like the AT Protocol served as
@@ -185,7 +185,7 @@
     <p class="aktp-lede">
       A good skill written today lives trapped in a repository, a proprietary
       marketplace, or one tool's config directory. Whoever starts using an
-      agent today starts from zero — the knowledge the community has already
+      agent today starts from zero: the knowledge the community has already
       accumulated has no common format to circulate in, be verified with, or
       be improved by strangers.
     </p>
@@ -209,7 +209,7 @@
     <div class="aktp-quote">
       The central idea: <strong>the network exists, and the improvement loop
       exists. Everything else is nodes talking to nodes.</strong> The network
-      must be able to exist without any one company — anyone may run a node,
+      must be able to exist without any one company; anyone may run a node,
       build a client, or operate a competing index.
     </div>
   </section>
@@ -218,7 +218,7 @@
     <span class="hud-tag">§ how it works</span>
     <h2>Two JSON documents over HTTPS</h2>
     <p class="aktp-lede">
-      A node is anything that serves two JSON documents — a Next.js route, a
+      A node is anything that serves two JSON documents: a Next.js route, a
       static file on a CDN, or a full backend are equally valid nodes. Indexes
       crawl nodes permissionlessly; clients (CLIs, agents) consume whichever
       view they prefer.
@@ -244,7 +244,7 @@
 
           <rect x="20" y="226" width="200" height="78" rx="2" fill="none" stroke="var(--accent)"/>
           <text x="120" y="252" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">Static store</text>
-          <text x="120" y="272" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">JSON on a CDN — a valid node</text>
+          <text x="120" y="272" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">JSON on a CDN, a valid node</text>
           <text x="120" y="290" text-anchor="middle" font-size="10" class="mono" fill="var(--accent)">feed.json</text>
         </g>
         <line x1="222" y1="69" x2="330" y2="130" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr)"/>
@@ -281,11 +281,11 @@
 
     <ol class="aktp-steps">
       <li><div><b>Publish a discovery document on your domain</b>
-        <span>Owning the domain is owning the identity — no signup, no permission asked.</span></div></li>
+        <span>Owning the domain is owning the identity. No signup, no permission asked.</span></div></li>
       <li><div><b>Point it at a feed of your listings</b>
         <span>Each item declares source, bundle (sha256 hash), license, and purchase mode.</span></div></li>
       <li><div><b>Indexes crawl and apply their own policy</b>
-        <span>Security scans, review, ranking — each index decides what it promotes. Rejection by one index never removes content from your node.</span></div></li>
+        <span>Security scans, review, ranking: each index decides what it promotes. Rejection by one index never removes content from your node.</span></div></li>
       <li><div><b>Agents discover, verify the hash, and install</b>
         <span>Bundles are content-addressed: any mirror can serve them, integrity is verifiable offline.</span></div></li>
     </ol>
@@ -339,7 +339,7 @@
     <div class="aktp-quote">
       The authority rule that shapes everything: <strong>the right to route
       payment is born from the claim, never from the crawl.</strong> Any index
-      may crawl any feed (attributed content, never sellable) — but only the
+      may crawl any feed (attributed content, never sellable), but only the
       domain-verified owner can attach their own store as the purchase rail
       for their own content.
     </div>
@@ -350,10 +350,10 @@
     <h2>Attested by anyone. Checked by everyone.</h2>
     <p class="aktp-lede">
       This is the core of the trust model. An artifact accumulates
-      <strong>attestations</strong> — signed statements about it that its
+      <strong>attestations</strong>: signed statements about it that its
       author does not control: it passed these scanners, a human reviewed it,
       an eval scored it, a bounty improvement was accepted, it works, it is
-      safe. The protocol freezes only the <em>envelope</em> — what is signed
+      safe. The protocol freezes only the <em>envelope</em>: what is signed
       and how signatures verify. <strong>Which kinds of attestation exist is
       an open vocabulary: any company can attest to any artifact under its
       own domain, no permission asked.</strong>
@@ -401,7 +401,7 @@
       <div class="aktp-card">
         <h4>Evidence anyone can produce</h4>
         <p>Functionality, security, compliance, benchmark scores, insurance
-        coverage — each attested by whoever stakes their name on it, signed
+        coverage, each attested by whoever stakes their name on it, signed
         with their key, bound to a content hash.</p>
       </div>
       <div class="aktp-card">
@@ -414,7 +414,7 @@
         <h4>No blessed authority</h4>
         <p>There is no single score and no central gatekeeper of truth. A
         network that taxed or licensed its attestors would depend on its
-        owner — which contradicts the thesis.</p>
+        owner, which contradicts the thesis.</p>
       </div>
     </div>
   </section>
@@ -425,15 +425,15 @@
     <div>
       <div class="aktp-layer aktp-layer--protocol">
         <b>format + evidence = protocol</b>
-        <span>global, open — feeds, manifests, hashes, attestations, credentials</span>
+        <span>global, open: feeds, manifests, hashes, attestations, credentials</span>
       </div>
       <div class="aktp-layer aktp-layer--node">
         <b>service + money = node-local</b>
-        <span>each node, its own rails — checkout, escrow, payout</span>
+        <span>each node, its own rails: checkout, escrow, payout</span>
       </div>
       <div class="aktp-layer aktp-layer--namespace">
         <b>vocabulary = namespace</b>
-        <span>permissionless — owning a domain is owning a namespace</span>
+        <span>permissionless: owning a domain is owning a namespace</span>
       </div>
     </div>
     <p class="aktp-lede" style="margin-top:20px">
@@ -457,7 +457,7 @@
     <p class="aktp-lede">
       AKTP sells <strong>access</strong>, so it needs one object most open
       protocols never defined: the <strong>signed entitlement
-      credential</strong> — a proof of purchase that any node or client can
+      credential</strong>: a proof of purchase that any node or client can
       verify offline, and that belongs to the buyer, not to the marketplace.
     </p>
     <figure class="aktp-fig">
@@ -478,7 +478,7 @@
         <rect x="290" y="40" width="240" height="100" rx="2" fill="none" stroke="var(--rule-strong)"/>
         <text x="410" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="var(--fg)">2 · Possession</text>
         <text x="410" y="92" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the credential travels with</text>
-        <text x="410" y="108" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the buyer — in their client,</text>
+        <text x="410" y="108" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">the buyer: in their client,</text>
         <text x="410" y="124" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">never on the seller's server</text>
 
         <line x1="532" y1="90" x2="556" y2="90" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#aktp-arr-e)"/>
@@ -490,11 +490,11 @@
         <text x="680" y="124" text-anchor="middle" font-size="10.5" fill="var(--fg-dim)">and checks the signature</text>
 
         <rect x="20" y="164" width="780" height="72" rx="2" fill="none" stroke="var(--rule-strong)"/>
-        <text x="40" y="188" font-size="12" font-weight="700" fill="var(--fg)">Degradation chain — the purchase survives node death:</text>
+        <text x="40" y="188" font-size="12" font-weight="700" fill="var(--fg)">Degradation chain (the purchase survives node death):</text>
         <text x="40" y="208" font-size="10.5" class="mono" fill="var(--fg-dim)">valid credential → serve · none at hand → ask the origin node</text>
         <text x="40" y="224" font-size="10.5" class="mono" fill="var(--fg-dim)">origin dead → verify against its archived key + serve from any hash-matching mirror</text>
       </svg>
-      <figcaption>Refunds emit revocations on the node's event stream; buyers never present their own revocations. A public purchase graph is not acceptable by default — the credential travels with the buyer, never in a firehose.</figcaption>
+      <figcaption>Refunds emit revocations on the node's event stream; buyers never present their own revocations. A public purchase graph is not acceptable by default; the credential travels with the buyer, never in a firehose.</figcaption>
     </figure>
   </section>
 
@@ -505,7 +505,7 @@
       Without the improvement loop, AKTP would be just a decentralized
       marketplace. The point of the network is different: <strong>every
       accepted improvement becomes the whole network's new starting
-      point</strong> — whoever joins today starts at today's level, never
+      point</strong>: whoever joins today starts at today's level, never
       from zero.
     </p>
     <figure class="aktp-fig">
@@ -542,9 +542,9 @@
         <path d="M623 59 Q 670 62 706 92" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
         <path d="M700 162 Q 620 199 509 199" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
         <path d="M311 199 Q 210 200 108 162" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#aktp-arr-l)"/>
-        <text x="410" y="250" text-anchor="middle" font-size="11" fill="var(--fg-dim)">whoever arrives tomorrow starts from here — and the cycle repeats</text>
+        <text x="410" y="250" text-anchor="middle" font-size="11" fill="var(--fg-dim)">whoever arrives tomorrow starts from here, and the cycle repeats</text>
       </svg>
-      <figcaption>Bounties can never be disabled by a node — a creator chooses whether to fund them, never whether the community may open them. Divergence between original and community-improved versions is always disclosed.</figcaption>
+      <figcaption>Bounties can never be disabled by a node; a creator chooses whether to fund them, never whether the community may open them. Divergence between original and community-improved versions is always disclosed.</figcaption>
     </figure>
   </section>
 
@@ -554,27 +554,28 @@
     <table class="aktp-table">
       <tr><th>Stage</th><th>What exists</th><th>Purchase story</th></tr>
       <tr>
-        <td>v0 — indexed stores</td>
+        <td>v0 (indexed stores)</td>
         <td><code>/.well-known/aktp.json</code> + feed spec; permissionless
         crawl; domain-verified claims route sales</td>
         <td>No credential needed: purchase and consumption both happen at the
         creator's node; the index links out</td>
       </tr>
       <tr>
-        <td>v1 — signed feeds</td>
-        <td>Per-node keys, signed feeds/manifests, node registry, readable
-        attestations</td>
+        <td>v1 (signed feeds)</td>
+        <td>Per-node keys, signed feeds/manifests, node registry,
+        append-only event logs (cursor-based incremental sync; updates
+        propagate without recrawls), readable attestations</td>
         <td>Still link-out; signatures make mirroring and tampering
         detectable</td>
       </tr>
       <tr>
-        <td>v2 — portable entitlements</td>
+        <td>v2 (portable entitlements)</td>
         <td>Credentials + revocation + archived keys; agent-native settlement
         as one more adapter</td>
         <td><strong>Buy at any node, install anywhere</strong></td>
       </tr>
       <tr>
-        <td>v3 — federation</td>
+        <td>v3 (federation)</td>
         <td>Node sync, mirrors, trust levels, cross-node reads</td>
         <td>Cross-node payments stay out of the protocol, by design</td>
       </tr>
@@ -582,10 +583,10 @@
     <p class="section-caveat">
       Status today: the node-feed spec (v0) is in development in this
       repository. Logion's marketplace already runs on the protocol-ready
-      foundations — immutable versions, content hashes, portable bundles.
+      foundations: immutable versions, content hashes, portable bundles.
       Logion operates the reference index and the first client; a position
       earned operationally, never imposed by the protocol. Namespaces like
-      <code>sh.logion.*</code> are that node's own identifiers — exactly what
+      <code>sh.logion.*</code> are that node's own identifiers, exactly what
       the extension model gives every participant.
     </p>
   </section>
