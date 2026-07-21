@@ -244,6 +244,9 @@ def test_all_terminal_animations_are_viewport_triggered() -> None:
         assert "prefers-reduced-motion: reduce" in js
     assert "frames.forEach(clearFrame)" in section_js
     assert "typeInto" in section_js
+    assert "scheduleAdvance" in section_js
+    assert "activate((index + 1) % tabs.length)" in section_js
+    assert "clearAdvance" in section_js
 
 
 def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:

@@ -408,6 +408,14 @@ def test_homepage_explains_agent_native_ranking_signals() -> None:
     assert "Anthropic or NVIDIA" in text
 
 
+def test_homepage_examples_form_continuous_bundle_stories() -> None:
+    text = client.get("/").text
+    assert "pr-review-pro v1.3.0" in text
+    assert "improved from v1.2.0 via accepted 800-credit bounty" in text
+    assert "migration-playbook v1.0.2 publication was rejected" in text
+    assert "capabilities validate --bundle-dir ./migration-playbook" in text
+
+
 def test_homepage_renders_agent_acquisition_demo() -> None:
     text = client.get("/").text
     assert "data-section-demo" in text
@@ -442,7 +450,7 @@ def test_homepage_demo_is_an_agent_conversation() -> None:
 def test_homepage_renders_security_authority_section() -> None:
     text = client.get("/").text
     assert "Security is the authority" in text
-    assert "Your frontend-design version was rejected" in text
+    assert "Your migration-playbook v1.0.2 publication was rejected" in text
     assert "logion courses feedback" in text
     assert "logion courses publication request" in text
     assert "course/capabilities.yaml" in text

@@ -27,7 +27,24 @@
     let activeIndex = 0;
     let visible = false;
     let runToken = 0;
+    let advanceTimer = null;
     const completed = new Set();
+
+    function clearAdvance() {
+      if (advanceTimer !== null) {
+        clearTimeout(advanceTimer);
+        advanceTimer = null;
+      }
+    }
+
+    function scheduleAdvance(index, delay = 3200) {
+      clearAdvance();
+      if (tabs.length < 2 || !visible) return;
+      advanceTimer = setTimeout(() => {
+        advanceTimer = null;
+        if (visible) activate((index + 1) % tabs.length);
+      }, delay);
+    }
 
     function turnOf(segment) {
       return segment.el.closest(".hero-demo__turn");
@@ -66,11 +83,13 @@
 
     async function play(index) {
       const frame = frames[index];
+      clearAdvance();
       runToken += 1;
       const token = runToken;
 
       if (reducedMotion || completed.has(frame.panel)) {
         renderStatic(frame);
+        if (!reducedMotion) scheduleAdvance(index, 4200);
         return;
       }
 
@@ -84,6 +103,7 @@
         await sleep(260);
       }
       completed.add(frame.panel);
+      scheduleAdvance(index);
     }
 
     function activate(index, animate = true) {
@@ -135,14 +155,20 @@
       ([entry]) => {
         visible = entry.isIntersecting;
         if (visible) play(activeIndex);
-        else runToken += 1;
+        else {
+          runToken += 1;
+          clearAdvance();
+        }
       },
       { rootMargin: "-10% 0px -10%", threshold: 0 },
     );
     observer.observe(root);
 
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) runToken += 1;
+      if (document.hidden) {
+        runToken += 1;
+        clearAdvance();
+      }
       else if (visible) play(activeIndex);
     });
   });
