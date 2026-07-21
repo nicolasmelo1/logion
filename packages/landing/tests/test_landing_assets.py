@@ -258,10 +258,12 @@ def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:
     agent_block = blocks(".hero-demo__who--agent")
     prompt_block = blocks(".hero-demo__who--run")
     output_block = blocks(".hero-demo__turn--out .hero-demo__seg")
+    command_block = blocks(".hero-demo__turn--run .hero-demo__seg")
     assert "color: var(--accent-bright)" in user_block
     assert "color: var(--fg-dim)" in agent_block
     assert "color: var(--accent-bright)" in prompt_block
     assert "color: var(--muted)" in output_block
+    assert "color: var(--fg-dim)" in command_block
     assert "background:" not in agent_block
     assert "background:" not in prompt_block
     assert "background:" not in output_block

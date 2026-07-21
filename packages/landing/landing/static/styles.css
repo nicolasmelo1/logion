@@ -1643,7 +1643,7 @@ pre code {
 }
 
 .hero-demo__turn--run .hero-demo__seg {
-  color: var(--fg);
+  color: var(--fg-dim);
 }
 
 .hero-demo__cursor {
