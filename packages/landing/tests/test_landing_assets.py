@@ -80,7 +80,7 @@ def test_base_template_has_no_external_preconnect() -> None:
         )
 
 
-def test_styles_make_section_titles_serif_italic_only() -> None:
+def test_styles_use_a_deliberate_two_family_heading_scale() -> None:
     text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
     section_title_block = text.split(".content-section h2 {", maxsplit=1)[
         1
@@ -92,9 +92,17 @@ def test_styles_make_section_titles_serif_italic_only() -> None:
     assert "--serif:" in text
     assert "Times New Roman" in text
     assert "font-family: var(--serif)" in section_title_block
-    assert "font-style: italic" in section_title_block
+    assert "font-style: normal" in section_title_block
     assert "font-family: var(--mono)" in hero_title_block
     assert "font-style: italic" not in hero_title_block
+
+
+def test_styles_make_product_examples_responsive() -> None:
+    text = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".product-example {" in text
+    assert ".product-example__header {" in text
+    assert ".product-example dl {" in text
+    assert "grid-template-columns: 1fr" in text
 
 
 def test_primary_copy_command_does_not_truncate() -> None:
@@ -207,6 +215,99 @@ def test_section_stacking_is_wired() -> None:
     assert "initSmoothWheel" in js
     assert "if (reduced.matches || coarse.matches) return;" in js
     assert "if (e.ctrlKey || e.defaultPrevented) return;" in js
+    assert 'e.target.closest(".hero-demo__body")' in js
+
+
+def test_hero_terminal_has_a_desktop_sticky_scroll_runway() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".hero-demo-col {" in css
+    assert "padding-bottom: 28vh" in css
+    assert "position: sticky" in css
+    assert "top: 24px" in css
+    assert "margin-top: -110px" in css
+    assert ".content-section--split .content-section__aside" in css
+    assert "margin-top: -58px" in css
+
+
+def test_section_demo_tabs_are_accessible() -> None:
+    js = (STATIC_DIR / "section-demo.js").read_text(encoding="utf-8")
+    assert "data-section-demo" in js
+    assert 'setAttribute("aria-selected"' in js
+    assert 'setAttribute("aria-hidden"' in js
+    assert 'event.key === "ArrowRight"' in js
+    assert 'event.key === "ArrowLeft"' in js
+    assert "tabIndex" in js
+
+
+def test_all_terminal_animations_are_viewport_triggered() -> None:
+    hero_js = (STATIC_DIR / "terminal-demo.js").read_text(encoding="utf-8")
+    section_js = (STATIC_DIR / "section-demo.js").read_text(encoding="utf-8")
+    for js in (hero_js, section_js):
+        assert "IntersectionObserver" in js
+        assert "entry.isIntersecting" in js
+        assert "prefers-reduced-motion: reduce" in js
+        assert "followOutput" in js
+        assert "body.scrollTop = body.scrollHeight" in js
+        assert "resetScroll" in js
+        assert "body.scrollTop = 0" in js
+    assert "frames.forEach(clearFrame)" in section_js
+    assert "typeInto" in section_js
+    assert "scheduleAdvance" in section_js
+    assert "activate((index + 1) % tabs.length)" in section_js
+    assert "clearAdvance" in section_js
+    assert "selectManually" in section_js
+    assert "renderStatic(frames[index])" in section_js
+    assert "scheduleAdvance(index, 5500)" in section_js
+    assert "completed" not in section_js
+
+
+def test_terminal_bodies_use_a_compact_internal_scroller() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    match = re.search(r"(?m)^\.hero-demo__body \{([^}]+)\}", css)
+    assert match is not None
+    body_block = match.group(1)
+    assert "flex: 0 0 300px" in body_block
+    assert "height: 300px" in body_block
+    assert "overflow-y: auto" in body_block
+    assert "overscroll-behavior: contain" in body_block
+    assert "touch-action: pan-y" in body_block
+    assert "scrollbar-gutter: stable" in body_block
+
+
+def test_longer_conversation_terminals_have_more_room() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".section-demo--what .hero-demo__body" in css
+    assert ".section-demo--agent-flow .hero-demo__body" in css
+    assert "height: 380px" in css
+
+
+def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+
+    def blocks(selector: str) -> str:
+        return "\n".join(
+            re.findall(rf"{re.escape(selector)}\s*{{([^}}]+)}}", css)
+        )
+
+    user_block = blocks(".hero-demo__who")
+    agent_block = blocks(".hero-demo__who--agent")
+    prompt_block = blocks(".hero-demo__who--run")
+    output_block = blocks(".hero-demo__turn--out .hero-demo__seg")
+    command_block = blocks(".hero-demo__turn--run .hero-demo__seg")
+    assert "color: var(--accent-bright)" in user_block
+    assert "color: var(--fg-dim)" in agent_block
+    assert "color: var(--accent-bright)" in prompt_block
+    assert "color: var(--muted)" in output_block
+    assert "color: var(--fg-dim)" in command_block
+    assert "background:" not in agent_block
+    assert "background:" not in prompt_block
+    assert "background:" not in output_block
+    assert ".hero-demo__turn--user," in css
+    assert ".hero-demo__turn--agent {" in css
+    assert ".hero-demo__turn--run {" in css
+    assert ".hero-demo__turn--out {" in css
+    assert "background: rgba(201, 167, 106, 0.09)" in css
+    assert css.count("background: rgba(201, 167, 106, 0.09)") == 1
 
 
 def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:

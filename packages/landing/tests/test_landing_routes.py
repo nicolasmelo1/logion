@@ -24,16 +24,18 @@ def test_index_returns_200() -> None:
     assert response.status_code == 200
 
 
-def test_index_renders_hero_hook_and_signals() -> None:
-    # Guard the above-the-fold rework: the hook line and the trust-signal
-    # strip must actually render (missing YAML keys or a template refactor
-    # dropping them would otherwise pass silently).
+def test_index_renders_concise_hero_and_signals() -> None:
+    # Guard the above-the-fold hierarchy: one direct proposition, one brand
+    # anchor, and a short trust-signal strip.
     html = client.get("/").text
-    assert 'class="hero-hook"' in html
-    assert "Logion proves which improvements" in html
+    assert "<h1>AI capability, with proof.</h1>" in html
+    assert 'class="hero-hook"' not in html
+    assert html.count('class="greek"') == 1
+    assert 'class="latin"' not in html
     assert 'class="hero-signals"' in html
     assert "Open-source, auditable client" in html
-    assert "Creators keep 85%" in html
+    assert "Immutable versions" in html
+    assert 'class="hero-secondary"' in html
 
 
 def test_index_hides_setup_claiming_state() -> None:
@@ -399,15 +401,30 @@ def test_homepage_includes_marketplace_terms() -> None:
     assert "bounties" in text
 
 
-def test_homepage_renders_agent_acquisition_transcript() -> None:
+def test_homepage_explains_agent_native_ranking_signals() -> None:
     text = client.get("/").text
-    assert 'class="terminal-transcript"' in text
+    assert "popularity proxies such as stars and downloads" in text
+    assert "task completion, tool safety, and token efficiency" in text
+    assert "Anthropic or NVIDIA" in text
+
+
+def test_homepage_examples_form_continuous_bundle_stories() -> None:
+    text = client.get("/").text
+    assert "pr-review-pro v1.3.0" in text
+    assert "improved from v1.2.0 via accepted 800-credit bounty" in text
+    assert "migration-playbook v1.0.2 publication was rejected" in text
+    assert "capabilities validate --bundle-dir ./migration-playbook" in text
+
+
+def test_homepage_renders_agent_acquisition_demo() -> None:
+    text = client.get("/").text
+    assert "data-section-demo" in text
     assert "Agent acquisition flow" in text
     assert "logion listings search" in text
     assert "logion courses purchase" in text
     assert "logion skills install" in text
     assert "--install-source logion-marketplace" in text
-    assert "entitlement:" in text
+    assert "entitlement granted" in text
 
 
 def test_homepage_renders_animated_hero_demo() -> None:
@@ -433,9 +450,29 @@ def test_homepage_demo_is_an_agent_conversation() -> None:
 def test_homepage_renders_security_authority_section() -> None:
     text = client.get("/").text
     assert "Security is the authority" in text
-    assert 'class="proof-list"' in text
+    assert "Your migration-playbook v1.0.2 publication was rejected" in text
+    assert "logion courses feedback" in text
+    assert "logion courses publication request" in text
     assert "course/capabilities.yaml" in text
-    assert "immutable published versions" in text
+    assert "previous published version remains available" in text
+
+
+def test_homepage_interleaves_copy_with_agent_examples() -> None:
+    text = client.get("/").text
+    assert text.count("data-section-demo") == 6
+    assert text.count('aria-label="Scrollable terminal conversation"') == 7
+    for example in (
+        "proof // with your agent",
+        "package // frontend-design",
+        "build // new backend",
+        "review // actionable feedback",
+        "the loop // in conversation",
+        "earn // through the network",
+    ):
+        assert example in text
+    assert "/static/section-demo.js" in text
+    assert "data-section-tab=" in text
+    assert "data-section-panel=" in text
 
 
 def test_homepage_renders_open_source_trust_anchors() -> None:
@@ -821,6 +858,8 @@ def test_aktp_route_renders_protocol_page() -> None:
     assert "Agentic Knowledge Transfer Protocol" in text
     assert "/.well-known/aktp.json" in text
     assert "attestation" in text.lower()
+    assert ".content-section > .aktp-lede" in text
+    assert "max-width: none" in text
     # One inspiration mention only — no protocol-mapping deep dive.
     assert text.count("AT Protocol") == 1
 
@@ -832,10 +871,11 @@ def test_aktp_route_markdown_negotiation() -> None:
     assert "AKTP" in response.text
 
 
-def test_transcript_comments_have_no_prompt_and_get_colored() -> None:
+def test_section_demos_render_commands_with_a_distinct_prompt() -> None:
     response = client.get("/")
     assert response.status_code == 200
     text = response.text
-    assert '<span class="tl-c"># a company whose agents rely' in text
-    assert '<span class="tl-p">$</span> logion bounties create' in text
+    assert 'hero-demo__who hero-demo__who--run">$</span>' in text
+    assert "logion bounties create" in text
+    assert "logion courses report-usage" in text
     assert "$ #" not in text

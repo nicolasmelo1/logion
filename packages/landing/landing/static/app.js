@@ -715,6 +715,14 @@
     window.addEventListener(
       "wheel",
       function (e) {
+        // Terminal transcripts are independent scroll regions. Let the
+        // browser handle wheel input there instead of moving the page.
+        if (
+          e.target instanceof Element &&
+          e.target.closest(".hero-demo__body")
+        ) {
+          return;
+        }
         if (e.ctrlKey || e.defaultPrevented) return;
         e.preventDefault();
         var delta = e.deltaY;

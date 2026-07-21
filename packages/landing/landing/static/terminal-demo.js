@@ -15,6 +15,7 @@
 
   const tabs = Array.from(root.querySelectorAll(".hero-demo__tab"));
   const panels = Array.from(root.querySelectorAll(".hero-demo__panel"));
+  const body = root.querySelector(".hero-demo__body");
   if (!tabs.length || !panels.length) return;
 
   // Typing speed (ms per character) per conversation role.
@@ -41,8 +42,25 @@
 
   let runToken = 0;
   let currentIndex = 0;
+  let visible = false;
   let resumeTimer = null;
   let advanceTimer = null;
+  let scrollFrame = null;
+
+  function resetScroll() {
+    if (!body) return;
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+    scrollFrame = null;
+    body.scrollTop = 0;
+  }
+
+  function followOutput() {
+    if (!body || scrollFrame !== null) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = null;
+      body.scrollTop = body.scrollHeight;
+    });
+  }
 
   function clearTimers() {
     if (resumeTimer !== null) {
@@ -90,6 +108,7 @@
     // Park the cursor at the end of the conversation.
     const chat = frame.panel.querySelector(".hero-demo__chat");
     if (frame.cursor && chat) chat.appendChild(frame.cursor);
+    resetScroll();
   }
 
   function clearFrame(frame) {
@@ -97,6 +116,7 @@
       seg.el.textContent = "";
     });
     setTurnsHidden(frame, true);
+    resetScroll();
   }
 
   function sleep(ms) {
@@ -105,8 +125,9 @@
 
   async function typeInto(el, text, msPerChar, myToken) {
     for (let i = 0; i < text.length; i += 1) {
-      if (myToken !== runToken) return false;
+      if (myToken !== runToken || !visible) return false;
       el.textContent += text[i];
+      followOutput();
       const wait = text[i] === "\n" ? msPerChar * 5 : msPerChar;
       await sleep(wait);
     }
@@ -123,6 +144,7 @@
   }
 
   async function playFrame(idx) {
+    if (!visible) return;
     clearTimers();
     const myToken = ++runToken;
     currentIndex = idx;
@@ -132,7 +154,6 @@
 
     if (reducedMotion) {
       renderStatic(frame);
-      scheduleAdvance(idx, 7000);
       return;
     }
 
@@ -165,6 +186,7 @@
       // continues without re-typing the one the user just opened.
       resumeTimer = setTimeout(() => {
         resumeTimer = null;
+        if (!visible) return;
         const next = (idx + 1) % frames.length;
         currentIndex = next;
         playFrame(next);
@@ -176,10 +198,34 @@
     if (document.hidden) {
       runToken += 1;
       clearTimers();
-    } else {
+    } else if (visible) {
       playFrame(currentIndex);
     }
   });
 
-  playFrame(0);
+  setActive(0);
+  if (reducedMotion) {
+    frames.forEach(renderStatic);
+    return;
+  }
+  frames.forEach(clearFrame);
+
+  if (!("IntersectionObserver" in window)) {
+    visible = true;
+    playFrame(0);
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) playFrame(currentIndex);
+      else {
+        runToken += 1;
+        clearTimers();
+      }
+    },
+    { rootMargin: "-10% 0px -10%", threshold: 0 },
+  );
+  observer.observe(root);
 })();
