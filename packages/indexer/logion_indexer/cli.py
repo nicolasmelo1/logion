@@ -16,6 +16,7 @@ from .crawl import Crawler
 from .mirror import BundleArtifact
 from .models import DiscoveredSkill
 from .pipeline import build_indexing_plan
+from .progress import RunProgress
 from .pusher import Pusher, PushResult, RunStats
 from .rate_limit import RateLimiter
 from .transport import Transport
@@ -127,6 +128,7 @@ def _discover_all(
                 **kwargs,
             ):
                 result.discoveries.append(skill)
+
         except Exception as e:
             result.failures.append(
                 AdapterFailure(source.adapter, source.target, str(e))
@@ -226,50 +228,87 @@ def cmd_push(config: IndexerConfig, args: argparse.Namespace) -> int:
     return 1 if stats.partial else 0
 
 
-def cmd_run(config: IndexerConfig, args: argparse.Namespace) -> int:
+def cmd_run(  # noqa: C901 - terminal receipts share one lifecycle.
+    config: IndexerConfig, args: argparse.Namespace
+) -> int:
     """Full pipeline: crawl → enrich → validate → mirror → push → stats."""
     transport = _build_transport(config)
-    discovery = _discover_all(config, transport)
-    stats = RunStats(discovered=len(discovery.discoveries))
+    stats = RunStats()
+    pusher = None
+    progress = None
+    run_id = None
+    if not config.dry_run:
+        pusher = Pusher(transport, config.api_base_url)
+        run_id = pusher.open_run()
+        progress = RunProgress(transport, config.api_base_url, run_id, stats)
+        progress.checkpoint("discovering")
+    try:
+        discovery = _discover_all(config, transport)
+        stats.discovered = len(discovery.discoveries)
+        if progress:
+            progress.checkpoint("enriching")
 
-    plan, artifacts = build_indexing_plan(
-        discovery.discoveries,
-        transport,
-        config.api_base_url,
-        mirror=not getattr(args, "link_only", False),
-    )
-    stats.deduped = plan.total
-    stats.skipped = len(plan.skip)
-    stats.partial = plan.partial or bool(discovery.failures)
+        plan, _artifacts = build_indexing_plan(
+            discovery.discoveries,
+            transport,
+            config.api_base_url,
+            mirror=not getattr(args, "link_only", False),
+        )
+        stats.deduped = plan.total
+        stats.skipped = len(plan.skip)
+        stats.partial = plan.partial or bool(discovery.failures)
+        if progress:
+            progress.checkpoint("planning")
 
-    if config.dry_run:
-        stats.created = len(plan.create)
-        stats.updated = len(plan.update)
+        if config.dry_run:
+            stats.created = len(plan.create)
+            stats.updated = len(plan.update)
+            _print_stats(stats)
+            return 1 if stats.partial else 0
+
+        assert pusher is not None
+        if progress:
+            progress.checkpoint("pushing")
+        if plan.create:
+            result = pusher.push_batch(plan.create, run_id=run_id)
+            stats.created = result.created
+            stats.errors += result.errors
+            _print_push_errors(result, config)
+            if result.errors:
+                stats.partial = True
+            _upload_bundles(pusher, result, _artifacts)
+        if plan.update:
+            result = pusher.push_batch(plan.update, run_id=run_id)
+            stats.updated = result.updated
+            stats.errors += result.errors
+            _print_push_errors(result, config)
+            if result.errors:
+                stats.partial = True
+            _upload_bundles(pusher, result, _artifacts)
+
+        if progress:
+            progress.checkpoint("completed", status="completed")
+        pusher.close_run(stats)
         _print_stats(stats)
-        return 1 if stats.partial else 0
+        return 1 if stats.partial else 0  # noqa: TRY300 - terminal receipt is emitted above.
+    except Exception:
+        stats.partial = True
+        if progress:
+            progress.checkpoint("completed", status="failed")
+        if pusher:
+            _close_run_safely(pusher, stats)
+        raise
 
-    pusher = Pusher(transport, config.api_base_url)
-    run_id = pusher.open_run()
-    if plan.create:
-        result = pusher.push_batch(plan.create, run_id=run_id)
-        stats.created = result.created
-        stats.errors += result.errors
-        _print_push_errors(result, config)
-        if result.errors:
-            stats.partial = True
-        _upload_bundles(pusher, result, artifacts)
-    if plan.update:
-        result = pusher.push_batch(plan.update, run_id=run_id)
-        stats.updated = result.updated
-        stats.errors += result.errors
-        _print_push_errors(result, config)
-        if result.errors:
-            stats.partial = True
-        _upload_bundles(pusher, result, artifacts)
 
-    pusher.close_run(stats)
-    _print_stats(stats)
-    return 1 if stats.partial else 0
+def _close_run_safely(pusher: Pusher, stats: RunStats) -> None:
+    """Attempt terminal persistence without replacing the pipeline failure."""
+    try:
+        pusher.close_run(stats)
+    except Exception as exc:
+        print(
+            f"indexer-progress close-error: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _upload_bundles(
