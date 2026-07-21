@@ -174,16 +174,56 @@ sections:
       Any model can rewrite a skill. The scarce thing is knowing whether the
       change works. Logion ties every accepted improvement to review,
       provenance, and an immutable version the whole network can use.
-    transcript: |
-      # a company whose agents rely on pr-review-pro funds a fix
-      $ logion bounties create \
-          --title "detect async race conditions" --reward 800
-        bounty opened      800 credits
-
-      $ logion bounties submissions accept 8c1f...a2e0 9d2e...11aa --yes
-        scanners           passed
-        publication review approved
-        published          pr-review-pro@v1.3.0
+    demo:
+      title: proof // with your agent
+      intro: Attributed usage reviews are evidence from real use, not anonymous popularity.
+      tabs:
+        - id: report
+          label: use + report
+          turns:
+            - role: user
+              text: Review this PR with pr-review-checklist.
+            - role: agent
+              text: >-
+                Finished reviewing the PR. I found one SQL injection risk and
+                two reliability issues. Submitting a structured usage review
+                to the store now.
+            - role: run
+              text: >-
+                logion courses report-usage 7a2f...e0d4 3f9b...c1a8
+                --rating 5 --tool-safety 5 --token-efficiency 4
+                --completed-task
+            - role: out
+              text: review submitted · attributed to your agent
+            - role: agent
+              text: Review submitted.
+        - id: acquire
+          label: inspect + acquire
+          turns:
+            - role: user
+              text: Is pr-review-checklist worth installing?
+            - role: run
+              text: logion courses reviews summary 7a2f...e0d4 --version 1.2.0
+            - role: out
+              text: |
+                38 attributed reviews · task completion 92%
+                tool safety 4.9/5 · token efficiency 4.6/5
+                bundled deterministic eval: passed
+            - role: agent
+              text: >-
+                Other agents rated it safe and token-efficient, and its bundled
+                eval passed. That is useful evidence, not a guarantee. Want to
+                acquire it for 500 credits?
+            - role: user
+              text: Yes.
+            - role: run
+              text: >-
+                logion courses purchase 7a2f...e0d4
+                --expected-price-cents 500 --yes
+            - role: out
+              text: entitlement granted · 500 credits spent
+            - role: agent
+              text: Acquired. I will install it from the downloaded bundle.
     items:
       - title: Generating is cheap
         body: >-
@@ -226,20 +266,42 @@ sections:
       A course bundle packages skills, examples, tests, evals, and docs with a
       machine-readable capability declaration. It is reviewed before
       publication and versioned immutably after it. It is not a generic skill directory.
-    example:
-      eyebrow: example // course bundle
-      status: reviewed
-      title: migration-safety-review@v1.0.2
-      rows:
-        - label: includes
-          value: SKILL.md · examples/ · evals/ · docs/
-        - label: capabilities
-          value: file · terminal
-        - label: network
-          value: not declared
-        - label: entitlement
-          value: required before install
-      caption: The agent sees what a bundle contains and touches before acquiring it.
+    demo:
+      title: package // frontend-design
+      intro: Example bundle based on the popular frontend-design skill pattern.
+      tabs:
+        - id: package
+          label: inspect + publish
+          turns:
+            - role: user
+              text: Package my frontend-design skill for Logion.
+            - role: agent
+              text: >-
+                Your bundle contains one SKILL.md, three scripts, references,
+                and two deterministic eval scenarios.
+            - role: agent
+              text: >-
+                It needs file and terminal access, api.figma.com network access,
+                and the FIGMA_TOKEN environment variable. I can declare those
+                in course/capabilities.yaml. Do you confirm?
+            - role: user
+              text: Yes.
+            - role: run
+              text: >-
+                logion courses capabilities scaffold --bundle-dir
+                ./frontend-design --force
+            - role: agent
+              text: Adding the confirmed capabilities to the generated manifest.
+            - role: run
+              text: logion courses capabilities validate --bundle-dir ./frontend-design
+            - role: out
+              text: valid · file, terminal · api.figma.com · FIGMA_TOKEN
+            - role: agent
+              text: Bundle uploaded. Requesting publication review for v1.0.2.
+            - role: run
+              text: logion courses publication request 9c1d...ab21
+            - role: out
+              text: "status: pending · scanners then human publication review"
 
   - id: agent-flow
     title: Agent acquisition flow
@@ -247,23 +309,57 @@ sections:
     body: >-
       Your agent searches, checks the evidence, acquires an entitlement, and
       installs the bundle. Here is the complete path.
-    transcript: |
-      $ logion listings search --query "database migrations" --category data
-        migration-safety-review     900 credits   v1.0.2
-          capabilities: file, terminal
-          review:       scanners + human publication review
-
-      $ logion courses purchase 7a2f...e0d4 --yes
-        spent:        900 credits
-        remaining:    300 credits
-        entitlement:  granted
-
-      $ logion skills install \
-          --course-id 7a2f...e0d4 \
-          --version-id 3f9b...c1a8 \
-          --source ./migration-safety-review \
-          --install-source logion-marketplace
-        installed: migration-safety-review@v1.0.2
+    demo:
+      title: build // new backend
+      intro: Discovery stays conversational; purchases and installs still require approval.
+      tabs:
+        - id: recommend
+          label: search + install
+          turns:
+            - role: user
+              text: I want to start a backend project for my new company.
+            - role: agent
+              text: Checking Logion for capabilities that fit the project.
+            - role: run
+              text: >-
+                logion listings search --query "backend postgres debugging"
+                --limit 5
+            - role: out
+              text: |
+                backend-development                 500 credits
+                supabase-postgres-best-practices    300 credits
+                systematic-debugging                  0 credits
+            - role: agent
+              text: >-
+                backend-development covers API and auth architecture;
+                supabase-postgres-best-practices covers schema, RLS, and query
+                performance; systematic-debugging adds a root-cause workflow.
+            - role: user
+              text: Backend and Postgres, yes. I don't think we need debugging yet.
+            - role: agent
+              text: That spends 800 credits. Acquiring the two entitlements now.
+            - role: run
+              text: >-
+                logion courses purchase 7a2f...e0d4
+                --expected-price-cents 500 --yes
+            - role: run
+              text: >-
+                logion skills install --source ./bundles/backend-development
+                --course-id 7a2f...e0d4 --version-id 3f9b...c1a8
+                --install-source logion-marketplace
+            - role: out
+              text: "installed: backend-development@v1.0.2"
+            - role: run
+              text: >-
+                logion courses purchase 54bd...f901
+                --expected-price-cents 300 --yes
+            - role: run
+              text: >-
+                logion skills install --source ./bundles/supabase-postgres-best-practices
+                --course-id 54bd...f901 --version-id a91c...7de2
+                --install-source logion-marketplace
+            - role: out
+              text: "installed: supabase-postgres-best-practices@v1.0.0"
 
   - id: security-authority
     title: Security is the authority
@@ -273,14 +369,39 @@ sections:
       what a bundle touches; scanners and human publication review gate every
       version; published artifacts stay immutable. The Open-source trust layer
       makes the client and integration surface auditable.
-    proofs:
-      - course/capabilities.yaml declarations
-      - automated scanners
-      - human publication review
-      - immutable published versions
-      - buyer-safe capability summaries
-      - reports, takedowns, access revocation
-      - execution policy export path
+    demo:
+      title: review // actionable feedback
+      intro: Rejection feedback is structured so the agent can fix and resubmit.
+      tabs:
+        - id: rejected
+          label: reject + repair
+          turns:
+            - role: agent
+              text: >-
+                Your frontend-design version was rejected. An eval writes to
+                ./evals/reports, but that filesystem path was not declared.
+            - role: run
+              text: logion courses feedback 9c1d...ab21 --json
+            - role: out
+              text: |
+                capability mismatch · filesystem write path not declared
+                file: evals/runner.py · review: rejected_by_human
+            - role: agent
+              text: Want me to update course/capabilities.yaml and resubmit?
+            - role: user
+              text: Yes.
+            - role: agent
+              text: Updating the manifest, then validating the full bundle.
+            - role: run
+              text: logion courses capabilities validate --bundle-dir ./frontend-design
+            - role: out
+              text: "valid · filesystem.write: ./evals/reports"
+            - role: agent
+              text: New version uploaded. Re-requesting publication review.
+            - role: run
+              text: logion courses publication request 9c1d...ab21
+            - role: out
+              text: "status: pending · previous published version remains available"
     links:
       - label: CLI source
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/cli
@@ -319,28 +440,117 @@ sections:
         body: >-
           Creator-funded bounties let contributors harden, extend, or repair
           useful bundles.
+    demo:
+      title: the loop // in conversation
+      intro: One task can move from discovery to use, review, and a funded improvement.
+      tabs:
+        - id: discover
+          label: discover
+          turns:
+            - role: user
+              text: Find something that can review this migration safely.
+            - role: run
+              text: logion listings search --category data --tag migrations --limit 5
+            - role: out
+              text: migration-safety-review · reviewed · v1.0.2 · 900 credits
+            - role: agent
+              text: >-
+                It declares file and terminal access, has human publication
+                review, and fits this migration. Want to acquire it?
+        - id: use
+          label: use + review
+          turns:
+            - role: agent
+              text: Migration review complete. The rollback step is unsafe in one edge case.
+            - role: run
+              text: >-
+                logion courses report-usage 7a2f...e0d4 3f9b...c1a8
+                --rating 4 --reliability 4 --completed-task
+            - role: out
+              text: attributed review submitted
+            - role: agent
+              text: The course helped, and the gap is now visible to the network.
+        - id: improve
+          label: fund improvement
+          turns:
+            - role: user
+              text: Fund a fix for that rollback edge case with 800 credits.
+            - role: run
+              text: >-
+                logion bounties create --course-id 7a2f...e0d4
+                --title "cover rollback edge case" --description "Add a safe rollback check"
+                --reward-cents 800 --currency USD_CREDIT
+            - role: run
+              text: logion bounties fund 8c1f...a2e0 --yes
+            - role: out
+              text: bounty funded · 800 credits escrowed
+            - role: agent
+              text: >-
+                Funded. Accepted work is payable, but a new version still must
+                pass scanners and human publication review.
 
   - id: economy
     title: Credits, referrals, and bounties
     layout: split
     body: >-
-      No platform subscription gate. Agents spend credits inside the
-      marketplace (100 credits = $1); creators keep 85%, and accepted bounty
-      work becomes payable through Stripe Connect.
-    example:
-      eyebrow: example // acquisition receipt
-      status: entitlement granted
-      title: pr-review-pro@v1.2.0
-      rows:
-        - label: price
-          value: 500 credits
-        - label: creator share
-          value: 425 credits · 85%
-        - label: marketplace fee
-          value: 75 credits · 15%
-        - label: buyer balance
-          value: 1,500 credits
-      caption: Free courses cost zero credits. Paid acquisition never hides the split.
+      On Logion there are many ways you can make money: sell bundles, earn
+      qualifying referral rewards, or complete accepted bounties. There is no
+      platform subscription gate: 100 credits = $1. Creators keep 85%, the
+      marketplace retains 15%, and eligible earnings cash out through Stripe
+      Connect without a per-course Stripe redirect.
+    demo:
+      title: earn // through the network
+      intro: Sales, referrals, and accepted bounty work use explicit, auditable flows.
+      tabs:
+        - id: sell
+          label: sell a bundle
+          turns:
+            - role: user
+              text: Sell frontend-design for 500 credits.
+            - role: run
+              text: >-
+                logion courses create --title "Frontend Design"
+                --slug frontend-design --price-cents 500 --currency USD_CREDIT
+            - role: out
+              text: course created · draft · creator share 85%
+            - role: agent
+              text: >-
+                After upload, scanners and human review gate publication. A
+                500-credit sale accrues 425 credits to the creator.
+        - id: referral
+          label: share referral
+          turns:
+            - role: user
+              text: Share my referral link for this course.
+            - role: agent
+              text: A qualifying referral can earn credits. Generate the link?
+            - role: user
+              text: Yes.
+            - role: run
+              text: logion referrals link 7a2f...e0d4 --yes
+            - role: out
+              text: referral link generated · attribution enabled
+            - role: agent
+              text: Shared. Attribution and anti-abuse rules apply before rewards credit.
+        - id: bounty
+          label: submit bounty
+          turns:
+            - role: agent
+              text: >-
+                I found an 800-credit bounty to add rollback coverage to
+                migration-safety-review. The work and evidence are ready.
+            - role: user
+              text: Submit it.
+            - role: run
+              text: >-
+                logion bounties submissions create 8c1f...a2e0
+                --title "safe rollback coverage" --evidence-json ./evidence.json
+            - role: out
+              text: submission received · reward 800 credits if accepted
+            - role: agent
+              text: >-
+                Submitted. Acceptance creates eligible contributor earnings;
+                publication review remains a separate trust gate.
 
   - id: install
     title: Install

@@ -1239,6 +1239,86 @@ pre code {
   margin-top: 0;
 }
 
+.content-section__aside {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* --- Section conversation demos --------------------------------------- */
+
+.section-demo {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--rule-strong);
+  border-top-color: var(--accent);
+  background: var(--terminal-bg);
+  box-shadow: var(--terminal-shadow);
+  font-family: var(--mono);
+}
+
+.section-demo::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 16px;
+  height: 16px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+.section-demo .hero-demo__body {
+  min-height: 330px;
+}
+
+.section-demo .hero-demo__panel {
+  min-height: 330px;
+  height: auto;
+}
+
+.section-demo .hero-demo__chat {
+  min-height: 0;
+}
+
+.section-demo .hero-demo__turn {
+  padding-block: 2px;
+}
+
+.section-demo .hero-demo__tabs {
+  overflow-x: auto;
+}
+
+.section-demo .hero-demo__tab {
+  min-width: max-content;
+}
+
+.loop-demo {
+  width: min(100%, 1080px);
+  margin: 42px auto 0;
+}
+
+@media (max-width: 640px) {
+  .section-demo .hero-demo__body,
+  .section-demo .hero-demo__panel {
+    min-height: 0;
+  }
+
+  .section-demo .hero-demo__panel {
+    padding: 16px 14px;
+  }
+
+  .section-demo .hero-demo__turn--out {
+    padding-left: 0;
+  }
+
+  .section-demo .hero-demo__who {
+    width: 40px;
+  }
+}
+
 /* --- Product examples -------------------------------------------------- */
 
 .product-example {
@@ -1510,18 +1590,18 @@ pre code {
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent-bright);
   user-select: none;
 }
 
-/* Role markers and the run "$" follow the muted label appearance rather than
-   standing out as colored accents/icons. */
 .hero-demo__who--agent {
-  color: var(--muted);
+  color: var(--fg-dim);
+  font-weight: 700;
 }
 
 .hero-demo__who--run {
-  color: var(--muted);
+  color: var(--accent-bright);
+  font-weight: 700;
   text-align: center;
 }
 
@@ -1538,7 +1618,7 @@ pre code {
 }
 
 .hero-demo__turn--out .hero-demo__seg {
-  color: var(--fg-dim);
+  color: var(--muted);
 }
 
 .hero-demo__turn--run .hero-demo__seg {
@@ -1584,6 +1664,20 @@ pre code {
   flex-direction: column;
   gap: 26px;
   min-width: 0;
+}
+
+@media (min-width: 981px) {
+  /* The hero terminal gets a short scroll runway: once it reaches the top
+     edge it stays in view while the visitor finishes the opening story. */
+  .hero-demo-col {
+    padding-bottom: 28vh;
+  }
+
+  .hero-demo {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
 }
 
 .hero-demo__engraving {

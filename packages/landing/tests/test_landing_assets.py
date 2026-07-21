@@ -217,6 +217,53 @@ def test_section_stacking_is_wired() -> None:
     assert "if (e.ctrlKey || e.defaultPrevented) return;" in js
 
 
+def test_hero_terminal_has_a_desktop_sticky_scroll_runway() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".hero-demo-col {" in css
+    assert "padding-bottom: 28vh" in css
+    assert "position: sticky" in css
+    assert "top: 24px" in css
+
+
+def test_section_demo_tabs_are_accessible() -> None:
+    js = (STATIC_DIR / "section-demo.js").read_text(encoding="utf-8")
+    assert "data-section-demo" in js
+    assert 'setAttribute("aria-selected"' in js
+    assert 'setAttribute("aria-hidden"' in js
+    assert 'event.key === "ArrowRight"' in js
+    assert 'event.key === "ArrowLeft"' in js
+    assert "tabIndex" in js
+
+
+def test_all_terminal_animations_are_viewport_triggered() -> None:
+    hero_js = (STATIC_DIR / "terminal-demo.js").read_text(encoding="utf-8")
+    section_js = (STATIC_DIR / "section-demo.js").read_text(encoding="utf-8")
+    for js in (hero_js, section_js):
+        assert "IntersectionObserver" in js
+        assert "entry.isIntersecting" in js
+        assert "prefers-reduced-motion: reduce" in js
+    assert "frames.forEach(clearFrame)" in section_js
+    assert "typeInto" in section_js
+
+
+def test_terminal_roles_use_distinct_accent_and_muted_colors() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+
+    def blocks(selector: str) -> str:
+        return "\n".join(
+            re.findall(rf"{re.escape(selector)}\s*{{([^}}]+)}}", css)
+        )
+
+    user_block = blocks(".hero-demo__who")
+    agent_block = blocks(".hero-demo__who--agent")
+    prompt_block = blocks(".hero-demo__who--run")
+    output_block = blocks(".hero-demo__turn--out .hero-demo__seg")
+    assert "color: var(--accent-bright)" in user_block
+    assert "color: var(--fg-dim)" in agent_block
+    assert "color: var(--accent-bright)" in prompt_block
+    assert "color: var(--muted)" in output_block
+
+
 def test_app_js_has_mobile_and_reduced_motion_low_cost_paths() -> None:
     # Perf contract for mobile Firefox (issue #174): coarse pointers get a
     # capped frame budget and lower scene density; reduced motion renders a

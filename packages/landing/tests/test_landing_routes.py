@@ -401,15 +401,15 @@ def test_homepage_includes_marketplace_terms() -> None:
     assert "bounties" in text
 
 
-def test_homepage_renders_agent_acquisition_transcript() -> None:
+def test_homepage_renders_agent_acquisition_demo() -> None:
     text = client.get("/").text
-    assert 'class="terminal-transcript"' in text
+    assert "data-section-demo" in text
     assert "Agent acquisition flow" in text
     assert "logion listings search" in text
     assert "logion courses purchase" in text
     assert "logion skills install" in text
     assert "--install-source logion-marketplace" in text
-    assert "entitlement:" in text
+    assert "entitlement granted" in text
 
 
 def test_homepage_renders_animated_hero_demo() -> None:
@@ -435,22 +435,28 @@ def test_homepage_demo_is_an_agent_conversation() -> None:
 def test_homepage_renders_security_authority_section() -> None:
     text = client.get("/").text
     assert "Security is the authority" in text
-    assert 'class="proof-list"' in text
+    assert "Your frontend-design version was rejected" in text
+    assert "logion courses feedback" in text
+    assert "logion courses publication request" in text
     assert "course/capabilities.yaml" in text
-    assert "immutable published versions" in text
+    assert "previous published version remains available" in text
 
 
-def test_homepage_interleaves_copy_with_product_examples() -> None:
+def test_homepage_interleaves_copy_with_agent_examples() -> None:
     text = client.get("/").text
-    assert text.count('class="product-example"') == 3
+    assert text.count('class="section-demo"') == 6
     for example in (
-        "creator record",
-        "course bundle",
-        "acquisition receipt",
+        "proof // with your agent",
+        "package // frontend-design",
+        "build // new backend",
+        "review // actionable feedback",
+        "the loop // in conversation",
+        "earn // through the network",
     ):
         assert example in text
-    assert "Ownership, version history" in text
-    assert "entitlement granted" in text
+    assert "/static/section-demo.js" in text
+    assert "data-section-tab=" in text
+    assert "data-section-panel=" in text
 
 
 def test_homepage_renders_open_source_trust_anchors() -> None:
@@ -847,10 +853,11 @@ def test_aktp_route_markdown_negotiation() -> None:
     assert "AKTP" in response.text
 
 
-def test_transcript_comments_have_no_prompt_and_get_colored() -> None:
+def test_section_demos_render_commands_with_a_distinct_prompt() -> None:
     response = client.get("/")
     assert response.status_code == 200
     text = response.text
-    assert '<span class="tl-c"># a company whose agents rely' in text
-    assert '<span class="tl-p">$</span> logion bounties create' in text
+    assert 'hero-demo__who hero-demo__who--run">$</span>' in text
+    assert "logion bounties create" in text
+    assert "logion courses report-usage" in text
     assert "$ #" not in text

@@ -41,6 +41,7 @@
 
   let runToken = 0;
   let currentIndex = 0;
+  let visible = false;
   let resumeTimer = null;
   let advanceTimer = null;
 
@@ -105,7 +106,7 @@
 
   async function typeInto(el, text, msPerChar, myToken) {
     for (let i = 0; i < text.length; i += 1) {
-      if (myToken !== runToken) return false;
+      if (myToken !== runToken || !visible) return false;
       el.textContent += text[i];
       const wait = text[i] === "\n" ? msPerChar * 5 : msPerChar;
       await sleep(wait);
@@ -123,6 +124,7 @@
   }
 
   async function playFrame(idx) {
+    if (!visible) return;
     clearTimers();
     const myToken = ++runToken;
     currentIndex = idx;
@@ -132,7 +134,6 @@
 
     if (reducedMotion) {
       renderStatic(frame);
-      scheduleAdvance(idx, 7000);
       return;
     }
 
@@ -165,6 +166,7 @@
       // continues without re-typing the one the user just opened.
       resumeTimer = setTimeout(() => {
         resumeTimer = null;
+        if (!visible) return;
         const next = (idx + 1) % frames.length;
         currentIndex = next;
         playFrame(next);
@@ -176,10 +178,34 @@
     if (document.hidden) {
       runToken += 1;
       clearTimers();
-    } else {
+    } else if (visible) {
       playFrame(currentIndex);
     }
   });
 
-  playFrame(0);
+  setActive(0);
+  if (reducedMotion) {
+    frames.forEach(renderStatic);
+    return;
+  }
+  frames.forEach(clearFrame);
+
+  if (!("IntersectionObserver" in window)) {
+    visible = true;
+    playFrame(0);
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) playFrame(currentIndex);
+      else {
+        runToken += 1;
+        clearTimers();
+      }
+    },
+    { rootMargin: "-10% 0px -10%", threshold: 0 },
+  );
+  observer.observe(root);
 })();
