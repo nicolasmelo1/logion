@@ -1,22 +1,11 @@
-"""Enrichment: attach inferred maps to hub discoveries.
-
-Hub adapters (clawhub, skills.sh, browse.sh, hermes, skills-lock)
-resolve a listing to a GitHub identity but do not run inference, so they
-emit ``inferred_map=None``.  This stage makes every such discovery behave
-exactly like ``github_direct``: it fetches repo metadata and runs
-``logion_skillmap.infer()`` via the shared, sha-cached
-:class:`GithubSource`, expanding the repo into one item per canonical
-skillmap component and unioning the hub's discovery channels onto each.
-
-Discoveries that already carry a map (``github_direct``) pass through
-untouched.  Repos with no fetchable GitHub source, or that yield zero
-components, are dropped with a recorded skip reason.
-"""
+"""Enrichment: attach inferred maps to hub discoveries."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
 from http.client import RemoteDisconnected
+from itertools import repeat
 from urllib.error import URLError
 
 from .github_source import GithubSource, InferredSkill
@@ -30,67 +19,58 @@ SKIP_GITHUB_NETWORK_ERROR = "github_network_error"
 def enrich_discoveries(
     discoveries: Iterable[DiscoveredSkill],
     source: GithubSource,
+    *,
+    workers: int = 4,
 ) -> tuple[list[DiscoveredSkill], list[dict]]:
-    """Attach inferred maps to map-less discoveries.
+    """Attach inferred maps concurrently while preserving input order.
 
-    Returns ``(items, skips)`` where *items* is the pass-through
-    already-mapped discoveries plus the per-component expansions of the
-    map-less ones, and *skips* records dropped repos with reasons.
+    Each repository enrichment is independent. Results are consumed in input
+    order so plans and diagnostics stay deterministic despite network timing.
     """
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
+        results = list(executor.map(_enrich_one, discoveries, repeat(source)))
+
     items: list[DiscoveredSkill] = []
     skips: list[dict] = []
-
-    for disc in discoveries:
-        if disc.inferred_map is not None:
-            items.append(disc)
-            continue
-
-        canonical = disc.canonical
-        owner, repo = canonical.owner, canonical.repo
-        try:
-            sha = source.fetch_head_sha(owner, repo)
-        except (RemoteDisconnected, URLError, TimeoutError):
-            skips.append({
-                "canonical": str(canonical),
-                "reason": SKIP_GITHUB_NETWORK_ERROR,
-            })
-            continue
-        if not sha:
-            skips.append({
-                "canonical": str(canonical),
-                "reason": SKIP_NO_GITHUB_SOURCE,
-            })
-            continue
-
-        try:
-            license_spdx = source.fetch_license(owner, repo)
-            _, skills = source.infer_skills(
-                owner, repo, sha=sha, subpath=canonical.subpath
-            )
-        except (RemoteDisconnected, URLError, TimeoutError):
-            skips.append({
-                "canonical": str(canonical),
-                "reason": SKIP_GITHUB_NETWORK_ERROR,
-            })
-            continue
-        if not skills:
-            skips.append({
-                "canonical": str(canonical),
-                "reason": SKIP_NO_COMPONENTS,
-            })
-            continue
-
-        for skill in skills:
-            items.append(
-                _expand(
-                    disc,
-                    skill,
-                    license_spdx=license_spdx,
-                    source_commit=sha,
-                )
-            )
-
+    for result_items, result_skips in results:
+        items.extend(result_items)
+        skips.extend(result_skips)
     return items, skips
+
+
+def _enrich_one(
+    disc: DiscoveredSkill, source: GithubSource
+) -> tuple[list[DiscoveredSkill], list[dict]]:
+    if disc.inferred_map is not None:
+        return [disc], []
+
+    canonical = disc.canonical
+    owner, repo = canonical.owner, canonical.repo
+    try:
+        sha = source.fetch_head_sha(owner, repo)
+    except (RemoteDisconnected, URLError, TimeoutError):
+        return [], [_skip(canonical, SKIP_GITHUB_NETWORK_ERROR)]
+    if not sha:
+        return [], [_skip(canonical, SKIP_NO_GITHUB_SOURCE)]
+
+    try:
+        license_spdx = source.fetch_license(owner, repo)
+        _, skills = source.infer_skills(
+            owner, repo, sha=sha, subpath=canonical.subpath
+        )
+    except (RemoteDisconnected, URLError, TimeoutError):
+        return [], [_skip(canonical, SKIP_GITHUB_NETWORK_ERROR)]
+    if not skills:
+        return [], [_skip(canonical, SKIP_NO_COMPONENTS)]
+
+    return [
+        _expand(disc, skill, license_spdx=license_spdx, source_commit=sha)
+        for skill in skills
+    ], []
+
+
+def _skip(canonical, reason: str) -> dict:
+    return {"canonical": str(canonical), "reason": reason}
 
 
 def _expand(
@@ -100,13 +80,7 @@ def _expand(
     license_spdx: str | None,
     source_commit: str,
 ) -> DiscoveredSkill:
-    """Build one per-component item from a hub discovery + inferred skill.
-
-    Title/summary come from SKILL.md frontmatter (carried on the inferred
-    skill); the hub's text is used only as a fallback.  The
-    ``skillmap_frontmatter_missing`` flag, when relevant, is already among
-    ``skill.map_flags``.  The hub's discovery channels are preserved.
-    """
+    """Build one per-component item from a hub discovery + inferred skill."""
     channels: tuple[DiscoveryChannel, ...] = disc.channels or (
         DiscoveryChannel(
             hub_slug="github",
