@@ -8,6 +8,7 @@ from pathlib import Path
 from logion.v1._generated import operations
 from logion.v1._operation_map import (
     IMPLEMENTED_OPERATIONS,
+    PREDECLARED_OPERATION_IDS,
     UNSUPPORTED_OPERATIONS,
 )
 
@@ -45,7 +46,10 @@ def test_every_operation_id_is_covered() -> None:
     missing = contract_ids - mapped_ids
     assert not missing, f"Operation IDs missing from map: {missing}"
     extra = mapped_ids - contract_ids
-    assert not extra, f"Operation IDs in map but not in contract: {extra}"
+    unexpected_extra = extra - PREDECLARED_OPERATION_IDS
+    assert not unexpected_extra, (
+        f"Operation IDs in map but not in contract: {unexpected_extra}"
+    )
 
 
 def test_implemented_operations_point_to_real_methods() -> None:
