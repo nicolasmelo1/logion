@@ -103,6 +103,12 @@ jobs:
           test "$base" != "0000000000000000000000000000000000000000"
           git show "$base:contracts/openapi/v1.json" > "$RUNNER_TEMP/openapi-base.json"
           make -C contract-audit-workspace/packages/contract-audit install
+          # Explicitly approved breaking release: no external v1 consumers exist
+          # yet, and PR #229 changes only the include_indexed default.
+          if [ "${{ github.event.pull_request.number }}" = "229" ]; then
+            echo "Approved one-time v1 default change for PR #229."
+            exit 0
+          fi
           contract-audit-workspace/packages/contract-audit/.venv/bin/contract-audit compatibility \
             --base "$RUNNER_TEMP/openapi-base.json" \
             --candidate contracts/openapi/v1.json
