@@ -487,6 +487,7 @@ def test_homepage_renders_open_source_trust_anchors() -> None:
         "release manifests",
     ):
         assert anchor in text, anchor
+    assert 'href="https://api.logion.sh/docs"' in text
 
 
 def test_homepage_does_not_render_redundant_checklist_sections() -> None:
@@ -624,6 +625,13 @@ def test_referrals_route_renders_clawback_and_self_referral_rule() -> None:
     assert "Self-referrals are prohibited" in text
     assert "clawed back" in text
     assert "Credits Terms" in text
+
+
+def test_legal_pages_render_in_the_full_width_article() -> None:
+    for path in ("/terms", "/privacy", "/credits-terms", "/referrals-terms"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert '<article class="legal">' in response.text, path
 
 
 def test_referral_landing_renders_install_command_with_code() -> None:

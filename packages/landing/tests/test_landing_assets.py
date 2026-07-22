@@ -216,6 +216,7 @@ def test_section_stacking_is_wired() -> None:
     assert "if (reduced.matches || coarse.matches) return;" in js
     assert "if (e.ctrlKey || e.defaultPrevented) return;" in js
     assert 'e.target.closest(".hero-demo__body")' in js
+    assert "canScroll(terminal, delta)" in js
 
 
 def test_hero_terminal_has_a_desktop_sticky_scroll_runway() -> None:
@@ -250,6 +251,8 @@ def test_all_terminal_animations_are_viewport_triggered() -> None:
         assert "body.scrollTop = body.scrollHeight" in js
         assert "resetScroll" in js
         assert "body.scrollTop = 0" in js
+        assert "autoFollow = false" in js
+        assert "if (!body || !autoFollow" in js
     assert "frames.forEach(clearFrame)" in section_js
     assert "typeInto" in section_js
     assert "scheduleAdvance" in section_js
@@ -269,9 +272,32 @@ def test_terminal_bodies_use_a_compact_internal_scroller() -> None:
     assert "flex: 0 0 300px" in body_block
     assert "height: 300px" in body_block
     assert "overflow-y: auto" in body_block
-    assert "overscroll-behavior: contain" in body_block
+    assert "overscroll-behavior-y: auto" in body_block
+    assert "overscroll-behavior: contain" not in body_block
     assert "touch-action: pan-y" in body_block
     assert "scrollbar-gutter: stable" in body_block
+
+
+def test_lightning_uses_theme_aware_brand_yellow() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "--bolt: #f5c84c" in css
+    assert "--bolt: #a87612" in css
+    assert 'readThemeToken("--bolt", BOLT_FALLBACK)' in js
+    assert "BOLT_OPACITY = 0.55" in js
+    assert js.count("* BOLT_OPACITY") == 2
+    assert 'lightScheme.addEventListener("change"' in js
+    assert "#aed7ff" not in js
+
+
+def test_legal_content_uses_the_full_page_width() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    match = re.search(r"(?m)^\.legal \{([^}]+)\}", css)
+    assert match is not None
+    legal_block = match.group(1)
+    assert "width: 100%" in legal_block
+    assert "max-width: none" in legal_block
+    assert "max-width: 720px" not in legal_block
 
 
 def test_longer_conversation_terminals_have_more_room() -> None:

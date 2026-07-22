@@ -72,7 +72,7 @@ html {
   --rule-strong: #2b333d;
   --accent: #c9a76a; /* aged-bronze */
   --accent-bright: #f5d68a;
-  --bolt: #aed7ff;
+  --bolt: #f5c84c;
   --panel: rgba(12, 16, 22, 0.72);
   --panel-edge: rgba(201, 167, 106, 0.32);
   --terminal-bg: rgba(7, 10, 14, 0.85);
@@ -96,7 +96,7 @@ html {
     --rule-strong: #b7ad94;
     --accent: #8a6a2b;
     --accent-bright: #5a4517;
-    --bolt: #1f4a80;
+    --bolt: #a87612;
     --panel: rgba(255, 252, 244, 0.85);
     --panel-edge: rgba(138, 106, 43, 0.32);
     --terminal-bg: rgba(255, 252, 244, 0.94);
@@ -862,7 +862,8 @@ pre code {
 /* --- Legal pages -------------------------------------------------------- */
 
 .legal {
-  max-width: 720px;
+  width: 100%;
+  max-width: none;
   color: var(--fg);
 }
 
@@ -1561,7 +1562,7 @@ pre code {
   min-height: 300px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
   touch-action: pan-y;
   scrollbar-color: var(--rule-strong) transparent;
   scrollbar-gutter: stable;

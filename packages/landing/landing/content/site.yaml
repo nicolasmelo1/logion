@@ -427,7 +427,7 @@ sections:
       - label: agent companion SKILL.md
         href: https://github.com/nicolasmelo1/logion/tree/main/packages/agent-companion
       - label: public OpenAPI contract
-        href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
+        href: https://api.logion.sh/docs
       - label: release manifests
         href: https://github.com/nicolasmelo1/logion/tree/main/releases
     caveat: >-
@@ -730,13 +730,13 @@ design:
       fg: "#e9eef5"
       accent: "#c9a76a"
       accent_bright: "#f5d68a"
-      bolt: "#aed7ff"
+      bolt: "#f5c84c"
     light:
       bg: "#f5f2e9"
       fg: "#15171a"
       accent: "#8a6a2b"
       accent_bright: "#5a4517"
-      bolt: "#1f4a80"
+      bolt: "#a87612"
     logo_seal: "#c9a76a"
   type:
     mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
