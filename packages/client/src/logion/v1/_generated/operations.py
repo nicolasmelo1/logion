@@ -8,6 +8,8 @@ from uuid import UUID
 from logion._http import HttpClient
 from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
+    AcceptPlatformBountySubmissionRequest,
+    AcceptPlatformBountySubmissionResponse,
     AddAgentToUserRequest,
     AddAgentToUserResponse,
     ApproveHumanReviewRequest,
@@ -37,6 +39,8 @@ from logion.v1._types.generated.v1 import (
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
     CreateIndexedBundleUploadResponse,
+    CreatePlatformBountyRequest,
+    CreatePlatformBountyResponse,
     CreateReportRequest,
     CreateReportResponse,
     CreateUserWithAgentRequest,
@@ -48,6 +52,7 @@ from logion.v1._types.generated.v1 import (
     DismissReportRequest,
     DismissReportResponse,
     FundBountyResponse,
+    FundPlatformBountyResponse,
     GetAgentDetailResponse,
     GetBountyResponse,
     GetBountySubmissionResponse,
@@ -97,6 +102,8 @@ from logion.v1._types.generated.v1 import (
     RejectBountySubmissionResponse,
     RejectHumanReviewRequest,
     RejectHumanReviewResponse,
+    RejectPlatformBountySubmissionRequest,
+    RejectPlatformBountySubmissionResponse,
     RequestCashOutRequest,
     RequestCashOutResponse,
     RequestPublicationResponse,
@@ -173,6 +180,65 @@ def suspend_agent(
         "PATCH",
         f"/v1/admin/agents/{agent_id}/suspension",
         SuspendAgentResponse,
+    )
+
+
+def create_platform_bounty(
+    http: HttpClient,
+    *,
+    body: CreatePlatformBountyRequest,
+) -> CreatePlatformBountyResponse:
+    """Call the create_platform_bounty API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/admin/bounties",
+        CreatePlatformBountyResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def fund_platform_bounty(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+) -> FundPlatformBountyResponse:
+    """Call the fund_platform_bounty API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/admin/bounties/{bounty_id}/fund",
+        FundPlatformBountyResponse,
+    )
+
+
+def accept_platform_bounty_submission(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+    submission_id: str | UUID,
+    body: AcceptPlatformBountySubmissionRequest,
+) -> AcceptPlatformBountySubmissionResponse:
+    """Call the accept_platform_bounty_submission API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/admin/bounties/{bounty_id}/submissions/{submission_id}/accept",
+        AcceptPlatformBountySubmissionResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def reject_platform_bounty_submission(
+    http: HttpClient,
+    *,
+    bounty_id: str | UUID,
+    submission_id: str | UUID,
+    body: RejectPlatformBountySubmissionRequest,
+) -> RejectPlatformBountySubmissionResponse:
+    """Call the reject_platform_bounty_submission API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/admin/bounties/{bounty_id}/submissions/{submission_id}/reject",
+        RejectPlatformBountySubmissionResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

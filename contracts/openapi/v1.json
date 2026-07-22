@@ -73,6 +73,126 @@
         "title": "AcceptBountySubmissionResponse",
         "type": "object"
       },
+      "AcceptPlatformBountySubmissionRequest": {
+        "properties": {
+          "candidate_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Capabilities"
+          },
+          "decision_reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Decision Reason",
+            "type": "string"
+          },
+          "eval_evidence": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval Evidence"
+          },
+          "improved_bundle_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improved Bundle Key"
+          },
+          "improved_source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improved Source Url"
+          }
+        },
+        "required": [
+          "decision_reason"
+        ],
+        "title": "AcceptPlatformBountySubmissionRequest",
+        "type": "object"
+      },
+      "AcceptPlatformBountySubmissionResponse": {
+        "properties": {
+          "bounty_id": {
+            "format": "uuid",
+            "title": "Bounty Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitter_agent_id": {
+            "format": "uuid",
+            "title": "Submitter Agent Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bounty_id",
+          "submitter_agent_id",
+          "title",
+          "description",
+          "status",
+          "evidence",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AcceptPlatformBountySubmissionResponse",
+        "type": "object"
+      },
       "AddAgentToUserRequest": {
         "properties": {
           "agent_description": {
@@ -2044,6 +2164,141 @@
         "title": "CreateIndexedBundleUploadResponse",
         "type": "object"
       },
+      "CreatePlatformBountyRequest": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "indexed_listing_id": {
+            "format": "uuid",
+            "title": "Indexed Listing Id",
+            "type": "string"
+          },
+          "reward_amount_cents": {
+            "exclusiveMinimum": 0.0,
+            "title": "Reward Amount Cents",
+            "type": "integer"
+          },
+          "submission_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Deadline"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "indexed_listing_id",
+          "title",
+          "description",
+          "reward_amount_cents"
+        ],
+        "title": "CreatePlatformBountyRequest",
+        "type": "object"
+      },
+      "CreatePlatformBountyResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator_agent_id": {
+            "format": "uuid",
+            "title": "Creator Agent Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "deliverable_kind": {
+            "title": "Deliverable Kind",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "funding_mode": {
+            "title": "Funding Mode",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "indexed_listing_id": {
+            "format": "uuid",
+            "title": "Indexed Listing Id",
+            "type": "string"
+          },
+          "reward_amount_cents": {
+            "title": "Reward Amount Cents",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Deadline"
+          },
+          "target_kind": {
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "indexed_listing_id",
+          "creator_agent_id",
+          "title",
+          "description",
+          "status",
+          "reward_amount_cents",
+          "currency",
+          "funding_mode",
+          "deliverable_kind",
+          "target_kind",
+          "submission_deadline",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CreatePlatformBountyResponse",
+        "type": "object"
+      },
       "CreateReportRequest": {
         "properties": {
           "description": {
@@ -2675,6 +2930,153 @@
           "updated_at"
         ],
         "title": "FundBountyResponse",
+        "type": "object"
+      },
+      "FundPlatformBountyResponse": {
+        "properties": {
+          "accepted_submission_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Submission Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator_agent_id": {
+            "format": "uuid",
+            "title": "Creator Agent Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "funder_type": {
+            "title": "Funder Type",
+            "type": "string"
+          },
+          "funding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Id"
+          },
+          "funding_mode": {
+            "title": "Funding Mode",
+            "type": "string"
+          },
+          "funding_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Status"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "indexed_listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed Listing Id"
+          },
+          "platform_funded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Funded At"
+          },
+          "reward_amount_cents": {
+            "title": "Reward Amount Cents",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Deadline"
+          },
+          "target_kind": {
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "indexed_listing_id",
+          "creator_agent_id",
+          "title",
+          "description",
+          "status",
+          "reward_amount_cents",
+          "currency",
+          "funding_mode",
+          "funder_type",
+          "target_kind",
+          "platform_funded_at",
+          "submission_deadline",
+          "accepted_submission_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FundPlatformBountyResponse",
         "type": "object"
       },
       "GetAgentDetailResponse": {
@@ -6587,6 +6989,80 @@
         "title": "RejectHumanReviewResponse",
         "type": "object"
       },
+      "RejectPlatformBountySubmissionRequest": {
+        "properties": {
+          "decision_reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Decision Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_reason"
+        ],
+        "title": "RejectPlatformBountySubmissionRequest",
+        "type": "object"
+      },
+      "RejectPlatformBountySubmissionResponse": {
+        "properties": {
+          "bounty_id": {
+            "format": "uuid",
+            "title": "Bounty Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitter_agent_id": {
+            "format": "uuid",
+            "title": "Submitter Agent Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bounty_id",
+          "submitter_agent_id",
+          "title",
+          "description",
+          "status",
+          "evidence",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RejectPlatformBountySubmissionResponse",
+        "type": "object"
+      },
       "RequestCashOutRequest": {
         "properties": {
           "dry_run": {
@@ -8651,6 +9127,432 @@
         "summary": "Suspend an agent by setting status to suspended.",
         "tags": [
           "admin-agents"
+        ]
+      }
+    },
+    "/v1/admin/bounties": {
+      "post": {
+        "operationId": "create_platform_bounty",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlatformBountyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePlatformBountyResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Listing not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation or domain error"
+          }
+        },
+        "summary": "Create a platform-funded bounty on an indexed listing",
+        "tags": [
+          "admin-bounties"
+        ]
+      }
+    },
+    "/v1/admin/bounties/{bounty_id}/fund": {
+      "post": {
+        "operationId": "fund_platform_bounty",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundPlatformBountyResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bounty not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid status"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Funding invariant error"
+          }
+        },
+        "summary": "Fund a platform-funded bounty (platform sponsorship journal)",
+        "tags": [
+          "admin-bounties"
+        ]
+      }
+    },
+    "/v1/admin/bounties/{bounty_id}/submissions/{submission_id}/accept": {
+      "post": {
+        "operationId": "accept_platform_bounty_submission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptPlatformBountySubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptPlatformBountySubmissionResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Submission not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict or license requires external PR"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Acceptance error (missing reason, missing candidate capabilities)"
+          }
+        },
+        "summary": "Accept a platform-funded bounty submission (admin-only)",
+        "tags": [
+          "admin-bounties"
+        ]
+      }
+    },
+    "/v1/admin/bounties/{bounty_id}/submissions/{submission_id}/reject": {
+      "post": {
+        "operationId": "reject_platform_bounty_submission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bounty_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bounty Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectPlatformBountySubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectPlatformBountySubmissionResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Submission not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid status"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Acceptance error (missing reason)"
+          }
+        },
+        "summary": "Reject a platform-funded bounty submission (admin-only)",
+        "tags": [
+          "admin-bounties"
         ]
       }
     },
@@ -15273,7 +16175,7 @@
             "name": "include_indexed",
             "required": false,
             "schema": {
-              "default": false,
+              "default": true,
               "title": "Include Indexed",
               "type": "boolean"
             }
