@@ -30,16 +30,35 @@
     let runToken = 0;
     let advanceTimer = null;
     let scrollFrame = null;
+    let autoFollow = true;
+
+    if (body) {
+      const pauseAutoFollow = () => {
+        autoFollow = false;
+      };
+      body.addEventListener("wheel", pauseAutoFollow, { passive: true });
+      body.addEventListener("touchstart", pauseAutoFollow, { passive: true });
+      body.addEventListener(
+        "scroll",
+        () => {
+          const distanceFromEnd =
+            body.scrollHeight - body.clientHeight - body.scrollTop;
+          if (distanceFromEnd <= 2) autoFollow = true;
+        },
+        { passive: true },
+      );
+    }
 
     function resetScroll() {
       if (!body) return;
       if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
       scrollFrame = null;
+      autoFollow = true;
       body.scrollTop = 0;
     }
 
     function followOutput() {
-      if (!body || scrollFrame !== null) return;
+      if (!body || !autoFollow || scrollFrame !== null) return;
       scrollFrame = requestAnimationFrame(() => {
         scrollFrame = null;
         body.scrollTop = body.scrollHeight;

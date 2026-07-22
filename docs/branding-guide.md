@@ -98,7 +98,7 @@ Defined in the `:root` block of `styles.css`:
 --rule-strong   #2b333d
 --accent        #c9a76a   /* aged-bronze (comment in CSS) */
 --accent-bright #f5d68a
---bolt          #aed7ff
+--bolt          #f5d68a
 --focus         #aed7ff
 ```
 
@@ -113,7 +113,7 @@ Defined in the `@media (prefers-color-scheme: light)` block of `styles.css`:
 --fg-dim        #4d5460
 --accent        #8a6a2b
 --accent-bright #5a4517
---bolt          #1f4a80
+--bolt          #8a6a2b
 --focus         #1f4a80
 ```
 
@@ -203,7 +203,8 @@ with a terminal / ASCII aesthetic:
 - CRT / static effect and a terminal + ASCII aesthetic throughout.
 - The ASCII Zeus hero (`packages/landing/landing/static/ascii/zeus.txt`, driven
   by `static/ascii/hero_frames.js`).
-- Lightning bolts, expressed through the `--bolt` color token.
+- Lightning bolts, expressed through the `--bolt` color token: bright brand
+  gold in dark mode and the darker accent bronze on light backgrounds.
 
 ## Machine-readable surface (design.txt)
 

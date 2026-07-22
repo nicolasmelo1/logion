@@ -93,8 +93,21 @@
   var GLYPHS = (GREEK + "0123456789·∙+░▒▓").split("");
   var ACCENT = "#c9a76a";
   var ACCENT_BRIGHT = "#f5d68a";
-  var BOLT = "#aed7ff";
+  var BOLT = readThemeToken("--bolt", ACCENT_BRIGHT);
   var FG_DIM = "#7d8794";
+
+  function readThemeToken(name, fallback) {
+    if (!window.getComputedStyle) return fallback;
+    return (
+      window.getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim() || fallback
+    );
+  }
+
+  lightScheme.addEventListener("change", function () {
+    BOLT = readThemeToken("--bolt", ACCENT_BRIGHT);
+  });
 
   function rand(min, max) {
     return Math.random() * (max - min) + min;
@@ -700,6 +713,16 @@
       );
     }
 
+    function canScroll(element, delta) {
+      if (delta < 0) return element.scrollTop > 1;
+      if (delta > 0) {
+        return (
+          element.scrollTop + element.clientHeight < element.scrollHeight - 1
+        );
+      }
+      return false;
+    }
+
     function tick() {
       currentY += (targetY - currentY) * 0.14;
       if (Math.abs(targetY - currentY) < 0.6) {
@@ -715,18 +738,21 @@
     window.addEventListener(
       "wheel",
       function (e) {
-        // Terminal transcripts are independent scroll regions. Let the
-        // browser handle wheel input there instead of moving the page.
-        if (
-          e.target instanceof Element &&
-          e.target.closest(".hero-demo__body")
-        ) {
-          return;
-        }
         if (e.ctrlKey || e.defaultPrevented) return;
-        e.preventDefault();
         var delta = e.deltaY;
         if (e.deltaMode === 1) delta *= 16; // line mode → px
+        if (!delta) return;
+
+        // Let a terminal consume the gesture while it can scroll in that
+        // direction. At either edge, fall through to the page scroller so
+        // hovering a terminal never traps the wheel or trackpad.
+        var terminal =
+          e.target instanceof Element
+            ? e.target.closest(".hero-demo__body")
+            : null;
+        if (terminal && canScroll(terminal, delta)) return;
+
+        e.preventDefault();
         targetY = Math.max(0, Math.min(maxScroll(), targetY + delta));
         if (!animating) {
           animating = true;
