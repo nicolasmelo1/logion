@@ -113,6 +113,16 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     ),
 }
 
+# IDs staged ahead of a private-main contract sync. They must be explicit SDK
+# classifications now, so the sync candidate is audited with the same surface
+# map that will merge alongside its generated contract.
+PREDECLARED_OPERATION_IDS = frozenset({
+    "create_platform_bounty",
+    "fund_platform_bounty",
+    "accept_platform_bounty_submission",
+    "reject_platform_bounty_submission",
+})
+
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
     # Indexer ingestion endpoints have generated primitives, but are not part
     # of the stable, handwritten SDK resource surface yet.
@@ -125,4 +135,19 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "complete_indexing_run": "Indexer-only ingestion endpoint.",
     "update_indexing_run_progress": "Indexer-only ingestion endpoint.",
     "get_indexed_listing": "No handwritten SDK resource exists yet.",
+    # Platform-funded bounty administration is intentionally API-only for now.
+    # Generated request primitives remain available, but the public SDK has no
+    # stable admin resource surface for these founder-admin operations.
+    "create_platform_bounty": (
+        "Founder-admin API workflow; no stable SDK resource yet."
+    ),
+    "fund_platform_bounty": (
+        "Founder-admin API workflow; no stable SDK resource yet."
+    ),
+    "accept_platform_bounty_submission": (
+        "Founder-admin API workflow; no stable SDK resource yet."
+    ),
+    "reject_platform_bounty_submission": (
+        "Founder-admin API workflow; no stable SDK resource yet."
+    ),
 }
