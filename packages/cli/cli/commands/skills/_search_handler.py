@@ -115,6 +115,7 @@ def handle_skills_search(args: argparse.Namespace) -> int:
         result = client.v1.listings.search(
             query=args.query,
             limit=args.limit,
+            sort="relevance",
         )
     except Exception as exc:
         return handle_error(exc)

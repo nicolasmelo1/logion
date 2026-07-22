@@ -37,8 +37,10 @@ class FakeListingsResource:
 
     def __init__(self, items: list[dict[str, Any]] | None = None) -> None:
         self._items = items or []
+        self.calls: list[dict[str, Any]] = []
 
-    def search(self, **_kwargs: Any) -> dict[str, Any]:
+    def search(self, **kwargs: Any) -> dict[str, Any]:
+        self.calls.append(kwargs)
         return {"items": self._items, "next_cursor": None}
 
 
@@ -332,6 +334,39 @@ def test_skills_search_compact_default_truncates_summary(
     truncated = truncate_summary(long_summary)
     assert truncated in captured.out
     assert len(truncated) < len(long_summary)
+
+
+def test_skills_search_defaults_to_relevance_sort(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    listings = FakeListingsResource()
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+    args = _make_args(query="mattpocock", target=tmp_path)
+
+    with (
+        patch(
+            "cli.commands.skills._search_handler.make_client",
+            return_value=fake,
+        ),
+        patch(
+            "cli.commands.skills._search_handler.list_installed",
+            return_value=[],
+        ),
+        patch(
+            "cli.commands.skills._search_handler.resolve_config_from_args",
+            return_value=argparse.Namespace(json_output=True),
+        ),
+        patch(
+            "cli.commands.skills._search_handler.resolve_target",
+            return_value=tmp_path,
+        ),
+    ):
+        assert handle_skills_search(args) == 0
+
+    capsys.readouterr()
+    assert listings.calls == [
+        {"query": "mattpocock", "limit": 5, "sort": "relevance"}
+    ]
 
 
 def test_skills_search_default_limit_is_five() -> None:
