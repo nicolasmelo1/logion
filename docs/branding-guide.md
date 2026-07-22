@@ -98,7 +98,7 @@ Defined in the `:root` block of `styles.css`:
 --rule-strong   #2b333d
 --accent        #c9a76a   /* aged-bronze (comment in CSS) */
 --accent-bright #f5d68a
---bolt          #f5d68a
+--bolt          #f5c84c
 --focus         #aed7ff
 ```
 
@@ -113,7 +113,7 @@ Defined in the `@media (prefers-color-scheme: light)` block of `styles.css`:
 --fg-dim        #4d5460
 --accent        #8a6a2b
 --accent-bright #5a4517
---bolt          #8a6a2b
+--bolt          #a87612
 --focus         #1f4a80
 ```
 

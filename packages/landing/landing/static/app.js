@@ -93,7 +93,9 @@
   var GLYPHS = (GREEK + "0123456789·∙+░▒▓").split("");
   var ACCENT = "#c9a76a";
   var ACCENT_BRIGHT = "#f5d68a";
-  var BOLT = readThemeToken("--bolt", ACCENT_BRIGHT);
+  var BOLT_FALLBACK = "#f5c84c";
+  var BOLT_OPACITY = 0.55;
+  var BOLT = readThemeToken("--bolt", BOLT_FALLBACK);
   var FG_DIM = "#7d8794";
 
   function readThemeToken(name, fallback) {
@@ -106,7 +108,7 @@
   }
 
   lightScheme.addEventListener("change", function () {
-    BOLT = readThemeToken("--bolt", ACCENT_BRIGHT);
+    BOLT = readThemeToken("--bolt", BOLT_FALLBACK);
   });
 
   function rand(min, max) {
@@ -305,7 +307,7 @@
         continue;
       }
       ctx.save();
-      ctx.globalAlpha = Math.max(0, bolt.life);
+      ctx.globalAlpha = Math.max(0, bolt.life) * BOLT_OPACITY;
       ctx.strokeStyle = BOLT;
       ctx.lineWidth = 1.6;
       ctx.shadowColor = BOLT;
@@ -508,7 +510,7 @@
         continue;
       }
       ctx.save();
-      ctx.globalAlpha = Math.max(0, bolt.life);
+      ctx.globalAlpha = Math.max(0, bolt.life) * BOLT_OPACITY;
       ctx.strokeStyle = BOLT;
       ctx.lineWidth = 1.4;
       ctx.shadowColor = BOLT;

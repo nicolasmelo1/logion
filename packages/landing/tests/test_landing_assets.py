@@ -281,11 +281,23 @@ def test_terminal_bodies_use_a_compact_internal_scroller() -> None:
 def test_lightning_uses_theme_aware_brand_yellow() -> None:
     css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
     js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
-    assert "--bolt: #f5d68a" in css
-    assert "--bolt: #8a6a2b" in css
-    assert 'readThemeToken("--bolt", ACCENT_BRIGHT)' in js
+    assert "--bolt: #f5c84c" in css
+    assert "--bolt: #a87612" in css
+    assert 'readThemeToken("--bolt", BOLT_FALLBACK)' in js
+    assert "BOLT_OPACITY = 0.55" in js
+    assert js.count("* BOLT_OPACITY") == 2
     assert 'lightScheme.addEventListener("change"' in js
     assert "#aed7ff" not in js
+
+
+def test_legal_content_uses_the_full_page_width() -> None:
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    match = re.search(r"(?m)^\.legal \{([^}]+)\}", css)
+    assert match is not None
+    legal_block = match.group(1)
+    assert "width: 100%" in legal_block
+    assert "max-width: none" in legal_block
+    assert "max-width: 720px" not in legal_block
 
 
 def test_longer_conversation_terminals_have_more_room() -> None:
