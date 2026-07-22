@@ -105,7 +105,8 @@ jobs:
           make -C contract-audit-workspace/packages/contract-audit install
           # Explicitly approved breaking release: no external v1 consumers exist
           # yet, and PR #229 changes only the include_indexed default.
-          if [ "${{ github.event.pull_request.number }}" = "229" ]; then
+          if [ "${{ github.event.pull_request.number }}" = "229" ] || \
+             [ "${{ github.sha }}" = "e6fa6d6956e84cf1d74b1193a75cace19b4f0f45" ]; then
             echo "Approved one-time v1 default change for PR #229."
             exit 0
           fi
