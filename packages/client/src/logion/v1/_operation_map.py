@@ -113,4 +113,16 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     ),
 }
 
-UNSUPPORTED_OPERATIONS: dict[str, str] = {}
+UNSUPPORTED_OPERATIONS: dict[str, str] = {
+    # Indexer ingestion endpoints have generated primitives, but are not part
+    # of the stable, handwritten SDK resource surface yet.
+    "get_known_indexed_sources": "Indexer-only ingestion endpoint.",
+    "create_indexed_bundle_upload": "Indexer-only ingestion endpoint.",
+    "complete_indexed_bundle_upload": "Indexer-only ingestion endpoint.",
+    "batch_upsert_listings": "Indexer-only ingestion endpoint.",
+    "open_indexing_run": "Indexer-only ingestion endpoint.",
+    "get_indexing_run_progress": "Indexer-only ingestion endpoint.",
+    "complete_indexing_run": "Indexer-only ingestion endpoint.",
+    "update_indexing_run_progress": "Indexer-only ingestion endpoint.",
+    "get_indexed_listing": "No handwritten SDK resource exists yet.",
+}

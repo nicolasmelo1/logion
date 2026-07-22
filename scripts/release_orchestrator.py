@@ -2,7 +2,7 @@
 """Release orchestrator for coordinated multi-package releases.
 
 Builds a :class:`ReleasePlan` from the current repository state,
-bumps versions across all three public packages, runs the full
+bumps versions across all four public packages, runs the full
 check/build/manifest pipeline, and creates/pushes tags. Package
 publication and GitHub Release asset attachment are handled by
 GitHub Actions triggered from those tags.
@@ -79,6 +79,12 @@ class MergedPR:
 
 
 _PACKAGE_CONFIG: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
+    (
+        "skillmap",
+        "packages/skillmap",
+        "logion-skillmap-v",
+        (),
+    ),
     (
         "client",
         "packages/client",
@@ -340,7 +346,7 @@ def update_changelog_file(
 class ReleasePackage:
     """A single package participating in a release."""
 
-    name: Literal["client", "cli", "companion"]
+    name: Literal["skillmap", "client", "cli", "companion"]
     path: Path
     current_version: Version
     next_version: Version

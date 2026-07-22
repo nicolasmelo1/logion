@@ -1,15 +1,15 @@
-name: Release logion-cli to PyPI
+name: Release logion-skillmap to PyPI
 
 on:
   push:
-    tags: ["logion-cli-v*"]
+    tags: ["logion-skillmap-v*"]
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: release-cli-${{ github.ref }}
+  group: release-skillmap-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -26,8 +26,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - id: parse
         run: |
-          tag="${GITHUB_REF_NAME#logion-cli-v}"
-          py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/cli/pyproject.toml').read_text())['project']['version'])")
+          tag="${GITHUB_REF_NAME#logion-skillmap-v}"
+          py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/skillmap/pyproject.toml').read_text())['project']['version'])")
           test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
           echo "version=$tag" >> "$GITHUB_OUTPUT"
 
@@ -42,10 +42,12 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - name: Test package
+        run: uv run --package logion-skillmap pytest packages/skillmap/tests -q
       - name: Clean previous build artifacts
         run: rm -rf dist/
       - name: Build sdist + wheel
-        run: uv build --package logion-cli --wheel --sdist
+        run: uv build --package logion-skillmap --wheel --sdist
       - name: Validate distributions
         run: uv run twine check dist/*
       - name: Hash artifacts
@@ -55,7 +57,7 @@ jobs:
           cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: cli-dist
+          name: skillmap-dist
           path: dist/
 
   publish-pypi:
@@ -63,31 +65,14 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/logion-cli
+      url: https://pypi.org/p/logion-skillmap
     permissions:
       id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: cli-dist
+          name: skillmap-dist
           path: dist/
-      - name: Wait for matching skillmap version on PyPI
-        env:
-          VERSION: ${{ needs.verify.outputs.version }}
-        run: |
-          for i in $(seq 1 30); do
-            if python3 - <<PY
-          import json, os, urllib.request, sys
-          version = os.environ["VERSION"]
-          data = json.load(urllib.request.urlopen("https://pypi.org/pypi/logion-skillmap/json", timeout=15))
-          sys.exit(0 if version in data.get("releases", {}) else 1)
-          PY
-            then
-              exit 0
-            fi
-            sleep 10
-          done
-          exit 1
       - name: Remove non-distribution artifacts
         run: rm -f dist/SHA256SUMS.txt
       - name: Publish to PyPI
@@ -104,7 +89,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: cli-dist
+          name: skillmap-dist
           path: dist/
       - name: Attach wheel + sdist + SHA256SUMS to GitHub Release
         uses: softprops/action-gh-release@v2

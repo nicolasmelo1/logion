@@ -52,13 +52,14 @@ class _FakeRunner:
         )
 
 
-def test_plan_includes_all_three_package_tags() -> None:
-    """Plan has client, cli, and companion tags."""
+def test_plan_includes_all_four_package_tags() -> None:
+    """Plan has skillmap, client, CLI, and companion tags."""
     planner = ReleasePlanner(repo_root=REPO_ROOT)
     plan = planner.load("0.1.99", publish_store=False)
     names = {p.name for p in plan.packages}
-    assert names == {"client", "cli", "companion"}
+    assert names == {"skillmap", "client", "cli", "companion"}
     tags = set(plan.tags_to_create)
+    assert "logion-skillmap-v0.1.99" in tags
     assert "logion-client-v0.1.99" in tags
     assert "logion-cli-v0.1.99" in tags
     assert "logion-companion-v0.1.99" in tags
@@ -80,6 +81,7 @@ def test_plan_normalizes_leading_v_for_tags() -> None:
     planner = ReleasePlanner(repo_root=REPO_ROOT)
     plan = planner.load("v0.1.99", publish_store=False)
     tags = set(plan.tags_to_create)
+    assert "logion-skillmap-v0.1.99" in tags
     assert "logion-client-v0.1.99" in tags
     assert "logion-cli-v0.1.99" in tags
     assert "logion-companion-v0.1.99" in tags
@@ -213,7 +215,7 @@ def test_release_creates_expected_tag_commands() -> None:
     for tag in plan.tags_to_create:
         assert tag.startswith("logion-"), tag
         assert tag.endswith("-v0.2.0"), tag
-    # Confirm all three packages have tags.
+    # Confirm every public package has a tag.
     assert len(plan.tags_to_create) == len(_PACKAGE_CONFIG)
 
 
@@ -245,7 +247,7 @@ def test_plan_to_json_round_trips() -> None:
     data = json.loads(plan_to_json(plan))
     assert data["version"] == "0.1.99"
     assert data["publish_store"] is True
-    assert len(data["tags_to_create"]) == 3
+    assert len(data["tags_to_create"]) == 4
 
 
 def test_plan_uses_smoke_findings_env(monkeypatch) -> None:

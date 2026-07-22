@@ -24,11 +24,12 @@ def _load(name: str) -> Mapping:
 
 CLI = _load("release-cli.yml")
 CLIENT = _load("release-client.yml")
+SKILLMAP = _load("release-skillmap.yml")
 COMPANION = _load("release-companion.yml")
 NPM = _load("release-npm.yml")
 
-PYPI_WORKFLOWS = [CLI, CLIENT]
-ALL_WORKFLOWS = [CLI, CLIENT, COMPANION, NPM]
+PYPI_WORKFLOWS = [CLI, CLIENT, SKILLMAP]
+ALL_WORKFLOWS = [CLI, CLIENT, SKILLMAP, COMPANION, NPM]
 
 
 def _trigger_tags(wf: Mapping) -> list[str]:
@@ -51,6 +52,24 @@ def test_release_cli_tag_filter():
 def test_release_client_tag_filter():
     """release-client.yml triggers on logion-client-v* tags only."""
     assert "logion-client-v*" in _trigger_tags(CLIENT)
+
+
+def test_release_skillmap_tag_filter():
+    """release-skillmap.yml triggers on logion-skillmap-v* tags only."""
+    assert "logion-skillmap-v*" in _trigger_tags(SKILLMAP)
+
+
+def test_release_cli_waits_for_matching_skillmap_version():
+    """CLI publication waits until its skillmap dependency is available."""
+    steps = CLI["jobs"]["publish-pypi"]["steps"]
+    wait_steps = [
+        step
+        for step in steps
+        if step.get("name") == "Wait for matching skillmap version on PyPI"
+    ]
+    assert len(wait_steps) == 1
+    assert "logion-skillmap/json" in wait_steps[0]["run"]
+    assert "needs.verify.outputs.version" in wait_steps[0]["env"]["VERSION"]
 
 
 def test_release_companion_tag_filter():

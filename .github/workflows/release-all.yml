@@ -92,6 +92,7 @@ jobs:
           Release ${VERSION} was committed and tagged.
 
           The pushed tags trigger the package publisher workflows:
+          - logion-skillmap-v${VERSION} -> release-skillmap.yml
           - logion-client-v${VERSION} -> release-client.yml
           - logion-cli-v${VERSION} -> release-cli.yml and release-npm.yml
           - logion-companion-v${VERSION} -> release-companion.yml

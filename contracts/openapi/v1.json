@@ -388,6 +388,191 @@
         "title": "AuthorizeResponse",
         "type": "object"
       },
+      "BatchItemResultSchema": {
+        "properties": {
+          "canonical": {
+            "title": "Canonical",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "indexed_listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed Listing Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical",
+          "status"
+        ],
+        "title": "BatchItemResultSchema",
+        "type": "object"
+      },
+      "BatchItemSchema": {
+        "properties": {
+          "canonical": {
+            "maxLength": 512,
+            "minLength": 4,
+            "title": "Canonical",
+            "type": "string"
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelSchema"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "inferred_map": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inferred Map"
+          },
+          "license_spdx": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Spdx"
+          },
+          "map_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Map Flags",
+            "type": "array"
+          },
+          "original_author": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Original Author",
+            "type": "string"
+          },
+          "source_commit": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Commit"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical",
+          "title",
+          "original_author"
+        ],
+        "title": "BatchItemSchema",
+        "type": "object"
+      },
+      "BatchUpsertListingsRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItemSchema"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BatchUpsertListingsRequest",
+        "type": "object"
+      },
+      "BatchUpsertListingsResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItemResultSchema"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BatchUpsertListingsResponse",
+        "type": "object"
+      },
       "BlockCourseResponse": {
         "properties": {
           "course_id": {
@@ -764,6 +949,33 @@
         "title": "CapabilitySummaryResponse",
         "type": "object"
       },
+      "ChannelSchema": {
+        "properties": {
+          "hub_slug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Hub Slug",
+            "type": "string"
+          },
+          "hub_url": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Hub Url",
+            "type": "string"
+          },
+          "hub_verified": {
+            "default": false,
+            "title": "Hub Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hub_slug",
+          "hub_url"
+        ],
+        "title": "ChannelSchema",
+        "type": "object"
+      },
       "ClaimSetupHandoffRequest": {
         "properties": {
           "handoff_id": {
@@ -901,6 +1113,103 @@
           "capabilities_status"
         ],
         "title": "CompleteCourseVersionUploadSessionResponse",
+        "type": "object"
+      },
+      "CompleteIndexedBundleUploadRequest": {
+        "properties": {
+          "bundle_key": {
+            "title": "Bundle Key",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bundle_key",
+          "sha256",
+          "size_bytes"
+        ],
+        "title": "CompleteIndexedBundleUploadRequest",
+        "type": "object"
+      },
+      "CompleteIndexedBundleUploadResponse": {
+        "properties": {
+          "hosting_mode": {
+            "title": "Hosting Mode",
+            "type": "string"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "mirrored_bundle_key": {
+            "title": "Mirrored Bundle Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id",
+          "hosting_mode",
+          "mirrored_bundle_key"
+        ],
+        "title": "CompleteIndexedBundleUploadResponse",
+        "type": "object"
+      },
+      "CompleteIndexingRunRequest": {
+        "properties": {
+          "stats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats"
+          }
+        },
+        "title": "CompleteIndexingRunRequest",
+        "type": "object"
+      },
+      "CompleteIndexingRunResponse": {
+        "properties": {
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "stats"
+        ],
+        "title": "CompleteIndexingRunResponse",
         "type": "object"
       },
       "CreateBountyPayoutResponse": {
@@ -1711,6 +2020,30 @@
         "title": "CreateCreditTopUpResponse",
         "type": "object"
       },
+      "CreateIndexedBundleUploadResponse": {
+        "properties": {
+          "bundle_key": {
+            "title": "Bundle Key",
+            "type": "string"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "put_url": {
+            "title": "Put Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id",
+          "put_url",
+          "bundle_key"
+        ],
+        "title": "CreateIndexedBundleUploadResponse",
+        "type": "object"
+      },
       "CreateReportRequest": {
         "properties": {
           "description": {
@@ -2021,6 +2354,39 @@
           "device_code"
         ],
         "title": "DevicePollRequest",
+        "type": "object"
+      },
+      "DiscoveryChannelResponse": {
+        "properties": {
+          "first_seen_at": {
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "hub_slug": {
+            "title": "Hub Slug",
+            "type": "string"
+          },
+          "hub_url": {
+            "title": "Hub Url",
+            "type": "string"
+          },
+          "hub_verified": {
+            "title": "Hub Verified",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hub_slug",
+          "hub_url",
+          "hub_verified",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "DiscoveryChannelResponse",
         "type": "object"
       },
       "DismissReportRequest": {
@@ -3506,6 +3872,226 @@
         "title": "GetHumanReviewDetailResponse",
         "type": "object"
       },
+      "GetIndexedListingResponse": {
+        "properties": {
+          "canonical_url": {
+            "title": "Canonical Url",
+            "type": "string"
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryChannelResponse"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "hosting_mode": {
+            "title": "Hosting Mode",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "license_class": {
+            "title": "License Class",
+            "type": "string"
+          },
+          "license_spdx": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Spdx"
+          },
+          "observation_status": {
+            "title": "Observation Status",
+            "type": "string"
+          },
+          "observed_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Capabilities"
+          },
+          "original_author": {
+            "title": "Original Author",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Commit"
+          },
+          "source_hub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hub"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "source_verification": {
+            "title": "Source Verification",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "canonical_url",
+          "slug",
+          "title",
+          "original_author",
+          "source_url",
+          "license_class",
+          "hosting_mode",
+          "tier",
+          "source_verification",
+          "observation_status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GetIndexedListingResponse",
+        "type": "object"
+      },
+      "GetIndexingRunProgressResponse": {
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "stats",
+          "created_at",
+          "updated_at",
+          "closed_at"
+        ],
+        "title": "GetIndexingRunProgressResponse",
+        "type": "object"
+      },
+      "GetKnownIndexedSourcesResponse": {
+        "properties": {
+          "known": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/KnownSourceEntry"
+            },
+            "title": "Known",
+            "type": "object"
+          }
+        },
+        "required": [
+          "known"
+        ],
+        "title": "GetKnownIndexedSourcesResponse",
+        "type": "object"
+      },
       "GetMyCourseReviewResponse": {
         "properties": {
           "body": {
@@ -4122,6 +4708,131 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IndexingRunProgressStats": {
+        "additionalProperties": false,
+        "description": "Bounded aggregate checkpoint without item payloads.",
+        "properties": {
+          "adapter_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "maxProperties": 64,
+            "title": "Adapter Counts",
+            "type": "object"
+          },
+          "adapter_errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 64,
+            "title": "Adapter Errors",
+            "type": "object"
+          },
+          "created": {
+            "minimum": 0.0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "deduped": {
+            "minimum": 0.0,
+            "title": "Deduped",
+            "type": "integer"
+          },
+          "discovered": {
+            "minimum": 0.0,
+            "title": "Discovered",
+            "type": "integer"
+          },
+          "errors": {
+            "minimum": 0.0,
+            "title": "Errors",
+            "type": "integer"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "resolved": {
+            "minimum": 0.0,
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "skipped": {
+            "minimum": 0.0,
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "stage": {
+            "enum": [
+              "discovering",
+              "enriching",
+              "planning",
+              "pushing",
+              "completed"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "minimum": 0.0,
+            "title": "Updated",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "stage",
+          "discovered",
+          "resolved",
+          "deduped",
+          "created",
+          "updated",
+          "skipped",
+          "errors",
+          "partial",
+          "started_at",
+          "updated_at"
+        ],
+        "title": "IndexingRunProgressStats",
+        "type": "object"
+      },
+      "KnownSourceEntry": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "KnownSourceEntry",
+        "type": "object"
+      },
       "ListBountiesResponse": {
         "properties": {
           "accepted_submission_id": {
@@ -4702,6 +5413,11 @@
       },
       "ListingItemResponse": {
         "properties": {
+          "capabilities_verified": {
+            "default": false,
+            "title": "Capabilities Verified",
+            "type": "boolean"
+          },
           "category": {
             "default": "other",
             "title": "Category",
@@ -4711,6 +5427,22 @@
             "default": "USD",
             "title": "Currency",
             "type": "string"
+          },
+          "external": {
+            "default": false,
+            "title": "External",
+            "type": "boolean"
+          },
+          "hosting_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hosting Mode"
           },
           "id": {
             "title": "Id",
@@ -4727,8 +5459,30 @@
             ],
             "title": "Language"
           },
+          "license_spdx": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Spdx"
+          },
           "metrics": {
             "$ref": "#/components/schemas/ListingMetrics"
+          },
+          "original_author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Author"
           },
           "price_cents": {
             "default": 0,
@@ -4757,12 +5511,39 @@
             ],
             "title": "Short Summary"
           },
+          "source_hub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hub"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
           "tags": {
             "items": {
               "type": "string"
             },
             "title": "Tags",
             "type": "array"
+          },
+          "tier": {
+            "default": "published",
+            "title": "Tier",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -5206,6 +5987,20 @@
           "updated_at"
         ],
         "title": "OpenBountyResponse",
+        "type": "object"
+      },
+      "OpenIndexingRunResponse": {
+        "properties": {
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "OpenIndexingRunResponse",
         "type": "object"
       },
       "OpenSubmissionPrResponse": {
@@ -6909,6 +7704,72 @@
         "title": "UpdateCourseResponse",
         "type": "object"
       },
+      "UpdateIndexingRunProgressRequest": {
+        "properties": {
+          "stats": {
+            "$ref": "#/components/schemas/IndexingRunProgressStats"
+          }
+        },
+        "required": [
+          "stats"
+        ],
+        "title": "UpdateIndexingRunProgressRequest",
+        "type": "object"
+      },
+      "UpdateIndexingRunProgressResponse": {
+        "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stats": {
+            "additionalProperties": true,
+            "title": "Stats",
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "stats",
+          "created_at",
+          "updated_at",
+          "closed_at"
+        ],
+        "title": "UpdateIndexingRunProgressResponse",
+        "type": "object"
+      },
       "UpsertCourseReviewRequest": {
         "properties": {
           "body": {
@@ -8113,6 +8974,770 @@
         "summary": "Block a course by setting its status to blocked.",
         "tags": [
           "admin-courses"
+        ]
+      }
+    },
+    "/v1/admin/indexing/known": {
+      "get": {
+        "operationId": "get_known_indexed_sources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Ids",
+              "type": "array"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetKnownIndexedSourcesResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get known indexed sources",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/listings/{listing_id}/bundle-upload": {
+      "post": {
+        "operationId": "create_indexed_bundle_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateIndexedBundleUploadResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create indexed bundle upload (permissive only)",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/listings/{listing_id}/bundle-upload/completion": {
+      "post": {
+        "operationId": "complete_indexed_bundle_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIndexedBundleUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteIndexedBundleUploadResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable entity"
+          }
+        },
+        "summary": "Complete an indexed bundle upload (verify + flip hosting_mode)",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/listings:batch-upsert": {
+      "post": {
+        "operationId": "batch_upsert_listings",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchUpsertListingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUpsertListingsResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown run_id"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Run already closed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error (batch size exceeded)"
+          }
+        },
+        "summary": "Batch upsert indexed listings",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/runs": {
+      "post": {
+        "operationId": "open_indexing_run",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenIndexingRunResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open an indexing run",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/runs/{run_id}": {
+      "get": {
+        "operationId": "get_indexing_run_progress",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetIndexingRunProgressResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get indexing run progress",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/runs/{run_id}/completion": {
+      "patch": {
+        "operationId": "complete_indexing_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIndexingRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteIndexingRunResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete an indexing run",
+        "tags": [
+          "admin-indexing"
+        ]
+      }
+    },
+    "/v1/admin/indexing/runs/{run_id}/progress": {
+      "patch": {
+        "operationId": "update_indexing_run_progress",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIndexingRunProgressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateIndexingRunProgressResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Run already closed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update indexing run progress",
+        "tags": [
+          "admin-indexing"
         ]
       }
     },
@@ -13413,6 +15038,85 @@
         ]
       }
     },
+    "/v1/indexed-listings/{listing_id}": {
+      "get": {
+        "operationId": "get_indexed_listing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetIndexedListingResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get indexed listing detail",
+        "tags": [
+          "indexed-listings"
+        ]
+      }
+    },
     "/v1/listings": {
       "get": {
         "operationId": "search_listings",
@@ -13562,6 +15266,33 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_indexed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Indexed",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tier"
             }
           },
           {
