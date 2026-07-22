@@ -198,6 +198,40 @@ def test_listings_search_limit_above_fifty_is_clamped(
     assert listings.calls[-1]["limit"] == 50
 
 
+def test_listings_search_defaults_to_relevance_when_query_is_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listings = FakeListingsResource([])
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+    _patch_client(monkeypatch, fake)
+
+    code = main(["listings", "search", "--query", "mattpocock", "--json"])
+
+    assert code == 0
+    assert listings.calls[-1]["sort"] == "relevance"
+
+
+def test_listings_search_preserves_explicit_sort_with_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listings = FakeListingsResource([])
+    fake = FakeClient(v1=FakeV1Namespace(listings=listings))
+    _patch_client(monkeypatch, fake)
+
+    code = main([
+        "listings",
+        "search",
+        "--query",
+        "mattpocock",
+        "--sort",
+        "newest",
+        "--json",
+    ])
+
+    assert code == 0
+    assert listings.calls[-1]["sort"] == "newest"
+
+
 def test_listings_search_forwards_indexed_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -117,6 +117,7 @@ def handle_search(args: argparse.Namespace) -> int:
     if tag_filters:
         tags_param = ",".join(tag_filters)
     category = getattr(args, "category", None)
+    sort = args.sort or ("relevance" if args.query else None)
     try:
         result = client.v1.listings.search(
             query=args.query,
@@ -125,7 +126,7 @@ def handle_search(args: argparse.Namespace) -> int:
             language=getattr(args, "language", None),
             price_min=getattr(args, "price_min", None),
             price_max=getattr(args, "price_max", None),
-            sort=args.sort,
+            sort=sort,
             limit=limit,
             cursor=getattr(args, "cursor", None),
             include_indexed=getattr(args, "include_indexed", False),
