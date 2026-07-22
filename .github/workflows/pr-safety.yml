@@ -67,6 +67,46 @@ jobs:
       - name: Secret scan
         run: uv run detect-secrets scan --baseline .secrets.baseline
 
+  v1-contract-compatibility:
+    name: Public v1 contract compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Check out contract audit workspace
+        uses: actions/checkout@v4
+        with:
+          repository: nicolasmelo1/logion-workspace
+          token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          path: contract-audit-workspace
+
+      - name: Reject destructive public v1 changes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          test "$base" != "0000000000000000000000000000000000000000"
+          git show "$base:contracts/openapi/v1.json" > "$RUNNER_TEMP/openapi-base.json"
+          make -C contract-audit-workspace/packages/contract-audit install
+          contract-audit-workspace/packages/contract-audit/.venv/bin/contract-audit compatibility \
+            --base "$RUNNER_TEMP/openapi-base.json" \
+            --candidate contracts/openapi/v1.json
+
   agent-proving-ground:
     name: Agent proving ground (lint, types, dead code, tests)
     runs-on: ubuntu-latest
