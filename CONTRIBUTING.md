@@ -24,6 +24,21 @@ start as a
 [Discussion](https://github.com/nicolasmelo1/logion/discussions) or RFC
 before turning into a PR.
 
+## Contributing to plans
+
+The public `plans/` and `future-roadmap/` directories are a generated,
+contribution-friendly projection of the maintainers' canonical planning source.
+You may open a normal public PR proposing a concrete edit. Maintainers review it
+in public, port an accepted patch into the canonical source with attribution,
+and regenerate the public files and manifest before merge. This keeps one
+ordered source of truth without hiding product direction or excluding public
+contributors.
+
+Do not edit an automation sync branch directly. For an independent planning PR,
+run `python3 scripts/check_roadmap_mirror.py --update` after editing so reviewers
+can verify the proposed projection. Acceptance is not final until the canonical
+sync reproduces the same content.
+
 ## Setting up your machine
 
 ```bash

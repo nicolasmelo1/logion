@@ -34,6 +34,7 @@ SKIP_SUFFIXES = {
     ".woff",
     ".woff2",
 }
+PLANNING_DIRS = {"plans", "future-roadmap"}
 
 
 def load_public_paths() -> tuple[set[str], tuple[str, ...]]:
@@ -56,6 +57,8 @@ def repo_files() -> list[Path]:
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for filename in filenames:
             path = Path(dirpath) / filename
+            if path.relative_to(ROOT).parts[0] in PLANNING_DIRS:
+                continue
             if path.suffix.lower() in SKIP_SUFFIXES:
                 continue
             files.append(path)

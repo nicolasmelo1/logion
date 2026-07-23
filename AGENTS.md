@@ -11,11 +11,11 @@ guardrails you will fail CI on if you ignore.
 
 ## What Logion is
 
-Logion is an AI-agent-first marketplace for operational knowledge.
-Creators publish reusable course bundles that buyer agents purchase
-through entitlements. Contributors improve courses through funded
-bounties. Trust comes from publication review, provenance, admin
-moderation, reports, ratings, and update history.
+Logion is an open-source resource-use, evidence, and improvement layer for AI
+agents. It indexes skills, plugins, MCP servers, models, and hosted Courses;
+integrates with native harness workflows; links consented use/feedback to exact
+versions; and coordinates reproducible improvement work. Commercial rails are
+optional sustainability infrastructure, not the project's primary identity.
 
 This repository (`logion/`) holds the **public developer surface**:
 
@@ -24,10 +24,11 @@ This repository (`logion/`) holds the **public developer surface**:
 - `packages/agent-companion/` — first-party companion skill bundle
 - `packages/landing/` — public web scaffold
 - `contracts/openapi/v1.json` — public API contract
+- `plans/` and `future-roadmap/` — public planning projection and contribution
+  surface
 
-The backend that serves this contract is private. This repo never
-references private repo names, internal docs, or internal milestone
-vocabulary. See **Guardrails** below for the enforced rules.
+The backend that serves this contract is not in this checkout. Public planning
+is generated from the canonical maintainer source; see **Guardrails** below.
 
 ---
 
@@ -37,12 +38,11 @@ Every rule below is enforced by a script in `scripts/` and by the
 `pre-commit` hook (set up with `make install-hooks`). Running
 `make ci-checks` locally reproduces what CI runs.
 
-1. **No internal planning vocabulary.** The full forbidden-pattern
+1. **No private coordination vocabulary.** The full forbidden-pattern
    table lives in `scripts/audit_public_safe.py`. It covers
-   milestone-numbering words, forward-looking commitment words, sister
-   private repo names, internal doc directory names, and a small set of
-   LLM-tell phrases. Use the audit script as the source of truth; do
-   not restate the patterns elsewhere.
+   private repository names, internal doc directory names, secrets, and a small
+   set of LLM-tell phrases. Planning vocabulary is allowed only in the generated
+   `plans/` and `future-roadmap/` surfaces. Use the audit script as truth.
 2. **Generated files are immutable from PRs.** Listed in
    `.generated-files.lock` with SHA-256s. The contract
    (`contracts/openapi/v1.json`) and the generated client code under
@@ -73,6 +73,9 @@ Every rule below is enforced by a script in `scripts/` and by the
 8. **PR titles follow Conventional Commits.** Enforced both locally
    (`commit-msg` hook) and in CI (`pr-title.yml`). Format:
    `type(scope): summary` — e.g. `fix(cli): handle empty tag list`.
+9. **Planning has one canonical history.** Public planning PRs are welcome.
+   Before merge, maintainers port accepted changes to the canonical source and
+   regenerate the mirror/manifest. Do not hand-edit a bot sync PR.
 
 ---
 
@@ -124,6 +127,7 @@ its own PR; do not bypass it.
 ## Pointers
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — full contributor guide.
+- [`plans/next-steps.md`](plans/next-steps.md) — ordered implementation sequence.
 - [`SECURITY.md`](SECURITY.md) — security-disclosure process.
 - [`docs/openapi-sync.md`](docs/openapi-sync.md) — how the contract
   flows in, how to run the local mock.
