@@ -9,6 +9,26 @@ guardrails you will fail CI on if you ignore.
 
 ---
 
+## Protocol sources are mandatory
+
+Before changing AI Catalog or ARD models, discovery APIs, catalog publication,
+identity, trust, attestations, federation, AKTP links, or related plans:
+
+1. read [`protocol-specs/README.md`](protocol-specs/README.md);
+2. read the applicable pinned normative specification and machine-readable
+   schemas under `protocol-specs/upstream/`;
+3. treat those sources as authoritative over plans, examples, comments,
+   existing code, and model memory;
+4. keep AI Catalog representation, ARD discovery, native invocation, and AKTP
+   evidence/improvement semantics separate;
+5. run `python3 scripts/check_protocol_specs.py`.
+
+If Logion conflicts with a pinned specification, do not improvise a hybrid.
+Document the conflict and either change Logion, review a newer upstream pin, or
+prepare an explicit upstream proposal.
+
+---
+
 ## What Logion is
 
 Logion is an open-source resource-use, evidence, and improvement layer for AI

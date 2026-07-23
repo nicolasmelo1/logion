@@ -46,6 +46,11 @@ The first node bootstraps ARD discovery from the official
 directory on the server/indexer side. It does not install those connectors into
 customer clients.
 
+Normative snapshots and machine-readable schemas are pinned in
+[`protocol-specs/`](../protocol-specs/README.md). Agents changing these layers
+must read those sources first; roadmap prose is not a substitute for either
+specification.
+
 ## What is defensible if this works
 
 The moat is not the listing page, installer wrapper, model endpoint, or protocol

@@ -1,8 +1,12 @@
 {
   "files": [
     {
+      "path": ".gitattributes",
+      "sha256": "a67c6030-a735752a-02e3b183-bd5e328b-4cebeebc-3b58fd18-6ae8b101-49680350"
+    },
+    {
       "path": "future-roadmap/README.md",
-      "sha256": "d284d46e-171ffdba-61bcce65-2bed8f86-a33567c3-6df34924-2acc7e79-5d8a8ce7"
+      "sha256": "80cce3e7-39a5f43e-27301a4f-896ec646-82adf060-151cf9e9-8f5057a6-9475183b"
     },
     {
       "path": "future-roadmap/agent-proving-ground-and-customer-fidelity.md",
@@ -94,7 +98,7 @@
     },
     {
       "path": "plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md",
-      "sha256": "f6728871-e6e19dfa-9c72f6c3-1865890d-53484451-3b86aa28-6f58eb4f-7ecdf5f1"
+      "sha256": "cfa151f6-d0faea78-7e0071c5-ee4fa88f-29d625d3-c07d7835-e849623e-0be18216"
     },
     {
       "path": "plans/phase-15.13-portable-scan-evidence.md",
@@ -271,8 +275,68 @@
     {
       "path": "plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md",
       "sha256": "03ff1198-fe649d62-0bf47f16-ee85354a-fa002479-2b94fd82-b36e4cc6-d2f9b192"
+    },
+    {
+      "path": "protocol-specs/README.md",
+      "sha256": "50406cbd-79a09316-e41d3c19-4cef9c66-5ca9d538-f81fa31d-f469b6e6-bfd696e8"
+    },
+    {
+      "path": "protocol-specs/UPSTREAM.lock.json",
+      "sha256": "a40f4969-ffe1c295-230bfa8b-0cc7a4c0-97864dd5-83639d07-fa35e4d3-eab918cd"
+    },
+    {
+      "path": "protocol-specs/upstream/ai-catalog/LICENSE.md",
+      "sha256": "cf0a4c55-23a74f98-9780b3eb-b84372bc-7d6343a9-baef6817-5c3bca2b-b1c5dc97"
+    },
+    {
+      "path": "protocol-specs/upstream/ai-catalog/specification/ai-catalog.md",
+      "sha256": "f7c8b38a-54ae968b-6944ae7b-22754a94-60c779a6-b707e2a4-2c9badec-3269cc92"
+    },
+    {
+      "path": "protocol-specs/upstream/ai-catalog/specification/examples/ai-catalog.json",
+      "sha256": "84514126-a5829988-307a5e99-561fb1da-8a31df76-e90c70fa-8e1fbfbf-c435ee24"
+    },
+    {
+      "path": "protocol-specs/upstream/ai-catalog/specification/respec-config.json",
+      "sha256": "847a4e2b-81528095-4c8f2455-2ff7dd82-c41804dd-d2cd3f54-b8d0597f-673c00ad"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/LICENSE",
+      "sha256": "dfe0e2a5-38e0e900-4d43d1f5-75981777-93109f56-62706ccd-1b1cb93c-7fa34ce5"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/adr/0003-urn-placeholder-rfc2606-alignment.md",
+      "sha256": "974a3ff0-a1412828-44c5916a-31feb5ca-cf700e4a-890a543f-d7a397f6-db354044"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/conformance/bin/conformance-test",
+      "sha256": "fa387310-d5f28358-012ecb67-6b8257ef-41e6015e-a2990587-9e6802e0-cb7df6b4"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/spec/ard.md",
+      "sha256": "f632988d-c39d78ea-d803a442-f47c38b4-789cfa2e-8120c98d-c9004399-8ff54ff1"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/spec/schemas/ai-catalog.schema.json",
+      "sha256": "c5523848-3a4738e0-8b250bdd-6af1f4dc-05a91afe-882c649d-224d09c1-9cd8fe09"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/spec/schemas/ard.cddl",
+      "sha256": "b8228e03-c50155fa-7549ed5f-dd981bfc-1eeec629-ec9c8aef-abdf406b-ce133fbf"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/spec/schemas/ard.openapi.yaml",
+      "sha256": "60b2460d-a5e8289f-2293d72f-b2839317-f15a5546-98309ce1-e33ac55b-9c55fcab"
+    },
+    {
+      "path": "protocol-specs/upstream/ard/spec/urn-naming-guide.md",
+      "sha256": "8f9c3385-5c477e15-dec58674-8b3384f9-b67d9a35-0e60b019-985795da-f78c6f85"
+    },
+    {
+      "path": "scripts/check_protocol_specs.py",
+      "sha256": "fd1da2c3-e87ea87d-867aed67-cbb48cab-dfc393a6-6ad6088c-599af53e-5477246e"
     }
   ],
   "schema_version": 1,
-  "source_revision": "94aface1-8936a44f-dfc44632-77b2cbe3-e2a523ff"
+  "source_revision": "391038b1-9696b06f-b045f69e-1816d247-22841790"
 }

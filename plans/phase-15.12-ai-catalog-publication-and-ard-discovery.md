@@ -84,14 +84,22 @@ actually used and record its Course projection disposition.
 
 ## Spec sources and independent version pins
 
+- **Mandatory local references before coding:**
+  [`protocol-specs/README.md`](../protocol-specs/README.md),
+  [`AI Catalog`](../protocol-specs/upstream/ai-catalog/specification/ai-catalog.md), and
+  [`ARD`](../protocol-specs/upstream/ard/spec/ard.md). The implementing agent must
+  also inspect the relevant CDDL/OpenAPI/JSON Schema under
+  `protocol-specs/upstream/ard/spec/schemas/` and run
+  `python3 scripts/check_protocol_specs.py`.
 - AI Catalog documentation/specification: <https://ai-catalog.io/> and
   <https://ai-catalog.io/specification/>.
 - ARD documentation/specification: <https://agenticresourcediscovery.org/>.
 - Official client connectors and shared Agent Finder directory:
   <https://github.com/ards-project/ard-connectors> and
   <https://github.com/ards-project/ard-connectors/blob/main/agent-finders.json>.
-- Before coding, pin exact upstream commits/releases and fixtures for **both**
-  specifications. Never implement from this plan's paraphrase.
+- Use the independently pinned upstream commits and hashes in
+  `protocol-specs/UPSTREAM.lock.json`. Never implement from this plan's
+  paraphrase or silently follow a newer upstream `main`.
 - Put AI Catalog models under
   `logion_indexer/ai_catalog/v1_0/` (or pinned current version) and ARD models
   under `logion_indexer/ard/v0_9/`; their dispatchers, version negotiation,

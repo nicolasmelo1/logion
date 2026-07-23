@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "commit": "28825483143ce9f3b344ed01dc2771d4adf02d01",
+      "license": "CC-BY-4.0",
+      "name": "ai-catalog",
+      "repository": "https://github.com/Agent-Card/ai-catalog",
+      "files": [
+        {
+          "path": "upstream/ai-catalog/LICENSE.md",
+          "sha256": "cf0a4c5523a74f989780b3ebb84372bc7d6343a9baef68175c3bca2bb1c5dc97",
+          "upstream_path": "LICENSE.md"
+        },
+        {
+          "path": "upstream/ai-catalog/specification/ai-catalog.md",
+          "sha256": "f7c8b38a54ae968b6944ae7b22754a9460c779a6b707e2a42c9badec3269cc92",
+          "upstream_path": "specification/ai-catalog.md"
+        },
+        {
+          "path": "upstream/ai-catalog/specification/examples/ai-catalog.json",
+          "sha256": "84514126a5829988307a5e99561fb1da8a31df76e90c70fa8e1fbfbfc435ee24",
+          "upstream_path": "specification/examples/ai-catalog.json"
+        },
+        {
+          "path": "upstream/ai-catalog/specification/respec-config.json",
+          "sha256": "847a4e2b815280954c8f24552ff7dd82c41804ddd2cd3f54b8d0597f673c00ad",
+          "upstream_path": "specification/respec-config.json"
+        }
+      ]
+    },
+    {
+      "commit": "5fa2f5aef790b478319f6a3b43adf4661b0ed0e0",
+      "license": "Apache-2.0",
+      "name": "ard",
+      "repository": "https://github.com/ards-project/ard-spec",
+      "files": [
+        {
+          "path": "upstream/ard/adr/0003-urn-placeholder-rfc2606-alignment.md",
+          "sha256": "974a3ff0a141282844c5916a31feb5cacf700e4a890a543fd7a397f6db354044",
+          "upstream_path": "adr/0003-urn-placeholder-rfc2606-alignment.md"
+        },
+        {
+          "path": "upstream/ard/conformance/bin/conformance-test",
+          "sha256": "fa387310d5f28358012ecb676b8257ef41e6015ea29905879e6802e0cb7df6b4",
+          "upstream_path": "conformance/bin/conformance-test"
+        },
+        {
+          "path": "upstream/ard/LICENSE",
+          "sha256": "dfe0e2a538e0e9004d43d1f57598177793109f5662706ccd1b1cb93c7fa34ce5",
+          "upstream_path": "LICENSE"
+        },
+        {
+          "path": "upstream/ard/spec/ard.md",
+          "sha256": "f632988dc39d78ead803a442f47c38b4789cfa2e8120c98dc90043998ff54ff1",
+          "upstream_path": "spec/ard.md"
+        },
+        {
+          "path": "upstream/ard/spec/schemas/ai-catalog.schema.json",
+          "sha256": "c55238483a4738e08b250bdd6af1f4dc05a91afe882c649d224d09c19cd8fe09",
+          "upstream_path": "spec/schemas/ai-catalog.schema.json"
+        },
+        {
+          "path": "upstream/ard/spec/schemas/ard.cddl",
+          "sha256": "b8228e03c50155fa7549ed5fdd981bfc1eeec629ec9c8aefabdf406bce133fbf",
+          "upstream_path": "spec/schemas/ard.cddl"
+        },
+        {
+          "path": "upstream/ard/spec/schemas/ard.openapi.yaml",
+          "sha256": "60b2460da5e8289f2293d72fb2839317f15a554698309ce1e33ac55b9c55fcab",
+          "upstream_path": "spec/schemas/ard.openapi.yaml"
+        },
+        {
+          "path": "upstream/ard/spec/urn-naming-guide.md",
+          "sha256": "8f9c33855c477e15dec586748b3384f9b67d9a350e60b019985795daf78c6f85",
+          "upstream_path": "spec/urn-naming-guide.md"
+        }
+      ]
+    }
+  ]
+}
