@@ -152,6 +152,21 @@ def test_audit_public_safe_lowercase_phase_allowed() -> None:
         assert result.returncode == 0, result.stdout
 
 
+def test_audit_public_safe_phase_allowed_in_public_planning() -> None:
+    """Generated public planning is the intended home for phase labels."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _write(
+            os.path.join(tmp, "plans", "phase-7.1.md"),
+            "# Phase 7.1\n",
+        )
+        _write(
+            os.path.join(tmp, "future-roadmap", "sequence.md"),
+            "Implemented in Phase 7.1.\n",
+        )
+        result = _run_audit(tmp)
+        assert result.returncode == 0, result.stdout
+
+
 def test_audit_public_safe_llm_tell_detected() -> None:
     """LLM-tell phrases should trip the guard."""
     with tempfile.TemporaryDirectory() as tmp:

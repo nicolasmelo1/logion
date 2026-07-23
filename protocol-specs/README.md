@@ -69,7 +69,8 @@ python3 scripts/check_protocol_specs.py
   <https://agenticresourcediscovery.org/spec/>.
 - ARD Agent Finder directory:
   <https://github.com/ards-project/ard-connectors/blob/main/agent-finders.json>.
-  This directory is a separately pinned runtime discovery input in Phase 15.12,
+  This directory is a separately pinned runtime discovery input in the 15.12
+  phase,
   not part of either vendored normative specification.
 
 The original license files are stored beside each snapshot. AI Catalog

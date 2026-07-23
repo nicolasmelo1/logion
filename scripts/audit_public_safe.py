@@ -45,6 +45,10 @@ FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
     ("hardcoded password", re.compile(r"""password\s*=\s*["'][^"']""")),
     ("internal coordination repo", re.compile(r"logion-workspace")),
     ("internal docs path", re.compile(r"shared-docs/")),
+    (
+        "internal planning vocabulary",
+        re.compile(r"\bPhase\s+\d+(?:\.\d+)*\b"),
+    ),
     # LLM tells. The cheapest signal that prose was written by a model
     # without being edited. Surgical set — common-in-AI, rare-in-humans.
     (
@@ -72,6 +76,7 @@ SKIP_PREFIXES = (
     os.path.join(ROOT, ".secrets.baseline"),
 )
 SELF = os.path.abspath(__file__)
+PUBLIC_PLANNING_DIRS = {"plans", "future-roadmap"}
 
 ALLOWLIST_PATH = os.path.join(ROOT, "scripts", "audit_public_safe.allowlist")
 
@@ -163,8 +168,14 @@ def audit() -> list[tuple[str, int, str]]:
         except (UnicodeDecodeError, PermissionError, OSError):
             continue
 
+        top_level = rel.replace("\\", "/").split("/", 1)[0]
         for lineno, line in enumerate(lines, start=1):
             for tag, pattern in FORBIDDEN:
+                if (
+                    tag == "internal planning vocabulary"
+                    and top_level in PUBLIC_PLANNING_DIRS
+                ):
+                    continue
                 if pattern.search(line) and (rel, lineno) not in allowlist:
                     hits.append((rel, lineno, tag))
                     break  # one hit per line is enough

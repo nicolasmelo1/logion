@@ -278,7 +278,7 @@
     },
     {
       "path": "protocol-specs/README.md",
-      "sha256": "50406cbd-79a09316-e41d3c19-4cef9c66-5ca9d538-f81fa31d-f469b6e6-bfd696e8"
+      "sha256": "4dc48127-03248924-509a9243-3372694d-77690eae-fbddde73-7360dd22-93b89e7a"
     },
     {
       "path": "protocol-specs/UPSTREAM.lock.json",
@@ -338,5 +338,5 @@
     }
   ],
   "schema_version": 1,
-  "source_revision": "391038b1-9696b06f-b045f69e-1816d247-22841790"
+  "source_revision": "1cf97be5-9757bc48-25af4a42-b068a352-a8e570fb"
 }
