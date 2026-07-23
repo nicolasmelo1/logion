@@ -1,0 +1,83 @@
+schema_version: "1"
+name: source_link_publishing_e2e
+description: >-
+  Publish a run-unique course, approve it, and attach a pinned repository
+  source link. All assertions are tied to the captured course ID and query
+  observed API state.
+api_adapter: local-devrig
+driver_config:
+  hermes:
+    model: glm-5.1
+    provider: ollama-cloud
+agents:
+  - id: creator
+    role: Course creator
+    driver: hermes
+    workspace: creator
+    devrig_role: seller
+    timeout_seconds: 1200
+  - id: operator
+    role: Publication reviewer
+    driver: hermes
+    workspace: operator
+    devrig_role: admin
+    timeout_seconds: 900
+phases:
+  - id: creator_identity_ready
+    actor: creator
+    goal: |
+      Ensure the seller account has a connected GitHub identity with repo scope
+      before attempting repository source-linking. Do not print credentials.
+    success_hint: |
+      Use `logion identity github status` and the local OAuth/device flow if
+      needed. The observed API state must report connected and scope_tier repo.
+    assertions:
+      - type: api.github_identity_linked
+        params: {identity_agent: creator, required_scope_tier: repo}
+
+  - id: creator_publishes_course
+    actor: creator
+    goal: |
+      Create a unique minimal course for this run, upload its capabilities,
+      SKILL.md and LICENSE files, and request publication review. Do not reuse
+      an existing course and do not print credentials.
+    success_hint: |
+      Use a run-unique slug. Create the course, use `logion courses uploads
+      create`, push the three files with explicit --file mappings, and finish
+      with `logion courses request-publish COURSE_ID`.
+    assertions:
+      - type: api.course_exists
+        params: {owner_agent: creator}
+        capture: {COURSE_ID: course_id}
+
+  - id: operator_approves_course
+    actor: operator
+    goal: |
+      Find the publication review created by the creator in this run and
+      approve that exact course if its bundle is safe and complete.
+    success_hint: |
+      Use `logion course-reviews list` and approve only the review belonging to
+      the newly created course. Do not approve an older review.
+    assertions:
+      - type: api.course_exists
+        params: {owner_agent: creator, course: "${COURSE_ID}", status: published}
+
+  - id: creator_links_pinned_source
+    actor: creator
+    goal: |
+      Attach the public Logion repository as the source for the exact course
+      created in this run. Use repository `nicolasmelo1/logion`, ref `main`,
+      and the package map default.
+    success_hint: |
+      Run `logion courses source-link set ${COURSE_ID} --repository
+      nicolasmelo1/logion --ref main --json` and inspect the response without
+      printing any credentials.
+    assertions:
+      - type: api.source_link_exists
+        params:
+          course: "${COURSE_ID}"
+          repository: nicolasmelo1/logion
+          owner_agent: creator
+
+final_assertions:
+  - type: timeline.no_unredacted_secret

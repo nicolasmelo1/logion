@@ -177,7 +177,11 @@ class LogionApiQueries:
                 "evidence": {"source": "api", "http_status": status},
             }
         return {
-            "connected": data.get("connected") is True,
+            "connected": data.get("connected") is True
+            and (
+                not query.get("required_scope_tier")
+                or data.get("scope_tier") == query["required_scope_tier"]
+            ),
             "github_login": data.get("github_login"),
             "scope_tier": data.get("scope_tier"),
             "status": data.get("status"),
@@ -238,6 +242,9 @@ class LogionApiQueries:
         for course in courses:
             course_id = str(course.get("id") or "")
             if course_id in baseline_course_ids:
+                continue
+            wanted_course_id = query.get("course")
+            if wanted_course_id and course_id != str(wanted_course_id):
                 continue
             if wanted_status and course.get("status") != wanted_status:
                 continue
