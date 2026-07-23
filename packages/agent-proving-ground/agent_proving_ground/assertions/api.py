@@ -64,6 +64,15 @@ class _ApiQueryAssertion(Assertion):
         )
 
 
+class GithubIdentityLinkedAssertion(_ApiQueryAssertion):
+    type = "api.github_identity_linked"
+    query_type = "github_identity_linked"
+    found_key = "connected"
+    evidence_keys = ("github_login", "scope_tier", "status")
+    pass_message = "GitHub identity is linked"
+    fail_message = "no linked GitHub identity observed"
+
+
 class CourseExistsAssertion(_ApiQueryAssertion):
     type = "api.course_exists"
     query_type = "course_exists"

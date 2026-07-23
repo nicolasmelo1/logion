@@ -1,0 +1,49 @@
+schema_version: "1"
+name: identity_oauth_e2e
+description: >-
+  Verify the linked GitHub identity state through the real API adapter. This
+  scenario must run against a clean local-devrig with role-specific keys and
+  never treats agent prose as evidence.
+api_adapter: local-devrig
+agents:
+  - id: creator
+    role: Identity owner
+    driver: codex
+    workspace: creator
+    devrig_role: seller
+    timeout_seconds: 1200
+  - id: operator
+    role: Identity observer
+    driver: codex
+    workspace: operator
+    devrig_role: admin
+    timeout_seconds: 900
+phases:
+  - id: observe_linked_identity
+    actor: creator
+    goal: |
+      Check the GitHub identity connection for this devrig account. If the
+      account is not linked, complete the local OAuth/device flow using the
+      provided test credentials. Do not print tokens or credentials.
+    success_hint: |
+      Use `logion identity github status` to inspect the state and the local
+      devrig OAuth/device flow when required. Finish only after the account
+      reports a connected identity.
+    assertions:
+      - type: api.github_identity_linked
+        params: {identity_agent: creator}
+          
+  - id: operator_observes_identity_boundary
+    actor: operator
+    goal: |
+      Confirm that the operator account cannot see or impersonate the creator's
+      GitHub identity through the creator-scoped endpoint.
+    success_hint: |
+      Query only the operator's own identity status. Do not use creator
+      credentials or include any token in output.
+    assertions:
+      - type: api.github_identity_linked
+        params: {identity_agent: operator}
+        optional: true
+final_assertions:
+  - type: timeline.no_unredacted_secret
