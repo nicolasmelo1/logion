@@ -3133,6 +3133,44 @@
         "title": "GetAgentDetailResponse",
         "type": "object"
       },
+      "GetApiCapabilitiesResponse": {
+        "properties": {
+          "api_major": {
+            "minimum": 1.0,
+            "title": "Api Major",
+            "type": "integer"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "contract_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Contract Digest",
+            "type": "string"
+          },
+          "current_cli_version": {
+            "title": "Current Cli Version",
+            "type": "string"
+          },
+          "minimum_cli_version": {
+            "title": "Minimum Cli Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_major",
+          "contract_digest",
+          "capabilities",
+          "minimum_cli_version",
+          "current_cli_version"
+        ],
+        "title": "GetApiCapabilitiesResponse",
+        "type": "object"
+      },
       "GetBountyResponse": {
         "properties": {
           "accepted_submission_id": {
@@ -12849,6 +12887,28 @@
         "summary": "Reject bounty submission",
         "tags": [
           "bounties"
+        ]
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "description": "Return stable, non-sensitive metadata for compatible CLI releases.",
+        "operationId": "get_api_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetApiCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "Public API compatibility metadata."
+          }
+        },
+        "summary": "Get public API compatibility metadata",
+        "tags": [
+          "capabilities"
         ]
       }
     },

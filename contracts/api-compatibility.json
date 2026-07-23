@@ -1,0 +1,11 @@
+{
+  "api_major": 1,
+  "capabilities": [
+    "capabilities.v1",
+    "courses.purchase",
+    "listings.search"
+  ],
+  "contract_digest": "sha256:f19c0ee5a2fe47f24eaf7bf19eeffd6f855da34b4f4d7ef68c5986dccf35ffaf",
+  "current_cli_version": "0.1.15",
+  "minimum_cli_version": "0.1.15"
+}
