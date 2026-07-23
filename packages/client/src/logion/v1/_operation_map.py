@@ -121,6 +121,7 @@ PREDECLARED_OPERATION_IDS = frozenset({
     "fund_platform_bounty",
     "accept_platform_bounty_submission",
     "reject_platform_bounty_submission",
+    "get_api_capabilities",
 })
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
