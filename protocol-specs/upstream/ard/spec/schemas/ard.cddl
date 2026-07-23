@@ -1,0 +1,149 @@
+; CDDL Specification for Agentic Resource Discovery (ai-catalog & Registry schemas)
+; Compliant with IETF RFC 8610 (Concise Data Definition Language)
+
+start = ai-catalog-manifest
+
+; --- The Manifest Schema ---
+
+ai-catalog-manifest = {
+  specVersion: "1.0",
+  ? host: host-info,
+  entries: [+ catalog-entry]
+}
+
+host-info = {
+  displayName: tstr,
+  ? identifier: tstr,
+  ? documentationUrl: tstr,
+  ? logoUrl: tstr,
+  ? trustManifest: trust-manifest
+}
+
+catalog-entry = {
+  identifier: tstr, ; URN pattern: urn:air:<publisher>:<namespace>:<agent-name>
+  displayName: tstr,
+  type: tstr, ; IANA Media Type (e.g. application/mcp-server-card+json)
+  
+  ; Strict Value-or-Reference pattern
+  content-delivery,
+  
+  ? description: tstr,
+  ? tags: [+ tstr],
+  ? capabilities: [+ tstr],
+  ? representativeQueries: [2*5 tstr], ; Between 2 and 5 representative queries
+  ? version: tstr,
+  ? updatedAt: tstr, ; ISO 8601 timestamp
+  ? metadata: {* tstr => any},
+  ? trustManifest: trust-manifest
+}
+
+content-delivery = (
+  url: tstr //
+  data: {* tstr => any}
+)
+
+; --- The Zero-Trust / Compliance Envelope ---
+
+trust-manifest = {
+  identity: tstr, ; SPIFFE, DID, or FQDN URI
+  ? identityType: "spiffe" / "did" / "https" / "other",
+  ? attestations: [+ attestation],
+  ? provenance: [+ provenance-link],
+  ? signature: tstr
+}
+
+attestation = {
+  type: tstr,
+  uri: tstr,
+  mediaType: tstr,
+  ? digest: tstr
+}
+
+provenance-link = {
+  relation: "derivedFrom" / "publishedFrom" / "copiedFrom",
+  sourceId: tstr,
+  ? sourceDigest: tstr
+}
+
+; --- The Search and Explore Registry API Payloads ---
+
+query-model = {
+  ? text: tstr,
+  ? filter: {* tstr => ([+ tstr] / tstr)}
+}
+
+search-query-model = {
+  text: tstr,
+  ? filter: {* tstr => ([+ tstr] / tstr)}
+}
+
+search-request = {
+  query: search-query-model,
+  ? federation: "auto" / "referrals" / "none",
+  ? pageSize: uint,
+  ? pageToken: tstr
+}
+
+explore-request = {
+  ? query: query-model,
+  resultType: {
+    facets: [+ explore-facet-request]
+  }
+}
+
+explore-facet-request = {
+  field: tstr,
+  ? limit: uint,
+  ? minCount: uint
+}
+
+explore-response = {
+  resultType: "facets",
+  facets: {* tstr => explore-facet-result}
+}
+
+explore-facet-result = {
+  buckets: [+ explore-facet-bucket],
+  ? otherCount: uint
+}
+
+explore-facet-bucket = {
+  value: tstr,
+  count: uint
+}
+
+search-response = {
+  results: [+ search-result-item],
+  ? referrals: [+ registry-referral],
+  ? pageToken: tstr
+}
+
+search-result-item = {
+  catalog-entry,
+  score: 0..100, ; Semantic relevance score
+  source: tstr   ; Registry base URL
+}
+
+registry-referral = {
+  identifier: tstr,
+  displayName: tstr,
+  type: "application/ai-registry" / "application/ai-registry+json",
+  url: tstr
+}
+
+list-response = {
+  items: [+ catalog-entry],
+  ? total: uint,
+  ? pageToken: tstr
+}
+
+error-response = {
+  errorCode: tstr,
+  message: tstr
+}
+
+; Helper generic value type
+any = any-cbor / any-json
+any-cbor = bool / int / float / tstr / bstr / [+ any-cbor] / {* any-cbor => any-cbor}
+any-json = bool / int / float / tstr / null / [+ any-json] / {* tstr => any-json}
+null = nil

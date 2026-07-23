@@ -3,8 +3,9 @@
 # Protocol-Ready Architecture
 
 > **2026 direction note:** this path remains because current plans reference it,
-> but the architecture now centers generic `Resource`. ARD is discovery; AKTP
-> extends evidence and improvement. Native managers keep third-party delivery.
+> but the architecture now centers generic `Resource`. AI Catalog is the typed
+> catalog/entry format; ARD is discovery over those entries; AKTP extends
+> evidence and improvement. Native managers keep third-party delivery.
 > No universal package format, compute fleet, or global authority is implied.
 
 This document describes how Logion can evolve toward a protocol-compatible

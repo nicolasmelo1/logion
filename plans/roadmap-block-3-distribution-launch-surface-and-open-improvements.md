@@ -51,7 +51,7 @@ This phase makes it distributable, explainable, and finally deployable when laun
 12. Vendor integration compiler exploration was deferred; current telemetry
     direction prefers one Logion entrypoint before vendor plugin sprawl.
 13. `phase-13-cheap-mvp-infra-iac-and-backups.md` — production-shaped deployment and backup work after local dogfood has validated what is being deployed
-15. [`phase-15-native-resource-loop-and-first-ard-node.md`](phase-15-native-resource-loop-and-first-ard-node.md) — shipped GitHub/indexing foundation followed by native acquisition/feedback and the first ARD-native improvement node
+15. [`phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md) — shipped GitHub/indexing foundation followed by native acquisition/feedback and the first AI Catalog-compatible, ARD-discoverable improvement node
 16. [`phase-16-distributed-evaluation-and-independent-verification.md`](phase-16-distributed-evaluation-and-independent-verification.md) — portable evals, runner-supplied compute, and independent verification
 17. [`phase-17-open-ecosystem-and-production-hardening.md`](phase-17-open-ecosystem-and-production-hardening.md) — conformance, federation, commercial rails, and trust hardening
 18. [`phase-18-network-liquidity-and-independent-operation.md`](phase-18-network-liquidity-and-independent-operation.md) — useful activity not operated or manually coordinated by Logion

@@ -3,7 +3,7 @@
 # Phase 15.1: GitHub Identity & OAuth Core
 
 > Implements the OAuth slice of
-> [`phase-15-native-resource-loop-and-first-ard-node.md`](phase-15-native-resource-loop-and-first-ard-node.md).
+> [`phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md).
 > Everything downstream (15.2 personalized install, 15.3 repo publishing,
 > 15.5 bounty PR bot, 15.9 claim verification) consumes the
 > `github_identities` record this phase creates. **PRs: exactly one per

@@ -1,14 +1,20 @@
 <!-- Generated from Logion's canonical planning source. Public pull requests are welcome; see CONTRIBUTING.md. -->
 
-# Phase 15 — Native resource feedback loop and the first ARD node
+# Phase 15 — Native resource feedback loop and the first AI Catalog/ARD node
 
 > **Dogfood status:** begins in 15.10 with real artifact acquisition, captures native-workflow feedback in 15.11, and becomes end-to-end in 15.16.
-> **After this phase:** Logion adapts to native resource managers, links real use/feedback to canonical resources, funds observed needs, discovers through ARD, operates an isolated runner, and publishes portable evidence.
+> **After this phase:** Logion adapts to native resource managers, links real
+> use/feedback to canonical resources, publishes AI Catalog, discovers through
+> ARD, operates an isolated runner, and publishes portable evidence.
 > **Honesty boundary:** until independent nodes reproduce results, evidence is explicitly first-party, never “network consensus”.
 
 ## Goal
 
-Turn the existing marketplace, indexer, scanners, proving ground, jobs, and bounty rails into the first useful node of an open resource-improvement network. ARD owns discovery. AKTP starts narrowly as the evidence, work, and improvement overlay.
+Turn the existing marketplace, indexer, scanners, proving ground, jobs, and
+bounty rails into the first useful node of an open resource-improvement network.
+AI Catalog owns the typed publication format; ARD supplies pre-invocation
+discovery/registry behavior over its entries. AKTP starts narrowly as the
+evidence, work, and improvement overlay.
 
 ## Umbrella dogfood instruction
 
@@ -29,7 +35,7 @@ Phases 15.1–15.8 remain the foundation: GitHub identity, package maps, publish
 3. **15.9.1:** harness-native resource scope and observation contract.
 4. **15.10:** native acquisition, hosted artifact delivery, and local inventory.
 5. **15.11:** native-use observation, generic feedback, and Course-review projection.
-6. **15.12:** ARD catalog ingestion and Logion self-publication.
+6. **15.12:** AI Catalog publication/ingestion and ARD discovery.
 7. **15.13:** portable scan evidence.
 8. **15.14:** feedback-driven platform bounty selection.
 9. **15.14.1:** isolated local multi-agent first-node foundation.
@@ -39,7 +45,7 @@ Phases 15.1–15.8 remain the foundation: GitHub identity, package maps, publish
 
 ## Architectural rule
 
-`native managers or Logion acquire → Logion attributes use and feedback → ARD discovers → Logion/AKTP evaluates and coordinates improvement → resource owners publish the result`.
+`native managers or Logion acquire → Logion attributes use and feedback → AI Catalog publishes → ARD discovers → Logion/AKTP coordinates evidence and improvement → resource owners publish the result`.
 
 `Course` and the current skill CLI remain supported commercial/editorial projections. `Resource` becomes the protocol identity. No big-bang rename and no custom discovery protocol.
 

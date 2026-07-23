@@ -1,10 +1,12 @@
 <!-- Generated from Logion's canonical planning source. Public pull requests are welcome; see CONTRIBUTING.md. -->
 
-# Phase 17.1 — ARD/AKTP conformance and upstream proposals
+# Phase 17.1 — AI Catalog/ARD/AKTP conformance and upstream proposals
 
 > **Dogfood status:** every proposed extension is first exercised by Logion and at least one clean reference consumer.
-> **After this phase:** Logion contributes gaps found in real operation—especially attestation links—without forking ARD.
-> **Honesty boundary:** until accepted upstream, extensions are namespaced experiments and ARD base compatibility remains intact.
+> **After this phase:** Logion contributes gaps found in real operation without
+> conflating or forking AI Catalog and ARD.
+> **Honesty boundary:** experiments remain namespaced and preserve compatibility
+> with both base specifications until accepted upstream.
 
 ## Mandatory dogfood protocol
 
@@ -34,7 +36,8 @@ Use `--not-completed-task` when appropriate. Record the feedback ID and `course_
 
 ## Goal
 
-Prove ARD works in production, document its boundaries, and propose only evidence-backed changes.
+Prove AI Catalog and ARD work together in production, document each boundary,
+and propose changes to the specification that actually owns the missing concept.
 
 ## Dogfood prompt for the implementing agent
 
@@ -49,38 +52,45 @@ is backed by a reproduced fixture, not merely drafted.
 
 ## Version matrix and repository artifacts
 
-- Maintain `packages/interop/compatibility.yaml` with ARD spec revisions, AKTP versions, codec package releases, supported/must-ignore behavior, and tested implementations.
-- Add CI jobs that run ARD producer/consumer fixtures and AKTP producer/verifier fixtures across current and N-1 supported versions.
+- Maintain `packages/interop/compatibility.yaml` with separately pinned AI
+  Catalog revisions, ARD revisions, AKTP versions, codec releases, and tested
+  implementations.
+- Add CI jobs for AI Catalog producer/consumer, ARD client/registry, and AKTP
+  producer/verifier fixtures across current and N-1 supported versions.
 - Publish machine-readable conformance reports containing implementation/version, fixture suite digest, timestamp, pass/fail/skip, environment, and limitations.
 - Spec examples and schemas are release artifacts with changelog and semantic version rules.
 
 ## Upstream proposal workflow
 
-1. Open a local issue with exact ARD text/revision, expected behavior, real resource/catalog, observed behavior, logs/pcap redacted, and minimal reproduction.
-2. Prove the gap against two independent implementations or upstream reference fixtures where possible.
-3. Test whether existing extension/link/version mechanisms solve it.
-4. Implement a namespaced optional experiment and verify base clients ignore it.
-5. Draft the smallest proposal with compatibility/security/privacy analysis and remove it locally if upstream chooses another valid mechanism.
+1. Classify the gap as AI Catalog schema/publication/trust, ARD
+   discovery/registry, or AKTP evidence/improvement before drafting anything.
+2. Open a local issue with exact owning-spec text/revision, expected behavior,
+   real resource/catalog, observed behavior, redacted logs, and reproduction.
+3. Prove the gap against two implementations or official fixtures.
+4. Test existing extension/link/version/trust mechanisms first.
+5. Implement a namespaced optional experiment and verify base clients ignore it.
+6. Draft the smallest proposal for the owning upstream.
 
 Likely subject is evidence/trust link relations, not embedding AKTP objects or authority into ARD. No proposal is an acceptance criterion; a high-quality rejected proposal may still pass this phase.
 
 ## Code/docs changes
 
 - Public interop runner/fixtures/report generator; no private test-only protocol semantics.
-- Backend emits selected ARD revision and extension namespace in diagnostics.
+- Backend emits selected AI Catalog, ARD, and AKTP revisions independently.
 - CLI `logion protocol doctor --node URL` downloads only public metadata and produces a support bundle.
 - Documentation separates normative AKTP requirements, Logion policy, and experimental extensions.
 
 ## Tests/acceptance additions
 
-- Base ARD consumer fixture processes every Logion catalog with experimental fields removed/ignored.
+- Base AI Catalog consumers process Logion's catalog without AKTP extensions;
+  base ARD clients discover the same entries without AKTP.
 - Downgrade/N-1 and unknown-extension tests.
 - At least one public interop report from Logion and one clean reference/independent consumer.
 - Every upstream issue/PR link includes a passing minimal reproduction committed locally.
 
 ## Build
 
-- Track ARD versions and conformance fixtures separately from AKTP codecs.
+- Track AI Catalog, ARD, and AKTP versions/conformance separately.
 - Publish interop reports from self-crawl and independent-node tests.
 - Draft minimal ARD proposals for trust/evidence link relations or missing version semantics discovered in practice.
 - Keep experimental fields namespaced and optional.
@@ -91,14 +101,15 @@ Likely subject is evidence/trust link relations, not embedding AKTP objects or a
 Use [the common gate](agent-proving-ground-phase-gate.md) and add
 `builtin:phase_17_1_protocol_conformance`.
 
-- **Prompt:** a clean implementer receives: “Run the public ARD and AKTP
-  conformance suites against this node, diagnose the failing extension fixture,
-  and generate a minimal upstream proposal backed by an executable test. Do not
-  claim upstream adoption.”
+- **Prompt:** “Run the public AI Catalog, ARD, and AKTP conformance suites.
+  Diagnose the failing extension fixture, identify which specification owns the
+  gap, and generate a minimal upstream proposal with an executable test. Do not
+  claim adoption.”
 - **Fixtures:** current-version pass cases, unsupported-major, canonicalization,
   signature, cursor, unknown-extension, and one Logion attestation-extension
   case that upstream ARD cannot currently express.
-- **Assertions to add:** `files.ard_conformance_report_valid`,
+- **Assertions to add:** `files.ai_catalog_conformance_report_valid`,
+  `files.ard_conformance_report_valid`,
   `files.aktp_conformance_report_valid`,
   `files.upstream_proposal_has_executable_fixture`,
   `api.extension_backward_compatible`, and
@@ -108,7 +119,7 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 
 ## Gates
 
-- Base ARD clients ignore AKTP extensions safely.
+- Base AI Catalog consumers and ARD clients work without AKTP.
 - Every proposed spec change cites a reproduced operational limitation.
 - No proposal duplicates an existing ARD mechanism.
 - Protocol artifacts build from tested examples.

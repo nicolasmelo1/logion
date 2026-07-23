@@ -4,7 +4,7 @@
 
 We plan in cycles, but the post-15.8 architecture now has one strict dependency spine:
 
-`public planning → generic resources → native scope contract → acquisition/use feedback → ARD discovery → portable evidence → local multi-agent node → independent verification → improvement liquidity`.
+`public planning → generic resources → native scope contract → acquisition/use feedback → AI Catalog publication + ARD discovery → portable evidence → local multi-agent node → independent verification → improvement liquidity`.
 
 Each `phase-*.md` is an implementation contract. A subphase should fit one focused PR or one explicit operator rollout; umbrellas define gates, not parallel implementation tickets.
 
@@ -30,7 +30,7 @@ Phases 15.1–15.7 provide GitHub identity, publishing, PR delivery, external sk
 
 ## Phase 15 — first useful node
 
-Umbrella: [`phase-15-native-resource-loop-and-first-ard-node.md`](phase-15-native-resource-loop-and-first-ard-node.md).
+Umbrella: [`phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md).
 
 | Phase | Outcome | Dogfood level |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Umbrella: [`phase-15-native-resource-loop-and-first-ard-node.md`](phase-15-nativ
 | [`15.9.1`](phase-15.9.1-harness-resource-scope-and-observation-contract.md) | Native Codex/Claude/Hermes/Pi locations, precedence, installation receipts, and observation contract | Scope detection |
 | [`15.10`](phase-15.10-native-acquisition-artifact-delivery-and-inventory.md) | Hosted artifact downloads plus `npx skills`, `npx plugins`, and `hf` acquisition/reconciliation | Level 1: acquisition |
 | [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) | Observe native usage and submit generic feedback linked to the exact resource/Course | Level 2: real feedback |
-| [`15.12`](phase-15.12-ard-catalog-ingestion-and-self-publication.md) | ARD ingestion, self-publication, and zero-duplicate self-crawl | Level 3: discovery |
+| [`15.12`](phase-15.12-ai-catalog-publication-and-ard-discovery.md) | AI Catalog publication/ingestion plus server-side ARD Agent Finder indexing from `ard-connectors`, with zero-duplicate self-crawl | Level 3: discovery |
 | [`15.13`](phase-15.13-portable-scan-evidence.md) | Signed portable evidence from current scanners | Level 4: evidence |
 | [`15.14`](phase-15.14-feedback-driven-platform-bounties.md) | Choose platform-funded improvements from attributed usage and friction | Level 5: demand → improvement |
 | [`15.14.1`](phase-15.14.1-local-multi-agent-first-node-foundation.md) | Isolated founder-operated roles on one MacBook | Level 5.5: local roles |
@@ -72,7 +72,7 @@ Umbrella: [`phase-16-distributed-evaluation-and-independent-verification.md`](ph
 
 Umbrella: [`phase-17-open-ecosystem-and-production-hardening.md`](phase-17-open-ecosystem-and-production-hardening.md).
 
-1. [`17.1 — ARD/AKTP conformance and upstream proposals`](phase-17.1-ard-aktp-conformance-and-upstream-proposals.md)
+1. [`17.1 — AI Catalog/ARD/AKTP conformance and upstream proposals`](phase-17.1-ai-catalog-ard-aktp-conformance-and-upstream-proposals.md)
 2. [`17.2 — Independent node federation`](phase-17.2-independent-node-federation.md)
 3. [`17.3 — Resource claims and commercial rails`](phase-17.3-resource-claims-and-commercial-rails.md)
 4. [`17.4 — Private and enterprise nodes`](phase-17.4-private-and-enterprise-nodes.md)
@@ -89,7 +89,9 @@ Umbrella: [`phase-17-open-ecosystem-and-production-hardening.md`](phase-17-open-
   passes [the cheap real-agent proving-ground gate](agent-proving-ground-phase-gate.md)
   against the locally running API. Scripted scenarios validate the harness but
   cannot close a phase.
-- ARD owns discovery. AKTP must not recreate a catalog or peer-discovery protocol.
+- AI Catalog owns the typed catalog/entry model; ARD owns intent-oriented
+  discovery and registry interaction over those entries. AKTP must recreate
+  neither.
 - Logion is open-source first: public planning and contribution surfaces are a
   product invariant, while commercial rails remain optional.
 - Repository scope is the default inside a repository. No harness adapter may

@@ -32,7 +32,9 @@ Use `--not-completed-task` when appropriate. If authentication is missing, ask t
 
 ## Goal
 
-Introduce the protocol-neutral identity layer required for skills, MCP servers, models, datasets, prompts, agents, and future ARD resource types.
+Introduce the protocol-neutral identity layer required for skills, MCP servers,
+models, datasets, prompts, agents, AI Catalog entry types, and resources
+returned through ARD.
 
 ## Dogfood prompt for the implementing agent
 
@@ -126,7 +128,10 @@ resource_relationships
   PRIMARY KEY(parent_resource_id, child_resource_id, relation)
 ```
 
-Use closed application constants for known resource types, but a database `CHECK` must not prevent unknown future ARD types. Validate canonical URI length, absolute URI shape, allowed digest algorithms, and JSON depth/size at the service boundary.
+Use closed application constants for known resource types, but a database
+`CHECK` must not prevent unknown future AI Catalog media types. Validate
+canonical URI length, absolute URI shape, allowed digest algorithms, and JSON
+depth/size at the service boundary.
 
 ## Implementation work packages
 
@@ -172,11 +177,15 @@ Rollback disables flags and leaves additive rows intact. The migration downgrade
 ## Build
 
 - Add `resources`, `resource_versions`, and `resource_sources` with stable IDs, type, canonical URI, source, immutable digest, media type, metadata, and lifecycle state.
-- Start with `agent_skill`, `agent_plugin`, `mcp_server`, and `model`; unknown ARD types remain representable. A plugin that bundles skills has explicit parent/child relationships rather than collapsing their identities.
+- Start with `agent_skill`, `agent_plugin`, `mcp_server`, and `model`; unknown
+  AI Catalog entry media types remain representable. A plugin that bundles
+  skills has explicit parent/child relationships rather than collapsed identity.
 - Backfill indexed listings as `agent_skill` resources and published courses as commercial projections over a resource/version.
 - Keep `IndexedListing`, `Course`, `/listings`, and existing skill/course CLI commands working through compatibility projections.
 - Add additive SDK/API primitives: `resources search|get|versions` and resource-shaped internal services.
-- Make upsert idempotent across GitHub canonical IDs, ARD IDs, and content digests.
+- Make upsert idempotent across GitHub coordinates, AI Catalog entry
+  identifiers, immutable source coordinates, and content digests. ARD registry
+  provenance is a discovery source, not a second resource identity.
 
 ## Do not build
 

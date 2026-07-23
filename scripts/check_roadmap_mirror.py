@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify or update hashes for the public planning projection."""
+"""Verify or update hashes for the public canonical projection."""
 
 from __future__ import annotations
 
@@ -10,17 +10,29 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "roadmap-sync-manifest.json"
-MIRROR_DIRS = ("plans", "future-roadmap")
+PLANNING_DIRS = ("plans", "future-roadmap")
+EXACT_DIRS = ("protocol-specs",)
+MIRROR_EXACT_FILES = (".gitattributes", "scripts/check_protocol_specs.py")
 NOTICE = "<!-- Generated from Logion's canonical planning source."
 
 
 def files() -> list[Path]:
-    return sorted(
+    planning = [
         path.relative_to(ROOT)
-        for directory in MIRROR_DIRS
+        for directory in PLANNING_DIRS
         for path in (ROOT / directory).glob("*.md")
         if path.is_file()
-    )
+    ]
+    exact = [
+        path.relative_to(ROOT)
+        for directory in EXACT_DIRS
+        for path in (ROOT / directory).rglob("*")
+        if path.is_file()
+    ]
+    exact_files = [
+        Path(name) for name in MIRROR_EXACT_FILES if (ROOT / name).is_file()
+    ]
+    return sorted(planning + exact + exact_files)
 
 
 def sha(path: Path) -> str:
@@ -50,7 +62,9 @@ def check() -> int:
     actual = set(files())
     errors: list[str] = []
     for path in sorted(actual):
-        if not (ROOT / path).read_text().startswith(NOTICE):
+        if path.parts[0] in PLANNING_DIRS and not (
+            ROOT / path
+        ).read_text().startswith(NOTICE):
             errors.append(f"missing generated notice: {path}")
         if path not in expected:
             errors.append(f"not in manifest: {path}")
@@ -61,7 +75,7 @@ def check() -> int:
     if errors:
         print("\n".join(errors))
         return 1
-    print(f"roadmap mirror verified ({len(actual)} files)")
+    print(f"canonical mirror verified ({len(actual)} files)")
     return 0
 
 

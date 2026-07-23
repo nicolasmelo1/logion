@@ -86,11 +86,20 @@ When a production bug occurs:
 
 ## Relationship to protocol proof
 
-The proving ground also demonstrates that ARD/AKTP extensions are usable rather
-than merely well-specified. Protocol phases must test clean consumers,
-independent issuer policies, signature failures, replay/idempotency, and
-disclosure boundaries. Passing Logion's own codec round trip alone is
-insufficient.
+The proving ground also demonstrates each protocol layer independently rather
+than treating “ARD/AKTP” as one Logion-owned format. Protocol phases must test:
+
+- AI Catalog publication and consumption with a clean external consumer;
+- ARD discovery that returns valid AI Catalog entries, including a conformant
+  local Agent Finder and bounded fixtures derived from the official
+  `ard-connectors/agent-finders.json` directory;
+- optional AKTP evidence with a consumer that understands no Logion internals;
+- independent issuer policies, signature failures, replay/idempotency, and
+  disclosure boundaries.
+
+Passing Logion's own codec round trip alone is insufficient. Live queries to
+third-party Agent Finders are staging smoke tests, not deterministic phase
+gates.
 
 The normative implementation checklist and commands are in
 [the mandatory phase gate](../plans/agent-proving-ground-phase-gate.md).

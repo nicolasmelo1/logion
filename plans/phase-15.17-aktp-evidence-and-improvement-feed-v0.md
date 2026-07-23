@@ -3,7 +3,9 @@
 # Phase 15.17 — AKTP evidence and improvement feed v0
 
 > **Dogfood — Level 8 (protocol):** Logion's live first-party loop emits the same feed another node would consume.
-> **After this phase:** ARD-discovered resources can advertise an AKTP endpoint for evidence, jobs, bounties, outcomes, and supersession events.
+> **After this phase:** AI Catalog resources, including those found through ARD,
+> can reference a namespaced AKTP endpoint for evidence, jobs, bounties,
+> outcomes, and supersession events.
 > **Honesty boundary:** the feed transports signed statements; consumers choose issuers and policy. It is not a global truth ledger.
 
 ## Mandatory dogfood protocol
@@ -34,7 +36,8 @@ Use `--not-completed-task` when appropriate. Record the feedback ID and `course_
 
 ## Goal
 
-Define the minimum AKTP extension that ARD does not provide: portable evidence and an improvement workflow.
+Define the minimum AKTP extension that neither AI Catalog nor ARD provides:
+portable outcome evidence and an improvement workflow.
 
 ## Dogfood prompt for the implementing agent
 
@@ -73,7 +76,8 @@ Wire version v0 must state media types, size limits, timestamp format, canonical
   "origin": "https://api.logion.sh",
   "sequence": 123,
   "occurred_at": "RFC3339",
-  "resource": {"ard_id": "...", "digest": "sha256:..."},
+  "resource": {"catalog_identifier": "urn:air:...", "digest": "sha256:..."},
+  "discovery": {"ard_registry": "https://registry.example", "result_id": "..."},
   "object": {"id": "...", "digest": "sha256:...", "url": "..."},
   "issuer": {"id": "...", "key_id": "..."},
   "extensions": {},
@@ -88,14 +92,18 @@ Cursor is opaque and binds origin, last sequence, filter, and protocol version. 
 - Migration adds `protocol_events`, issuer keys/rotation metadata if 15.11 did not, and peer-import checkpoints only for self-import tests in this phase.
 - Add `api/aktp/{schemas,repositories,services,controllers}/`: transactional outbox writer, feed reader, object resolver, keys document, and self-import verifier.
 - Domain services publish outbox events after their owning transaction succeeds. Prefer a transactional outbox row written in the same DB transaction; a worker signs/publishes. Never publish to the network before commit.
-- Endpoint set: node/capability document advertised from ARD, paginated feed, event by ID, public keys, referenced public object. Exact paths follow the neutral spec package.
+- Endpoint set: node/capability document referenced through a namespaced,
+  optional AI Catalog entry or ARD response extension, paginated feed, event by
+  ID, public keys, and referenced public object. Do not claim that extension is
+  part of either base spec before upstream acceptance.
 - Filters may narrow type/resource/time but cannot change sequence semantics. Response has hard item/byte caps and ETag.
 
 ## Public repo implementation
 
 - `logion aktp feed --node URL [--cursor] [--type]`, `verify FILE|URL`, and `import --dry-run`.
 - Import stores a local SQLite/test-node projection or calls the generic resource/evidence APIs; dry-run never mutates.
-- Add indexer resolution of optional ARD AKTP links without making them mandatory for resource discovery.
+- Add indexer resolution of optional, namespaced AKTP links from AI Catalog
+  entries/ARD results without making them mandatory for discovery.
 
 ## Security/abuse rules
 
@@ -110,7 +118,8 @@ Cursor is opaque and binds origin, last sequence, filter, and protocol version. 
 - Golden event per type, canonicalization across key order/Unicode/numbers, unknown fields/type, invalid signature/digest, sequence gap/duplicate/reorder, key rotation, cursor tamper/filter mismatch, and replay.
 - Transaction rollback emits no event; retry emits one event.
 - Self-export/import into a clean database is lossless and second import creates zero rows.
-- ARD-only client fixture ignores the optional AKTP link and still discovers resources.
+- Base AI Catalog consumers and ARD clients ignore the optional AKTP extension
+  and still publish/discover resources.
 - Compatibility harness runs public codec against backend feed in CI.
 
 ## Rollout
@@ -121,9 +130,11 @@ Start read-only with only `evidence.published` from public 15.11 evidence. Add j
 
 - Publish a versioned, append-only event feed with cursor pagination and stable event IDs.
 - Support `feedback.published`, `feedback.superseded`, `evidence.published`, `evidence.superseded`, `improvement.recommended`, `job.offered`, `job.completed`, `bounty.opened`, `submission.delivered`, `outcome.accepted`, and `payout.recorded`.
-- Reference ARD resource IDs and immutable digests; never duplicate discovery metadata as protocol authority.
+- Reference AI Catalog entry identifiers and immutable digests; preserve ARD
+  registry provenance separately and never turn discovery ranking into authority.
 - Sign events and expose issuer metadata, key rotation, replay protection, and retention policy.
-- Add an optional AKTP endpoint/capability link to the ARD descriptor.
+- Add a namespaced optional AKTP relation to the AI Catalog entry and/or ARD
+  result using only valid extension mechanisms.
 - Implement `logion aktp feed|verify|import --dry-run` and an SDK codec.
 - Self-import Logion's feed into a clean test node and reconcile it against source records.
 
@@ -161,5 +172,5 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 
 - Export/import is lossless, idempotent, resumable, and signature-verifiable.
 - Feed consumers can distinguish observation, evaluation, sponsorship, delivery, and payout.
-- An ARD-only client still discovers and uses the resource without AKTP.
+- Base AI Catalog and ARD clients still publish/discover the resource without AKTP.
 - Protocol examples are generated from passing conformance fixtures.

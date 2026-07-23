@@ -64,7 +64,9 @@ Claim stores resource, claimant user/org, proof method, target authority, nonce 
 ## Projection/commercial behavior
 
 - Active claim links owner/maintainers and permits creating a draft Course/commercial listing projection. It does not change Resource ID/version/source/evidence/attribution.
-- Commercial terms (price, entitlement, sale mode) live on Course/listing, never ARD resource metadata or AKTP evidence.
+- Commercial terms (price, entitlement, sale mode) live on Course/listing or a
+  separately defined commercial extension, never masquerading as base AI
+  Catalog, ARD relevance metadata, or AKTP evidence.
 - Extend Bounty target and ledger/payments through existing services; do not add cross-node payment execution.
 - Transfer/revocation stops future owner actions but preserves historical authorship, sponsorship, contributions, payouts, and evidence.
 

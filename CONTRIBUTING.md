@@ -24,9 +24,9 @@ start as a
 [Discussion](https://github.com/nicolasmelo1/logion/discussions) or RFC
 before turning into a PR.
 
-## Contributing to plans
+## Contributing to plans and protocol references
 
-The public `plans/` and `future-roadmap/` directories are a generated,
+The public `plans/`, `future-roadmap/`, and `protocol-specs/` directories are a generated,
 contribution-friendly projection of the maintainers' canonical planning source.
 You may open a normal public PR proposing a concrete edit. Maintainers review it
 in public, port an accepted patch into the canonical source with attribution,
@@ -38,6 +38,12 @@ Do not edit an automation sync branch directly. For an independent planning PR,
 run `python3 scripts/check_roadmap_mirror.py --update` after editing so reviewers
 can verify the proposed projection. Acceptance is not final until the canonical
 sync reproduces the same content.
+
+Files under `protocol-specs/upstream/` are byte-for-byte, commit-pinned copies
+of external normative specifications. Do not edit them as Logion prose. Propose
+normative changes to the owning upstream project; propose a pin update here only
+with the upstream diff, compatibility impact, licenses, and refreshed hashes.
+Run `python3 scripts/check_protocol_specs.py` to verify snapshot integrity.
 
 ## Setting up your machine
 

@@ -18,6 +18,7 @@ RELEASING.md
 SECURITY.md
 
 # Build / config
+.gitattributes
 .gitignore
 .nvmrc
 .secrets.baseline
@@ -38,6 +39,7 @@ docs
 examples
 packages
 plans
+protocol-specs
 releases
 scripts
 tests

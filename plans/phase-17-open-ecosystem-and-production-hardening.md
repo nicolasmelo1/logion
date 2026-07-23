@@ -20,7 +20,7 @@ Phase 17 cannot compensate for missing Phase 16 exit gates. Federation, claims, 
 
 ## Sequence
 
-1. 17.1 ARD/AKTP conformance and upstream proposals.
+1. 17.1 AI Catalog/ARD/AKTP conformance and upstream proposals.
 2. 17.2 federation between independently operated nodes.
 3. 17.3 resource claims and commercial rails.
 4. 17.4 enterprise/private nodes.
