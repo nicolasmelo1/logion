@@ -85,6 +85,22 @@ Meet users where they are:
 Do not force customers to reinstall a native resource through Logion merely to
 attribute it. Reconcile exact canonical source, revision, and digest.
 
+Discovery is a separate server-side concern:
+
+- ingest direct AI Catalog documents and preserve their entry identities;
+- use ARD Agent Finders to discover additional AI Catalog entries;
+- bootstrap the operator-approved finder set from the official
+  [`ard-connectors/agent-finders.json`](https://github.com/ards-project/ard-connectors/blob/main/agent-finders.json)
+  at a pinned commit;
+- query those endpoints from the indexer with bounded query families and retain
+  complete discovery provenance;
+- never install an ARD connector, mutate `~/.agentfinder`, or choose a finder on
+  behalf of a customer's local harness.
+
+This lets the first node discover through the actual ARD ecosystem while the
+CLI, companion skill, and harness plugins stay focused on local acquisition,
+attribution, consent, and feedback.
+
 ## Defensibility tests
 
 The strategy becomes defensible only if:

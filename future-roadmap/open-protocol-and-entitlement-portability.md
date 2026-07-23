@@ -2,8 +2,9 @@
 
 # Open Protocol And Entitlement Portability
 
-> **Historical thesis, revised by the post-15.8 plan.** ARD now owns resource
-> discovery and catalog interoperability. Acquisition remains native to Logion bundles,
+> **Historical thesis, revised by the post-15.8 plan.** AI Catalog owns the
+> typed catalog/entry representation; ARD owns intent-oriented resource
+> discovery and registry interoperability over those entries. Acquisition remains native to Logion bundles,
 > `npx skills`, `npx plugins`, `hf`, and future ecosystem managers; Logion reconciles
 > identity/use/feedback instead of replacing them. AKTP is limited to portable evidence,
 > work, and improvement events. The live sequence is
@@ -33,9 +34,10 @@ federated protocol carrying one node's name would contradict everything
 below — HTTP is not called "Netscape protocol". Logion is the company
 operating the reference index/node; `sh.logion.*` namespaces, the
 `logion` CLI, and the Logion node's payment rails are that node's own
-identifiers and keep their names. Resource discovery uses ARD
-([`plans/phase-15.12`](../plans/phase-15.12-ard-catalog-ingestion-and-self-publication.md));
-an optional ARD link advertises the AKTP evidence/improvement feed
+identifiers and keep their names. Resource publication uses
+[AI Catalog](https://ai-catalog.io/) and discovery uses ARD
+([`plans/phase-15.12`](../plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md));
+an optional catalog entry relation/discovery extension advertises the AKTP evidence/improvement feed
 ([`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md)).
 
 - The network must be able to exist without Logion-the-company. Anyone may
@@ -60,7 +62,7 @@ operating the index is the position.
 
 | ATProto | Logion equivalent | Status today |
 | --- | --- | --- |
-| PDS (self-hosted user data server, permissionless) | Resource/evidence node | ARD discovery in [`plans/phase-15.12`](../plans/phase-15.12-ard-catalog-ingestion-and-self-publication.md), AKTP events in [`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md) |
+| PDS (self-hosted user data server, permissionless) | Resource/evidence node | AI Catalog publication + ARD discovery in [`plans/phase-15.12`](../plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md), AKTP events in [`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md) |
 | Relay (crawls all PDSs, aggregates) | The `logion-indexer` crawler feeding `api.logion.sh` | Shipped shape in phase 15.6 |
 | AppView (indexes, serves the app view, applies moderation) | `api.logion.sh` listings/search + the scanner pipeline as reach policy | Exists (centralized) |
 | Client (Graysky, deer.social, …) | `logion` CLI, agent-companion, third-party clients via the public wire contract | Resource CLI is additive in [`plans/phase-15.9`](../plans/phase-15.9-generic-resource-model-and-index-backfill.md); white-label bins were dropped |
@@ -139,7 +141,7 @@ evidence is what the coalition analysis in
 
 1. **v0 — self-announce.** `POST /v1/nodes/announce {host}` on the index
    + `logion node announce` in the CLI (the requestCrawl pattern; spec and
-   abuse bounds were superseded by ARD ingestion in [`plans/phase-15.12`](../plans/phase-15.12-ard-catalog-ingestion-and-self-publication.md)
+   abuse bounds were superseded by ARD ingestion in [`plans/phase-15.12`](../plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md)
    §2.6). An announce buys one validated well-known fetch, never a
    listing. Seed yaml remains as bootstrap, never as gate.
 2. **v1 — peer exchange.** Optional `known_nodes: []` (array of ≤64
@@ -268,7 +270,7 @@ buyer. Everything else is distribution.
 
 | Stage | What ships | Entitlement story | Plan/roadmap anchor |
 | --- | --- | --- | --- |
-| v0 — indexed resources | ARD catalog + indexer adapter + optional AKTP evidence/improvement link | **None needed.** Discovery is open; settlement remains node-local | [`plans/phase-15.12`](../plans/phase-15.12-ard-catalog-ingestion-and-self-publication.md), [`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md) |
+| v0 — indexed resources | AI Catalog publisher/consumer + ARD Agent Finder indexer + optional AKTP evidence/improvement link | **None needed.** Discovery is open; settlement remains node-local | [`plans/phase-15.12`](../plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md), [`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md) |
 | v1 — signed feeds | Node keypairs, signed feed/manifests, `nodes` registry, `known_nodes` peer exchange, attestation read surface | Still link-out; signatures make mirroring/tamper-evidence real | Protocol-Ready 2A–2C |
 | v2 — portable entitlements | Entitlement credentials + revocation events + archived keys + CLI verification | The target model above; buy at a node with Pix, install anywhere | New spec work (this doc) |
 | v3 — federation | Node registry, sync, mirrors, trust levels, cross-node reads | Cross-node *payments* remain out of protocol even here | Protocol-Ready 2E |

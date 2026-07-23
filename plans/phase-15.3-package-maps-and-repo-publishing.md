@@ -3,7 +3,7 @@
 # Phase 15.3: Package Maps & Publish-From-GitHub
 
 > Implements the package-map + repo-publishing slices of
-> [`phase-15`](phase-15-native-resource-loop-and-first-ard-node.md).
+> [`phase-15`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md).
 > Depends on 15.1 (stored OAuth token, `scope_tier='repo'` for private repos).
 > **Convergence:** the package-map schema defined here IS the structured-package
 > descriptor that [`phase-15.9`](phase-15.9-generic-resource-model-and-index-backfill.md)

@@ -35,10 +35,16 @@ not control the roadmap thesis. The canonical plans are projected into the
 public repository, where contributors can propose concrete changes; accepted
 changes are ported to the canonical source and re-emitted without losing credit.
 
-ARD is the discovery substrate. AKTP is a narrow extension for evidence, work,
-outcomes, and improvement events. Logion should prove this extension on its own
-node, publish conformance fixtures, and propose useful changes upstream. It must
-not claim ownership of ARD or global trust.
+[AI Catalog](https://ai-catalog.io/) is the typed, nestable JSON catalog/entry
+substrate. [ARD](https://agenticresourcediscovery.org/) is the pre-invocation
+discovery protocol and registry layer that searches/returns AI Catalog entries;
+it is not the catalog format itself. AKTP is a narrow, optional
+evidence/work/outcome overlay linked to those resource identities. Logion must
+pin and test AI Catalog and ARD separately and claim ownership of neither.
+The first node bootstraps ARD discovery from the official
+[`ard-connectors`](https://github.com/ards-project/ard-connectors) Agent Finder
+directory on the server/indexer side. It does not install those connectors into
+customer clients.
 
 ## What is defensible if this works
 

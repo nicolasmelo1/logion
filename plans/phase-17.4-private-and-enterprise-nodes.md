@@ -50,7 +50,9 @@ once the private node completes an eval while disconnected from Logion SaaS.
 ## Deployment SKUs and boundary
 
 - Define one private-node artifact/config with profiles: isolated single organization and managed multi-tenant. Do not fork protocol semantics or maintain an enterprise-only runner.
-- Private node owns database, object storage, signing keys, ARD catalog visibility, AKTP feed visibility, runners, policies, billing/quotas, and backups.
+- Private node owns database, object storage, signing keys, AI Catalog
+  visibility, ARD registry/finder policy, AKTP feed visibility, runners,
+  policies, billing/quotas, and backups.
 - SaaS control plane may deliver licenses/updates/support only; node continues core discover/evaluate/verify during SaaS outage.
 
 ## Tenancy/security model
@@ -81,7 +83,8 @@ Private attestation export contains public subject commitment/digest, predicate/
 ## Build
 
 - Self-hosted/private deployment profile and organization tenancy.
-- Private ARD catalogs, local runners, local authority policies, and local artifact storage.
+- Private AI Catalog documents, ARD services, local runners, local authority
+  policies, and local artifact storage.
 - Selective evidence disclosure with redacted predicates and digest commitments.
 - SSO/RBAC, audit export, retention, data residency, quotas, and cost controls.
 - Federated public/private routing without leaking resource existence.

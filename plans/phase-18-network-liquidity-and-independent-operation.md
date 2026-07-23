@@ -109,7 +109,8 @@ Founder may personally operate the first node/runner and recruit/assist first op
 
 ## Build
 
-- Public job/bounty discovery through ARD-linked AKTP feeds.
+- Public job/bounty discovery through AKTP feeds referenced from AI Catalog
+  entries and/or ARD results via the tested optional extension.
 - Sponsor controls for budgets, accepted issuers, required runners, and settlement policy.
 - Runner pricing/availability hints and transparent coordinator fees.
 - Reviewer/evaluator participation where assertions require judgment.

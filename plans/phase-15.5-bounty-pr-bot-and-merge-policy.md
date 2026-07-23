@@ -3,7 +3,7 @@
 # Phase 15.5: Bounty PR Bot & Merge-To-Acceptance Policy
 
 > Implements the bot-PR + merge-payout slices of
-> [`phase-15`](phase-15-native-resource-loop-and-first-ard-node.md).
+> [`phase-15`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md).
 > Depends on 15.1 (`github_identities`) and 15.3 (`course_source_links` — a
 > bounty PR needs a linked repo). Uses a **GitHub App** (`logion-bot`), not
 > the creator's OAuth token: the bot acts under its own identity, with

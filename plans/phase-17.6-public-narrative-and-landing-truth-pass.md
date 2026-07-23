@@ -34,7 +34,8 @@ Use `--not-completed-task` when appropriate. Record the feedback ID and `course_
 
 ## Goal
 
-Explain the actual product: an ARD-native evidence and improvement network, bootstrapped by a useful first node.
+Explain the actual product: an AI Catalog-compatible, ARD-discoverable evidence
+and improvement network, bootstrapped by a useful first node.
 
 ## Dogfood prompt for the implementing agent
 
@@ -54,7 +55,7 @@ Add a machine-readable registry (for example `maintainer documentation: public-c
 
 Landing copy and public docs must distinguish:
 
-- ARD resource discovery vs Logion indexing policy;
+- AI Catalog publication vs ARD discovery vs Logion indexing/ranking policy;
 - first-party observation/evaluation vs independent reproduction;
 - signed evidence vs locally accepted authority;
 - resource owner/author/contributor/sponsor/runner/evaluator;

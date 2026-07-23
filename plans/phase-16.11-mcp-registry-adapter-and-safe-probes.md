@@ -50,8 +50,13 @@ record `artifacts/dogfood/phase-16.11.md`, and submit generic feedback after act
 
 ## Discovery adapters and identity
 
-- Add adapters for explicitly selected MCP registries using their official APIs/sitemaps and ARD where offered. Pin source terms/rate limits and preserve registry URL, package/repo, transport, revision/version, and original publisher.
-- Canonical identity priority: ARD ID → registry immutable ID+publisher → package ecosystem coordinates → verified source repo. Conflicts quarantine; fuzzy name matching never merges.
+- Add adapters for explicitly selected MCP registries using official
+  APIs/sitemaps, AI Catalog documents, and ARD where offered. Pin terms/rate
+  limits and preserve catalog publisher, entry identifier, registry URL,
+  package/repo, transport, revision/version, and original publisher.
+- Canonical identity priority: verified AI Catalog entry identifier → registry
+  immutable ID+publisher → package coordinates → verified source repo. ARD
+  registry/result identity is discovery provenance. Conflicts quarantine.
 - Metadata ingestion does not connect to or execute the server.
 
 ## Static evidence
@@ -83,7 +88,8 @@ Index metadata broadly within source terms; run static scans only on retrievable
 
 ## Build
 
-- ARD/source adapters for MCP registries and descriptors with canonical identity and version digest.
+- AI Catalog/ARD/source adapters for MCP registries and descriptors with
+  canonical identity and version digest.
 - Static evidence for package provenance, transport, schema, permissions, and known vulnerabilities.
 - Safe probe evaluator for initialize/list operations and fixture-backed mock tool calls.
 - Egress, filesystem, secret, and invocation allowlists per contract.

@@ -48,14 +48,17 @@ Submit feedback once two clean nodes converge after a forced partition.
 
 ## Federation model
 
-Peers are configured as ARD origins whose resource descriptors advertise optional AKTP capability endpoints. There is no global node registry, `known_nodes` crawl, or implicit trust. Adding a peer is a local operator action/policy.
+Peers are configured from an AI Catalog origin and/or an approved ARD Agent
+Finder/registry. A namespaced optional entry/result relation may advertise AKTP.
+There is no bespoke global node registry, `known_nodes` crawl, or implicit
+trust. Adding a peer remains a local operator action/policy.
 
 Each node stores peer origin, pinned/allowed keys, protocol range, event filters, import authority policy, byte/rate/backfill budgets, cursor/checkpoint, health, and suspension reason. Settlement and job acceptance remain local.
 
 ## Sync algorithm
 
 ```text
-resolve ARD origin under SSRF policy
+resolve AI Catalog origin and/or ARD registry under SSRF policy
 fetch advertised AKTP capability + keys
 negotiate supported version
 resume opaque peer cursor
@@ -92,7 +95,8 @@ Relay adds transport metadata outside the signed origin envelope. It cannot rewr
 
 ## Build
 
-- Peer configuration through ARD-advertised AKTP endpoints; no bespoke global peer registry.
+- Peer configuration through AI Catalog/ARD-discovered namespaced AKTP
+  endpoints; no bespoke global peer registry.
 - Cursor sync, backfill, retry, dedupe, rate limits, and peer removal.
 - Origin/issuer preservation across relays and loop prevention.
 - Local import policy by event type, issuer, resource type, and budget exposure.

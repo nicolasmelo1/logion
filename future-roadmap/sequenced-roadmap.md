@@ -73,10 +73,20 @@ the existing review domain.
 This is the highest-priority data loop. Without it, funding decisions remain
 catalog speculation.
 
-### 4. ARD catalog interoperability
+### 4. AI Catalog publication and ARD interoperability
 
-Publish Logion's own catalog through ARD, self-crawl it, and ingest approved
-external sources. ARD remains discovery; it does not solve evidence authority.
+Publish Logion's own conformant
+[AI Catalog](https://ai-catalog.io/), self-crawl it, and ingest approved
+catalogs directly. Separately expose/query
+[ARD](https://agenticresourcediscovery.org/) discovery over the same entries.
+AI Catalog defines the typed/nestable catalog representation; ARD defines
+pre-invocation discovery/registry behavior. Neither establishes evidence
+authority.
+
+Bootstrap actual discovery by synchronizing the official
+[`ard-connectors` Agent Finder directory](https://github.com/ards-project/ard-connectors/blob/main/agent-finders.json)
+into the server-side indexer. Query enabled Agent Finders on bounded schedules;
+do not install those connectors or finder preferences into customer clients.
 
 ### 5. Feedback-driven work
 
@@ -175,7 +185,7 @@ process controlled by the founder.
 
 Covered by Phase 17.
 
-- Keep ARD/AKTP codecs and executable conformance public.
+- Keep AI Catalog, ARD, and AKTP codecs and executable conformance public.
 - Propose missing attestation/evidence affordances upstream with fixtures rather
   than forking discovery semantics casually.
 - Federate independently administered nodes with distinct issuer policy.

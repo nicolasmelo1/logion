@@ -87,7 +87,8 @@ Envelope signatures use an existing audited library and Ed25519 keys stored outs
 - Change `api/indexing/services/run_observation_scan.py` and its job handler to persist raw scanner artifacts, normalize predicates, then publish evidence in the same terminal job path.
 - Keep scanner adapters in their current packages; normalization belongs in evidence predicate builders, not scanner subprocess code.
 - Public client: `EvidenceResource.list/show/verify_keys`; CLI: `evidence list`, `show`, `verify --offline --key-file`.
-- ARD catalog exposes a relation URL only; it must not copy “pass/safe” into discovery.
+- An AI Catalog entry or ARD result may expose only the optional, spec-valid
+  evidence relation/reference; it must not copy “pass/safe” into discovery.
 
 ## Stable error/outcome rules
 
@@ -114,7 +115,8 @@ Dual-write evidence behind `portable_scan_evidence`; compare derived fields with
 - Define v0 predicates for source scan, dependency scan, declared-vs-observed capabilities, and provenance/mirror integrity.
 - Adapt `RunObservationScanService`, Trivy, OSV, and agent-scanner output into those predicates.
 - Store bulky logs as content-addressed artifacts; keep normalized summaries queryable.
-- Publish evidence links from ARD resource descriptors without embedding trust conclusions in discovery metadata.
+- Publish evidence links through the owning AI Catalog/ARD extension mechanism
+  without embedding Logion trust conclusions in base discovery metadata.
 - Add `logion evidence list|show|verify` and SDK verification helpers.
 
 ## Security and truth rules
