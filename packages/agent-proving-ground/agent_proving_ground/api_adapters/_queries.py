@@ -160,6 +160,33 @@ class LogionApiQueries:
             return None
         return agent_roles.get(agent_id)
 
+    async def _q_github_identity_linked(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        role = self._role_of(
+            query.get("identity_agent") or query.get("agent"), agent_roles
+        )
+        status, data = await self._get("/v1/identity/github", role)
+        if status in {401, 403}:
+            return _unsupported(
+                f"identity capability unavailable: HTTP {status}"
+            )
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "connected": False,
+                "evidence": {"source": "api", "http_status": status},
+            }
+        return {
+            "connected": data.get("connected") is True,
+            "github_login": data.get("github_login"),
+            "scope_tier": data.get("scope_tier"),
+            "status": data.get("status"),
+            "evidence": {
+                "source": "api",
+                "endpoint": "/v1/identity/github",
+            },
+        }
+
     async def _my_courses(self, role: str | None) -> list[dict[str, Any]]:
         status, data = await self._get("/v1/courses/mine", role)
         if status != 200 or not isinstance(data, dict):
