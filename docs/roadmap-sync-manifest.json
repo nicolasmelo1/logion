@@ -1,0 +1,278 @@
+{
+  "files": [
+    {
+      "path": "future-roadmap/README.md",
+      "sha256": "01a58b22-f95fed34-041beb73-4471f6f6-a95a38b4-5daf12f8-89574479-f23c72cd"
+    },
+    {
+      "path": "future-roadmap/agent-proving-ground-and-customer-fidelity.md",
+      "sha256": "b0d8f8eb-6765420a-ee8cbcbd-5d045921-2a3ff63b-e67a0bea-beec8819-c6690c5a"
+    },
+    {
+      "path": "future-roadmap/b2b-and-ecosystem-strategy.md",
+      "sha256": "7b723c1d-6eb36633-bfe4e05e-1803a0e0-8153e01e-65609b47-81554730-763b400a"
+    },
+    {
+      "path": "future-roadmap/economic-network-and-rewards.md",
+      "sha256": "d1c25532-c875a027-6eaae56d-a9a54c6c-f801b16e-12a00f3b-f47946a3-0ff94e14"
+    },
+    {
+      "path": "future-roadmap/eval-backed-bounties-and-improvement-evidence.md",
+      "sha256": "bf98292a-556f147e-1f87958d-c64eccbf-c6d72b59-ea12bd3f-2d02ae6d-bc2032b0"
+    },
+    {
+      "path": "future-roadmap/human-dashboard-and-user-policy.md",
+      "sha256": "3c456f7b-bf85e2ff-87f1713d-d3ea1c69-4630bd55-64ded856-2381ef14-74025dbe"
+    },
+    {
+      "path": "future-roadmap/native-resource-feedback-and-first-node.md",
+      "sha256": "c7fa4283-22e3d3fc-530fe68b-82a79fa2-22ebbe51-002a73e1-0460b358-0832956d"
+    },
+    {
+      "path": "future-roadmap/open-protocol-and-entitlement-portability.md",
+      "sha256": "ee654e45-532433b5-cf7c4449-0261e8e5-a41b1fa7-a0ead473-73b65c30-aa009c32"
+    },
+    {
+      "path": "future-roadmap/post-launch-strategy.md",
+      "sha256": "7a39f4d3-5f811e4b-01d00188-06391898-86da2948-ba12cc99-8a02d549-c3527a33"
+    },
+    {
+      "path": "future-roadmap/protocol-ready-architecture.md",
+      "sha256": "446e601c-e740e893-5c4c4276-2c617d7c-ae4dfad8-cc98f81f-27d4b55e-5b96b523"
+    },
+    {
+      "path": "future-roadmap/sandbox-and-runtime-trust.md",
+      "sha256": "e6685f24-f94162fc-abd5c92f-598db1b4-305a53e0-44c15298-5a7f84db-7fa30fec"
+    },
+    {
+      "path": "future-roadmap/sequenced-roadmap.md",
+      "sha256": "02e5bee9-7dd63f44-187da050-0c478866-ae83f7a9-9988a718-40bce130-f71f6b0b"
+    },
+    {
+      "path": "plans/agent-proving-ground-phase-gate.md",
+      "sha256": "9ad102ad-d4fe82df-2b11f2e6-e856ff9a-7d49f617-e3467d90-c02e2677-53f3561d"
+    },
+    {
+      "path": "plans/cli-api-compatibility-matrix.md",
+      "sha256": "6171e651-290a801b-64ddb188-f4ffc178-d68f320a-3f05dbba-058c626f-54025adf"
+    },
+    {
+      "path": "plans/consumption-adoption-ladder.md",
+      "sha256": "2a23b4fb-03ef635f-b34c56be-44acf465-31192575-5e443149-4768c1de-5bdf65cd"
+    },
+    {
+      "path": "plans/course-capability-manifest-policy.md",
+      "sha256": "8356744b-c43d5390-15c66a77-7eec5e05-5ca6e0f8-94e9b562-436b0275-dd196b1b"
+    },
+    {
+      "path": "plans/cycle-0-contract-e2e-hardening.md",
+      "sha256": "28506ec7-5aaaddd0-76eb5a9b-0608e2a9-cf6577a7-662441bd-757d02ff-c9331c62"
+    },
+    {
+      "path": "plans/indexer-run-progress-observability.md",
+      "sha256": "d5dc1d72-06d4d8da-4639f64e-55f29b25-01b6ccae-3ef1d1f1-e6048509-6712e846"
+    },
+    {
+      "path": "plans/next-steps.md",
+      "sha256": "618b8375-433cace2-fbe29b97-47d1c736-cad518c1-bf5334b3-3355ea79-747b4050"
+    },
+    {
+      "path": "plans/phase-15-native-resource-loop-and-first-ard-node.md",
+      "sha256": "36684513-b5d094fe-a9587bb8-6b18b6dd-83b1833e-883e9b1b-417e8afb-2be08589"
+    },
+    {
+      "path": "plans/phase-15.1-github-identity-and-oauth-core.md",
+      "sha256": "3102509e-24809bb5-517e731e-e90ff1a5-4183707f-fdcdedf4-d9d9e075-cf82c20a"
+    },
+    {
+      "path": "plans/phase-15.10-native-acquisition-artifact-delivery-and-inventory.md",
+      "sha256": "3515c134-ecfd9bc9-4c149bd2-a4c00062-5b518de1-645702d7-5c9ccf98-d38dcbb5"
+    },
+    {
+      "path": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md",
+      "sha256": "ac02ad36-922f0048-1791a00d-73ce6c1f-d2d49249-f3a996c6-ded3f587-ea3fe360"
+    },
+    {
+      "path": "plans/phase-15.12-ard-catalog-ingestion-and-self-publication.md",
+      "sha256": "7f098013-01f8316e-440a27bf-4141eedb-f1cb1fa6-e142773f-0f85c8ad-ffbe701f"
+    },
+    {
+      "path": "plans/phase-15.13-portable-scan-evidence.md",
+      "sha256": "f3bc5381-a5f9b0b7-94f1c922-96cfd50c-76601b59-46f2fe71-15b66ac8-1a9d03f7"
+    },
+    {
+      "path": "plans/phase-15.14-feedback-driven-platform-bounties.md",
+      "sha256": "44c8f6dd-da829c84-37d13f6b-21cf445b-8ad022d4-37041b68-fb8dcd7b-2bcb7214"
+    },
+    {
+      "path": "plans/phase-15.14.1-local-multi-agent-first-node-foundation.md",
+      "sha256": "ccaac110-9bf4dca2-bad5bbde-4a82af90-77289034-5b6ec229-5b827d5a-28d3381e"
+    },
+    {
+      "path": "plans/phase-15.15-isolated-first-runner-node.md",
+      "sha256": "e45ab42b-9205b892-b7545735-60d2b072-7dad6bfc-c2dfbff0-50c22ab9-e6a4170f"
+    },
+    {
+      "path": "plans/phase-15.16-first-party-resource-dogfood-loop.md",
+      "sha256": "3e1e83a0-b2fc4a5b-a89512ef-44ae1233-4cef784a-2f8535de-eb5f3412-dcaf1806"
+    },
+    {
+      "path": "plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md",
+      "sha256": "701f6c04-c7dba1ac-c2c89c74-ba190830-cd3cbf37-5d2463f2-4c710689-93706b4d"
+    },
+    {
+      "path": "plans/phase-15.2-landing-github-signin-personalized-install.md",
+      "sha256": "91822f51-61dbbdbc-23b5e495-d2a91739-4d7781bc-f1215978-e430ddf5-e3faf736"
+    },
+    {
+      "path": "plans/phase-15.3-package-maps-and-repo-publishing.md",
+      "sha256": "2f664bd6-5f750fac-9b570400-5545e871-d9f73813-0d0f93e3-475a7de5-22362f3e"
+    },
+    {
+      "path": "plans/phase-15.4-setup-complete-landing-handoff.md",
+      "sha256": "2e6a436f-6d2983ad-9b4b6c39-64d823fc-7d90a796-6a335e36-a9b9389b-66700953"
+    },
+    {
+      "path": "plans/phase-15.5-bounty-pr-bot-and-merge-policy.md",
+      "sha256": "c1404e4f-8ebc21ec-6fac9501-7e931243-5ef96269-27dbab61-cae46b9e-7674bea7"
+    },
+    {
+      "path": "plans/phase-15.5.1-issue-mention-bounty-bot.md",
+      "sha256": "723f45aa-42cbb7b5-8a241848-332ddbcd-86a3da5a-7e124322-af01bcdf-b17390e8"
+    },
+    {
+      "path": "plans/phase-15.5.2-auto-github-pr-submissions.md",
+      "sha256": "cc575d7e-8ee732e4-f5541037-ac424d8d-d4853528-6464b45d-8eb7b0c3-79ad14a8"
+    },
+    {
+      "path": "plans/phase-15.5.3-logion-bot-github-app-registration-runbook.md",
+      "sha256": "ace4694c-160ac3c4-8f4cfe96-7976db35-23f2000e-65033c72-2dcea6a1-5741317b"
+    },
+    {
+      "path": "plans/phase-15.5.4-e2e-github-test.md",
+      "sha256": "8815cad1-7eb7961b-52ca8401-7213e2a5-30fc7b26-6df01fb9-f9df5856-afa47e31"
+    },
+    {
+      "path": "plans/phase-15.6-external-skillhub-indexer.md",
+      "sha256": "b792d61f-c6037cee-dbc471d9-3c97624a-e581f2c7-38c67664-ce47a116-3712629c"
+    },
+    {
+      "path": "plans/phase-15.7-observation-scan-and-discovery-tiers.md",
+      "sha256": "4a6c2731-6d4eeab7-57fdc35b-cc581bcd-1e298830-a8188852-897de8a2-d4c5fe77"
+    },
+    {
+      "path": "plans/phase-15.8-platform-funded-bounties-on-indexed-listings.md",
+      "sha256": "e8118ff2-cf502053-3d913be1-a555a9e8-9d5405f1-530b5545-cf158f53-4c18751a"
+    },
+    {
+      "path": "plans/phase-15.8.1-public-roadmap-sync.md",
+      "sha256": "35fbbf36-ffe92f62-9e5a4bf1-57587cab-b91953e0-0ac36277-ae19ca16-ef00507e"
+    },
+    {
+      "path": "plans/phase-15.9-generic-resource-model-and-index-backfill.md",
+      "sha256": "1dc83707-c4b240c8-2387f215-086af268-ac2cd371-3f3eb158-416e931d-563cde5e"
+    },
+    {
+      "path": "plans/phase-15.9.1-harness-resource-scope-and-observation-contract.md",
+      "sha256": "35075493-200f4f01-085c9be1-b4f58aad-58d39814-17a63c77-a5961b7e-1a9ac96e"
+    },
+    {
+      "path": "plans/phase-16-distributed-evaluation-and-independent-verification.md",
+      "sha256": "2ac2726b-1af4ce22-ebf4e9d9-05d0df17-1eaccf43-9cb006cb-5031f3cc-c2ac8f95"
+    },
+    {
+      "path": "plans/phase-16.1-eval-contract-and-reference-runner.md",
+      "sha256": "46458bf7-773a9a9a-4c4c822b-94a6aa58-577e622a-3fc3c0d3-33835b17-8b8315a0"
+    },
+    {
+      "path": "plans/phase-16.10-external-runner-onboarding-and-conformance.md",
+      "sha256": "53897f01-aa846b38-fa745757-dd85c896-751b38ae-5b0cad45-1d1fbc11-2a443200"
+    },
+    {
+      "path": "plans/phase-16.11-mcp-registry-adapter-and-safe-probes.md",
+      "sha256": "42a0172c-4d16ae2c-395fbfb4-ce185d75-54d10b69-3dc39708-ba28e718-f117536d"
+    },
+    {
+      "path": "plans/phase-16.12-hugging-face-metadata-and-constrained-model-evaluation.md",
+      "sha256": "9c6cee63-be369265-8ccf9a97-2eb9c999-9483afa8-cf7b4f3a-7d62296c-feec2489"
+    },
+    {
+      "path": "plans/phase-16.2-typed-evaluators-and-skill-reference-evaluator.md",
+      "sha256": "0c6fee29-40e92d55-c5876e44-94fb4381-086161fd-7f07a3b2-07f8deb1-840370c3"
+    },
+    {
+      "path": "plans/phase-16.3-runner-registry-and-network-jobs.md",
+      "sha256": "76519258-603e3419-a8801a0d-7175812f-d00a8ab0-7cd7a4f3-c80ef261-d0eb5050"
+    },
+    {
+      "path": "plans/phase-16.4-deterministic-replication-and-agreement.md",
+      "sha256": "bb136f7d-f0f6fcfb-515bf968-fa232b36-e8aa3506-51bc4260-fc632582-45ffaa31"
+    },
+    {
+      "path": "plans/phase-16.5-eval-attestations-and-cross-node-authority.md",
+      "sha256": "efec965f-00f2095d-f75c4f14-98063494-e76eee2f-148f2b66-d91eb657-54d84820"
+    },
+    {
+      "path": "plans/phase-16.6-benchmark-backed-bounties.md",
+      "sha256": "90d9209f-f0ce3c04-df3bd6a3-2acf17ed-2a070c16-6d05813b-28ea277a-ba41b675"
+    },
+    {
+      "path": "plans/phase-16.7-evidence-search-and-issuer-aware-ranking.md",
+      "sha256": "42f72a20-441b7e9a-03419bc5-32617482-b935e53b-cf2fcb7f-ccb3f0db-8fbd7e8b"
+    },
+    {
+      "path": "plans/phase-16.8-portable-field-evidence-and-aggregation.md",
+      "sha256": "d723ba85-241b78c2-747c9d50-2cf31acb-b73809b5-cc80f875-99589137-6c7e0018"
+    },
+    {
+      "path": "plans/phase-16.9-benchmark-field-reconciliation.md",
+      "sha256": "197a43be-69c83d32-8c954eb7-9563bd90-21e64046-8302e40b-a3ed2094-9afe8ce5"
+    },
+    {
+      "path": "plans/phase-17-open-ecosystem-and-production-hardening.md",
+      "sha256": "1abff1a6-12fd4252-acd55101-ca05ca98-2dca562d-39b22523-2c50a189-d4c1c954"
+    },
+    {
+      "path": "plans/phase-17.1-ard-aktp-conformance-and-upstream-proposals.md",
+      "sha256": "323c5bc9-c767c96b-02eae127-9dc985cf-92acb987-c5931b19-5e9b66fd-75ae3af9"
+    },
+    {
+      "path": "plans/phase-17.2-independent-node-federation.md",
+      "sha256": "176c7018-de70cdd9-87bd2c58-adddda43-19064062-576b3607-2bf4e3d0-a6a26afa"
+    },
+    {
+      "path": "plans/phase-17.3-resource-claims-and-commercial-rails.md",
+      "sha256": "00e37bcf-ab743709-b27d72a9-ffd2ffa3-49a28fa5-da586ceb-3937839e-93dc5370"
+    },
+    {
+      "path": "plans/phase-17.4-private-and-enterprise-nodes.md",
+      "sha256": "5fcd55d8-287613e2-c5342a42-41e10c51-63b3f210-b36d2946-f6543396-ce80e45a"
+    },
+    {
+      "path": "plans/phase-17.5-trust-boundary-invariant-tests.md",
+      "sha256": "aca4feb6-01062751-c706bd33-3586530d-9f602a95-e2344e91-f92a4845-ddae90fe"
+    },
+    {
+      "path": "plans/phase-17.6-public-narrative-and-landing-truth-pass.md",
+      "sha256": "d43f3dc9-1e7254e5-9e5a5a9f-895bde2f-3f08f5b1-5571f28c-51d7a567-5e82194d"
+    },
+    {
+      "path": "plans/phase-18-network-liquidity-and-independent-operation.md",
+      "sha256": "ae9d485a-98e8a7dd-9c13f91a-93e3f433-fc6276e8-887c8016-e25376a2-d7b613db"
+    },
+    {
+      "path": "plans/roadmap-block-1-core-marketplace-flows-and-capability-foundations.md",
+      "sha256": "88645b70-31372491-29f964a1-bac358e3-022bd142-44004375-fe80a286-11ac1868"
+    },
+    {
+      "path": "plans/roadmap-block-2-review-visibility-and-deployable-backend.md",
+      "sha256": "122823a7-bd2e550f-f56303c3-1d148276-8a3af51b-74951dd1-d8d2bc28-2a796c4d"
+    },
+    {
+      "path": "plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md",
+      "sha256": "1e4cd230-770ba579-79b1bb93-604057d4-bbbb0ca6-c2e02f6e-9e7f99c9-85de6d65"
+    }
+  ],
+  "schema_version": 1,
+  "source_revision": "6b57a563-4b72400e-a82d74d2-30b3d524-22b9f466"
+}

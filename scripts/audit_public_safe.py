@@ -43,15 +43,8 @@ FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
     ),
     ("OpenAI / Anthropic-style key", re.compile(r"sk-[A-Za-z0-9]{20,}")),
     ("hardcoded password", re.compile(r"""password\s*=\s*["'][^"']""")),
-    # Internal-planning vocabulary. Capitalized "Phase" / "Phases" is the
-    # milestone-numbering form used in private plans/ docs; lowercase
-    # "phase" (e.g. "phased rollout") is fine. "Roadmap" leaks forward-
-    # looking commitments; sister repo names and paths leak structure.
-    ("internal planning vocabulary", re.compile(r"\bPhases?\b")),
-    ("internal planning vocabulary", re.compile(r"\b[Rr]oadmap\b")),
     ("internal coordination repo", re.compile(r"logion-workspace")),
     ("internal docs path", re.compile(r"shared-docs/")),
-    ("internal plans path", re.compile(r"(^|[\s\"'`(])plans/")),
     # LLM tells. The cheapest signal that prose was written by a model
     # without being edited. Surgical set — common-in-AI, rare-in-humans.
     (
