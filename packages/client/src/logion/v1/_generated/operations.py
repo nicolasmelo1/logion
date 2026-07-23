@@ -54,6 +54,7 @@ from logion.v1._types.generated.v1 import (
     FundBountyResponse,
     FundPlatformBountyResponse,
     GetAgentDetailResponse,
+    GetApiCapabilitiesResponse,
     GetBountyResponse,
     GetBountySubmissionResponse,
     GetCourseDetailResponse,
@@ -743,6 +744,17 @@ def reject_bounty_submission(
         "PATCH",
         f"/v1/bounties/{bounty_id}/submissions/{submission_id}/rejection",
         RejectBountySubmissionResponse,
+    )
+
+
+def get_api_capabilities(
+    http: HttpClient,
+) -> GetApiCapabilitiesResponse:
+    """Call the get_api_capabilities API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/capabilities",
+        GetApiCapabilitiesResponse,
     )
 
 
