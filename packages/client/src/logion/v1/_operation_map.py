@@ -121,6 +121,7 @@ PREDECLARED_OPERATION_IDS = frozenset({
     "fund_platform_bounty",
     "accept_platform_bounty_submission",
     "reject_platform_bounty_submission",
+    "get_api_capabilities",
 })
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
@@ -135,6 +136,9 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "complete_indexing_run": "Indexer-only ingestion endpoint.",
     "update_indexing_run_progress": "Indexer-only ingestion endpoint.",
     "get_indexed_listing": "No handwritten SDK resource exists yet.",
+    "get_api_capabilities": (
+        "Compatibility metadata is API-only until the CLI resource is added."
+    ),
     # Platform-funded bounty administration is intentionally API-only for now.
     # Generated request primitives remain available, but the public SDK has no
     # stable admin resource surface for these founder-admin operations.
