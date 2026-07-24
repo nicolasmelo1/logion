@@ -19,21 +19,21 @@ phases:
     actor: local_hook
     goal: Ensure GitHub App installation is recorded in the local backend DB
     success_hint: Installation recorded
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/sync_github_app_installation.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/sync_github_app_installation.py
     local_hook_capture_json: {}
 
   - id: sync-buyer-identity
     actor: local_hook
     goal: Ensure buyer GitHub identity is linked in the local backend DB
     success_hint: Buyer identity linked
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/sync_buyer_github_identity.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/sync_buyer_github_identity.py
     local_hook_capture_json: {}
 
   - id: create-course
     actor: seller
     goal: Create a paid course for the E2E bounty
     success_hint: Course created
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/create_course.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/create_course.py
     local_hook_capture_json:
       COURSE_ID: course_id
       COURSE_SLUG: slug
@@ -42,7 +42,7 @@ phases:
     actor: seller
     goal: Upload bundle, request review, approve, and make course public
     success_hint: Course published
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/publish_course.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/publish_course.py
     local_hook_capture_json:
       VERSION_ID: version_id
       REVIEW_ID: review_id
@@ -51,14 +51,14 @@ phases:
     actor: seller
     goal: Link the published course to the GitHub test repository
     success_hint: Source link configured
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/link_source.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/link_source.py
     local_hook_capture_json: {}
 
   - id: open-github-issue
     actor: seller
     goal: Open a GitHub issue mentioning the Logion bot to trigger a real bounty
     success_hint: GitHub issue opened
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/open_github_issue.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/open_github_issue.py
     local_hook_capture_json:
       ISSUE_1: issue_number
 
@@ -66,7 +66,7 @@ phases:
     actor: seller
     goal: Confirm the bounty via GitHub issue comment and capture the bounty ID
     success_hint: Bounty confirmed and funded
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/confirm_bounty.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/confirm_bounty.py
     local_hook_capture_json:
       BOUNTY_1: bounty_id
 
@@ -74,7 +74,7 @@ phases:
     actor: buyer
     goal: Create a bounty submission and open a real GitHub PR for it
     success_hint: Submission created and PR opened
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/create_submission_and_pr.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/create_submission_and_pr.py
     local_hook_capture_json:
       SUB_1: submission_id
       PR_1: pr_number
@@ -85,7 +85,7 @@ phases:
     actor: seller
     goal: Merge the linked PR and verify the bounty is awarded
     success_hint: PR merged and bounty awarded
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/merge_pr_and_verify.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/merge_pr_and_verify.py
     local_hook_capture_json:
       ACCEPTED_SUBMISSION_ID: accepted_submission_id
 

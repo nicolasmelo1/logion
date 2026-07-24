@@ -21,7 +21,7 @@ phases:
   - id: handoff_mint_and_claim
     actor: seller
     goal: ""
-    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/setup_handoff.py
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/setup_handoff.py
     local_hook_args:
       - --github-login
       - nicolasmelo1

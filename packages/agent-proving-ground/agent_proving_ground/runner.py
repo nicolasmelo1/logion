@@ -236,7 +236,9 @@ class ScenarioRunner:
                     for a in phase_assertions
                 ])
                 if phase_result["status"] != "completed":
-                    run_status_for_phase = (
+                    run_status_for_phase: Literal[
+                        "passed", "failed", "inconclusive"
+                    ] = (
                         "inconclusive"
                         if phase_result["status"] == "inconclusive"
                         else "failed"
@@ -607,7 +609,7 @@ class ScenarioRunner:
             phase_id=phase.id,
             hook=phase.local_hook,
         )
-        hook = str(phase.local_hook)
+        hook = os.path.expandvars(str(phase.local_hook))
         if not hook.startswith("/"):
             hook = str(world.root_dir / hook)
         args = [shlex.quote(a) for a in phase.local_hook_args]
