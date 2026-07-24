@@ -601,7 +601,6 @@ class ScenarioRunner:
         before the phase assertions run.
         """
         import asyncio
-        import shlex
         import subprocess
 
         self.timeline.event(
@@ -612,8 +611,7 @@ class ScenarioRunner:
         hook = os.path.expandvars(str(phase.local_hook))
         if not hook.startswith("/"):
             hook = str(world.root_dir / hook)
-        args = [shlex.quote(a) for a in phase.local_hook_args]
-        cmd = f"{shlex.quote(hook)} {' '.join(args)}"
+        cmd = [hook, *phase.local_hook_args]
         bindings = _scenario_bindings(world)
         env = {
             **os.environ,
@@ -626,7 +624,6 @@ class ScenarioRunner:
             proc = await asyncio.to_thread(
                 subprocess.run,
                 cmd,
-                shell=True,
                 cwd=world.root_dir,
                 env=env,
                 capture_output=True,

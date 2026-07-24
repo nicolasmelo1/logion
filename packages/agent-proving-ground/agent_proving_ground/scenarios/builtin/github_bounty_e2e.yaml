@@ -123,4 +123,4 @@ final_assertions:
   - type: github.issue_bot_comment_matches
     params:
       issue: ${ISSUE_1}
-      pattern: "bounty created"
+      pattern: "Bounty opened and funded"

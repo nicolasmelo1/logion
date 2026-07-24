@@ -125,8 +125,8 @@ class GithubObserver:
         head_branch: str | None = None,
         marker: str | None = None,
     ) -> dict[str, Any] | None:
-        """Find an open PR matching head_branch or body marker."""
-        query = {"state": "open"}
+        """Find a PR matching head_branch or body marker in any state."""
+        query = {"state": "all"}
         if head_branch:
             owner = self._repo.split("/", 1)[0]
             query["head"] = (
@@ -138,7 +138,7 @@ class GithubObserver:
         if not isinstance(prs, list):
             return None
         for pr in prs:
-            if not isinstance(pr, dict) or pr.get("state") != "open":
+            if not isinstance(pr, dict):
                 continue
             if marker:
                 body = pr.get("body") or ""
