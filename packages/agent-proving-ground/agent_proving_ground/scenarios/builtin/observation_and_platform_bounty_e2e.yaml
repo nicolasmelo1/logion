@@ -1,0 +1,64 @@
+schema_version: "1"
+name: observation_and_platform_bounty_e2e
+description: |
+  Fase 15.7 + 15.8: Upsert indexed listing, verify discovery with
+  include_indexed, create platform-funded bounty on the listing,
+  submit as buyer, admin-accept with candidate capabilities, and
+  verify the listing advances to improving.
+api_adapter: remote
+agents:
+  - id: admin
+    role: admin
+  - id: buyer
+    role: submitter
+  - id: local_hook
+    role: local_hook
+phases:
+  - id: upsert-indexed-listing
+    actor: local_hook
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/upsert_indexed_listing.py
+    local_hook_capture_json:
+      LISTING_ID: listing_id
+
+  - id: verify-discovery
+    actor: local_hook
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/verify_indexed_discovery.py
+    local_hook_args:
+      - "${LISTING_ID}"
+    local_hook_capture_json: {}
+
+  - id: create-platform-bounty
+    actor: local_hook
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/create_platform_bounty.py
+    local_hook_args:
+      - "${LISTING_ID}"
+    local_hook_capture_json:
+      BOUNTY_ID: bounty_id
+
+  - id: submit-and-accept
+    actor: local_hook
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/submit_and_accept_platform_bounty.py
+    local_hook_args:
+      - "${BOUNTY_ID}"
+    local_hook_capture_json:
+      SUBMISSION_ID: submission_id
+
+final_assertions:
+  - type: api.indexed_listing_exists
+    params:
+      listing: ${LISTING_ID}
+
+  - type: api.indexed_listing_tier
+    params:
+      listing: ${LISTING_ID}
+      expected_tier: improving
+
+  - type: api.platform_bounty_accepted
+    params:
+      bounty: ${BOUNTY_ID}
+      submission: ${SUBMISSION_ID}
+      creator_agent: admin

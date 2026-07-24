@@ -726,6 +726,79 @@ class LogionApiQueries:
                 }
         return {"rejected": False, "evidence": {"source": "api"}}
 
+    async def _q_indexed_listing_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        listing_id = query.get("listing")
+        if not listing_id:
+            return {"found": False, "evidence": {"source": "api"}}
+        admin_role = "admin"
+        status, data = await self._get(
+            f"/v1/indexed-listings/{listing_id}", admin_role
+        )
+        if status == 200 and isinstance(data, dict):
+            return {
+                "found": True,
+                "listing_id": str(data.get("id", "")),
+                "tier": data.get("tier"),
+                "evidence": {"source": "api"},
+            }
+        return {"found": False, "evidence": {"source": "api"}}
+
+    async def _q_indexed_listing_tier(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        listing_id = query.get("listing")
+        expected_tier = query.get("expected_tier")
+        if not listing_id or not expected_tier:
+            return {"tier_matches": False, "evidence": {"source": "api"}}
+        admin_role = "admin"
+        status, data = await self._get(
+            f"/v1/indexed-listings/{listing_id}", admin_role
+        )
+        if status == 200 and isinstance(data, dict):
+            actual_tier = data.get("tier")
+            return {
+                "tier_matches": actual_tier == expected_tier,
+                "listing_id": str(data.get("id", "")),
+                "tier": actual_tier,
+                "evidence": {"source": "api"},
+            }
+        return {"tier_matches": False, "evidence": {"source": "api"}}
+
+    async def _q_platform_bounty_accepted(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        # Platform bounties are admin-created; use admin role to list
+        # submissions (the admin has full read access).
+        admin_role = "admin"
+        bounty_id = query.get("bounty")
+        if not bounty_id:
+            return {"accepted": False, "evidence": {"source": "api"}}
+        status, data = await self._get(
+            f"/v1/bounties/{bounty_id}/submissions", admin_role
+        )
+        if status != 200 or not isinstance(data, list):
+            return {"accepted": False, "evidence": {"source": "api"}}
+        submission_id = query.get("submission")
+        for sub in data:
+            if submission_id and str(sub.get("id")) != str(submission_id):
+                continue
+            if sub.get("status") == "accepted":
+                return {
+                    "accepted": True,
+                    "bounty_id": bounty_id,
+                    "submission_id": str(sub.get("id", "")),
+                    "evidence": {"source": "api"},
+                }
+        return {"accepted": False, "evidence": {"source": "api"}}
+
 
 def _unsupported(reason: str) -> dict[str, Any]:
     return {"found": False, "unsupported": True, "reason": reason}

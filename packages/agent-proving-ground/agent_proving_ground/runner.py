@@ -611,8 +611,13 @@ class ScenarioRunner:
         hook = os.path.expandvars(str(phase.local_hook))
         if not hook.startswith("/"):
             hook = str(world.root_dir / hook)
-        cmd = [hook, *phase.local_hook_args]
         bindings = _scenario_bindings(world)
+        args = [
+            _resolve_scenario_value(a, bindings) if isinstance(a, str) else a
+            for a in phase.local_hook_args
+        ]
+        args = [os.path.expandvars(str(a)) for a in args]
+        cmd = [hook, *args]
         env = {
             **os.environ,
             **bindings,
