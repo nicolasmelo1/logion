@@ -73,6 +73,15 @@ class GithubIdentityLinkedAssertion(_ApiQueryAssertion):
     fail_message = "no linked GitHub identity observed"
 
 
+class SetupTokenPendingAssertion(_ApiQueryAssertion):
+    type = "api.setup_token_pending"
+    query_type = "setup_token_pending"
+    found_key = "pending"
+    evidence_keys = ("token_prefix", "status")
+    pass_message = "setup token is pending"
+    fail_message = "setup token is not pending"
+
+
 class CourseExistsAssertion(_ApiQueryAssertion):
     type = "api.course_exists"
     query_type = "course_exists"

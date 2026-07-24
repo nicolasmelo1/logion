@@ -81,6 +81,9 @@ class PhaseSpec(BaseModel):
     goal: str
     timeout_seconds: int = Field(default=900, ge=1)
     success_hint: str | None = None
+    local_hook: str | None = None
+    local_hook_args: list[str] = Field(default_factory=list)
+    local_hook_capture_json: dict[str, str] = Field(default_factory=dict)
     assertions: list[AssertionSpec] = Field(default_factory=list)
 
     @field_validator("id")
@@ -88,6 +91,21 @@ class PhaseSpec(BaseModel):
     def _id_safe(cls, value: str) -> str:
         if not re.match(SAFE_NAME_RE, value):
             raise ValueError(f"phase id must match {SAFE_NAME_RE}: {value}")
+        return value
+
+    @field_validator("local_hook_capture_json")
+    @classmethod
+    def _capture_names_are_valid(cls, value: dict[str, str]) -> dict[str, str]:
+        invalid = [
+            name
+            for name in value
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", name)
+        ]
+        if invalid:
+            raise ValueError(
+                "local_hook_capture_json names must use uppercase "
+                "environment-variable syntax: " + ", ".join(sorted(invalid))
+            )
         return value
 
 

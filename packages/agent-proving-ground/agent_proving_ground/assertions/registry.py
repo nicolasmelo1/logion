@@ -15,6 +15,7 @@ from agent_proving_ground.assertions.api import (
     NoDoubleCreditDebitAssertion,
     PurchaseExistsAssertion,
     ReviewExistsAssertion,
+    SetupTokenPendingAssertion,
     SourceLinkExistsAssertion,
     UsageReportExistsAssertion,
 )
@@ -72,6 +73,7 @@ class AssertionRegistry:
             DbExactCreditLedgerAssertion,
             EventsOutboxContainsAssertion,
             SourceLinkExistsAssertion,
+            SetupTokenPendingAssertion,
             BountySubmissionPrOpenedAssertion,
             BountySubmissionAcceptedAssertion,
             BountySubmissionRejectedAssertion,

@@ -1,0 +1,36 @@
+schema_version: "1"
+name: setup_complete_handoff_e2e
+description: >-
+  Exercise the local setup-complete handoff lifecycle end-to-end. A local
+  hook mints and claims a setup handoff; the scenario then verifies the
+  resulting setup token is observed as pending in the API. No bearer
+  handoff or raw token appears in the scenario, runner, or artifacts.
+api_adapter: local-devrig
+driver_config:
+  hermes:
+    model: glm-5.1
+    provider: ollama-cloud
+agents:
+  - id: seller
+    role: Seller with GitHub identity
+    driver: hermes
+    workspace: seller
+    devrig_role: seller
+    timeout_seconds: 900
+phases:
+  - id: handoff_mint_and_claim
+    actor: seller
+    goal: ""
+    local_hook: /Users/nicolasmelo/workspaces/personal/logion-workspace/scripts/devrig/setup_handoff.py
+    local_hook_args:
+      - --github-login
+      - nicolasmelo1
+    local_hook_capture_json:
+      SETUP_TOKEN_PREFIX: token_prefix
+    assertions:
+      - type: api.setup_token_pending
+        params:
+          owner_agent: seller
+          token_prefix: "${SETUP_TOKEN_PREFIX}"
+final_assertions:
+  - type: timeline.no_unredacted_secret

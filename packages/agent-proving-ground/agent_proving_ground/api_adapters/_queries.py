@@ -191,6 +191,40 @@ class LogionApiQueries:
             },
         }
 
+    async def _q_setup_token_pending(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        role = self._role_of(query.get("owner_agent"), agent_roles)
+        prefix = str(query.get("token_prefix") or "")
+        if not prefix:
+            return _unsupported("setup token prefix is required")
+        status, data = await self._get(f"/v1/setup-tokens/{prefix}", role)
+        if status in {401, 403}:
+            return _unsupported(
+                f"setup token capability unavailable: HTTP {status}"
+            )
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "pending": False,
+                "evidence": {
+                    "source": "api",
+                    "endpoint": f"/v1/setup-tokens/{prefix}",
+                    "http_status": status,
+                },
+            }
+        observed_prefix = str(data.get("token_prefix") or "")
+        pending = data.get("status") == "pending" and observed_prefix == prefix
+        return {
+            "pending": pending,
+            "token_prefix": observed_prefix,
+            "status": data.get("status"),
+            "evidence": {
+                "source": "api",
+                "endpoint": f"/v1/setup-tokens/{prefix}",
+                "http_status": status,
+            },
+        }
+
     async def _my_courses(self, role: str | None) -> list[dict[str, Any]]:
         status, data = await self._get("/v1/courses/mine", role)
         if status != 200 or not isinstance(data, dict):
