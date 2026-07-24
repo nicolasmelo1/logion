@@ -233,22 +233,14 @@ def test_github_scenario_api_assertions_declare_agents() -> None:
     scenario = load_scenario("builtin:github_bounty_e2e")
     assertions = {
         assertion.type: assertion.params
-        for phase in scenario.phases
-        for assertion in phase.assertions
+        for assertion in scenario.final_assertions
         if assertion.type.startswith("api.")
     }
 
-    assert assertions["api.source_link_exists"]["owner_agent"] == "creator"
-    assert assertions["api.bounty_exists"]["creator_agent"] == "creator"
-    assert (
-        assertions["api.bounty_submission_pr_opened"]["creator_agent"]
-        == "creator"
-    )
-    assert (
-        assertions["api.bounty_submission_accepted"]["creator_agent"]
-        == "creator"
-    )
-    assert (
-        assertions["api.bounty_submission_rejected"]["creator_agent"]
-        == "creator"
-    )
+    assert {agent.id for agent in scenario.agents} >= {
+        "seller",
+        "buyer",
+        "admin",
+    }
+    assert assertions["api.bounty_submission_exists"]["creator_agent"] == "seller"
+    assert assertions["api.bounty_accepted"]["creator_agent"] == "seller"
