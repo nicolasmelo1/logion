@@ -242,5 +242,8 @@ def test_github_scenario_api_assertions_declare_agents() -> None:
         "buyer",
         "admin",
     }
-    assert assertions["api.bounty_submission_exists"]["creator_agent"] == "seller"
+    assert (
+        assertions["api.bounty_submission_exists"]["creator_agent"]
+        == "seller"
+    )
     assert assertions["api.bounty_accepted"]["creator_agent"] == "seller"
