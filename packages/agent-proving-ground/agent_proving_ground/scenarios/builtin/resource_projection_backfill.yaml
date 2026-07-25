@@ -52,6 +52,8 @@ final_assertions:
   - type: api.resource_backfill_complete
   - type: api.resource_identity_unique
   - type: api.legacy_course_purchase_exists
+    params:
+      buyer_agent: consumer
   - type: api.resource_search_returns_kinds
     params:
       kinds:

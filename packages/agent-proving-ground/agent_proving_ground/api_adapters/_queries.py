@@ -815,7 +815,15 @@ class LogionApiQueries:
         for item in items:
             if not isinstance(item, dict):
                 continue
-            projections = item.get("projections", [])
+            resource_id = item.get("id")
+            if not resource_id:
+                continue
+            detail_status, detail = await self._get(
+                f"/v1/resources/{resource_id}", "admin"
+            )
+            if detail_status != 200 or not isinstance(detail, dict):
+                continue
+            projections = detail.get("projections", [])
             if not isinstance(projections, list):
                 continue
             for proj in projections:
@@ -916,16 +924,18 @@ class LogionApiQueries:
     ) -> dict[str, Any]:
         """Verify that legacy course purchase still works."""
         buyer_role = self._role_of(query.get("buyer_agent"), agent_roles)
-        status, data = await self._get("/v1/purchases", buyer_role)
+        status, data = await self._get("/v1/credits/ledger", buyer_role)
         if status != 200 or not isinstance(data, list):
             return {"found": False, "evidence": {"source": "api"}}
-        for purchase in data:
-            purchase_id = purchase.get("id")
-            if purchase_id:
+        for entry in data:
+            if (
+                isinstance(entry, dict)
+                and entry.get("kind") == "course_purchase"
+            ):
                 return {
                     "found": True,
-                    "purchase_id": str(purchase_id),
-                    "evidence": {"source": "api"},
+                    "purchase_id": str(entry.get("id", "")),
+                    "evidence": {"source": "api", "surface": "credit_ledger"},
                 }
         return {"found": False, "evidence": {"source": "api"}}
 
