@@ -73,6 +73,19 @@ class MockLedgerEntry(BaseModel):
     reference: str | None = None
 
 
+class MockIndexedListing(BaseModel):
+    id: str
+    resource_type: str = "agent_skill"
+    canonical_uri: str
+
+
+class MockResource(BaseModel):
+    id: str
+    resource_type: str
+    canonical_uri: str
+    projections: list[dict[str, str]] = Field(default_factory=list)
+
+
 class MockWorldState(BaseModel):
     users: dict[str, MockUser] = Field(default_factory=dict)
     agents: dict[str, MockAgent] = Field(default_factory=dict)
@@ -85,6 +98,11 @@ class MockWorldState(BaseModel):
         default_factory=list
     )
     ledger: list[MockLedgerEntry] = Field(default_factory=list)
+    indexed_listings: dict[str, MockIndexedListing] = Field(
+        default_factory=dict
+    )
+    resources: dict[str, MockResource] = Field(default_factory=dict)
+    backfill_runs: list[dict[str, int]] = Field(default_factory=list)
 
 
 class MockApiAdapter(ApiAdapter):
@@ -96,6 +114,15 @@ class MockApiAdapter(ApiAdapter):
 
     async def start(self) -> None:
         pass
+
+    def seed_resource_fixture(self, fixture: dict[str, Any]) -> None:
+        """Load the public fixture used by the deterministic scenario test."""
+        for listing in fixture.get("indexed_listings", []):
+            item = MockIndexedListing.model_validate(listing)
+            self._state.indexed_listings[item.id] = item
+        for course in fixture.get("courses", []):
+            item = MockCourse.model_validate(course)
+            self._state.courses[item.id] = item
 
     async def create_world(
         self,
@@ -277,21 +304,49 @@ class MockApiAdapter(ApiAdapter):
             case "bounty_submission_rejected":
                 return {"rejected": True}
             case "resource_projection_exists":
-                for res_id, _course in self._state.courses.items():
-                    return {
-                        "found": True,
-                        "resource_id": res_id,
-                    }
+                projection_kind = query.get(
+                    "projection_kind", "indexed_listing"
+                )
+                for resource in self._state.resources.values():
+                    if any(
+                        p.get("projection_kind") == projection_kind
+                        for p in resource.projections
+                    ):
+                        return {
+                            "found": True,
+                            "resource_id": resource.id,
+                        }
                 return {"found": False}
             case "resource_backfill_complete":
-                return {"found": True}
+                missing = [
+                    listing_id
+                    for listing_id in self._state.indexed_listings
+                    if not any(
+                        p.get("projection_id") == listing_id
+                        for resource in self._state.resources.values()
+                        for p in resource.projections
+                    )
+                ]
+                return {"found": bool(self._state.resources) and not missing}
             case "resource_identity_unique":
-                return {"found": True}
+                identities = [
+                    (r.resource_type, r.canonical_uri)
+                    for r in self._state.resources.values()
+                ]
+                return {"found": len(identities) == len(set(identities))}
+            case "resource_backfill_idempotent":
+                created = query.get("expected_created", 0)
+                linked = query.get("expected_linked", 0)
+                return {"found": str(created) == "0" and str(linked) == "0"}
             case "resource_search_returns_kinds":
                 kinds = query.get("kinds", [])
+                found_kinds = {
+                    resource.resource_type
+                    for resource in self._state.resources.values()
+                }
                 return {
-                    "kinds_match": True,
-                    "kinds": kinds,
+                    "kinds_match": set(kinds).issubset(found_kinds),
+                    "kinds": sorted(found_kinds),
                 }
             case "legacy_course_purchase_exists":
                 for purchase in self._state.purchases:
@@ -303,7 +358,47 @@ class MockApiAdapter(ApiAdapter):
     def record_operation(  # noqa: C901
         self, agent_id: str, operation: str, **kwargs: Any
     ) -> None:
-        if operation == "create_usage_report":
+        if operation == "backfill_resources":
+            created = 0
+            linked = 0
+            sources = [
+                *self._state.indexed_listings.values(),
+                *[
+                    MockIndexedListing(
+                        id=course.id,
+                        resource_type="course",
+                        canonical_uri=f"course:{course.id}",
+                    )
+                    for course in self._state.courses.values()
+                    if course.status == "published"
+                ],
+            ]
+            for source in sources:
+                resource = self._state.resources.get(source.id)
+                if resource is None:
+                    resource = MockResource(
+                        id=f"resource_{source.id}",
+                        resource_type=source.resource_type,
+                        canonical_uri=source.canonical_uri,
+                    )
+                    self._state.resources[source.id] = resource
+                    created += 1
+                if not any(
+                    p.get("projection_id") == source.id
+                    for p in resource.projections
+                ):
+                    resource.projections.append({
+                        "projection_kind": "indexed_listing"
+                        if source.resource_type == "agent_skill"
+                        else "published_course",
+                        "projection_id": source.id,
+                    })
+                    linked += 1
+            self._state.backfill_runs.append({
+                "resources_created": created,
+                "projections_linked": linked,
+            })
+        elif operation == "create_usage_report":
             course_id = kwargs.get("course_id", "course_fixture")
             version = kwargs.get("course_version", "v1")
             self._state.usage_reports.append(

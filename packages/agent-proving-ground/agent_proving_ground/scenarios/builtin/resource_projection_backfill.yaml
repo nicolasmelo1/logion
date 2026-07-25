@@ -1,64 +1,108 @@
-# Resource Projection Backfill Proving Ground Scenario
-#
-# Verifies that indexed listings and published courses are projected as
-# generic resources after backfill, and that the legacy purchase flow
-# still works through the compatibility surface.
-
+schema_version: "1"
 name: resource_projection_backfill
 description: |
-  Verify that existing indexed skills and published courses are discoverable
-  as generic resources after backfill, and that legacy course purchase still
-  works through the compatibility surface.
+  Verify that a node upgrade backfills indexed skills and published courses into
+  generic resources, keeps the legacy Course purchase surface working, and is
+  safe to rerun without creating resources or links.
+api_adapter: local-devrig
+driver_config:
+  codex:
+    model: gpt-5.4-mini
+  claude-code:
+    model: claude-haiku-4-5
 
 agents:
   - id: operator
-    role: Admin/operator
+    role: Admin/operator running the resource migration
+    driver: codex
+    workspace: operator
     devrig_role: admin
+    timeout_seconds: 1200
   - id: consumer
-    role: Course buyer
+    role: Consumer discovering and buying a hosted Course
+    driver: claude-code
+    workspace: consumer
     devrig_role: buyer
+    timeout_seconds: 1200
+  - id: local_hook
+    role: Local devrig backfill hook
+    driver: scripted
+    workspace: local-hook
+    devrig_role: admin
 
 phases:
   - id: operator-backfill
     actor: operator
-    goal: >
-      Run the resource backfill on the local API to project all indexed
-      listings and published courses as generic resources.
-    success_hint: Backfill completed with no conflicts
-    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/upsert_indexed_listing.py
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/backfill_resources.py
+    local_hook_args:
+      - --source
+      - indexed-listings-and-courses
+      - --page-size
+      - "50"
     local_hook_capture_json:
-      LISTING_ID: listing_id
+      BACKFILL_CREATED: resources_created
+      BACKFILL_LINKED: projections_linked
+    assertions:
+      - type: api.resource_backfill_complete
 
   - id: consumer-search-resources
     actor: consumer
-    goal: >
-      Search for resources of kind agent_skill and verify that the
-      previously indexed skill appears in results.
-    success_hint: Resource search returns expected kinds
-    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/verify_indexed_discovery.py
-    local_hook_args:
-      - "${LISTING_ID}"
-    local_hook_capture_json: {}
+    goal: |
+      Search the upgraded node for the seeded Python debugging skill and hosted
+      Course. Inspect each result's source and resource kind without inspecting
+      source code or the database.
+    success_hint: Resource search returns the seeded agent skill and Course.
+    assertions:
+      - type: api.resource_search_returns_kinds
+        params:
+          kinds: [agent_skill]
 
   - id: consumer-legacy-course-purchase
     actor: consumer
-    goal: >
-      Purchase the hosted course through the existing course surface to
-      confirm backward compatibility.
-    success_hint: Course purchased successfully
+    goal: |
+      Purchase the seeded Python debugging Course through the existing Courses
+      compatibility surface.
+    success_hint: Purchase the existing published Course, not an indexed-only result.
+    assertions:
+      - type: api.legacy_course_purchase_exists
+        params:
+          buyer_agent: consumer
+
+  - id: operator-backfill-rerun
+    actor: operator
+    goal: ""
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/backfill_resources.py
+    local_hook_args:
+      - --source
+      - indexed-listings-and-courses
+      - --page-size
+      - "50"
+    local_hook_capture_json:
+      BACKFILL_CREATED: resources_created
+      BACKFILL_LINKED: projections_linked
+    assertions:
+      - type: api.resource_backfill_idempotent
+        params:
+          expected_created: "${BACKFILL_CREATED}"
+          expected_linked: "${BACKFILL_LINKED}"
 
 final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
   - type: api.resource_projection_exists
     params:
       projection_kind: indexed_listing
   - type: api.resource_backfill_complete
   - type: api.resource_identity_unique
+  - type: api.resource_search_returns_kinds
+    params:
+      kinds: [agent_skill]
+  - type: api.resource_projection_exists
+    params:
+      projection_kind: published_course
   - type: api.legacy_course_purchase_exists
     params:
       buyer_agent: consumer
-  - type: api.resource_search_returns_kinds
-    params:
-      kinds:
-        - agent_skill
+  - type: api.resource_backfill_idempotent
   - type: api.no_double_credit_debit
-  - type: timeline.no_unredacted_secret
