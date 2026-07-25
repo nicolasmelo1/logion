@@ -114,8 +114,15 @@ class LogionApiQueries:
         review_ids: set[str] = set()
         bounty_ids: set[str] = set()
         credit_balances: dict[str, int] = {}
+        credit_ledger_ids: dict[str, list[str]] = {}
         roles = dict.fromkeys([*agent_roles.values(), "seller", "buyer"])
         for role in roles:
+            ledger = await self._ledger(role)
+            credit_ledger_ids[role] = [
+                str(entry["id"])
+                for entry in ledger
+                if isinstance(entry, dict) and entry.get("id")
+            ]
             balance = await self._credit_balance(role)
             if balance is not None:
                 credit_balances[role] = balance
@@ -141,6 +148,7 @@ class LogionApiQueries:
             "review_ids": sorted(review_ids),
             "bounty_ids": sorted(bounty_ids),
             "credit_balances": credit_balances,
+            "credit_ledger_ids": credit_ledger_ids,
         }
 
     async def _get(self, path: str, role: str | None) -> tuple[int, Any]:
@@ -500,14 +508,22 @@ class LogionApiQueries:
 
     async def _q_no_double_credit_debit(
         self,
-        query: dict[str, Any],  # noqa: ARG002
+        query: dict[str, Any],
         agent_roles: dict[str, str],
     ) -> dict[str, Any]:
         roles = set(agent_roles.values()) or {"buyer"}
         for role in roles:
             entries = await self._ledger(role)
+            baseline = query.get("_baseline")
+            baseline_ids = set()
+            if isinstance(baseline, dict):
+                role_ids = baseline.get("credit_ledger_ids", {}).get(role, [])
+                if isinstance(role_ids, list):
+                    baseline_ids = {str(entry_id) for entry_id in role_ids}
             seen: dict[tuple[str, int], int] = {}
             for entry in entries:
+                if str(entry.get("id")) in baseline_ids:
+                    continue
                 kind = str(entry.get("kind", "")).lower()
                 if "purchase" not in kind:
                     continue
@@ -927,9 +943,18 @@ class LogionApiQueries:
         status, data = await self._get("/v1/credits/ledger", buyer_role)
         if status != 200 or not isinstance(data, list):
             return {"found": False, "evidence": {"source": "api"}}
+        baseline = query.get("_baseline")
+        baseline_ids = set()
+        if isinstance(baseline, dict):
+            role_ids = baseline.get("credit_ledger_ids", {}).get(
+                buyer_role, []
+            )
+            if isinstance(role_ids, list):
+                baseline_ids = {str(entry_id) for entry_id in role_ids}
         for entry in data:
             if (
                 isinstance(entry, dict)
+                and str(entry.get("id")) not in baseline_ids
                 and entry.get("kind") == "course_purchase"
             ):
                 return {
