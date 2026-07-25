@@ -1674,7 +1674,7 @@ dev = [
 
 [[package]]
 name = "logion-cli"
-version = "99.99.99"
+version = "0.1.15"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "logion-client" },
