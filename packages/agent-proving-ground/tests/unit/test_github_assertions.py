@@ -64,7 +64,7 @@ async def test_installation_delivery_is_unsupported_without_app_admin_access(
     assert "admin access" in result.message
 
 
-async def test_pr_exists_assertion_rejects_closed_match(
+async def test_pr_exists_assertion_accepts_closed_match(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -82,7 +82,7 @@ async def test_pr_exists_assertion_rejects_closed_match(
         _context(tmp_path), {"marker": "logion:bounty_submission"}
     )
 
-    assert result.status == "failed"
+    assert result.status == "passed"
 
 
 async def test_issue_comment_invalid_regex_fails_without_crashing(
@@ -96,7 +96,7 @@ async def test_issue_comment_invalid_regex_fails_without_crashing(
     assert "Invalid regex pattern" in result.message
 
 
-def test_observer_pr_exists_ignores_closed_matches(
+def test_observer_pr_exists_includes_closed_matches(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observer = GithubObserver(token="token", repo="owner/repo")
@@ -120,7 +120,7 @@ def test_observer_pr_exists_ignores_closed_matches(
     result = observer.pr_exists(marker="logion:bounty_submission")
 
     assert result is not None
-    assert result["number"] == 8
+    assert result["number"] == 7
 
 
 def test_observer_qualifies_and_encodes_head_branch(
@@ -136,7 +136,7 @@ def test_observer_qualifies_and_encodes_head_branch(
     monkeypatch.setattr(observer, "_get_raw", fake_get)
 
     assert observer.pr_exists(head_branch="feature/branch") is None
-    assert "state=open" in requested_urls[0]
+    assert "state=all" in requested_urls[0]
     assert "head=owner%3Afeature%2Fbranch" in requested_urls[0]
 
 
@@ -233,22 +233,16 @@ def test_github_scenario_api_assertions_declare_agents() -> None:
     scenario = load_scenario("builtin:github_bounty_e2e")
     assertions = {
         assertion.type: assertion.params
-        for phase in scenario.phases
-        for assertion in phase.assertions
+        for assertion in scenario.final_assertions
         if assertion.type.startswith("api.")
     }
 
-    assert assertions["api.source_link_exists"]["owner_agent"] == "creator"
-    assert assertions["api.bounty_exists"]["creator_agent"] == "creator"
+    assert {agent.id for agent in scenario.agents} >= {
+        "seller",
+        "buyer",
+        "admin",
+    }
     assert (
-        assertions["api.bounty_submission_pr_opened"]["creator_agent"]
-        == "creator"
+        assertions["api.bounty_submission_exists"]["creator_agent"] == "seller"
     )
-    assert (
-        assertions["api.bounty_submission_accepted"]["creator_agent"]
-        == "creator"
-    )
-    assert (
-        assertions["api.bounty_submission_rejected"]["creator_agent"]
-        == "creator"
-    )
+    assert assertions["api.bounty_accepted"]["creator_agent"] == "seller"

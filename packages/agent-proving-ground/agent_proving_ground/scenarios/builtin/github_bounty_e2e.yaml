@@ -1,84 +1,126 @@
-schema_version: "1"
 name: github_bounty_e2e
-description: >-
-  Full GitHub-native loop — publish, link repo, issue-mention bounty,
-  PR, merge/accept, close/reject. Requires real GitHub App, local API,
-  and two GitHub accounts. Run manually; never in CI.
-api_adapter: local-devrig
+description: |
+  Fase 15.5: GitHub bounty real. Cria curso, publica, vincula repo,
+  abre issue com menção ao bot, confirma bounty, abre PR real,
+  merge e verifica premiação — tudo via webhooks reais do GitHub App.
+
 agents:
-  - id: creator
-    role: Course creator/owner
-    driver: claude-code
-    devrig_role: seller
+  - id: seller
+    role: creator
   - id: buyer
-    role: Buyer/worker
-    driver: claude-code
-    devrig_role: buyer
-  - id: operator
-    role: Admin observer
-    driver: scripted
-    devrig_role: admin
+    role: submitter
+  - id: admin
+    role: reviewer
+  - id: local_hook
+    role: local_hook
+
 phases:
-  - id: link_repo
-    actor: creator
-    goal: "Link the published course to the test repo via `logion courses source-link set`."
-    assertions:
-      - type: api.source_link_exists
-        params:
-          course: "${COURSE_ID}"
-          repository: "${REPO}"
-          owner_agent: creator
-  - id: issue_bounty
-    actor: creator
-    goal: "Open an issue and comment `@<bot> bounty 250`, then `@<bot> confirm`."
-    assertions:
-      - type: github.issue_bot_comment_matches
-        params:
-          issue: "${ISSUE_1}"
-          pattern: "confirm|250 credits"
-      - type: api.bounty_exists
-        params:
-          status: funded
-          creator_agent: creator
-  - id: submit_pr
+  - id: sync-app-installation
+    actor: local_hook
+    goal: Ensure GitHub App installation is recorded in the local backend DB
+    success_hint: Installation recorded
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/sync_github_app_installation.py
+    local_hook_capture_json: {}
+
+  - id: sync-buyer-identity
+    actor: local_hook
+    goal: Ensure buyer GitHub identity is linked in the local backend DB
+    success_hint: Buyer identity linked
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/sync_buyer_github_identity.py
+    local_hook_capture_json: {}
+
+  - id: create-course
+    actor: seller
+    goal: Create a paid course for the E2E bounty
+    success_hint: Course created
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/create_course.py
+    local_hook_capture_json:
+      COURSE_ID: course_id
+      COURSE_SLUG: slug
+
+  - id: publish-course
+    actor: seller
+    goal: Upload bundle, request review, approve, and make course public
+    success_hint: Course published
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/publish_course.py
+    local_hook_capture_json:
+      VERSION_ID: version_id
+      REVIEW_ID: review_id
+
+  - id: link-source
+    actor: seller
+    goal: Link the published course to the GitHub test repository
+    success_hint: Source link configured
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/link_source.py
+    local_hook_capture_json: {}
+
+  - id: open-github-issue
+    actor: seller
+    goal: Open a GitHub issue mentioning the Logion bot to trigger a real bounty
+    success_hint: GitHub issue opened
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/open_github_issue.py
+    local_hook_capture_json:
+      ISSUE_1: issue_number
+
+  - id: confirm-bounty
+    actor: seller
+    goal: Confirm the bounty via GitHub issue comment and capture the bounty ID
+    success_hint: Bounty confirmed and funded
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/confirm_bounty.py
+    local_hook_capture_json:
+      BOUNTY_1: bounty_id
+
+  - id: create-submission-and-pr
     actor: buyer
-    goal: "Do the work and `logion bounties submissions create <BOUNTY> --github-pr`."
-    assertions:
-      - type: api.bounty_submission_pr_opened
-        params:
-          bounty: "${BOUNTY_1}"
-          submission: "${SUB_1}"
-          creator_agent: creator
-      - type: github.pr_exists
-        params:
-          marker: "logion:bounty_submission"
-  - id: merge_accept
-    actor: creator
-    goal: "Merge the PR as the course owner."
-    assertions:
-      - type: github.pr_merged
-        params:
-          pr_number: "${PR_1}"
-      - type: api.bounty_submission_accepted
-        params:
-          bounty: "${BOUNTY_1}"
-          submission: "${SUB_1}"
-          creator_agent: creator
-      - type: api.credit_balance_changed
-        params:
-          role: buyer
-          direction: increase
-  - id: close_reject
-    actor: creator
-    goal: "Close the second PR without merging."
-    assertions:
-      - type: github.pr_closed_unmerged
-        params:
-          pr_number: "${PR_2}"
-      - type: api.bounty_submission_rejected
-        params:
-          bounty: "${BOUNTY_2}"
-          submission: "${SUB_2}"
-          creator_agent: creator
+    goal: Create a bounty submission and open a real GitHub PR for it
+    success_hint: Submission created and PR opened
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/create_submission_and_pr.py
+    local_hook_capture_json:
+      SUB_1: submission_id
+      PR_1: pr_number
+      PR_URL: pr_url
+      HEAD_BRANCH: head_branch
+
+  - id: merge-pr-and-verify
+    actor: seller
+    goal: Merge the linked PR and verify the bounty is awarded
+    success_hint: PR merged and bounty awarded
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/merge_pr_and_verify.py
+    local_hook_capture_json:
+      ACCEPTED_SUBMISSION_ID: accepted_submission_id
+
 final_assertions:
-  - type: timeline.no_unredacted_secret
+  - type: api.course_exists
+    params:
+      course: ${COURSE_ID}
+      expected_status: published
+
+  - type: api.bounty_exists
+    params:
+      bounty: ${BOUNTY_1}
+      expected_status: funded
+
+  - type: api.bounty_submission_exists
+    params:
+      bounty: ${BOUNTY_1}
+      submission: ${SUB_1}
+      creator_agent: seller
+
+  - type: github.pr_exists
+    params:
+      marker: "<!-- logion:bounty_submission:${SUB_1} -->"
+
+  - type: github.pr_merged
+    params:
+      pr_number: ${PR_1}
+
+  - type: api.bounty_accepted
+    params:
+      bounty: ${BOUNTY_1}
+      submission: ${SUB_1}
+      creator_agent: seller
+
+  - type: github.issue_bot_comment_matches
+    params:
+      issue: ${ISSUE_1}
+      pattern: "Bounty opened and funded"

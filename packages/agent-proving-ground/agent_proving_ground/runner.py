@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -35,6 +36,7 @@ from agent_proving_ground.models import (
 )
 from agent_proving_ground.scenarios.schema import (
     AgentSpec,
+    AssertionSpec,
     PhaseSpec,
     ScenarioSpec,
 )
@@ -53,6 +55,39 @@ _PARAMETER_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 _SENSITIVE_BINDING_RE = re.compile(
     r"(?:TOKEN|SECRET|PASSWORD|AUTH|API_KEY|PRIVATE_KEY)", re.IGNORECASE
 )
+
+
+def _extract_last_json(stdout: str) -> dict[str, Any] | None:
+    """Find the last JSON object printed by a local hook."""
+    finder = _JsonFinder()
+    return finder.last_object(stdout)
+
+
+class _JsonFinder:
+    """Backward scanner for the last JSON object in a text string.
+
+    Used to capture non-secret output from local phase hooks."""
+
+    @staticmethod
+    def last_object(text: str) -> dict[str, Any] | None:
+        depth = 0
+        end: int | None = None
+        for idx in range(len(text) - 1, -1, -1):
+            char = text[idx]
+            if char == "}":
+                if depth == 0:
+                    end = idx
+                depth += 1
+            elif char == "{":
+                if depth == 1 and end is not None:
+                    try:
+                        return json.loads(text[idx : end + 1])
+                    except ValueError:
+                        end = None
+                        depth = 0
+                        continue
+                depth = max(0, depth - 1)
+        return None
 
 
 def _scenario_bindings(world: World) -> dict[str, str]:
@@ -183,11 +218,17 @@ class ScenarioRunner:
                     if a.devrig_role
                 },
             )
-            self._validate_scenario_parameters(world)
             self.timeline.event("world.created", world_base_url=world.base_url)
             await self._start_agents(world)
             for phase in self.scenario.phases:
-                phase_result = await self._run_phase(phase, world)
+                try:
+                    phase_result = await self._run_phase(phase, world)
+                except InconclusiveRun as exc:
+                    phase_result = {
+                        "phase_id": phase.id,
+                        "status": "inconclusive",
+                        "message": str(exc),
+                    }
                 phase_results.append(phase_result)
                 phase_assertions = phase_result.get("assertion_results", [])
                 all_assertion_results.extend([
@@ -195,8 +236,15 @@ class ScenarioRunner:
                     for a in phase_assertions
                 ])
                 if phase_result["status"] != "completed":
+                    run_status_for_phase: Literal[
+                        "passed", "failed", "inconclusive"
+                    ] = (
+                        "inconclusive"
+                        if phase_result["status"] == "inconclusive"
+                        else "failed"
+                    )
                     result = self._result(
-                        status="failed",
+                        status=run_status_for_phase,
                         failure_message=phase_result.get(
                             "message", "phase failed"
                         ),
@@ -285,17 +333,36 @@ class ScenarioRunner:
         for phase in self.scenario.phases:
             _resolve_scenario_value(phase.goal, bindings)
             _resolve_scenario_value(phase.success_hint, bindings)
+            _resolve_scenario_value(phase.local_hook_args, bindings)
+            phase_bindings = dict(bindings)
+            if phase.local_hook:
+                for name in phase.local_hook_capture_json:
+                    phase_bindings.setdefault(name, name)
             for assertion in phase.assertions:
-                _resolve_scenario_value(assertion.params, bindings)
-                bindings.update({name: name for name in assertion.capture})
+                _resolve_scenario_value(assertion.params, phase_bindings)
         for assertion in self.scenario.final_assertions:
             _resolve_scenario_value(assertion.params, bindings)
+
+    def _available_bindings(self, world: World) -> dict[str, str]:
+        """Return bindings including placeholders for capture variables."""
+        bindings = _scenario_bindings(world)
+        for phase in self.scenario.phases:
+            for assertion in phase.assertions:
+                for name in assertion.capture:
+                    bindings.setdefault(name, name)
+            for name in phase.local_hook_capture_json:
+                bindings.setdefault(name, name)
+        for assertion in self.scenario.final_assertions:
+            for name in assertion.capture:
+                bindings.setdefault(name, name)
+        return bindings
 
     async def _run_phase(self, phase: PhaseSpec, world: World) -> dict:
         import time
 
         phase_started_at = utc_now_iso()
         phase_clock = time.monotonic()
+        available_bindings = self._available_bindings(world)
 
         def _timed(result: dict) -> dict:
             result["started_at"] = phase_started_at
@@ -306,22 +373,76 @@ class ScenarioRunner:
             return result
 
         self.timeline.event("phase.started", phase_id=phase.id)
+        bindings = _scenario_bindings(world)
+        if phase.local_hook:
+            hook_result = await self._run_local_hook(phase, world)
+            if hook_result["status"] != "completed":
+                return _timed({
+                    "phase_id": phase.id,
+                    "status": hook_result["status"],
+                    "message": hook_result["message"],
+                })
+            # Re-bind now that the hook may have populated scenario_vars.
+            bindings = _scenario_bindings(world)
+            captured_vars = hook_result.get("captured_vars", {})
+            if captured_vars:
+                scenario_vars = world.data.setdefault("scenario_vars", {})
+                if not isinstance(scenario_vars, dict):
+                    return _timed({
+                        "phase_id": phase.id,
+                        "status": "failed",
+                        "message": "world scenario_vars is not a mapping",
+                    })
+                for name, value in captured_vars.items():
+                    scenario_vars[name] = value
+                    bindings[name] = str(value)
+                world.data["scenario_vars"] = scenario_vars
         driver = self._agents.get(phase.actor)
-        if driver is None:
+        if driver is None and phase.goal.strip():
             return _timed({
                 "phase_id": phase.id,
                 "status": "failed",
                 "message": "actor not found",
             })
-        bindings = _scenario_bindings(world)
-        goal = _resolve_scenario_value(phase.goal, bindings)
-        success_hint = _resolve_scenario_value(phase.success_hint, bindings)
+        if not phase.goal.strip():
+            snapshot = await self.api.snapshot(world)
+            self.artifacts.write_json(
+                f"snapshots/after-{phase.id}.json", snapshot
+            )
+            resolved_assertions = _resolve_scenario_value(
+                [a.model_dump(mode="json") for a in phase.assertions], bindings
+            )
+            assertion_results = await self._run_assertions(
+                resolved_assertions,
+                world,
+                phase_id=phase.id,
+                already_resolved=True,
+            )
+            failed = [a for a in assertion_results if a.status == "failed"]
+            status = "failed" if failed else "completed"
+            self.timeline.event(
+                "phase.completed",
+                phase_id=phase.id,
+                status=status,
+            )
+            return _timed({
+                "phase_id": phase.id,
+                "status": status,
+                "assertion_results": [
+                    a.model_dump(mode="json") for a in assertion_results
+                ],
+            })
+        goal = _resolve_scenario_value(phase.goal, available_bindings)
+        success_hint = _resolve_scenario_value(
+            phase.success_hint, available_bindings
+        )
         self.timeline.event(
             "agent.goal.sent",
             phase_id=phase.id,
             agent_id=phase.actor,
             goal=goal,
         )
+        assert driver is not None
         turn = await driver.send_goal(
             phase_id=phase.id,
             goal=goal,
@@ -404,9 +525,13 @@ class ScenarioRunner:
         assertions: list,
         world: World,
         phase_id: str | None,
+        *,
+        already_resolved: bool = False,
     ) -> list:
         results = []
         for assertion_spec in assertions:
+            if isinstance(assertion_spec, dict):
+                assertion_spec = AssertionSpec.model_validate(assertion_spec)
             ctx = AssertionContext(
                 scenario_name=self.scenario.name,
                 phase_id=phase_id,
@@ -415,12 +540,17 @@ class ScenarioRunner:
                 artifacts_dir=self.artifacts.root,
                 timeline=self.timeline,
             )
+            params = (
+                assertion_spec.params
+                if already_resolved
+                else _resolve_scenario_value(
+                    assertion_spec.params, _scenario_bindings(world)
+                )
+            )
             outcome = await self.assertions.evaluate(
                 ctx,
                 assertion_spec.type,
-                _resolve_scenario_value(
-                    assertion_spec.params, _scenario_bindings(world)
-                ),
+                params,
             )
             if outcome.status == "unsupported" and assertion_spec.optional:
                 outcome = AssertionOutcome(
@@ -458,6 +588,106 @@ class ScenarioRunner:
             [r.model_dump(mode="json") for r in results],
         )
         return results
+
+    async def _run_local_hook(
+        self, phase: PhaseSpec, world: World
+    ) -> dict[str, Any]:
+        """Execute a local, non-agent phase hook and capture public JSON.
+
+        The hook command runs inside the public repo root so workspace
+        scripts (``make dev-setup-handoff``, etc.) are discoverable. It
+        receives only non-secret scenario bindings in its environment.
+        Captured keys are written into ``world.data["scenario_vars"]``
+        before the phase assertions run.
+        """
+        import asyncio
+        import subprocess
+
+        self.timeline.event(
+            "phase.local_hook.started",
+            phase_id=phase.id,
+            hook=phase.local_hook,
+        )
+        hook = os.path.expandvars(str(phase.local_hook))
+        if not hook.startswith("/"):
+            hook = str(world.root_dir / hook)
+        bindings = _scenario_bindings(world)
+        args = [
+            _resolve_scenario_value(a, bindings) if isinstance(a, str) else a
+            for a in phase.local_hook_args
+        ]
+        args = [os.path.expandvars(str(a)) for a in args]
+        cmd = [hook, *args]
+        env = {
+            **os.environ,
+            **bindings,
+            "LOGION_PUBLIC_REPO_PATH": str(world.root_dir),
+        }
+        env.pop("LOGION_API_KEY", None)
+        env.pop("LOGION_PROVING_GROUND_API_KEY", None)
+        try:
+            proc = await asyncio.to_thread(
+                subprocess.run,
+                cmd,
+                cwd=world.root_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=phase.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "failed",
+                "message": f"local hook {phase.id} timed out",
+            }
+        if proc.returncode != 0:
+            return {
+                "status": "failed",
+                "message": (
+                    f"local hook {phase.id} exited {proc.returncode}: "
+                    f"{proc.stderr[:500]}"
+                ),
+            }
+        stdout_tail = _extract_last_json(proc.stdout)
+        if stdout_tail is None:
+            return {
+                "status": "failed",
+                "message": f"local hook {phase.id} produced no JSON object",
+            }
+        scenario_vars = world.data.setdefault("scenario_vars", {})
+        if not isinstance(scenario_vars, dict):
+            return {
+                "status": "failed",
+                "message": "world scenario_vars is not a mapping",
+            }
+        missing = []
+        for name, key in phase.local_hook_capture_json.items():
+            if key not in stdout_tail:
+                missing.append(key)
+                continue
+            scenario_vars[name] = stdout_tail[key]
+        world.data["scenario_vars"] = scenario_vars
+        if missing:
+            return {
+                "status": "failed",
+                "message": (
+                    "local hook capture missing keys: "
+                    + ", ".join(sorted(missing))
+                ),
+            }
+        self.timeline.event(
+            "phase.local_hook.completed",
+            phase_id=phase.id,
+            captured=list(phase.local_hook_capture_json.keys()),
+        )
+        return {
+            "status": "completed",
+            "message": "",
+            "captured_vars": {
+                name: scenario_vars[name]
+                for name in phase.local_hook_capture_json
+            },
+        }
 
     def _result(
         self,

@@ -73,6 +73,15 @@ class GithubIdentityLinkedAssertion(_ApiQueryAssertion):
     fail_message = "no linked GitHub identity observed"
 
 
+class SetupTokenPendingAssertion(_ApiQueryAssertion):
+    type = "api.setup_token_pending"
+    query_type = "setup_token_pending"
+    found_key = "pending"
+    evidence_keys = ("token_prefix", "status")
+    pass_message = "setup token is pending"
+    fail_message = "setup token is not pending"
+
+
 class CourseExistsAssertion(_ApiQueryAssertion):
     type = "api.course_exists"
     query_type = "course_exists"
@@ -185,6 +194,32 @@ class BountySubmissionAcceptedAssertion(_ApiQueryAssertion):
     found_key = "accepted"
     pass_message = "bounty submission is accepted"
     fail_message = "bounty submission is not accepted"
+
+
+class IndexedListingExistsAssertion(_ApiQueryAssertion):
+    type = "api.indexed_listing_exists"
+    query_type = "indexed_listing_exists"
+    evidence_keys = ("listing_id", "tier")
+    pass_message = "indexed listing exists"
+    fail_message = "no matching indexed listing found"
+
+
+class IndexedListingTierAssertion(_ApiQueryAssertion):
+    type = "api.indexed_listing_tier"
+    query_type = "indexed_listing_tier"
+    found_key = "tier_matches"
+    evidence_keys = ("listing_id", "tier")
+    pass_message = "indexed listing tier matches"
+    fail_message = "indexed listing tier does not match"
+
+
+class PlatformBountyAcceptedAssertion(_ApiQueryAssertion):
+    type = "api.platform_bounty_accepted"
+    query_type = "platform_bounty_accepted"
+    found_key = "accepted"
+    evidence_keys = ("bounty_id", "submission_id")
+    pass_message = "platform bounty is accepted"
+    fail_message = "platform bounty is not accepted"
 
 
 class BountySubmissionRejectedAssertion(_ApiQueryAssertion):
