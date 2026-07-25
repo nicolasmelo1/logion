@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from logion._http import HttpClient
 from logion.v1._resources.resources import ResourcesResource
 
@@ -78,7 +80,7 @@ class TestResourcesResourceGet:
         result = resource.get(resource_id="skill:gh:octocat/hello")
         http.request.assert_called_once_with(
             "GET",
-            "/v1/resources/skill:gh:octocat/hello",
+            "/v1/resources/skill%3Agh%3Aoctocat%2Fhello",
         )
         assert result["title"] == "Hello"
 
@@ -98,7 +100,7 @@ class TestResourcesResourceVersions:
         resource.versions(resource_id="skill:gh:octocat/hello")
         http.request.assert_called_once_with(
             "GET",
-            "/v1/resources/skill:gh:octocat/hello/versions",
+            "/v1/resources/skill%3Agh%3Aoctocat%2Fhello/versions",
             params={},
         )
 
@@ -117,6 +119,3 @@ class TestResourcesResourceVersions:
         resource = ResourcesResource(http)
         with pytest.raises(TypeError, match="Expected a JSON object"):
             resource.versions(resource_id="skill:gh:octocat/hello")
-
-
-import pytest  # noqa: E402

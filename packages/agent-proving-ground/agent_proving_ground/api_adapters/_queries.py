@@ -813,8 +813,14 @@ class LogionApiQueries:
         if not isinstance(items, list):
             items = []
         for item in items:
+            if not isinstance(item, dict):
+                continue
             projections = item.get("projections", [])
+            if not isinstance(projections, list):
+                continue
             for proj in projections:
+                if not isinstance(proj, dict):
+                    continue
                 if proj.get("projection_kind") == projection_kind:
                     return {
                         "found": True,
@@ -837,7 +843,8 @@ class LogionApiQueries:
                 "reason": "resource endpoint not available",
             }
         items = data.get("items", data.get("results", []))
-        return {"found": bool(items), "evidence": {"source": "api"}}
+        found = isinstance(items, list) and bool(items)
+        return {"found": found, "evidence": {"source": "api"}}
 
     async def _q_resource_identity_unique(
         self,
@@ -857,6 +864,8 @@ class LogionApiQueries:
             return {"found": True, "evidence": {"source": "api"}}
         seen: set[tuple[str, str]] = set()
         for item in items:
+            if not isinstance(item, dict):
+                continue
             rtype = item.get("resource_type", "")
             curi = item.get("canonical_uri", "")
             key = (rtype, curi)
@@ -891,7 +900,8 @@ class LogionApiQueries:
         found_kinds = {
             item.get("resource_type")
             for item in items
-            if item.get("resource_type")
+            if isinstance(item, dict)
+            and isinstance(item.get("resource_type"), str)
         }
         return {
             "kinds_match": expected_kinds.issubset(found_kinds),

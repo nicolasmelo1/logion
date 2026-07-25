@@ -5,6 +5,8 @@ resources.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from logion._http import HttpClient
 
 
@@ -76,9 +78,10 @@ class ResourcesResource:
             The resource's canonical identifier string (e.g.
             ``skill:gh:owner/repo``).
         """
+        encoded_id = quote(resource_id, safe="")
         result = self._http.request(
             "GET",
-            f"/v1/resources/{resource_id}",
+            f"/v1/resources/{encoded_id}",
         )
         if not isinstance(result, dict):
             msg = (
@@ -112,9 +115,10 @@ class ResourcesResource:
             params["limit"] = limit
         if cursor is not None:
             params["cursor"] = cursor
+        encoded_id = quote(resource_id, safe="")
         result = self._http.request(
             "GET",
-            f"/v1/resources/{resource_id}/versions",
+            f"/v1/resources/{encoded_id}/versions",
             params=params,
         )
         if not isinstance(result, dict):

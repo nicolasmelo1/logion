@@ -6,8 +6,9 @@
 plugins, MCP servers, models, and hosted courses.
 
 For skills, ``CanonicalResourceId`` with ``resource_type="skill"``
-produces the same ``str()`` output as ``CanonicalSkillId``, preserving
-exact backwards compatibility.
+preserves the legacy ``gh:owner/repo`` URI inside the explicit
+``skill:`` resource prefix; the legacy ``CanonicalSkillId`` string remains
+available through the compatibility adapter.
 """
 
 from __future__ import annotations
@@ -150,7 +151,7 @@ _VALID_RESOURCE_TYPES = frozenset({
     "plugin",
     "skill",
 })
-_RESOURCE_PREFIX_RE = re.compile(r"^([a-z_]+):(.+)$")
+_RESOURCE_PREFIX_RE = re.compile(r"^([A-Za-z_]+):(.+)$")
 
 
 @dataclass(frozen=True, order=True)
@@ -195,7 +196,7 @@ class CanonicalResourceId:
         raw = raw.strip()
         m = _RESOURCE_PREFIX_RE.match(raw)
         if m:
-            rtype = m.group(1)
+            rtype = m.group(1).lower()
             uri = m.group(2)
             # If the matched prefix is not a known resource type,
             # treat the whole string as a skill URI (e.g. "gh:owner/repo").
