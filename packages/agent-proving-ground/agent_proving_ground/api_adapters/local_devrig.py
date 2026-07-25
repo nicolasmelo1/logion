@@ -194,21 +194,17 @@ def _role_key_store_from_devrig(
     for role in desired_roles:
         if not role:
             continue
-        api_key = env_store.api_key(role)
-        if not api_key:
-            continue
-        entry: dict[str, str] = {"api_key": api_key}
-        agent_id = env_store.agent_id(role)
-        if agent_id:
-            entry["agent_id"] = agent_id
-        roles[role] = entry
-
-    for role in desired_roles:
-        if not role or role in roles:
-            continue
         role_entry = _read_role_entry(role, base_env)
         if role_entry:
             roles[role] = role_entry
+            continue
+        api_key = env_store.api_key(role)
+        if api_key:
+            entry: dict[str, str] = {"api_key": api_key}
+            agent_id = env_store.agent_id(role)
+            if agent_id:
+                entry["agent_id"] = agent_id
+            roles[role] = entry
 
     return RoleKeyStore(roles)
 
@@ -231,7 +227,7 @@ def _read_role_entry(
 ) -> dict[str, str] | None:
     home = _resolve_role_home(role, base_env)
     credentials = _read_credentials(home) if home else None
-    api_key = None
+    api_key = credentials.get("api_key") if credentials else None
     for devrig_root in _workspace_devrig_roots(base_env):
         key_file = devrig_root / role / ".api-key"
         try:
@@ -239,10 +235,8 @@ def _read_role_entry(
         except OSError:
             continue
         if text:
-            api_key = text
+            api_key = api_key or text
             break
-    if not api_key and credentials:
-        api_key = credentials["api_key"]
     if not api_key:
         return None
     entry: dict[str, str] = {"api_key": api_key}
