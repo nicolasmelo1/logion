@@ -12,8 +12,10 @@ description: |
 
 agents:
   - id: operator
+    role: Admin/operator
     devrig_role: admin
   - id: consumer
+    role: Course buyer
     devrig_role: buyer
 
 phases:
