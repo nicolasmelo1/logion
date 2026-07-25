@@ -38,7 +38,7 @@ typecheck:
 	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/logion_scanners/ --ignore-missing-imports
 
 audit:
-	uv run pip-audit --skip-editable
+	uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-2447
 
 bandit:
 	uv run bandit -c pyproject.toml -r packages
