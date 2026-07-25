@@ -4833,6 +4833,32 @@
         "title": "GetReportDetailResponse",
         "type": "object"
       },
+      "GetResourceResponse": {
+        "properties": {
+          "projections": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceProjections"
+            },
+            "title": "Projections",
+            "type": "array"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceDetail"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceSources"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resource"
+        ],
+        "title": "GetResourceResponse",
+        "type": "object"
+      },
       "GetReviewBundleResponse": {
         "properties": {
           "course_id": {
@@ -5849,6 +5875,49 @@
           "items"
         ],
         "title": "ListReportsResponse",
+        "type": "object"
+      },
+      "ListResourceVersionsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceVersionSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListResourceVersionsResponse",
+        "type": "object"
+      },
+      "ListResourcesResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListResourcesResponse",
         "type": "object"
       },
       "ListingItemResponse": {
@@ -7265,6 +7334,257 @@
           "status"
         ],
         "title": "ResolveReportResponse",
+        "type": "object"
+      },
+      "ResourceDetail": {
+        "properties": {
+          "canonical_uri": {
+            "title": "Canonical Uri",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lifecycle_status": {
+            "title": "Lifecycle Status",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "resource_type",
+          "canonical_uri",
+          "title",
+          "lifecycle_status"
+        ],
+        "title": "ResourceDetail",
+        "type": "object"
+      },
+      "ResourceProjections": {
+        "properties": {
+          "projection_id": {
+            "format": "uuid",
+            "title": "Projection Id",
+            "type": "string"
+          },
+          "projection_kind": {
+            "title": "Projection Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projection_kind",
+          "projection_id"
+        ],
+        "title": "ResourceProjections",
+        "type": "object"
+      },
+      "ResourceSources": {
+        "properties": {
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_kind",
+          "source_uri"
+        ],
+        "title": "ResourceSources",
+        "type": "object"
+      },
+      "ResourceSummary": {
+        "properties": {
+          "canonical_uri": {
+            "title": "Canonical Uri",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lifecycle_status": {
+            "title": "Lifecycle Status",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resource_type",
+          "canonical_uri",
+          "title",
+          "lifecycle_status"
+        ],
+        "title": "ResourceSummary",
+        "type": "object"
+      },
+      "ResourceVersionSummary": {
+        "properties": {
+          "content_digest": {
+            "title": "Content Digest",
+            "type": "string"
+          },
+          "digest_algorithm": {
+            "title": "Digest Algorithm",
+            "type": "string"
+          },
+          "discovered_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discovered At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Revision"
+          },
+          "version_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Label"
+          }
+        },
+        "required": [
+          "id",
+          "resource_id",
+          "content_digest",
+          "digest_algorithm",
+          "media_type"
+        ],
+        "title": "ResourceVersionSummary",
         "type": "object"
       },
       "ReviewFindingResponse": {
@@ -17241,6 +17561,250 @@
         "summary": "Create report",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/v1/resources": {
+      "get": {
+        "description": "List resources ordered by (created_at DESC, id DESC) with cursor\npagination.  Gated on the resource_read_surface feature flag.",
+        "operationId": "list_resources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "resource_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Resource Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lifecycle_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lifecycle Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResourcesResponse"
+                }
+              }
+            },
+            "description": "Paginated list of resources"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Feature flag disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}": {
+      "get": {
+        "description": "Retrieve a single resource by its ID.\n\nGated on the resource_read_surface feature flag.",
+        "operationId": "get_resource",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetResourceResponse"
+                }
+              }
+            },
+            "description": "Resource found"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Feature flag disabled"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get resource by ID",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions": {
+      "get": {
+        "description": "List versions for a resource, newest first.\n\nGated on the resource_read_surface feature flag.",
+        "operationId": "list_resource_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResourceVersionsResponse"
+                }
+              }
+            },
+            "description": "List of versions for the resource"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Feature flag disabled"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List resource versions",
+        "tags": [
+          "resources"
         ]
       }
     },

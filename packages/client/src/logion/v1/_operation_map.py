@@ -22,6 +22,10 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "revoke_github_identity": "client.v1.identity.revoke_github_identity",
     # Listings
     "search_listings": "client.v1.listings.search",
+    # Generic resources
+    "list_resources": "client.v1.resources.search",
+    "get_resource": "client.v1.resources.get",
+    "list_resource_versions": "client.v1.resources.versions",
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",
