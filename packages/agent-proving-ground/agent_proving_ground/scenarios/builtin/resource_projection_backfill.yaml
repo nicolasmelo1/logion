@@ -24,7 +24,8 @@ phases:
       listings and published courses as generic resources.
     success_hint: Backfill completed with no conflicts
     local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/upsert_indexed_listing.py
-    local_hook_capture_json: {}
+    local_hook_capture_json:
+      LISTING_ID: listing_id
 
   - id: consumer-search-resources
     actor: consumer
@@ -33,6 +34,8 @@ phases:
       previously indexed skill appears in results.
     success_hint: Resource search returns expected kinds
     local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/verify_indexed_discovery.py
+    local_hook_args:
+      - "${LISTING_ID}"
     local_hook_capture_json: {}
 
   - id: consumer-legacy-course-purchase
