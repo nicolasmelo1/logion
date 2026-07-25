@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from agent_proving_ground.drivers.hermes import HermesDriver
+from agent_proving_ground.drivers.process import clear_role_config_environment
 
 
 class TestHermesDriverEffectiveArgs:
@@ -64,3 +65,15 @@ class TestHermesDriverEffectiveArgs:
         assert "chat" in args
         assert "--cli" in args
         assert "--max-turns" in args
+
+
+def test_clear_role_config_environment_removes_interactive_selectors() -> None:
+    env = clear_role_config_environment({
+        "XDG_CONFIG_HOME": "/tmp/devrig/harness-config",
+        "GH_CONFIG_DIR": "/tmp/devrig/gh",
+        "LOGION_HOME": "/tmp/devrig/logion-home",
+    })
+
+    assert "XDG_CONFIG_HOME" not in env
+    assert "GH_CONFIG_DIR" not in env
+    assert env["LOGION_HOME"] == "/tmp/devrig/logion-home"

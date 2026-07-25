@@ -92,6 +92,34 @@ Key prerequisites for a clean e2e run against a live local API:
 4. The `hermes` driver needs `LOGION_PROVING_GROUND_ROLE_KEYS_FILE` pointing
    to the devrig role keys JSON.
 
+### Environment hygiene and interrupted runs
+
+Dev-rig role activation changes `XDG_CONFIG_HOME` (and may change
+`GH_CONFIG_DIR`) so that an interactive role has isolated client state. Do not
+source `activate.sh` into the shell that orchestrates a proving-ground run.
+The Makefile targets clear both selectors, and agent child processes clear them
+again before launch; this prevents `gh` from incorrectly reporting that the
+normal GitHub login is missing. The role-specific Logion home and API key are
+still passed explicitly to each agent.
+
+Run the release gate from the public repo with:
+
+```bash
+env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR make agent-proving-ground-release
+```
+
+If an interactive role was already activated and the run is interrupted or
+paused, restore the shell to its initial environment with this **single
+command**, in that same shell:
+
+```bash
+devrig off
+```
+
+Do not run `source activate.sh` again to recover. If the run was launched with
+`scripts/devrig/with-role.sh`, no recovery command is needed because activation
+was confined to the short-lived child process.
+
 ## Authoring scenarios
 
 Scenarios live in YAML:

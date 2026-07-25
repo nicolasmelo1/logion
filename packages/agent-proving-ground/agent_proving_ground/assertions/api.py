@@ -228,3 +228,42 @@ class BountySubmissionRejectedAssertion(_ApiQueryAssertion):
     found_key = "rejected"
     pass_message = "bounty submission is rejected"
     fail_message = "bounty submission is not rejected"
+
+
+class ResourceProjectionExistsAssertion(_ApiQueryAssertion):
+    type = "api.resource_projection_exists"
+    query_type = "resource_projection_exists"
+    evidence_keys = ("resource_id",)
+    pass_message = "resource projection exists"
+    fail_message = "no matching resource projection found"
+
+
+class ResourceBackfillCompleteAssertion(_ApiQueryAssertion):
+    type = "api.resource_backfill_complete"
+    query_type = "resource_backfill_complete"
+    pass_message = "resource backfill is complete"
+    fail_message = "resource backfill is not complete"
+
+
+class ResourceIdentityUniqueAssertion(_ApiQueryAssertion):
+    type = "api.resource_identity_unique"
+    query_type = "resource_identity_unique"
+    pass_message = "resource identities are unique"
+    fail_message = "duplicate resource identities found"
+
+
+class ResourceSearchReturnsKindsAssertion(_ApiQueryAssertion):
+    type = "api.resource_search_returns_kinds"
+    query_type = "resource_search_returns_kinds"
+    found_key = "kinds_match"
+    evidence_keys = ("kinds",)
+    pass_message = "resource search returns expected kinds"
+    fail_message = "resource search does not return expected kinds"
+
+
+class LegacyCoursePurchaseExistsAssertion(_ApiQueryAssertion):
+    type = "api.legacy_course_purchase_exists"
+    query_type = "legacy_course_purchase_exists"
+    evidence_keys = ("purchase_id",)
+    pass_message = "legacy course purchase exists"
+    fail_message = "no matching legacy course purchase found"

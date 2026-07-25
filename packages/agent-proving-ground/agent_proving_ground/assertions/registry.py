@@ -14,9 +14,14 @@ from agent_proving_ground.assertions.api import (
     GithubIdentityLinkedAssertion,
     IndexedListingExistsAssertion,
     IndexedListingTierAssertion,
+    LegacyCoursePurchaseExistsAssertion,
     NoDoubleCreditDebitAssertion,
     PlatformBountyAcceptedAssertion,
     PurchaseExistsAssertion,
+    ResourceBackfillCompleteAssertion,
+    ResourceIdentityUniqueAssertion,
+    ResourceProjectionExistsAssertion,
+    ResourceSearchReturnsKindsAssertion,
     ReviewExistsAssertion,
     SetupTokenPendingAssertion,
     SourceLinkExistsAssertion,
@@ -88,6 +93,11 @@ class AssertionRegistry:
             GithubPrClosedUnmergedAssertion,
             GithubIssueBotCommentMatchAssertion,
             GithubInstallationDeliveredAssertion,
+            ResourceProjectionExistsAssertion,
+            ResourceBackfillCompleteAssertion,
+            ResourceIdentityUniqueAssertion,
+            ResourceSearchReturnsKindsAssertion,
+            LegacyCoursePurchaseExistsAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

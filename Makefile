@@ -216,14 +216,14 @@ agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-type
 LOGION_PROVING_GROUND_AGENT_DRIVER ?= codex
 
 agent-proving-ground-smoke:
-	uv run logion-agent-proving-ground run builtin:skill_report_contract \
+	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:skill_report_contract \
 		--api-adapter local-devrig \
 		--devrig-root $(ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
 		--out .runs/proving-ground/smoke
 
 agent-proving-ground-release:
-	uv run logion-agent-proving-ground run builtin:marketplace_loop \
+	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:marketplace_loop \
 		--api-adapter local-devrig \
 		--devrig-root $(ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \

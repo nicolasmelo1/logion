@@ -197,7 +197,7 @@ Rollback disables flags and leaves additive rows intact. The migration downgrade
 ## Mandatory proving-ground scenario
 
 Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
-`builtin:phase_15_9_resource_backfill`.
+`builtin:resource_projection_backfill`.
 
 - **Actors/seed:** an `operator` (`admin`) and clean `consumer` (`buyer`).
   `make proving-ground-seed SCENARIO=phase_15_9` creates one hosted Course, one

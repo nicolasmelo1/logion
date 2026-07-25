@@ -1,11 +1,13 @@
-"""Canonical skill identity: one skill == one GitHub repo[/subpath].
+"""Canonical identity for skills and resources.
 
-Normalization rules:
-- owner and repo are lowercased
-- trailing ``.git`` is stripped
-- GitHub URL prefixes (https://github.com/, git@github.com:) are stripped
-- subpath is stripped of leading/trailing ``/`` and lowercased
-- str form: ``gh:{owner}/{repo}`` or ``gh:{owner}/{repo}#{subpath}``
+``CanonicalSkillId`` is the legacy form: ``gh:owner/repo[#subpath]``.
+``CanonicalResourceId`` generalises this with an explicit
+``resource_type`` field so the same dedup logic can cover skills,
+plugins, MCP servers, models, and hosted courses.
+
+For skills, ``CanonicalResourceId`` with ``resource_type="skill"``
+produces the same ``str()`` output as ``CanonicalSkillId``, preserving
+exact backwards compatibility.
 """
 
 from __future__ import annotations
@@ -139,3 +141,75 @@ class CanonicalSkillId:
             if tree_match:
                 subpath = tree_match.group(1)
         return cls(owner=owner, repo=repo, subpath=subpath)
+
+
+_VALID_RESOURCE_TYPES = frozenset({
+    "course",
+    "mcp_server",
+    "model",
+    "plugin",
+    "skill",
+})
+_RESOURCE_PREFIX_RE = re.compile(r"^([a-z_]+):(.+)$")
+
+
+@dataclass(frozen=True, order=True)
+class CanonicalResourceId:
+    """Canonical identity for any indexed resource.
+
+    Attributes:
+        resource_type: One of ``skill``, ``plugin``, ``mcp_server``,
+            ``model``, or ``course``.
+        uri: Normalised URI string.  For skills this is the same as
+            ``str(CanonicalSkillId)`` (``gh:owner/repo[#subpath]``).
+    """
+
+    resource_type: str
+    uri: str
+
+    def __post_init__(self) -> None:
+        # Normalise resource_type to lowercase.
+        object.__setattr__(self, "resource_type", self.resource_type.lower())
+        if self.resource_type not in _VALID_RESOURCE_TYPES:
+            msg = (
+                f"invalid resource_type {self.resource_type!r}; "
+                f"must be one of {sorted(_VALID_RESOURCE_TYPES)}"
+            )
+            raise ValueError(msg)
+
+    def __str__(self) -> str:
+        """Canonical string form: ``<type>:<uri>``.
+
+        For skills this produces ``skill:gh:owner/repo[#subpath]`` which
+        preserves the ``gh:`` prefix in the URI component.
+        """
+        return f"{self.resource_type}:{self.uri}"
+
+    @classmethod
+    def from_str(cls, raw: str) -> CanonicalResourceId:
+        """Parse ``<type>:<uri>`` or a bare ``gh:`` skill URI.
+
+        Bare ``gh:owner/repo`` strings are interpreted as skills for
+        backwards compatibility.
+        """
+        raw = raw.strip()
+        m = _RESOURCE_PREFIX_RE.match(raw)
+        if m:
+            rtype = m.group(1)
+            uri = m.group(2)
+            # If the matched prefix is not a known resource type,
+            # treat the whole string as a skill URI (e.g. "gh:owner/repo").
+            if rtype not in _VALID_RESOURCE_TYPES:
+                rtype = "skill"
+                uri = raw
+        else:
+            # Bare string without type prefix — treat as a skill URI.
+            rtype = "skill"
+            uri = raw
+        return cls(resource_type=rtype, uri=uri)
+
+    @classmethod
+    def from_skill_id(cls, skill_id: CanonicalSkillId) -> CanonicalResourceId:
+        """Lift a :class:`CanonicalSkillId` into a
+        :class:`CanonicalResourceId`."""
+        return cls(resource_type="skill", uri=str(skill_id))

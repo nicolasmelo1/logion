@@ -13,6 +13,7 @@ from agent_proving_ground.drivers.base import (
     AgentLaunch,
     AgentTurnResult,
 )
+from agent_proving_ground.drivers.process import clear_role_config_environment
 from agent_proving_ground.redaction import redact_text
 
 
@@ -275,7 +276,7 @@ class HermesDriver(AgentDriver):
             encoding="utf-8",
         )
 
-        env = {
+        env = clear_role_config_environment({
             **os.environ,
             **self._launch.env,
             "HERMES_QUIET": "1",
@@ -294,7 +295,7 @@ class HermesDriver(AgentDriver):
             "HERMES_SESSION_CHAT_NAME": "",
             "HERMES_GATEWAY_BUSY_INPUT_MODE": "",
             "_HERMES_GATEWAY": "",
-        }
+        })
 
         exit_code, _ = await _run_with_pty(
             command,

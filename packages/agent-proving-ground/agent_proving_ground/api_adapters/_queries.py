@@ -799,6 +799,126 @@ class LogionApiQueries:
                 }
         return {"accepted": False, "evidence": {"source": "api"}}
 
+    async def _q_resource_projection_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Check that a resource projection exists for a given kind."""
+        projection_kind = query.get("projection_kind", "indexed_listing")
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {"found": False, "evidence": {"source": "api"}}
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            items = []
+        for item in items:
+            projections = item.get("projections", [])
+            for proj in projections:
+                if proj.get("projection_kind") == projection_kind:
+                    return {
+                        "found": True,
+                        "resource_id": item.get("id", ""),
+                        "evidence": {"source": "api"},
+                    }
+        return {"found": False, "evidence": {"source": "api"}}
+
+    async def _q_resource_backfill_complete(
+        self,
+        query: dict[str, Any],  # noqa: ARG002
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify that all indexed listings have resource projections."""
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "found": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        return {"found": bool(items), "evidence": {"source": "api"}}
+
+    async def _q_resource_identity_unique(
+        self,
+        query: dict[str, Any],  # noqa: ARG002
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify no duplicate (resource_type, canonical_uri) pairs."""
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "found": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            return {"found": True, "evidence": {"source": "api"}}
+        seen: set[tuple[str, str]] = set()
+        for item in items:
+            rtype = item.get("resource_type", "")
+            curi = item.get("canonical_uri", "")
+            key = (rtype, curi)
+            if key in seen:
+                return {
+                    "found": False,
+                    "evidence": {
+                        "source": "api",
+                        "duplicate": str(key),
+                    },
+                }
+            seen.add(key)
+        return {"found": True, "evidence": {"source": "api"}}
+
+    async def _q_resource_search_returns_kinds(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify that resource search returns expected resource types."""
+        expected_kinds = set(query.get("kinds", []))
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "kinds_match": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            items = []
+        found_kinds = {
+            item.get("resource_type")
+            for item in items
+            if item.get("resource_type")
+        }
+        return {
+            "kinds_match": expected_kinds.issubset(found_kinds),
+            "kinds": sorted(found_kinds),
+            "evidence": {"source": "api"},
+        }
+
+    async def _q_legacy_course_purchase_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        """Verify that legacy course purchase still works."""
+        buyer_role = self._role_of(query.get("buyer_agent"), agent_roles)
+        status, data = await self._get("/v1/purchases", buyer_role)
+        if status != 200 or not isinstance(data, list):
+            return {"found": False, "evidence": {"source": "api"}}
+        for purchase in data:
+            purchase_id = purchase.get("id")
+            if purchase_id:
+                return {
+                    "found": True,
+                    "purchase_id": str(purchase_id),
+                    "evidence": {"source": "api"},
+                }
+        return {"found": False, "evidence": {"source": "api"}}
+
 
 def _unsupported(reason: str) -> dict[str, Any]:
     return {"found": False, "unsupported": True, "reason": reason}

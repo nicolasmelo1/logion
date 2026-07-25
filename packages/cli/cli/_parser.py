@@ -22,6 +22,7 @@ from cli.commands import (
     payments,
     recall,
     reports,
+    resources,
     skills,
     update,
 )
@@ -68,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     admin.register(subparsers)
     bounties.register(subparsers)
     skills.register(subparsers)
+    resources.register(subparsers)
     recall.register(subparsers)
     update.register(subparsers)
     completion.register(subparsers)
