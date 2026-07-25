@@ -18,6 +18,7 @@ from logion.v1._resources.notifications import NotificationsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._resources.referrals import ReferralsResource
 from logion.v1._resources.reports import ReportsResource
+from logion.v1._resources.resources import ResourcesResource
 
 
 class V1Namespace:
@@ -38,3 +39,4 @@ class V1Namespace:
         self.bounties = BountiesResource(http)
         self.referrals = ReferralsResource(http)
         self.github_setup = GithubSetupResource(http)
+        self.resources = ResourcesResource(http)

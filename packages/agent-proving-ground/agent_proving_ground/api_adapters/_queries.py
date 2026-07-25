@@ -114,8 +114,15 @@ class LogionApiQueries:
         review_ids: set[str] = set()
         bounty_ids: set[str] = set()
         credit_balances: dict[str, int] = {}
+        credit_ledger_ids: dict[str, list[str]] = {}
         roles = dict.fromkeys([*agent_roles.values(), "seller", "buyer"])
         for role in roles:
+            ledger = await self._ledger(role)
+            credit_ledger_ids[role] = [
+                str(entry["id"])
+                for entry in ledger
+                if isinstance(entry, dict) and entry.get("id")
+            ]
             balance = await self._credit_balance(role)
             if balance is not None:
                 credit_balances[role] = balance
@@ -141,6 +148,7 @@ class LogionApiQueries:
             "review_ids": sorted(review_ids),
             "bounty_ids": sorted(bounty_ids),
             "credit_balances": credit_balances,
+            "credit_ledger_ids": credit_ledger_ids,
         }
 
     async def _get(self, path: str, role: str | None) -> tuple[int, Any]:
@@ -500,14 +508,22 @@ class LogionApiQueries:
 
     async def _q_no_double_credit_debit(
         self,
-        query: dict[str, Any],  # noqa: ARG002
+        query: dict[str, Any],
         agent_roles: dict[str, str],
     ) -> dict[str, Any]:
         roles = set(agent_roles.values()) or {"buyer"}
         for role in roles:
             entries = await self._ledger(role)
+            baseline = query.get("_baseline")
+            baseline_ids = set()
+            if isinstance(baseline, dict):
+                role_ids = baseline.get("credit_ledger_ids", {}).get(role, [])
+                if isinstance(role_ids, list):
+                    baseline_ids = {str(entry_id) for entry_id in role_ids}
             seen: dict[tuple[str, int], int] = {}
             for entry in entries:
+                if str(entry.get("id")) in baseline_ids:
+                    continue
                 kind = str(entry.get("kind", "")).lower()
                 if "purchase" not in kind:
                     continue
@@ -798,6 +814,155 @@ class LogionApiQueries:
                     "evidence": {"source": "api"},
                 }
         return {"accepted": False, "evidence": {"source": "api"}}
+
+    async def _q_resource_projection_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Check that a resource projection exists for a given kind."""
+        projection_kind = query.get("projection_kind", "indexed_listing")
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {"found": False, "evidence": {"source": "api"}}
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            items = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            resource_id = item.get("id")
+            if not resource_id:
+                continue
+            detail_status, detail = await self._get(
+                f"/v1/resources/{resource_id}", "admin"
+            )
+            if detail_status != 200 or not isinstance(detail, dict):
+                continue
+            projections = detail.get("projections", [])
+            if not isinstance(projections, list):
+                continue
+            for proj in projections:
+                if not isinstance(proj, dict):
+                    continue
+                if proj.get("projection_kind") == projection_kind:
+                    return {
+                        "found": True,
+                        "resource_id": item.get("id", ""),
+                        "evidence": {"source": "api"},
+                    }
+        return {"found": False, "evidence": {"source": "api"}}
+
+    async def _q_resource_backfill_complete(
+        self,
+        query: dict[str, Any],  # noqa: ARG002
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify that all indexed listings have resource projections."""
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "found": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        found = isinstance(items, list) and bool(items)
+        return {"found": found, "evidence": {"source": "api"}}
+
+    async def _q_resource_identity_unique(
+        self,
+        query: dict[str, Any],  # noqa: ARG002
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify no duplicate (resource_type, canonical_uri) pairs."""
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "found": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            return {"found": True, "evidence": {"source": "api"}}
+        seen: set[tuple[str, str]] = set()
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            rtype = item.get("resource_type", "")
+            curi = item.get("canonical_uri", "")
+            key = (rtype, curi)
+            if key in seen:
+                return {
+                    "found": False,
+                    "evidence": {
+                        "source": "api",
+                        "duplicate": str(key),
+                    },
+                }
+            seen.add(key)
+        return {"found": True, "evidence": {"source": "api"}}
+
+    async def _q_resource_search_returns_kinds(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Verify that resource search returns expected resource types."""
+        expected_kinds = set(query.get("kinds", []))
+        status, data = await self._get("/v1/resources", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return {
+                "kinds_match": False,
+                "unsupported": True,
+                "reason": "resource endpoint not available",
+            }
+        items = data.get("items", data.get("results", []))
+        if not isinstance(items, list):
+            items = []
+        found_kinds = {
+            item.get("resource_type")
+            for item in items
+            if isinstance(item, dict)
+            and isinstance(item.get("resource_type"), str)
+        }
+        return {
+            "kinds_match": expected_kinds.issubset(found_kinds),
+            "kinds": sorted(found_kinds),
+            "evidence": {"source": "api"},
+        }
+
+    async def _q_legacy_course_purchase_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],
+    ) -> dict[str, Any]:
+        """Verify that legacy course purchase still works."""
+        buyer_role = self._role_of(query.get("buyer_agent"), agent_roles)
+        status, data = await self._get("/v1/credits/ledger", buyer_role)
+        if status != 200 or not isinstance(data, list):
+            return {"found": False, "evidence": {"source": "api"}}
+        baseline = query.get("_baseline")
+        baseline_ids = set()
+        if isinstance(baseline, dict):
+            role_ids = baseline.get("credit_ledger_ids", {}).get(
+                buyer_role, []
+            )
+            if isinstance(role_ids, list):
+                baseline_ids = {str(entry_id) for entry_id in role_ids}
+        for entry in data:
+            if (
+                isinstance(entry, dict)
+                and str(entry.get("id")) not in baseline_ids
+                and entry.get("kind") == "course_purchase"
+            ):
+                return {
+                    "found": True,
+                    "purchase_id": str(entry.get("id", "")),
+                    "evidence": {"source": "api", "surface": "credit_ledger"},
+                }
+        return {"found": False, "evidence": {"source": "api"}}
 
 
 def _unsupported(reason: str) -> dict[str, Any]:

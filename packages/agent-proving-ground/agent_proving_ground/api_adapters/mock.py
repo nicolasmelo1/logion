@@ -276,6 +276,27 @@ class MockApiAdapter(ApiAdapter):
                 return {"accepted": True}
             case "bounty_submission_rejected":
                 return {"rejected": True}
+            case "resource_projection_exists":
+                for res_id, _course in self._state.courses.items():
+                    return {
+                        "found": True,
+                        "resource_id": res_id,
+                    }
+                return {"found": False}
+            case "resource_backfill_complete":
+                return {"found": True}
+            case "resource_identity_unique":
+                return {"found": True}
+            case "resource_search_returns_kinds":
+                kinds = query.get("kinds", [])
+                return {
+                    "kinds_match": True,
+                    "kinds": kinds,
+                }
+            case "legacy_course_purchase_exists":
+                for purchase in self._state.purchases:
+                    return {"found": True, "purchase_id": purchase.id}
+                return {"found": False}
             case _:
                 return {"error": "unknown query type"}
 

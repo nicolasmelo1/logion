@@ -190,6 +190,13 @@ commands:
   reports create:
     operations: [create_report]
 
+  resources get:
+    operations: []
+  resources search:
+    operations: []
+  resources versions:
+    operations: []
+
   referrals attributions:
     operations: []
   referrals code:

@@ -38,7 +38,7 @@ typecheck:
 	uv run mypy packages/cli/cli/ packages/client/src/ packages/scanners/logion_scanners/ --ignore-missing-imports
 
 audit:
-	uv run pip-audit --skip-editable
+	uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-2447
 
 bandit:
 	uv run bandit -c pyproject.toml -r packages
@@ -214,16 +214,17 @@ agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-type
 #   make doctor AGENT=...
 # Override the driver with LOGION_PROVING_GROUND_AGENT_DRIVER=opencode etc.
 LOGION_PROVING_GROUND_AGENT_DRIVER ?= codex
+LOGION_PROVING_GROUND_SCENARIO ?= marketplace_loop
 
 agent-proving-ground-smoke:
-	uv run logion-agent-proving-ground run builtin:skill_report_contract \
+	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:skill_report_contract \
 		--api-adapter local-devrig \
 		--devrig-root $(ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
 		--out .runs/proving-ground/smoke
 
 agent-proving-ground-release:
-	uv run logion-agent-proving-ground run builtin:marketplace_loop \
+	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:$(LOGION_PROVING_GROUND_SCENARIO) \
 		--api-adapter local-devrig \
 		--devrig-root $(ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \

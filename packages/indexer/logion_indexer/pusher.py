@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .models import DiscoveredSkill
+from .models import DiscoveredResource, DiscoveredSkill
 from .transport import HttpResponse, Transport
 
 if TYPE_CHECKING:
@@ -240,6 +240,7 @@ def _serialize_item(item: DiscoveredSkill) -> dict:
     """Serialize a DiscoveredSkill for the batch-upsert payload."""
     return {
         "canonical": str(item.canonical),
+        "resource_id": f"skill:{item.canonical}",
         "title": item.title,
         "summary": item.summary,
         "original_author": item.original_author,
@@ -264,3 +265,48 @@ def _serialize_item(item: DiscoveredSkill) -> dict:
 def serialize_item(item: DiscoveredSkill) -> dict:
     """Public wrapper for test access."""
     return _serialize_item(item)
+
+
+def _serialize_resource_item(item: DiscoveredResource) -> dict:
+    """Serialize a DiscoveredResource for the batch-upsert payload."""
+    result = _serialize_skill_from_resource(item)
+    result["resource_type"] = item.resource_type
+    result["canonical_uri"] = item.canonical_uri
+    result["resource_id"] = str(item.canonical)
+    return result
+
+
+def _serialize_skill_from_resource(item: DiscoveredResource) -> dict:
+    """Serialize the skill-compatible fields of a DiscoveredResource.
+
+    This produces the same keys as :func:`_serialize_item` so the
+    pusher can accept both types.  The ``resource_type`` and
+    ``canonical_uri`` fields are added by the caller when the
+    full resource serialization is needed.
+    """
+    return {
+        "canonical": item.canonical_uri,
+        "title": item.title,
+        "summary": item.summary,
+        "original_author": item.original_author,
+        "license_spdx": item.license_spdx,
+        "source_commit": item.source_commit,
+        "tags": list(item.tags),
+        "channels": [
+            {
+                "hub_slug": ch.hub_slug,
+                "hub_url": ch.hub_url,
+                "hub_verified": ch.hub_verified,
+                "metadata": ch.metadata,
+            }
+            for ch in item.channels
+        ],
+        "inferred_map": item.inferred_map,
+        "map_flags": list(item.map_flags),
+        "bundle": item.bundle,
+    }
+
+
+def serialize_resource_item(item: DiscoveredResource) -> dict:
+    """Public wrapper for test access."""
+    return _serialize_resource_item(item)

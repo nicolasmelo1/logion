@@ -1,0 +1,64 @@
+# Resource Projection Backfill Proving Ground Scenario
+#
+# Verifies that indexed listings and published courses are projected as
+# generic resources after backfill, and that the legacy purchase flow
+# still works through the compatibility surface.
+
+name: resource_projection_backfill
+description: |
+  Verify that existing indexed skills and published courses are discoverable
+  as generic resources after backfill, and that legacy course purchase still
+  works through the compatibility surface.
+
+agents:
+  - id: operator
+    role: Admin/operator
+    devrig_role: admin
+  - id: consumer
+    role: Course buyer
+    devrig_role: buyer
+
+phases:
+  - id: operator-backfill
+    actor: operator
+    goal: >
+      Run the resource backfill on the local API to project all indexed
+      listings and published courses as generic resources.
+    success_hint: Backfill completed with no conflicts
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/upsert_indexed_listing.py
+    local_hook_capture_json:
+      LISTING_ID: listing_id
+
+  - id: consumer-search-resources
+    actor: consumer
+    goal: >
+      Search for resources of kind agent_skill and verify that the
+      previously indexed skill appears in results.
+    success_hint: Resource search returns expected kinds
+    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/verify_indexed_discovery.py
+    local_hook_args:
+      - "${LISTING_ID}"
+    local_hook_capture_json: {}
+
+  - id: consumer-legacy-course-purchase
+    actor: consumer
+    goal: >
+      Purchase the hosted course through the existing course surface to
+      confirm backward compatibility.
+    success_hint: Course purchased successfully
+
+final_assertions:
+  - type: api.resource_projection_exists
+    params:
+      projection_kind: indexed_listing
+  - type: api.resource_backfill_complete
+  - type: api.resource_identity_unique
+  - type: api.legacy_course_purchase_exists
+    params:
+      buyer_agent: consumer
+  - type: api.resource_search_returns_kinds
+    params:
+      kinds:
+        - agent_skill
+  - type: api.no_double_credit_debit
+  - type: timeline.no_unredacted_secret

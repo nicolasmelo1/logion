@@ -603,12 +603,12 @@ class ScenarioRunner:
         import asyncio
         import subprocess
 
+        hook = os.path.expandvars(str(phase.local_hook))
         self.timeline.event(
             "phase.local_hook.started",
             phase_id=phase.id,
-            hook=phase.local_hook,
+            hook=hook,
         )
-        hook = os.path.expandvars(str(phase.local_hook))
         if not hook.startswith("/"):
             hook = str(world.root_dir / hook)
         bindings = _scenario_bindings(world)

@@ -202,8 +202,12 @@ async def test_local_devrig_loads_role_specific_keys_and_homes(
     )
 
     api_key_field = "LOGION_API_KEY"  # pragma: allowlist secret
-    assert world.agent_env["creator"][api_key_field] == role_values["seller"]
-    assert world.agent_env["learner"][api_key_field] == role_values["buyer"]
+    assert (
+        world.agent_env["creator"][api_key_field] == "seller-credentials-value"
+    )
+    assert (
+        world.agent_env["learner"][api_key_field] == "buyer-credentials-value"
+    )
     assert world.agent_env["creator"]["LOGION_HOME"].endswith(
         "/.devrig/seller/logion-home"
     )

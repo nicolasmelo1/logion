@@ -59,7 +59,9 @@ jobs:
           make check-models
 
       - name: Dependency audit
-        run: uv run pip-audit --skip-editable
+        # No upstream fix version exists yet for diskcache/PYSEC-2026-2447.
+        # Keep failing on every other vulnerability reported by pip-audit.
+        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-2447
 
       - name: Static security scan
         run: uv run bandit -c pyproject.toml -r packages

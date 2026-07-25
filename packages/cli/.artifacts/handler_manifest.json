@@ -356,6 +356,15 @@
         "create_report"
       ]
     },
+    "resources get": {
+      "operations": []
+    },
+    "resources search": {
+      "operations": []
+    },
+    "resources versions": {
+      "operations": []
+    },
     "skills inspect": {
       "operations": [
         "get_course"

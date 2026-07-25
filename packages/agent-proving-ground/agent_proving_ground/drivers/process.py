@@ -8,6 +8,14 @@ from agent_proving_ground.drivers.base import AgentTurnResult
 from agent_proving_ground.redaction import redact_text
 
 
+def clear_role_config_environment(env: dict[str, str]) -> dict[str, str]:
+    """Remove interactive devrig config selectors from a child environment."""
+    clean = dict(env)
+    clean.pop("XDG_CONFIG_HOME", None)
+    clean.pop("GH_CONFIG_DIR", None)
+    return clean
+
+
 class ChildProcessSession:
     """Run one agent turn as an isolated child process.
 
@@ -26,7 +34,7 @@ class ChildProcessSession:
     ) -> None:
         self.command = command
         self.cwd = cwd
-        self.env = env
+        self.env = clear_role_config_environment(env)
         self.transcript_path = transcript_path
         self.timeout_seconds = timeout_seconds
 
