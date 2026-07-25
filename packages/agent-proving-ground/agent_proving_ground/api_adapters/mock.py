@@ -118,11 +118,11 @@ class MockApiAdapter(ApiAdapter):
     def seed_resource_fixture(self, fixture: dict[str, Any]) -> None:
         """Load the public fixture used by the deterministic scenario test."""
         for listing in fixture.get("indexed_listings", []):
-            item = MockIndexedListing.model_validate(listing)
-            self._state.indexed_listings[item.id] = item
+            listing_item = MockIndexedListing.model_validate(listing)
+            self._state.indexed_listings[listing_item.id] = listing_item
         for course in fixture.get("courses", []):
-            item = MockCourse.model_validate(course)
-            self._state.courses[item.id] = item
+            course_item = MockCourse.model_validate(course)
+            self._state.courses[course_item.id] = course_item
 
     async def create_world(
         self,
