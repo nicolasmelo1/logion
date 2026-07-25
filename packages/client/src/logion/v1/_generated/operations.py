@@ -74,6 +74,7 @@ from logion.v1._types.generated.v1 import (
     GetReferralLinkResponse,
     GetReferralStatsResponse,
     GetReportDetailResponse,
+    GetResourceResponse,
     GetReviewBundleResponse,
     GetReviewStatusResponse,
     GetUnreadCountResponse,
@@ -89,6 +90,8 @@ from logion.v1._types.generated.v1 import (
     ListNotificationsResponse,
     ListReferralAttributionsResponse,
     ListReportsResponse,
+    ListResourcesResponse,
+    ListResourceVersionsResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
     OpenIndexingRunResponse,
@@ -1512,6 +1515,63 @@ def create_report(
         "/v1/reports",
         CreateReportResponse,
         json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def list_resources(
+    http: HttpClient,
+    *,
+    resource_type: str | None = None,
+    lifecycle_status: str | None = None,
+    cursor: str | None = None,
+    limit: int | None = None,
+) -> ListResourcesResponse:
+    """Call the list_resources API operation."""
+    params: dict[str, Any] = {}
+    if resource_type is not None:
+        params["resource_type"] = resource_type
+    if lifecycle_status is not None:
+        params["lifecycle_status"] = lifecycle_status
+    if cursor is not None:
+        params["cursor"] = cursor
+    if limit is not None:
+        params["limit"] = limit
+    return http.request_model(
+        "GET",
+        "/v1/resources",
+        ListResourcesResponse,
+        params=params,
+    )
+
+
+def get_resource(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+) -> GetResourceResponse:
+    """Call the get_resource API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/resources/{resource_id}",
+        GetResourceResponse,
+    )
+
+
+def list_resource_versions(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    limit: int | None = None,
+) -> ListResourceVersionsResponse:
+    """Call the list_resource_versions API operation."""
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    return http.request_model(
+        "GET",
+        f"/v1/resources/{resource_id}/versions",
+        ListResourceVersionsResponse,
+        params=params,
     )
 
 
