@@ -12,9 +12,9 @@ description: |
 
 agents:
   - id: operator
-    role: admin
+    devrig_role: admin
   - id: consumer
-    role: buyer
+    devrig_role: buyer
 
 phases:
   - id: operator-backfill
