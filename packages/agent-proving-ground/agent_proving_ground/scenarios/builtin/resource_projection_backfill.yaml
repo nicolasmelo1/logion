@@ -41,8 +41,6 @@ phases:
       Purchase the hosted course through the existing course surface to
       confirm backward compatibility.
     success_hint: Course purchased successfully
-    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/confirm_bounty.py
-    local_hook_capture_json: {}
 
 final_assertions:
   - type: api.resource_projection_exists
