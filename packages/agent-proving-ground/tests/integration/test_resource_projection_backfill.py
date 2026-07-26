@@ -63,6 +63,20 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
             "before_identity_snapshot": fixture_snapshot,
             "after_identity_snapshot": fixture_snapshot,
         }
+    fixture_canonicals = [
+        "gh:phase-15-9/python-debugging-skill",
+        "course:course_python_debugging",
+    ]
+    for assertion in [
+        *(
+            assertion
+            for phase in scenario.phases
+            for assertion in phase.assertions
+        ),
+        *scenario.final_assertions,
+    ]:
+        if assertion.type == "api.resource_search_returns_kinds":
+            assertion.params["canonicals"] = fixture_canonicals
 
     api = MockApiAdapter(seed_course=False)
     api.seed_resource_fixture(json.loads(FIXTURE.read_text(encoding="utf-8")))
@@ -124,6 +138,9 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
     )
     assert all(
         outcome.evidence["matched_canonicals"]
-        == ["gh:phase-15-9/python-debugging-skill"]
+        == [
+            "course:course_python_debugging",
+            "gh:phase-15-9/python-debugging-skill",
+        ]
         for outcome in search_outcomes
     )

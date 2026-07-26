@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -8,6 +9,7 @@ from agent_proving_ground.api_adapters._queries import (
     LogionApiQueries,
     RoleKeyStore,
 )
+from agent_proving_ground.api_adapters.mock import MockApiAdapter
 
 GetResponse = tuple[int, Any]
 
@@ -313,6 +315,10 @@ async def test_resource_backfill_idempotent_rejects_missing_capture() -> None:
         ({"resources_created": 0}, False, False),
         ({"projections_linked": 1}, False, False),
         ({"identity_snapshot": ""}, False, False),
+        ({"identity_snapshot": "[]"}, False, False),
+        ({"identity_snapshot": "{}"}, False, False),
+        ({"identity_snapshot": "null"}, False, False),
+        ({"identity_snapshot": "None"}, False, False),
         ({"resources_created": "invalid"}, False, False),
     ],
 )
@@ -347,15 +353,34 @@ async def test_resource_backfill_applied_rejects_missing_capture() -> None:
     assert "missing keys" in result["reason"]
 
 
+@pytest.mark.parametrize("snapshot", ["", "[]", "{}", "null", "None"])
+async def test_mock_resource_backfill_applied_rejects_empty_snapshots(
+    snapshot: str,
+) -> None:
+    result = await MockApiAdapter().query(
+        Mock(),
+        {
+            "type": "resource_backfill_applied",
+            "resources_created": 2,
+            "projections_linked": 2,
+            "identity_snapshot": snapshot,
+        },
+    )
+
+    assert result["found"] is False
+
+
 async def test_resource_search_matches_fixture_canonical_and_both_projections(
     monkeypatch,
 ) -> None:
     queries = _queries()
     detail_paths: list[str] = []
+    observed_roles: list[str | None] = []
 
     async def fake_paged_get(
-        _path: str, _role: str | None, *, _limit: int = 50
+        _path: str, role: str | None, *, _limit: int = 50
     ) -> tuple[int, list[dict[str, Any]]]:
+        observed_roles.append(role)
         return 200, [
             {"id": "skill"},
             {"id": "course"},
@@ -373,8 +398,9 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
         },
     }
 
-    async def fake_get(path: str, _role: str | None) -> GetResponse:
+    async def fake_get(path: str, role: str | None) -> GetResponse:
         detail_paths.append(path)
+        observed_roles.append(role)
         return 200, details[path]
 
     monkeypatch.setattr(queries, "_paged_get", fake_paged_get)
@@ -383,9 +409,13 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
         {
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing", "published_course"],
-            "canonicals": ["gh:phase-15-9/python-debugging-skill"],
+            "canonicals": [
+                "gh:phase-15-9/python-debugging-skill",
+                "course:python-debugging",
+            ],
+            "observer_agent": "consumer",
         },
-        {},
+        {"consumer": "buyer"},
     )
 
     assert result["kinds_match"] is True
@@ -394,9 +424,11 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
         "published_course",
     ]
     assert result["matched_canonicals"] == [
-        "gh:phase-15-9/python-debugging-skill"
+        "course:python-debugging",
+        "gh:phase-15-9/python-debugging-skill",
     ]
     assert detail_paths == ["/v1/resources/skill", "/v1/resources/course"]
+    assert observed_roles == ["buyer", "buyer", "buyer"]
 
 
 async def test_resource_search_fails_when_fixture_projection_is_missing(
@@ -421,13 +453,69 @@ async def test_resource_search_fails_when_fixture_projection_is_missing(
         {
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing", "published_course"],
-            "canonicals": ["gh:phase-15-9/python-debugging-skill"],
+            "canonicals": [
+                "gh:phase-15-9/python-debugging-skill",
+                "course:python-debugging",
+            ],
         },
         {},
     )
 
     assert result["kinds_match"] is False
     assert result["projection_kinds"] == ["indexed_listing"]
+
+
+async def test_resource_search_does_not_mix_unrelated_projection_kinds(
+    monkeypatch,
+) -> None:
+    queries = _queries()
+
+    async def fake_paged_get(
+        _path: str, _role: str | None, *, _limit: int = 50
+    ) -> tuple[int, list[dict[str, Any]]]:
+        return 200, [
+            {"id": "skill"},
+            {"id": "expected-course"},
+            {"id": "unrelated-course"},
+        ]
+
+    details = {
+        "/v1/resources/skill": {
+            "canonical_uri": "gh:phase-15-9/python-debugging-skill",
+            "projections": [{"projection_kind": "indexed_listing"}],
+        },
+        "/v1/resources/expected-course": {
+            "canonical_uri": "course:python-debugging",
+            "projections": [{"projection_kind": "indexed_listing"}],
+        },
+        "/v1/resources/unrelated-course": {
+            "canonical_uri": "course:unrelated",
+            "projections": [{"projection_kind": "published_course"}],
+        },
+    }
+
+    async def fake_get(path: str, _role: str | None) -> GetResponse:
+        return 200, details[path]
+
+    monkeypatch.setattr(queries, "_paged_get", fake_paged_get)
+    monkeypatch.setattr(queries, "_get", fake_get)
+
+    result = await queries.query(
+        {
+            "type": "resource_search_returns_kinds",
+            "projection_kinds": ["indexed_listing", "published_course"],
+            "canonicals": [
+                "gh:phase-15-9/python-debugging-skill",
+                "course:python-debugging",
+            ],
+        },
+        {},
+    )
+
+    assert result["kinds_match"] is False
+    assert result["matched_canonicals"] == [
+        "gh:phase-15-9/python-debugging-skill"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -438,6 +526,10 @@ async def test_resource_search_fails_when_fixture_projection_is_missing(
         {"projection_kinds": []},
         {"projection_kinds": [123]},
         {"projection_kinds": ["indexed_listing"], "canonicals": "gh:o/r"},
+        {
+            "projection_kinds": ["indexed_listing", "published_course"],
+            "canonicals": ["gh:o/r"],
+        },
     ],
 )
 async def test_resource_search_rejects_invalid_expectation_shapes(
@@ -473,6 +565,7 @@ async def test_resource_search_rejects_invalid_projection_shape(
         {
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing"],
+            "canonicals": ["gh:phase-15-9/python-debugging-skill"],
         },
         {},
     )

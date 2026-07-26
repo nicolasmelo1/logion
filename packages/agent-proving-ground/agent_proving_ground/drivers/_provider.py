@@ -34,6 +34,21 @@ class ProviderDriver(AgentDriver):
     provider_name: ClassVar[str]
     default_command: ClassVar[str]
     default_args: ClassVar[list[str]]
+    safe_host_env: ClassVar[frozenset[str]] = frozenset({
+        "COLORTERM",
+        "FORCE_COLOR",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "LOGNAME",
+        "NO_COLOR",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "TMPDIR",
+        "USER",
+    })
 
     def __init__(
         self,
@@ -68,10 +83,7 @@ class ProviderDriver(AgentDriver):
 
         command = [executable, *self._effective_args()]
         transcript_path = self._launch.workspace / f"{phase_id}.md"
-        # Real provider CLIs need the invoking user's environment (HOME,
-        # PATH, provider auth config); the scenario/adapter env wins on
-        # conflicts.
-        env = {**os.environ, **self._launch.env}
+        env = self._effective_env()
         self._session = ChildProcessSession(
             command=command,
             cwd=self._launch.workspace,
@@ -107,6 +119,22 @@ class ProviderDriver(AgentDriver):
         if provider:
             combined = _override_flag(combined, "--provider", provider)
         return combined
+
+    def _effective_env(self) -> dict[str, str]:
+        """Expose only safe host config plus the isolated role environment."""
+        if self._launch is None:
+            return {}
+        provider_cfg = self._driver_config.get(self.provider_name, {})
+        explicit_names = self._coerce_arg_list(
+            provider_cfg.get("env_allowlist", [])
+        )
+        allowed_names = self.safe_host_env | frozenset(explicit_names)
+        host_env = {
+            name: os.environ[name]
+            for name in allowed_names
+            if name in os.environ
+        }
+        return {**host_env, **self._launch.env}
 
     @staticmethod
     def _coerce_arg_list(value: Any) -> list[str]:

@@ -11,6 +11,7 @@ from agent_proving_ground.api_adapters._http import http_request_json
 ROLE_KEYS_FILE_ENV = "LOGION_PROVING_GROUND_ROLE_KEYS_FILE"
 SINGLE_KEY_ENVS = ("LOGION_PROVING_GROUND_API_KEY", "LOGION_API_KEY")
 _DEFAULT_ROLE = "seller"
+_EMPTY_SNAPSHOT_ENCODINGS = {"", "[]", "{}", "null", "None"}
 
 
 class RoleKeyStore:
@@ -1061,12 +1062,11 @@ class LogionApiQueries:
             )
         except (TypeError, ValueError):
             counters_unchanged = False
-        empty_snapshots = {"", "[]", "{}", "null", "None"}
         snapshots_unchanged = (
             isinstance(before, str)
             and isinstance(after, str)
-            and before.strip() not in empty_snapshots
-            and after.strip() not in empty_snapshots
+            and before.strip() not in _EMPTY_SNAPSHOT_ENCODINGS
+            and after.strip() not in _EMPTY_SNAPSHOT_ENCODINGS
             and before == after
         )
         return {
@@ -1108,7 +1108,10 @@ class LogionApiQueries:
             )
         except (TypeError, ValueError):
             expected_changes = False
-        snapshot_present = isinstance(snapshot, str) and bool(snapshot.strip())
+        snapshot_present = (
+            isinstance(snapshot, str)
+            and snapshot.strip() not in _EMPTY_SNAPSHOT_ENCODINGS
+        )
         return {
             "found": expected_changes and snapshot_present,
             "evidence": {
@@ -1122,9 +1125,9 @@ class LogionApiQueries:
     async def _q_resource_search_returns_kinds(
         self,
         query: dict[str, Any],
-        agent_roles: dict[str, Any],  # noqa: ARG002
+        agent_roles: dict[str, str],
     ) -> dict[str, Any]:
-        """Verify fixture identities and kinds through resource details."""
+        """Verify each fixture canonical has its expected projection kind."""
         raw_kinds = query.get("projection_kinds")
         raw_canonicals = query.get("canonicals", [])
         if (
@@ -1132,6 +1135,7 @@ class LogionApiQueries:
             or not raw_kinds
             or not all(isinstance(kind, str) and kind for kind in raw_kinds)
             or not isinstance(raw_canonicals, list)
+            or len(raw_kinds) != len(raw_canonicals)
             or not all(
                 isinstance(canonical, str) and canonical
                 for canonical in raw_canonicals
@@ -1140,17 +1144,21 @@ class LogionApiQueries:
             return _unsupported(
                 "projection_kinds/canonicals have invalid shape"
             )
-        expected_kinds = set(raw_kinds)
-        expected_canonicals = set(raw_canonicals)
-        status, items = await self._paged_get("/v1/resources", "admin")
+        expected_pairs = set(zip(raw_canonicals, raw_kinds, strict=True))
+        observer_agent = query.get("observer_agent")
+        observer_role = self._role_of(observer_agent, agent_roles)
+        if observer_agent is not None and observer_role is None:
+            return _unsupported(
+                "resource observer agent has no configured role"
+            )
+        status, items = await self._paged_get("/v1/resources", observer_role)
         if status != 200:
             return {
                 "kinds_match": False,
                 "unsupported": True,
                 "reason": "resource endpoint not available",
             }
-        found_kinds: set[str] = set()
-        found_canonicals: set[str] = set()
+        matched_pairs: set[tuple[str, str]] = set()
         for item in items:
             resource_id = item.get("id")
             if not isinstance(resource_id, str) or not resource_id:
@@ -1158,7 +1166,7 @@ class LogionApiQueries:
                     "resource collection has an invalid identity"
                 )
             detail_status, detail = await self._get(
-                f"/v1/resources/{resource_id}", "admin"
+                f"/v1/resources/{resource_id}", observer_role
             )
             if detail_status != 200 or not isinstance(detail, dict):
                 return _unsupported("resource detail endpoint not available")
@@ -1175,22 +1183,21 @@ class LogionApiQueries:
                 for projection in projections
             ):
                 return _unsupported("resource detail has invalid projections")
-            found_canonicals.add(canonical)
-            found_kinds.update(
-                str(projection["projection_kind"])
+            resource_pairs = {
+                (canonical, str(projection["projection_kind"]))
                 for projection in projections
                 if isinstance(projection.get("projection_kind"), str)
                 and projection["projection_kind"]
-            )
-            if expected_kinds.issubset(
-                found_kinds
-            ) and expected_canonicals.issubset(found_canonicals):
+            }
+            matched_pairs.update(expected_pairs & resource_pairs)
+            if expected_pairs.issubset(matched_pairs):
                 break
-        matched_kinds = sorted(expected_kinds & found_kinds)
-        matched_canonicals = sorted(expected_canonicals & found_canonicals)
+        matched_kinds = sorted({kind for _, kind in matched_pairs})
+        matched_canonicals = sorted({
+            canonical for canonical, _ in matched_pairs
+        })
         return {
-            "kinds_match": expected_kinds.issubset(found_kinds)
-            and expected_canonicals.issubset(found_canonicals),
+            "kinds_match": expected_pairs.issubset(matched_pairs),
             "projection_kinds": matched_kinds,
             "matched_canonicals": matched_canonicals,
             "evidence": {

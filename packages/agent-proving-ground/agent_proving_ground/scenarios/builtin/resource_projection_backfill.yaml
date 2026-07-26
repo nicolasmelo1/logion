@@ -44,6 +44,7 @@ phases:
     local_hook_capture_json:
       INITIAL_BACKFILL_CREATED: resources_created
       INITIAL_BACKFILL_LINKED: projections_linked
+      FIXTURE_COURSE_CANONICAL: course_canonical
       INITIAL_IDENTITY_SNAPSHOT: identity_snapshot
     assertions:
       - type: api.resource_backfill_applied
@@ -65,7 +66,10 @@ phases:
       - type: api.resource_search_returns_kinds
         params:
           projection_kinds: [indexed_listing, published_course]
-          canonicals: ["gh:phase-15-9/python-debugging-skill"]
+          canonicals:
+            - "gh:phase-15-9/python-debugging-skill"
+            - "${FIXTURE_COURSE_CANONICAL}"
+          observer_agent: operator
 
   - id: consumer-search-resources
     actor: consumer
@@ -78,7 +82,10 @@ phases:
       - type: api.resource_search_returns_kinds
         params:
           projection_kinds: [indexed_listing, published_course]
-          canonicals: ["gh:phase-15-9/python-debugging-skill"]
+          canonicals:
+            - "gh:phase-15-9/python-debugging-skill"
+            - "${FIXTURE_COURSE_CANONICAL}"
+          observer_agent: consumer
 
   - id: consumer-legacy-course-purchase
     actor: consumer
@@ -124,7 +131,10 @@ final_assertions:
   - type: api.resource_search_returns_kinds
     params:
       projection_kinds: [indexed_listing, published_course]
-      canonicals: ["gh:phase-15-9/python-debugging-skill"]
+      canonicals:
+        - "gh:phase-15-9/python-debugging-skill"
+        - "${FIXTURE_COURSE_CANONICAL}"
+      observer_agent: consumer
   - type: api.resource_projection_exists
     params:
       projection_kind: published_course

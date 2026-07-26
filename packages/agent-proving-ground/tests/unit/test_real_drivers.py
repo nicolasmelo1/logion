@@ -201,6 +201,38 @@ async def test_provider_driver_uses_configured_command(
     assert result.status == "completed"
 
 
+async def test_provider_driver_sanitizes_host_environment(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("UNRELATED_SECRET_TOKEN", "must-not-leak")
+    monkeypatch.setenv("PATH", "/safe/bin")
+    driver = CodexDriver(driver_config={})
+    launch = _launch(tmp_path)
+    launch.env["LOGION_API_KEY"] = "isolated-role-key"
+
+    await driver.start(launch)
+    env = driver._effective_env()
+
+    assert env["PATH"] == "/safe/bin"
+    assert env["LOGION_API_KEY"] == "isolated-role-key"
+    assert "UNRELATED_SECRET_TOKEN" not in env
+
+
+async def test_provider_driver_allows_explicit_host_env(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("CUSTOM_PROVIDER_CONFIG", "explicit-value")
+    driver = CodexDriver(
+        driver_config={"codex": {"env_allowlist": ["CUSTOM_PROVIDER_CONFIG"]}}
+    )
+
+    await driver.start(_launch(tmp_path))
+
+    assert (
+        driver._effective_env()["CUSTOM_PROVIDER_CONFIG"] == "explicit-value"
+    )
+
+
 async def test_claude_driver_defaults(tmp_path) -> None:
     driver = ClaudeCodeDriver(driver_config={})
     await driver.start(_launch(tmp_path))

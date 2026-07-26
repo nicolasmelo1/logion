@@ -368,11 +368,12 @@ class MockApiAdapter(ApiAdapter):
                 created = query.get("resources_created")
                 linked = query.get("projections_linked")
                 snapshot = query.get("identity_snapshot")
+                empty_snapshots = {"", "[]", "{}", "null", "None"}
                 return {
                     "found": str(created) == "2"
                     and str(linked) == "2"
                     and isinstance(snapshot, str)
-                    and bool(snapshot)
+                    and snapshot.strip() not in empty_snapshots
                 }
             case "resource_search_returns_kinds":
                 kinds = query.get("projection_kinds")
@@ -384,6 +385,7 @@ class MockApiAdapter(ApiAdapter):
                         isinstance(kind, str) and kind for kind in kinds
                     )
                     or not isinstance(canonicals, list)
+                    or len(kinds) != len(canonicals)
                     or not all(
                         isinstance(canonical, str) and canonical
                         for canonical in canonicals
@@ -394,20 +396,22 @@ class MockApiAdapter(ApiAdapter):
                         "unsupported": True,
                         "reason": "invalid fixture expectations",
                     }
-                found_kinds = {
-                    projection.get("projection_kind")
+                expected_pairs = set(zip(canonicals, kinds, strict=True))
+                found_pairs = {
+                    (
+                        resource.canonical_uri,
+                        projection.get("projection_kind"),
+                    )
                     for resource in self._state.resources.values()
                     for projection in resource.projections
                 }
-                found_canonicals = {
-                    resource.canonical_uri
-                    for resource in self._state.resources.values()
-                }
-                matched_kinds = sorted(set(kinds) & found_kinds)
-                matched_canonicals = sorted(set(canonicals) & found_canonicals)
+                matched_pairs = expected_pairs & found_pairs
+                matched_kinds = sorted({kind for _, kind in matched_pairs})
+                matched_canonicals = sorted({
+                    canonical for canonical, _ in matched_pairs
+                })
                 return {
-                    "kinds_match": set(kinds).issubset(found_kinds)
-                    and set(canonicals).issubset(found_canonicals),
+                    "kinds_match": expected_pairs.issubset(matched_pairs),
                     "projection_kinds": matched_kinds,
                     "matched_canonicals": matched_canonicals,
                 }
