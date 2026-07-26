@@ -43,7 +43,7 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
         if phase.id == "operator-backfill-rerun"
     )
     fixture_snapshot = (
-        "agent_skill:gh:phase-15-9/python-debugging-skill|"
+        "agent_skill:gh:resource-projection/python-debugging-skill|"
         "course:course_python_debugging"
     )
     initial = next(
@@ -64,7 +64,7 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
             "after_identity_snapshot": fixture_snapshot,
         }
     fixture_canonicals = [
-        "gh:phase-15-9/python-debugging-skill",
+        "gh:resource-projection/python-debugging-skill",
         "course:course_python_debugging",
     ]
     for assertion in [
@@ -140,7 +140,7 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
         outcome.evidence["matched_canonicals"]
         == [
             "course:course_python_debugging",
-            "gh:phase-15-9/python-debugging-skill",
+            "gh:resource-projection/python-debugging-skill",
         ]
         for outcome in search_outcomes
     )

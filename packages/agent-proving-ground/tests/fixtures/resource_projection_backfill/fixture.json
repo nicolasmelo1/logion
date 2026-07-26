@@ -3,7 +3,7 @@
     {
       "id": "listing_python_debugging_skill",
       "resource_type": "agent_skill",
-      "canonical_uri": "gh:phase-15-9/python-debugging-skill"
+      "canonical_uri": "gh:resource-projection/python-debugging-skill"
     }
   ],
   "courses": [

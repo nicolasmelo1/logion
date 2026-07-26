@@ -63,7 +63,9 @@ def _context(tmp_path: Path, api: StaticQueryApi) -> AssertionContext:
             {
                 "kinds_match": True,
                 "projection_kinds": ["indexed_listing", "published_course"],
-                "matched_canonicals": ["gh:phase-15-9/python-debugging-skill"],
+                "matched_canonicals": [
+                    "gh:resource-projection/python-debugging-skill"
+                ],
             },
             "passed",
         ),
@@ -120,13 +122,17 @@ async def test_resource_search_assertion_preserves_matched_fixture_evidence(
     api = StaticQueryApi({
         "kinds_match": True,
         "projection_kinds": ["indexed_listing", "published_course"],
-        "matched_canonicals": ["gh:phase-15-9/python-debugging-skill"],
+        "matched_canonicals": [
+            "gh:resource-projection/python-debugging-skill"
+        ],
         "evidence": {
             "matched_projection_kinds": [
                 "indexed_listing",
                 "published_course",
             ],
-            "matched_canonicals": ["gh:phase-15-9/python-debugging-skill"],
+            "matched_canonicals": [
+                "gh:resource-projection/python-debugging-skill"
+            ],
         },
     })
 
@@ -140,7 +146,7 @@ async def test_resource_search_assertion_preserves_matched_fixture_evidence(
         "published_course",
     ]
     assert outcome.evidence["matched_canonicals"] == [
-        "gh:phase-15-9/python-debugging-skill"
+        "gh:resource-projection/python-debugging-skill"
     ]
     assert outcome.evidence["query_evidence"]["matched_projection_kinds"] == [
         "indexed_listing",

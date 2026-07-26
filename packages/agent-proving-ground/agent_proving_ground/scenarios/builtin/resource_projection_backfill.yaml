@@ -67,7 +67,7 @@ phases:
         params:
           projection_kinds: [indexed_listing, published_course]
           canonicals:
-            - "gh:phase-15-9/python-debugging-skill"
+            - "gh:resource-projection/python-debugging-skill"
             - "${FIXTURE_COURSE_CANONICAL}"
           observer_agent: operator
 
@@ -83,7 +83,7 @@ phases:
         params:
           projection_kinds: [indexed_listing, published_course]
           canonicals:
-            - "gh:phase-15-9/python-debugging-skill"
+            - "gh:resource-projection/python-debugging-skill"
             - "${FIXTURE_COURSE_CANONICAL}"
           observer_agent: consumer
 
@@ -132,7 +132,7 @@ final_assertions:
     params:
       projection_kinds: [indexed_listing, published_course]
       canonicals:
-        - "gh:phase-15-9/python-debugging-skill"
+        - "gh:resource-projection/python-debugging-skill"
         - "${FIXTURE_COURSE_CANONICAL}"
       observer_agent: consumer
   - type: api.resource_projection_exists
