@@ -130,7 +130,30 @@ class CodexDriver(ProviderDriver):
     name = "codex"
     provider_name = "codex"
     default_command = "codex"
-    default_args: ClassVar[list[str]] = ["--model", "gpt-5-codex"]
+    # `codex` without `exec` launches the interactive TUI and fails under the
+    # proving-ground pipe with "stdin is not a terminal". Keep execution
+    # non-interactive and prevent an unanswerable approval prompt.
+    default_args: ClassVar[list[str]] = [
+        "exec",
+        "--sandbox",
+        "workspace-write",
+        "--skip-git-repo-check",
+        "--config",
+        'approval_policy="never"',
+        "--config",
+        "sandbox_workspace_write.network_access=true",
+        "--model",
+        "gpt-5-codex",
+    ]
+
+    def _effective_args(self) -> list[str]:
+        args = super()._effective_args()
+        if self._launch is None:
+            return args
+        logion_home = self._launch.env.get("LOGION_HOME")
+        if not logion_home:
+            return args
+        return [*args, "--add-dir", logion_home]
 
 
 class ClaudeCodeDriver(ProviderDriver):

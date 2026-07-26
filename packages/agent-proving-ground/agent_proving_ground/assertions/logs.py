@@ -90,9 +90,11 @@ def _find_log_path(ctx: AssertionContext) -> Path | None:
 
     root = ctx.world.root_dir
     devrig_env = root / ".devrig" / "devrig.env"
-    devrig_log = root / ".devrig" / "prism.log"
-    if devrig_env.is_file() and devrig_log.is_file():
-        return devrig_log
+    if devrig_env.is_file():
+        for log_name in ("api.log", "prism.log"):
+            devrig_log = root / ".devrig" / log_name
+            if devrig_log.is_file():
+                return devrig_log
     return None
 
 

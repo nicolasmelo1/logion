@@ -13,7 +13,8 @@ from agent_proving_ground.timeline import Timeline
 FIXTURE = (
     Path(__file__).parents[1]
     / "fixtures"
-    / "resource_projection_backfill.json"
+    / "resource_projection_backfill"
+    / "fixture.json"
 )
 
 
@@ -23,6 +24,10 @@ def _op(operation: str, **params: object) -> dict:
 
 async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
     scenario = load_scenario("builtin:resource_projection_backfill")
+    hook_paths = {
+        phase.local_hook for phase in scenario.phases if phase.local_hook
+    }
+    assert hook_paths == {"scripts/devrig/backfill_resources.py"}
     for phase in scenario.phases:
         phase.local_hook = None
         phase.goal = "run the scripted scenario step"
@@ -33,8 +38,27 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
         for phase in scenario.phases
         if phase.id == "operator-backfill-rerun"
     )
+    fixture_snapshot = (
+        "agent_skill:gh:phase-15-9/python-debugging-skill|"
+        "course:course_python_debugging"
+    )
+    initial = next(
+        phase for phase in scenario.phases if phase.id == "operator-backfill"
+    )
+    for assertion in initial.assertions:
+        if assertion.type == "api.resource_backfill_applied":
+            assertion.params = {
+                "resources_created": 2,
+                "projections_linked": 2,
+                "identity_snapshot": fixture_snapshot,
+            }
     for assertion in rerun.assertions:
-        assertion.params = {"expected_created": 0, "expected_linked": 0}
+        assertion.params = {
+            "rerun_created": 0,
+            "rerun_linked": 0,
+            "before_identity_snapshot": fixture_snapshot,
+            "after_identity_snapshot": fixture_snapshot,
+        }
 
     api = MockApiAdapter(seed_course=False)
     api.seed_resource_fixture(json.loads(FIXTURE.read_text(encoding="utf-8")))
@@ -77,8 +101,25 @@ async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
         "logs.no_500s",
         "timeline.no_unredacted_secret",
         "api.resource_backfill_complete",
+        "api.resource_backfill_applied",
         "api.resource_identity_unique",
         "api.resource_backfill_idempotent",
         "api.legacy_course_purchase_exists",
         "api.resource_search_returns_kinds",
     }
+    search_outcomes = [
+        outcome
+        for outcome in result.assertion_results
+        if outcome.type == "api.resource_search_returns_kinds"
+    ]
+    assert search_outcomes
+    assert all(
+        outcome.evidence["projection_kinds"]
+        == ["indexed_listing", "published_course"]
+        for outcome in search_outcomes
+    )
+    assert all(
+        outcome.evidence["matched_canonicals"]
+        == ["gh:phase-15-9/python-debugging-skill"]
+        for outcome in search_outcomes
+    )

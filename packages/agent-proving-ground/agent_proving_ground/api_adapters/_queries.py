@@ -183,20 +183,32 @@ class LogionApiQueries:
             if status != 200:
                 return status, rows
             if isinstance(data, list):
-                rows.extend(row for row in data if isinstance(row, dict))
+                if not all(isinstance(row, dict) for row in data):
+                    return 0, rows
+                rows.extend(data)
                 return status, rows
             if not isinstance(data, dict):
-                return status, rows
-            page = data.get(
-                "items", data.get("results", data.get("resources", []))
+                return 0, rows
+            page = next(
+                (
+                    data[key]
+                    for key in ("items", "results", "resources")
+                    if key in data
+                ),
+                None,
             )
-            if isinstance(page, list):
-                rows.extend(row for row in page if isinstance(row, dict))
+            if not isinstance(page, list) or not all(
+                isinstance(row, dict) for row in page
+            ):
+                return 0, rows
+            rows.extend(page)
             next_cursor = data.get("next_cursor") or data.get("nextCursor")
-            if not next_cursor or str(next_cursor) == str(cursor):
+            if not next_cursor:
                 return status, rows
+            if not isinstance(next_cursor, str) or next_cursor == cursor:
+                return 0, rows
             cursor = str(next_cursor)
-        return 200, rows
+        return 0, rows
 
     def _role_of(
         self, agent_id: str | None, agent_roles: dict[str, str]
@@ -857,38 +869,51 @@ class LogionApiQueries:
         query: dict[str, Any],
         agent_roles: dict[str, Any],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Check that a resource projection exists for a given kind."""
+        """Check the complete resource collection for a projection kind."""
         projection_kind = query.get("projection_kind", "indexed_listing")
-        status, data = await self._get("/v1/resources", "admin")
-        if status != 200 or not isinstance(data, dict):
-            return {"found": False, "evidence": {"source": "api"}}
-        items = data.get("items", data.get("results", []))
-        if not isinstance(items, list):
-            items = []
+        if not isinstance(projection_kind, str) or not projection_kind:
+            return _unsupported("projection_kind has an invalid shape")
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
+            return _unsupported("resource endpoint not available")
         for item in items:
-            if not isinstance(item, dict):
-                continue
             resource_id = item.get("id")
-            if not resource_id:
-                continue
+            if not isinstance(resource_id, str) or not resource_id:
+                return _unsupported(
+                    "resource collection has an invalid identity"
+                )
             detail_status, detail = await self._get(
                 f"/v1/resources/{resource_id}", "admin"
             )
             if detail_status != 200 or not isinstance(detail, dict):
-                continue
-            projections = detail.get("projections", [])
-            if not isinstance(projections, list):
-                continue
-            for proj in projections:
-                if not isinstance(proj, dict):
-                    continue
-                if proj.get("projection_kind") == projection_kind:
-                    return {
-                        "found": True,
-                        "resource_id": item.get("id", ""),
-                        "evidence": {"source": "api"},
-                    }
-        return {"found": False, "evidence": {"source": "api"}}
+                return _unsupported("resource detail endpoint not available")
+            projections = detail.get("projections")
+            if not isinstance(projections, list) or not all(
+                isinstance(projection, dict)
+                and isinstance(projection.get("projection_kind"), str)
+                and bool(projection["projection_kind"])
+                for projection in projections
+            ):
+                return _unsupported("resource detail has invalid projections")
+            if any(
+                projection["projection_kind"] == projection_kind
+                for projection in projections
+            ):
+                return {
+                    "found": True,
+                    "resource_id": resource_id,
+                    "evidence": {
+                        "source": "api",
+                        "projection_kind": projection_kind,
+                    },
+                }
+        return {
+            "found": False,
+            "evidence": {
+                "source": "api",
+                "projection_kind": projection_kind,
+            },
+        }
 
     async def _q_resource_backfill_complete(
         self,
@@ -908,28 +933,52 @@ class LogionApiQueries:
                 "unsupported": True,
                 "reason": "listing or resource endpoint not available",
             }
+        raw_listing_ids = [
+            listing.get("id") or listing.get("listing_id")
+            for listing in listings
+        ]
+        if not all(
+            isinstance(listing_id, str) and listing_id
+            for listing_id in raw_listing_ids
+        ):
+            return _unsupported("listing collection has an invalid identity")
+        listing_ids = {str(listing_id) for listing_id in raw_listing_ids}
+        if not listing_ids:
+            return {
+                "found": False,
+                "evidence": {
+                    "source": "api",
+                    "indexed_listing_count": 0,
+                    "projected_listing_count": 0,
+                    "missing_listing_ids": [],
+                },
+            }
         projection_ids: set[str] = set()
         for resource in resources:
             resource_id = resource.get("id")
-            if not resource_id:
-                continue
+            if not isinstance(resource_id, str) or not resource_id:
+                return _unsupported(
+                    "resource collection has an invalid identity"
+                )
             detail_status, detail = await self._get(
                 f"/v1/resources/{resource_id}", "admin"
             )
             if detail_status != 200 or not isinstance(detail, dict):
-                continue
+                return _unsupported("resource detail endpoint not available")
             projections = detail.get("projections", [])
-            if isinstance(projections, list):
-                for projection in projections:
-                    if isinstance(projection, dict):
-                        projection_id = projection.get("projection_id")
-                        if projection_id:
-                            projection_ids.add(str(projection_id))
-        listing_ids = {
-            str(listing.get("id") or listing.get("listing_id"))
-            for listing in listings
-            if listing.get("id") or listing.get("listing_id")
-        }
+            if not isinstance(projections, list) or not all(
+                isinstance(projection, dict)
+                and isinstance(projection.get("projection_kind"), str)
+                and bool(projection["projection_kind"])
+                and isinstance(projection.get("projection_id"), str)
+                and bool(projection["projection_id"])
+                for projection in projections
+            ):
+                return _unsupported("resource detail has invalid projections")
+            for projection in projections:
+                projection_ids.add(projection["projection_id"])
+            if listing_ids.issubset(projection_ids):
+                break
         missing = sorted(listing_ids - projection_ids)
         return {
             "found": bool(listing_ids) and not missing,
@@ -954,12 +1003,19 @@ class LogionApiQueries:
                 "unsupported": True,
                 "reason": "resource endpoint not available",
             }
+        if not items:
+            return {
+                "found": False,
+                "evidence": {"source": "api", "resource_count": 0},
+            }
         seen: set[tuple[str, str]] = set()
         for item in items:
-            if not isinstance(item, dict):
-                continue
-            rtype = item.get("resource_type", "")
-            curi = item.get("canonical_uri", "")
+            rtype = item.get("resource_type")
+            curi = item.get("canonical_uri")
+            if not isinstance(rtype, str) or not rtype:
+                return _unsupported("resource has invalid resource_type")
+            if not isinstance(curi, str) or not curi:
+                return _unsupported("resource has invalid canonical_uri")
             key = (rtype, curi)
             if key in seen:
                 return {
@@ -970,30 +1026,96 @@ class LogionApiQueries:
                     },
                 }
             seen.add(key)
-        return {"found": True, "evidence": {"source": "api"}}
+        return {
+            "found": True,
+            "evidence": {"source": "api", "resource_count": len(seen)},
+        }
 
     async def _q_resource_backfill_idempotent(
         self,
         query: dict[str, Any],
         agent_roles: dict[str, Any],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Check the operator's second backfill reported no new changes."""
-        created = query.get("expected_created", 0)
-        linked = query.get("expected_linked", 0)
-        observed = query.get("_scenario_vars", {})
-        if isinstance(observed, dict):
-            created = observed.get("BACKFILL_CREATED", created)
-            linked = observed.get("BACKFILL_LINKED", linked)
+        """Check a backfill rerun changed neither counters nor identities."""
+        required = (
+            "rerun_created",
+            "rerun_linked",
+            "before_identity_snapshot",
+            "after_identity_snapshot",
+        )
+        missing = [key for key in required if key not in query]
+        if missing:
+            return _unsupported(
+                "idempotency capture missing keys: " + ", ".join(missing)
+            )
+        created = query["rerun_created"]
+        linked = query["rerun_linked"]
+        before = query["before_identity_snapshot"]
+        after = query["after_identity_snapshot"]
         try:
-            unchanged = int(created or 0) == 0 and int(linked or 0) == 0
+            counters_unchanged = (
+                not isinstance(created, bool)
+                and not isinstance(linked, bool)
+                and int(created) == 0
+                and int(linked) == 0
+            )
         except (TypeError, ValueError):
-            unchanged = False
+            counters_unchanged = False
+        empty_snapshots = {"", "[]", "{}", "null", "None"}
+        snapshots_unchanged = (
+            isinstance(before, str)
+            and isinstance(after, str)
+            and before.strip() not in empty_snapshots
+            and after.strip() not in empty_snapshots
+            and before == after
+        )
         return {
-            "found": unchanged,
+            "found": counters_unchanged and snapshots_unchanged,
             "evidence": {
                 "source": "hook_capture",
                 "resources_created": created,
                 "projections_linked": linked,
+                "before_identity_snapshot": before,
+                "after_identity_snapshot": after,
+            },
+        }
+
+    async def _q_resource_backfill_applied(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Check the clean fixture produced two identities and links."""
+        required = (
+            "resources_created",
+            "projections_linked",
+            "identity_snapshot",
+        )
+        missing = [key for key in required if key not in query]
+        if missing:
+            return _unsupported(
+                "initial backfill capture missing keys: " + ", ".join(missing)
+            )
+        created = query["resources_created"]
+        linked = query["projections_linked"]
+        snapshot = query["identity_snapshot"]
+        try:
+            expected_changes = (
+                not isinstance(created, bool)
+                and not isinstance(linked, bool)
+                and int(created) == 2
+                and int(linked) == 2
+            )
+        except (TypeError, ValueError):
+            expected_changes = False
+        snapshot_present = isinstance(snapshot, str) and bool(snapshot.strip())
+        return {
+            "found": expected_changes and snapshot_present,
+            "evidence": {
+                "source": "hook_capture",
+                "resources_created": created,
+                "projections_linked": linked,
+                "identity_snapshot": snapshot,
             },
         }
 
@@ -1002,28 +1124,80 @@ class LogionApiQueries:
         query: dict[str, Any],
         agent_roles: dict[str, Any],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify that resource search returns expected resource types."""
-        expected_kinds = set(query.get("kinds", []))
-        status, data = await self._get("/v1/resources", "admin")
-        if status != 200 or not isinstance(data, dict):
+        """Verify fixture identities and kinds through resource details."""
+        raw_kinds = query.get("projection_kinds")
+        raw_canonicals = query.get("canonicals", [])
+        if (
+            not isinstance(raw_kinds, list)
+            or not raw_kinds
+            or not all(isinstance(kind, str) and kind for kind in raw_kinds)
+            or not isinstance(raw_canonicals, list)
+            or not all(
+                isinstance(canonical, str) and canonical
+                for canonical in raw_canonicals
+            )
+        ):
+            return _unsupported(
+                "projection_kinds/canonicals have invalid shape"
+            )
+        expected_kinds = set(raw_kinds)
+        expected_canonicals = set(raw_canonicals)
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
             return {
                 "kinds_match": False,
                 "unsupported": True,
                 "reason": "resource endpoint not available",
             }
-        items = data.get("items", data.get("results", []))
-        if not isinstance(items, list):
-            items = []
-        found_kinds = {
-            item.get("resource_type")
-            for item in items
-            if isinstance(item, dict)
-            and isinstance(item.get("resource_type"), str)
-        }
+        found_kinds: set[str] = set()
+        found_canonicals: set[str] = set()
+        for item in items:
+            resource_id = item.get("id")
+            if not isinstance(resource_id, str) or not resource_id:
+                return _unsupported(
+                    "resource collection has an invalid identity"
+                )
+            detail_status, detail = await self._get(
+                f"/v1/resources/{resource_id}", "admin"
+            )
+            if detail_status != 200 or not isinstance(detail, dict):
+                return _unsupported("resource detail endpoint not available")
+            canonical = detail.get("canonical_uri", item.get("canonical_uri"))
+            if not isinstance(canonical, str) or not canonical:
+                return _unsupported(
+                    "resource detail has invalid canonical_uri"
+                )
+            projections = detail.get("projections")
+            if not isinstance(projections, list) or not all(
+                isinstance(projection, dict)
+                and isinstance(projection.get("projection_kind"), str)
+                and bool(projection["projection_kind"])
+                for projection in projections
+            ):
+                return _unsupported("resource detail has invalid projections")
+            found_canonicals.add(canonical)
+            found_kinds.update(
+                str(projection["projection_kind"])
+                for projection in projections
+                if isinstance(projection.get("projection_kind"), str)
+                and projection["projection_kind"]
+            )
+            if expected_kinds.issubset(
+                found_kinds
+            ) and expected_canonicals.issubset(found_canonicals):
+                break
+        matched_kinds = sorted(expected_kinds & found_kinds)
+        matched_canonicals = sorted(expected_canonicals & found_canonicals)
         return {
-            "kinds_match": expected_kinds.issubset(found_kinds),
-            "kinds": sorted(found_kinds),
-            "evidence": {"source": "api"},
+            "kinds_match": expected_kinds.issubset(found_kinds)
+            and expected_canonicals.issubset(found_canonicals),
+            "projection_kinds": matched_kinds,
+            "matched_canonicals": matched_canonicals,
+            "evidence": {
+                "source": "api",
+                "matched_projection_kinds": matched_kinds,
+                "matched_canonicals": matched_canonicals,
+            },
         }
 
     async def _q_legacy_course_purchase_exists(

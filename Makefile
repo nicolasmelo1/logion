@@ -215,18 +215,19 @@ agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-type
 # Override the driver with LOGION_PROVING_GROUND_AGENT_DRIVER=opencode etc.
 LOGION_PROVING_GROUND_AGENT_DRIVER ?= codex
 LOGION_PROVING_GROUND_SCENARIO ?= marketplace_loop
+LOGION_PROVING_GROUND_DEVRIG_ROOT ?= $(ROOT)
 
 agent-proving-ground-smoke:
 	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:skill_report_contract \
 		--api-adapter local-devrig \
-		--devrig-root $(ROOT) \
+		--devrig-root $(LOGION_PROVING_GROUND_DEVRIG_ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
 		--out .runs/proving-ground/smoke
 
 agent-proving-ground-release:
 	env -u XDG_CONFIG_HOME -u GH_CONFIG_DIR uv run logion-agent-proving-ground run builtin:$(LOGION_PROVING_GROUND_SCENARIO) \
 		--api-adapter local-devrig \
-		--devrig-root $(ROOT) \
+		--devrig-root $(LOGION_PROVING_GROUND_DEVRIG_ROOT) \
 		--agent-driver $(LOGION_PROVING_GROUND_AGENT_DRIVER) \
 		--out .runs/proving-ground/release
 

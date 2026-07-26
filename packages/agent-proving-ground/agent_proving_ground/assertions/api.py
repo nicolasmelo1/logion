@@ -245,6 +245,13 @@ class ResourceBackfillCompleteAssertion(_ApiQueryAssertion):
     fail_message = "resource backfill is not complete"
 
 
+class ResourceBackfillAppliedAssertion(_ApiQueryAssertion):
+    type = "api.resource_backfill_applied"
+    query_type = "resource_backfill_applied"
+    pass_message = "resource backfill created the expected fixture identities"
+    fail_message = "resource backfill did not create the expected fixtures"
+
+
 class ResourceIdentityUniqueAssertion(_ApiQueryAssertion):
     type = "api.resource_identity_unique"
     query_type = "resource_identity_unique"
@@ -255,7 +262,7 @@ class ResourceIdentityUniqueAssertion(_ApiQueryAssertion):
 class ResourceBackfillIdempotentAssertion(_ApiQueryAssertion):
     type = "api.resource_backfill_idempotent"
     query_type = "resource_backfill_idempotent"
-    pass_message = "resource backfill rerun created zero resources or links"
+    pass_message = "resource backfill rerun preserved counters and identities"
     fail_message = "resource backfill rerun was not idempotent"
 
 
@@ -263,9 +270,11 @@ class ResourceSearchReturnsKindsAssertion(_ApiQueryAssertion):
     type = "api.resource_search_returns_kinds"
     query_type = "resource_search_returns_kinds"
     found_key = "kinds_match"
-    evidence_keys = ("kinds",)
-    pass_message = "resource search returns expected kinds"
-    fail_message = "resource search does not return expected kinds"
+    evidence_keys = ("projection_kinds", "matched_canonicals")
+    pass_message = "resource search returns expected fixture projections"
+    fail_message = (
+        "resource search does not return expected fixture projections"
+    )
 
 
 class LegacyCoursePurchaseExistsAssertion(_ApiQueryAssertion):

@@ -209,6 +209,28 @@ async def test_claude_driver_defaults(tmp_path) -> None:
     assert driver.default_args
 
 
+def test_codex_driver_defaults_to_noninteractive_exec() -> None:
+    args = CodexDriver(driver_config={})._effective_args()
+
+    assert args[0] == "exec"
+    assert "--sandbox" in args
+    assert "workspace-write" in args
+    assert "--skip-git-repo-check" in args
+    assert 'approval_policy="never"' in args
+    assert "sandbox_workspace_write.network_access=true" in args
+
+
+async def test_codex_driver_allows_role_logion_home(tmp_path) -> None:
+    driver = CodexDriver(driver_config={})
+    launch = _launch(tmp_path)
+    launch.env["LOGION_HOME"] = str(tmp_path / "role-home")
+
+    await driver.start(launch)
+
+    args = driver._effective_args()
+    assert args[-2:] == ["--add-dir", str(tmp_path / "role-home")]
+
+
 class TestProviderDriverModelProvider:
     """Model and provider config are forwarded as --model/--provider flags."""
 
