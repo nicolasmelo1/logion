@@ -34,6 +34,7 @@ phases:
   - id: operator-backfill
     actor: local_hook
     goal: ""
+    # Relative to the explicitly configured --devrig-root, not this package.
     local_hook: scripts/devrig/backfill_resources.py
     local_hook_args:
       - --source
@@ -93,6 +94,7 @@ phases:
   - id: operator-backfill-rerun
     actor: local_hook
     goal: ""
+    # The workspace release target supplies the devrig root containing this hook.
     local_hook: scripts/devrig/backfill_resources.py
     local_hook_args:
       - --source

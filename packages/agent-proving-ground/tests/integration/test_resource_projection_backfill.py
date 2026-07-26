@@ -24,10 +24,14 @@ def _op(operation: str, **params: object) -> dict:
 
 async def test_resource_projection_backfill_is_deterministic(tmp_path) -> None:
     scenario = load_scenario("builtin:resource_projection_backfill")
-    hook_paths = {
+    # Hook paths are portable and relative to the configured devrig root. The
+    # public checkout does not need to contain private operator boundaries.
+    hook_paths_relative_to_devrig_root = {
         phase.local_hook for phase in scenario.phases if phase.local_hook
     }
-    assert hook_paths == {"scripts/devrig/backfill_resources.py"}
+    assert hook_paths_relative_to_devrig_root == {
+        "scripts/devrig/backfill_resources.py"
+    }
     for phase in scenario.phases:
         phase.local_hook = None
         phase.goal = "run the scripted scenario step"
