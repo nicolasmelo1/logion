@@ -13,17 +13,17 @@ driver_config:
 
 agents:
   - id: operator
-    role: Admin/operator running the resource migration
+    role: Node operator verifying the public resource surface
     driver: codex
     workspace: operator
     devrig_role: admin
-    timeout_seconds: 1200
+    timeout_seconds: 600
   - id: consumer
     role: Consumer discovering and buying a hosted Course
     driver: claude-code
     workspace: consumer
     devrig_role: buyer
-    timeout_seconds: 1200
+    timeout_seconds: 600
   - id: local_hook
     role: Local devrig backfill hook
     driver: scripted
@@ -32,31 +32,60 @@ agents:
 
 phases:
   - id: operator-backfill
-    actor: operator
+    actor: local_hook
     goal: ""
-    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/backfill_resources.py
+    # Relative to the explicitly configured --devrig-root, not this package.
+    local_hook: scripts/devrig/backfill_resources.py
     local_hook_args:
       - --source
       - indexed-listings-and-courses
       - --page-size
       - "50"
     local_hook_capture_json:
-      BACKFILL_CREATED: resources_created
-      BACKFILL_LINKED: projections_linked
+      INITIAL_BACKFILL_CREATED: resources_created
+      INITIAL_BACKFILL_LINKED: projections_linked
+      FIXTURE_COURSE_CANONICAL: course_canonical
+      INITIAL_IDENTITY_SNAPSHOT: identity_snapshot
     assertions:
+      - type: api.resource_backfill_applied
+        params:
+          resources_created: "${INITIAL_BACKFILL_CREATED}"
+          projections_linked: "${INITIAL_BACKFILL_LINKED}"
+          identity_snapshot: "${INITIAL_IDENTITY_SNAPSHOT}"
       - type: api.resource_backfill_complete
+
+  - id: operator-verifies-resource-status
+    actor: operator
+    goal: |
+      Use only the public Logion CLI resource commands to verify that the node
+      exposes the Python debugging skill and hosted Course after the upgrade.
+      Inspect their public resource details and report their projection kinds.
+      Do not inspect source files or the database.
+    success_hint: Public resource details show indexed_listing and published_course.
+    assertions:
+      - type: api.resource_search_returns_kinds
+        params:
+          projection_kinds: [indexed_listing, published_course]
+          canonicals:
+            - "gh:phase-15-9/python-debugging-skill"
+            - "${FIXTURE_COURSE_CANONICAL}"
+          observer_agent: operator
 
   - id: consumer-search-resources
     actor: consumer
     goal: |
       Search the upgraded node for the seeded Python debugging skill and hosted
-      Course. Inspect each result's source and resource kind without inspecting
-      source code or the database.
-    success_hint: Resource search returns the seeded agent skill and Course.
+      Course. Inspect each public resource detail and distinguish the indexed
+      skill from the hosted Course without inspecting source code or the database.
+    success_hint: Resource details show the seeded skill and hosted Course projections.
     assertions:
       - type: api.resource_search_returns_kinds
         params:
-          kinds: [agent_skill]
+          projection_kinds: [indexed_listing, published_course]
+          canonicals:
+            - "gh:phase-15-9/python-debugging-skill"
+            - "${FIXTURE_COURSE_CANONICAL}"
+          observer_agent: consumer
 
   - id: consumer-legacy-course-purchase
     actor: consumer
@@ -70,22 +99,26 @@ phases:
           buyer_agent: consumer
 
   - id: operator-backfill-rerun
-    actor: operator
+    actor: local_hook
     goal: ""
-    local_hook: ${LOGION_DEVRIG_ROOT}/scripts/devrig/backfill_resources.py
+    # The workspace release target supplies the devrig root containing this hook.
+    local_hook: scripts/devrig/backfill_resources.py
     local_hook_args:
       - --source
       - indexed-listings-and-courses
       - --page-size
       - "50"
     local_hook_capture_json:
-      BACKFILL_CREATED: resources_created
-      BACKFILL_LINKED: projections_linked
+      RERUN_BACKFILL_CREATED: resources_created
+      RERUN_BACKFILL_LINKED: projections_linked
+      RERUN_IDENTITY_SNAPSHOT: identity_snapshot
     assertions:
       - type: api.resource_backfill_idempotent
         params:
-          expected_created: "${BACKFILL_CREATED}"
-          expected_linked: "${BACKFILL_LINKED}"
+          rerun_created: "${RERUN_BACKFILL_CREATED}"
+          rerun_linked: "${RERUN_BACKFILL_LINKED}"
+          before_identity_snapshot: "${INITIAL_IDENTITY_SNAPSHOT}"
+          after_identity_snapshot: "${RERUN_IDENTITY_SNAPSHOT}"
 
 final_assertions:
   - type: logs.no_500s
@@ -97,12 +130,15 @@ final_assertions:
   - type: api.resource_identity_unique
   - type: api.resource_search_returns_kinds
     params:
-      kinds: [agent_skill]
+      projection_kinds: [indexed_listing, published_course]
+      canonicals:
+        - "gh:phase-15-9/python-debugging-skill"
+        - "${FIXTURE_COURSE_CANONICAL}"
+      observer_agent: consumer
   - type: api.resource_projection_exists
     params:
       projection_kind: published_course
   - type: api.legacy_course_purchase_exists
     params:
       buyer_agent: consumer
-  - type: api.resource_backfill_idempotent
   - type: api.no_double_credit_debit

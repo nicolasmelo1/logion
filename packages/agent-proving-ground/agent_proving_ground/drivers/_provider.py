@@ -34,6 +34,21 @@ class ProviderDriver(AgentDriver):
     provider_name: ClassVar[str]
     default_command: ClassVar[str]
     default_args: ClassVar[list[str]]
+    safe_host_env: ClassVar[frozenset[str]] = frozenset({
+        "COLORTERM",
+        "FORCE_COLOR",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "LOGNAME",
+        "NO_COLOR",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "TMPDIR",
+        "USER",
+    })
 
     def __init__(
         self,
@@ -68,10 +83,7 @@ class ProviderDriver(AgentDriver):
 
         command = [executable, *self._effective_args()]
         transcript_path = self._launch.workspace / f"{phase_id}.md"
-        # Real provider CLIs need the invoking user's environment (HOME,
-        # PATH, provider auth config); the scenario/adapter env wins on
-        # conflicts.
-        env = {**os.environ, **self._launch.env}
+        env = self._effective_env()
         self._session = ChildProcessSession(
             command=command,
             cwd=self._launch.workspace,
@@ -108,6 +120,22 @@ class ProviderDriver(AgentDriver):
             combined = _override_flag(combined, "--provider", provider)
         return combined
 
+    def _effective_env(self) -> dict[str, str]:
+        """Expose only safe host config plus the isolated role environment."""
+        if self._launch is None:
+            return {}
+        provider_cfg = self._driver_config.get(self.provider_name, {})
+        explicit_names = self._coerce_arg_list(
+            provider_cfg.get("env_allowlist", [])
+        )
+        allowed_names = self.safe_host_env | frozenset(explicit_names)
+        host_env = {
+            name: os.environ[name]
+            for name in allowed_names
+            if name in os.environ
+        }
+        return {**host_env, **self._launch.env}
+
     @staticmethod
     def _coerce_arg_list(value: Any) -> list[str]:
         if isinstance(value, str):
@@ -130,7 +158,30 @@ class CodexDriver(ProviderDriver):
     name = "codex"
     provider_name = "codex"
     default_command = "codex"
-    default_args: ClassVar[list[str]] = ["--model", "gpt-5-codex"]
+    # `codex` without `exec` launches the interactive TUI and fails under the
+    # proving-ground pipe with "stdin is not a terminal". Keep execution
+    # non-interactive and prevent an unanswerable approval prompt.
+    default_args: ClassVar[list[str]] = [
+        "exec",
+        "--sandbox",
+        "workspace-write",
+        "--skip-git-repo-check",
+        "--config",
+        'approval_policy="never"',
+        "--config",
+        "sandbox_workspace_write.network_access=true",
+        "--model",
+        "gpt-5-codex",
+    ]
+
+    def _effective_args(self) -> list[str]:
+        args = super()._effective_args()
+        if self._launch is None:
+            return args
+        logion_home = self._launch.env.get("LOGION_HOME")
+        if not logion_home:
+            return args
+        return [*args, "--add-dir", logion_home]
 
 
 class ClaudeCodeDriver(ProviderDriver):

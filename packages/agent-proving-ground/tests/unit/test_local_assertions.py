@@ -47,6 +47,23 @@ async def test_logs_no_500s_passes_when_clean(tmp_path) -> None:
     assert result.status == "passed"
 
 
+async def test_logs_no_500s_reads_local_devrig_api_log(tmp_path) -> None:
+    devrig = tmp_path / ".devrig"
+    devrig.mkdir()
+    (devrig / "devrig.env").write_text(
+        "export LOGION_BASE_URL=http://localhost:8000\n", encoding="utf-8"
+    )
+    (devrig / "api.log").write_text(
+        'GET /health HTTP/1.1" 200 OK\n', encoding="utf-8"
+    )
+
+    ctx = await _ctx(tmp_path)
+    result = await LogsNo500sAssertion().evaluate(ctx, {})
+
+    assert result.status == "passed"
+    assert result.evidence["log_path"] == str(devrig / "api.log")
+
+
 async def test_logs_no_500s_fails_on_500(tmp_path) -> None:
     log = tmp_path / "services"
     log.mkdir()

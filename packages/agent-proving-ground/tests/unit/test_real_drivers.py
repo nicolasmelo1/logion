@@ -201,12 +201,66 @@ async def test_provider_driver_uses_configured_command(
     assert result.status == "completed"
 
 
+async def test_provider_driver_sanitizes_host_environment(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("UNRELATED_SECRET_TOKEN", "must-not-leak")
+    monkeypatch.setenv("PATH", "/safe/bin")
+    driver = CodexDriver(driver_config={})
+    launch = _launch(tmp_path)
+    launch.env["LOGION_API_KEY"] = "isolated-role-key"
+
+    await driver.start(launch)
+    env = driver._effective_env()
+
+    assert env["PATH"] == "/safe/bin"
+    assert env["LOGION_API_KEY"] == "isolated-role-key"
+    assert "UNRELATED_SECRET_TOKEN" not in env
+
+
+async def test_provider_driver_allows_explicit_host_env(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("CUSTOM_PROVIDER_CONFIG", "explicit-value")
+    driver = CodexDriver(
+        driver_config={"codex": {"env_allowlist": ["CUSTOM_PROVIDER_CONFIG"]}}
+    )
+
+    await driver.start(_launch(tmp_path))
+
+    assert (
+        driver._effective_env()["CUSTOM_PROVIDER_CONFIG"] == "explicit-value"
+    )
+
+
 async def test_claude_driver_defaults(tmp_path) -> None:
     driver = ClaudeCodeDriver(driver_config={})
     await driver.start(_launch(tmp_path))
     assert driver.provider_name == "claude-code"
     assert driver.default_command == "claude"
     assert driver.default_args
+
+
+def test_codex_driver_defaults_to_noninteractive_exec() -> None:
+    args = CodexDriver(driver_config={})._effective_args()
+
+    assert args[0] == "exec"
+    assert "--sandbox" in args
+    assert "workspace-write" in args
+    assert "--skip-git-repo-check" in args
+    assert 'approval_policy="never"' in args
+    assert "sandbox_workspace_write.network_access=true" in args
+
+
+async def test_codex_driver_allows_role_logion_home(tmp_path) -> None:
+    driver = CodexDriver(driver_config={})
+    launch = _launch(tmp_path)
+    launch.env["LOGION_HOME"] = str(tmp_path / "role-home")
+
+    await driver.start(launch)
+
+    args = driver._effective_args()
+    assert args[-2:] == ["--add-dir", str(tmp_path / "role-home")]
 
 
 class TestProviderDriverModelProvider:

@@ -335,18 +335,85 @@ class MockApiAdapter(ApiAdapter):
                 ]
                 return {"found": len(identities) == len(set(identities))}
             case "resource_backfill_idempotent":
-                created = query.get("expected_created", 0)
-                linked = query.get("expected_linked", 0)
-                return {"found": str(created) == "0" and str(linked) == "0"}
-            case "resource_search_returns_kinds":
-                kinds = query.get("kinds", [])
-                found_kinds = {
-                    resource.resource_type
-                    for resource in self._state.resources.values()
+                required = {
+                    "rerun_created",
+                    "rerun_linked",
+                    "before_identity_snapshot",
+                    "after_identity_snapshot",
+                }
+                if not required.issubset(query):
+                    return {
+                        "found": False,
+                        "unsupported": True,
+                        "reason": "idempotency captures are required",
+                    }
+                created = query["rerun_created"]
+                linked = query["rerun_linked"]
+                before = query["before_identity_snapshot"]
+                after = query["after_identity_snapshot"]
+                snapshots_nonempty = str(before).strip() not in {
+                    "",
+                    "[]",
+                    "{}",
+                    "null",
+                    "None",
                 }
                 return {
-                    "kinds_match": set(kinds).issubset(found_kinds),
-                    "kinds": sorted(found_kinds),
+                    "found": str(created) == "0"
+                    and str(linked) == "0"
+                    and snapshots_nonempty
+                    and before == after
+                }
+            case "resource_backfill_applied":
+                created = query.get("resources_created")
+                linked = query.get("projections_linked")
+                snapshot = query.get("identity_snapshot")
+                empty_snapshots = {"", "[]", "{}", "null", "None"}
+                return {
+                    "found": str(created) == "2"
+                    and str(linked) == "2"
+                    and isinstance(snapshot, str)
+                    and snapshot.strip() not in empty_snapshots
+                }
+            case "resource_search_returns_kinds":
+                kinds = query.get("projection_kinds")
+                canonicals = query.get("canonicals", [])
+                if (
+                    not isinstance(kinds, list)
+                    or not kinds
+                    or not all(
+                        isinstance(kind, str) and kind for kind in kinds
+                    )
+                    or not isinstance(canonicals, list)
+                    or len(kinds) != len(canonicals)
+                    or not all(
+                        isinstance(canonical, str) and canonical
+                        for canonical in canonicals
+                    )
+                ):
+                    return {
+                        "kinds_match": False,
+                        "unsupported": True,
+                        "reason": "invalid fixture expectations",
+                    }
+                expected_pairs = set(zip(canonicals, kinds, strict=True))
+                found_pairs = {
+                    (
+                        resource.canonical_uri,
+                        projection.get("projection_kind"),
+                    )
+                    for resource in self._state.resources.values()
+                    for projection in resource.projections
+                }
+                matched_pairs = expected_pairs & found_pairs
+                matched_kinds = sorted({kind for _, kind in matched_pairs})
+                matched_canonicals = sorted({
+                    canonical for canonical, _ in matched_pairs
+                })
+                return {
+                    "kinds_match": expected_pairs.issubset(matched_pairs),
+                    "projection_kinds": matched_kinds,
+                    "matched_canonicals": matched_canonicals,
                 }
             case "legacy_course_purchase_exists":
                 for purchase in self._state.purchases:
