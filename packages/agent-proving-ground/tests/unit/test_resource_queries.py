@@ -389,7 +389,7 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
 
     details = {
         "/v1/resources/skill": {
-            "canonical_uri": "gh:phase-15-9/python-debugging-skill",
+            "canonical_uri": "gh:resource-projection/python-debugging-skill",
             "projections": [{"projection_kind": "indexed_listing"}],
         },
         "/v1/resources/course": {
@@ -410,7 +410,7 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing", "published_course"],
             "canonicals": [
-                "gh:phase-15-9/python-debugging-skill",
+                "gh:resource-projection/python-debugging-skill",
                 "course:python-debugging",
             ],
             "observer_agent": "consumer",
@@ -425,7 +425,7 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
     ]
     assert result["matched_canonicals"] == [
         "course:python-debugging",
-        "gh:phase-15-9/python-debugging-skill",
+        "gh:resource-projection/python-debugging-skill",
     ]
     assert detail_paths == ["/v1/resources/skill", "/v1/resources/course"]
     assert observed_roles == ["buyer", "buyer", "buyer"]
@@ -443,7 +443,7 @@ async def test_resource_search_fails_when_fixture_projection_is_missing(
 
     async def fake_get(_path: str, _role: str | None) -> GetResponse:
         return 200, {
-            "canonical_uri": "gh:phase-15-9/python-debugging-skill",
+            "canonical_uri": "gh:resource-projection/python-debugging-skill",
             "projections": [{"projection_kind": "indexed_listing"}],
         }
 
@@ -454,7 +454,7 @@ async def test_resource_search_fails_when_fixture_projection_is_missing(
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing", "published_course"],
             "canonicals": [
-                "gh:phase-15-9/python-debugging-skill",
+                "gh:resource-projection/python-debugging-skill",
                 "course:python-debugging",
             ],
         },
@@ -481,7 +481,7 @@ async def test_resource_search_does_not_mix_unrelated_projection_kinds(
 
     details = {
         "/v1/resources/skill": {
-            "canonical_uri": "gh:phase-15-9/python-debugging-skill",
+            "canonical_uri": "gh:resource-projection/python-debugging-skill",
             "projections": [{"projection_kind": "indexed_listing"}],
         },
         "/v1/resources/expected-course": {
@@ -505,7 +505,7 @@ async def test_resource_search_does_not_mix_unrelated_projection_kinds(
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing", "published_course"],
             "canonicals": [
-                "gh:phase-15-9/python-debugging-skill",
+                "gh:resource-projection/python-debugging-skill",
                 "course:python-debugging",
             ],
         },
@@ -514,7 +514,7 @@ async def test_resource_search_does_not_mix_unrelated_projection_kinds(
 
     assert result["kinds_match"] is False
     assert result["matched_canonicals"] == [
-        "gh:phase-15-9/python-debugging-skill"
+        "gh:resource-projection/python-debugging-skill"
     ]
 
 
@@ -555,7 +555,7 @@ async def test_resource_search_rejects_invalid_projection_shape(
 
     async def fake_get(_path: str, _role: str | None) -> GetResponse:
         return 200, {
-            "canonical_uri": "gh:phase-15-9/python-debugging-skill",
+            "canonical_uri": "gh:resource-projection/python-debugging-skill",
             "projections": ["invalid"],
         }
 
@@ -565,7 +565,7 @@ async def test_resource_search_rejects_invalid_projection_shape(
         {
             "type": "resource_search_returns_kinds",
             "projection_kinds": ["indexed_listing"],
-            "canonicals": ["gh:phase-15-9/python-debugging-skill"],
+            "canonicals": ["gh:resource-projection/python-debugging-skill"],
         },
         {},
     )
