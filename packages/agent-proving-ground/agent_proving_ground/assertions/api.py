@@ -248,8 +248,12 @@ class ResourceBackfillCompleteAssertion(_ApiQueryAssertion):
 class ResourceBackfillAppliedAssertion(_ApiQueryAssertion):
     type = "api.resource_backfill_applied"
     query_type = "resource_backfill_applied"
-    pass_message = "resource backfill created the expected fixture identities"
-    fail_message = "resource backfill did not create the expected fixtures"
+    pass_message = (
+        "resource backfill reported two creates, two links, and a snapshot"
+    )
+    fail_message = (
+        "resource backfill did not report 2 creates, 2 links, and a snapshot"
+    )
 
 
 class ResourceIdentityUniqueAssertion(_ApiQueryAssertion):
