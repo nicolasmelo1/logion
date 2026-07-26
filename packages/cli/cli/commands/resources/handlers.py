@@ -11,6 +11,17 @@ from cli._context import make_client
 from cli._errors import handle_error
 from cli._output import emit_json, to_data
 
+from ._acquire_handler import handle_resources_acquire
+from ._inventory_handler import handle_resources_inventory
+
+__all__ = [
+    "handle_resources_acquire",
+    "handle_resources_get",
+    "handle_resources_inventory",
+    "handle_resources_search",
+    "handle_resources_versions",
+]
+
 
 def _print_resource(payload: dict[str, object]) -> None:
     """Render a resource in compact human-readable form."""

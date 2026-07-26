@@ -21,9 +21,11 @@ import sys
 from pathlib import Path
 
 # Shown only as examples in the prompt.  We do not infer or filter.
+# Codex user scope moved to the cross-harness ~/.agents/skills;
+# ~/.codex/skills is legacy and detected separately by the adapter.
 EXAMPLE_AGENT_DIRS: tuple[tuple[str, str], ...] = (
     ("Claude Code", "~/.claude/skills"),
-    ("Codex", "~/.codex/skills"),
+    ("Codex", "~/.agents/skills"),
     ("OpenCode", "~/.config/opencode/skills"),
     ("Hermes", "~/.hermes/skills"),
 )

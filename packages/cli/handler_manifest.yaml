@@ -196,6 +196,10 @@ commands:
     operations: []
   resources versions:
     operations: []
+  resources acquire:
+    operations: []
+  resources inventory:
+    operations: []
 
   referrals attributions:
     operations: []

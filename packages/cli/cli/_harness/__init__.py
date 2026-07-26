@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Harness adapter registry.
 
-To support a new agent harness (Codex, OpenCode, Amp, ...), implement a
+To support a new agent harness (Codex, OpenCode, Amp, Pi, ...), implement a
 :class:`~cli._harness.base.HarnessAdapter` and add it to
 :data:`_ADAPTER_TYPES`.  Nothing else changes — the onboarding flow and
 ``--harness`` selection discover adapters through this registry.
@@ -14,11 +14,19 @@ from cli._harness.base import (
     GrantResult,
     HarnessAdapter,
     HarnessConfigError,
+    ScopeTarget,
 )
 from cli._harness.claude_code import ClaudeCodeAdapter
 from cli._harness.codex import CodexAdapter
 from cli._harness.hermes import HermesAdapter
 from cli._harness.opencode import OpenCodeAdapter
+from cli._harness.pi import PiAdapter
+from cli._harness.scopes import (
+    VALID_SCOPES,
+    canonical_scope,
+    default_scope_for_cwd,
+    is_valid_scope,
+)
 
 # Ordered registry of known adapter types.  Append new harnesses here.
 _ADAPTER_TYPES: tuple[type[HarnessAdapter], ...] = (
@@ -26,6 +34,7 @@ _ADAPTER_TYPES: tuple[type[HarnessAdapter], ...] = (
     CodexAdapter,
     OpenCodeAdapter,
     HermesAdapter,
+    PiAdapter,
 )
 
 
@@ -54,6 +63,7 @@ def detect_present() -> list[HarnessAdapter]:
 
 __all__ = [
     "AUTOPOST_COMMAND",
+    "VALID_SCOPES",
     "ClaudeCodeAdapter",
     "CodexAdapter",
     "GrantResult",
@@ -61,8 +71,13 @@ __all__ = [
     "HarnessConfigError",
     "HermesAdapter",
     "OpenCodeAdapter",
+    "PiAdapter",
+    "ScopeTarget",
     "adapter_names",
     "all_adapters",
+    "canonical_scope",
+    "default_scope_for_cwd",
     "detect_present",
     "get_adapter",
+    "is_valid_scope",
 ]

@@ -17,6 +17,12 @@ Each harness gets one :class:`HarnessAdapter`.  Supporting a new harness
 is a new adapter added to the registry in ``__init__.py`` — no caller
 changes.  The grant itself is defined once, here, as
 :data:`AUTOPOST_COMMAND`; adapters render it into their own syntax.
+
+adds :meth:`scope_targets`, the semantic scope vocabulary
+defined in :mod:`cli._harness.scopes`.  Adapters declare the native
+locations they scan for each scope so that ``resources acquire`` and
+``resources inventory`` can resolve targets without per-harness
+hard-coding in the command layer.
 """
 
 from __future__ import annotations
@@ -25,13 +31,25 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
+from cli._harness.scopes import (
+    USER,
+    ScopeTarget,
+    canonical_scope,
+)
+from cli._harness.scopes import (
+    VALID_SCOPES as SCOPE_VOCABULARY,
+)
+
 # The command whose autonomous execution the autopost grant authorizes.
 # Defined once; each adapter renders it into its harness's permission
 # syntax (e.g. Claude Code's ``Bash(logion courses report-usage:*)``).
 AUTOPOST_COMMAND: tuple[str, ...] = ("logion", "courses", "report-usage")
 
-# Permission scopes an adapter must understand.
-VALID_SCOPES: frozenset[str] = frozenset({"project", "global"})
+# Permission scopes an adapter must understand. Kept as the canonical
+# semantic vocabulary from :mod:`cli._harness.scopes`; aliases
+# (``project``, ``global``) are accepted on input via
+# :func:`cli._harness.scopes.canonical_scope`.
+VALID_SCOPES: frozenset[str] = SCOPE_VOCABULARY
 
 
 class HarnessConfigError(RuntimeError):
@@ -47,7 +65,7 @@ class GrantResult:
     """Outcome of a grant/revoke on one harness at one scope."""
 
     harness: str  # adapter ``name`` (e.g. "claude-code")
-    scope: str  # "project" | "global"
+    scope: str  # canonical scope (e.g. "repo-root" or "user")
     path: Path  # config file inspected/edited
     changed: bool  # True if the file was actually written
     already: bool  # grant: rule was already present; revoke: already absent
@@ -64,7 +82,12 @@ class GrantResult:
 
 
 class HarnessAdapter(ABC):
-    """Bridges the Logion autopost grant to one harness's permission model."""
+    """Bridges the Logion autopost grant to one harness's permission model.
+
+    Subclasses also declare :meth:`scope_targets` so the resource
+    acquire/inventory commands can resolve native installation locations
+    per scope without hard-coding harness layout in the command layer.
+    """
 
     #: Stable machine id, used by ``--harness`` (e.g. "claude-code").
     name: str = "unnamed"
@@ -78,7 +101,7 @@ class HarnessAdapter(ABC):
 
     @abstractmethod
     def config_path(self, scope: str) -> Path:
-        """Resolve the settings file for *scope* ("project" | "global")."""
+        """Resolve the settings file for *scope* (canonical or aliased)."""
         ...
 
     @abstractmethod
@@ -97,10 +120,42 @@ class HarnessAdapter(ABC):
         ...
 
     @abstractmethod
-    def skill_dir(self) -> Path:
-        """Absolute dir this harness loads skills from.
+    def scope_targets(self, scope: str) -> list[ScopeTarget]:
+        """Resolved native targets for *scope*.
 
-        e.g. Claude Code → ``~/.claude/skills``.  The onboarding
-        companion step writes/symlinks the companion SKILL bundle here.
+        Returns one or more :class:`ScopeTarget` entries describing the
+        concrete directories this harness scans for the given scope.
+        ``system`` returns inventory-only targets (no install path).
+        Adapters return an empty list for scopes they do not support
+        rather than raising — callers treat empty as "unsupported".
         """
         ...
+
+    def skill_dir(self) -> Path:
+        """Absolute dir this harness loads user skills from.
+
+        Compatibility wrapper: delegates to the first ``user`` scope
+        target path.  Legacy callers (onboarding, symlink) continue to
+        work; new code should use :meth:`scope_targets` directly.
+        """
+        targets = self.scope_targets(USER)
+        if not targets:
+            raise NotImplementedError(
+                f"{self.name} does not declare a user scope target"
+            )
+        return targets[0].target_path
+
+
+def _canonical(scope: str) -> str:
+    """Public re-export of :func:`cli._harness.scopes.canonical_scope`."""
+    return canonical_scope(scope)
+
+
+__all__ = [
+    "AUTOPOST_COMMAND",
+    "VALID_SCOPES",
+    "GrantResult",
+    "HarnessAdapter",
+    "HarnessConfigError",
+    "ScopeTarget",
+]

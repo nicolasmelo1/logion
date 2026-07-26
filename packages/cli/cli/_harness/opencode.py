@@ -7,23 +7,14 @@ Permission gating uses a ``permission`` object where each tool name
 maps to either a string action (``"allow"``, ``"ask"``, ``"deny"``) or
 a granular object of pattern → action pairs.
 
+Scope targets :
+
+- ``repo-current`` / ``repo-parent`` / ``repo-root`` → the corresponding
+  ``.config/opencode/skills`` (or ``.agents/skills``) directory.
+- ``user`` → ``$HOME/.config/opencode/skills``.
+
 For the autopost grant, this adapter writes a bash permission rule:
-
-```
-"permission": {
-  "bash": {
-    "logion courses report-usage*": "allow"
-  }
-}
-```
-
-Config file locations (precedence: project > global):
-- ``project`` → ``<cwd>/opencode.json``
-- ``global``  → ``~/.config/opencode/opencode.json``
-
-(OpenCode also reads a project ``.opencode/opencode.json``, but this
-adapter writes the top-level ``<cwd>/opencode.json`` only; document the
-path actually used to avoid drift with :meth:`config_path`.)
+``"permission": {"bash": {"logion courses report-usage*": "allow"}}``.
 """
 
 from __future__ import annotations
@@ -39,25 +30,35 @@ from cli._harness.base import (
     HarnessAdapter,
     HarnessConfigError,
 )
+from cli._harness.scopes import (
+    REPO_CURRENT,
+    REPO_PARENT,
+    REPO_ROOT,
+    USER,
+    ScopeTarget,
+    canonical_scope,
+)
 from cli._local_state import _atomic_write_text
 
 
-def _autopost_pattern() -> str:
-    """Render :data:`AUTOPOST_COMMAND` as an OpenCode bash pattern.
+def _git_root(cwd: Path) -> Path | None:
+    """Walk up from *cwd* looking for a ``.git`` dir/file."""
+    path = Path(cwd).resolve()
+    while True:
+        if (path / ".git").exists():
+            return path
+        if path.parent == path:
+            return None
+        path = path.parent
 
-    ``("logion", "courses", "report-usage")`` →
-    ``logion courses report-usage*``.
-    """
+
+def _autopost_pattern() -> str:
+    """Render :data:`AUTOPOST_COMMAND` as an OpenCode bash pattern."""
     return " ".join(AUTOPOST_COMMAND) + "*"
 
 
 class OpenCodeAdapter(HarnessAdapter):
-    """Grants the autopost command in OpenCode's ``opencode.json``.
-
-    OpenCode uses a JSON config (JSONC) with a ``permission`` object
-    where bash commands are matched by pattern.  This adapter inserts
-    exactly the autopost grant as a bash permission rule.
-    """
+    """Grants the autopost command in OpenCode's ``opencode.json``."""
 
     name = "opencode"
     display_name = "OpenCode"
@@ -67,11 +68,17 @@ class OpenCodeAdapter(HarnessAdapter):
         *,
         project_dir: Path | None = None,
         home_dir: Path | None = None,
+        cwd: Path | None = None,
+        repo_root: Path | None = None,
     ) -> None:
         self._project_dir = project_dir
         self._home_dir = home_dir
+        self._cwd = cwd
+        self._repo_root = repo_root
 
     def _project(self) -> Path:
+        if self._cwd is not None:
+            return Path(self._cwd)
         return (
             self._project_dir if self._project_dir is not None else Path.cwd()
         )
@@ -79,22 +86,74 @@ class OpenCodeAdapter(HarnessAdapter):
     def _home(self) -> Path:
         return self._home_dir if self._home_dir is not None else Path.home()
 
-    def config_path(self, scope: str) -> Path:
-        from cli._harness.base import VALID_SCOPES
+    def _repo_root_path(self) -> Path | None:
+        if self._repo_root is not None:
+            return Path(self._repo_root)
+        return _git_root(self._project())
 
-        if scope not in VALID_SCOPES:
-            raise ValueError(f"unknown scope: {scope!r}")
-        # Global config lives under ~/.config/opencode/ (matching
-        # skill_dir()/is_present()); the project config is opencode.json
-        # at the project root.  A bare ~/opencode.json (the old global
-        # path) is not where OpenCode reads its settings, so the grant
-        # would have been written to a file OpenCode never loads.
-        if scope == "global":
+    # -- scope targets -----------------------------------------------------
+
+    def scope_targets(self, scope: str) -> list[ScopeTarget]:
+        cscope = canonical_scope(scope)
+        proj = self._project()
+        repo_root = self._repo_root_path()
+        home = self._home()
+
+        if cscope == REPO_CURRENT:
+            # OpenCode project skills live under .config/opencode/skills;
+            # the cross-harness .agents/skills is also accepted.
+            target = proj / ".config" / "opencode" / "skills"
+            return [
+                ScopeTarget(REPO_CURRENT, proj, target, None, target.exists())
+            ]
+        if cscope == REPO_PARENT:
+            if repo_root is None:
+                return []
+            parent = proj.parent
+            if parent == repo_root or not self._is_inside(proj, repo_root):
+                return []
+            target = parent / ".config" / "opencode" / "skills"
+            return [
+                ScopeTarget(REPO_PARENT, parent, target, None, target.exists())
+            ]
+        if cscope == REPO_ROOT:
+            if repo_root is None:
+                return []
+            target = repo_root / ".config" / "opencode" / "skills"
+            return [
+                ScopeTarget(
+                    REPO_ROOT, repo_root, target, None, target.exists()
+                )
+            ]
+        if cscope == USER:
+            target = home / ".config" / "opencode" / "skills"
+            return [ScopeTarget(USER, home, target, None, target.exists())]
+        return []
+
+    @staticmethod
+    def _is_inside(child: Path, root: Path) -> bool:
+        try:
+            child.resolve().relative_to(root.resolve())
+        except ValueError:
+            return False
+        return True
+
+    # -- legacy config-path interface --------------------------------------
+
+    def config_path(self, scope: str) -> Path:
+        cscope = canonical_scope(scope)
+        if cscope == "user" or scope == "global":
             return self._home() / ".config" / "opencode" / "opencode.json"
-        return self._project() / "opencode.json"
+        if (
+            cscope in ("repo-root", "repo-current", "repo-parent")
+            or scope == "project"
+        ):
+            return self._project() / "opencode.json"
+        raise ValueError(f"unknown scope: {scope!r}")
 
     def skill_dir(self) -> Path:
-        return self._home() / ".config" / "opencode" / "skills"
+        targets = self.scope_targets(USER)
+        return targets[0].target_path
 
     def is_present(self) -> bool:
         if (self._home() / ".config" / "opencode").is_dir():
@@ -112,7 +171,6 @@ class OpenCodeAdapter(HarnessAdapter):
             raise HarnessConfigError(
                 f"cannot read {path} — refusing to overwrite: {exc}"
             ) from exc
-        # Strip JSONC comments before parsing.
         cleaned = _strip_jsonc_comments(raw)
         try:
             data = json.loads(cleaned)
@@ -142,8 +200,6 @@ class OpenCodeAdapter(HarnessAdapter):
             )
         bash = perms.setdefault("bash", {})
         if isinstance(bash, str):
-            # ``"bash": "allow"`` → upgrade to granular object so we
-            # can add our specific pattern without losing the global.
             bash = {"*": bash}
             perms["bash"] = bash
         if not isinstance(bash, dict):
@@ -173,28 +229,52 @@ class OpenCodeAdapter(HarnessAdapter):
         pattern = _autopost_pattern()
         if bash.get(pattern) == "allow":
             return GrantResult(
-                self.name, scope, path, changed=False, already=True
+                self.name,
+                canonical_scope(scope),
+                path,
+                changed=False,
+                already=True,
             )
         bash[pattern] = "allow"
         self._write_config(path, config)
-        return GrantResult(self.name, scope, path, changed=True, already=False)
+        return GrantResult(
+            self.name,
+            canonical_scope(scope),
+            path,
+            changed=True,
+            already=False,
+        )
 
     def revoke(self, scope: str) -> GrantResult:
         path = self.config_path(scope)
         if not path.is_file():
             return GrantResult(
-                self.name, scope, path, changed=False, already=True
+                self.name,
+                canonical_scope(scope),
+                path,
+                changed=False,
+                already=True,
             )
         config = self._read_config(path)
         bash = self._bash_perms(config, path)
         pattern = _autopost_pattern()
         if bash.get(pattern) != "allow":
             return GrantResult(
-                self.name, scope, path, changed=False, already=True
+                self.name,
+                canonical_scope(scope),
+                path,
+                changed=False,
+                already=True,
             )
         del bash[pattern]
         self._write_config(path, config)
-        return GrantResult(self.name, scope, path, changed=True, already=False)
+        return GrantResult(
+            self.name,
+            canonical_scope(scope),
+            path,
+            changed=True,
+            already=False,
+        )
 
 
 def _strip_jsonc_comments(text: str) -> str:
@@ -215,7 +295,6 @@ def _strip_jsonc_comments(text: str) -> str:
         if in_string:
             result.append(ch)
             if ch == "\\" and i + 1 < n:
-                # Escape — keep the next char literal.
                 result.append(text[i + 1])
                 i += 2
                 continue
@@ -224,7 +303,6 @@ def _strip_jsonc_comments(text: str) -> str:
             i += 1
             continue
 
-        # Not in a string.
         if ch in ('"', "'"):
             in_string = True
             string_char = ch
@@ -235,18 +313,16 @@ def _strip_jsonc_comments(text: str) -> str:
         if ch == "/" and i + 1 < n:
             nxt = text[i + 1]
             if nxt == "/":
-                # Line comment — skip to end of line.
                 while i < n and text[i] != "\n":
                     i += 1
                 continue
             if nxt == "*":
-                # Block comment — skip to */.
                 i += 2
                 while i + 1 < n and not (
                     text[i] == "*" and text[i + 1] == "/"
                 ):
                     i += 1
-                i += 2  # skip the */
+                i += 2
                 continue
 
         result.append(ch)
