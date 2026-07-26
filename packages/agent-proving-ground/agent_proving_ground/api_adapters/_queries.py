@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from agent_proving_ground.api_adapters._http import http_request_json
 
@@ -160,6 +161,42 @@ class LogionApiQueries:
             )
         except Exception as exc:
             return 0, {"error": str(exc)}
+
+    async def _paged_get(
+        self,
+        path: str,
+        role: str | None,
+        *,
+        limit: int = 50,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Collect a cursor-paginated JSON collection without truncation."""
+        rows: list[dict[str, Any]] = []
+        cursor: str | None = None
+        for _ in range(1000):
+            separator = "&" if "?" in path else "?"
+            params = {"limit": str(limit)}
+            if cursor:
+                params["cursor"] = cursor
+            status, data = await self._get(
+                f"{path}{separator}{urlencode(params)}", role
+            )
+            if status != 200:
+                return status, rows
+            if isinstance(data, list):
+                rows.extend(row for row in data if isinstance(row, dict))
+                return status, rows
+            if not isinstance(data, dict):
+                return status, rows
+            page = data.get(
+                "items", data.get("results", data.get("resources", []))
+            )
+            if isinstance(page, list):
+                rows.extend(row for row in page if isinstance(row, dict))
+            next_cursor = data.get("next_cursor") or data.get("nextCursor")
+            if not next_cursor or str(next_cursor) == str(cursor):
+                return status, rows
+            cursor = str(next_cursor)
+        return 200, rows
 
     def _role_of(
         self, agent_id: str | None, agent_roles: dict[str, str]
@@ -859,16 +896,50 @@ class LogionApiQueries:
         agent_roles: dict[str, Any],  # noqa: ARG002
     ) -> dict[str, Any]:
         """Verify that all indexed listings have resource projections."""
-        status, data = await self._get("/v1/resources", "admin")
-        if status != 200 or not isinstance(data, dict):
+        listing_status, listings = await self._paged_get(
+            "/v1/listings?tier=indexed", "admin"
+        )
+        resource_status, resources = await self._paged_get(
+            "/v1/resources", "admin"
+        )
+        if listing_status != 200 or resource_status != 200:
             return {
                 "found": False,
                 "unsupported": True,
-                "reason": "resource endpoint not available",
+                "reason": "listing or resource endpoint not available",
             }
-        items = data.get("items", data.get("results", []))
-        found = isinstance(items, list) and bool(items)
-        return {"found": found, "evidence": {"source": "api"}}
+        projection_ids: set[str] = set()
+        for resource in resources:
+            resource_id = resource.get("id")
+            if not resource_id:
+                continue
+            detail_status, detail = await self._get(
+                f"/v1/resources/{resource_id}", "admin"
+            )
+            if detail_status != 200 or not isinstance(detail, dict):
+                continue
+            projections = detail.get("projections", [])
+            if isinstance(projections, list):
+                for projection in projections:
+                    if isinstance(projection, dict):
+                        projection_id = projection.get("projection_id")
+                        if projection_id:
+                            projection_ids.add(str(projection_id))
+        listing_ids = {
+            str(listing.get("id") or listing.get("listing_id"))
+            for listing in listings
+            if listing.get("id") or listing.get("listing_id")
+        }
+        missing = sorted(listing_ids - projection_ids)
+        return {
+            "found": bool(listing_ids) and not missing,
+            "evidence": {
+                "source": "api",
+                "indexed_listing_count": len(listing_ids),
+                "projected_listing_count": len(listing_ids & projection_ids),
+                "missing_listing_ids": missing,
+            },
+        }
 
     async def _q_resource_identity_unique(
         self,
@@ -876,16 +947,13 @@ class LogionApiQueries:
         agent_roles: dict[str, Any],  # noqa: ARG002
     ) -> dict[str, Any]:
         """Verify no duplicate (resource_type, canonical_uri) pairs."""
-        status, data = await self._get("/v1/resources", "admin")
-        if status != 200 or not isinstance(data, dict):
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
             return {
                 "found": False,
                 "unsupported": True,
                 "reason": "resource endpoint not available",
             }
-        items = data.get("items", data.get("results", []))
-        if not isinstance(items, list):
-            return {"found": True, "evidence": {"source": "api"}}
         seen: set[tuple[str, str]] = set()
         for item in items:
             if not isinstance(item, dict):
@@ -903,6 +971,31 @@ class LogionApiQueries:
                 }
             seen.add(key)
         return {"found": True, "evidence": {"source": "api"}}
+
+    async def _q_resource_backfill_idempotent(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, Any],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Check the operator's second backfill reported no new changes."""
+        created = query.get("expected_created", 0)
+        linked = query.get("expected_linked", 0)
+        observed = query.get("_scenario_vars", {})
+        if isinstance(observed, dict):
+            created = observed.get("BACKFILL_CREATED", created)
+            linked = observed.get("BACKFILL_LINKED", linked)
+        try:
+            unchanged = int(created or 0) == 0 and int(linked or 0) == 0
+        except (TypeError, ValueError):
+            unchanged = False
+        return {
+            "found": unchanged,
+            "evidence": {
+                "source": "hook_capture",
+                "resources_created": created,
+                "projections_linked": linked,
+            },
+        }
 
     async def _q_resource_search_returns_kinds(
         self,

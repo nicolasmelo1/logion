@@ -252,6 +252,13 @@ class ResourceIdentityUniqueAssertion(_ApiQueryAssertion):
     fail_message = "duplicate resource identities found"
 
 
+class ResourceBackfillIdempotentAssertion(_ApiQueryAssertion):
+    type = "api.resource_backfill_idempotent"
+    query_type = "resource_backfill_idempotent"
+    pass_message = "resource backfill rerun created zero resources or links"
+    fail_message = "resource backfill rerun was not idempotent"
+
+
 class ResourceSearchReturnsKindsAssertion(_ApiQueryAssertion):
     type = "api.resource_search_returns_kinds"
     query_type = "resource_search_returns_kinds"

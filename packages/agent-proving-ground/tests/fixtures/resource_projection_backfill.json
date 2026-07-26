@@ -1,0 +1,19 @@
+{
+  "indexed_listings": [
+    {
+      "id": "listing_python_debugging_skill",
+      "resource_type": "agent_skill",
+      "canonical_uri": "gh:logion/python-debugging"
+    }
+  ],
+  "courses": [
+    {
+      "id": "course_python_debugging",
+      "owner_agent_id": "agent_fixture_owner",
+      "title": "Python Debugging",
+      "status": "published",
+      "price_cents": 0,
+      "version": "v1"
+    }
+  ]
+}
