@@ -13,6 +13,7 @@ from cli._harness.codex import CodexAdapter
 from cli._harness.custom import CustomPathHarness
 from cli._harness.hermes import HermesAdapter
 from cli._harness.opencode import OpenCodeAdapter
+from cli._harness.pi import PiAdapter
 from cli.commands.skills._agent_symlink import EXAMPLE_AGENT_DIRS
 
 
@@ -25,7 +26,9 @@ def _make(adapter_cls, tmp_path: Path):
     ("adapter_cls", "expected_suffix"),
     [
         (ClaudeCodeAdapter, ".claude/skills"),
-        (CodexAdapter, ".codex/skills"),
+        # Codex user scope is the cross-harness .agents/skills;
+        # ~/.codex/skills is legacy (detected via legacy_skill_dir()).
+        (CodexAdapter, ".agents/skills"),
         (OpenCodeAdapter, ".config/opencode/skills"),
         (HermesAdapter, ".hermes/skills"),
     ],
@@ -44,9 +47,9 @@ def test_codex_prompt_example_matches_adapter_path() -> None:
     assert examples["Codex"] == str(adapter_path)
 
 
-def test_registry_lists_all_four() -> None:
+def test_registry_lists_all_five() -> None:
     names = set(adapter_names())
-    assert names == {"claude-code", "codex", "opencode", "hermes"}
+    assert names == {"claude-code", "codex", "opencode", "hermes", "pi"}
 
 
 def test_detect_present_per_harness(tmp_path: Path) -> None:
@@ -69,6 +72,7 @@ def test_detect_present_per_harness(tmp_path: Path) -> None:
             CodexAdapter(**kwargs),
             OpenCodeAdapter(**kwargs),
             HermesAdapter(**kwargs),
+            PiAdapter(**kwargs),
         ]
 
     harness_mod.all_adapters = fake_all

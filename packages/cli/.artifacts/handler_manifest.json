@@ -356,7 +356,13 @@
         "create_report"
       ]
     },
+    "resources acquire": {
+      "operations": []
+    },
     "resources get": {
+      "operations": []
+    },
+    "resources inventory": {
       "operations": []
     },
     "resources search": {

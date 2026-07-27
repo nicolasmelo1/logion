@@ -1,22 +1,18 @@
 # SPDX-License-Identifier: MIT
-"""Hermes Agent harness adapter.
+"""Pi harness adapter.
 
-Hermes stores its configuration in ``~/.hermes/config.yaml`` (YAML, not
-JSON) and loads skills from ``~/.hermes/skills/``.  Permission gating is
-controlled by ``approvals.mode`` (``manual`` / ``smart`` / ``off``), and
-Hermes *does* keep a per-command allow list — ``command_allowlist`` in
-config.yaml — but it is keyed on command name, so a sub-command-scoped
-grant cannot be expressed without over-granting all ``logion`` commands.
+Pi discovers skills from:
 
-Therefore the autopost grant is a **no-op** for Hermes.
+- project ``.pi/skills`` and ``.agents/skills`` from CWD through the
+  repository root;
+- user ``$HOME/.pi/agent/skills`` and ``$HOME/.agents/skills``;
+- package-provided skills and explicit configured/CLI paths (not modelled
+  here — those are ephemeral attachments and retain package identity).
 
-Scope targets :
-
-- ``user`` → ``$HOME/.hermes/skills`` (active profile home).
-- ``repo-root`` → ``$REPO_ROOT/.agents/skills`` (shared target,
-  registered as an external directory for the isolated Hermes profile).
-- Other repo scopes resolve to ``.agents/skills`` under the matching
-  directory.
+Cross-harness repo/user installs prefer ``.agents/skills``;
+``.pi/skills`` is used only for Pi-specific content.  Autopost grant is
+a no-op because Pi does not expose a per-command permission list that
+Logion can target with a sub-command-scoped grant.
 """
 
 from __future__ import annotations
@@ -45,17 +41,17 @@ def _git_root(cwd: Path) -> Path | None:
         path = path.parent
 
 
-class HermesAdapter(HarnessAdapter):
-    """Hermes agent harness.
+class PiAdapter(HarnessAdapter):
+    """Pi agent harness.
 
-    User skills resolve to ``$HOME/.hermes/skills`` (the active
-    profile's skill directory).  Repository-scope installs use the
-    shared ``.agents/skills`` target and are registered as Hermes
-    external directories.  Autopost grant is a no-op.
+    User skills resolve to both ``$HOME/.pi/agent/skills`` (Pi-specific)
+    and ``$HOME/.agents/skills`` (cross-harness).  Repository scopes map
+    to ``.agents/skills`` for cross-harness installs and ``.pi/skills``
+    for Pi-specific content.  Autopost grant is a no-op.
     """
 
-    name = "hermes"
-    display_name = "Hermes"
+    name = "pi"
+    display_name = "Pi"
 
     def __init__(
         self,
@@ -94,23 +90,32 @@ class HermesAdapter(HarnessAdapter):
         home = self._home()
 
         if cscope == USER:
-            target = home / ".hermes" / "skills"
-            return [ScopeTarget(USER, home, target, "hermes", target.exists())]
+            # Pi-specific and cross-harness user locations.
+            pi_target = home / ".pi" / "agent" / "skills"
+            agents_target = home / ".agents" / "skills"
+            return [
+                ScopeTarget(USER, home, pi_target, "pi", pi_target.exists()),
+                ScopeTarget(
+                    USER, home, agents_target, None, agents_target.exists()
+                ),
+            ]
         if cscope == REPO_ROOT:
             if repo_root is None:
                 return []
-            # Shared cross-harness target; Hermes registers it as an
-            # external directory for the isolated profile.
-            target = repo_root / ".agents" / "skills"
+            agents = repo_root / ".agents" / "skills"
+            pi = repo_root / ".pi" / "skills"
             return [
                 ScopeTarget(
-                    REPO_ROOT, repo_root, target, None, target.exists()
-                )
+                    REPO_ROOT, repo_root, agents, None, agents.exists()
+                ),
+                ScopeTarget(REPO_ROOT, repo_root, pi, "pi", pi.exists()),
             ]
         if cscope == REPO_CURRENT:
-            target = cwd / ".agents" / "skills"
+            agents = cwd / ".agents" / "skills"
+            pi = cwd / ".pi" / "skills"
             return [
-                ScopeTarget(REPO_CURRENT, cwd, target, None, target.exists())
+                ScopeTarget(REPO_CURRENT, cwd, agents, None, agents.exists()),
+                ScopeTarget(REPO_CURRENT, cwd, pi, "pi", pi.exists()),
             ]
         if cscope == REPO_PARENT:
             if repo_root is None:
@@ -118,11 +123,15 @@ class HermesAdapter(HarnessAdapter):
             parent = cwd.parent
             if parent == repo_root or not self._is_inside(cwd, repo_root):
                 return []
-            target = parent / ".agents" / "skills"
+            agents = parent / ".agents" / "skills"
+            pi = parent / ".pi" / "skills"
             return [
-                ScopeTarget(REPO_PARENT, parent, target, None, target.exists())
+                ScopeTarget(
+                    REPO_PARENT, parent, agents, None, agents.exists()
+                ),
+                ScopeTarget(REPO_PARENT, parent, pi, "pi", pi.exists()),
             ]
-        # admin/system/custom unsupported by Hermes.
+        # admin/system/custom unsupported by Pi.
         return []
 
     @staticmethod
@@ -140,12 +149,14 @@ class HermesAdapter(HarnessAdapter):
     def is_present(self) -> bool:
         import shutil
 
-        return (self._home() / ".hermes").is_dir() or (
-            shutil.which("hermes") is not None
-        )
+        if (self._home() / ".pi").is_dir():
+            return True
+        if (self._home() / ".agents").is_dir():
+            return True
+        return shutil.which("pi") is not None
 
     def config_path(self, scope: str) -> Path:  # noqa: ARG002
-        return self._home() / ".hermes" / "config.yaml"
+        return self._home() / ".pi" / "config.json"
 
     def is_granted(self, scope: str) -> bool:  # noqa: ARG002
         return False

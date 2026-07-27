@@ -22,8 +22,13 @@ class TestCodexAdapter:
         )
 
     def test_skill_dir(self, tmp_path: Path) -> None:
+        # Codex user scope is the cross-harness .agents/skills.
         a = self._adapter(tmp_path)
-        assert a.skill_dir() == tmp_path / "home" / ".codex" / "skills"
+        assert a.skill_dir() == tmp_path / "home" / ".agents" / "skills"
+
+    def test_legacy_skill_dir(self, tmp_path: Path) -> None:
+        a = self._adapter(tmp_path)
+        assert a.legacy_skill_dir() == tmp_path / "home" / ".codex" / "skills"
 
     def test_config_path_is_toml(self, tmp_path: Path) -> None:
         a = self._adapter(tmp_path)

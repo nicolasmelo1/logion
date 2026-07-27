@@ -287,3 +287,50 @@ class LegacyCoursePurchaseExistsAssertion(_ApiQueryAssertion):
     evidence_keys = ("purchase_id",)
     pass_message = "legacy course purchase exists"
     fail_message = "no matching legacy course purchase found"
+
+
+class HarnessScopeTargetsResolvedAssertion(_ApiQueryAssertion):
+    type = "api.harness_scope_targets_resolved"
+    query_type = "harness_scope_targets_resolved"
+    found_key = "resolved"
+    evidence_keys = ("harnesses", "scopes", "resolved")
+    pass_message = "harness scope targets resolved for all requested harnesses"
+    fail_message = "one or more harness scope targets were not resolved"
+
+
+class ResourceAcquirePlanDryRunAssertion(_ApiQueryAssertion):
+    type = "api.resource_acquire_plan_dry_run"
+    query_type = "resource_acquire_plan_dry_run"
+    found_key = "valid"
+    evidence_keys = ("harness", "scope", "zero_write")
+    pass_message = "resource acquire dry-run plan is valid and zero-write"
+    fail_message = "resource acquire dry-run plan is invalid or non-zero-write"
+
+
+class HarnessScopeNestedRepoAssertion(_ApiQueryAssertion):
+    type = "api.harness_scope_nested_repo"
+    query_type = "harness_scope_nested_repo"
+    found_key = "nested"
+    evidence_keys = ("harnesses", "nested_repo")
+    pass_message = "nested repo scope resolved correctly for all harnesses"
+    fail_message = (
+        "nested repo scope resolution failed for one or more harnesses"
+    )
+
+
+class HarnessInventoryDistinctScopesAssertion(_ApiQueryAssertion):
+    type = "api.harness_inventory_distinct_scopes"
+    query_type = "harness_inventory_distinct_scopes"
+    found_key = "distinct"
+    evidence_keys = ("harnesses",)
+    pass_message = "harness inventory keeps nested scope skills distinct"
+    fail_message = "harness inventory merged or lost nested scope skills"
+
+
+class ObservationEnvelopeNoRawDataAssertion(_ApiQueryAssertion):
+    type = "api.observation_envelope_no_raw_data"
+    query_type = "observation_envelope_no_raw_data"
+    found_key = "clean"
+    evidence_keys = ()
+    pass_message = "observation envelope contains no raw task data"
+    fail_message = "observation envelope leaked raw task data"

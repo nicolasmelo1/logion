@@ -419,6 +419,94 @@ class MockApiAdapter(ApiAdapter):
                 for purchase in self._state.purchases:
                     return {"found": True, "purchase_id": purchase.id}
                 return {"found": False}
+            case "harness_scope_targets_resolved":
+                harnesses = query.get("harnesses", [])
+                scopes = query.get("scopes", [])
+                if (
+                    not isinstance(harnesses, list)
+                    or not isinstance(scopes, list)
+                    or not harnesses
+                    or not scopes
+                ):
+                    return {
+                        "resolved": False,
+                        "unsupported": True,
+                        "reason": "harnesses and scopes lists are required",
+                    }
+                known_harnesses = {
+                    "codex",
+                    "claude-code",
+                    "hermes",
+                    "pi",
+                    "opencode",
+                }
+                known_scopes = {
+                    "repo-current",
+                    "repo-parent",
+                    "repo-root",
+                    "user",
+                    "admin",
+                    "system",
+                    "custom",
+                }
+                all_known = all(
+                    h in known_harnesses for h in harnesses
+                ) and all(s in known_scopes for s in scopes)
+                return {
+                    "resolved": all_known,
+                    "harnesses": harnesses,
+                    "scopes": scopes,
+                }
+            case "resource_acquire_plan_dry_run":
+                harness = query.get("harness")
+                scope = query.get("scope")
+                zero_write = query.get("zero_write", True)
+                if not harness or not scope:
+                    return {
+                        "valid": False,
+                        "unsupported": True,
+                        "reason": "harness and scope are required",
+                    }
+                return {
+                    "valid": True,
+                    "harness": harness,
+                    "scope": scope,
+                    "zero_write": bool(zero_write),
+                }
+            case "harness_scope_nested_repo":
+                harnesses = query.get("harnesses", [])
+                nested_repo = query.get("nested_repo", "")
+                if (
+                    not isinstance(harnesses, list)
+                    or not harnesses
+                    or not nested_repo
+                ):
+                    return {
+                        "nested": False,
+                        "unsupported": True,
+                        "reason": (
+                            "harnesses list and nested_repo are required"
+                        ),
+                    }
+                return {
+                    "nested": True,
+                    "harnesses": harnesses,
+                    "nested_repo": nested_repo,
+                }
+            case "harness_inventory_distinct_scopes":
+                harnesses = query.get("harnesses", [])
+                if not isinstance(harnesses, list) or not harnesses:
+                    return {
+                        "distinct": False,
+                        "unsupported": True,
+                        "reason": "harnesses list is required",
+                    }
+                return {
+                    "distinct": True,
+                    "harnesses": harnesses,
+                }
+            case "observation_envelope_no_raw_data":
+                return {"clean": True}
             case _:
                 return {"error": "unknown query type"}
 

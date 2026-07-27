@@ -5,13 +5,19 @@ from __future__ import annotations
 
 import argparse
 
+from cli._harness import adapter_names
+from cli._harness.scopes import VALID_SCOPES
 from cli._options import COMMON_PARSER
 
 from .handlers import (
+    handle_resources_acquire,
     handle_resources_get,
+    handle_resources_inventory,
     handle_resources_search,
     handle_resources_versions,
 )
+
+_HARNESS_CHOICES = sorted(adapter_names())
 
 
 def register(
@@ -68,5 +74,64 @@ def register(
     versions.add_argument("resource_id", metavar="RESOURCE_ID")
     versions.add_argument("--limit", type=int, default=None)
     versions.set_defaults(handler=handle_resources_versions)
+
+    acquire = sub.add_parser(
+        "acquire",
+        help="Plan acquiring a resource into a harness scope (dry-run)",
+        parents=[COMMON_PARSER],
+    )
+    acquire.add_argument("resource_id", metavar="RESOURCE_ID")
+    acquire.add_argument(
+        "--scope",
+        default="repo-root",
+        choices=sorted(VALID_SCOPES),
+        help="Target scope (default: repo-root)",
+    )
+    acquire.add_argument(
+        "--harness",
+        choices=_HARNESS_CHOICES,
+        required=True,
+        help="Target harness adapter",
+    )
+    acquire.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=True,
+        help="Zero-write plan only (the default in 15.9.1)",
+    )
+    acquire.add_argument(
+        "--cwd",
+        default=None,
+        help="Override the working directory for scope resolution",
+    )
+    acquire.add_argument(
+        "--repo-root",
+        default=None,
+        help="Override the detected repository root",
+    )
+    acquire.set_defaults(handler=handle_resources_acquire)
+
+    inventory = sub.add_parser(
+        "inventory",
+        help="Scan a harness's native locations and list found resources",
+        parents=[COMMON_PARSER],
+    )
+    inventory.add_argument(
+        "--harness",
+        choices=_HARNESS_CHOICES,
+        required=True,
+        help="Harness adapter to scan",
+    )
+    inventory.add_argument(
+        "--cwd",
+        default=None,
+        help="Override the working directory for scope resolution",
+    )
+    inventory.add_argument(
+        "--repo-root",
+        default=None,
+        help="Override the detected repository root",
+    )
+    inventory.set_defaults(handler=handle_resources_inventory)
 
     return parser
