@@ -21,6 +21,7 @@ Scope targets :
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from cli._harness.base import GrantResult, HarnessAdapter
@@ -73,6 +74,12 @@ class HermesAdapter(HarnessAdapter):
     def _home(self) -> Path:
         return self._home_dir if self._home_dir is not None else Path.home()
 
+    def _hermes_home(self) -> Path:
+        configured = os.environ.get("HERMES_HOME")
+        if configured:
+            return Path(configured).expanduser()
+        return self._home() / ".hermes"
+
     def _cwd_path(self) -> Path:
         if self._cwd is not None:
             return Path(self._cwd)
@@ -91,11 +98,19 @@ class HermesAdapter(HarnessAdapter):
         cscope = canonical_scope(scope)
         cwd = self._cwd_path()
         repo_root = self._repo_root_path()
-        home = self._home()
 
         if cscope == USER:
-            target = home / ".hermes" / "skills"
-            return [ScopeTarget(USER, home, target, "hermes", target.exists())]
+            hermes_home = self._hermes_home()
+            target = hermes_home / "skills"
+            return [
+                ScopeTarget(
+                    USER,
+                    hermes_home,
+                    target,
+                    "hermes",
+                    target.exists(),
+                )
+            ]
         if cscope == REPO_ROOT:
             if repo_root is None:
                 return []
@@ -140,12 +155,12 @@ class HermesAdapter(HarnessAdapter):
     def is_present(self) -> bool:
         import shutil
 
-        return (self._home() / ".hermes").is_dir() or (
-            shutil.which("hermes") is not None
+        return (
+            self._hermes_home().is_dir() or shutil.which("hermes") is not None
         )
 
     def config_path(self, scope: str) -> Path:  # noqa: ARG002
-        return self._home() / ".hermes" / "config.yaml"
+        return self._hermes_home() / "config.yaml"
 
     def is_granted(self, scope: str) -> bool:  # noqa: ARG002
         return False

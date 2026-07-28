@@ -139,7 +139,7 @@ class CodexAdapter(HarnessAdapter):
                     scope_root=Path("/usr/share/codex"),
                     target_path=Path("/usr/share/codex/skills"),
                     native_manager="codex",
-                    exists=False,
+                    exists=Path("/usr/share/codex/skills").exists(),
                 )
             ]
         # repo-parent, custom, and unknown → empty (unsupported).

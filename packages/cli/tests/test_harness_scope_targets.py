@@ -124,7 +124,8 @@ class TestHermesScopeTargets:
         a = HermesAdapter(cwd=cwd, repo_root=repo, home_dir=tmp_path / "home")
         return a, cwd, repo
 
-    def test_user_is_hermes_home(self, tmp_path: Path) -> None:
+    def test_user_is_hermes_home(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.delenv("HERMES_HOME", raising=False)
         a, _, _ = self._adapter(tmp_path)
         targets = a.scope_targets(USER)
         assert len(targets) == 1

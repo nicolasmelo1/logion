@@ -94,10 +94,10 @@ class PiAdapter(HarnessAdapter):
             pi_target = home / ".pi" / "agent" / "skills"
             agents_target = home / ".agents" / "skills"
             return [
-                ScopeTarget(USER, home, pi_target, "pi", pi_target.exists()),
                 ScopeTarget(
                     USER, home, agents_target, None, agents_target.exists()
                 ),
+                ScopeTarget(USER, home, pi_target, "pi", pi_target.exists()),
             ]
         if cscope == REPO_ROOT:
             if repo_root is None:

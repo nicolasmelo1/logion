@@ -5,6 +5,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agent_proving_ground.api_adapters._queries import (
+    LogionApiQueries,
+    RoleKeyStore,
+)
 from agent_proving_ground.api_adapters.base import ApiAdapter, World
 
 
@@ -111,6 +115,9 @@ class MockApiAdapter(ApiAdapter):
     def __init__(self, *, seed_course: bool = True) -> None:
         self._state = MockWorldState()
         self._seed_course = seed_course
+        self._artifact_queries = LogionApiQueries(
+            "mock://local", RoleKeyStore({})
+        )
 
     async def start(self) -> None:
         pass

@@ -144,6 +144,11 @@ class AgentDriverFactory:
         self._scripted_apply = scripted_apply
         self._default_driver = default_driver
 
+    def configured_model(self, driver_name: str) -> str | None:
+        provider_cfg = self._driver_config.get(driver_name, {})
+        model = provider_cfg.get("model")
+        return str(model) if model else None
+
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
         name = self._default_driver or spec.driver or "scripted"
         cls = _DRIVER_CLASSES.get(name)
@@ -220,6 +225,7 @@ class ScenarioRunner:
             )
             self.timeline.event("world.created", world_base_url=world.base_url)
             await self._start_agents(world)
+            self._validate_execution_requirements()
             for phase in self.scenario.phases:
                 try:
                     phase_result = await self._run_phase(phase, world)
@@ -299,6 +305,37 @@ class ScenarioRunner:
             self.timeline.close()
         return result
 
+    def _validate_execution_requirements(self) -> None:
+        requirements = self.scenario.execution_requirements
+        if (
+            requirements.api_adapters
+            and self.api.name not in requirements.api_adapters
+        ):
+            allowed = ", ".join(requirements.api_adapters)
+            raise InconclusiveRun(
+                f"scenario requires API adapter in [{allowed}], "
+                f"got {self.api.name}"
+            )
+        for agent_id, driver in self._agents.items():
+            if (
+                requirements.agent_drivers
+                and driver.name not in requirements.agent_drivers
+            ):
+                allowed = ", ".join(requirements.agent_drivers)
+                raise InconclusiveRun(
+                    f"scenario requires agent driver in [{allowed}], "
+                    f"got {driver.name} for {agent_id}"
+                )
+            allowed_models = requirements.driver_models.get(driver.name, [])
+            if allowed_models:
+                model = self.driver_factory.configured_model(driver.name)
+                if model not in allowed_models:
+                    allowed = ", ".join(allowed_models)
+                    raise InconclusiveRun(
+                        f"scenario requires {driver.name} model in "
+                        f"[{allowed}], got {model or 'unset'}"
+                    )
+
     async def _start_agents(self, world: World) -> None:
         env_by_agent: dict[str, dict[str, str]] = {}
         for agent_spec in self.scenario.agents:
@@ -307,7 +344,19 @@ class ScenarioRunner:
             workspace = self.artifacts.mkdir(
                 f"agents/{agent_spec.id}/{workspace_name}"
             )
+            scenario_vars = world.data.setdefault("scenario_vars", {})
+            if not isinstance(scenario_vars, dict):
+                raise InconclusiveRun("world scenario_vars is not a mapping")
+            binding_name = (
+                "AGENT_"
+                + re.sub(r"[^A-Za-z0-9]", "_", agent_spec.id).upper()
+                + "_WORKSPACE"
+            )
+            scenario_vars[binding_name] = str(workspace)
+            scenario_vars["LOGION_PUBLIC_REPO_PATH"] = str(world.root_dir)
             env = {**agent_spec.env, **world.agent_env.get(agent_spec.id, {})}
+            env["LOGION_PUBLIC_REPO_PATH"] = str(world.root_dir)
+            env["LOGION_AGENT_WORKSPACE"] = str(workspace)
             env_by_agent[agent_spec.id] = env
             launch = AgentLaunch(
                 run_id=self.run_id,

@@ -16,62 +16,99 @@ records the observed scope and does not move/reinstall content.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cli._config import resolve_config_from_args
 from cli._errors import handle_error
-from cli._harness import get_adapter
+from cli._harness.custom import CustomPathHarness
 from cli._harness.scopes import (
+    ADMIN,
+    CUSTOM,
     REPO_CURRENT,
     REPO_PARENT,
     REPO_ROOT,
+    SYSTEM,
     USER,
     ScopeTarget,
 )
+
+from ._reconciliation import mark_ambiguities, reconciliation_status
+from ._scope_resolution import git_root, instantiate_adapter
 
 
 def _all_scan_targets(
     harness: str,
     cwd: Path | None,
     repo_root: Path | None,
+    target_path: Path | None = None,
 ) -> list[ScopeTarget]:
-    """Collect every scope target the harness declares for repo + user."""
-    adapter = get_adapter(harness)
-    if adapter is None:
-        raise ValueError(f"unknown harness: {harness!r}")
-    cls = type(adapter)
-    kwargs: dict[str, Any] = {}
-    if cwd is not None:
-        kwargs["cwd"] = cwd
-    if repo_root is not None:
-        kwargs["repo_root"] = repo_root
-    import contextlib
-
-    with contextlib.suppress(TypeError):
-        adapter = cls(**kwargs)  # type: ignore[arg-type]
-    targets: list[ScopeTarget] = []
-    for scope in (REPO_CURRENT, REPO_PARENT, REPO_ROOT, USER):
+    """Collect native targets in harness precedence order."""
+    selected_cwd = (cwd or Path.cwd()).resolve()
+    if harness == "custom":
+        if target_path is None:
+            raise ValueError("custom harness requires --target-path")
+        return CustomPathHarness(target_path).scope_targets(CUSTOM)
+    adapter = instantiate_adapter(harness, selected_cwd, repo_root)
+    targets = list(adapter.scope_targets(REPO_CURRENT))
+    root = repo_root or git_root(selected_cwd)
+    if root is not None:
+        root = root.resolve()
+        try:
+            selected_cwd.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("CWD must be inside the repository root") from exc
+    if root is not None and selected_cwd != root:
+        parent = selected_cwd.parent
+        while parent != root and parent != parent.parent:
+            parent_adapter = instantiate_adapter(harness, parent, root)
+            targets.extend(
+                ScopeTarget(
+                    scope_kind=REPO_PARENT,
+                    scope_root=target.scope_root,
+                    target_path=target.target_path,
+                    native_manager=target.native_manager,
+                    exists=target.exists,
+                )
+                for target in parent_adapter.scope_targets(REPO_CURRENT)
+            )
+            parent = parent.parent
+    for scope in (REPO_ROOT, USER, ADMIN, SYSTEM):
         targets.extend(adapter.scope_targets(scope))
-    # De-duplicate by target_path while preserving order.
+    legacy_skill_dir = getattr(adapter, "legacy_skill_dir", None)
+    if callable(legacy_skill_dir):
+        legacy_path = cast(Path, legacy_skill_dir())
+        targets.append(
+            ScopeTarget(
+                scope_kind="legacy",
+                scope_root=legacy_path.parent,
+                target_path=legacy_path,
+                native_manager=None,
+                exists=legacy_path.exists(),
+            )
+        )
     seen: set[Path] = set()
     unique: list[ScopeTarget] = []
-    for t in targets:
-        if t.target_path in seen:
+    for target in targets:
+        resolved = target.target_path.resolve()
+        if resolved in seen:
             continue
-        seen.add(t.target_path)
-        unique.append(t)
+        seen.add(resolved)
+        unique.append(target)
     return unique
 
 
-def _scan_dir(target: ScopeTarget) -> list[dict[str, Any]]:
+def _scan_dir(target: ScopeTarget, precedence: int) -> list[dict[str, Any]]:
     """List skill directories under *target* with reconciliation status."""
     if not target.target_path.is_dir():
         return []
     found: list[dict[str, Any]] = []
-    for child in sorted(target.target_path.iterdir()):
+    try:
+        children = sorted(target.target_path.iterdir())
+    except OSError:
+        return []
+    for child in children:
         if not child.is_dir():
             continue
         skill_md = child / "SKILL.md"
@@ -81,33 +118,12 @@ def _scan_dir(target: ScopeTarget) -> list[dict[str, Any]]:
             "name": child.name,
             "path": str(child),
             "scope_kind": target.scope_kind,
-            "reconciliation": _reconciliation_status(child),
+            "scope_root": str(target.scope_root),
+            "precedence": precedence,
+            "reconciliation": reconciliation_status(child),
         }
         found.append(entry)
     return found
-
-
-def _reconciliation_status(skill_dir: Path) -> dict[str, str]:
-    """Compute the reconciliation status for a discovered skill dir.
-
-    implements the structural scan only: a content digest is
-    computed for SKILL.md and the status defaults to ``unlinked`` unless a
-    native manager receipt or canonical manifest is present.  The full
-    exact/canonical/signed evidence chain is filled in by later phases.
-    """
-    skill_md = skill_dir / "SKILL.md"
-    digest = ""
-    if skill_md.is_file():
-        digest = hashlib.sha256(skill_md.read_bytes()).hexdigest()
-    status = "unlinked"
-    # A native manager receipt (e.g. a lock file) would mark it exact.
-    if (skill_dir / ".logion-lock.json").is_file():
-        status = "exact"
-    elif (skill_dir / ".logion-manifest.json").is_file():
-        status = "canonical"
-    elif (skill_dir / ".logion-sig.json").is_file():
-        status = "signed"
-    return {"status": status, "content_digest": digest}
 
 
 def handle_resources_inventory(args: argparse.Namespace) -> int:
@@ -119,13 +135,20 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
             sys.stderr.write("--harness is required for inventory\n")
             return 2
         cwd_raw = getattr(args, "cwd", None)
-        cwd = Path(cwd_raw) if cwd_raw else None
+        cwd = Path(cwd_raw).resolve() if cwd_raw else None
         repo_root_raw = getattr(args, "repo_root", None)
-        repo_root = Path(repo_root_raw) if repo_root_raw else None
-        targets = _all_scan_targets(harness, cwd, repo_root)
+        repo_root = Path(repo_root_raw).resolve() if repo_root_raw else None
+        target_path_raw = getattr(args, "target_path", None)
+        target_path = (
+            Path(target_path_raw).expanduser().resolve()
+            if target_path_raw
+            else None
+        )
+        targets = _all_scan_targets(harness, cwd, repo_root, target_path)
         results: list[dict[str, Any]] = []
-        for t in targets:
-            results.extend(_scan_dir(t))
+        for precedence, target in enumerate(targets):
+            results.extend(_scan_dir(target, precedence))
+        mark_ambiguities(results)
         payload: dict[str, Any] = {
             "harness": harness,
             "targets": [

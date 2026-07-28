@@ -109,6 +109,14 @@ class PhaseSpec(BaseModel):
         return value
 
 
+class ExecutionRequirements(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    api_adapters: list[str] = Field(default_factory=list)
+    agent_drivers: list[str] = Field(default_factory=list)
+    driver_models: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class ScenarioSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -117,6 +125,9 @@ class ScenarioSpec(BaseModel):
     description: str
     api_adapter: str = "mock"
     driver_config: dict = Field(default_factory=dict)
+    execution_requirements: ExecutionRequirements = Field(
+        default_factory=ExecutionRequirements
+    )
     agents: list[AgentSpec]
     phases: list[PhaseSpec]
     final_assertions: list[AssertionSpec] = Field(default_factory=list)

@@ -25,9 +25,15 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass, fields
+import stat
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from cli._observation_validation import (
+    assert_allowed_payload_keys,
+    validate_envelope_fields,
+)
 
 # --- consent levels --------------------------------------------------------
 
@@ -41,41 +47,6 @@ CONSENT_LEVELS: frozenset[str] = frozenset({OFF, LOCAL_ONLY, PROMPT, AUTO})
 # --- envelope version ------------------------------------------------------
 
 INTEGRATION_VERSION = "logion.observation.v1"
-
-# --- forbidden payload keys (defence in depth) -----------------------------
-# These must never appear in a serialised envelope.  The redaction check
-# rejects any field whose name matches one of these substrings so a
-# future caller cannot accidentally leak raw task data.
-
-_FORBIDDEN_KEY_SUBSTRINGS: tuple[str, ...] = (
-    "prompt",
-    "source_code",
-    "source",
-    "code",
-    "path",
-    "tool_arg",
-    "argument",
-    "secret",
-    "token",
-    "key",
-    "password",
-    "credential",
-    "model_context",
-    "context",
-    "terminal",
-    "stdout",
-    "stderr",
-    "output",
-    "request",
-    "response",
-    "body",
-    "payload",
-    "raw",
-    "task_data",
-    "task_input",
-    "task_output",
-    "content",
-)
 
 # Fields permitted on the envelope — anything else is rejected.
 # Populated after the dataclass is defined below.
@@ -104,6 +75,23 @@ class ObservationEnvelope:
     finished_at: str  # RFC3339
     integration_version: str  # e.g. INTEGRATION_VERSION
 
+    def __post_init__(self) -> None:
+        validate_envelope_fields(
+            event=self.event,
+            harness=self.harness,
+            harness_session_id=self.harness_session_id,
+            installation_id=self.installation_id,
+            resource_version_id=self.resource_version_id,
+            scope_kind=self.scope_kind,
+            scope_id=self.scope_id,
+            task_class=self.task_class,
+            outcome=self.outcome,
+            started_at=self.started_at,
+            finished_at=self.finished_at,
+            integration_version=self.integration_version,
+            expected_version=INTEGRATION_VERSION,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe dict for spool emission."""
         return {k: v for k, v in asdict(self).items() if v is not None}
@@ -115,7 +103,20 @@ class ObservationEnvelope:
         )
 
 
-_ALLOWED_FIELD_NAMES = frozenset(f.name for f in fields(ObservationEnvelope))
+_ALLOWED_FIELD_NAMES = frozenset({
+    "event",
+    "harness",
+    "harness_session_id",
+    "installation_id",
+    "resource_version_id",
+    "scope_kind",
+    "scope_id",
+    "task_class",
+    "outcome",
+    "started_at",
+    "finished_at",
+    "integration_version",
+})
 
 
 @dataclass(frozen=True)
@@ -142,12 +143,6 @@ def should_spool(consent: str) -> bool:
     return consent in (LOCAL_ONLY, PROMPT, AUTO)
 
 
-def _is_forbidden_key(key: str) -> bool:
-    """True if *key* matches a forbidden payload substring."""
-    lower = key.lower()
-    return any(sub in lower for sub in _FORBIDDEN_KEY_SUBSTRINGS)
-
-
 def assert_no_secrets(payload: dict[str, Any]) -> None:
     """Defensive check: reject envelopes carrying forbidden fields.
 
@@ -158,12 +153,7 @@ def assert_no_secrets(payload: dict[str, Any]) -> None:
     guardrail against future callers accidentally leaking raw task data
     by adding ad-hoc fields to the payload.
     """
-    for key in payload:
-        if key not in _ALLOWED_FIELD_NAMES:
-            raise ValueError(
-                f"observation envelope field {key!r} is not permitted"
-                f" — forbidden raw-task-data field"
-            )
+    assert_allowed_payload_keys(payload, _ALLOWED_FIELD_NAMES)
 
 
 def observations_dir(logion_home: Path | None = None) -> Path:
@@ -187,15 +177,29 @@ def spool_envelope(
     Returns the spool file path if written, ``None`` if consent is
     ``off``.  Performs the no-secrets invariant before writing.
     """
+    ConsentConfig(level=consent)
     if not should_spool(consent):
         return None
     payload = envelope.to_dict()
     assert_no_secrets(payload)
     spool_dir = observations_dir(logion_home)
-    spool_dir.mkdir(parents=True, exist_ok=True)
+    if spool_dir.is_symlink():
+        raise ValueError("observation spool directory must not be a symlink")
+    spool_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    spool_dir.chmod(0o700)
     spool_path = spool_dir / "observations.jsonl"
-    with spool_path.open("a", encoding="utf-8") as fh:
-        fh.write(envelope.to_jsonl() + "\n")
+    if spool_path.is_symlink():
+        raise ValueError("observation spool file must not be a symlink")
+    flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(spool_path, flags, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError("observation spool must be a regular file")
+        os.chmod(spool_path, 0o600)
+        os.write(fd, (envelope.to_jsonl() + "\n").encode())
+    finally:
+        os.close(fd)
     return spool_path
 
 
