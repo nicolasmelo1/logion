@@ -1,134 +1,133 @@
 schema_version: "1"
 name: phase_15_9_1_harness_scope_contract
 description: |
-  Verify that the CLI harness scope contract correctly resolves native resource
-  locations for Codex, Claude Code, Hermes, and Pi.  The agent uses public
-  detect/inventory/dry-run surfaces — not direct API or database queries — to
-  determine which resources each harness can use from a nested directory, where
-  each came from, and which repository location would receive a new install.
-  Installing while CWD is repository XPTO defaults to XPTO's native repository
-  scope, never a global/user directory.
-api_adapter: mock
+  Exercise the public CLI against isolated native harness directories using a
+  real coding agent and the local devrig API. Assertions consume CLI JSON and
+  filesystem artifacts; scripted agents and mock API adapters are not valid.
+api_adapter: local-devrig
 driver_config:
   codex:
     model: gpt-5.4-mini
-  claude-code:
-    model: claude-haiku-4-5
-  hermes:
-    model: glm-5.1
-    provider: ollama-cloud
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex]
+  driver_models:
+    codex: [gpt-5.4-mini]
 
 agents:
   - id: operator
     role: Node operator verifying harness scope contracts
-    driver: scripted
+    driver: codex
     workspace: operator
     devrig_role: admin
-    timeout_seconds: 300
-  - id: observer
-    role: Agent discovering resources across harness scopes
-    driver: scripted
-    workspace: observer
-    devrig_role: buyer
-    timeout_seconds: 300
+    timeout_seconds: 900
 
 phases:
-  - id: operator-detect-harness-scopes
+  - id: inventory-native-scopes
     actor: operator
+    local_hook: packages/agent-proving-ground/scripts/setup_harness_scope_fixture.py
+    local_hook_args: ["${AGENT_OPERATOR_WORKSPACE}"]
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      NESTED_CWD: nested_cwd
+      ISOLATED_HOME: isolated_home
+      EVIDENCE_DIR: evidence_dir
+      BEFORE_SNAPSHOT: snapshot_path
     goal: |
-      Use the public Logion CLI to detect which harnesses are present and what
-      scope targets each one supports.  Run "logion resources inventory
-      --harness codex", "logion resources inventory --harness claude-code",
-      "logion resources inventory --harness hermes", and "logion resources
-      inventory --harness pi" to list the native discovery locations for each
-      harness.  Report the resolved scope targets for repo-current,
-      repo-root, user, and system scopes.
-    success_hint: |
-      Each harness reports its native skill directories.  Codex scans
-      .agents/skills from CWD through repo root.  Claude Code uses
-      .claude/skills.  Hermes uses ~/.hermes/skills.  Pi uses .pi/skills and
-      .agents/skills.
+      Use only the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH}. Set HOME
+      to ${ISOLATED_HOME}. From ${NESTED_CWD}, run resources inventory with
+      JSON output for codex, claude-code, hermes, and pi. Save the complete JSON
+      outputs as ${EVIDENCE_DIR}/inventory-<harness>.json. Do not fabricate or
+      edit the output files. Stop with a failure if any command fails.
+    success_hint: Four CLI JSON files exist and contain the seeded acme skill.
     assertions:
       - type: api.harness_scope_targets_resolved
         params:
-          harnesses: [codex, claude-code, hermes, pi]
-          scopes: [repo-current, repo-root, user, system]
+          artifacts:
+            codex: "${EVIDENCE_DIR}/inventory-codex.json"
+            claude-code: "${EVIDENCE_DIR}/inventory-claude-code.json"
+            hermes: "${EVIDENCE_DIR}/inventory-hermes.json"
+            pi: "${EVIDENCE_DIR}/inventory-pi.json"
+          required_scopes: [repo-current, repo-root, user]
 
-  - id: operator-dry-run-acquire
+  - id: acquire-zero-write
     actor: operator
     goal: |
-      Use "logion resources acquire <resource_id> --scope repo-root --harness
-      codex --dry-run" to produce a zero-write acquisition plan.  The plan
-      must show the resolved repository root, target path, resource details,
-      whether the path will be created or reused, and the observation
-      integration state.  Do not install anything.
-    success_hint: |
-      The dry-run plan shows the exact .agents/skills target path under the
-      repo root and confirms zero writes.
+      Query the local devrig through the public CLI for one indexed skill. Parse
+      its canonical resource ID from JSON, then run resources acquire for Codex
+      with --scope repo-root --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT}
+      --dry-run --json. Save the unmodified output as
+      ${EVIDENCE_DIR}/acquire-codex.json. Do not write into any native target.
+    success_hint: The saved plan resolves ${FIXTURE_ROOT}/.agents/skills.
     assertions:
       - type: api.resource_acquire_plan_dry_run
         params:
-          harness: codex
-          scope: repo-root
-          zero_write: true
+          artifact: "${EVIDENCE_DIR}/acquire-codex.json"
+          expected_scope: repo-root
+          expected_target: "${FIXTURE_ROOT}/.agents/skills"
+          before_snapshot: "${BEFORE_SNAPSHOT}"
+          snapshot_roots: ["${FIXTURE_ROOT}", "${ISOLATED_HOME}"]
 
-  - id: operator-nested-repo-scope
+  - id: nested-default-scope
     actor: operator
     goal: |
-      From a nested repository directory (xpto/nested), run "logion resources
-      acquire <resource_id> --scope repo-root --harness codex --dry-run" and
-      confirm the resolved scope is the nested repo root, not the parent or
-      user home.  Repeat for Claude Code and Pi to verify each harness maps
-      repo-root to the correct nested .claude/skills or .agents/skills path.
-    success_hint: |
-      The nested repo root is used for all harnesses.  No global/user fallback.
+      For codex, claude-code, and pi, run the same resource acquisition dry-run
+      from ${NESTED_CWD} without --scope. Keep HOME=${ISOLATED_HOME}, pass
+      --repo-root ${FIXTURE_ROOT}, and save each JSON plan as
+      ${EVIDENCE_DIR}/nested-<harness>.json. Do not install anything.
+    success_hint: Every plan defaults to the XPTO repository root, never user.
     assertions:
       - type: api.harness_scope_nested_repo
         params:
-          harnesses: [codex, claude-code, pi]
-          nested_repo: xpto/nested
+          artifacts:
+            codex: "${EVIDENCE_DIR}/nested-codex.json"
+            claude-code: "${EVIDENCE_DIR}/nested-claude-code.json"
+            pi: "${EVIDENCE_DIR}/nested-pi.json"
+          expected_root: "${FIXTURE_ROOT}"
 
-  - id: observer-cross-harness-inventory
-    actor: observer
+  - id: inventory-ambiguity
+    actor: operator
     goal: |
-      Inventory the same named skill visible at multiple harness scopes from
-      the nested directory.  Use "logion resources inventory --harness codex"
-      and "logion resources inventory --harness claude-code" to list every
-      candidate, its precedence context, and ambiguity state.  Confirm that
-      nested repository skills remain distinct and are not merged.
-    success_hint: |
-      Each harness shows every candidate at every scanned level with its
-      precedence context.  No merging of nested skills.
+      Inspect the inventory JSON already produced for Codex and Claude Code.
+      Do not modify it. Explain why the seeded acme resources remain separate
+      candidates with explicit precedence and ambiguity state.
+    success_hint: Multiple acme candidates remain distinct and ambiguous.
     assertions:
       - type: api.harness_inventory_distinct_scopes
         params:
-          harnesses: [codex, claude-code]
+          artifacts:
+            codex: "${EVIDENCE_DIR}/inventory-codex.json"
+            claude-code: "${EVIDENCE_DIR}/inventory-claude-code.json"
+          resource_name: acme
 
-  - id: observer-observation-envelope
-    actor: observer
+  - id: observation-minimal-disclosure
+    actor: operator
     goal: |
-      Verify that the observation envelope contract produces a versioned local
-      envelope with no raw prompts, source code, paths, tool arguments, or
-      secrets.  Use "logion resources inventory --harness hermes --json" to
-      inspect the observation integration state and confirm the consent
-      levels are respected.
-    success_hint: |
-      The observation envelope contains only the sanctioned fields and no raw
-      task data.
+      Use the public CLI package's observation API to create one consented local
+      observation under ${AGENT_OPERATOR_WORKSPACE}/logion-home. Use opaque IDs,
+      no paths or task text, and the versioned minimal envelope. Save nothing
+      else and do not alter the resulting JSONL file.
+    success_hint: The spool has one sanctioned minimal-disclosure envelope.
     assertions:
       - type: api.observation_envelope_no_raw_data
+        params:
+          artifact: "${AGENT_OPERATOR_WORKSPACE}/logion-home/observations/observations.jsonl"
 
 final_assertions:
   - type: timeline.no_unredacted_secret
-  - type: api.harness_scope_targets_resolved
+  - type: api.resource_acquire_plan_dry_run
     params:
-      harnesses: [codex, claude-code, hermes, pi]
-      scopes: [repo-current, repo-root, user, system]
-  - type: api.harness_scope_nested_repo
-    params:
-      harnesses: [codex, claude-code, pi]
-      nested_repo: xpto/nested
+      artifact: "${EVIDENCE_DIR}/acquire-codex.json"
+      expected_scope: repo-root
+      expected_target: "${FIXTURE_ROOT}/.agents/skills"
+      before_snapshot: "${BEFORE_SNAPSHOT}"
+      snapshot_roots: ["${FIXTURE_ROOT}", "${ISOLATED_HOME}"]
   - type: api.harness_inventory_distinct_scopes
     params:
-      harnesses: [codex, claude-code]
+      artifacts:
+        codex: "${EVIDENCE_DIR}/inventory-codex.json"
+        claude-code: "${EVIDENCE_DIR}/inventory-claude-code.json"
+      resource_name: acme
   - type: api.observation_envelope_no_raw_data
+    params:
+      artifact: "${AGENT_OPERATOR_WORKSPACE}/logion-home/observations/observations.jsonl"

@@ -67,11 +67,22 @@ class TestHermesAdapter:
             home_dir=tmp_path / "home",
         )
 
-    def test_skill_dir(self, tmp_path: Path) -> None:
+    def test_skill_dir(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.delenv("HERMES_HOME", raising=False)
         a = self._adapter(tmp_path)
         assert a.skill_dir() == tmp_path / "home" / ".hermes" / "skills"
 
-    def test_config_path_is_yaml(self, tmp_path: Path) -> None:
+    def test_active_profile_home_from_environment(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        profile_home = tmp_path / "profiles" / "work"
+        monkeypatch.setenv("HERMES_HOME", str(profile_home))
+        adapter = self._adapter(tmp_path)
+        assert adapter.skill_dir() == profile_home / "skills"
+        assert adapter.config_path("user") == profile_home / "config.yaml"
+
+    def test_config_path_is_yaml(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.delenv("HERMES_HOME", raising=False)
         a = self._adapter(tmp_path)
         assert a.config_path("global") == (
             tmp_path / "home" / ".hermes" / "config.yaml"
@@ -82,7 +93,8 @@ class TestHermesAdapter:
         (tmp_path / "home" / ".hermes").mkdir(parents=True)
         assert a.is_present() is True
 
-    def test_grant_is_noop(self, tmp_path: Path) -> None:
+    def test_grant_is_noop(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.delenv("HERMES_HOME", raising=False)
         a = self._adapter(tmp_path)
         result = a.grant("global")
         assert result.changed is False

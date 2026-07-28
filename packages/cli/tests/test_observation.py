@@ -136,6 +136,22 @@ class TestNoSecretsInvariant:
         with pytest.raises(ValueError, match="not permitted"):
             assert_no_secrets(payload)
 
+    def test_invalid_structured_values_are_rejected(self) -> None:
+        payload = _envelope().to_dict()
+        payload["task_class"] = "raw prompt with spaces"
+        with pytest.raises(ValueError, match="lowercase slug"):
+            ObservationEnvelope(**payload)
+
+        payload = _envelope().to_dict()
+        payload["scope_id"] = "/Users/nico/private/repo"
+        with pytest.raises(ValueError, match="opaque identifier"):
+            ObservationEnvelope(**payload)
+
+        payload = _envelope().to_dict()
+        payload["finished_at"] = "2024-01-01T09:59:00Z"
+        with pytest.raises(ValueError, match="must not precede"):
+            ObservationEnvelope(**payload)
+
 
 class TestSpool:
     def test_off_does_not_spool(self, tmp_path: Path) -> None:
@@ -153,6 +169,14 @@ class TestSpool:
         parsed = json.loads(line)
         assert parsed["event"] == "resource.use.completed"
         assert "prompt" not in parsed
+        assert path.stat().st_mode & 0o777 == 0o600
+        assert path.parent.stat().st_mode & 0o777 == 0o700
+
+    def test_unknown_consent_is_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="unknown consent level"):
+            spool_envelope(
+                _envelope(), consent="invalid", logion_home=tmp_path
+            )
 
     def test_observations_dir_respects_logion_home(
         self, tmp_path: Path

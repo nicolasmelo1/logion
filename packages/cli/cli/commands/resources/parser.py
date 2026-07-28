@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 
 from cli._harness import adapter_names
-from cli._harness.scopes import VALID_SCOPES
+from cli._harness.scopes import ALIASES, VALID_SCOPES
 from cli._options import COMMON_PARSER
 
 from .handlers import (
@@ -17,7 +17,7 @@ from .handlers import (
     handle_resources_versions,
 )
 
-_HARNESS_CHOICES = sorted(adapter_names())
+_HARNESS_CHOICES = sorted([*adapter_names(), "custom"])
 
 
 def register(
@@ -83,9 +83,12 @@ def register(
     acquire.add_argument("resource_id", metavar="RESOURCE_ID")
     acquire.add_argument(
         "--scope",
-        default="repo-root",
-        choices=sorted(VALID_SCOPES),
-        help="Target scope (default: repo-root)",
+        default=None,
+        choices=sorted(VALID_SCOPES | ALIASES.keys()),
+        help=(
+            "Target scope (default: repo-root inside Git; "
+            "user with confirmation outside Git)"
+        ),
     )
     acquire.add_argument(
         "--harness",
@@ -95,9 +98,16 @@ def register(
     )
     acquire.add_argument(
         "--dry-run",
+        dest="dry_run",
         action="store_true",
         default=True,
-        help="Zero-write plan only (the default in 15.9.1)",
+        help="Produce a zero-write acquisition plan (default)",
+    )
+    acquire.add_argument(
+        "--no-dry-run",
+        dest="dry_run",
+        action="store_false",
+        help="Request acquisition (not implemented; exits without writing)",
     )
     acquire.add_argument(
         "--cwd",
@@ -108,6 +118,16 @@ def register(
         "--repo-root",
         default=None,
         help="Override the detected repository root",
+    )
+    acquire.add_argument(
+        "--repo-parent",
+        default=None,
+        help="Explicit parent directory for repo-parent scope",
+    )
+    acquire.add_argument(
+        "--target-path",
+        default=None,
+        help="Explicit skills directory for the custom harness",
     )
     acquire.set_defaults(handler=handle_resources_acquire)
 
@@ -131,6 +151,11 @@ def register(
         "--repo-root",
         default=None,
         help="Override the detected repository root",
+    )
+    inventory.add_argument(
+        "--target-path",
+        default=None,
+        help="Explicit skills directory for the custom harness",
     )
     inventory.set_defaults(handler=handle_resources_inventory)
 

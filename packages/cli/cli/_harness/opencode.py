@@ -10,7 +10,7 @@ a granular object of pattern → action pairs.
 Scope targets :
 
 - ``repo-current`` / ``repo-parent`` / ``repo-root`` → the corresponding
-  ``.config/opencode/skills`` (or ``.agents/skills``) directory.
+  ``.config/opencode/skills`` directory.
 - ``user`` → ``$HOME/.config/opencode/skills``.
 
 For the autopost grant, this adapter writes a bash permission rule:
@@ -100,8 +100,7 @@ class OpenCodeAdapter(HarnessAdapter):
         home = self._home()
 
         if cscope == REPO_CURRENT:
-            # OpenCode project skills live under .config/opencode/skills;
-            # the cross-harness .agents/skills is also accepted.
+            # OpenCode project skills live under .config/opencode/skills.
             target = proj / ".config" / "opencode" / "skills"
             return [
                 ScopeTarget(REPO_CURRENT, proj, target, None, target.exists())

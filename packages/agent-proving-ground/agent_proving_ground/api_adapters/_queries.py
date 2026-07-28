@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -1243,58 +1245,65 @@ class LogionApiQueries:
         query: dict[str, Any],
         agent_roles: dict[str, str],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify harness scope targets are resolvable via CLI surface.
-
-        The remote adapter confirms the CLI exposes the scope contract by
-        checking that the ``resources inventory`` command succeeds.  The
-        actual scope resolution is a CLI-local operation; the API adapter
-        validates that the public surface is reachable.
-        """
-        harnesses = query.get("harnesses", [])
-        scopes = query.get("scopes", [])
-        if (
-            not isinstance(harnesses, list)
-            or not isinstance(scopes, list)
-            or not harnesses
-            or not scopes
-        ):
-            return {
-                "resolved": False,
-                "unsupported": True,
-                "reason": "harnesses and scopes lists are required",
+        artifacts = query.get("artifacts")
+        required_scopes = set(query.get("required_scopes", []))
+        if not isinstance(artifacts, dict) or not artifacts:
+            return _artifact_failure(
+                "artifacts mapping is required", "resolved"
+            )
+        evidence: dict[str, list[str]] = {}
+        for harness, path in artifacts.items():
+            try:
+                items = _load_cli_list(path, "logion.resources.inventory")
+            except (OSError, TypeError, ValueError) as exc:
+                return _artifact_failure(str(exc), "resolved")
+            scopes = {
+                str(item.get("scope_kind"))
+                for item in items
+                if isinstance(item, dict)
             }
-        return {
-            "resolved": True,
-            "harnesses": harnesses,
-            "scopes": scopes,
-            "evidence": {"source": "cli-local"},
-        }
+            if not required_scopes.issubset(scopes):
+                return _artifact_failure(
+                    f"{harness} missing scopes: "
+                    + ", ".join(sorted(required_scopes - scopes)),
+                    "resolved",
+                )
+            evidence[str(harness)] = sorted(scopes)
+        return {"resolved": True, "evidence": evidence}
 
     async def _q_resource_acquire_plan_dry_run(
         self,
         query: dict[str, Any],
         agent_roles: dict[str, str],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify resource acquire dry-run plan is valid and zero-write.
-
-        The acquire plan is a CLI-local operation; the remote adapter
-        confirms the surface is reachable and the plan is zero-write.
-        """
-        harness = query.get("harness")
-        scope = query.get("scope")
-        zero_write = query.get("zero_write", True)
-        if not harness or not scope:
-            return {
-                "valid": False,
-                "unsupported": True,
-                "reason": "harness and scope are required",
-            }
+        try:
+            plan = _load_cli_object(
+                query.get("artifact"), "logion.resources.acquire"
+            )
+            before = _load_json_object(query.get("before_snapshot"))
+            after = _snapshot_roots(query.get("snapshot_roots", []))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "valid")
+        targets = plan.get("targets")
+        if not isinstance(targets, list) or len(targets) != 1:
+            return _artifact_failure(
+                "plan must select exactly one target", "valid"
+            )
+        target = targets[0]
+        if not isinstance(target, dict):
+            return _artifact_failure("plan target is not an object", "valid")
+        valid = (
+            plan.get("dry_run") is True
+            and plan.get("scope") == query.get("expected_scope")
+            and target.get("target_path") == query.get("expected_target")
+            and before == after
+        )
         return {
-            "valid": True,
-            "harness": harness,
-            "scope": scope,
-            "zero_write": bool(zero_write),
-            "evidence": {"source": "cli-local"},
+            "valid": valid,
+            "zero_write": before == after,
+            "scope": plan.get("scope"),
+            "target_path": target.get("target_path"),
+            "evidence": {"source": str(query.get("artifact"))},
         }
 
     async def _q_harness_scope_nested_repo(
@@ -1302,51 +1311,214 @@ class LogionApiQueries:
         query: dict[str, Any],
         agent_roles: dict[str, str],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify nested repo scope resolution for all harnesses."""
-        harnesses = query.get("harnesses", [])
-        nested_repo = query.get("nested_repo", "")
-        if not isinstance(harnesses, list) or not harnesses or not nested_repo:
-            return {
-                "nested": False,
-                "unsupported": True,
-                "reason": "harnesses list and nested_repo are required",
-            }
-        return {
-            "nested": True,
-            "harnesses": harnesses,
-            "nested_repo": nested_repo,
-            "evidence": {"source": "cli-local"},
-        }
+        artifacts = query.get("artifacts")
+        expected_root = str(query.get("expected_root", ""))
+        if (
+            not isinstance(artifacts, dict)
+            or not artifacts
+            or not expected_root
+        ):
+            return _artifact_failure(
+                "artifacts and expected_root are required", "nested"
+            )
+        evidence: dict[str, str] = {}
+        for harness, path in artifacts.items():
+            try:
+                plan = _load_cli_object(path, "logion.resources.acquire")
+            except (OSError, TypeError, ValueError) as exc:
+                return _artifact_failure(str(exc), "nested")
+            targets = plan.get("targets")
+            target = (
+                targets[0] if isinstance(targets, list) and targets else None
+            )
+            if (
+                plan.get("scope") != "repo-root"
+                or not isinstance(target, dict)
+                or target.get("scope_root") != expected_root
+            ):
+                return _artifact_failure(
+                    f"{harness} did not resolve the expected repository root",
+                    "nested",
+                )
+            evidence[str(harness)] = str(target.get("target_path"))
+        return {"nested": True, "evidence": evidence}
 
     async def _q_harness_inventory_distinct_scopes(
         self,
         query: dict[str, Any],
         agent_roles: dict[str, str],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify harness inventory keeps nested scope skills distinct."""
-        harnesses = query.get("harnesses", [])
-        if not isinstance(harnesses, list) or not harnesses:
-            return {
-                "distinct": False,
-                "unsupported": True,
-                "reason": "harnesses list is required",
-            }
-        return {
-            "distinct": True,
-            "harnesses": harnesses,
-            "evidence": {"source": "cli-local"},
-        }
+        artifacts = query.get("artifacts")
+        resource_name = str(query.get("resource_name", ""))
+        if (
+            not isinstance(artifacts, dict)
+            or not artifacts
+            or not resource_name
+        ):
+            return _artifact_failure(
+                "artifacts and resource_name are required", "distinct"
+            )
+        evidence: dict[str, list[str]] = {}
+        for harness, path in artifacts.items():
+            try:
+                items = _load_cli_list(path, "logion.resources.inventory")
+            except (OSError, TypeError, ValueError) as exc:
+                return _artifact_failure(str(exc), "distinct")
+            candidates = [
+                item
+                for item in items
+                if isinstance(item, dict) and item.get("name") == resource_name
+            ]
+            paths = {str(item.get("path")) for item in candidates}
+            if (
+                len(paths) < 2
+                or not all(
+                    item.get("ambiguous") is True for item in candidates
+                )
+                or not all(
+                    isinstance(item.get("precedence"), int)
+                    for item in candidates
+                )
+            ):
+                return _artifact_failure(
+                    f"{harness} did not preserve ambiguous candidates",
+                    "distinct",
+                )
+            evidence[str(harness)] = sorted(paths)
+        return {"distinct": True, "evidence": evidence}
 
     async def _q_observation_envelope_no_raw_data(
         self,
-        query: dict[str, Any],  # noqa: ARG002
+        query: dict[str, Any],
         agent_roles: dict[str, str],  # noqa: ARG002
     ) -> dict[str, Any]:
-        """Verify observation envelope contains no raw task data."""
-        return {
-            "clean": True,
-            "evidence": {"source": "cli-local"},
+        path = Path(str(query.get("artifact", "")))
+        try:
+            lines = [
+                line
+                for line in path.read_text().splitlines()  # noqa: ASYNC240
+                if line
+            ]
+            envelopes = [json.loads(line) for line in lines]
+        except (OSError, json.JSONDecodeError) as exc:
+            return _artifact_failure(str(exc), "clean")
+        allowed = {
+            "event",
+            "harness",
+            "harness_session_id",
+            "installation_id",
+            "resource_version_id",
+            "scope_kind",
+            "scope_id",
+            "task_class",
+            "outcome",
+            "started_at",
+            "finished_at",
+            "duration_ms",
+            "integration_version",
         }
+        clean = bool(envelopes) and all(
+            isinstance(envelope, dict)
+            and set(envelope).issubset(allowed)
+            and not _contains_forbidden_observation_data(envelope)
+            for envelope in envelopes
+        )
+        return {
+            "clean": clean,
+            "count": len(envelopes),
+            "evidence": {"source": str(path)},
+        }
+
+
+def _artifact_failure(reason: str, result_key: str) -> dict[str, Any]:
+    return {result_key: False, "reason": reason, "evidence": {}}
+
+
+def _load_json_object(raw_path: Any) -> dict[str, Any]:
+    if not isinstance(raw_path, str) or not raw_path:
+        raise ValueError("artifact path is required")
+    path = Path(raw_path)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"artifact is not a regular file: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError(f"artifact is not a JSON object: {path}")
+    return payload
+
+
+def _load_cli_data(raw_path: Any, expected_kind: str) -> Any:
+    envelope = _load_json_object(raw_path)
+    if (
+        envelope.get("version") != "v1"
+        or envelope.get("kind") != expected_kind
+    ):
+        raise ValueError(f"unexpected CLI envelope in {raw_path}")
+    return envelope.get("data")
+
+
+def _load_cli_object(raw_path: Any, expected_kind: str) -> dict[str, Any]:
+    data = _load_cli_data(raw_path, expected_kind)
+    if not isinstance(data, dict):
+        raise TypeError(f"CLI data is not an object: {raw_path}")
+    return data
+
+
+def _load_cli_list(raw_path: Any, expected_kind: str) -> list[Any]:
+    data = _load_cli_data(raw_path, expected_kind)
+    if not isinstance(data, list):
+        raise TypeError(f"CLI data is not a list: {raw_path}")
+    return data
+
+
+def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
+    if not isinstance(raw_roots, list) or not raw_roots:
+        raise ValueError("snapshot_roots list is required")
+    result: dict[str, str] = {}
+    for raw_root in raw_roots:
+        root = Path(str(raw_root))
+        if not root.is_dir():
+            raise ValueError(f"snapshot root is not a directory: {root}")
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                result[str(path)] = hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+    return result
+
+
+def _contains_forbidden_observation_data(envelope: dict[str, Any]) -> bool:
+    identifier_fields = {
+        "harness_session_id",
+        "installation_id",
+        "resource_version_id",
+        "scope_id",
+    }
+    structured_fields = {
+        "event",
+        "harness",
+        "scope_kind",
+        "task_class",
+        "outcome",
+        "integration_version",
+    }
+    forbidden_names = re.compile(
+        r"prompt|source|code|path|argument|secret|token|credential|content|payload",
+        re.IGNORECASE,
+    )
+    opaque = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+    structured = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+    for key, value in envelope.items():
+        if forbidden_names.search(key):
+            return True
+        if key in identifier_fields and (
+            not isinstance(value, str) or not opaque.fullmatch(value)
+        ):
+            return True
+        if key in structured_fields and (
+            not isinstance(value, str) or not structured.fullmatch(value)
+        ):
+            return True
+    return False
 
 
 def _unsupported(reason: str) -> dict[str, Any]:

@@ -34,8 +34,9 @@ def _make(adapter_cls, tmp_path: Path):
     ],
 )
 def test_skill_dir_per_harness(
-    tmp_path: Path, adapter_cls, expected_suffix: str
+    tmp_path: Path, monkeypatch, adapter_cls, expected_suffix: str
 ) -> None:
+    monkeypatch.delenv("HERMES_HOME", raising=False)
     a = _make(adapter_cls, tmp_path)
     result = a.skill_dir()
     assert result == (tmp_path / "home" / expected_suffix)
@@ -52,11 +53,13 @@ def test_registry_lists_all_five() -> None:
     assert names == {"claude-code", "codex", "opencode", "hermes", "pi"}
 
 
-def test_detect_present_per_harness(tmp_path: Path) -> None:
+def test_detect_present_per_harness(tmp_path: Path, monkeypatch) -> None:
     """Only the harness whose dir exists should be detected."""
     import shutil
 
     import cli._harness as harness_mod
+
+    monkeypatch.delenv("HERMES_HOME", raising=False)
 
     # Force all adapters to use our injected home and isolate PATH.
     original_all = harness_mod.all_adapters
