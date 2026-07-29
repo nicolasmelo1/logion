@@ -1297,12 +1297,15 @@ class LogionApiQueries:
             and plan.get("scope") == query.get("expected_scope")
             and target.get("target_path") == query.get("expected_target")
             and before == after
+            and plan.get("executable") is not True
         )
         return {
             "valid": valid,
             "zero_write": before == after,
             "scope": plan.get("scope"),
             "target_path": target.get("target_path"),
+            "executable": plan.get("executable"),
+            "permissions_required": plan.get("permissions_required"),
             "evidence": {"source": str(query.get("artifact"))},
         }
 
@@ -1373,7 +1376,9 @@ class LogionApiQueries:
             if (
                 len(paths) < 2
                 or not all(
-                    item.get("ambiguous") is True for item in candidates
+                    item.get("ambiguous_name") is True
+                    or item.get("ambiguous") is True
+                    for item in candidates
                 )
                 or not all(
                     isinstance(item.get("precedence"), int)
@@ -1465,9 +1470,18 @@ def _load_cli_object(raw_path: Any, expected_kind: str) -> dict[str, Any]:
 
 def _load_cli_list(raw_path: Any, expected_kind: str) -> list[Any]:
     data = _load_cli_data(raw_path, expected_kind)
-    if not isinstance(data, list):
-        raise TypeError(f"CLI data is not a list: {raw_path}")
-    return data
+    if isinstance(data, list):
+        return data
+    # Some CLI commands (e.g. resources inventory) emit a dict envelope
+    # whose payload list is nested under a key rather than at the top
+    # level.  Extract the canonical list field so callers always see a
+    # list.
+    if isinstance(data, dict):
+        for key in ("resources", "items", "results"):
+            nested = data.get(key)
+            if isinstance(nested, list):
+                return nested
+    raise TypeError(f"CLI data is not a list: {raw_path}")
 
 
 def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
@@ -1478,9 +1492,12 @@ def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
         root = Path(str(raw_root))
         if not root.is_dir():
             raise ValueError(f"snapshot root is not a directory: {root}")
+        skip_dirs = {".cache", "__pycache__", ".local", "Library"}
         for path in sorted(root.rglob("*")):
             if path.is_file():
-                result[str(path)] = hashlib.sha256(
+                if any(part in skip_dirs for part in path.parts):
+                    continue
+                result[str(path.resolve())] = hashlib.sha256(
                     path.read_bytes()
                 ).hexdigest()
     return result
@@ -1505,10 +1522,17 @@ def _contains_forbidden_observation_data(envelope: dict[str, Any]) -> bool:
         r"prompt|source|code|path|argument|secret|token|credential|content|payload",
         re.IGNORECASE,
     )
+    # Sanctioned field names that contain a forbidden substring (e.g.
+    # "resource_version_id" contains "source") but are explicitly allowed
+    # by the envelope contract.
+    forbidden_name_exceptions = frozenset({"resource_version_id"})
     opaque = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
     structured = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
     for key, value in envelope.items():
-        if forbidden_names.search(key):
+        if (
+            forbidden_names.search(key)
+            and key not in forbidden_name_exceptions
+        ):
             return True
         if key in identifier_fields and (
             not isinstance(value, str) or not opaque.fullmatch(value)

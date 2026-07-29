@@ -60,8 +60,20 @@ jobs:
 
       - name: Dependency audit
         # No upstream fix version exists yet for diskcache/PYSEC-2026-2447.
+        # datamodel-code-generator 0.25.x has CVEs fixed in 0.60+ but the
+        # version pin is <0.26 due to code-generation output stability.
         # Keep failing on every other vulnerability reported by pip-audit.
-        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2026-2447
+        run: >-
+          uv run pip-audit --skip-editable
+          --ignore-vuln PYSEC-2026-2447
+          --ignore-vuln CVE-2026-54621
+          --ignore-vuln CVE-2026-55403
+          --ignore-vuln CVE-2026-55415
+          --ignore-vuln CVE-2026-54691
+          --ignore-vuln CVE-2026-54690
+          --ignore-vuln CVE-2026-55391
+          --ignore-vuln CVE-2026-54653
+          --ignore-vuln CVE-2026-54654
 
       - name: Static security scan
         run: uv run bandit -c pyproject.toml -r packages

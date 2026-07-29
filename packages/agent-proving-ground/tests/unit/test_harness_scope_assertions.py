@@ -84,6 +84,7 @@ class TestResourceAcquirePlanDryRun:
         )
         assert outcome.status == "passed"
         assert outcome.evidence.get("zero_write") is True
+        assert outcome.evidence.get("executable") is False
 
     @pytest.mark.asyncio
     async def test_unsupported_without_harness(self, registry, ctx):
@@ -93,6 +94,23 @@ class TestResourceAcquirePlanDryRun:
             {"scope": "repo-root"},
         )
         assert outcome.status == "unsupported"
+
+    @pytest.mark.asyncio
+    async def test_evidence_includes_executable_and_permissions(
+        self, registry, ctx
+    ):
+        outcome = await registry.evaluate(
+            ctx,
+            "api.resource_acquire_plan_dry_run",
+            {
+                "harness": "codex",
+                "scope": "repo-root",
+                "zero_write": True,
+            },
+        )
+        assert outcome.status == "passed"
+        assert "executable" in outcome.evidence
+        assert "permissions_required" in outcome.evidence
 
 
 class TestHarnessScopeNestedRepo:

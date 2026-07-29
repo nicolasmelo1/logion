@@ -112,6 +112,44 @@ def test_acquisition_plan_is_honest_when_distribution_is_unresolved(
     assert not target.target_path.exists()
 
 
+def test_acquisition_plan_not_executable_when_permissions_unresolved(
+    tmp_path: Path,
+) -> None:
+    """A dry-run plan must not be executable when permissions are unknown."""
+    target = ScopeTarget(
+        scope_kind="repo-root",
+        scope_root=tmp_path,
+        target_path=tmp_path / ".agents" / "skills",
+        native_manager=None,
+        exists=False,
+    )
+    plan = build_plan(
+        resource_id="res-1",
+        scope="repo-root",
+        harness="codex",
+        resource={"title": "Audit Skill", "canonical_uri": "logion://res-1"},
+        versions=[
+            {
+                "id": "v1",
+                "digest_algorithm": "sha256",
+                "content_digest": "abc123",
+                "distribution_url": "https://example.test/v1.zip",
+            }
+        ],
+        targets=[target],
+        default_scope="repo-root",
+        scope_was_explicit=True,
+    )
+    assert plan["executable"] is False
+    assert any(
+        "permissions not resolved" in r for r in plan["blocked_reasons"]
+    )
+    assert (
+        plan["permissions_required"]
+        == "unknown-until-distribution-is-resolved"
+    )
+
+
 def test_inventory_does_not_trust_marker_existence(tmp_path: Path) -> None:
     skill = tmp_path / "skills" / "audit-skill"
     skill.mkdir(parents=True)
