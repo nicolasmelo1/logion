@@ -36,9 +36,11 @@ phases:
     goal: |
       Use only the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH}. Set HOME
       to ${ISOLATED_HOME}. From ${NESTED_CWD}, run resources inventory with
-      JSON output for codex, claude-code, hermes, and pi. Save the complete JSON
-      outputs as ${EVIDENCE_DIR}/inventory-<harness>.json. Do not fabricate or
-      edit the output files. Stop with a failure if any command fails.
+      JSON output for codex, claude-code, hermes, and pi. Pass
+      --repo-root ${FIXTURE_ROOT} so repo scopes are scanned. Save the
+      complete JSON outputs as ${EVIDENCE_DIR}/inventory-<harness>.json. Do
+      not fabricate or edit the output files. Stop with a failure if any
+      command fails.
     success_hint: Four CLI JSON files exist and contain the seeded acme skill.
     assertions:
       - type: api.harness_scope_targets_resolved
