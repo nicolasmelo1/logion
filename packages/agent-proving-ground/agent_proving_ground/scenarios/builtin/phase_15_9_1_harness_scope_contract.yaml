@@ -34,12 +34,15 @@ phases:
       EVIDENCE_DIR: evidence_dir
       BEFORE_SNAPSHOT: snapshot_path
     goal: |
-      Use only the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH}. Set HOME
-      to ${ISOLATED_HOME}. From ${NESTED_CWD}, run resources inventory with
+      Use the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH} (run it as
+      "uv run --project ${LOGION_PUBLIC_REPO_PATH} logion"). Set HOME to
+      ${ISOLATED_HOME}. From ${NESTED_CWD}, run resources inventory with
       JSON output for codex, claude-code, hermes, and pi. Pass
-      --repo-root ${FIXTURE_ROOT} so repo scopes are scanned. Save the
-      complete JSON outputs as ${EVIDENCE_DIR}/inventory-<harness>.json. Do
-      not fabricate or edit the output files. Stop with a failure if any
+      --repo-root ${FIXTURE_ROOT} so repo scopes are scanned. The command
+      pattern is:
+        logion resources inventory --harness <harness> --json --repo-root ${FIXTURE_ROOT}
+      Save the complete JSON outputs as ${EVIDENCE_DIR}/inventory-<harness>.json.
+      Do not fabricate or edit the output files. Stop with a failure if any
       command fails.
     success_hint: Four CLI JSON files exist and contain the seeded acme skill.
     assertions:
@@ -55,11 +58,18 @@ phases:
   - id: acquire-zero-write
     actor: operator
     goal: |
-      Query the local devrig through the public CLI for one indexed skill. Parse
-      its canonical resource ID from JSON, then run resources acquire for Codex
-      with --scope repo-root --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT}
-      --dry-run --json. Save the unmodified output as
-      ${EVIDENCE_DIR}/acquire-codex.json. Do not write into any native target.
+      Use the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH} (run it as
+      "uv run --project ${LOGION_PUBLIC_REPO_PATH} logion"). Set HOME to
+      ${ISOLATED_HOME} and LOGION_API_KEY from the environment. Search for
+      one indexed agent-skill resource:
+        logion resources search "" --resource-type agent_skill --json --base-url http://localhost:8000
+      Parse the first resource ID from the JSON data.items array. Then run:
+        logion resources acquire <RESOURCE_ID> --harness codex
+          --scope repo-root --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT}
+          --dry-run --json --base-url http://localhost:8000
+      Save the unmodified JSON output as ${EVIDENCE_DIR}/acquire-codex.json.
+      Do not write into any native target. Stop with a failure if any
+      command fails.
     success_hint: The saved plan resolves ${FIXTURE_ROOT}/.agents/skills.
     assertions:
       - type: api.resource_acquire_plan_dry_run
@@ -73,9 +83,13 @@ phases:
   - id: nested-default-scope
     actor: operator
     goal: |
-      For codex, claude-code, and pi, run the same resource acquisition dry-run
-      from ${NESTED_CWD} without --scope. Keep HOME=${ISOLATED_HOME}, pass
-      --repo-root ${FIXTURE_ROOT}, and save each JSON plan as
+      Use the same CLI invocation pattern as the previous phase
+      (uv run --project ${LOGION_PUBLIC_REPO_PATH} logion, HOME set to
+      ${ISOLATED_HOME}, LOGION_API_KEY from env, --base-url
+      http://localhost:8000). Run resources acquire for the same resource
+      ID you found previously, for codex, claude-code, and pi, with
+      --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT} --dry-run --json
+      but WITHOUT --scope. Save each JSON plan as
       ${EVIDENCE_DIR}/nested-<harness>.json. Do not install anything.
     success_hint: Every plan defaults to the XPTO repository root, never user.
     assertions:
@@ -105,10 +119,14 @@ phases:
   - id: observation-minimal-disclosure
     actor: operator
     goal: |
-      Use the public CLI package's observation API to create one consented local
-      observation under ${AGENT_OPERATOR_WORKSPACE}/logion-home. Use opaque IDs,
-      no paths or task text, and the versioned minimal envelope. Save nothing
-      else and do not alter the resulting JSONL file.
+      Use the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH} (run it as
+      "uv run --project ${LOGION_PUBLIC_REPO_PATH} logion"). Set HOME to
+      ${ISOLATED_HOME}. Use the CLI's observation command to create one
+      consented local observation under ${AGENT_OPERATOR_WORKSPACE}/logion-home.
+      Use opaque IDs, no paths or task text, and the versioned minimal
+      envelope. The observation file should be at
+      ${AGENT_OPERATOR_WORKSPACE}/logion-home/observations/observations.jsonl.
+      Save nothing else and do not alter the resulting JSONL file.
     success_hint: The spool has one sanctioned minimal-disclosure envelope.
     assertions:
       - type: api.observation_envelope_no_raw_data
