@@ -1376,7 +1376,9 @@ class LogionApiQueries:
             if (
                 len(paths) < 2
                 or not all(
-                    item.get("ambiguous") is True for item in candidates
+                    item.get("ambiguous_name") is True
+                    or item.get("ambiguous") is True
+                    for item in candidates
                 )
                 or not all(
                     isinstance(item.get("precedence"), int)
