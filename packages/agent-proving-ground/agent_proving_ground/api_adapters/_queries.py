@@ -1490,8 +1490,11 @@ def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
         root = Path(str(raw_root))
         if not root.is_dir():
             raise ValueError(f"snapshot root is not a directory: {root}")
+        skip_dirs = {".cache", "__pycache__"}
         for path in sorted(root.rglob("*")):
             if path.is_file():
+                if any(part in skip_dirs for part in path.parts):
+                    continue
                 result[str(path)] = hashlib.sha256(
                     path.read_bytes()
                 ).hexdigest()

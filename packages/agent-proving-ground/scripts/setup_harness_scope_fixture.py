@@ -24,11 +24,14 @@ def _write_skill(skills_dir: Path, name: str, marker: str) -> None:
 
 def _snapshot(roots: list[Path]) -> dict[str, str]:
     result: dict[str, str] = {}
+    skip_dirs = {".cache", "__pycache__"}
     for root in roots:
         if not root.exists():
             continue
         for path in sorted(root.rglob("*")):
             if path.is_file():
+                if any(part in skip_dirs for part in path.parts):
+                    continue
                 result[str(path)] = hashlib.sha256(
                     path.read_bytes()
                 ).hexdigest()
