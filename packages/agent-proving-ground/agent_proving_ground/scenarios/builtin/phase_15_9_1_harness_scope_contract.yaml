@@ -36,12 +36,12 @@ phases:
     goal: |
       Use the public Logion CLI from ${LOGION_PUBLIC_REPO_PATH} (run it as
       "uv run --project ${LOGION_PUBLIC_REPO_PATH} logion"). Set HOME to
-      ${ISOLATED_HOME}. From ${NESTED_CWD}, run resources inventory with
-      JSON output for codex, claude-code, hermes, and pi. Pass
-      --repo-root ${FIXTURE_ROOT} and --cwd ${NESTED_CWD} so repo scopes
-      are scanned from the nested directory. The command pattern is:
-        logion resources inventory --harness <harness> --json --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT}
-      Save the complete JSON outputs as ${EVIDENCE_DIR}/inventory-<harness>.json.
+      ${ISOLATED_HOME}. Run these four commands exactly, one per harness,
+      and save each JSON output to ${EVIDENCE_DIR}/inventory-<harness>.json:
+        uv run --project ${LOGION_PUBLIC_REPO_PATH} logion resources inventory --harness codex --json --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT} > ${EVIDENCE_DIR}/inventory-codex.json
+        uv run --project ${LOGION_PUBLIC_REPO_PATH} logion resources inventory --harness claude-code --json --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT} > ${EVIDENCE_DIR}/inventory-claude-code.json
+        uv run --project ${LOGION_PUBLIC_REPO_PATH} logion resources inventory --harness hermes --json --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT} > ${EVIDENCE_DIR}/inventory-hermes.json
+        uv run --project ${LOGION_PUBLIC_REPO_PATH} logion resources inventory --harness pi --json --cwd ${NESTED_CWD} --repo-root ${FIXTURE_ROOT} > ${EVIDENCE_DIR}/inventory-pi.json
       Do not fabricate or edit the output files. Stop with a failure if any
       command fails.
     success_hint: Four CLI JSON files exist and contain the seeded acme skill.
