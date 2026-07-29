@@ -85,6 +85,14 @@ def build_plan(
         blocked_reasons.append(
             "target path conflicts with non-resource content"
         )
+    # A plan is not executable when the required permissions are unknown
+    # (i.e. the distribution has not been resolved yet).  Executing without
+    # knowing the permissions/confirmations could silently install content
+    # that requires elevated access or interactive confirmation.
+    if not blocked_reasons:
+        blocked_reasons.append(
+            "permissions not resolved for this distribution"
+        )
     return {
         "resource_id": resource_id,
         "resource_name": name,

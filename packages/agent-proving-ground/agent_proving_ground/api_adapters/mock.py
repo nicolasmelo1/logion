@@ -479,6 +479,10 @@ class MockApiAdapter(ApiAdapter):
                     "harness": harness,
                     "scope": scope,
                     "zero_write": bool(zero_write),
+                    "executable": False,
+                    "permissions_required": (
+                        "unknown-until-distribution-is-resolved"
+                    ),
                 }
             case "harness_scope_nested_repo":
                 harnesses = query.get("harnesses", [])

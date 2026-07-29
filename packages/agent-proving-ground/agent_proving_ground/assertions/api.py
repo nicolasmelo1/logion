@@ -302,9 +302,21 @@ class ResourceAcquirePlanDryRunAssertion(_ApiQueryAssertion):
     type = "api.resource_acquire_plan_dry_run"
     query_type = "resource_acquire_plan_dry_run"
     found_key = "valid"
-    evidence_keys = ("harness", "scope", "zero_write")
-    pass_message = "resource acquire dry-run plan is valid and zero-write"
-    fail_message = "resource acquire dry-run plan is invalid or non-zero-write"
+    evidence_keys = (
+        "harness",
+        "scope",
+        "zero_write",
+        "executable",
+        "permissions_required",
+    )
+    pass_message = (
+        "resource acquire dry-run plan is valid, "
+        "zero-write, and non-executable"
+    )
+    fail_message = (
+        "resource acquire dry-run plan is invalid, "
+        "non-zero-write, or prematurely executable"
+    )
 
 
 class HarnessScopeNestedRepoAssertion(_ApiQueryAssertion):
