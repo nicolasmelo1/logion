@@ -65,7 +65,7 @@ operating the index is the position.
 | PDS (self-hosted user data server, permissionless) | Resource/evidence node | AI Catalog publication + ARD discovery in [`plans/phase-15.12`](../plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md), AKTP events in [`plans/phase-15.17`](../plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md) |
 | Relay (crawls all PDSs, aggregates) | The `logion-indexer` crawler feeding `api.logion.sh` | Shipped shape in phase 15.6 |
 | AppView (indexes, serves the app view, applies moderation) | `api.logion.sh` listings/search + the scanner pipeline as reach policy | Exists (centralized) |
-| Client (Graysky, deer.social, …) | `logion` CLI, agent-companion, third-party clients via the public wire contract | Resource CLI is additive in [`plans/phase-15.9`](../plans/phase-15.9-generic-resource-model-and-index-backfill.md); white-label bins were dropped |
+| Client (Graysky, deer.social, …) | `logion` CLI, agent-companion, third-party clients via the public wire contract | Resource CLI shipped as an additive surface in phase 15.9; white-label bins were dropped |
 | Lexicons (schemas) | Manifest spec, package maps, capability manifests, node feed spec | Partially written; consolidate before any code opens |
 | Payments | **Out of protocol.** Node-local checkout choice | Stripe = the Logion node's adapter, not a protocol rule |
 

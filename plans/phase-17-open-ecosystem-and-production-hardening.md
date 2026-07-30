@@ -18,6 +18,11 @@ Each 17.x phase has a mandatory store-search/use/review prompt. Run it independe
 
 Phase 17 cannot compensate for missing Phase 16 exit gates. Federation, claims, private nodes, copy, and conformance ship behind separate flags and rollback paths. The concrete subphase specs—not this umbrella—define files, security cases, tests, and rollout.
 
+Phase 17.1 carries forward the attributable outcome of
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+It may publish joint conformance or contribute upstream only with agreed wording;
+it must not retroactively describe exploratory contact as adoption or partnership.
+
 ## Sequence
 
 1. 17.1 AI Catalog/ARD/AKTP conformance and upstream proposals.

@@ -36,6 +36,25 @@ Use `--not-completed-task` when appropriate. Record the feedback ID and `course_
 
 Make accumulated evidence useful at selection time.
 
+## Selection-contract boundary
+
+Follow the decision record in
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+This phase implements local policy over typed claims; it does not define a
+second public service-value/selection manifest.
+
+- If the projects converge, pin the agreed ASM revision, keep its declared
+  selection facts under their original issuer/digest, and treat its selector as
+  a public reference profile that callers may replace.
+- If the projects share only primitives, implement only those accepted
+  primitives and keep the remaining Logion ranking inputs internal/generic.
+- If the projects remain independent, do not advertise ASM compatibility or
+  publish a competing protocol. Evidence ranking still works over Logion's
+  generic claim model.
+
+No imported ASM/registry score is authority. Hard eligibility inputs,
+observations, evals, and local policy remain distinct in the explanation.
+
 ## Dogfood prompt for the implementing agent
 
 ```text
@@ -113,3 +132,6 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - Search latency and pagination remain bounded on the dogfood corpus.
 - Two profiles can order the same evidence differently and both explanations are reproducible offline.
 - Ranking never changes an evidence or authority record.
+- No public Logion selection descriptor duplicates an independently governed
+  ASM descriptor; the collaboration decision and pinned revision are visible
+  when an ASM reference profile is used.

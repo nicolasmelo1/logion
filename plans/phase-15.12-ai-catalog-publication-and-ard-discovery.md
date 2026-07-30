@@ -64,6 +64,34 @@ implementation must not call an AI Catalog document an “ARD schema”, pretend
 ARD replaces AI Catalog, or put Logion evidence semantics into either base
 specification.
 
+## ASM collaboration boundary
+
+Before the Phase 15.12 design freeze, complete the T0 outreach and create the
+initial overlap/ownership matrix in
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+This phase does not adopt ASM and does not require an ASM production adapter.
+The base AI Catalog/ARD work does not wait on an external response: silence is
+recorded as the independent outcome and the phase remains artifact-agnostic.
+
+AI Catalog's open `type` and `metadata` mechanisms allow an independently
+governed artifact such as ASM to be represented without changing AI Catalog.
+ARD may discover or filter such entries without owning their selection
+semantics. Logion therefore:
+
+- preserves unknown artifact types and namespaced metadata under the pinned
+  specifications;
+- records the original publisher/registry/issuer and immutable fetched digest;
+- does not promote mutable price, SLA, risk, or quality values into authoritative
+  Logion fields merely because a registry returned them;
+- does not create a Logion selection manifest or map ASM `service_id` into a
+  second global identity;
+- adds no ASM-specific production behavior until Yi and Logion have a written
+  boundary decision or a later explicit independent decision.
+
+One manually approved external catalog may be used as a generic unknown-type
+fixture. Calling that catalog ASM-compatible, or using it as evidence of a
+partnership, is out of scope.
+
 ## Dogfood prompt for the implementing agent
 
 ```text
@@ -357,3 +385,7 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 - AI Catalog and ARD failures have separate stable error codes and quarantine.
 - Search can filter by resource type and source.
 - No AKTP endpoint is required to discover a resource.
+- The published/ingested model remains artifact-agnostic: no ASM-specific
+  schema, selector, receipt, or partnership claim is required for this phase.
+- The ASM outreach/ownership matrix exists before any later production adapter
+  is authorized.

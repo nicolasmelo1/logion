@@ -2,9 +2,12 @@
 
 # Future roadmap
 
-This directory describes Logion after the product-direction correction captured
-in Phase 15.9 onward. `plans/` is the implementation source of truth. These
-documents may explain later bets, but cannot pull infrastructure-heavy work
+This directory describes Logion after the product-direction correction whose
+delivered resource-identity foundation is now consolidated in maintainer docs.
+Active implementation resumes at Phase 15.10. `plans/` is the implementation
+source of truth, with surviving normative carry-over in
+`plans/next-steps.md`. These documents may explain later bets, but cannot pull
+infrastructure-heavy work
 ahead of the evidence required by the phase plans.
 
 ## Product thesis
@@ -51,6 +54,22 @@ Normative snapshots and machine-readable schemas are pinned in
 must read those sources first; roadmap prose is not a substitute for either
 specification.
 
+## Protocol-convergence rule
+
+Supporting ecosystem standards does not justify duplicating their concepts
+inside Logion. In particular,
+[ASM](https://github.com/YE-YI7/asm-spec) overlaps planned selection inputs,
+ranking, declared-versus-observed analysis, and receipts. Logion will approach
+creator Yi Guo early and decide the boundary collaboratively before freezing an
+ASM-specific adapter, public selection manifest, or invocation/cost receipt.
+
+The intended strategy is documented in
+[ASM collaboration and protocol convergence](asm-collaboration-and-protocol-convergence.md);
+the actionable timing/contact gate is in
+[`plans/asm-logion-collaboration-and-protocol-convergence-gate.md`](../plans/asm-logion-collaboration-and-protocol-convergence-gate.md).
+Until both projects agree, documentation says only that interoperability is
+being explored.
+
 ## What is defensible if this works
 
 The moat is not the listing page, installer wrapper, model endpoint, or protocol
@@ -94,8 +113,8 @@ first-party bootstrap, not independent network participation.
 
 ## Product-quality rule
 
-Every implementation phase from 15.9 onward has a named customer-like scenario
-in `packages/agent-proving-ground`. Unit tests and scripted agents remain useful
+Every active implementation phase from 15.10 onward has a named customer-like
+scenario in `packages/agent-proving-ground`. Unit tests and scripted agents remain useful
 but do not close a phase. The scenario must pass against the locally running
 API with GPT-5.4-mini or Claude Haiku, using public product surfaces and
 observed-effect assertions.
@@ -108,15 +127,16 @@ See:
 ## Current reading order
 
 1. [Sequenced roadmap](sequenced-roadmap.md)
-2. [Native resource, feedback, and first-node strategy](native-resource-feedback-and-first-node.md)
-3. [Agent proving-ground and customer fidelity](agent-proving-ground-and-customer-fidelity.md)
-4. [Protocol-ready architecture](protocol-ready-architecture.md)
-5. [Open protocol and entitlement portability](open-protocol-and-entitlement-portability.md)
-6. [Eval-backed bounties and improvement evidence](eval-backed-bounties-and-improvement-evidence.md)
-7. [Sandbox and runtime trust](sandbox-and-runtime-trust.md)
-8. [Economic network and rewards](economic-network-and-rewards.md)
-9. [Human dashboard and user policy](human-dashboard-and-user-policy.md)
-10. [B2B and ecosystem strategy](b2b-and-ecosystem-strategy.md)
+2. [ASM collaboration and protocol convergence](asm-collaboration-and-protocol-convergence.md)
+3. [Native resource, feedback, and first-node strategy](native-resource-feedback-and-first-node.md)
+4. [Agent proving-ground and customer fidelity](agent-proving-ground-and-customer-fidelity.md)
+5. [Protocol-ready architecture](protocol-ready-architecture.md)
+6. [Open protocol and entitlement portability](open-protocol-and-entitlement-portability.md)
+7. [Eval-backed bounties and improvement evidence](eval-backed-bounties-and-improvement-evidence.md)
+8. [Sandbox and runtime trust](sandbox-and-runtime-trust.md)
+9. [Economic network and rewards](economic-network-and-rewards.md)
+10. [Human dashboard and user policy](human-dashboard-and-user-policy.md)
+11. [B2B and ecosystem strategy](b2b-and-ecosystem-strategy.md)
 
 `post-launch-strategy.md` is retained as historical strategic context, but
 `sequenced-roadmap.md` wins on ordering and terminology.

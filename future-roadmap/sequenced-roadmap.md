@@ -18,25 +18,46 @@ side of a market.
 
 ## Stage 0 — preserve the existing product
 
-Phases 15.1–15.8 remain valuable:
+The delivered 15.1–15.9 foundation remains valuable:
 
 - account and GitHub identity;
 - publishing and immutable Course versions;
 - PR-based bounty delivery;
 - third-party skill indexing;
 - observation scans and discovery tiers;
-- platform-funded bounties with explicit approval and ledger invariants.
+- platform-funded bounties with explicit approval and ledger invariants;
+- generic typed resource identity, filtered resource reads, native-scope
+  inventory, and truthful blocked acquisition planning.
 
 Do not big-bang rename Course/skill surfaces. `Resource` is the generic identity
 underneath them. Existing APIs and CLI commands remain compatibility
 projections.
 
+## Cross-cutting checkpoint — converge before integrating ASM
+
+As soon as the public planning mirror can link the decision, approach ASM
+creator Yi Guo using
+[`plans/asm-logion-collaboration-and-protocol-convergence-gate.md`](../plans/asm-logion-collaboration-and-protocol-convergence-gate.md).
+This exploratory contact happens before Phase 15.12 design freeze; it does not
+wait for an adapter and does not claim a partnership.
+
+After Phase 15.11 supplies real identity, consent, usage-receipt, and feedback
+artifacts, decide with Yi whether ASM owns the shared selection descriptor and
+invocation/cost receipt, whether only primitives are shared, or whether the
+projects remain independent. Phase 15.17 and Phase 16.7 cannot freeze competing
+wire contracts while that decision is unresolved.
+
+See [ASM collaboration and protocol convergence](asm-collaboration-and-protocol-convergence.md).
+
 ## Stage 1 — make native use observable and useful
 
-Covered by Phase 15.9–15.14.
-
-Phase 15.8.1 first publishes the planning mirror. Phase 15.9.1 then freezes
-harness-native scope semantics before acquisition code is implemented.
+The planning mirror, generic resource identity/backfill, and the shipped subset
+of harness-native scope semantics are now foundation rather than future phases;
+their former 15.8.1, 15.9, and 15.9.1 plan files are retired by the canonical
+mirror. Stage 1 implementation resumes at Phase 15.10 and runs through 15.14.
+The unimplemented HMAC identity, acquisition, reconciliation verifier, and
+harness-integrated observation contracts remain normative carry-over in
+`plans/next-steps.md` and are owned by 15.10/15.11.
 
 ### 1. Generic resource identity
 
@@ -87,6 +108,11 @@ Bootstrap actual discovery by synchronizing the official
 [`ard-connectors` Agent Finder directory](https://github.com/ards-project/ard-connectors/blob/main/agent-finders.json)
 into the server-side indexer. Query enabled Agent Finders on bounded schedules;
 do not install those connectors or finder preferences into customer clients.
+
+Phase 15.12 remains artifact-agnostic. It may preserve an unknown ASM media type
+or namespaced metadata under the pinned upstream rules, but it adds no
+ASM-specific production contract until the collaboration ownership matrix is
+written. One generic external fixture is enough to prove preservation.
 
 ### 5. Feedback-driven work
 
@@ -143,6 +169,12 @@ Publish signed, append-only evidence and improvement events linked to ARD
 resource IDs. Keep raw observations, private feedback, paths, prompts, and user
 identity off the public feed.
 
+AKTP does not duplicate an ASM/native invocation or cost receipt. It references
+the original signed object by subject, issuer, media type, and digest. If the
+ASM collaboration has not resolved receipt ownership, AKTP v0 excludes those
+receipt semantics and ships only the non-overlapping public
+evidence/improvement stream.
+
 ### Stage 2 exit
 
 The entire acquire → use → feedback → fund → improve → rerun lineage exists for
@@ -168,6 +200,12 @@ Order:
 11. MCP metadata and safe probes;
 12. Hugging Face metadata plus tiny constrained evaluation.
 
+Phase 16.7 applies replaceable local policy to evidence and declared selection
+inputs. It does not create a second universal service-value manifest or global
+score. If collaboration converges, the agreed pinned ASM selector is one public
+reference profile; if not, Logion keeps the boundary generic and makes no ASM
+compatibility claim.
+
 The coordinator schedules work; it does not promise compute it does not own.
 Model weights remain at their native host/cache unless a bounded evaluation has
 an explicit size, license, runner, and sponsor policy.
@@ -186,6 +224,8 @@ process controlled by the founder.
 Covered by Phase 17.
 
 - Keep AI Catalog, ARD, and AKTP codecs and executable conformance public.
+- Publish an ASM–Logion conformance/ownership report only if both projects
+  approved the wording; contribute shared fixes upstream rather than forking.
 - Propose missing attestation/evidence affordances upstream with fixtures rather
   than forking discovery semantics casually.
 - Federate independently administered nodes with distinct issuer policy.
@@ -222,8 +262,9 @@ simulate the required months of real independent production behavior.
 
 ## Permanent testing gate
 
-Every phase from 15.9 onward must add and pass its named builtin scenario under
-`logion/packages/agent-proving-ground`.
+Every active implementation phase from 15.10 onward must add and pass its named
+builtin scenario under `logion/packages/agent-proving-ground`. Retiring the old
+15.9/15.9.1 files does not waive any carry-over gate now owned by 15.10/15.11.
 
 Required properties:
 

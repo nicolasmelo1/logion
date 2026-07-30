@@ -55,6 +55,10 @@ is backed by a reproduced fixture, not merely drafted.
 - Maintain `packages/interop/compatibility.yaml` with separately pinned AI
   Catalog revisions, ARD revisions, AKTP versions, codec releases, and tested
   implementations.
+- If the ASM collaboration decision converged or shared primitives, record the
+  exact ASM revision, receipt/profile revisions, ownership boundary, and tested
+  implementations in the same matrix. Otherwise record ASM as evaluated but
+  unsupported; do not imply compatibility.
 - Add CI jobs for AI Catalog producer/consumer, ARD client/registry, and AKTP
   producer/verifier fixtures across current and N-1 supported versions.
 - Publish machine-readable conformance reports containing implementation/version, fixture suite digest, timestamp, pass/fail/skip, environment, and limitations.
@@ -63,7 +67,8 @@ is backed by a reproduced fixture, not merely drafted.
 ## Upstream proposal workflow
 
 1. Classify the gap as AI Catalog schema/publication/trust, ARD
-   discovery/registry, or AKTP evidence/improvement before drafting anything.
+   discovery/registry, agreed ASM selection/receipt semantics, or AKTP
+   evidence/improvement before drafting anything.
 2. Open a local issue with exact owning-spec text/revision, expected behavior,
    real resource/catalog, observed behavior, redacted logs, and reproduction.
 3. Prove the gap against two implementations or official fixtures.
@@ -73,12 +78,20 @@ is backed by a reproduced fixture, not merely drafted.
 
 Likely subject is evidence/trust link relations, not embedding AKTP objects or authority into ARD. No proposal is an acceptance criterion; a high-quality rejected proposal may still pass this phase.
 
+For ASM-related work, follow the attributable joint decision from
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+Prefer a co-authored fixture/report or an upstream ASM PR over a Logion-specific
+fork. Do not reopen ownership questions through code after they were explicitly
+declined.
+
 ## Code/docs changes
 
 - Public interop runner/fixtures/report generator; no private test-only protocol semantics.
 - Backend emits selected AI Catalog, ARD, and AKTP revisions independently.
 - CLI `logion protocol doctor --node URL` downloads only public metadata and produces a support bundle.
 - Documentation separates normative AKTP requirements, Logion policy, and experimental extensions.
+- Publish the ASM–Logion ownership matrix and the one-subject/one-receipt
+  interop result when both parties have approved the wording.
 
 ## Tests/acceptance additions
 
@@ -87,6 +100,8 @@ Likely subject is evidence/trust link relations, not embedding AKTP objects or a
 - Downgrade/N-1 and unknown-extension tests.
 - At least one public interop report from Logion and one clean reference/independent consumer.
 - Every upstream issue/PR link includes a passing minimal reproduction committed locally.
+- When ASM is in scope, a clean consumer proves declared selection facts,
+  Logion observations, and the single receipt remain independently attributable.
 
 ## Build
 
@@ -95,6 +110,9 @@ Likely subject is evidence/trust link relations, not embedding AKTP objects or a
 - Draft minimal ARD proposals for trust/evidence link relations or missing version semantics discovered in practice.
 - Keep experimental fields namespaced and optional.
 - Publish AKTP schemas, examples, threat model, versioning policy, and reference verifier.
+- Contribute accepted shared selection/receipt fixes upstream to ASM with Yi's
+  authorship and governance preserved; keep Logion-specific policy outside the
+  ASM wire contract.
 
 ## Mandatory proving-ground scenario
 
@@ -123,3 +141,6 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - Every proposed spec change cites a reproduced operational limitation.
 - No proposal duplicates an existing ARD mechanism.
 - Protocol artifacts build from tested examples.
+- No Logion/ASM proposal duplicates selection descriptors, subject identity, or
+  invocation receipts, and no public partnership claim exceeds the agreed
+  attributable statement.

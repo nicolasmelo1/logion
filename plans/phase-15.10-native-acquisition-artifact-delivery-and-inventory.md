@@ -2,6 +2,13 @@
 
 # Phase 15.10 — Native acquisition, artifact delivery, and local inventory
 
+> **Implementation status (2026-07-30): not shipped.** This document is the
+> normative future contract and acceptance gate. The current CLI can inspect
+> and dry-run only a local source skeleton; the public API does not yet return
+> distribution URLs, permissions, acquisition plans, or artifact downloads.
+> Therefore non-dry-run acquisition is blocked rather than presented as an
+> executable install.
+>
 > **Dogfood starts here — Level 1 (real acquisition):** the implementing agent must discover a resource in Logion, acquire its actual artifact, use it from a normal agent workflow, and prove that Logion can reconcile the installed copy.
 > **After this phase:** a user may acquire through Logion or keep using `npx skills`, `npx plugins`, or `hf download`; Logion records one canonical local inventory either way.
 > **Honesty boundary:** acquisition and installation prove possession of an artifact, not usage, usefulness, safety, or entitlement to paid content.
@@ -91,22 +98,17 @@ The `channel` is not the resource identity. The same content may be available th
 
 ### Acquisition plan
 
-`GET /v1/resources/{resource_id}/versions/{version_id}/acquisition-plan` returns:
+`GET /v1/resources/{resource_id}/versions/{version_id}/acquisition-plan`
+returns the server-owned resource/distribution plan. It never receives or
+returns a local path, `scope_id`, or `installation_id`:
 
 ```json
 {
   "resource_id": "uuid",
   "version_id": "uuid",
+  "distribution_id": "uuid",
   "content_digest": "sha256:...",
   "selected_channel": "npx_skills",
-  "harness": "codex",
-  "requested_scope": {"kind": "repo-root", "anchor": "/workspace/xpto"},
-  "resolved_target": {
-    "scope_kind": "repo-root",
-    "scope_root_id": "sha256:...",
-    "relative_path": ".agents/skills/name",
-    "precedence": 30
-  },
   "alternatives": ["logion_bundle", "git"],
   "entitlement": {"required": false, "status": "not_applicable"},
   "license": {"spdx": "MIT", "redistribution_allowed": true},
@@ -124,6 +126,29 @@ The `channel` is not the resource identity. The same content may be available th
 }
 ```
 
+The public CLI validates that response and combines it locally with the 15.9.1
+harness-scope resolver. The resulting local acquisition plan, including its
+zero-write dry-run serialization, contains:
+
+```json
+{
+  "harness": "codex",
+  "requested_scope": {"kind": "repo-root"},
+  "resolved_target": {
+    "scope_kind": "repo-root",
+    "scope_id": "opaque-profile-node-scoped-id",
+    "relative_path": ".agents/skills/name",
+    "precedence": 30
+  }
+}
+```
+
+The CLI may display the resolved absolute path interactively, but it must not
+send that path to the acquisition-plan endpoint or persist it in remote
+telemetry. Dry-run does not contain `installation_id` or
+`native_receipt_digest`; those fields exist only after validated native evidence
+is available.
+
 `native.argv` is a display/execution array, never a shell string. User-controlled values cannot become flags without `--`/adapter validation. The server never executes it.
 
 ### Local acquisition receipt
@@ -135,24 +160,53 @@ Every successful acquisition/reconciliation writes a fixed-schema local record:
   "schema_version": 1,
   "resource_id": "uuid",
   "version_id": "uuid",
+  "distribution_id": "uuid",
   "resource_type": "agent_skill",
   "content_digest": "sha256:...",
   "channel": "npx_skills",
   "upstream_locator": "owner/repo@commit#skill-name",
   "harness": "codex",
   "scope_kind": "repo-root",
-  "scope_root_id": "sha256:...",
+  "scope_id": "opaque-profile-node-scoped-id",
+  "installation_id": "opaque-profile-node-scoped-installation-id",
+  "native_receipt_digest": "sha256:64-lowercase-hex",
+  "native_evidence": {
+    "schema_version": 1,
+    "manager_name": "skills",
+    "manager_version": "x.y.z",
+    "receipt_id": "native-lock-or-receipt-id",
+    "canonical_source": "https://github.com/owner/repo",
+    "immutable_revision": "40-char-commit",
+    "content_digest": "sha256:..."
+  },
   "target_path": "/workspace/xpto/.agents/skills/skill-name",
+  "relative_target_path": ".agents/skills/skill-name",
   "installed_paths": [".agents/skills/skill-name"],
   "projection_paths": [".claude/skills/skill-name"],
-  "manager": {"name": "skills", "version": "x.y.z"},
   "acquired_at": "RFC3339",
   "verified_at": "RFC3339",
   "verification": "exact|source_revision|unverified"
 }
 ```
 
-No telemetry or review is sent by creating this record.
+No telemetry or review is sent by creating this record. `native_receipt_digest`
+is recomputed from the RFC 8785 canonical JSON bytes of `native_evidence` before
+the receipt is accepted; a mismatch fails closed. `native_evidence.manager_name`
+and `native_evidence.manager_version` are the single authoritative manager
+identity and produce
+the 15.9.1 `native_manager` value `<manager_name>@<manager_version>`; the receipt
+must not duplicate those fields at top level. `scope_id` and the
+installation identity use the profile/node-scoped, domain-separated HMAC
+contract from 15.9.1. A plain SHA-256 of `target_path`/repository path is
+forbidden. Absolute paths remain local and are never copied into API payloads.
+For `verification: exact`, `native_evidence.content_digest` must equal the
+top-level immutable resource `content_digest`, and its canonical source/revision
+must match the selected distribution. A mismatch is retained only as unlinked
+inventory evidence and cannot mint `installation_id`.
+`relative_target_path` is the single canonical primary target used by the
+15.9.1 installation HMAC. `target_path` is its local absolute rendering;
+`installed_paths` and `projection_paths` are lifecycle evidence and do not alter
+that installation identity.
 
 ## Database and API implementation
 
@@ -253,8 +307,9 @@ logion resources reconcile [--from skills|plugins|hf|logion|all] \
 
 1. Fetch and validate plan.
 2. Detect the harness and resolve scope from the current working directory.
-   Inside a Git repository the default is `repo-root`; there is no silent
-   fallback to `user`. `system` is inventory-only.
+   Inside a Git repository the default is the root of the nearest containing
+   Git worktree; there is no silent fallback to `user`. `system` is
+   inventory-only.
 3. Display price/entitlement, license, bytes, digest, native tool/version, permissions, paths, and exact argv.
 4. `--dry-run` performs no download, package-manager execution, config write, or inventory mutation.
 5. Ask explicit confirmation unless caller already supplied the normal approved non-interactive flag.
