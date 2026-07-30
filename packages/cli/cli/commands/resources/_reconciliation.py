@@ -68,7 +68,8 @@ def reconciliation_status(skill_dir: Path) -> dict[str, str]:
         )
         and signature.get("content_digest") == digest
     ):
-        status, evidence = "signed", "structurally-valid-signature"
+        status = "signature-present-unverified"
+        evidence = "structurally-valid-signature"
     return {"status": status, "content_digest": digest, "evidence": evidence}
 
 

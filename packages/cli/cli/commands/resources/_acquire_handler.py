@@ -17,11 +17,9 @@ from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, handle_validation_error
 from cli._harness.scopes import (
-    CUSTOM,
     SYSTEM,
-    USER,
     canonical_scope,
     default_scope_for_cwd,
     is_valid_scope,
@@ -39,31 +37,34 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         if not bool(getattr(args, "dry_run", True)):
-            sys.stderr.write(
+            message = (
                 "resource acquisition is not implemented; "
-                "no files were written\n"
+                "no files were written"
             )
-            return 2
+            return handle_validation_error(
+                message, json_output=config.json_output
+            )
         cwd_raw = getattr(args, "cwd", None)
         cwd = Path(cwd_raw).resolve() if cwd_raw else Path.cwd().resolve()
         default_scope = default_scope_for_cwd(cwd)
         explicit_scope = getattr(args, "scope", None)
-        scope = explicit_scope or (
-            USER if default_scope == CUSTOM else default_scope
-        )
+        scope = explicit_scope or default_scope
         if not is_valid_scope(scope):
-            sys.stderr.write(f"unknown scope: {scope!r}\n")
-            return 2
+            return handle_validation_error(
+                f"unknown scope: {scope!r}", json_output=config.json_output
+            )
         scope = canonical_scope(scope)
         if scope == SYSTEM:
-            sys.stderr.write(
-                "scope 'system' is inventory-only and cannot be acquired\n"
+            return handle_validation_error(
+                "scope 'system' is inventory-only and cannot be acquired",
+                json_output=config.json_output,
             )
-            return 2
         harness = getattr(args, "harness", None)
         if harness is None:
-            sys.stderr.write("--harness is required for acquire\n")
-            return 2
+            return handle_validation_error(
+                "--harness is required for acquire",
+                json_output=config.json_output,
+            )
         repo_root_raw = getattr(args, "repo_root", None)
         repo_root = Path(repo_root_raw).resolve() if repo_root_raw else None
         repo_parent_raw = getattr(args, "repo_parent", None)
@@ -85,10 +86,10 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             target_path=target_path,
         )
         if not targets:
-            sys.stderr.write(
-                f"harness {harness!r} does not support scope {scope!r}\n"
+            return handle_validation_error(
+                f"harness {harness!r} does not support scope {scope!r}",
+                json_output=config.json_output,
             )
-            return 2
         visible_targets = _all_scan_targets(
             harness, cwd, repo_root, target_path
         )
@@ -117,7 +118,9 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
         else:
             _print_plan(plan)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_error(
+            exc, json_output=config.json_output, handle_validation=True
+        )
     else:
         return 0
     finally:

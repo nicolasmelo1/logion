@@ -5,7 +5,9 @@ import argparse
 import json
 from pathlib import Path
 
-from cli._harness.scopes import ScopeTarget
+import pytest
+
+from cli._harness.scopes import ScopeTarget, default_scope_for_cwd
 from cli.commands.resources._acquire_plan import (
     build_plan,
     normalize_resource,
@@ -17,7 +19,9 @@ from cli.commands.resources._reconciliation import (
     reconciliation_status,
 )
 from cli.commands.resources._scope_resolution import resolve_acquire_targets
+from cli.commands.resources.handlers import _print_resource
 from cli.commands.resources.parser import register
+from logion import APIError
 
 
 def _resources_parser() -> argparse.ArgumentParser:
@@ -59,6 +63,139 @@ def test_acquire_parser_exposes_explicit_non_dry_run_rejection() -> None:
         "--no-dry-run",
     ])
     assert args.dry_run is False
+
+
+def test_resources_list_exposes_only_contract_filters() -> None:
+    args = _resources_parser().parse_args([
+        "resources",
+        "list",
+        "--resource-type",
+        "agent_skill",
+        "--lifecycle-status",
+        "active",
+        "--cursor",
+        "next-page",
+        "--limit",
+        "100",
+    ])
+    assert args.query is None
+    assert args.tags is None
+    assert args.resource_type == "agent_skill"
+    assert args.lifecycle_status == "active"
+    assert args.cursor == "next-page"
+    assert args.limit == 100
+
+
+@pytest.mark.parametrize(
+    ("command", "limit"),
+    [("list", "0"), ("list", "101"), ("search", "0"), ("versions", "-1")],
+)
+def test_resource_limits_reject_values_outside_openapi_bounds(
+    command: str,
+    limit: str,
+) -> None:
+    argv = ["resources", command]
+    if command == "versions":
+        argv.append("123e4567-e89b-12d3-a456-426614174000")
+    argv.extend(["--limit", limit])
+    with pytest.raises(SystemExit, match="2"):
+        _resources_parser().parse_args(argv)
+
+
+class _FakeClient:
+    def __init__(self, resources: object | None = None) -> None:
+        self.v1 = type("FakeV1", (), {"resources": resources})()
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_resources_list_api_error_json_uses_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class FailingResources:
+        def search(self, **_kwargs: object) -> object:
+            raise APIError(403, "disabled")
+
+    client = _FakeClient(FailingResources())
+    monkeypatch.setattr(
+        "cli.commands.resources.handlers.make_client", lambda _config: client
+    )
+    args = _resources_parser().parse_args(["resources", "list", "--json"])
+    assert args.handler(args) == 1
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "server_error"
+    assert payload["data"]["exit_code"] == 1
+    assert client.closed is True
+
+
+def test_acquire_cross_argument_error_json_uses_validation_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client = _FakeClient()
+    monkeypatch.setattr(
+        "cli.commands.resources._acquire_handler.make_client",
+        lambda _config: client,
+    )
+    args = _resources_parser().parse_args([
+        "resources",
+        "acquire",
+        "123e4567-e89b-12d3-a456-426614174000",
+        "--harness",
+        "custom",
+        "--json",
+    ])
+    assert args.handler(args) == 2
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "validation_failed"
+    assert "--scope custom" in payload["data"]["message"]
+    assert client.closed is True
+
+
+def test_resource_detail_human_output_uses_contract_envelope(
+    capsys,
+) -> None:
+    _print_resource({
+        "resource": {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "canonical_uri": "gh:owner/repo",
+            "resource_type": "agent_skill",
+            "title": "Audit Skill",
+            "lifecycle_status": "active",
+            "summary": "Checks contracts.",
+        },
+        "sources": [{"source_kind": "git", "source_uri": "gh:owner/repo"}],
+        "projections": [],
+    })
+    output = capsys.readouterr().out
+    assert "123e4567-e89b-12d3-a456-426614174000" in output
+    assert "Canonical URI: gh:owner/repo" in output
+    assert "git: gh:owner/repo" in output
+
+
+def test_acquire_non_dry_run_json_uses_error_envelope(capsys) -> None:
+    args = _resources_parser().parse_args([
+        "resources",
+        "acquire",
+        "123e4567-e89b-12d3-a456-426614174000",
+        "--harness",
+        "codex",
+        "--no-dry-run",
+        "--json",
+    ])
+    assert args.handler(args) == 2
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["kind"] == "logion.error"
+    assert payload["data"]["code"] == "validation_failed"
+
+
+def test_default_scope_outside_git_is_user(tmp_path: Path) -> None:
+    assert default_scope_for_cwd(tmp_path) == "user"
 
 
 def test_resolve_targets_does_not_swallow_constructor_type_error(
@@ -157,6 +294,27 @@ def test_inventory_does_not_trust_marker_existence(tmp_path: Path) -> None:
     (skill / ".logion-lock.json").write_text("{}", encoding="utf-8")
     reconciliation = reconciliation_status(skill)
     assert reconciliation["status"] == "unlinked"
+
+
+def test_inventory_does_not_call_unverified_signature_signed(
+    tmp_path: Path,
+) -> None:
+    skill = tmp_path / "skills" / "audit-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("# Audit\n", encoding="utf-8")
+    digest = reconciliation_status(skill)["content_digest"]
+    (skill / ".logion-sig.json").write_text(
+        json.dumps({
+            "algorithm": "ed25519",
+            "key_id": "publisher-1",
+            "signature": "base64-value",
+            "content_digest": digest,
+        }),
+        encoding="utf-8",
+    )
+    reconciliation = reconciliation_status(skill)
+    assert reconciliation["status"] == "signature-present-unverified"
+    assert reconciliation["evidence"] == "structurally-valid-signature"
 
 
 def test_inventory_validates_exact_receipt_and_marks_name_ambiguity(

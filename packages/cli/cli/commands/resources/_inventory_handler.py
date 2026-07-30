@@ -6,7 +6,8 @@ reconciliation status:
 
 - ``exact``    — native manager receipt/lock ID + immutable revision.
 - ``canonical`` — canonical source + revision and content digest.
-- ``signed``   — signed bundle/resource digest.
+- ``signature-present-unverified`` — structurally valid signature marker whose
+  publisher trust root has not been verified.
 - ``ambiguous`` or ``unlinked`` — no exact evidence.
 
 The scan is read-only and never modifies native locations.  Reconciliation
@@ -21,7 +22,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from cli._config import resolve_config_from_args
-from cli._errors import handle_error
+from cli._errors import handle_error, handle_validation_error
 from cli._harness.custom import CustomPathHarness
 from cli._harness.scopes import (
     ADMIN,
@@ -132,8 +133,10 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
     try:
         harness = getattr(args, "harness", None)
         if harness is None:
-            sys.stderr.write("--harness is required for inventory\n")
-            return 2
+            return handle_validation_error(
+                "--harness is required for inventory",
+                json_output=config.json_output,
+            )
         cwd_raw = getattr(args, "cwd", None)
         cwd = Path(cwd_raw).resolve() if cwd_raw else None
         repo_root_raw = getattr(args, "repo_root", None)
@@ -169,7 +172,9 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
         else:
             _print_inventory(payload)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_error(
+            exc, json_output=config.json_output, handle_validation=True
+        )
     else:
         return 0
 

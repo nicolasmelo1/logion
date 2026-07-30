@@ -30,8 +30,13 @@ ALLOWED_ERROR_CODES = frozenset({
 })
 
 
-def handle_error(exc: Exception) -> int:
-    """Map an exception to an exit code and print a user-facing message."""
+def handle_error(
+    exc: Exception,
+    *,
+    json_output: bool = False,
+    handle_validation: bool = False,
+) -> int:
+    """Map an exception to an exit code and emit the requested output shape."""
     from logion import APIError, LogionError
 
     if isinstance(exc, APIError):
@@ -39,11 +44,21 @@ def handle_error(exc: Exception) -> int:
         if isinstance(detail, list):
             detail = "; ".join(str(d) for d in detail)
         status_code = getattr(exc, "status_code", "?")
-        print(f"API error {status_code}: {detail}", file=sys.stderr)
+        message = f"API error {status_code}: {detail}"
+        if json_output:
+            emit_error_json("server_error", message, 1)
+        else:
+            print(message, file=sys.stderr)
         return 1
     if isinstance(exc, LogionError):
-        print(f"Logion error: {exc}", file=sys.stderr)
+        message = f"Logion error: {exc}"
+        if json_output:
+            emit_error_json("server_error", message, 1)
+        else:
+            print(message, file=sys.stderr)
         return 1
+    if handle_validation and isinstance(exc, ValueError):
+        return handle_validation_error(str(exc), json_output=json_output)
     raise exc
 
 
@@ -60,6 +75,15 @@ def emit_error_json(code: str, message: str, exit_code: int) -> None:
         "data": {"code": code, "message": message, "exit_code": exit_code},
     }
     print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
+
+
+def handle_validation_error(message: str, *, json_output: bool) -> int:
+    """Emit a validation failure using JSON or human-readable stderr."""
+    if json_output:
+        emit_error_json("validation_failed", message, 2)
+    else:
+        print_err(f"Error: {message}")
+    return 2
 
 
 def require_non_empty_id(value: str, label: str) -> int | None:

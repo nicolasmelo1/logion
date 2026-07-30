@@ -357,19 +357,33 @@
       ]
     },
     "resources acquire": {
-      "operations": []
+      "operations": [
+        "get_resource",
+        "list_resource_versions"
+      ]
     },
     "resources get": {
-      "operations": []
+      "operations": [
+        "get_resource"
+      ]
     },
     "resources inventory": {
       "operations": []
     },
+    "resources list": {
+      "operations": [
+        "list_resources"
+      ]
+    },
     "resources search": {
-      "operations": []
+      "operations": [
+        "list_resources"
+      ]
     },
     "resources versions": {
-      "operations": []
+      "operations": [
+        "list_resource_versions"
+      ]
     },
     "skills inspect": {
       "operations": [

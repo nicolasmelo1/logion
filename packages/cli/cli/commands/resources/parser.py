@@ -20,47 +20,66 @@ from .handlers import (
 _HARNESS_CHOICES = sorted([*adapter_names(), "custom"])
 
 
+def _resource_limit(value: str) -> int:
+    """Parse an OpenAPI-constrained resource list limit."""
+    limit = int(value)
+    if not 1 <= limit <= 100:
+        raise argparse.ArgumentTypeError("limit must be between 1 and 100")
+    return limit
+
+
 def register(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     """Register the ``resources`` subcommand group."""
     parser = subparsers.add_parser(
         "resources",
-        help="Search and browse generic indexed resources",
+        help="List and browse generic resources",
     )
     sub = parser.add_subparsers(
         dest="resources_command",
         required=True,
     )
 
-    search = sub.add_parser(
-        "search",
-        help="Search indexed resources",
+    list_parser = sub.add_parser(
+        "list",
+        help="List generic resources",
         parents=[COMMON_PARSER],
     )
-    search.add_argument("query", metavar="QUERY")
-    search.add_argument(
+    list_parser.set_defaults(query=None, tags=None)
+    list_parser.add_argument(
         "--resource-type",
         default=None,
         help=(
             "Filter by resource type "
-            "(skill, plugin, mcp_server, model, course)"
+            "(agent_skill, agent_plugin, mcp_server, model)"
         ),
     )
-    search.add_argument(
-        "--tags", default=None, help="Comma-separated tag filter"
+    list_parser.add_argument(
+        "--lifecycle-status", default=None, help="Filter by lifecycle status"
     )
-    search.add_argument("--limit", type=int, default=5)
-    search.add_argument(
-        "--verbose",
-        action="store_true",
-        default=False,
+    list_parser.add_argument("--cursor", default=None)
+    list_parser.add_argument("--limit", type=_resource_limit, default=50)
+    list_parser.add_argument("--verbose", action="store_true", default=False)
+    list_parser.set_defaults(handler=handle_resources_search)
+
+    search = sub.add_parser(
+        "search",
+        help="Compatibility alias for resources list (query/tags unsupported)",
+        parents=[COMMON_PARSER],
     )
+    search.add_argument("query", metavar="QUERY", nargs="?", default=None)
+    search.add_argument("--tags", default=None)
+    search.add_argument("--resource-type", default=None)
+    search.add_argument("--lifecycle-status", default=None)
+    search.add_argument("--cursor", default=None)
+    search.add_argument("--limit", type=_resource_limit, default=50)
+    search.add_argument("--verbose", action="store_true", default=False)
     search.set_defaults(handler=handle_resources_search)
 
     get = sub.add_parser(
         "get",
-        help="Get detail for a single indexed resource",
+        help="Get detail for a generic resource UUID",
         parents=[COMMON_PARSER],
     )
     get.add_argument("resource_id", metavar="RESOURCE_ID")
@@ -68,11 +87,11 @@ def register(
 
     versions = sub.add_parser(
         "versions",
-        help="List available versions of a resource",
+        help="List available versions of a resource UUID",
         parents=[COMMON_PARSER],
     )
     versions.add_argument("resource_id", metavar="RESOURCE_ID")
-    versions.add_argument("--limit", type=int, default=None)
+    versions.add_argument("--limit", type=_resource_limit, default=None)
     versions.set_defaults(handler=handle_resources_versions)
 
     acquire = sub.add_parser(
