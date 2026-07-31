@@ -264,12 +264,12 @@ name = "black"
 version = "26.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "mypy-extensions" },
-    { name = "packaging" },
-    { name = "pathspec" },
-    { name = "platformdirs" },
-    { name = "pytokens" },
+    { name = "click", marker = "sys_platform != 'emscripten'" },
+    { name = "mypy-extensions", marker = "sys_platform != 'emscripten'" },
+    { name = "packaging", marker = "sys_platform != 'emscripten'" },
+    { name = "pathspec", marker = "sys_platform != 'emscripten'" },
+    { name = "platformdirs", marker = "sys_platform != 'emscripten'" },
+    { name = "pytokens", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/c5/61175d618685d42b005847464b8fb4743a67b1b8fdb75e50e5a96c31a27a/black-26.3.1.tar.gz", hash = "sha256:2c50f5063a9641c7eed7795014ba37b0f5fa227f3d408b968936e24bc0566b07", size = 666155, upload-time = "2026-03-12T03:36:03.593Z" }
 wheels = [
@@ -548,22 +548,21 @@ wheels = [
 
 [[package]]
 name = "datamodel-code-generator"
-version = "0.25.9"
+version = "0.64.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "argcomplete" },
-    { name = "black" },
+    { name = "black", marker = "sys_platform != 'emscripten'" },
     { name = "genson" },
     { name = "inflect" },
-    { name = "isort" },
+    { name = "isort", marker = "sys_platform != 'emscripten'" },
     { name = "jinja2" },
-    { name = "packaging" },
-    { name = "pydantic", extra = ["email"], marker = "python_full_version < '4'" },
+    { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ad/0e/391ae42ecb8db5d19236e802b2fba9ee1e583405e9d134f96695a49d1bf6/datamodel_code_generator-0.25.9.tar.gz", hash = "sha256:65ca9807d8edbd88a7f7931c10f4bc1c08bd9bbc5bb0508418a2b6a16590eb65", size = 88831, upload-time = "2024-08-07T03:11:05.444Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/e1/e8b4106944cfe7404a00e77f253f326f277f3c935a3bc82c948ca2bfaeb5/datamodel_code_generator-0.64.1.tar.gz", hash = "sha256:37dafa41773a736caccbb92a525728ad6fc18f283eebff51022e59720f8d1b15", size = 1355238, upload-time = "2026-06-19T17:19:50.977Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/68/b3ade2468b649a78561ec2f64222a32d27c83d2e3612cc1846703d489ffd/datamodel_code_generator-0.25.9-py3-none-any.whl", hash = "sha256:9e0324233123d6e39a35bc0004771956935889a974aacfd7a0651de11d2219a9", size = 110721, upload-time = "2024-08-07T03:11:02.237Z" },
+    { url = "https://files.pythonhosted.org/packages/54/a6/fca1faca7027e543fc5e4883e0888b5091ec9f71dc27c5a376305d101023/datamodel_code_generator-0.64.1-py3-none-any.whl", hash = "sha256:5d459185b55236e60009923794eb28c890fb31994175d711d7f16ed1b8570bb1", size = 386955, upload-time = "2026-06-19T17:19:48.956Z" },
 ]
 
 [[package]]
@@ -1744,7 +1743,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datamodel-code-generator", specifier = ">=0.25,<0.26.0" },
+    { name = "datamodel-code-generator", specifier = ">=0.64,<0.65.0" },
     { name = "mypy", specifier = ">=1.15,<2.0.0" },
     { name = "pytest", specifier = ">=9.0.3,<9.1.0" },
     { name = "python-semantic-release", specifier = ">=10.6.1,<10.7.0" },
