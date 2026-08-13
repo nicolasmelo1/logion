@@ -86,6 +86,40 @@ Then prioritize with separately visible signals:
 
 Do not use downloads, stars, hub rank, or anonymous event count as a hidden universal score.
 
+## Closed-resource and deliverable boundary
+
+A closed, hosted, or otherwise non-contributable resource may still accumulate
+lawful attributed-use signals, feedback, static evidence, eval baselines,
+scorecards, regressions, and improvement recommendations. Those records remain
+attached to the original publisher's exact resource/version and do not imply
+that Logion or a contributor can modify the service.
+
+A recommendation becomes a funded bounty only when the bounty names a bounded
+deliverable that a participant has authority to produce:
+
+- an eval suite, benchmark, baseline, scorecard, minimal reproduction,
+  interoperability adapter, documentation change, or improvement proposal may
+  be eligible when its own artifact/license/delivery path is valid;
+- a public plugin or client integration may be eligible only under its actual
+  source license and contribution policy;
+- a change to a private MCP server, hosted model, proprietary dataset, or other
+  closed upstream surface is ineligible without an owner-approved delivery
+  path and acceptance authority.
+
+An evidence bounty must name the evaluation/reproduction artifact as its
+deliverable; it must not be presented as a fix to the evaluated upstream
+resource. Without an authorized implementation path, the signal remains
+`maintainer_contact`, `license_blocked`, or an unfunded recommendation. Logion
+must not create a speculative server-fix bounty merely because a black-box
+score regressed.
+
+When the owner later participates, delivery may be private. Logion records the
+owner's acceptance authority and disclosure policy, observes a new canonical
+version, reruns the pinned evals, and reports the before/after evidence without
+claiming access to the patch or causal proof beyond the evidence. A newly
+observed upstream version is not proof that an external recommendation was
+implemented unless the owner supplies that lineage.
+
 ## Feedback clustering
 
 Create deterministic first-pass clustering:
@@ -216,6 +250,13 @@ It may not show private feedback bodies, reporter identity, internal repository/
 ## Tests
 
 - Eligibility for exact/repeated feedback, insufficient cohort, ambiguous resource, license blocked, duplicate bounty, suspended resource.
+- Closed remote MCP: evidence/recommendation remains valid while an unapproved
+  server-fix bounty is ineligible and routes to `maintainer_contact`.
+- Evidence bounty targets and pays for the eval/reproduction artifact, never
+  falsely records the closed upstream server as improved.
+- Owner-approved private delivery records acceptance authority and disclosure
+  limits; a later version/eval comparison does not expose a patch or fabricate
+  causal lineage.
 - Identity-tier/concentration and sybil bursts do not dominate.
 - Same feedback retry/idempotency and cluster version separation.
 - Free-text redaction/private-public summary boundary.
@@ -268,6 +309,9 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 - [ ] Sybil/self/author-only feedback cannot independently trigger funding.
 - [ ] Existing 15.8 ledger, payout, attribution, and delivery invariants remain intact.
 - [ ] After an improvement, new feedback links to the old signal without rewriting history.
+- [ ] Closed resources can retain evidence, scorecards, and recommendations
+      without implying that Logion can modify them or opening an undeliverable
+      server-fix bounty.
 - [ ] Dogfood produces at least one useful recommendation and records rejected alternatives.
 
 ## Out of scope

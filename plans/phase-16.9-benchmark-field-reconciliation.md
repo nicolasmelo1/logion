@@ -53,6 +53,16 @@ Each eval metric may declare an optional `field_proxy` containing receipt field,
 
 Reconciliation never joins individual private receipt identities to eval runs. It compares privacy-safe aggregates for a resource digest/environment cohort against benchmark distributions/results.
 
+External declared-selection manifests, including ASM if the collaboration gate
+converges, enter reconciliation as issuer-bound claims. Logion stores the
+original manifest version/digest, claim path, source, freshness, and issuer; it
+never rewrites an observed result into the publisher's manifest.
+
+An invocation/cost receipt uses the single envelope selected by
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+Reconciliation references that receipt and emits a separate analysis predicate.
+It does not create a second “corrected receipt” or mutate an ASM Trust Delta.
+
 ## Detection/output
 
 - Methods v1: categorical rate delta with interval, ordinal bucket shift, and latency/cost bucket drift. Put implementations in a versioned pure statistics module with golden fixtures.
@@ -110,3 +120,5 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - Resource updates do not erase history from prior digests.
 - Reconciliation code and its exact inputs reproduce every published decision offline.
 - No automatic ranking penalty or payout decision consumes reconciliation until a later explicit policy phase.
+- Declared ASM/provider claims, receipts, Logion observations, and reconciliation
+  outputs remain separately attributable and digest-addressed.

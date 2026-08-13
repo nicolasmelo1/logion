@@ -2,6 +2,12 @@
 
 # Phase 15.11 — Native-use observation, linked feedback, and reviews
 
+> **Implementation status (2026-07-30): not shipped.** This document is the
+> normative future contract and acceptance gate. Observation hooks, the usage
+> spool and receipt API, linked generic feedback, integrations commands, and
+> consent-driven upload remain unimplemented. The existing CLI inventory scan
+> is not proof of use and must not be described as observation telemetry.
+>
 > **Dogfood — Level 2 (real use and feedback):** the implementing agent acquires a resource through any supported channel, uses it in its ordinary harness, and submits feedback through Logion linked to the exact original `ResourceVersion`.
 > **After this phase:** Logion can learn from resources installed by `npx skills`, `npx plugins`, `hf`, or Logion itself without forcing a new acquisition workflow.
 > **Honesty boundary:** observation means “probably used”; feedback means “an agent/user reported an outcome”; neither is a controlled evaluation or universal quality claim.
@@ -59,7 +65,9 @@ The phase fails if dogfood requires reinstalling the external skill through Logi
 
 ## Dependencies
 
-- 15.9.1 harness resource scope and observation contract.
+- The 15.9.1 harness resource scope and observation requirements carried
+  forward as a contract; they are not a claim that observation shipped in
+  15.9.1.
 - 15.9 resource/version/projection identity.
 - 15.10 local acquisition inventory and reconciliation.
 - Existing CourseReview API, auto-review consent, pseudonymous/agent identity, CLI local state/redaction, and supported harness projections.
@@ -137,11 +145,15 @@ class UsageObservation:
         "repo-current", "repo-parent", "repo-root",
         "user", "admin", "system", "custom"
     ]
-    scope_root_id: str
+    scope_id: str
     session_hash: str | None
 ```
 
 No free-text or path field is allowed. A test pins the dataclass/schema fields.
+`installation_id` and `scope_id` are the opaque, profile/node-scoped HMAC
+identifiers defined by 15.9.1. Observation code consumes the IDs stored in the
+validated local acquisition receipt; it never recomputes them with a plain path
+hash and never serializes the underlying local root/path.
 
 Deduplicate `(session_hash, resource_id, version_id, event)` within a bounded window. Unknown/ambiguous local attribution is dropped locally with an optional debug counter; never guess.
 
@@ -236,6 +248,40 @@ The release matrix is explicit:
 An adapter is “supported” only after a recorded real-harness fixture and its
 customer-like proving scenario pass. Directory scanning alone is inventory,
 not use observation.
+
+### Pre-existing remote and closed MCP resources
+
+The user may install a vendor plugin or remote MCP connector through its
+original marketplace/client and install the Logion companion separately.
+Logion must then adapt to that native installation:
+
+- inventory the harness's plugin-manager state and MCP configuration without
+  rewriting either;
+- reconcile the original publisher, public plugin/source revision, declared
+  remote endpoint, manifest, and available digest to the exact
+  `ResourceVersion`;
+- preserve the vendor plugin, MCP server, and each local installation as
+  distinct distribution/resource/installation identities;
+- attribute supported harness tool-use events to the original publisher's
+  resource rather than creating a Logion-owned wrapper or duplicate listing;
+- exclude OAuth tokens, prompts, tool arguments/results, documents, local
+  paths, and arbitrary model context from inventory and observations.
+
+The default observation path is a consented Logion hook/plugin beside the
+vendor integration. Logion does not silently proxy TLS, replace the MCP
+endpoint, inject itself into OAuth, or require reinstalling the vendor
+resource. After the user enables the Logion integration and selects a consent
+mode, supported hooks may reconcile and spool minimal events automatically.
+If a harness exposes no trustworthy local tool-use event, Logion reports
+inventory-only support and may offer explicit prompt-mode feedback; it must
+not infer invocation from installation, connector availability, quota changes,
+or network traffic.
+
+Normal authorized use may produce privacy-minimized observations and
+intentional feedback. Active Logion-run probes/evals against a remote server
+remain governed by the owner opt-in, public-test policy, terms, credentials,
+and synthetic-input controls in Phase 16.11. User authorization to use a
+service is not permission for Logion to benchmark or probe it independently.
 
 ## Feedback API contract
 
@@ -405,6 +451,10 @@ Do not rank yet. Do not call passive receipt volume “users” without explaini
 - Concurrent append, torn line, rotation, dedup, unknown schema, clock skew.
 - Pending grouping/tombstone/dismiss and one-shot semantics.
 - Generic feedback for Logion bundle, direct `npx skills`, `npx plugins`, and `hf` acquisition records.
+- Pre-existing vendor plugin plus OAuth remote MCP reconciliation: exact
+  publisher/resource/version attribution when evidence supports it, no
+  reinstall/reconfiguration/proxy, and typed inventory-only behavior when the
+  harness exposes no trustworthy tool-use hook.
 - Course projection happy/free, no Course, paid entitlement missing, self-review, duplicate upsert.
 - Pseudonymous/account attach and identity-tier aggregation.
 - Sybil/rate-limit and minimum-cohort privacy fixtures.
@@ -447,10 +497,34 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
   raw events. Retain integration version, observation/pending receipt IDs,
   consent mode, feedback ID, source link, redacted payload, and no-500 proof.
 
+Add `builtin:phase_15_11_remote_private_mcp_feedback`:
+
+- **Fixture:** a public vendor plugin manifest points to an OAuth-protected
+  remote MCP fixture whose implementation and data are unavailable to Logion.
+  The vendor connector is installed first through the native manager; the
+  Logion companion is installed and enabled separately.
+- **Prompt:** “Use the already-installed vendor connector for this task. Let
+  Logion attribute its use to the original vendor resource without reinstalling
+  it, changing its endpoint, or recording the request or response.”
+- **Assertions to implement:** `files.remote_mcp_reconciled`,
+  `files.vendor_install_unchanged`, `files.no_mcp_proxy_installed`,
+  `api.remote_mcp_use_attributed`, `api.original_publisher_preserved`,
+  `api.remote_mcp_feedback_linked`, and
+  `api.remote_mcp_private_payload_not_recorded`. Run the same fixture in a
+  harness without tool-use hooks and require an explicit
+  `inventory_only_observation_unsupported` result with no fabricated event.
+- **Evidence:** retain public manifest/source/endpoint/version digests, local
+  installation and observation IDs, consent mode, redacted feedback ID, and
+  before/after hashes proving that vendor configuration was not rewritten.
+
 ## Acceptance criteria
 
 - [ ] A skill installed directly by `npx skills add` can be observed and receive feedback linked to the exact Logion `ResourceVersion` without reinstalling through Logion.
 - [ ] A Logion-hosted Course, Vercel plugin, and HF revision use the same generic feedback contract.
+- [ ] A pre-existing vendor plugin backed by a closed OAuth remote MCP server
+      can be reconciled and, where the harness exposes a trustworthy hook,
+      observed through a separately installed Logion companion without proxying,
+      reinstalling, or claiming ownership of the original resource.
 - [ ] Passive observation never creates a rating or CourseReview.
 - [ ] Eligible feedback projects through the existing Course review service; ineligible feedback remains useful and clearly labeled.
 - [ ] `off` produces no local observation state and no network request.

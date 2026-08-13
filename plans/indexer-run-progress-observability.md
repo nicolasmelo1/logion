@@ -187,7 +187,9 @@ git commit -m "fix(indexer): persist terminal run receipts"
 **Files:**
 - Modify: relevant `logion` indexer README or package documentation
 - Modify: `canonical maintainer workspace/maintainer documentation: api.md`
-- Modify: `canonical maintainer workspace/plans/phase-15.6-external-skillhub-indexer.md` only if its endpoint inventory needs a current-shape correction
+- Modify: `canonical maintainer workspace/maintainer documentation: repository-structure.md` only if the
+  indexer's endpoint/adapter inventory needs a current-shape correction (the
+  phase-15.6 plan has been retired)
 - Test: existing documentation-link and public-audit checks
 
 **Step 1: Add concise operator instructions**

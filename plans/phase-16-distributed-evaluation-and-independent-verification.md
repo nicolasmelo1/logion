@@ -16,7 +16,17 @@ Do not create an umbrella-level review. Every 16.x subphase begins with a concre
 
 ## Implementation handoff rule
 
-Each subphase must land as a focused public/private/infra PR set described by its file. Generated clients follow OpenAPI, shared wire semantics live in public versioned packages, private services consume them, and protocol/evidence immutability forbids destructive retrofits. An implementer must read 15.9–15.17 and the current `shared-docs` anchors before coding.
+Each subphase must land as a focused public/private/infra PR set described by
+its file. Generated clients follow OpenAPI, shared wire semantics live in public
+versioned packages, private services consume them, and protocol/evidence
+immutability forbids destructive retrofits. An implementer must read the active
+15.10–15.17 plans, the retained 15.9/15.9.1 carry-over in `next-steps.md`, and
+the current maintainer-documentation anchors before coding.
+
+Phases 16.7 and 16.9 also inherit
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md):
+local ranking may consume an agreed open selection contract, but Phase 16 does
+not publish a competing service-value manifest, global score, or second receipt.
 
 ## Sequence
 

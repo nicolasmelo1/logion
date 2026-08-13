@@ -39,6 +39,27 @@ Use `--not-completed-task` when appropriate. Record the feedback ID and `course_
 Define the minimum AKTP extension that neither AI Catalog nor ARD provides:
 portable outcome evidence and an improvement workflow.
 
+## Protocol-convergence prerequisite
+
+Before freezing the AKTP v0 envelope or event vocabulary, complete T1 of
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
+ASM already explores an invocation/cost receipt and declared-versus-observed
+Trust Delta. AKTP MUST NOT publish a structurally different receipt for the
+same invocation.
+
+The default safe boundary is:
+
+- native/ASM invocation receipts remain their original signed objects;
+- AKTP events may reference their URL, digest, issuer, subject, and media type;
+- AKTP carries public evidence/improvement lineage and state transitions, not a
+  second copy of private usage, billing detail, or selection metadata;
+- if no joint receipt decision exists, AKTP v0 excludes invocation/cost receipt
+  semantics and proceeds only with non-overlapping public evidence/improvement
+  events.
+
+Any broader convergence requires the attributable decision record defined by
+the collaboration gate. Lack of response is not permission to copy or fork ASM.
+
 ## Dogfood prompt for the implementing agent
 
 ```text
@@ -174,3 +195,8 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 - Feed consumers can distinguish observation, evaluation, sponsorship, delivery, and payout.
 - Base AI Catalog and ARD clients still publish/discover the resource without AKTP.
 - Protocol examples are generated from passing conformance fixtures.
+- No invocation or cost observation is represented by two incompatible receipt
+  envelopes; AKTP references the original signed receipt or excludes that event.
+- The public AKTP scope lists which candidate ASM concepts were retained,
+  referenced, removed, or deferred and does not claim partnership without Yi's
+  agreement.

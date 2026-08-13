@@ -52,6 +52,39 @@ The skill installs the Logion companion into the same Agent Skills workflow the 
 
 Phase [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) owns this surface.
 
+## Rung 1.1 — Accept Logion inside the publisher's resource
+
+A resource publisher may use
+[`15.11.1`](phase-15.11.1-publisher-integrated-consented-observation.md)
+to ship a thin, open-source observer in a native plugin projection. The user
+installs the resource through the manager they already use and sees one exact
+disclosure before any observation state or network request:
+
+```text
+This skill sends resource/version, activation, completion/failure,
+approximate duration, and harness type to Logion.
+It does not send prompts, files, tool inputs/outputs, secrets, or identity.
+
+[Allow] [Local only] [Do not allow]
+```
+
+After acceptance, a verified native hook emits the approved minimum receipts
+automatically. The full Logion CLI is not required for that narrow path.
+Declining never disables the resource.
+
+This is capability-gated rather than magical:
+
+- a plugin/harness with a pinned lifecycle hook can observe use;
+- a plain `npx skills add` install proves installation only;
+- a static Skill in a harness without hooks remains fully usable but cannot
+  generate automatic use telemetry;
+- metadata declares the profile but does not make an arbitrary installer
+  execute it.
+
+The portable Skill and every plugin projection still resolve to the same
+canonical `ResourceVersion`; their distribution and integration digests remain
+distinct for debugging and trust.
+
 ## Rung 2 — Local attribution only
 
 With consent mode `local-only`:
@@ -157,3 +190,6 @@ ARD and native package managers make resources reachable. Logion earns its posit
 - Sponsorship is not authorship.
 - First-party evidence is not independent reproduction.
 - No feedback/telemetry upload without the configured consent.
+- Consent to native-manager telemetry is not consent to Logion telemetry.
+- Publisher-integrated field receipts are first-party signals, not independent
+  evaluations.
