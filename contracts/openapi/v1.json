@@ -392,6 +392,57 @@
         "title": "ApprovedCapabilitySummaryResponse",
         "type": "object"
       },
+      "ArtifactFile": {
+        "properties": {
+          "aggregate_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate Key"
+          },
+          "digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digest"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "url"
+        ],
+        "title": "ArtifactFile",
+        "type": "object"
+      },
       "AssetResponse": {
         "properties": {
           "asset_order": {
@@ -1332,6 +1383,49 @@
         "title": "CompleteIndexingRunResponse",
         "type": "object"
       },
+      "CreateArtifactDownloadResponse": {
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "distribution_id": {
+            "format": "uuid",
+            "title": "Distribution Id",
+            "type": "string"
+          },
+          "expires_in_seconds": {
+            "title": "Expires In Seconds",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "version_id",
+          "distribution_id",
+          "channel",
+          "expires_in_seconds"
+        ],
+        "title": "CreateArtifactDownloadResponse",
+        "type": "object"
+      },
       "CreateBountyPayoutResponse": {
         "properties": {
           "amount_cents": {
@@ -2138,6 +2232,24 @@
           "charge_amount_minor"
         ],
         "title": "CreateCreditTopUpResponse",
+        "type": "object"
+      },
+      "CreateIndexedBundleUploadRequest": {
+        "description": "Digest declared up front so it can be signed into the PUT URL.\n\nOptional for backward compatibility, but an upload created without it\ncannot be completed: completion reads the digest back from object\nmetadata, and object storage only accepts headers the presigned\nsignature already covers.",
+        "properties": {
+          "checksum_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum Sha256"
+          }
+        },
+        "title": "CreateIndexedBundleUploadRequest",
         "type": "object"
       },
       "CreateIndexedBundleUploadResponse": {
@@ -3077,6 +3189,86 @@
           "updated_at"
         ],
         "title": "FundPlatformBountyResponse",
+        "type": "object"
+      },
+      "GetAcquisitionPlanResponse": {
+        "properties": {
+          "alternatives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "content_digest": {
+            "title": "Content Digest",
+            "type": "string"
+          },
+          "distribution_id": {
+            "format": "uuid",
+            "title": "Distribution Id",
+            "type": "string"
+          },
+          "entitlement": {
+            "additionalProperties": true,
+            "title": "Entitlement",
+            "type": "object"
+          },
+          "expected": {
+            "additionalProperties": true,
+            "title": "Expected",
+            "type": "object"
+          },
+          "integrity": {
+            "additionalProperties": true,
+            "title": "Integrity",
+            "type": "object"
+          },
+          "license": {
+            "additionalProperties": true,
+            "title": "License",
+            "type": "object"
+          },
+          "native": {
+            "additionalProperties": true,
+            "title": "Native",
+            "type": "object"
+          },
+          "permissions": {
+            "additionalProperties": true,
+            "title": "Permissions",
+            "type": "object"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "selected_channel": {
+            "title": "Selected Channel",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resource_id",
+          "version_id",
+          "distribution_id",
+          "content_digest",
+          "selected_channel"
+        ],
+        "title": "GetAcquisitionPlanResponse",
         "type": "object"
       },
       "GetAgentDetailResponse": {
@@ -10349,6 +10541,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateIndexedBundleUploadRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -17803,6 +18012,242 @@
           }
         },
         "summary": "List resource versions",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions/{version_id}/acquisition-plan": {
+      "get": {
+        "description": "Return the server-owned acquisition plan for a resource version.\n\nGated on the resource_read_surface feature flag. Never receives or\nreturns local paths, scope identifiers, or installation identifiers.",
+        "operationId": "get_acquisition_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAcquisitionPlanResponse"
+                }
+              }
+            },
+            "description": "Acquisition plan"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entitlement required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Feature flag disabled or delivery forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource version or distribution not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Digest missing"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Build an acquisition plan for a resource version",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions/{version_id}/download": {
+      "post": {
+        "description": "Mint presigned URLs for an authorized Logion-hosted bundle.",
+        "operationId": "create_artifact_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateArtifactDownloadResponse"
+                }
+              }
+            },
+            "description": "Download manifest"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entitlement required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden or feature flag disabled"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource version or bundle not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a short-lived download manifest for a Logion bundle",
         "tags": [
           "resources"
         ]

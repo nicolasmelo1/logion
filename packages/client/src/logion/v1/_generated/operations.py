@@ -27,6 +27,7 @@ from logion.v1._types.generated.v1 import (
     CompleteIndexedBundleUploadResponse,
     CompleteIndexingRunRequest,
     CompleteIndexingRunResponse,
+    CreateArtifactDownloadResponse,
     CreateBountyPayoutResponse,
     CreateBountyRequest,
     CreateBountyResponse,
@@ -38,6 +39,7 @@ from logion.v1._types.generated.v1 import (
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
+    CreateIndexedBundleUploadRequest,
     CreateIndexedBundleUploadResponse,
     CreatePlatformBountyRequest,
     CreatePlatformBountyResponse,
@@ -53,6 +55,7 @@ from logion.v1._types.generated.v1 import (
     DismissReportResponse,
     FundBountyResponse,
     FundPlatformBountyResponse,
+    GetAcquisitionPlanResponse,
     GetAgentDetailResponse,
     GetApiCapabilitiesResponse,
     GetBountyResponse,
@@ -319,12 +322,14 @@ def create_indexed_bundle_upload(
     http: HttpClient,
     *,
     listing_id: str | UUID,
+    body: CreateIndexedBundleUploadRequest,
 ) -> CreateIndexedBundleUploadResponse:
     """Call the create_indexed_bundle_upload API operation."""
     return http.request_model(
         "POST",
         f"/v1/admin/indexing/listings/{listing_id}/bundle-upload",
         CreateIndexedBundleUploadResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 
@@ -1572,6 +1577,39 @@ def list_resource_versions(
         f"/v1/resources/{resource_id}/versions",
         ListResourceVersionsResponse,
         params=params,
+    )
+
+
+def get_acquisition_plan(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+    channel: str | None = None,
+) -> GetAcquisitionPlanResponse:
+    """Call the get_acquisition_plan API operation."""
+    params: dict[str, Any] = {}
+    if channel is not None:
+        params["channel"] = channel
+    return http.request_model(
+        "GET",
+        f"/v1/resources/{resource_id}/versions/{version_id}/acquisition-plan",
+        GetAcquisitionPlanResponse,
+        params=params,
+    )
+
+
+def create_artifact_download(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+) -> CreateArtifactDownloadResponse:
+    """Call the create_artifact_download API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/resources/{resource_id}/versions/{version_id}/download",
+        CreateArtifactDownloadResponse,
     )
 
 
