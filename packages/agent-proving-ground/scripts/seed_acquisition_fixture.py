@@ -24,6 +24,7 @@ import json
 import os
 import sys
 import tarfile
+import time
 import urllib.error
 import urllib.request
 from io import BytesIO
@@ -35,6 +36,7 @@ from typing import Any
 LISTING_CANONICAL = "gh:logion-fixtures/code-review-skill"
 LISTING_COMMIT = "b" * 40
 SKILL_NAME = "code-review"
+COURSE_SLUG = "acquisition-hosted-code-review"
 
 #: The bundle upload URL is presigned for this content type.
 BUNDLE_CONTENT_TYPE = "application/gzip"
@@ -179,17 +181,24 @@ def _upsert_listing(api: Api, *, with_commit: bool) -> str:
 def _upload_bundle(api: Api, listing_id: str) -> str:
     bundle = _skill_bundle()
     digest = hashlib.sha256(bundle).hexdigest()
+    # The digest is declared up front so the API can sign it into the PUT
+    # URL; completion reads it back from the object's metadata.
     session = api.expect(
-        "POST", f"/v1/admin/indexing/listings/{listing_id}/bundle-upload"
+        "POST",
+        f"/v1/admin/indexing/listings/{listing_id}/bundle-upload",
+        body={"checksum_sha256": digest},
     )
     # The URL is signed for this exact content type; sending anything else
     # makes object storage reject the signature.
     put = urllib.request.Request(
         session["put_url"],
         data=bundle,
-        # Only the content type is signed, so no other header may be sent:
-        # object storage rejects the whole request as an unsigned header.
-        headers={"Content-Type": BUNDLE_CONTENT_TYPE},
+        # Both headers are covered by the signature the API minted from the
+        # declared digest; sending anything else is rejected as unsigned.
+        headers={
+            "Content-Type": BUNDLE_CONTENT_TYPE,
+            "x-amz-meta-sha256": digest,
+        },
         method="PUT",
     )
     try:
@@ -225,6 +234,146 @@ def _upload_bundle(api: Api, listing_id: str) -> str:
             )
         raise SystemExit(f"bundle completion failed: HTTP {status}: {detail}")
     return digest
+
+
+#: A free course: the hosted-bundle rollout starts with free bundles, and a
+#: paid one answers `resource_entitlement_required` instead of a plan.
+COURSE_FILES: tuple[tuple[str, str, bytes], ...] = (
+    (
+        "SKILL.md",
+        "text/markdown",
+        b"---\nname: hosted-code-review\nlicense: MIT\n---\n"
+        b"# Hosted code review\n\nReview a diff and report risks first.\n",
+    ),
+    ("LICENSE", "text/plain", b"MIT\n"),
+    (
+        "course/capabilities.yaml",
+        "application/yaml",
+        b"version: 1\nsummary: Hosted code review fixture\n",
+    ),
+    (".bundle-manifest", "application/json", b'{"schema_version":"1"}\n'),
+)
+
+
+def _existing_course(api: Api) -> dict[str, Any] | None:
+    payload = api.expect("GET", "/v1/courses/mine?limit=50", role="seller")
+    for course in payload.get("courses", []):
+        if isinstance(course, dict) and course.get("slug") == COURSE_SLUG:
+            return course
+    return None
+
+
+def _upload_course_assets(api: Api, course_id: str) -> str:
+    specs = []
+    for name, content_type, body in COURSE_FILES:
+        specs.append({
+            "filename": name,
+            "content_type": content_type,
+            "size_bytes": len(body),
+            "checksum_sha256": hashlib.sha256(body).hexdigest(),
+        })
+    session = api.expect(
+        "POST",
+        f"/v1/courses/{course_id}/versions",
+        role="seller",
+        body={"files": specs},
+    )
+    version_id = str(session["version_id"])
+    by_name = {name: (ctype, body) for name, ctype, body in COURSE_FILES}
+    for upload in session["uploads"]:
+        content_type, body = by_name[upload["filename"]]
+        put = urllib.request.Request(
+            upload["put_url"],
+            data=body,
+            headers={
+                "Content-Type": content_type,
+                "x-amz-meta-checksum-sha256": hashlib.sha256(body).hexdigest(),
+            },
+            method="PUT",
+        )
+        with urllib.request.urlopen(put) as response:
+            if response.status not in (200, 204):
+                raise SystemExit(
+                    f"course asset PUT failed for {upload['filename']}"
+                )
+    api.expect(
+        "PATCH",
+        f"/v1/courses/{course_id}/versions/{version_id}/upload-session",
+        role="seller",
+        body={},
+    )
+    return version_id
+
+
+def _await(
+    api: Api, path: str, *, role: str, check, what: str, tries: int = 60
+) -> dict[str, Any]:
+    for _ in range(tries):
+        status, payload = api.request("GET", path, role=role)
+        if status == 200 and check(payload):
+            return payload
+        time.sleep(1)
+    raise SystemExit(f"timed out waiting for {what}")
+
+
+def _publish_course(api: Api) -> str:
+    """Create and publish a free hosted Course, returning its course id."""
+    course = _existing_course(api)
+    if course is None:
+        course = api.expect(
+            "POST",
+            "/v1/courses",
+            role="seller",
+            body={
+                "title": "Hosted Code Review",
+                "slug": COURSE_SLUG,
+                "short_summary": "Hosted code-review capability fixture.",
+                "description": "Deterministic hosted-bundle fixture.",
+                "visibility": "private",
+                "price_cents": 0,
+                "currency": "USD",
+                "tags": ["code-review"],
+            },
+        )
+    course_id = str(course["id"])
+    if course.get("status") == "published":
+        return course_id
+
+    version_id = _upload_course_assets(api, course_id)
+    _await(
+        api,
+        f"/v1/courses/{course_id}/versions/{version_id}",
+        role="seller",
+        check=lambda v: v.get("status") in {"ready", "validated"},
+        what="course version to become ready",
+    )
+    review = api.expect(
+        "POST",
+        f"/v1/courses/{course_id}/publication-reviews",
+        role="seller",
+        body={"version_id": version_id},
+    )
+    review_id = str(review["id"])
+    _await(
+        api,
+        f"/v1/course-reviews/{review_id}",
+        role="admin",
+        check=lambda r: r.get("review_status") == "human_review",
+        what="publication review to reach human_review",
+    )
+    api.expect(
+        "PATCH",
+        f"/v1/course-reviews/{review_id}/approval",
+        role="admin",
+        body={"acknowledge_capability_mismatches": True},
+    )
+    api.expect(
+        "PATCH",
+        f"/v1/courses/{course_id}",
+        role="seller",
+        body={"visibility": "public"},
+    )
+    return course_id
 
 
 def _find_resource(api: Api, canonical: str) -> dict[str, Any] | None:
@@ -295,6 +444,21 @@ def main(argv: list[str] | None = None) -> int:
             "listing dual-write did not register a native distribution"
         )
 
+    course_id = _publish_course(api)
+    hosted_resource = _find_resource(api, f"course:{course_id}")
+    if hosted_resource is None:
+        raise SystemExit(
+            f"published course {course_id} did not project a resource; "
+            "publication is not registering resource projections"
+        )
+    hosted = _acquirable(api, hosted_resource)
+    if hosted is None:
+        raise SystemExit(
+            f"published course {course_id} has no resolvable acquisition "
+            "plan; publication did not register a logion_bundle "
+            "distribution"
+        )
+
     sys.stdout.write(
         json.dumps(
             {
@@ -302,6 +466,10 @@ def main(argv: list[str] | None = None) -> int:
                 "indexed_version_id": indexed["version_id"],
                 "indexed_channel": indexed["channel"],
                 "indexed_canonical": LISTING_CANONICAL,
+                "hosted_resource_id": hosted["resource_id"],
+                "hosted_version_id": hosted["version_id"],
+                "hosted_channel": hosted["channel"],
+                "hosted_course_id": course_id,
             },
             sort_keys=True,
         )
