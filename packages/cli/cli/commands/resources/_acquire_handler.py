@@ -26,7 +26,13 @@ from cli._harness.scopes import (
 )
 from cli._output import emit_json, to_data
 
-from ._acquire_plan import build_plan, normalize_resource, normalize_versions
+from ._acquire_exec import run_acquisition
+from ._acquire_plan import (
+    _resource_name,
+    build_plan,
+    normalize_resource,
+    normalize_versions,
+)
 from ._inventory_handler import _all_scan_targets
 from ._scope_resolution import resolve_acquire_targets
 
@@ -36,14 +42,6 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        if not bool(getattr(args, "dry_run", True)):
-            message = (
-                "resource acquisition is not implemented; "
-                "no files were written"
-            )
-            return handle_validation_error(
-                message, json_output=config.json_output
-            )
         cwd_raw = getattr(args, "cwd", None)
         cwd = Path(cwd_raw).resolve() if cwd_raw else Path.cwd().resolve()
         default_scope = default_scope_for_cwd(cwd)
@@ -113,10 +111,23 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             scope_was_explicit=explicit_scope is not None,
             visible_targets=visible_targets,
         )
-        if config.json_output:
-            emit_json("logion.resources.acquire", plan)
-        else:
-            _print_plan(plan)
+        if bool(getattr(args, "dry_run", True)):
+            plan["dry_run"] = True
+            if config.json_output:
+                emit_json("logion.resources.acquire", plan)
+            else:
+                _print_plan(plan)
+            return 0
+        return _execute_plan(
+            args,
+            config,
+            client,
+            plan,
+            scope=scope,
+            harness=harness,
+            targets=targets,
+            resource=resource,
+        )
     except Exception as exc:
         return handle_error(
             exc, json_output=config.json_output, handle_validation=True
@@ -168,3 +179,71 @@ def _print_plan(plan: dict[str, Any]) -> None:
         f"\nPermissions required: {plan.get('permissions_required')}\n"
         f"Confirmation required: {plan.get('confirmation_required')}\n"
     )
+
+
+def _execute_plan(
+    args: argparse.Namespace,
+    config: Any,
+    client: Any,
+    plan: dict[str, Any],
+    *,
+    scope: str,
+    harness: str,
+    targets: list[Any],
+    resource: dict[str, Any],
+) -> int:
+    """Fetch the server acquisition plan, validate, execute, write receipt."""
+    versions = plan.get("versions") or []
+    if not versions:
+        return handle_validation_error(
+            "no resource version available", json_output=config.json_output
+        )
+    server_plan = to_data(
+        client.v1.resources.acquisition_plan(
+            resource_id=args.resource_id,
+            version_id=str(
+                versions[0].get("id") or versions[0].get("version_id")
+            ),
+            channel="auto",
+        )
+    )
+    selected = server_plan.get("selected_channel")
+    if not selected:
+        return handle_validation_error(
+            "server returned no selected_channel",
+            json_output=config.json_output,
+        )
+    target = targets[0]
+    name = _resource_name(resource, args.resource_id)
+    destination = target.target_path / name
+    relative = destination.relative_to(target.scope_root).as_posix()
+    receipt = run_acquisition(
+        client=client,
+        plan={
+            "resource_id": args.resource_id,
+            "version_id": server_plan["version_id"],
+            "distribution_id": server_plan["distribution_id"],
+            "content_digest": server_plan["content_digest"],
+            "selected_channel": selected,
+            "license": server_plan.get("license") or {},
+            "entitlement": server_plan.get("entitlement") or {},
+            "expected": server_plan.get("expected") or {},
+            "native": server_plan.get("native") or {},
+            "permissions": server_plan.get("permissions") or {},
+        },
+        scope=scope,
+        harness=harness,
+        destination=destination,
+        scope_root=target.scope_root,
+        relative_target_path=relative,
+        resource_type=str(resource.get("resource_type") or "agent_skill"),
+        assume_yes=bool(getattr(args, "yes", False)),
+    )
+    if config.json_output:
+        emit_json("logion.resources.acquire", receipt)
+    else:
+        sys.stdout.write(
+            f"Installed {plan['resource_name']} via {selected} "
+            f"(verification={receipt['verification']})\n"
+        )
+    return 0

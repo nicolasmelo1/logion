@@ -11,8 +11,10 @@ from cli._options import COMMON_PARSER
 
 from .handlers import (
     handle_resources_acquire,
+    handle_resources_distributions,
     handle_resources_get,
     handle_resources_inventory,
+    handle_resources_reconcile,
     handle_resources_search,
     handle_resources_versions,
 )
@@ -177,5 +179,33 @@ def register(
         help="Explicit skills directory for the custom harness",
     )
     inventory.set_defaults(handler=handle_resources_inventory)
+
+    acquire.add_argument(
+        "--yes",
+        action="store_true",
+        default=False,
+        help="Approve the displayed acquisition plan without prompting",
+    )
+
+    distributions = sub.add_parser(
+        "distributions",
+        help="List acquisition channels for a resource version",
+        parents=[COMMON_PARSER],
+    )
+    distributions.add_argument("resource_id", metavar="RESOURCE_ID")
+    distributions.add_argument(
+        "--version",
+        dest="version",
+        default=None,
+        help="Specific version UUID (default: latest)",
+    )
+    distributions.set_defaults(handler=handle_resources_distributions)
+
+    reconcile = sub.add_parser(
+        "reconcile",
+        help="Match local installations to catalog resources (read-only)",
+        parents=[COMMON_PARSER],
+    )
+    reconcile.set_defaults(handler=handle_resources_reconcile)
 
     return parser

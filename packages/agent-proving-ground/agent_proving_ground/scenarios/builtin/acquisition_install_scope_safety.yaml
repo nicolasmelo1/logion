@@ -1,0 +1,110 @@
+schema_version: "1"
+name: acquisition_install_scope_safety
+description: |
+  Native acquisition end-to-end: an operator discovers a published hosted
+  Course through Logion, acquires it into a repository-scoped Codex target
+  without touching user scope, shows what was installed, and reconciles the
+  local inventory afterwards. Assertions consume CLI JSON artifacts and the
+  local inventory receipts; scripted agents and mock API adapters are not
+  valid for the final run.
+api_adapter: local-devrig
+driver_config:
+  codex:
+    model: gpt-5.4-mini
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex]
+  driver_models:
+    codex: [gpt-5.4-mini]
+
+agents:
+  - id: operator
+    role: Developer acquiring a capability into one repository
+    driver: codex
+    workspace: operator
+    devrig_role: admin
+    timeout_seconds: 900
+
+phases:
+  - id: prepare-fixture
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/setup_harness_scope_fixture.py
+    local_hook_args: ["${AGENT_OPERATOR_WORKSPACE}"]
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      NESTED_CWD: nested_cwd
+      ISOLATED_HOME: isolated_home
+      EVIDENCE_DIR: evidence_dir
+      BEFORE_SNAPSHOT: snapshot_path
+    goal: ""
+    assertions:
+      - type: file.exists
+        params:
+          path: "${FIXTURE_ROOT}"
+
+  - id: discover-and-acquire
+    actor: operator
+    goal: |
+      You are working on the repository at ${FIXTURE_ROOT}. You need a
+      small code-review capability installed into that repository so Codex
+      can see it — not into your global user profile.
+
+      Use the public Logion CLI (run as
+      `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
+      ${ISOLATED_HOME} and the API at http://localhost:8000. Do not call the
+      HTTP API directly.
+
+      Search the catalog for a suitable agent skill, pick the one that fits,
+      check what channels it can be acquired through, then install it into
+      repository ${FIXTURE_ROOT} for Codex. Save the JSON output of the
+      final acquire command to ${EVIDENCE_DIR}/acquire.json. Show me what
+      was installed afterwards.
+    success_hint: |
+      A receipt JSON was saved and the installation lives under
+      ${FIXTURE_ROOT} only.
+    assertions:
+      - type: api.resource_acquisition_exists
+        params:
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+      - type: api.resource_distribution_selected
+        params:
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          allowed_channels: [logion_bundle, npx_skills]
+      - type: files.installed_artifact_digest_matches
+        params:
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          scope_root: "${FIXTURE_ROOT}"
+
+  - id: reconcile-inventory
+    actor: operator
+    goal: |
+      In the same environment (HOME=${ISOLATED_HOME}), reconcile local
+      installations with the Logion catalog and save the JSON report to
+      ${EVIDENCE_DIR}/reconcile.json. Then run the acquire command for the
+      same resource a second time, exactly as before, saving the output to
+      ${EVIDENCE_DIR}/acquire-second.json — it must succeed cleanly.
+    success_hint: |
+      The reconcile report lists the new installation; the second acquire
+      is idempotent.
+    assertions:
+      - type: files.inventory_receipt_matches
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile.json"
+          acquire_artifact: "${EVIDENCE_DIR}/acquire.json"
+      - type: api.native_install_reconciled
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile.json"
+          scope_root: "${FIXTURE_ROOT}"
+      - type: api.acquisition_idempotent
+        params:
+          first_artifact: "${EVIDENCE_DIR}/acquire.json"
+          second_artifact: "${EVIDENCE_DIR}/acquire-second.json"
+          scope_root: "${FIXTURE_ROOT}"
+
+final_assertions:
+  - type: timeline.no_unredacted_secret
+  - type: logs.no_500s
+  - type: files.installed_artifact_digest_matches
+    params:
+      artifact: "${EVIDENCE_DIR}/acquire.json"
+      scope_root: "${FIXTURE_ROOT}"

@@ -144,3 +144,64 @@ class ResourcesResource:
             )
             raise TypeError(msg)
         return result
+
+    def acquisition_plan(
+        self,
+        *,
+        resource_id: str,
+        version_id: str,
+        channel: str | None = None,
+    ) -> dict[str, object]:
+        """Build a server-owned acquisition plan for a resource version.
+
+        The plan describes the selected distribution, alternatives,
+        entitlement, license, expected bytes, native tool invocation, and
+        integrity pin. It never contains local paths, scope identifiers, or
+        installation identifiers.
+        """
+        encoded_id = quote(resource_id, safe="")
+        encoded_version = quote(version_id, safe="")
+        params: dict[str, object] = {}
+        if channel is not None:
+            params["channel"] = channel
+        result = self._http.request(
+            "GET",
+            f"/v1/resources/{encoded_id}/versions/{encoded_version}"
+            "/acquisition-plan",
+            params=params,
+        )
+        if not isinstance(result, dict):
+            msg = (
+                "Expected a JSON object from GET /v1/resources/"
+                f"{resource_id}/versions/{version_id}/acquisition-plan, "
+                f"got {type(result).__name__}"
+            )
+            raise TypeError(msg)
+        return result
+
+    def create_download(
+        self,
+        *,
+        resource_id: str,
+        version_id: str,
+    ) -> dict[str, object]:
+        """Mint a short-lived download manifest for a Logion-hosted bundle.
+
+        Requires an authenticated agent; paid course-backed resources require
+        an active entitlement. The response contains presigned URLs, not raw
+        bytes.
+        """
+        encoded_id = quote(resource_id, safe="")
+        encoded_version = quote(version_id, safe="")
+        result = self._http.request(
+            "POST",
+            f"/v1/resources/{encoded_id}/versions/{encoded_version}/download",
+        )
+        if not isinstance(result, dict):
+            msg = (
+                "Expected a JSON object from POST /v1/resources/"
+                f"{resource_id}/versions/{version_id}/download, "
+                f"got {type(result).__name__}"
+            )
+            raise TypeError(msg)
+        return result

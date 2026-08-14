@@ -178,7 +178,19 @@ def test_resource_detail_human_output_uses_contract_envelope(
     assert "git: gh:owner/repo" in output
 
 
-def test_acquire_non_dry_run_json_uses_error_envelope(capsys) -> None:
+def test_acquire_non_dry_run_json_uses_error_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class FailingResources:
+        def get(self, **_kwargs: object) -> object:
+            raise APIError(404, "not found")
+
+    client = _FakeClient(FailingResources())
+    monkeypatch.setattr(
+        "cli.commands.resources._acquire_handler.make_client",
+        lambda _config: client,
+    )
     args = _resources_parser().parse_args([
         "resources",
         "acquire",
@@ -188,10 +200,9 @@ def test_acquire_non_dry_run_json_uses_error_envelope(capsys) -> None:
         "--no-dry-run",
         "--json",
     ])
-    assert args.handler(args) == 2
+    assert args.handler(args) == 1
     payload = json.loads(capsys.readouterr().err)
     assert payload["kind"] == "logion.error"
-    assert payload["data"]["code"] == "validation_failed"
 
 
 def test_default_scope_outside_git_is_user(tmp_path: Path) -> None:

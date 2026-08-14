@@ -359,7 +359,15 @@
     "resources acquire": {
       "operations": [
         "get_resource",
-        "list_resource_versions"
+        "list_resource_versions",
+        "get_acquisition_plan",
+        "create_artifact_download"
+      ]
+    },
+    "resources distributions": {
+      "operations": [
+        "list_resource_versions",
+        "get_acquisition_plan"
       ]
     },
     "resources get": {
@@ -374,6 +382,9 @@
       "operations": [
         "list_resources"
       ]
+    },
+    "resources reconcile": {
+      "operations": []
     },
     "resources search": {
       "operations": [
