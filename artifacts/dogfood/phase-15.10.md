@@ -1,4 +1,4 @@
-# Phase 15.10 dogfood record
+# Native acquisition dogfood record
 
 Date: 2026-08-14
 
