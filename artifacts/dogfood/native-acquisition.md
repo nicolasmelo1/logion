@@ -1,75 +1,93 @@
 # Native acquisition dogfood record
 
-Date: 2026-08-14
+Date: 2026-08-14 (re-run against a live devrig after the acquisition path
+was fixed end to end; supersedes the earlier record whose native leg used a
+floating `skills@latest` spec that is no longer accepted)
+
+Environment: local devrig — PostgreSQL 17 and MinIO in Docker, the Logion
+API on `http://localhost:8000`, `node` v22.22.1, `npx`, and the public CLI
+run from this repository.
 
 ## Hosted Logion bundle
 
-- Resource: `822e3a53-183d-4791-a2c0-9f127ff88cf8`
-- Version: `3bebade9-17bf-4a21-8095-da5048817cc3`
-- Distribution: `23f1ccc9-8834-453b-a985-fdfb016b2051`
+- Resource: `ee3f2e01-d42d-440b-abca-be3a5919a18e`
+- Version: `8cc2ac00-9e44-4fda-9f9e-c2e2ae461eea`
 - Channel: `logion_bundle`
-- Content digest: `sha256:1dcfe83b5f89ab11b6c0c00ec0a89ee6f1ed3727019b152f383a2fead42d92f3`
+- Content digest: `sha256:7eb211cfa7578b989209800e4be24b24cb4dcf321a8adce18bbfd3e409b12d01`
 - Harness/scope: Codex, repository root
 - Verification: `exact`
 - Installed paths:
-  - `.agents/skills/course/.bundle-manifest`
-  - `.agents/skills/course/LICENSE`
-  - `.agents/skills/course/SKILL.md`
-  - `.agents/skills/course/course/capabilities.yaml`
-- Evidence: presigned MinIO download, per-file size/SHA-256 checks, and client recomputation of the backend aggregate digest.
+  - `.agents/skills/hosted-code-review/.bundle-manifest`
+  - `.agents/skills/hosted-code-review/LICENSE`
+  - `.agents/skills/hosted-code-review/SKILL.md`
+  - `.agents/skills/hosted-code-review/course/capabilities.yaml`
+
+The dry-run was inspected first and reported the channel, digest, expected
+permissions (`network=False`), the `download` operation, and
+`verification expectation: exact` — the same distribution the executable
+path then used.
+
+Evidence: presigned MinIO download, per-file size and SHA-256 checks, and
+client recomputation of the backend's aggregate digest over the object keys
+the manifest now exposes as `aggregate_key`.
 
 ## Native `npx skills` acquisition
 
-Executed in a fresh temporary Git repository:
-
 ```text
-npx --yes skills@latest add vercel-labs/skills --skill find-skills
-```
-
-Acquired through Logion with:
-
-```text
-logion resources acquire 4dad2e8e-534a-445a-b516-27132ac24d09 \
-  --version 7eefbf54-50cb-4586-aef3-00fa8e353216 \
+logion resources acquire c8f0a79d-4c92-4cc5-b51c-5b5df35dd757 \
   --harness codex --scope repo-root --channel npx_skills \
   --no-dry-run --yes --json
 ```
 
-- Resource: `4dad2e8e-534a-445a-b516-27132ac24d09`
-- Version: `7eefbf54-50cb-4586-aef3-00fa8e353216`
-- Distribution: `39b37508-2783-4ca3-b6c9-5ce01bb9e8b4`
-- Source: `vercel-labs/skills`
-- Skill: `find-skills`
-- Native manager: `skills@latest` (see follow-up below)
-- Manager state: `skills-lock.json`, `computedHash=b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf`
+Logion delegated to the server-provided argv, executed without a shell:
+
+```text
+npx skills@1.5.22 add vercel-labs/skills --skill find-skills
+```
+
+- Source: `vercel-labs/skills`, skill `find-skills`
+- Native manager: `skills@1.5.22` (an immutable pin; a dist-tag is refused)
+- Manager state: `skills-lock.json`, left exactly as the manager wrote it
+- Manager content digest:
+  `sha256:b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf`
 - Installed path: `.agents/skills/find-skills`
-- Verification: `source_revision` using the manager's immutable computed hash
+- Verification: `unverified`
+
+The verification level is honest rather than flattering: the lockfile
+records a `computedHash` but no commit, and a content hash is not an
+immutable revision, so this acquisition does not claim `source_revision`.
 
 ## Inventory and reconciliation
-
-Executed against the same fresh repository:
 
 ```text
 logion resources inventory --harness codex --scope repo-root --json
 logion resources reconcile --from skills --scope repo-root --json
 ```
 
-Observed outcome:
+- Inventory listed the hosted install from its receipt as `exact` /
+  `validated-local-receipt`, in `repo-root` scope only.
+- Reconcile matched two entries and reported zero drifted, unresolved, or
+  ambiguous: the receipt Logion wrote, and the manager's own
+  `skills-lock.json` entry resolved back to its catalog resource
+  (`vercel-labs/skills` → `canonical_source`). Both normative directions.
+- Re-running the hosted acquisition returned the same `installation_id`
+  and left no `.logion-incoming` or `.logion-backup` directory behind.
+- Appending a line to an installed file moved it out of `matched` and into
+  `drifted` with `digest-mismatch:.agents/skills/hosted-code-review/SKILL.md`.
+- No telemetry, review, or manager-state rewrite was performed.
 
-- Inventory found `find-skills` in `repo-root` scope without global installation.
-- Reconciliation matched `vercel-labs/skills` to resource `4dad2e8e-534a-445a-b516-27132ac24d09` and version `7eefbf54-50cb-4586-aef3-00fa8e353216`.
-- No reinstall, deletion, upload, telemetry, or manager-lock rewrite was performed by reconciliation.
-- A repeated acquire resolved to the same installation identity.
+## Product friction found
 
-## Bounded use
+Everything below was found by doing this, not by reading code:
 
-The installed bundle was inspected through its native Codex skill location. No usage report or review was submitted for the ownerless indexed skill.
-
-## Follow-up
-
-The `npx skills` acquisition above ran before the adapter required an
-immutable manager pin. It recorded a floating `skills@latest` spec, which
-is no longer accepted: the adapter now refuses a dist-tag and derives
-`manager_version` from the pinned `skills@x.y.z` it executes, and it reads
-the lockfile through the strict name-keyed parser. This leg must be re-run
-against a pinned distribution before it counts as evidence.
+- Publishing a course never registered a resource projection, so no hosted
+  course had a `logion_bundle` distribution and every acquisition plan
+  answered `resource_distribution_unavailable`.
+- The download manifest omitted the object keys the version's pinned
+  `content_hash` is aggregated over, so a client could verify each file but
+  never reproduce the digest it was promised.
+- The indexed bundle upload could be performed but never completed: the
+  presigned URL signed only the content type, while completion required
+  sha256 metadata on the object.
+- The `npx_skills` plan emitted `skills@latest` with no tested version, and
+  passed `gh:owner/repo@sha` where the CLI expects `owner/repo --skill name`.

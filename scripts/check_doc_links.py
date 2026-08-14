@@ -38,6 +38,10 @@ SKIP_DIRS = {
     ".ruff_cache",
     "node_modules",
     "__pycache__",
+    # Proving-ground run output: agent-authored markdown that documents a
+    # run, not repository documentation. Its links point at the agent's
+    # own workspace and are not ours to fix.
+    ".runs",
 }
 
 SKIP_PREFIXES = (

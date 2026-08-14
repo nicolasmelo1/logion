@@ -27,13 +27,34 @@ def _snapshot(roots: list[Path]) -> dict[str, str]:
     result: dict[str, str] = {}
     # Git internals churn on their own (index mtimes, refs); the snapshot
     # is about installed content, not repository plumbing.
-    skip_dirs = {".cache", "__pycache__", ".local", "Library", ".git"}
+    skip_dirs = {
+        ".cache",
+        "__pycache__",
+        ".local",
+        "Library",
+        ".git",
+        ".npm",
+        ".bun",
+        ".yarn",
+        "node_modules",
+    }
+    skip_files = {
+        ".bashrc",
+        ".bash_profile",
+        ".bash_history",
+        ".zshrc",
+        ".zsh_history",
+        ".profile",
+        ".npmrc",
+    }
     for root in roots:
         if not root.exists():
             continue
         for path in sorted(root.rglob("*")):
             if path.is_file():
                 if any(part in skip_dirs for part in path.parts):
+                    continue
+                if path.parent == root and path.name in skip_files:
                     continue
                 result[str(path.resolve())] = hashlib.sha256(
                     path.read_bytes()

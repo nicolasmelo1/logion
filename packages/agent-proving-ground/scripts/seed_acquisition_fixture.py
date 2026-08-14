@@ -147,11 +147,11 @@ def _skill_bundle() -> bytes:
 def _upsert_listing(api: Api, *, with_commit: bool) -> str:
     item: dict[str, Any] = {
         "canonical": LISTING_CANONICAL,
-        "title": "Code Review Skill",
-        "summary": "Lightweight code-review capability for coding agents.",
+        "title": "Find Skills (upstream)",
+        "summary": "Upstream skill-discovery helper, installed by npx skills.",
         "original_author": "logion-fixtures",
         "license_spdx": "MIT",
-        "tags": ["code-review", "quality"],
+        "tags": ["discovery", "upstream"],
         "channels": [],
     }
     if with_commit:

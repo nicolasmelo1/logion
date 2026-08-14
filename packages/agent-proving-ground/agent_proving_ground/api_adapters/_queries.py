@@ -1781,6 +1781,18 @@ def _resolved_scope_root(raw: Any) -> Path:
     return root
 
 
+#: Shell start-up files a spawned interactive tool writes on its own.
+_SHELL_RC_FILES = frozenset({
+    ".bashrc",
+    ".bash_profile",
+    ".bash_history",
+    ".zshrc",
+    ".zsh_history",
+    ".profile",
+    ".npmrc",
+})
+
+
 def _duplicate_install_state(scope_root: Path) -> list[str]:
     """List staging/backup directories an interrupted swap left behind."""
     leftovers: list[str] = []
@@ -1849,10 +1861,24 @@ def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
         root = Path(str(raw_root))
         if not root.is_dir():
             raise ValueError(f"snapshot root is not a directory: {root}")
-        skip_dirs = {".cache", "__pycache__", ".local", "Library", ".git"}
+        skip_dirs = {
+            ".cache",
+            "__pycache__",
+            ".local",
+            "Library",
+            ".git",
+            # Package-manager and tool caches: running `npx` writes here
+            # legitimately, and it says nothing about harness scope.
+            ".npm",
+            ".bun",
+            ".yarn",
+            "node_modules",
+        }
         for path in sorted(root.rglob("*")):
             if path.is_file():
                 if any(part in skip_dirs for part in path.parts):
+                    continue
+                if path.parent == root and path.name in _SHELL_RC_FILES:
                     continue
                 result[str(path.resolve())] = hashlib.sha256(
                     path.read_bytes()

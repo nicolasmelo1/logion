@@ -56,9 +56,9 @@ phases:
     actor: operator
     goal: |
       I need a lightweight code-review capability in the repository at
-      ${FIXTURE_ROOT}. Search Logion, install the best suitable option for
-      Codex in that repository — not globally — and show me what was
-      installed.
+      ${FIXTURE_ROOT}. Search Logion for one it hosts and distributes
+      itself, install it for Codex in that repository — not globally — and
+      show me what was installed.
 
       Use the public Logion CLI (run as
       `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
@@ -95,12 +95,12 @@ phases:
   - id: native-manager-acquisition
     actor: operator
     goal: |
-      Still in ${FIXTURE_ROOT} with HOME=${ISOLATED_HOME}, install a second
-      capability the way its own ecosystem expects: let Logion delegate to
-      the upstream `npx skills` manager rather than downloading it itself.
-      Pick a resource whose distributions include the `npx_skills` channel
-      (`resources distributions RESOURCE_ID` lists them), review the exact
-      argv Logion shows you, and approve it.
+      Now add the upstream skill-discovery helper to the same repository,
+      the way its own ecosystem expects: let Logion delegate to the
+      `npx skills` manager rather than downloading it itself. Its
+      distributions include the `npx_skills` channel — `resources
+      distributions RESOURCE_ID` lists them. Review the exact argv Logion
+      shows you before approving it.
 
       Save the receipt to ${EVIDENCE_DIR}/native-acquire.json. Leave
       `skills-lock.json` exactly as the manager wrote it.
