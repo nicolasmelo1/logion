@@ -517,3 +517,56 @@ def test_acquisition_assertions_are_registered() -> None:
 
 class _DummyKeys:
     configured = True
+
+
+class TestLocalHookResolution:
+    """A scenario must run from either checkout that can own its hook."""
+
+    def test_prefers_the_devrig_root(self, tmp_path: Path) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        devrig = tmp_path / "devrig"
+        (devrig / "scripts").mkdir(parents=True)
+        hook = devrig / "scripts" / "seed.py"
+        hook.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        assert _resolve_hook_path("scripts/seed.py", devrig) == str(hook)
+
+    def test_falls_back_to_the_public_repo(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        devrig = tmp_path / "workspace"
+        devrig.mkdir()
+        public = tmp_path / "public"
+        (public / "scripts").mkdir(parents=True)
+        hook = public / "scripts" / "seed.py"
+        hook.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        monkeypatch.setenv("LOGION_PUBLIC_REPO_PATH", str(public))
+        assert _resolve_hook_path("scripts/seed.py", devrig) == str(hook)
+
+    def test_reports_the_devrig_path_when_nothing_matches(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        monkeypatch.delenv("LOGION_PUBLIC_REPO_PATH", raising=False)
+        resolved = _resolve_hook_path("scripts/missing.py", tmp_path)
+        assert resolved == str(tmp_path / "scripts/missing.py")
+
+    def test_scenario_hooks_resolve_from_the_package(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The shipped scenario's own hooks must always be findable."""
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        monkeypatch.delenv("LOGION_PUBLIC_REPO_PATH", raising=False)
+        for hook in (
+            "packages/agent-proving-ground/scripts/"
+            "setup_harness_scope_fixture.py",
+            "packages/agent-proving-ground/scripts/"
+            "tamper_installed_artifact.py",
+            "packages/agent-proving-ground/scripts/"
+            "seed_acquisition_fixture.py",
+        ):
+            assert Path(_resolve_hook_path(hook, tmp_path)).is_file(), hook

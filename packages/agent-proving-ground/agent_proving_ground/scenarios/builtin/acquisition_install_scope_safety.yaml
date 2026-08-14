@@ -43,6 +43,15 @@ phases:
       BEFORE_SNAPSHOT: snapshot_path
     goal: ""
 
+  - id: seed-catalog
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/seed_acquisition_fixture.py
+    local_hook_capture_json:
+      INDEXED_RESOURCE_ID: indexed_resource_id
+      INDEXED_VERSION_ID: indexed_version_id
+      INDEXED_CHANNEL: indexed_channel
+    goal: ""
+
   - id: discover-and-acquire
     actor: operator
     goal: |
