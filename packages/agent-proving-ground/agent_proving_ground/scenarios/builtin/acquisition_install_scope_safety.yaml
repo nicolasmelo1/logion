@@ -47,8 +47,8 @@ phases:
 
       Use the public Logion CLI (run as
       `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
-      ${ISOLATED_HOME} and the API at http://localhost:8000 (via
-      LOGION_BASE_URL). Do not call the HTTP API directly.
+      ${ISOLATED_HOME} and `--base-url http://localhost:8000` on each
+      command. Do not call the HTTP API directly.
 
       List the catalog with `resources list`, ignoring the kind filter —
       the item to install is the Logion-hosted Course whose canonical_uri
