@@ -136,10 +136,13 @@ phases:
     goal: |
       In the same environment (HOME=${ISOLATED_HOME}), reconcile local
       installations with the Logion catalog and save the JSON report to
-      ${EVIDENCE_DIR}/reconcile.json. Then run the first acquire command
-      again, exactly as before, saving the output to
-      ${EVIDENCE_DIR}/acquire-second.json — it must succeed cleanly and
-      must not leave a second copy behind.
+      ${EVIDENCE_DIR}/reconcile.json. Then acquire the **hosted** resource
+      a second time, saving the output to
+      ${EVIDENCE_DIR}/acquire-second.json. Read its id out of
+      ${EVIDENCE_DIR}/acquire.json (the `data.resource_id` field) instead
+      of retyping it — this step is about repeating an acquisition, not
+      about transcribing a UUID. It must succeed cleanly and must not
+      leave a second copy behind.
     success_hint: |
       The reconcile report lists both installations, including the one
       installed through npx skills; the second acquire is idempotent.
