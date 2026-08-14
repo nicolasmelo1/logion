@@ -71,7 +71,8 @@ def normalize_locator(value: str) -> str:
             text = text[len(prefix) :]
             break
     text = text.removesuffix(".git")
-    return text.strip("/")
+    # A `#skill` fragment is catalog identity, not part of the repository.
+    return text.partition("#")[0].strip("/")
 
 
 def _resource_version_matches(

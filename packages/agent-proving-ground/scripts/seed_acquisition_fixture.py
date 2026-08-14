@@ -33,9 +33,13 @@ from typing import Any
 
 #: Pinned so re-running the seed reuses the same fixtures instead of
 #: accumulating near-duplicates the reconciler would call ambiguous.
-LISTING_CANONICAL = "gh:logion-fixtures/code-review-skill"
-LISTING_COMMIT = "b" * 40
-SKILL_NAME = "code-review"
+#: A real upstream repository at a real commit: the native leg delegates to
+#: the actual `npx skills` CLI, which resolves this against GitHub. A
+#: fictional source would make the phase unrunnable.
+LISTING_CANONICAL = "gh:vercel-labs/skills#find-skills"
+# pragma: allowlist nextline secret
+LISTING_COMMIT = "c6f69c631292444cc541ac6d91e2226b0ff247da"
+SKILL_NAME = "find-skills"
 COURSE_SLUG = "acquisition-hosted-code-review"
 
 #: The bundle upload URL is presigned for this content type.

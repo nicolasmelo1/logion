@@ -23,6 +23,11 @@ from ._skills_lock import (
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
 
+def _skill_from_locator(locator: str) -> str:
+    """The `#skill` fragment a catalog locator may carry."""
+    return locator.partition("#")[2]
+
+
 class NpxSkillsAdapter(ChannelAdapter):
     channel = "npx_skills"
     _PROGRAMS: ClassVar[set[str]] = {"npx"}
@@ -95,17 +100,26 @@ class NpxSkillsAdapter(ChannelAdapter):
         if not lock.is_file():
             raise RuntimeError("skills-lock.json missing after npx skills")
         native = plan.get("native") or {}
+        locator = str(native.get("upstream_locator") or "")
         try:
             entry = select_entry(
                 parse_skills_lock(lock),
-                expected_source=str(native.get("upstream_locator") or ""),
-                expected_name=str(native.get("skill_name") or ""),
+                expected_source=locator,
+                expected_name=str(
+                    native.get("skill_name") or _skill_from_locator(locator)
+                ),
             )
         except UnsupportedLockfileError as exc:
             raise RuntimeError(str(exc)) from exc
 
+        # The manager records no commit, so a plan revision can only be
+        # contradicted, never confirmed, by the lockfile.
         expected_revision = str(native.get("revision") or "")
-        if expected_revision and entry.revision != expected_revision:
+        if (
+            expected_revision
+            and entry.revision
+            and entry.revision != expected_revision
+        ):
             raise RuntimeError(
                 "skills-lock.json revision does not match the plan: "
                 f"{entry.revision!r} != {expected_revision!r}"

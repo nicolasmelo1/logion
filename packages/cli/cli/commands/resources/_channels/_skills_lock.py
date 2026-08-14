@@ -36,6 +36,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .._catalog_reconciliation import normalize_locator
+
 #: Lockfile schema versions this adapter has been tested against.
 SUPPORTED_LOCK_VERSIONS = frozenset({1})
 
@@ -102,16 +104,25 @@ def _normalized_digest(raw: object) -> str:
     )
 
 
+#: Where the `skills` CLI installs into the project.
+_NATIVE_SKILLS_DIR = Path(".agents/skills")
+
+
 def _entry_paths(name: str, info: dict[str, object]) -> tuple[str, ...]:
+    """Local install paths for one entry, relative to the project root.
+
+    ``skillPath`` is the skill's location *inside the upstream repository*
+    and says nothing about where it landed locally, so it is never used as
+    an install path — the manager's own project directory is.
+    """
     raw = info.get("paths") or info.get("installedPaths")
     if isinstance(raw, str):
         return (raw,)
     if isinstance(raw, list):
-        return tuple(item for item in raw if isinstance(item, str))
-    skill_path = info.get("skillPath")
-    if isinstance(skill_path, str) and skill_path:
-        return (str(Path(skill_path).parent),)
-    return (str(Path(".agents/skills") / name),)
+        paths = tuple(item for item in raw if isinstance(item, str))
+        if paths:
+            return paths
+    return (str(_NATIVE_SKILLS_DIR / name),)
 
 
 def parse_skills_lock(path: Path) -> list[SkillsLockEntry]:
@@ -175,10 +186,11 @@ def select_entry(
     name matching is forbidden: it silently attributes an installation to
     a neighbouring repository.
     """
+    wanted = normalize_locator(expected_source)
     candidates = [
         entry
         for entry in entries
-        if (not expected_source or entry.source == expected_source)
+        if (not wanted or normalize_locator(entry.source) == wanted)
         and (not expected_name or entry.name == expected_name)
     ]
     if len(candidates) != 1:
