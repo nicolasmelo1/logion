@@ -34,9 +34,47 @@ def read_marker(path: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def reconciliation_status(skill_dir: Path) -> dict[str, str]:
+def receipt_status(
+    receipt: dict[str, Any], scope_root: Path | None
+) -> tuple[str, str]:
+    """Re-verify a local acquisition receipt against bytes on disk.
+
+    A receipt is a claim, not proof. When it carries per-file digests they
+    are recomputed here, so an installation that was deleted or edited
+    after acquisition reports ``drifted`` instead of inheriting the
+    verification level it had at install time.
+    """
+    evidence = receipt.get("native_evidence") or {}
+    file_digests = evidence.get("file_digests") or {}
+    claimed = str(receipt.get("verification") or "unverified")
+    if scope_root is None or not file_digests:
+        # Channels that delegate to a native manager record no per-file
+        # digests; the receipt is reported without upgrading its trust.
+        return claimed, "unrechecked-local-receipt"
+    for relative, expected in sorted(file_digests.items()):
+        candidate = scope_root / str(relative)
+        if not candidate.is_file():
+            return "drifted", f"missing-file:{relative}"
+        actual = hashlib.sha256(candidate.read_bytes()).hexdigest()
+        if actual != expected:
+            return "drifted", f"digest-mismatch:{relative}"
+    return claimed, "validated-local-receipt"
+
+
+def reconciliation_status(
+    skill_dir: Path,
+    receipt: dict[str, Any] | None = None,
+    scope_root: Path | None = None,
+) -> dict[str, str]:
     """Validate local evidence before assigning a reconciliation status."""
     digest = content_digest(skill_dir)
+    if receipt is not None:
+        status, evidence = receipt_status(receipt, scope_root)
+        return {
+            "status": status,
+            "content_digest": digest,
+            "evidence": evidence,
+        }
     status = "unlinked"
     evidence = "none"
     lock = read_marker(skill_dir / ".logion-lock.json")
@@ -96,34 +134,39 @@ def discover_native_state(  # noqa: C901 - manager schemas differ
     if source in {"all", "skills"}:
         lock = scope_root / "skills-lock.json"
         if lock.is_file():
+            from ._channels._skills_lock import (
+                UnsupportedLockfileError,
+                parse_skills_lock,
+            )
+
             try:
-                data = json.loads(lock.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                data = {}
-            entries = data.get("skills") if isinstance(data, dict) else []
-            if isinstance(entries, dict):
-                entries = list(entries.values())
-            if isinstance(entries, list):
-                for entry in entries:
-                    if isinstance(entry, dict):
-                        results.append({
-                            "manager": "skills",
-                            "source": str(
-                                entry.get("source")
-                                or entry.get("locator")
-                                or ""
-                            ),
-                            "revision": str(
-                                entry.get("revision")
-                                or entry.get("commit")
-                                or ""
-                            ),
-                            "resource_version_id": entry.get(
-                                "resource_version_id"
-                            ),
-                            "path": entry.get("path")
-                            or entry.get("directory"),
-                        })
+                entries = parse_skills_lock(lock)
+            except UnsupportedLockfileError as exc:
+                # Fail closed: an unreadable or unknown lockfile shape is
+                # reported, never guessed at.
+                results.append({
+                    "manager": "skills",
+                    "source": "",
+                    "revision": "",
+                    "resource_version_id": None,
+                    "path": str(lock),
+                    "unsupported": str(exc),
+                })
+                entries = []
+            results.extend(
+                {
+                    "manager": "skills",
+                    "name": entry.name,
+                    "source": entry.source,
+                    "revision": entry.revision,
+                    "content_digest": entry.content_digest,
+                    "resource_version_id": None,
+                    "path": entry.installed_paths[0]
+                    if entry.installed_paths
+                    else None,
+                }
+                for entry in entries
+            )
     if source in {"all", "plugins"}:
         for path in (
             scope_root / ".agents/plugins/manifest.json",

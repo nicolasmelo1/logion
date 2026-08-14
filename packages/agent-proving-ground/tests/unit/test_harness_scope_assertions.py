@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Unit tests for Phase 15.9.1 harness scope assertion types."""
+"""Unit tests for harness scope assertion types."""
 
 from __future__ import annotations
 

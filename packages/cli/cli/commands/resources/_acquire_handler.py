@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""Handler for ``logion resources acquire`` (dry-run only in 15.9.1).
+"""Handler for ``logion resources acquire``.
 
-Produces a zero-write acquisition plan showing the resolved scope target,
-resource/version/distribution details, the native argv or copy operation,
-digest/provenance status, observation integration state, and the
-permissions/confirmation required.  The non-dry run requires explicit
-approval and is not implemented in this phase.
+Dry-run and execution share one plan. Both resolve the harness scope
+locally, fetch the server-owned acquisition plan, and combine them, so the
+zero-write preview shows exactly what execution would do: channel, native
+argv, expected bytes, integrity pin, permissions, and the verification
+level reachable. Execution then requires the plan to be executable and
+explicitly approved.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from cli._harness.scopes import (
 from cli._output import emit_json, to_data
 
 from ._acquire_display import print_plan
+from ._acquire_distribution import fetch_distribution
 from ._acquire_exec import run_acquisition
 from ._acquire_plan import (
     _resource_name,
@@ -114,6 +116,13 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
                     "requested resource version was not found",
                     json_output=config.json_output,
                 )
+        requested_channel = str(getattr(args, "channel", "auto") or "auto")
+        distribution, distribution_error = fetch_distribution(
+            client,
+            resource_id=args.resource_id,
+            versions=versions,
+            channel=requested_channel,
+        )
         plan = build_plan(
             resource_id=args.resource_id,
             scope=scope,
@@ -124,6 +133,8 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             default_scope=default_scope,
             scope_was_explicit=explicit_scope is not None,
             visible_targets=visible_targets,
+            distribution=distribution,
+            distribution_error=distribution_error,
         )
         if bool(getattr(args, "dry_run", True)):
             plan["dry_run"] = True
@@ -132,15 +143,26 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             else:
                 print_plan(plan)
             return 0
+        plan["dry_run"] = False
+        # `executable` is False whenever the distribution is unresolved, so
+        # this also narrows `distribution` to a concrete plan.
+        if not plan["executable"] or distribution is None:
+            return handle_validation_error(
+                "acquisition is not executable: "
+                + "; ".join(plan["blocked_reasons"]),
+                json_output=config.json_output,
+            )
         return _execute_plan(
             args,
             config,
             client,
             plan,
+            distribution=distribution,
             scope=scope,
             harness=harness,
             targets=targets,
             resource=resource,
+            requested_channel=requested_channel,
         )
     except Exception as exc:
         return handle_error(
@@ -156,30 +178,21 @@ def _execute_plan(
     client: Any,
     plan: dict[str, Any],
     *,
+    distribution: dict[str, Any],
     scope: str,
     harness: str,
     targets: list[Any],
     resource: dict[str, Any],
+    requested_channel: str,
 ) -> int:
-    """Fetch the server acquisition plan, validate, execute, write receipt."""
-    versions = plan.get("versions") or []
-    if not versions:
+    """Execute the already-validated plan and persist the receipt."""
+    server_plan = distribution
+    selected = str(server_plan["selected_channel"])
+    if requested_channel != "auto" and selected != requested_channel:
         return handle_validation_error(
-            "no resource version available", json_output=config.json_output
-        )
-    server_plan = to_data(
-        client.v1.resources.acquisition_plan(
-            resource_id=args.resource_id,
-            version_id=str(
-                versions[0].get("id") or versions[0].get("version_id")
-            ),
-            channel=str(getattr(args, "channel", "auto") or "auto"),
-        )
-    )
-    selected = server_plan.get("selected_channel")
-    if not selected:
-        return handle_validation_error(
-            "server returned no selected_channel",
+            f"server selected channel {selected!r} but "
+            f"{requested_channel!r} was requested; re-run with "
+            f"--channel {selected} to approve it explicitly",
             json_output=config.json_output,
         )
     target = targets[0]

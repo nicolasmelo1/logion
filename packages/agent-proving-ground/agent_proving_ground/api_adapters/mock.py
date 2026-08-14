@@ -538,6 +538,10 @@ class MockApiAdapter(ApiAdapter):
                     "matched_count": 1,
                     "unresolved_count": 0,
                     "ambiguous_count": 0,
+                    "drifted_count": 0,
+                    "channels": [
+                        query.get("expected_channel", "logion_bundle")
+                    ],
                 }
             case "inventory_receipt_matches":
                 iid = query.get("installation_id", "i")
@@ -552,6 +556,19 @@ class MockApiAdapter(ApiAdapter):
                     "content_digest": query.get("content_digest", ""),
                     "computed_digest": query.get("content_digest", ""),
                     "files": 1,
+                }
+            case "install_drift_reported":
+                return {
+                    "drift_reported": True,
+                    "installation_id": query.get("installation_id", "i"),
+                    "drifted_count": 1,
+                }
+            case "scope_isolation_preserved":
+                return {
+                    "isolated": True,
+                    "added": [],
+                    "removed": [],
+                    "changed": [],
                 }
             case "acquisition_idempotent":
                 iid = query.get("installation_id", "i")

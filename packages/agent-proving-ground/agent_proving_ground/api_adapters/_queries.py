@@ -1369,12 +1369,49 @@ class LogionApiQueries:
         matched = report.get("matched") or []
         unresolved = report.get("unresolved") or []
         ambiguous = report.get("ambiguous") or []
-        reconciled = bool(matched) and not unresolved and not ambiguous
+        drifted = report.get("drifted") or []
+        try:
+            scope_root = _resolved_scope_root(query.get("scope_root"))
+        except ValueError as exc:
+            return _artifact_failure(str(exc), "reconciled")
+        # A reconcile report is only meaningful if the installations it
+        # claims still exist under the scope it claims them in.
+        missing: list[str] = []
+        for entry in matched:
+            if not isinstance(entry, dict):
+                continue
+            relative = entry.get("relative_target_path") or entry.get("path")
+            if not relative:
+                continue
+            if not (scope_root / str(relative)).exists():
+                missing.append(str(relative))
+        expected_channel = query.get("expected_channel")
+        channels = {
+            entry.get("channel")
+            for entry in matched
+            if isinstance(entry, dict)
+        }
+        if expected_channel and expected_channel not in channels:
+            return _artifact_failure(
+                f"no matched installation on channel {expected_channel!r}; "
+                f"saw {sorted(c for c in channels if c)}",
+                "reconciled",
+            )
+        if missing:
+            return _artifact_failure(
+                f"matched installations absent from disk: {missing}",
+                "reconciled",
+            )
+        reconciled = (
+            bool(matched) and not unresolved and not ambiguous and not drifted
+        )
         return {
             "reconciled": reconciled,
             "matched_count": len(matched),
             "unresolved_count": len(unresolved),
             "ambiguous_count": len(ambiguous),
+            "drifted_count": len(drifted),
+            "channels": sorted(c for c in channels if c),
             "evidence": {"source": str(query.get("artifact"))},
         }
 
@@ -1419,10 +1456,21 @@ class LogionApiQueries:
             return _artifact_failure(
                 "receipt lists no installed paths", "digest_matches"
             )
-        import hashlib as _hl
-
         evidence = receipt.get("native_evidence") or {}
         file_digests = evidence.get("file_digests") or {}
+        if not file_digests:
+            # Without per-file digests there is nothing to re-verify, so
+            # passing here would only assert that some files exist.
+            return _artifact_failure(
+                "receipt carries no native_evidence.file_digests",
+                "digest_matches",
+            )
+        unpinned = [rel for rel in installed if rel not in file_digests]
+        if unpinned:
+            return _artifact_failure(
+                f"installed files without a recorded digest: {unpinned}",
+                "digest_matches",
+            )
         mismatches: list[str] = []
         for rel in sorted(installed):
             path = scope_root / rel
@@ -1430,20 +1478,28 @@ class LogionApiQueries:
                 return _artifact_failure(
                     f"installed file missing: {rel}", "digest_matches"
                 )
-            actual = _hl.sha256(path.read_bytes()).hexdigest()
-            expected = file_digests.get(rel)
-            if expected is not None and actual != expected:
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+            if actual != file_digests[rel]:
                 mismatches.append(rel)
-        verification = receipt.get("verification")
-        expected_digest = str(receipt.get("content_digest") or "")
         if mismatches:
             return _artifact_failure(
                 f"installed file digests differ for: {mismatches}",
                 "digest_matches",
             )
+        verification = receipt.get("verification")
         if verification != "exact":
             return _artifact_failure(
                 f"verification is {verification!r}, not exact",
+                "digest_matches",
+            )
+        # The receipt's advertised content digest must be the same one the
+        # verified evidence carries, not an unrelated claim.
+        expected_digest = str(receipt.get("content_digest") or "")
+        evidence_digest = str(evidence.get("content_digest") or "")
+        if not expected_digest or expected_digest != evidence_digest:
+            return _artifact_failure(
+                "receipt content_digest does not match its native evidence: "
+                f"{expected_digest!r} != {evidence_digest!r}",
                 "digest_matches",
             )
         return {
@@ -1473,14 +1529,122 @@ class LogionApiQueries:
         same_digest = first.get("content_digest") == second.get(
             "content_digest"
         )
+        try:
+            scope_root = _resolved_scope_root(query.get("scope_root"))
+        except ValueError as exc:
+            return _artifact_failure(str(exc), "idempotent")
+        # Re-acquiring must not leave a second copy behind, so the paths
+        # the two receipts claim have to be the same set and nothing may
+        # linger from an interrupted swap.
+        first_paths = sorted(
+            str(p) for p in first.get("installed_paths") or []
+        )
+        second_paths = sorted(
+            str(p) for p in second.get("installed_paths") or []
+        )
+        if first_paths != second_paths:
+            return _artifact_failure(
+                "second acquisition installed a different path set: "
+                f"{first_paths} != {second_paths}",
+                "idempotent",
+            )
+        leftovers = _duplicate_install_state(scope_root)
+        if leftovers:
+            return _artifact_failure(
+                f"duplicate install state left on disk: {leftovers}",
+                "idempotent",
+            )
         return {
             "idempotent": bool(same_install and same_digest),
             "first_installation_id": first.get("installation_id"),
             "second_installation_id": second.get("installation_id"),
+            "installed_paths": first_paths,
             "evidence": {
                 "first": str(query.get("first_artifact")),
                 "second": str(query.get("second_artifact")),
             },
+        }
+
+    async def _q_install_drift_reported(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Assert a tampered installation is reported as drifted.
+
+        The negative path: once an installed artifact no longer matches the
+        digests its receipt recorded, reconcile must move it out of
+        ``matched`` and into ``drifted`` rather than keep vouching for it.
+        """
+        try:
+            report = _load_cli_object(
+                query.get("artifact"), "logion.resources.reconcile"
+            )
+            receipt = _load_cli_object(
+                query.get("acquire_artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "drift_reported")
+        installation_id = receipt.get("installation_id")
+        drifted_ids = {
+            entry.get("installation_id")
+            for entry in report.get("drifted") or []
+            if isinstance(entry, dict)
+        }
+        matched_ids = {
+            entry.get("installation_id")
+            for entry in report.get("matched") or []
+            if isinstance(entry, dict)
+        }
+        if installation_id in matched_ids:
+            return _artifact_failure(
+                "tampered installation is still reported as matched",
+                "drift_reported",
+            )
+        return {
+            "drift_reported": installation_id in drifted_ids,
+            "installation_id": installation_id,
+            "drifted_count": len(drifted_ids),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_scope_isolation_preserved(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Assert an acquisition touched nothing outside its own scope.
+
+        Compares a pre-acquisition snapshot against the protected roots
+        (the isolated user home, a second repository) so a repository
+        install that silently writes into user scope fails the run.
+        """
+        try:
+            before = _load_json_object(query.get("before_snapshot"))
+            protected = [
+                str(root) for root in query.get("protected_roots", [])
+            ]
+            after = _snapshot_roots(protected)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "isolated")
+        before_scoped = {
+            path: digest
+            for path, digest in before.items()
+            if any(path.startswith(root) for root in protected)
+        }
+        added = sorted(set(after) - set(before_scoped))
+        removed = sorted(set(before_scoped) - set(after))
+        changed = sorted(
+            path
+            for path in set(after) & set(before_scoped)
+            if after[path] != before_scoped[path]
+        )
+        return {
+            "isolated": not (added or removed or changed),
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "evidence": {"protected_roots": protected},
         }
 
     async def _q_harness_scope_nested_repo(
@@ -1609,6 +1773,25 @@ class LogionApiQueries:
         }
 
 
+def _resolved_scope_root(raw: Any) -> Path:
+    """Validate a scenario-supplied scope root outside the async path."""
+    root = Path(str(raw or ""))
+    if not root.is_dir():
+        raise ValueError(f"scope_root is not a directory: {root}")
+    return root
+
+
+def _duplicate_install_state(scope_root: Path) -> list[str]:
+    """List staging/backup directories an interrupted swap left behind."""
+    leftovers: list[str] = []
+    for pattern in ("*.logion-incoming", "*.logion-backup"):
+        leftovers.extend(
+            str(path.relative_to(scope_root))
+            for path in scope_root.rglob(pattern)
+        )
+    return sorted(leftovers)
+
+
 def _artifact_failure(reason: str, result_key: str) -> dict[str, Any]:
     return {result_key: False, "reason": reason, "evidence": {}}
 
@@ -1666,7 +1849,7 @@ def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
         root = Path(str(raw_root))
         if not root.is_dir():
             raise ValueError(f"snapshot root is not a directory: {root}")
-        skip_dirs = {".cache", "__pycache__", ".local", "Library"}
+        skip_dirs = {".cache", "__pycache__", ".local", "Library", ".git"}
         for path in sorted(root.rglob("*")):
             if path.is_file():
                 if any(part in skip_dirs for part in path.parts):

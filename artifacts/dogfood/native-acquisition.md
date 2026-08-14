@@ -40,7 +40,7 @@ logion resources acquire 4dad2e8e-534a-445a-b516-27132ac24d09 \
 - Distribution: `39b37508-2783-4ca3-b6c9-5ce01bb9e8b4`
 - Source: `vercel-labs/skills`
 - Skill: `find-skills`
-- Native manager: `skills@latest`
+- Native manager: `skills@latest` (see follow-up below)
 - Manager state: `skills-lock.json`, `computedHash=b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf`
 - Installed path: `.agents/skills/find-skills`
 - Verification: `source_revision` using the manager's immutable computed hash
@@ -64,3 +64,12 @@ Observed outcome:
 ## Bounded use
 
 The installed bundle was inspected through its native Codex skill location. No usage report or review was submitted for the ownerless indexed skill.
+
+## Follow-up
+
+The `npx skills` acquisition above ran before the adapter required an
+immutable manager pin. It recorded a floating `skills@latest` spec, which
+is no longer accepted: the adapter now refuses a dist-tag and derives
+`manager_version` from the pinned `skills@x.y.z` it executes, and it reads
+the lockfile through the strict name-keyed parser. This leg must be re-run
+against a pinned distribution before it counts as evidence.

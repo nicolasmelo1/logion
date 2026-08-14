@@ -8,6 +8,12 @@ from typing import Any
 
 from cli._harness.scopes import ADMIN, USER, ScopeTarget
 
+from ._acquire_distribution import (
+    _distribution_plan,
+    _target_plan,
+    _verification,
+)
+
 
 def normalize_resource(payload: Any) -> dict[str, Any]:
     """Accept both the API detail envelope and the legacy flat response."""
@@ -45,12 +51,22 @@ def build_plan(
     default_scope: str,
     scope_was_explicit: bool,
     visible_targets: list[ScopeTarget] | None = None,
+    distribution: dict[str, Any] | None = None,
+    distribution_error: str | None = None,
 ) -> dict[str, Any]:
+    """Build the local acquisition plan.
+
+    ``distribution`` is the validated server-owned acquisition plan. It is
+    fetched for dry-run and execution alike so the preview shows exactly
+    what the executable path would do: channel, native argv, expected
+    bytes, permissions, integrity pin, and verification expectation. When
+    it is absent the plan stays honest — not executable, with the reason.
+    """
     name = _resource_name(resource, resource_id)
     latest = versions[0] if versions else None
     selected_targets = targets[:1]
     target_plans = [
-        _target_plan(target, name, latest) for target in selected_targets
+        _target_plan(target, name, distribution) for target in selected_targets
     ]
     visible = visible_targets or targets
     same_name = [
@@ -89,9 +105,10 @@ def build_plan(
     # (i.e. the distribution has not been resolved yet).  Executing without
     # knowing the permissions/confirmations could silently install content
     # that requires elevated access or interactive confirmation.
-    if not blocked_reasons:
+    if distribution is None:
         blocked_reasons.append(
-            "permissions not resolved for this distribution"
+            distribution_error
+            or "permissions not resolved for this distribution"
         )
     return {
         "resource_id": resource_id,
@@ -114,14 +131,19 @@ def build_plan(
             for target in targets[1:]
         ],
         "same_name_resources": same_name,
-        "verification": _verification(latest),
+        "distribution": _distribution_plan(distribution, distribution_error),
+        "verification": _verification(latest, distribution),
         "observation_integration": {
             "integration_version": "logion.observation.v1",
             "state": "not-configured",
             "consent": "off",
             "spool_enabled": False,
         },
-        "permissions_required": "unknown-until-distribution-is-resolved",
+        "permissions_required": (
+            distribution.get("permissions") or {}
+            if distribution is not None
+            else "unknown-until-distribution-is-resolved"
+        ),
         "executable": not blocked_reasons,
         "blocked_reasons": blocked_reasons,
         "confirmation_required": bool(confirmations),
@@ -137,62 +159,3 @@ def _resource_name(resource: dict[str, Any], resource_id: str) -> str:
             "resource does not provide a safe native directory name"
         )
     return normalized[:128]
-
-
-def _target_plan(
-    target: ScopeTarget,
-    name: str,
-    latest: dict[str, Any] | None,
-) -> dict[str, Any]:
-    destination = target.target_path / name
-    if not target.target_path.exists():
-        state = "create-target"
-    elif not destination.exists():
-        state = "create"
-    elif not destination.is_dir() or not (destination / "SKILL.md").is_file():
-        state = "conflict"
-    else:
-        state = "replace"
-    source = _distribution_source(latest)
-    return {
-        "scope_kind": target.scope_kind,
-        "scope_root": str(target.scope_root),
-        "target_path": str(target.target_path),
-        "installation_path": str(destination),
-        "native_manager": target.native_manager,
-        "exists": target.exists,
-        "state": state,
-        "operation": {
-            "kind": "copy",
-            "source": source,
-            "destination": str(destination),
-            "ready": source is not None,
-        },
-    }
-
-
-def _distribution_source(version: dict[str, Any] | None) -> str | None:
-    if not version:
-        return None
-    for key in ("distribution_url", "bundle_url", "download_url"):
-        value = version.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None
-
-
-def _verification(version: dict[str, Any] | None) -> dict[str, Any]:
-    if not version:
-        return {"ready": False, "reason": "no resource version available"}
-    digest = version.get("content_digest")
-    algorithm = version.get("digest_algorithm")
-    revision = version.get("source_revision")
-    ready = all(
-        isinstance(value, str) and value for value in (digest, algorithm)
-    )
-    return {
-        "ready": ready,
-        "digest_algorithm": algorithm,
-        "content_digest": digest,
-        "source_revision": revision,
-    }

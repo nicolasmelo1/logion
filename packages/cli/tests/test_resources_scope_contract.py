@@ -13,7 +13,7 @@ from cli.commands.resources._acquire_plan import (
     normalize_resource,
     normalize_versions,
 )
-from cli.commands.resources._inventory_handler import _scan_dir
+from cli.commands.resources._inventory_entries import _scan_dir
 from cli.commands.resources._reconciliation import (
     mark_ambiguities,
     reconciliation_status,

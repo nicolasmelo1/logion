@@ -1,12 +1,16 @@
 schema_version: "1"
 name: acquisition_install_scope_safety
 description: |
-  Native acquisition end-to-end: an operator discovers a published hosted
-  Course through Logion, acquires it into a repository-scoped Codex target
-  without touching user scope, shows what was installed, and reconciles the
-  local inventory afterwards. Assertions consume CLI JSON artifacts and the
-  local inventory receipts; scripted agents and mock API adapters are not
-  valid for the final run.
+  Native acquisition end-to-end, in both normative directions: an operator
+  discovers a published hosted Course through Logion and acquires it into a
+  repository-scoped Codex target, then installs a second capability through
+  the real upstream `npx skills` manager and has Logion reconcile it without
+  reinstalling or rewriting the manager's state. The run also proves the
+  install stayed inside one repository, that tampering with an installed
+  artifact is reported as drift, and that re-acquiring is idempotent.
+  Assertions consume CLI JSON artifacts, local inventory receipts, and bytes
+  on disk; scripted agents and mock API adapters are not valid for the final
+  run.
 api_adapter: local-devrig
 driver_config:
   codex:
@@ -32,6 +36,7 @@ phases:
     local_hook_args: ["${AGENT_OPERATOR_WORKSPACE}"]
     local_hook_capture_json:
       FIXTURE_ROOT: fixture_root
+      OTHER_REPO_ROOT: other_repo_root
       NESTED_CWD: nested_cwd
       ISOLATED_HOME: isolated_home
       EVIDENCE_DIR: evidence_dir
@@ -41,27 +46,24 @@ phases:
   - id: discover-and-acquire
     actor: operator
     goal: |
-      You are working on the repository at ${FIXTURE_ROOT}. Install a
-      Logion agent-skill capability into that repository so Codex can use
-      it — not into your global user profile.
+      I need a lightweight code-review capability in the repository at
+      ${FIXTURE_ROOT}. Search Logion, install the best suitable option for
+      Codex in that repository — not globally — and show me what was
+      installed.
 
       Use the public Logion CLI (run as
       `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
       ${ISOLATED_HOME} and `--base-url http://localhost:8000` on each
       command. Do not call the HTTP API directly.
 
-      List the catalog with `resources list`, ignoring the kind filter —
-      the item to install is the Logion-hosted Course whose canonical_uri
-      starts with "course:". Check the distribution channels it supports
-      with `resources distributions RESOURCE_ID`, then run
-      `resources acquire RESOURCE_ID --harness codex --cwd FIXTURE_ROOT
-      --no-dry-run --yes --json` and save that final receipt JSON to
-      ${EVIDENCE_DIR}/acquire.json (overwrite any dry-run output). Show me
-      what was installed afterwards.
+      Before installing anything, save the zero-write plan to
+      ${EVIDENCE_DIR}/plan.json. Then save the final acquisition receipt
+      JSON to ${EVIDENCE_DIR}/acquire.json.
     success_hint: |
-      evidence/acquire.json contains the receipt with verification exact
-      or source_revision and the installation lives under ${FIXTURE_ROOT}
-      only.
+      evidence/plan.json is a dry-run plan that names the channel, argv,
+      expected bytes and permissions; evidence/acquire.json is the receipt
+      with verification exact and the installation lives under
+      ${FIXTURE_ROOT} only.
     assertions:
       - type: api.resource_acquisition_exists
         params:
@@ -74,18 +76,56 @@ phases:
         params:
           artifact: "${EVIDENCE_DIR}/acquire.json"
           scope_root: "${FIXTURE_ROOT}"
+      - type: files.scope_isolation_preserved
+        params:
+          before_snapshot: "${BEFORE_SNAPSHOT}"
+          protected_roots:
+            - "${ISOLATED_HOME}"
+            - "${OTHER_REPO_ROOT}"
+
+  - id: native-manager-acquisition
+    actor: operator
+    goal: |
+      Still in ${FIXTURE_ROOT} with HOME=${ISOLATED_HOME}, install a second
+      capability the way its own ecosystem expects: let Logion delegate to
+      the upstream `npx skills` manager rather than downloading it itself.
+      Pick a resource whose distributions include the `npx_skills` channel
+      (`resources distributions RESOURCE_ID` lists them), review the exact
+      argv Logion shows you, and approve it.
+
+      Save the receipt to ${EVIDENCE_DIR}/native-acquire.json. Leave
+      `skills-lock.json` exactly as the manager wrote it.
+    success_hint: |
+      The skill was installed by npx skills into ${FIXTURE_ROOT}, Logion
+      recorded a receipt on the npx_skills channel, and skills-lock.json is
+      the manager's own file.
+    assertions:
+      - type: api.resource_acquisition_exists
+        params:
+          artifact: "${EVIDENCE_DIR}/native-acquire.json"
+      - type: api.resource_distribution_selected
+        params:
+          artifact: "${EVIDENCE_DIR}/native-acquire.json"
+          allowed_channels: [npx_skills]
+      - type: files.scope_isolation_preserved
+        params:
+          before_snapshot: "${BEFORE_SNAPSHOT}"
+          protected_roots:
+            - "${ISOLATED_HOME}"
+            - "${OTHER_REPO_ROOT}"
 
   - id: reconcile-inventory
     actor: operator
     goal: |
       In the same environment (HOME=${ISOLATED_HOME}), reconcile local
       installations with the Logion catalog and save the JSON report to
-      ${EVIDENCE_DIR}/reconcile.json. Then run the acquire command for the
-      same resource a second time, exactly as before, saving the output to
-      ${EVIDENCE_DIR}/acquire-second.json — it must succeed cleanly.
+      ${EVIDENCE_DIR}/reconcile.json. Then run the first acquire command
+      again, exactly as before, saving the output to
+      ${EVIDENCE_DIR}/acquire-second.json — it must succeed cleanly and
+      must not leave a second copy behind.
     success_hint: |
-      The reconcile report lists the new installation; the second acquire
-      is idempotent.
+      The reconcile report lists both installations, including the one
+      installed through npx skills; the second acquire is idempotent.
     assertions:
       - type: files.inventory_receipt_matches
         params:
@@ -95,16 +135,38 @@ phases:
         params:
           artifact: "${EVIDENCE_DIR}/reconcile.json"
           scope_root: "${FIXTURE_ROOT}"
+          expected_channel: npx_skills
       - type: api.acquisition_idempotent
         params:
           first_artifact: "${EVIDENCE_DIR}/acquire.json"
           second_artifact: "${EVIDENCE_DIR}/acquire-second.json"
           scope_root: "${FIXTURE_ROOT}"
 
+  - id: tampered-artifact-fails-closed
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/tamper_installed_artifact.py
+    local_hook_args:
+      ["${EVIDENCE_DIR}/acquire.json", "${FIXTURE_ROOT}"]
+    goal: |
+      One of the files Logion installed was modified outside Logion. In the
+      same environment (HOME=${ISOLATED_HOME}), re-run reconcile and save
+      the report to ${EVIDENCE_DIR}/reconcile-drift.json. Report what Logion
+      says about it; do not repair, reinstall, or delete anything.
+    success_hint: |
+      Reconcile reports the tampered installation as drifted instead of
+      matched, and nothing was reinstalled.
+    assertions:
+      - type: files.install_drift_reported
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile-drift.json"
+          acquire_artifact: "${EVIDENCE_DIR}/acquire.json"
+
 final_assertions:
   - type: timeline.no_unredacted_secret
   - type: logs.no_500s
-  - type: files.installed_artifact_digest_matches
+  - type: files.scope_isolation_preserved
     params:
-      artifact: "${EVIDENCE_DIR}/acquire.json"
-      scope_root: "${FIXTURE_ROOT}"
+      before_snapshot: "${BEFORE_SNAPSHOT}"
+      protected_roots:
+        - "${ISOLATED_HOME}"
+        - "${OTHER_REPO_ROOT}"

@@ -51,6 +51,29 @@ def catalog_matches(
     return matches
 
 
+#: Locator prefixes different surfaces use for the same Git source. They
+#: are normalized away so comparison stays exact instead of substring
+#: based — `owner/repo` must never match `owner/repo-extra`.
+_LOCATOR_PREFIXES = (
+    "https://github.com/",
+    "http://github.com/",
+    "git@github.com:",
+    "github:",
+    "gh:",
+)
+
+
+def normalize_locator(value: str) -> str:
+    """Reduce a Git locator to a comparable ``owner/repo`` identity."""
+    text = str(value or "").strip().lower()
+    for prefix in _LOCATOR_PREFIXES:
+        if text.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    text = text.removesuffix(".git")
+    return text.strip("/")
+
+
 def _resource_version_matches(
     client: Any,
     resource: dict[str, object],
@@ -58,11 +81,9 @@ def _resource_version_matches(
     revision: str,
 ) -> list[dict[str, object]]:
     canonical = str(resource.get("canonical_uri") or "")
-    if (
-        canonical != source
-        and source not in canonical
-        and canonical not in source
-    ):
+    # Exact identity only. Fuzzy or display-name linking silently
+    # attributes an installation to the wrong resource.
+    if normalize_locator(canonical) != normalize_locator(source):
         return []
     resource_id = resource.get("id")
     if not resource_id:
@@ -88,6 +109,10 @@ def _resource_version_matches(
             "version_id": str(
                 version.get("id") or version.get("version_id") or ""
             ),
-            "verification": "source_revision" if revision else "canonical",
+            "verification": (
+                "source_revision"
+                if revision and version_revision
+                else "canonical_source"
+            ),
         })
     return matches

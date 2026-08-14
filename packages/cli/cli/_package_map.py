@@ -2,7 +2,7 @@
 """CLI-local surface over the shared ``logion_skillmap`` package.
 
 The parser/validator/inference engine live in ``logion_skillmap`` (shared
-with the 15.6 indexer and the backend materializer).  This module is the
+with the indexer and the backend materializer).  This module is the
 thin CLI adapter: it re-exports the schema surface, walks a local
 directory into the source-agnostic ``TreeEntry`` form ``infer`` expects,
 and serializes an inferred :class:`PackageMap` back to canonical nested

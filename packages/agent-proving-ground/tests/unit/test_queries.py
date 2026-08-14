@@ -14,7 +14,9 @@ from agent_proving_ground.api_adapters._queries import (
 async def test_course_exists_honors_captured_course_id(monkeypatch) -> None:
     queries = LogionApiQueries(
         "http://devrig.test",
-        RoleKeyStore({"seller": {"api_key": "redacted"}}),
+        RoleKeyStore(  # pragma: allowlist secret
+            {"seller": {"api_key": "redacted"}}
+        ),
     )
 
     async def fake_courses(_role: str | None) -> list[dict[str, str]]:
@@ -37,7 +39,9 @@ async def test_course_exists_honors_captured_course_id(monkeypatch) -> None:
 async def test_setup_token_pending_requires_exact_prefix(monkeypatch) -> None:
     queries = LogionApiQueries(
         "http://devrig.test",
-        RoleKeyStore({"seller": {"api_key": "redacted"}}),
+        RoleKeyStore(  # pragma: allowlist secret
+            {"seller": {"api_key": "redacted"}}
+        ),
     )
 
     async def fake_get(path: str, _role: str | None):
@@ -57,7 +61,7 @@ async def test_setup_token_pending_requires_exact_prefix(monkeypatch) -> None:
     assert result["pending"] is False
 
 
-# --- Regression tests for Phase 15.9.1 critical/high fixes ---
+# --- Regression tests for harness scope and observation fixes ---
 
 
 def test_load_cli_list_extracts_resources_from_inventory_envelope(
@@ -139,7 +143,9 @@ async def test_acquire_plan_dry_run_rejects_executable_true(
     """A dry-run plan with executable=True must fail validation."""
     queries = LogionApiQueries(
         "http://devrig.test",
-        RoleKeyStore({"seller": {"api_key": "redacted"}}),
+        RoleKeyStore(  # pragma: allowlist secret
+            {"seller": {"api_key": "redacted"}}
+        ),
     )
     plan = {
         "version": "v1",

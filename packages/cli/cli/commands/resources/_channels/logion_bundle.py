@@ -10,6 +10,7 @@ failure the partial download is deleted; nothing is installed.
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -155,7 +156,31 @@ class LogionBundleAdapter(ChannelAdapter):
                         raise RuntimeError("single file exceeds size cap")
 
     def _install(self, stage_dir: Path, destination: Path) -> None:
-        if destination.exists():
-            shutil.rmtree(destination)
+        """Swap the verified payload into place without losing the old copy.
+
+        The new tree is staged as a sibling of *destination* so the final
+        move is a same-directory rename, then the previous installation is
+        moved aside and only removed once the swap succeeded. A failure
+        mid-way restores the previous copy instead of leaving the target
+        deleted or half written.
+        """
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(stage_dir), str(destination))
+        staged = destination.with_name(f"{destination.name}.logion-incoming")
+        backup = destination.with_name(f"{destination.name}.logion-backup")
+        for leftover in (staged, backup):
+            if leftover.exists():
+                shutil.rmtree(leftover, ignore_errors=True)
+        # Cross-device copy happens here, before anything is displaced.
+        shutil.move(str(stage_dir), str(staged))
+        had_previous = destination.exists()
+        try:
+            if had_previous:
+                os.replace(destination, backup)
+            os.replace(staged, destination)
+        except BaseException:
+            if had_previous and backup.exists() and not destination.exists():
+                os.replace(backup, destination)
+            shutil.rmtree(staged, ignore_errors=True)
+            raise
+        finally:
+            shutil.rmtree(backup, ignore_errors=True)
