@@ -269,10 +269,32 @@ COURSE_FILES: tuple[tuple[str, str, bytes], ...] = (
 )
 
 
+def _bundle_digest() -> str:
+    """Stable per bundle content, so a re-seed reuses its own course."""
+    return hashlib.sha256(_skill_bundle()).hexdigest()
+
+
 def _existing_course(api: Api) -> dict[str, Any] | None:
+    """The newest fixture course, if one is already usable.
+
+    A course published before the projection wiring existed is published
+    but not acquirable, and re-approving it is not possible. Rather than
+    demanding a database reset, the seed leaves it alone and creates a
+    fresh one — an unacquirable leftover is inert, since each course keys
+    its own resource and cannot make another one ambiguous.
+    """
     payload = api.expect("GET", "/v1/courses/mine?limit=50", role="seller")
-    for course in payload.get("courses", []):
-        if isinstance(course, dict) and course.get("slug") == COURSE_SLUG:
+    candidates = [
+        course
+        for course in payload.get("courses", [])
+        if isinstance(course, dict)
+        and str(course.get("slug", "")).startswith(COURSE_SLUG)
+    ]
+    for course in candidates:
+        if course.get("status") != "published":
+            return course
+        resource = _find_resource(api, f"course:{course['id']}")
+        if resource is not None and _acquirable(api, resource) is not None:
             return course
     return None
 
@@ -334,13 +356,28 @@ def _publish_course(api: Api) -> str:
     """Create and publish a free hosted Course, returning its course id."""
     course = _existing_course(api)
     if course is None:
-        course = api.expect(
+        course = _create_course(api)
+    course_id = str(course["id"])
+    if course.get("status") == "published":
+        return course_id
+    _publish_existing(api, course_id)
+    return course_id
+
+
+def _create_course(api: Api) -> dict[str, Any]:
+    """Create the fixture course, stepping aside from a stale namesake."""
+    # The digest-derived slug lets a re-seed reuse its own course. A
+    # leftover published-but-unacquirable course from an older backend
+    # holds that slug, so the seed steps around it rather than failing.
+    for attempt in range(8):
+        suffix = "" if attempt == 0 else f"-{attempt}"
+        status, body = api.request(
             "POST",
             "/v1/courses",
             role="seller",
             body={
                 "title": "Hosted Code Review",
-                "slug": COURSE_SLUG,
+                "slug": f"{COURSE_SLUG}-{_bundle_digest()[:8]}{suffix}",
                 "short_summary": "Hosted code-review capability fixture.",
                 "description": "Deterministic hosted-bundle fixture.",
                 "visibility": "private",
@@ -349,10 +386,14 @@ def _publish_course(api: Api) -> str:
                 "tags": ["code-review"],
             },
         )
-    course_id = str(course["id"])
-    if course.get("status") == "published":
-        return course_id
+        if status in (200, 201):
+            return body
+        if "slug already exists" not in str(body):
+            raise SystemExit(f"cannot create fixture course: {body}")
+    raise SystemExit("every fixture course slug is taken; reset the dev DB")
 
+
+def _publish_existing(api: Api, course_id: str) -> None:
     version_id = _upload_course_assets(api, course_id)
     _await(
         api,
@@ -387,7 +428,6 @@ def _publish_course(api: Api) -> str:
         role="seller",
         body={"visibility": "public"},
     )
-    return course_id
 
 
 def _find_resource(api: Api, canonical: str) -> dict[str, Any] | None:
