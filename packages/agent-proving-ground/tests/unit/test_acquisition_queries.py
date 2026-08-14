@@ -690,3 +690,52 @@ class TestReconcileReportMixesEntryShapes:
             {},
         )
         assert result["matches"] is False
+
+
+class TestApiLogDiscovery:
+    """The dev rig may live in a different checkout than the run root."""
+
+    def _ctx(self, root: Path, artifacts: Path):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            world=SimpleNamespace(root_dir=root), artifacts_dir=artifacts
+        )
+
+    def test_finds_the_log_under_the_run_root(self, tmp_path: Path) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        root = tmp_path / "repo"
+        (root / ".devrig").mkdir(parents=True)
+        log = root / ".devrig" / "api.log"
+        log.write_text("ok\n", encoding="utf-8")
+        found = _find_log_path(self._ctx(root, tmp_path / "artifacts"))
+        assert found == log
+
+    def test_falls_back_to_the_configured_devrig(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        root = tmp_path / "repo"
+        root.mkdir()
+        workspace_devrig = tmp_path / "workspace" / ".devrig"
+        workspace_devrig.mkdir(parents=True)
+        log = workspace_devrig / "api.log"
+        log.write_text("ok\n", encoding="utf-8")
+        monkeypatch.setenv(
+            "LOGION_PROVING_GROUND_ROLE_KEYS_FILE",
+            str(workspace_devrig / "pg-role-keys.json"),
+        )
+        found = _find_log_path(self._ctx(root, tmp_path / "artifacts"))
+        assert found == log
+
+    def test_reports_nothing_when_no_log_exists(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        monkeypatch.delenv(
+            "LOGION_PROVING_GROUND_ROLE_KEYS_FILE", raising=False
+        )
+        assert _find_log_path(self._ctx(tmp_path, tmp_path)) is None
