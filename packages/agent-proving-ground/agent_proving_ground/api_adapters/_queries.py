@@ -1320,10 +1320,17 @@ class LogionApiQueries:
             )
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "acquired")
+        # Verification level is a property of the channel, not of whether
+        # the acquisition happened: a delegated native install can only
+        # reach `unverified` when its manager records no immutable
+        # revision. Scenarios that require a stronger level say so.
+        allowed = set(
+            query.get("allowed_verifications") or ("exact", "source_revision")
+        )
         acquired = (
             receipt.get("resource_id")
             and receipt.get("installation_id")
-            and receipt.get("verification") in {"exact", "source_revision"}
+            and receipt.get("verification") in allowed
         )
         return {
             "acquired": bool(acquired),

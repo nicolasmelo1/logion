@@ -570,3 +570,58 @@ class TestLocalHookResolution:
             "seed_acquisition_fixture.py",
         ):
             assert Path(_resolve_hook_path(hook, tmp_path)).is_file(), hook
+
+
+class TestVerificationLevelIsPerChannel:
+    @pytest.mark.asyncio
+    async def test_unverified_is_rejected_by_default(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified"),
+        )
+        result = await _queries().query(
+            {"type": "resource_acquisition_exists", "artifact": str(artifact)},
+            {},
+        )
+        assert result["acquired"] is False
+
+    @pytest.mark.asyncio
+    async def test_a_delegated_install_may_allow_unverified(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified", channel="npx_skills"),
+        )
+        result = await _queries().query(
+            {
+                "type": "resource_acquisition_exists",
+                "artifact": str(artifact),
+                "allowed_verifications": ["source_revision", "unverified"],
+            },
+            {},
+        )
+        assert result["acquired"] is True
+
+    @pytest.mark.asyncio
+    async def test_an_unattributable_receipt_never_passes(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified", installation_id=None),
+        )
+        result = await _queries().query(
+            {
+                "type": "resource_acquisition_exists",
+                "artifact": str(artifact),
+                "allowed_verifications": ["unverified"],
+            },
+            {},
+        )
+        assert result["acquired"] is False

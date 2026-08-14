@@ -65,6 +65,10 @@ phases:
       ${ISOLATED_HOME} and `--base-url http://localhost:8000` on each
       command. Do not call the HTTP API directly.
 
+      Acquire it through the `logion resources` commands — that is the
+      surface under test here, not `logion skills install`. Which resource
+      to install is yours to work out.
+
       Before installing anything, save the zero-write plan to
       ${EVIDENCE_DIR}/plan.json. Then save the final acquisition receipt
       JSON to ${EVIDENCE_DIR}/acquire.json.
@@ -102,8 +106,9 @@ phases:
       distributions RESOURCE_ID` lists them. Review the exact argv Logion
       shows you before approving it.
 
-      Save the receipt to ${EVIDENCE_DIR}/native-acquire.json. Leave
-      `skills-lock.json` exactly as the manager wrote it.
+      Use `logion resources acquire` for this too. Save the receipt to
+      ${EVIDENCE_DIR}/native-acquire.json, and leave `skills-lock.json`
+      exactly as the manager wrote it.
     success_hint: |
       The skill was installed by npx skills into ${FIXTURE_ROOT}, Logion
       recorded a receipt on the npx_skills channel, and skills-lock.json is
@@ -112,6 +117,9 @@ phases:
       - type: api.resource_acquisition_exists
         params:
           artifact: "${EVIDENCE_DIR}/native-acquire.json"
+          # `skills-lock.json` records a content hash but no commit, so a
+          # delegated install cannot honestly claim source_revision.
+          allowed_verifications: [source_revision, unverified]
       - type: api.resource_distribution_selected
         params:
           artifact: "${EVIDENCE_DIR}/native-acquire.json"

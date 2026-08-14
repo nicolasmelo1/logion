@@ -19,6 +19,7 @@ Emits one JSON line describing what the scenario can acquire.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -129,8 +130,8 @@ def _skill_bundle() -> bytes:
     produces the identical digest; a drifting digest would make the
     fixture look like a new version on every run.
     """
-    buffer = BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz", compresslevel=9) as archive:
+    raw = BytesIO()
+    with tarfile.open(fileobj=raw, mode="w") as archive:
         for name, payload in (
             (f"{SKILL_NAME}/SKILL.md", SKILL_MD),
             (f"{SKILL_NAME}/LICENSE", b"MIT\n"),
@@ -141,7 +142,16 @@ def _skill_bundle() -> bytes:
             info.uid = info.gid = 0
             info.uname = info.gname = ""
             archive.addfile(info, BytesIO(payload))
-    return buffer.getvalue()
+    # gzip stamps the current time into its header unless told otherwise,
+    # which would give every seed run a different digest and therefore a
+    # new resource version — leaving the reconciler with several
+    # indistinguishable candidates for one installation.
+    compressed = BytesIO()
+    with gzip.GzipFile(
+        fileobj=compressed, mode="wb", compresslevel=9, mtime=0
+    ) as gz:
+        gz.write(raw.getvalue())
+    return compressed.getvalue()
 
 
 def _upsert_listing(api: Api, *, with_commit: bool) -> str:
@@ -396,6 +406,29 @@ def _find_resource(api: Api, canonical: str) -> dict[str, Any] | None:
             return None
 
 
+def _require_single_version(api: Api, resource: dict[str, Any]) -> None:
+    """Refuse to seed a fixture the reconciler cannot attribute.
+
+    Several versions of one resource at the same upstream revision are
+    genuinely indistinguishable, so reconcile reports `ambiguous` and the
+    scenario can never pass. That is correct behaviour, not a bug to work
+    around — the fixture has to be clean instead.
+    """
+    versions = api.expect(
+        "GET", f"/v1/resources/{resource['id']}/versions?limit=50"
+    )
+    items = (
+        versions if isinstance(versions, list) else versions.get("items", [])
+    )
+    if len(items) > 1:
+        raise SystemExit(
+            f"fixture resource {resource.get('canonical_uri')} has "
+            f"{len(items)} versions; reconcile cannot attribute an install "
+            "to one of them. Reset the dev database "
+            "(`make dev-reset` in the workspace repo) and seed again."
+        )
+
+
 def _acquirable(api: Api, resource: dict[str, Any]) -> dict[str, Any] | None:
     """Return the first version whose acquisition plan actually resolves."""
     versions = api.expect(
@@ -441,6 +474,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(
             f"indexed listing {LISTING_CANONICAL} did not project a resource"
         )
+    _require_single_version(api, resource)
     indexed = _acquirable(api, resource)
     if indexed is None:
         raise SystemExit(
