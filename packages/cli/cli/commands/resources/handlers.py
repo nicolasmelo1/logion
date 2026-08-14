@@ -12,12 +12,18 @@ from cli._errors import handle_error, handle_validation_error
 from cli._output import emit_json, to_data
 
 from ._acquire_handler import handle_resources_acquire
+from ._distributions_handler import (
+    handle_resources_distributions,
+    handle_resources_reconcile,
+)
 from ._inventory_handler import handle_resources_inventory
 
 __all__ = [
     "handle_resources_acquire",
+    "handle_resources_distributions",
     "handle_resources_get",
     "handle_resources_inventory",
+    "handle_resources_reconcile",
     "handle_resources_search",
     "handle_resources_versions",
 ]

@@ -516,6 +516,50 @@ class MockApiAdapter(ApiAdapter):
                     "distinct": True,
                     "harnesses": harnesses,
                 }
+            case "resource_acquisition_exists":
+                return {
+                    "acquired": True,
+                    "resource_id": query.get("resource_id", "r"),
+                    "installation_id": "i",
+                    "verification": query.get("verification", "exact"),
+                    "channel": query.get("channel", "logion_bundle"),
+                }
+            case "resource_distribution_selected":
+                channel = query.get("channel", "logion_bundle")
+                allowed = query.get("allowed_channels") or []
+                return {
+                    "selected": channel in allowed if allowed else True,
+                    "channel": channel,
+                    "distribution_id": query.get("distribution_id", "d"),
+                }
+            case "native_install_reconciled":
+                return {
+                    "reconciled": True,
+                    "matched_count": 1,
+                    "unresolved_count": 0,
+                    "ambiguous_count": 0,
+                }
+            case "inventory_receipt_matches":
+                iid = query.get("installation_id", "i")
+                return {
+                    "matches": True,
+                    "installation_id": iid,
+                    "matched_ids": [iid],
+                }
+            case "installed_artifact_digest_matches":
+                return {
+                    "digest_matches": True,
+                    "content_digest": query.get("content_digest", ""),
+                    "computed_digest": query.get("content_digest", ""),
+                    "files": 1,
+                }
+            case "acquisition_idempotent":
+                iid = query.get("installation_id", "i")
+                return {
+                    "idempotent": True,
+                    "first_installation_id": iid,
+                    "second_installation_id": iid,
+                }
             case "observation_envelope_no_raw_data":
                 return {"clean": True}
             case _:

@@ -1309,6 +1309,180 @@ class LogionApiQueries:
             "evidence": {"source": str(query.get("artifact"))},
         }
 
+    async def _q_resource_acquisition_exists(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            receipt = _load_cli_object(
+                query.get("artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "acquired")
+        acquired = (
+            receipt.get("resource_id")
+            and receipt.get("installation_id")
+            and receipt.get("verification") in {"exact", "source_revision"}
+        )
+        return {
+            "acquired": bool(acquired),
+            "resource_id": receipt.get("resource_id"),
+            "installation_id": receipt.get("installation_id"),
+            "verification": receipt.get("verification"),
+            "channel": receipt.get("channel"),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_resource_distribution_selected(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            receipt = _load_cli_object(
+                query.get("artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "selected")
+        channel = receipt.get("channel")
+        allowed = query.get("allowed_channels") or []
+        selected = bool(channel) and channel in allowed
+        return {
+            "selected": selected,
+            "channel": channel,
+            "distribution_id": receipt.get("distribution_id"),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_native_install_reconciled(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            report = _load_cli_object(
+                query.get("artifact"), "logion.resources.reconcile"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "reconciled")
+        matched = report.get("matched") or []
+        unresolved = report.get("unresolved") or []
+        ambiguous = report.get("ambiguous") or []
+        reconciled = bool(matched) and not unresolved and not ambiguous
+        return {
+            "reconciled": reconciled,
+            "matched_count": len(matched),
+            "unresolved_count": len(unresolved),
+            "ambiguous_count": len(ambiguous),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_inventory_receipt_matches(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            report = _load_cli_object(
+                query.get("artifact"), "logion.resources.reconcile"
+            )
+            receipt = _load_cli_object(
+                query.get("acquire_artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "matches")
+        matched = report.get("matched") or []
+        ids = {entry.get("installation_id") for entry in matched}
+        matches = receipt.get("installation_id") in ids
+        return {
+            "matches": matches,
+            "installation_id": receipt.get("installation_id"),
+            "matched_ids": sorted(ids),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_installed_artifact_digest_matches(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            receipt = _load_cli_object(
+                query.get("artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "digest_matches")
+        scope_root = Path(str(query.get("scope_root", "")))
+        installed = receipt.get("installed_paths") or []
+        if not installed:
+            return _artifact_failure(
+                "receipt lists no installed paths", "digest_matches"
+            )
+        import hashlib as _hl
+
+        evidence = receipt.get("native_evidence") or {}
+        file_digests = evidence.get("file_digests") or {}
+        mismatches: list[str] = []
+        for rel in sorted(installed):
+            path = scope_root / rel
+            if not path.is_file():
+                return _artifact_failure(
+                    f"installed file missing: {rel}", "digest_matches"
+                )
+            actual = _hl.sha256(path.read_bytes()).hexdigest()
+            expected = file_digests.get(rel)
+            if expected is not None and actual != expected:
+                mismatches.append(rel)
+        verification = receipt.get("verification")
+        expected_digest = str(receipt.get("content_digest") or "")
+        if mismatches:
+            return _artifact_failure(
+                f"installed file digests differ for: {mismatches}",
+                "digest_matches",
+            )
+        if verification != "exact":
+            return _artifact_failure(
+                f"verification is {verification!r}, not exact",
+                "digest_matches",
+            )
+        return {
+            "digest_matches": True,
+            "content_digest": expected_digest,
+            "files": len(installed),
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
+    async def _q_acquisition_idempotent(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            first = _load_cli_object(
+                query.get("first_artifact"), "logion.resources.acquire"
+            )
+            second = _load_cli_object(
+                query.get("second_artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "idempotent")
+        same_install = first.get("installation_id") == second.get(
+            "installation_id"
+        )
+        same_digest = first.get("content_digest") == second.get(
+            "content_digest"
+        )
+        return {
+            "idempotent": bool(same_install and same_digest),
+            "first_installation_id": first.get("installation_id"),
+            "second_installation_id": second.get("installation_id"),
+            "evidence": {
+                "first": str(query.get("first_artifact")),
+                "second": str(query.get("second_artifact")),
+            },
+        }
+
     async def _q_harness_scope_nested_repo(
         self,
         query: dict[str, Any],

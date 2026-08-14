@@ -319,6 +319,69 @@ class ResourceAcquirePlanDryRunAssertion(_ApiQueryAssertion):
     )
 
 
+class ResourceAcquisitionExistsAssertion(_ApiQueryAssertion):
+    type = "api.resource_acquisition_exists"
+    query_type = "resource_acquisition_exists"
+    found_key = "acquired"
+    evidence_keys = (
+        "resource_id",
+        "installation_id",
+        "verification",
+        "channel",
+    )
+    pass_message = "resource acquisition receipt exists with verification"
+    fail_message = "no verified acquisition receipt observed"
+
+
+class ResourceDistributionSelectedAssertion(_ApiQueryAssertion):
+    type = "api.resource_distribution_selected"
+    query_type = "resource_distribution_selected"
+    found_key = "selected"
+    evidence_keys = ("channel", "distribution_id")
+    pass_message = "an allowed distribution channel was selected"
+    fail_message = "no allowed distribution channel observed in receipt"
+
+
+class NativeInstallReconciledAssertion(_ApiQueryAssertion):
+    type = "api.native_install_reconciled"
+    query_type = "native_install_reconciled"
+    found_key = "reconciled"
+    evidence_keys = ("matched_count", "unresolved_count", "ambiguous_count")
+    pass_message = (
+        "local inventory reconciled with no unresolved or ambiguous entries"
+    )
+    fail_message = "reconciliation left unresolved or ambiguous entries"
+
+
+class InventoryReceiptMatchesAssertion(_ApiQueryAssertion):
+    type = "files.inventory_receipt_matches"
+    query_type = "inventory_receipt_matches"
+    found_key = "matches"
+    evidence_keys = ("installation_id", "matched_ids")
+    pass_message = "reconcile report contains the acquisition receipt"
+    fail_message = "reconcile report does not contain the acquisition receipt"
+
+
+class InstalledArtifactDigestMatchesAssertion(_ApiQueryAssertion):
+    type = "files.installed_artifact_digest_matches"
+    query_type = "installed_artifact_digest_matches"
+    found_key = "digest_matches"
+    evidence_keys = ("content_digest", "computed_digest", "files")
+    pass_message = "installed artifact digest matches the receipt"
+    fail_message = "installed artifact digest does not match the receipt"
+
+
+class AcquisitionIdempotentAssertion(_ApiQueryAssertion):
+    type = "api.acquisition_idempotent"
+    query_type = "acquisition_idempotent"
+    found_key = "idempotent"
+    evidence_keys = ("first_installation_id", "second_installation_id")
+    pass_message = "repeated acquisition resolves to the same installation"
+    fail_message = (
+        "repeated acquisition changed installation identity or digest"
+    )
+
+
 class HarnessScopeNestedRepoAssertion(_ApiQueryAssertion):
     type = "api.harness_scope_nested_repo"
     query_type = "harness_scope_nested_repo"

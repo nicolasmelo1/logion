@@ -199,8 +199,12 @@ commands:
   resources versions:
     operations: [list_resource_versions]
   resources acquire:
-    operations: [get_resource, list_resource_versions]
+    operations: [get_resource, list_resource_versions, get_acquisition_plan, create_artifact_download]
   resources inventory:
+    operations: []
+  resources distributions:
+    operations: [list_resource_versions, get_acquisition_plan]
+  resources reconcile:
     operations: []
 
   referrals attributions:

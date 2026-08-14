@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agent_proving_ground.assertions.api import (
+    AcquisitionIdempotentAssertion,
     AdminStateObservedAssertion,
     BountyAcceptedAssertion,
     BountyExistsAssertion,
@@ -17,15 +18,20 @@ from agent_proving_ground.assertions.api import (
     HarnessScopeTargetsResolvedAssertion,
     IndexedListingExistsAssertion,
     IndexedListingTierAssertion,
+    InstalledArtifactDigestMatchesAssertion,
+    InventoryReceiptMatchesAssertion,
     LegacyCoursePurchaseExistsAssertion,
+    NativeInstallReconciledAssertion,
     NoDoubleCreditDebitAssertion,
     ObservationEnvelopeNoRawDataAssertion,
     PlatformBountyAcceptedAssertion,
     PurchaseExistsAssertion,
     ResourceAcquirePlanDryRunAssertion,
+    ResourceAcquisitionExistsAssertion,
     ResourceBackfillAppliedAssertion,
     ResourceBackfillCompleteAssertion,
     ResourceBackfillIdempotentAssertion,
+    ResourceDistributionSelectedAssertion,
     ResourceIdentityUniqueAssertion,
     ResourceProjectionExistsAssertion,
     ResourceSearchReturnsKindsAssertion,
@@ -69,7 +75,10 @@ class AssertionRegistry:
     def _register_builtin(self) -> None:
         for cls in (
             CourseExistsAssertion,
+            NativeInstallReconciledAssertion,
             PurchaseExistsAssertion,
+            ResourceAcquisitionExistsAssertion,
+            ResourceDistributionSelectedAssertion,
             ReviewExistsAssertion,
             UsageReportExistsAssertion,
             GithubIdentityLinkedAssertion,
@@ -93,6 +102,8 @@ class AssertionRegistry:
             BountySubmissionAcceptedAssertion,
             BountySubmissionRejectedAssertion,
             IndexedListingExistsAssertion,
+            InstalledArtifactDigestMatchesAssertion,
+            InventoryReceiptMatchesAssertion,
             IndexedListingTierAssertion,
             PlatformBountyAcceptedAssertion,
             GithubPrExistsAssertion,
@@ -112,6 +123,12 @@ class AssertionRegistry:
             HarnessScopeNestedRepoAssertion,
             HarnessInventoryDistinctScopesAssertion,
             ObservationEnvelopeNoRawDataAssertion,
+            ResourceAcquisitionExistsAssertion,
+            ResourceDistributionSelectedAssertion,
+            NativeInstallReconciledAssertion,
+            InventoryReceiptMatchesAssertion,
+            InstalledArtifactDigestMatchesAssertion,
+            AcquisitionIdempotentAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

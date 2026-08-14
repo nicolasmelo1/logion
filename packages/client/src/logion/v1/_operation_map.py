@@ -26,6 +26,8 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "list_resources": "client.v1.resources.search",
     "get_resource": "client.v1.resources.get",
     "list_resource_versions": "client.v1.resources.versions",
+    "get_acquisition_plan": "client.v1.resources.acquisition_plan",
+    "create_artifact_download": "client.v1.resources.create_download",
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",
@@ -126,6 +128,11 @@ PREDECLARED_OPERATION_IDS = frozenset({
     "accept_platform_bounty_submission",
     "reject_platform_bounty_submission",
     "get_api_capabilities",
+    # Implemented in the handwritten resources surface ahead of the
+    # generated contract sync (backend PR lands first; the public sync
+    # workflow then updates contracts/openapi/v1.json post-merge).
+    "get_acquisition_plan",
+    "create_artifact_download",
 })
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
