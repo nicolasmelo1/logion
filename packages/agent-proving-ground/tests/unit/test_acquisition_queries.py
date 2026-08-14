@@ -625,3 +625,68 @@ class TestVerificationLevelIsPerChannel:
             {},
         )
         assert result["acquired"] is False
+
+
+class TestReconcileReportMixesEntryShapes:
+    """Native entries carry a source, not an installation id."""
+
+    @pytest.mark.asyncio
+    async def test_native_entries_do_not_crash_the_receipt_match(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [
+                    {"installation_id": "i1", "channel": "logion_bundle"},
+                    # Reconciled straight from skills-lock.json.
+                    {"manager": "skills", "source": "vercel-labs/skills"},
+                ],
+                "unresolved": [],
+                "ambiguous": [],
+                "drifted": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", _receipt()
+        )
+        result = await _queries().query(
+            {
+                "type": "inventory_receipt_matches",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["matches"] is True
+        assert result["matched_ids"] == ["i1"]
+
+    @pytest.mark.asyncio
+    async def test_a_receipt_without_an_id_never_matches(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [{"manager": "skills"}],
+                "unresolved": [],
+                "ambiguous": [],
+                "drifted": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(installation_id=None),
+        )
+        result = await _queries().query(
+            {
+                "type": "inventory_receipt_matches",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["matches"] is False

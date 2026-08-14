@@ -1436,12 +1436,18 @@ class LogionApiQueries:
             )
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "matches")
-        matched = report.get("matched") or []
-        ids = {entry.get("installation_id") for entry in matched}
-        matches = receipt.get("installation_id") in ids
+        # Native manager entries are matched by source, not by an
+        # installation id, so the set is filtered before comparing rather
+        # than sorted with a None in it.
+        ids = {
+            str(entry.get("installation_id"))
+            for entry in (report.get("matched") or [])
+            if isinstance(entry, dict) and entry.get("installation_id")
+        }
+        installation_id = receipt.get("installation_id")
         return {
-            "matches": matches,
-            "installation_id": receipt.get("installation_id"),
+            "matches": bool(installation_id) and str(installation_id) in ids,
+            "installation_id": installation_id,
             "matched_ids": sorted(ids),
             "evidence": {"source": str(query.get("artifact"))},
         }
