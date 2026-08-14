@@ -33,6 +33,7 @@ from cli._harness.scopes import (
     SYSTEM,
     USER,
     ScopeTarget,
+    canonical_scope,
 )
 
 from ._reconciliation import mark_ambiguities, reconciliation_status
@@ -148,12 +149,26 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
             else None
         )
         targets = _all_scan_targets(harness, cwd, repo_root, target_path)
+        requested_scope = str(getattr(args, "scope", "all") or "all")
+        if requested_scope != "all":
+            requested_scope = canonical_scope(requested_scope)
+        if requested_scope != "all":
+            targets = [
+                target
+                for target in targets
+                if target.scope_kind == requested_scope
+                or (
+                    requested_scope == REPO_ROOT
+                    and target.scope_kind == REPO_CURRENT
+                )
+            ]
         results: list[dict[str, Any]] = []
         for precedence, target in enumerate(targets):
             results.extend(_scan_dir(target, precedence))
         mark_ambiguities(results)
         payload: dict[str, Any] = {
             "harness": harness,
+            "scope": requested_scope,
             "targets": [
                 {
                     "scope_kind": t.scope_kind,

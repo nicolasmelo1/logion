@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -39,13 +40,23 @@ class TestReceiptDigests:
             "version_id": "v",
             "distribution_id": "d",
             "resource_type": "agent_skill",
-            "content_digest": "sha256:x",
+            "content_digest": "sha256:placeholder",
             "channel": "logion_bundle",
             "harness": "codex",
             "scope_kind": "repo-root",
             "scope_id": "a" * 64,
             "installation_id": "b" * 64,
-            "native_evidence": {"schema_version": 1},
+            "native_evidence": {
+                "schema_version": 1,
+                "content_digest": "sha256:placeholder",
+                "aggregate_components": [
+                    {
+                        "aggregate_key": "bundle/x",
+                        "size_bytes": 1,
+                        "digest": "a" * 64,
+                    }
+                ],
+            },
             "target_path": "/tmp/x",
             "relative_target_path": ".agents/skills/x",
             "acquired_at": "2026-08-14T00:00:00Z",
@@ -57,6 +68,11 @@ class TestReceiptDigests:
     ) -> None:
         monkeypatch.setenv("LOGION_HOME", str(tmp_path))
         receipt = self._valid_receipt()
+        digest = _receipts.aggregate_content_digest(
+            receipt["native_evidence"]["aggregate_components"]
+        )
+        receipt["content_digest"] = digest
+        receipt["native_evidence"]["content_digest"] = digest
         receipt["native_receipt_digest"] = _receipts.native_receipt_digest(
             receipt["native_evidence"]
         )
@@ -88,6 +104,48 @@ class TestNpxSkillsAdapterValidation:
 
 
 class TestLogionBundleSafety:
+    def test_rejects_non_http_download_urls(self, tmp_path: Path) -> None:
+        adapter = LogionBundleAdapter(client=object())
+        with pytest.raises(RuntimeError, match="http or https"):
+            adapter._download("file:///etc/passwd", tmp_path / "x")
+
+    def test_aggregate_mismatch_fails_before_install(
+        self, tmp_path: Path
+    ) -> None:
+        class FakeResources:
+            def create_download(self, **_: str) -> dict:
+                return {
+                    "files": [
+                        {
+                            "path": "SKILL.md",
+                            "url": "https://example.invalid/skill",
+                            "size_bytes": 4,
+                            "digest": hashlib.sha256(b"data").hexdigest(),
+                            "aggregate_key": "bundle/SKILL.md",
+                        }
+                    ]
+                }
+
+        class FakeClient:
+            class V1:
+                resources = FakeResources()
+
+            v1 = V1()
+
+        adapter = LogionBundleAdapter(client=FakeClient())
+        adapter._download = lambda _url, path: path.write_bytes(b"data")
+        with pytest.raises(RuntimeError, match="aggregate digest mismatch"):
+            adapter.acquire(
+                plan={
+                    "resource_id": "r",
+                    "version_id": "v",
+                    "content_digest": "sha256:" + "0" * 64,
+                },
+                destination=tmp_path / "scope" / "skill",
+                scope_root=tmp_path / "scope",
+            )
+        assert not (tmp_path / "scope" / "skill").exists()
+
     def test_traversal_rejected(self) -> None:
         adapter = LogionBundleAdapter(client=object())
         with pytest.raises(UnsafeIdentifierError, match="unsafe bundle path"):
@@ -108,6 +166,11 @@ class TestReconcileCommand:
     ) -> None:
         monkeypatch.setenv("LOGION_HOME", str(tmp_path))
         receipt = TestReceiptDigests()._valid_receipt()
+        digest = _receipts.aggregate_content_digest(
+            receipt["native_evidence"]["aggregate_components"]
+        )
+        receipt["content_digest"] = digest
+        receipt["native_evidence"]["content_digest"] = digest
         receipt["native_receipt_digest"] = _receipts.native_receipt_digest(
             receipt["native_evidence"]
         )

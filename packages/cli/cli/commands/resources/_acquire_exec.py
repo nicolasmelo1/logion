@@ -16,7 +16,9 @@ from typing import Any
 from cli import _receipts
 
 from ._channels.base import ChannelAdapter
+from ._channels.hf import HfAdapter
 from ._channels.logion_bundle import LogionBundleAdapter
+from ._channels.npx_plugins import NpxPluginsAdapter
 from ._channels.npx_skills import NpxSkillsAdapter
 
 
@@ -51,6 +53,12 @@ def run_acquisition(
     )
 
     native_evidence = outcome.native_evidence
+    effective_relative_target_path = relative_target_path
+    effective_target_path = destination
+    if outcome.installed_paths and plan["selected_channel"] != "logion_bundle":
+        first_path = Path(outcome.installed_paths[0])
+        effective_relative_target_path = first_path.as_posix()
+        effective_target_path = scope_root / first_path
     receipt: dict[str, Any] = {
         "schema_version": _receipts.RECEIPT_SCHEMA_VERSION,
         "resource_id": plan["resource_id"],
@@ -67,12 +75,12 @@ def run_acquisition(
         "scope_id": _receipts.scope_id_for_target(scope, scope_root),
         "installation_id": _receipts.installation_id_for(
             _receipts.scope_id_for_target(scope, scope_root),
-            relative_target_path,
+            str(effective_relative_target_path),
         ),
-        "target_path": str(destination),
-        "relative_target_path": relative_target_path,
+        "target_path": str(effective_target_path),
+        "relative_target_path": str(effective_relative_target_path),
         "installed_paths": outcome.installed_paths,
-        "projection_paths": [],
+        "projection_paths": outcome.projection_paths,
         "acquired_at": _receipts.now_rfc3339(),
         "verified_at": _receipts.now_rfc3339(),
         "verification": outcome.verification,
@@ -91,6 +99,10 @@ def _adapter_for(channel: str, *, client: Any) -> ChannelAdapter:
         return LogionBundleAdapter(client=client)
     if channel == "npx_skills":
         return NpxSkillsAdapter()
+    if channel == "npx_plugins":
+        return NpxPluginsAdapter()
+    if channel == "hf":
+        return HfAdapter()
     raise RuntimeError(
         f"channel {channel!r} is not supported by this CLI version"
     )

@@ -41,8 +41,13 @@ class NpxSkillsAdapter(ChannelAdapter):
                     errors="replace"
                 )
             )
-        evidence = self._read_lockfile_entry(scope_root)
-        installed = (
+        try:
+            evidence, installed_paths = self._read_lockfile_entry(
+                scope_root, plan
+            )
+        except TypeError as exc:
+            raise RuntimeError("unsupported skills-lock.json schema") from exc
+        installed = installed_paths or (
             [
                 str(p.relative_to(scope_root))
                 for p in sorted(destination.rglob("*"))
@@ -71,36 +76,98 @@ class NpxSkillsAdapter(ChannelAdapter):
         if shutil.which(name) is None:
             raise RuntimeError(f"native tool unsupported: {name} not found")
 
-    def _read_lockfile_entry(self, scope_root: Path) -> dict[str, Any]:
+    def _read_lockfile_entry(  # noqa: C901 - lockfile schema validation
+        self, scope_root: Path, plan: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         lock = scope_root / "skills-lock.json"
         if not lock.is_file():
-            return {
-                "schema_version": 1,
-                "manager_name": "skills",
-                "manager_version": "unknown",
-                "receipt_id": "",
-                "canonical_source": "",
-                "immutable_revision": "",
-                "content_digest": "",
-            }
+            raise RuntimeError("skills-lock.json missing after npx skills")
         try:
             data = json.loads(lock.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            data = {}
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError("skills-lock.json is unreadable") from exc
         skills = data.get("skills")
-        entry: dict[str, Any] = {}
-        if isinstance(skills, dict) and skills:
-            entry = next(iter(skills.values()))
-        elif isinstance(skills, list) and skills:
-            entry = skills[0]
-        if not isinstance(entry, dict):
-            entry = {}
-        return {
+        entries = list(skills.values()) if isinstance(skills, dict) else skills
+        if not isinstance(entries, list):
+            raise TypeError("unsupported skills-lock.json schema")
+        native = plan.get("native") or {}
+        expected_source = str(native.get("upstream_locator") or "")
+        expected_revision = str(native.get("revision") or "")
+        expected_name = str(native.get("skill_name") or "")
+        matches = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            source = str(entry.get("source") or entry.get("locator") or "")
+            revision = str(entry.get("revision") or entry.get("commit") or "")
+            name = str(
+                entry.get("name")
+                or entry.get("skill")
+                or (
+                    Path(str(entry.get("skillPath"))).parent.name
+                    if entry.get("skillPath")
+                    else ""
+                )
+            )
+            if (
+                expected_source
+                and source != expected_source
+                and expected_source not in source
+            ):
+                continue
+            if (
+                expected_revision
+                and revision
+                and revision != expected_revision
+            ):
+                continue
+            if expected_name and name != expected_name:
+                continue
+            matches.append(entry)
+        if len(matches) != 1:
+            raise RuntimeError("skills-lock.json has no unique matching skill")
+        entry = matches[0]
+        raw_paths = entry.get("paths") or entry.get("installedPaths") or []
+        if not raw_paths and isinstance(entry.get("skillPath"), str):
+            skill_path = Path(str(entry["skillPath"]))
+            raw_paths = [str(Path(".agents/skills") / skill_path.parent.name)]
+        if isinstance(raw_paths, str):
+            raw_paths = [raw_paths]
+        installed: list[str] = []
+        for item in raw_paths:
+            if not isinstance(item, str):
+                continue
+            candidate = (scope_root / item).resolve()
+            try:
+                relative = candidate.relative_to(scope_root.resolve())
+            except ValueError as exc:
+                raise RuntimeError(
+                    "skills-lock.json contains an unsafe installed path"
+                ) from exc
+            installed.append(relative.as_posix())
+        computed_hash = str(entry.get("computedHash") or "")
+        content_digest = str(entry.get("contentDigest") or "")
+        if not content_digest and computed_hash:
+            content_digest = "sha256:" + computed_hash
+        evidence = {
             "schema_version": 1,
             "manager_name": "skills",
             "manager_version": str(data.get("managerVersion") or "unknown"),
-            "receipt_id": str(entry.get("id") or ""),
-            "canonical_source": str(entry.get("source") or ""),
-            "immutable_revision": str(entry.get("revision") or ""),
-            "content_digest": str(entry.get("contentDigest") or ""),
+            "receipt_id": str(
+                entry.get("id")
+                or entry.get("name")
+                or (
+                    Path(str(entry.get("skillPath"))).parent.name
+                    if entry.get("skillPath")
+                    else ""
+                )
+            ),
+            "canonical_source": str(
+                entry.get("source") or entry.get("locator") or ""
+            ),
+            "immutable_revision": str(
+                entry.get("revision") or entry.get("commit") or computed_hash
+            ),
+            "content_digest": content_digest,
         }
+        return evidence, installed

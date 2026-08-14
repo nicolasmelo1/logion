@@ -18,3 +18,4 @@
 
 packages/cli/cli/commands/courses/_uploads_push.py :: presigned-url :: PUT course assets to short-lived presigned object-storage URLs (put_url) returned by create_upload_session; external storage, no SDK wrapper.
 packages/cli/cli/commands/course_reviews/_download_handler.py :: presigned-url :: Stream review-bundle files from short-lived presigned object-storage URLs (download_url) returned by get_bundle; external storage, no SDK wrapper.
+packages/cli/cli/commands/resources/_channels/logion_bundle.py :: presigned-url :: Stream hosted bundle files from short-lived presigned object-storage URLs returned by create_artifact_download; external storage, no SDK wrapper.

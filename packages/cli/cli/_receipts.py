@@ -45,6 +45,22 @@ def native_receipt_digest(native_evidence: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def aggregate_content_digest(components: list[dict[str, Any]]) -> str:
+    """Recompute the hosted-bundle digest using the API canonical format."""
+    content_hash_input = ""
+    for component in components:
+        aggregate_key = component.get("aggregate_key")
+        if not isinstance(aggregate_key, str) or not aggregate_key:
+            raise ValueError("aggregate component lacks aggregate_key")
+        component_digest = component.get("digest") or ""
+        content_hash_input += (
+            f"{aggregate_key}:{component.get('size_bytes')}"
+            f":{component_digest};"
+        )
+    digest = hashlib.sha256(content_hash_input.encode("utf-8")).hexdigest()
+    return "sha256:" + digest
+
+
 def native_manager_tag(native_evidence: dict[str, Any]) -> str:
     """Build the ``<manager_name>@<manager_version>`` identity string."""
     name = str(native_evidence.get("manager_name") or "")
@@ -163,6 +179,17 @@ def _validate_receipt(receipt: dict[str, Any]) -> None:
             raise ValueError(
                 "native_receipt_digest mismatch: refusing to persist"
             )
+        if receipt.get("verification") == "exact":
+            if evidence.get("content_digest") != receipt.get("content_digest"):
+                raise ValueError("exact receipt content digest mismatch")
+            components = evidence.get("aggregate_components")
+            if not isinstance(components, list) or not components:
+                raise ValueError(
+                    "exact receipt lacks aggregate digest components"
+                )
+            computed = aggregate_content_digest(components)
+            if computed != receipt.get("content_digest"):
+                raise ValueError("exact receipt aggregate digest mismatch")
 
 
 def now_rfc3339() -> str:

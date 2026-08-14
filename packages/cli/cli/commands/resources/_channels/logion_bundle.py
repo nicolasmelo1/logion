@@ -12,10 +12,12 @@ from __future__ import annotations
 import hashlib
 import shutil
 import tempfile
-import urllib.request
 from pathlib import Path
 from typing import Any
 
+import httpx
+
+from cli import _receipts
 from cli._local_state import UnsafeIdentifierError
 
 from .base import AcquisitionOutcome, ChannelAdapter
@@ -54,11 +56,15 @@ class LogionBundleAdapter(ChannelAdapter):
             stage_dir.mkdir(parents=True, exist_ok=True)
             any_unpinned = False
             file_digests: dict[str, str] = {}
+            aggregate_components: list[dict[str, Any]] = []
             for entry in files:
                 rel = self._safe_relative(entry["path"])
                 url = entry["url"]
                 expected_size = entry.get("size_bytes")
                 expected_digest = entry.get("digest")
+                aggregate_key = entry.get("aggregate_key")
+                if not isinstance(aggregate_key, str) or not aggregate_key:
+                    raise RuntimeError("download manifest lacks aggregate key")
                 staged = stage_dir / rel
                 staged.parent.mkdir(parents=True, exist_ok=True)
                 self._download(url, staged)
@@ -78,18 +84,27 @@ class LogionBundleAdapter(ChannelAdapter):
                     )
                 if not expected_digest:
                     any_unpinned = True
+                aggregate_components.append({
+                    "aggregate_key": aggregate_key,
+                    "size_bytes": (
+                        expected_size if expected_size is not None else size
+                    ),
+                    "digest": expected_digest or digest,
+                })
                 file_digests[
                     (destination.relative_to(scope_root) / rel).as_posix()
                 ] = digest
 
+            aggregate_digest = _receipts.aggregate_content_digest(
+                aggregate_components
+            )
+            expected_content_digest = str(plan.get("content_digest") or "")
+            if aggregate_digest != expected_content_digest:
+                raise RuntimeError(
+                    "download aggregate digest mismatch: refusing installation"
+                )
+            verification = "unverified" if any_unpinned else "exact"
             self._install(stage_dir, destination)
-            # Per-file sizes and digests were verified against the server
-            # manifest; the plan's aggregate content digest is pinned by
-            # the backend over its own canonical asset ordering and is
-            # not reproducible client-side without the asset s3 keys, so
-            # the verification tier is exact per file, exact aggregate
-            # only when the server provides its canonical digest format.
-            verification = "exact" if not any_unpinned else "unverified"
             installed = [
                 str(path.relative_to(scope_root))
                 for path in sorted(destination.rglob("*"))
@@ -104,7 +119,8 @@ class LogionBundleAdapter(ChannelAdapter):
                     "receipt_id": str(plan.get("distribution_id") or ""),
                     "canonical_source": "logion_bundle",
                     "immutable_revision": None,
-                    "content_digest": str(plan.get("content_digest") or ""),
+                    "content_digest": aggregate_digest,
+                    "aggregate_components": aggregate_components,
                     "file_digests": file_digests,
                 },
                 verification=verification,
@@ -125,15 +141,18 @@ class LogionBundleAdapter(ChannelAdapter):
         return rel
 
     def _download(self, url: str, destination: Path) -> None:
-        with urllib.request.urlopen(url) as response:
-            while True:
-                chunk = response.read(1 << 20)
-                if not chunk:
-                    break
-                with destination.open("ab") as handle:
+        parsed = httpx.URL(url)
+        if parsed.scheme not in {"http", "https"}:
+            raise RuntimeError("bundle URL must use http or https")
+        with httpx.stream(
+            "GET", str(parsed), timeout=30.0, follow_redirects=False
+        ) as response:
+            response.raise_for_status()
+            with destination.open("wb") as handle:
+                for chunk in response.iter_bytes(1 << 20):
                     handle.write(chunk)
-                if destination.stat().st_size > _MAX_SINGLE_FILE_BYTES:
-                    raise RuntimeError("single file exceeds size cap")
+                    if destination.stat().st_size > _MAX_SINGLE_FILE_BYTES:
+                        raise RuntimeError("single file exceeds size cap")
 
     def _install(self, stage_dir: Path, destination: Path) -> None:
         if destination.exists():

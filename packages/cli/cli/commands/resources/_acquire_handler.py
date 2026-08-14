@@ -26,6 +26,7 @@ from cli._harness.scopes import (
 )
 from cli._output import emit_json, to_data
 
+from ._acquire_display import print_plan
 from ._acquire_exec import run_acquisition
 from ._acquire_plan import (
     _resource_name,
@@ -100,6 +101,19 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             client.v1.resources.versions(resource_id=args.resource_id)
         )
         versions = normalize_versions(version_payload)
+        requested_version = getattr(args, "version", None)
+        if requested_version:
+            versions = [
+                version
+                for version in versions
+                if str(version.get("id") or version.get("version_id"))
+                == requested_version
+            ]
+            if not versions:
+                return handle_validation_error(
+                    "requested resource version was not found",
+                    json_output=config.json_output,
+                )
         plan = build_plan(
             resource_id=args.resource_id,
             scope=scope,
@@ -116,7 +130,7 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             if config.json_output:
                 emit_json("logion.resources.acquire", plan)
             else:
-                _print_plan(plan)
+                print_plan(plan)
             return 0
         return _execute_plan(
             args,
@@ -134,49 +148,6 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
         )
     finally:
         client.close()
-
-
-def _print_plan(plan: dict[str, Any]) -> None:
-    out = sys.stdout
-    out.write(f"Resource: {plan['resource_id']}\n")
-    out.write(f"Scope:    {plan['scope']}\n")
-    out.write(f"Harness:  {plan['harness']}\n")
-    out.write(f"Dry-run:  {plan['dry_run']}\n")
-    if plan.get("default_scope_for_cwd"):
-        out.write(f"Default scope for CWD: {plan['default_scope_for_cwd']}\n")
-    out.write("\nTargets:\n")
-    for target in plan["targets"]:
-        out.write(
-            f"  [{target['scope_kind']}] {target['installation_path']} "
-            f"({target['state']})\n"
-        )
-        if target.get("native_manager"):
-            out.write(f"    native manager: {target['native_manager']}\n")
-        operation = target["operation"]
-        out.write(
-            f"    operation: {operation['kind']} "
-            f"(ready={operation['ready']})\n"
-        )
-    if plan.get("resource"):
-        r = plan["resource"]
-        out.write(
-            f"\nResource: {r.get('canonical_uri', plan['resource_id'])} "
-            f"[{r.get('resource_type', '?')}] — {r.get('title', '')}\n"
-        )
-    if plan.get("versions"):
-        out.write("\nVersions:\n")
-        for v in plan["versions"]:
-            out.write(f"  {v.get('id', v.get('version_id', '?'))}\n")
-    obs = plan.get("observation_integration", {})
-    out.write(
-        f"\nObservation: {obs.get('integration_version', '?')} "
-        f"(consent={obs.get('consent', '?')}, "
-        f"spool={obs.get('spool_enabled')})\n"
-    )
-    out.write(
-        f"\nPermissions required: {plan.get('permissions_required')}\n"
-        f"Confirmation required: {plan.get('confirmation_required')}\n"
-    )
 
 
 def _execute_plan(
@@ -202,7 +173,7 @@ def _execute_plan(
             version_id=str(
                 versions[0].get("id") or versions[0].get("version_id")
             ),
-            channel="auto",
+            channel=str(getattr(args, "channel", "auto") or "auto"),
         )
     )
     selected = server_plan.get("selected_channel")

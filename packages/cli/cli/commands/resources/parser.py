@@ -9,15 +9,7 @@ from cli._harness import adapter_names
 from cli._harness.scopes import ALIASES, VALID_SCOPES
 from cli._options import COMMON_PARSER
 
-from .handlers import (
-    handle_resources_acquire,
-    handle_resources_distributions,
-    handle_resources_get,
-    handle_resources_inventory,
-    handle_resources_reconcile,
-    handle_resources_search,
-    handle_resources_versions,
-)
+from .parser_reconcile import register_reconcile
 
 _HARNESS_CHOICES = sorted([*adapter_names(), "custom"])
 
@@ -28,6 +20,15 @@ def _resource_limit(value: str) -> int:
     if not 1 <= limit <= 100:
         raise argparse.ArgumentTypeError("limit must be between 1 and 100")
     return limit
+
+
+def _lazy_handler(name: str):
+    def dispatch(args):
+        from importlib import import_module
+
+        return getattr(import_module(".handlers", __package__), name)(args)
+
+    return dispatch
 
 
 def register(
@@ -63,7 +64,7 @@ def register(
     list_parser.add_argument("--cursor", default=None)
     list_parser.add_argument("--limit", type=_resource_limit, default=50)
     list_parser.add_argument("--verbose", action="store_true", default=False)
-    list_parser.set_defaults(handler=handle_resources_search)
+    list_parser.set_defaults(handler=_lazy_handler("handle_resources_search"))
 
     search = sub.add_parser(
         "search",
@@ -77,7 +78,7 @@ def register(
     search.add_argument("--cursor", default=None)
     search.add_argument("--limit", type=_resource_limit, default=50)
     search.add_argument("--verbose", action="store_true", default=False)
-    search.set_defaults(handler=handle_resources_search)
+    search.set_defaults(handler=_lazy_handler("handle_resources_search"))
 
     get = sub.add_parser(
         "get",
@@ -85,7 +86,7 @@ def register(
         parents=[COMMON_PARSER],
     )
     get.add_argument("resource_id", metavar="RESOURCE_ID")
-    get.set_defaults(handler=handle_resources_get)
+    get.set_defaults(handler=_lazy_handler("handle_resources_get"))
 
     versions = sub.add_parser(
         "versions",
@@ -94,7 +95,7 @@ def register(
     )
     versions.add_argument("resource_id", metavar="RESOURCE_ID")
     versions.add_argument("--limit", type=_resource_limit, default=None)
-    versions.set_defaults(handler=handle_resources_versions)
+    versions.set_defaults(handler=_lazy_handler("handle_resources_versions"))
 
     acquire = sub.add_parser(
         "acquire",
@@ -102,6 +103,27 @@ def register(
         parents=[COMMON_PARSER],
     )
     acquire.add_argument("resource_id", metavar="RESOURCE_ID")
+    acquire.add_argument(
+        "--version",
+        dest="version",
+        default=None,
+        help="Specific resource version UUID (default: latest)",
+    )
+    acquire.add_argument(
+        "--channel",
+        dest="channel",
+        default="auto",
+        choices=[
+            "auto",
+            "logion_bundle",
+            "npx_skills",
+            "npx_plugins",
+            "hf",
+            "git",
+            "manual",
+        ],
+        help="Preferred acquisition channel (default: auto)",
+    )
     acquire.add_argument(
         "--scope",
         default=None,
@@ -128,7 +150,7 @@ def register(
         "--no-dry-run",
         dest="dry_run",
         action="store_false",
-        help="Request acquisition (not implemented; exits without writing)",
+        help="Execute acquisition after confirmation",
     )
     acquire.add_argument(
         "--cwd",
@@ -150,7 +172,7 @@ def register(
         default=None,
         help="Explicit skills directory for the custom harness",
     )
-    acquire.set_defaults(handler=handle_resources_acquire)
+    acquire.set_defaults(handler=_lazy_handler("handle_resources_acquire"))
 
     inventory = sub.add_parser(
         "inventory",
@@ -178,7 +200,13 @@ def register(
         default=None,
         help="Explicit skills directory for the custom harness",
     )
-    inventory.set_defaults(handler=handle_resources_inventory)
+    inventory.add_argument(
+        "--scope",
+        default="all",
+        choices=sorted({"all", *VALID_SCOPES, *ALIASES.keys()}),
+        help="Limit inventory to one scope (default: all)",
+    )
+    inventory.set_defaults(handler=_lazy_handler("handle_resources_inventory"))
 
     acquire.add_argument(
         "--yes",
@@ -199,13 +227,10 @@ def register(
         default=None,
         help="Specific version UUID (default: latest)",
     )
-    distributions.set_defaults(handler=handle_resources_distributions)
-
-    reconcile = sub.add_parser(
-        "reconcile",
-        help="Match local installations to catalog resources (read-only)",
-        parents=[COMMON_PARSER],
+    distributions.set_defaults(
+        handler=_lazy_handler("handle_resources_distributions")
     )
-    reconcile.set_defaults(handler=handle_resources_reconcile)
+
+    register_reconcile(sub, _lazy_handler, _HARNESS_CHOICES)
 
     return parser
