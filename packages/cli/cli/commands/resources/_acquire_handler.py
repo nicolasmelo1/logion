@@ -132,8 +132,6 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
         return handle_error(
             exc, json_output=config.json_output, handle_validation=True
         )
-    else:
-        return 0
     finally:
         client.close()
 
