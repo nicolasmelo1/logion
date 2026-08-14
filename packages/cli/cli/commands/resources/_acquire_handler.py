@@ -100,6 +100,19 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
             client.v1.resources.versions(resource_id=args.resource_id)
         )
         versions = normalize_versions(version_payload)
+        requested_version = getattr(args, "version", None)
+        if requested_version:
+            versions = [
+                version
+                for version in versions
+                if str(version.get("id") or version.get("version_id"))
+                == requested_version
+            ]
+            if not versions:
+                return handle_validation_error(
+                    "requested resource version was not found",
+                    json_output=config.json_output,
+                )
         plan = build_plan(
             resource_id=args.resource_id,
             scope=scope,
@@ -202,7 +215,7 @@ def _execute_plan(
             version_id=str(
                 versions[0].get("id") or versions[0].get("version_id")
             ),
-            channel="auto",
+            channel=str(getattr(args, "channel", "auto") or "auto"),
         )
     )
     selected = server_plan.get("selected_channel")

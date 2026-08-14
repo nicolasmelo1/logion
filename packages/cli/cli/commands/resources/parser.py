@@ -103,6 +103,27 @@ def register(
     )
     acquire.add_argument("resource_id", metavar="RESOURCE_ID")
     acquire.add_argument(
+        "--version",
+        dest="version",
+        default=None,
+        help="Specific resource version UUID (default: latest)",
+    )
+    acquire.add_argument(
+        "--channel",
+        dest="channel",
+        default="auto",
+        choices=[
+            "auto",
+            "logion_bundle",
+            "npx_skills",
+            "npx_plugins",
+            "hf",
+            "git",
+            "manual",
+        ],
+        help="Preferred acquisition channel (default: auto)",
+    )
+    acquire.add_argument(
         "--scope",
         default=None,
         choices=sorted(VALID_SCOPES | ALIASES.keys()),
@@ -128,7 +149,7 @@ def register(
         "--no-dry-run",
         dest="dry_run",
         action="store_false",
-        help="Request acquisition (not implemented; exits without writing)",
+        help="Execute acquisition after confirmation",
     )
     acquire.add_argument(
         "--cwd",
@@ -178,6 +199,12 @@ def register(
         default=None,
         help="Explicit skills directory for the custom harness",
     )
+    inventory.add_argument(
+        "--scope",
+        default="all",
+        choices=sorted({"all", *VALID_SCOPES, *ALIASES.keys()}),
+        help="Limit inventory to one scope (default: all)",
+    )
     inventory.set_defaults(handler=handle_resources_inventory)
 
     acquire.add_argument(
@@ -206,6 +233,22 @@ def register(
         help="Match local installations to catalog resources (read-only)",
         parents=[COMMON_PARSER],
     )
+    reconcile.add_argument(
+        "--from",
+        dest="source",
+        default="all",
+        choices=["skills", "plugins", "hf", "logion", "all"],
+    )
+    reconcile.add_argument(
+        "--harness", default="all", choices=["all", *_HARNESS_CHOICES]
+    )
+    reconcile.add_argument(
+        "--scope",
+        default="all",
+        choices=sorted({"all", *VALID_SCOPES, *ALIASES.keys()}),
+    )
+    reconcile.add_argument("--dry-run", action="store_true", default=False)
+    reconcile.add_argument("--cwd", default=None)
     reconcile.set_defaults(handler=handle_resources_reconcile)
 
     return parser

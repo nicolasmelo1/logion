@@ -22,6 +22,7 @@ class AcquisitionOutcome:
     native_evidence: dict[str, Any] | None
     verification: str  # exact | source_revision | unverified
     notes: list[str] = field(default_factory=list)
+    projection_paths: list[str] = field(default_factory=list)
 
 
 class ChannelAdapter:

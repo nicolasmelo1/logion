@@ -86,3 +86,97 @@ def mark_ambiguities(results: list[dict[str, Any]]) -> None:
             reconciliation = entry["reconciliation"]
             if reconciliation["status"] == "unlinked":
                 reconciliation["status"] = "ambiguous"
+
+
+def discover_native_state(  # noqa: C901 - manager schemas differ
+    scope_root: Path, source: str = "all"
+) -> list[dict[str, Any]]:
+    """Read native manager state without modifying files or reinstalling."""
+    results: list[dict[str, Any]] = []
+    if source in {"all", "skills"}:
+        lock = scope_root / "skills-lock.json"
+        if lock.is_file():
+            try:
+                data = json.loads(lock.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                data = {}
+            entries = data.get("skills") if isinstance(data, dict) else []
+            if isinstance(entries, dict):
+                entries = list(entries.values())
+            if isinstance(entries, list):
+                for entry in entries:
+                    if isinstance(entry, dict):
+                        results.append({
+                            "manager": "skills",
+                            "source": str(
+                                entry.get("source")
+                                or entry.get("locator")
+                                or ""
+                            ),
+                            "revision": str(
+                                entry.get("revision")
+                                or entry.get("commit")
+                                or ""
+                            ),
+                            "resource_version_id": entry.get(
+                                "resource_version_id"
+                            ),
+                            "path": entry.get("path")
+                            or entry.get("directory"),
+                        })
+    if source in {"all", "plugins"}:
+        for path in (
+            scope_root / ".agents/plugins/manifest.json",
+            scope_root / ".claude/plugins.json",
+            scope_root / "plugins.json",
+        ):
+            if not path.is_file():
+                continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            entries = (
+                data.get("plugins", data) if isinstance(data, dict) else data
+            )
+            if isinstance(entries, dict):
+                entries = list(entries.values())
+            if isinstance(entries, list):
+                for entry in entries:
+                    if isinstance(entry, dict):
+                        results.append({
+                            "manager": "plugins",
+                            "source": str(
+                                entry.get("source")
+                                or entry.get("locator")
+                                or entry.get("repository")
+                                or ""
+                            ),
+                            "revision": str(
+                                entry.get("revision")
+                                or entry.get("commit")
+                                or ""
+                            ),
+                            "resource_version_id": entry.get(
+                                "resource_version_id"
+                            ),
+                            "path": entry.get("path"),
+                        })
+    if source in {"all", "hf"}:
+        refs = scope_root / ".cache/huggingface/hub"
+        if refs.is_dir():
+            for ref in sorted(refs.glob("models--*/refs/*")):
+                try:
+                    revision = ref.read_text(encoding="utf-8").strip()
+                except OSError:
+                    continue
+                results.append({
+                    "manager": "hf",
+                    "source": ref.parent.parent.name.replace(
+                        "models--", ""
+                    ).replace("--", "/"),
+                    "revision": revision,
+                    "resource_version_id": None,
+                    "path": str(ref.parent.parent),
+                })
+    return results
