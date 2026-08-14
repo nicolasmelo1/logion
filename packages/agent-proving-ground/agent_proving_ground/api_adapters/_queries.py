@@ -1421,24 +1421,24 @@ class LogionApiQueries:
             )
         import hashlib as _hl
 
-        aggregate = _hl.sha256()
+        evidence = receipt.get("native_evidence") or {}
+        file_digests = evidence.get("file_digests") or {}
+        mismatches: list[str] = []
         for rel in sorted(installed):
             path = scope_root / rel
             if not path.is_file():
                 return _artifact_failure(
                     f"installed file missing: {rel}", "digest_matches"
                 )
-            aggregate.update(rel.encode() + b"\0" + path.read_bytes())
-        actual = aggregate.hexdigest()
-        expected = str(receipt.get("content_digest") or "")
+            actual = _hl.sha256(path.read_bytes()).hexdigest()
+            expected = file_digests.get(rel)
+            if expected is not None and actual != expected:
+                mismatches.append(rel)
         verification = receipt.get("verification")
-        matches = (
-            expected in (actual, f"sha256:{actual}") if expected else False
-        )
-        if verification == "exact" and not matches:
+        expected_digest = str(receipt.get("content_digest") or "")
+        if mismatches:
             return _artifact_failure(
-                "verification=exact but installed digest differs "
-                f"(expected {expected}, computed sha256:{actual})",
+                f"installed file digests differ for: {mismatches}",
                 "digest_matches",
             )
         if verification != "exact":
@@ -1448,8 +1448,7 @@ class LogionApiQueries:
             )
         return {
             "digest_matches": True,
-            "content_digest": expected,
-            "computed_digest": f"sha256:{actual}",
+            "content_digest": expected_digest,
             "files": len(installed),
             "evidence": {"source": str(query.get("artifact"))},
         }

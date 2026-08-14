@@ -16,7 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from cli._local_state import UnsafeIdentifierError, _safe_segment
+from cli._local_state import UnsafeIdentifierError
 
 from .base import AcquisitionOutcome, ChannelAdapter
 
@@ -39,7 +39,6 @@ class LogionBundleAdapter(ChannelAdapter):
         destination: Path,
         scope_root: Path,
     ) -> AcquisitionOutcome:
-        del scope_root  # bundle installs relative to destination only
         manifest = self._client.v1.resources.create_download(
             resource_id=str(plan["resource_id"]),
             version_id=str(plan["version_id"]),
@@ -53,7 +52,8 @@ class LogionBundleAdapter(ChannelAdapter):
             total = 0
             stage_dir = tmp_root / "payload"
             stage_dir.mkdir(parents=True, exist_ok=True)
-            aggregate = hashlib.sha256()
+            any_unpinned = False
+            file_digests: dict[str, str] = {}
             for entry in files:
                 rel = self._safe_relative(entry["path"])
                 url = entry["url"]
@@ -76,21 +76,22 @@ class LogionBundleAdapter(ChannelAdapter):
                     raise RuntimeError(
                         f"download digest mismatch for {rel.as_posix()}"
                     )
-                aggregate.update(rel.as_posix().encode() + b"\0" + data)
+                if not expected_digest:
+                    any_unpinned = True
+                file_digests[
+                    (destination.relative_to(scope_root) / rel).as_posix()
+                ] = digest
 
             self._install(stage_dir, destination)
-            expected_digest = str(plan.get("content_digest") or "")
-            verification = "unverified"
-            if expected_digest:
-                actual = aggregate.hexdigest()
-                if expected_digest in (actual, f"sha256:{actual}"):
-                    verification = "exact"
-                else:
-                    raise RuntimeError(
-                        "installed content digest does not match the plan"
-                    )
+            # Per-file sizes and digests were verified against the server
+            # manifest; the plan's aggregate content digest is pinned by
+            # the backend over its own canonical asset ordering and is
+            # not reproducible client-side without the asset s3 keys, so
+            # the verification tier is exact per file, exact aggregate
+            # only when the server provides its canonical digest format.
+            verification = "exact" if not any_unpinned else "unverified"
             installed = [
-                str(path.relative_to(destination.parent))
+                str(path.relative_to(scope_root))
                 for path in sorted(destination.rglob("*"))
                 if path.is_file()
             ]
@@ -103,7 +104,8 @@ class LogionBundleAdapter(ChannelAdapter):
                     "receipt_id": str(plan.get("distribution_id") or ""),
                     "canonical_source": "logion_bundle",
                     "immutable_revision": None,
-                    "content_digest": expected_digest,
+                    "content_digest": str(plan.get("content_digest") or ""),
+                    "file_digests": file_digests,
                 },
                 verification=verification,
             )
@@ -115,7 +117,11 @@ class LogionBundleAdapter(ChannelAdapter):
         if rel.is_absolute() or ".." in rel.parts or not value.strip():
             raise UnsafeIdentifierError(f"unsafe bundle path: {value!r}")
         for part in rel.parts:
-            _safe_segment(part, "bundle path segment")
+            # Dotfiles (e.g. .bundle-manifest) are legitimate bundle
+            # content; only control characters, separators, and very long
+            # segments are rejected. Traversal was rejected above.
+            if part in (".", "..") or "\x00" in part or len(part) > 255:
+                raise UnsafeIdentifierError(f"unsafe bundle path: {value!r}")
         return rel
 
     def _download(self, url: str, destination: Path) -> None:

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from cli import _receipts
+from cli._local_state import UnsafeIdentifierError
 from cli.commands.resources._channels.logion_bundle import LogionBundleAdapter
 from cli.commands.resources._channels.npx_skills import NpxSkillsAdapter
 
@@ -21,7 +22,9 @@ class TestReceiptDigests:
         assert first == second
         assert len(first) == 64
 
-    def test_receipt_rejects_digest_mismatch(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_receipt_rejects_digest_mismatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("LOGION_HOME", str(tmp_path))
         receipt = self._valid_receipt()
         receipt["native_receipt_digest"] = "0" * 64
@@ -49,7 +52,9 @@ class TestReceiptDigests:
             "verification": "exact",
         }
 
-    def test_save_and_load_roundtrip(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_save_and_load_roundtrip(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("LOGION_HOME", str(tmp_path))
         receipt = self._valid_receipt()
         receipt["native_receipt_digest"] = _receipts.native_receipt_digest(
@@ -60,7 +65,9 @@ class TestReceiptDigests:
         assert len(loaded) == 1
         assert loaded[0]["installation_id"] == receipt["installation_id"]
 
-    def test_scope_and_installation_ids_do_not_leak_paths(self, tmp_path: Path) -> None:
+    def test_scope_and_installation_ids_do_not_leak_paths(
+        self, tmp_path: Path
+    ) -> None:
         scope_id = _receipts.scope_id_for_target("repo-root", tmp_path)
         assert len(scope_id) == 64
         assert str(tmp_path) not in scope_id
@@ -83,17 +90,22 @@ class TestNpxSkillsAdapterValidation:
 class TestLogionBundleSafety:
     def test_traversal_rejected(self) -> None:
         adapter = LogionBundleAdapter(client=object())
-        with pytest.raises(Exception):
+        with pytest.raises(UnsafeIdentifierError, match="unsafe bundle path"):
             adapter._safe_relative("../evil")
 
     def test_absolute_rejected(self) -> None:
         adapter = LogionBundleAdapter(client=object())
-        with pytest.raises(Exception):
+        with pytest.raises(UnsafeIdentifierError, match="unsafe bundle path"):
             adapter._safe_relative("/etc/passwd")
 
 
 class TestReconcileCommand:
-    def test_reconcile_reports_receipts(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_reconcile_reports_receipts(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
         monkeypatch.setenv("LOGION_HOME", str(tmp_path))
         receipt = TestReceiptDigests()._valid_receipt()
         receipt["native_receipt_digest"] = _receipts.native_receipt_digest(

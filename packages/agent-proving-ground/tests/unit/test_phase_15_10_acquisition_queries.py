@@ -92,11 +92,15 @@ async def test_installed_artifact_digest_matches(tmp_path: Path) -> None:
     data = b"hello"
     (root / ".agents/skills/x/SKILL.md").write_bytes(data)
     rel = ".agents/skills/x/SKILL.md"
-    digest = hashlib.sha256(rel.encode() + b"\0" + data).hexdigest()
+    digest = hashlib.sha256(data).hexdigest()
     artifact = _write_envelope(
         tmp_path / "a.json",
         "logion.resources.acquire",
-        _receipt(content_digest=f"sha256:{digest}", installed_paths=[rel]),
+        _receipt(
+            content_digest="sha256:aggregate",
+            installed_paths=[rel],
+            native_evidence={"file_digests": {rel: digest}},
+        ),
     )
     queries = LogionApiQueries("http://x", _DummyKeys())
     result = await queries.query(
@@ -108,7 +112,6 @@ async def test_installed_artifact_digest_matches(tmp_path: Path) -> None:
         {},
     )
     assert result["digest_matches"] is True
-    assert result["computed_digest"] == f"sha256:{digest}"
 
 
 @pytest.mark.asyncio
@@ -122,7 +125,11 @@ async def test_installed_artifact_digest_mismatch_fails(
     artifact = _write_envelope(
         tmp_path / "a.json",
         "logion.resources.acquire",
-        _receipt(content_digest="sha256:" + "0" * 64, installed_paths=[rel]),
+        _receipt(
+            content_digest="sha256:" + "0" * 64,
+            installed_paths=[rel],
+            native_evidence={"file_digests": {rel: "1" * 64}},
+        ),
     )
     queries = LogionApiQueries("http://x", _DummyKeys())
     result = await queries.query(
