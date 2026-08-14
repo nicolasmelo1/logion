@@ -8,7 +8,7 @@ import sys
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
-from cli._errors import handle_error
+from cli._errors import handle_error, handle_validation_error
 from cli._output import emit_json, to_data
 
 from ._acquire_handler import handle_resources_acquire
@@ -24,34 +24,59 @@ __all__ = [
 
 
 def _print_resource(payload: dict[str, object]) -> None:
-    """Render a resource in compact human-readable form."""
+    """Render a resource-detail envelope in human-readable form."""
+    nested = payload.get("resource")
+    resource = nested if isinstance(nested, dict) else payload
     sys.stdout.write(
-        f"ID: {payload.get('canonical')}\n"
-        f"Type: {payload.get('resource_type', 'unknown')}\n"
-        f"Title: {payload.get('title')}\n"
-        f"Author: {payload.get('original_author')}\n"
-        f"Source: {payload.get('source_url')}\n"
-        f"License: {payload.get('license_spdx')}\n"
+        f"ID: {resource.get('id')}\n"
+        f"Canonical URI: {resource.get('canonical_uri')}\n"
+        f"Type: {resource.get('resource_type', 'unknown')}\n"
+        f"Title: {resource.get('title')}\n"
+        f"Lifecycle: {resource.get('lifecycle_status', 'unknown')}\n"
     )
-    summary = payload.get("summary")
+    summary = resource.get("summary")
     if isinstance(summary, str) and summary.strip():
         sys.stdout.write(f"\n{summary}\n")
+    sources = payload.get("sources")
+    if isinstance(sources, list) and sources:
+        sys.stdout.write("\nSources:\n")
+        for source in sources:
+            if isinstance(source, dict):
+                sys.stdout.write(
+                    f"  {source.get('source_kind', '?')}: "
+                    f"{source.get('source_uri', '?')}\n"
+                )
 
 
 def handle_resources_search(args: argparse.Namespace) -> int:
-    """Execute ``logion resources search QUERY``."""
+    """Execute ``resources list`` and its historical ``search`` alias."""
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
+        unsupported = [
+            name
+            for name in ("query", "tags")
+            if getattr(args, name, None) is not None
+        ]
+        if unsupported:
+            message = (
+                "resource query/tag search is not supported by the "
+                "current API; "
+                "use resources list with resource/lifecycle filters"
+            )
+            return handle_validation_error(
+                message, json_output=config.json_output
+            )
         result = client.v1.resources.search(
-            query=args.query,
             resource_type=getattr(args, "resource_type", None),
-            tags=getattr(args, "tags", None),
+            lifecycle_status=getattr(args, "lifecycle_status", None),
             limit=getattr(args, "limit", None),
+            cursor=getattr(args, "cursor", None),
         )
         payload = to_data(result)
         if config.json_output:
-            emit_json("logion.resources.search", payload)
+            command = getattr(args, "resources_command", "list")
+            emit_json(f"logion.resources.{command}", payload)
         else:
             items = (
                 payload
@@ -65,15 +90,24 @@ def handle_resources_search(args: argparse.Namespace) -> int:
                     idata = (
                         to_data(item) if not isinstance(item, dict) else item
                     )
-                    rid = idata.get("canonical", "?")
+                    rid = idata.get("id", "?")
                     rtype = idata.get("resource_type", "?")
                     title = idata.get("title", "")
                     line = f"  {rid} [{rtype}]"
                     if title:
                         line += f" — {title}"
                     sys.stdout.write(f"{line}\n")
+                    if getattr(args, "verbose", False):
+                        canonical_uri = idata.get("canonical_uri")
+                        summary = idata.get("summary")
+                        if canonical_uri:
+                            sys.stdout.write(f"    URI: {canonical_uri}\n")
+                        if summary:
+                            sys.stdout.write(f"    {summary}\n")
     except Exception as exc:
-        return handle_error(exc)
+        return handle_error(
+            exc, json_output=config.json_output, handle_validation=True
+        )
     else:
         return 0
     finally:
@@ -92,7 +126,9 @@ def handle_resources_get(args: argparse.Namespace) -> int:
         else:
             _print_resource(payload)
     except Exception as exc:
-        return handle_error(exc)
+        return handle_error(
+            exc, json_output=config.json_output, handle_validation=True
+        )
     else:
         return 0
     finally:
@@ -124,14 +160,16 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
                     idata = (
                         to_data(item) if not isinstance(item, dict) else item
                     )
-                    vid = idata.get("version_id", "?")
-                    created = idata.get("created_at", "")
+                    vid = idata.get("id", "?")
+                    discovered = idata.get("discovered_at", "")
                     line = f"  {vid}"
-                    if created:
-                        line += f" ({created})"
+                    if discovered:
+                        line += f" ({discovered})"
                     sys.stdout.write(f"{line}\n")
     except Exception as exc:
-        return handle_error(exc)
+        return handle_error(
+            exc, json_output=config.json_output, handle_validation=True
+        )
     else:
         return 0
     finally:

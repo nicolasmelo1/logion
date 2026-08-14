@@ -99,12 +99,14 @@ class TestDefaultScopeForCwd:
         sub.mkdir(parents=True)
         assert default_scope_for_cwd(sub) == "repo-root"
 
-    def test_outside_git_repo_returns_custom(self, tmp_path: Path) -> None:
+    def test_outside_git_repo_returns_user(self, tmp_path: Path) -> None:
         # tmp_path has no .git
-        assert default_scope_for_cwd(tmp_path) == "custom"
+        assert default_scope_for_cwd(tmp_path) == "user"
 
-    def test_never_silently_falls_back_to_user(self, tmp_path: Path) -> None:
-        assert default_scope_for_cwd(tmp_path) != "user"
+    def test_outside_git_default_is_explicit_user_scope(
+        self, tmp_path: Path
+    ) -> None:
+        assert default_scope_for_cwd(tmp_path) == USER
 
 
 class TestScopeTarget:

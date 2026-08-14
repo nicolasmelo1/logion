@@ -89,13 +89,13 @@ def _git_root(cwd: Path) -> Path | None:
 def default_scope_for_cwd(cwd: Path) -> str:
     """Return the default scope for a process launched in *cwd*.
 
-    Inside a Git repository the default is ``repo-root``.  Outside a
-    repository the default is ``custom`` — Logion never silently falls
-    back to ``user`` when a repo install was implied.
+    Inside a Git repository the default is ``repo-root``. Outside a
+    repository the default is ``user``; callers must surface the resulting
+    cross-scope confirmation before a future write is allowed.
     """
     if _git_root(Path(cwd)) is not None:
         return REPO_ROOT
-    return CUSTOM
+    return USER
 
 
 @dataclass(frozen=True)
