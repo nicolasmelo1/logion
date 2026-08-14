@@ -31,9 +31,10 @@ def run_acquisition(
     relative_target_path: str,
     resource_type: str,
     assume_yes: bool,
+    json_output: bool = False,
 ) -> dict[str, Any]:
     """Execute the validated plan and return the persisted receipt."""
-    _display_plan(plan, destination)
+    _display_plan(plan, destination, json_output=json_output)
     if not assume_yes:
         if not sys.stdin.isatty():
             raise RuntimeError(
@@ -95,8 +96,10 @@ def _adapter_for(channel: str, *, client: Any) -> ChannelAdapter:
     )
 
 
-def _display_plan(plan: dict[str, Any], destination: Path) -> None:
-    out = sys.stdout
+def _display_plan(
+    plan: dict[str, Any], destination: Path, *, json_output: bool
+) -> None:
+    out = sys.stderr if json_output else sys.stdout
     out.write("\nAcquisition plan:\n")
     out.write(f"  channel:    {plan['selected_channel']}\n")
     out.write(f"  digest:     {plan['content_digest']}\n")

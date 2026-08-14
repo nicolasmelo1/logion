@@ -37,31 +37,31 @@ phases:
       EVIDENCE_DIR: evidence_dir
       BEFORE_SNAPSHOT: snapshot_path
     goal: ""
-    assertions:
-      - type: file.exists
-        params:
-          path: "${FIXTURE_ROOT}"
 
   - id: discover-and-acquire
     actor: operator
     goal: |
-      You are working on the repository at ${FIXTURE_ROOT}. You need a
-      small code-review capability installed into that repository so Codex
-      can see it — not into your global user profile.
+      You are working on the repository at ${FIXTURE_ROOT}. Install a
+      Logion agent-skill capability into that repository so Codex can use
+      it — not into your global user profile.
 
       Use the public Logion CLI (run as
       `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
-      ${ISOLATED_HOME} and the API at http://localhost:8000. Do not call the
-      HTTP API directly.
+      ${ISOLATED_HOME} and the API at http://localhost:8000 (via
+      LOGION_BASE_URL). Do not call the HTTP API directly.
 
-      Search the catalog for a suitable agent skill, pick the one that fits,
-      check what channels it can be acquired through, then install it into
-      repository ${FIXTURE_ROOT} for Codex. Save the JSON output of the
-      final acquire command to ${EVIDENCE_DIR}/acquire.json. Show me what
-      was installed afterwards.
+      List the catalog with `resources list`, ignoring the kind filter —
+      the item to install is the Logion-hosted Course whose canonical_uri
+      starts with "course:". Check the distribution channels it supports
+      with `resources distributions RESOURCE_ID`, then run
+      `resources acquire RESOURCE_ID --harness codex --cwd FIXTURE_ROOT
+      --no-dry-run --yes --json` and save that final receipt JSON to
+      ${EVIDENCE_DIR}/acquire.json (overwrite any dry-run output). Show me
+      what was installed afterwards.
     success_hint: |
-      A receipt JSON was saved and the installation lives under
-      ${FIXTURE_ROOT} only.
+      evidence/acquire.json contains the receipt with verification exact
+      or source_revision and the installation lives under ${FIXTURE_ROOT}
+      only.
     assertions:
       - type: api.resource_acquisition_exists
         params:
@@ -69,7 +69,7 @@ phases:
       - type: api.resource_distribution_selected
         params:
           artifact: "${EVIDENCE_DIR}/acquire.json"
-          allowed_channels: [logion_bundle, npx_skills]
+          allowed_channels: [logion_bundle]
       - type: files.installed_artifact_digest_matches
         params:
           artifact: "${EVIDENCE_DIR}/acquire.json"

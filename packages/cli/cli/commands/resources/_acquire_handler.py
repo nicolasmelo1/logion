@@ -238,6 +238,7 @@ def _execute_plan(
         relative_target_path=relative,
         resource_type=str(resource.get("resource_type") or "agent_skill"),
         assume_yes=bool(getattr(args, "yes", False)),
+        json_output=config.json_output,
     )
     if config.json_output:
         emit_json("logion.resources.acquire", receipt)
