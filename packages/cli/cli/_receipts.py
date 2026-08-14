@@ -49,9 +49,12 @@ def aggregate_content_digest(components: list[dict[str, Any]]) -> str:
     """Recompute the hosted-bundle digest using the API canonical format."""
     content_hash_input = ""
     for component in components:
+        aggregate_key = component.get("aggregate_key")
+        if not isinstance(aggregate_key, str) or not aggregate_key:
+            raise ValueError("aggregate component lacks aggregate_key")
         component_digest = component.get("digest") or ""
         content_hash_input += (
-            f"{component['aggregate_key']}:{component.get('size_bytes')}"
+            f"{aggregate_key}:{component.get('size_bytes')}"
             f":{component_digest};"
         )
     digest = hashlib.sha256(content_hash_input.encode("utf-8")).hexdigest()

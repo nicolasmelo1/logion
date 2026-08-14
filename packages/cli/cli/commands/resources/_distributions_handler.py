@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -77,60 +78,88 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
 
 
 def _catalog_matches(
-    client: object, item: dict[str, object]
+    client: Any, item: dict[str, object]
 ) -> list[dict[str, object]]:
     """Resolve native source/revision against catalog identity."""
     source = str(item.get("source") or "")
     revision = str(item.get("revision") or "")
     if not source:
         return []
+    matches: list[dict[str, object]] = []
+    resource_type = {
+        "skills": "agent_skill",
+        "plugins": "agent_plugin",
+        "hf": "model",
+    }.get(str(item.get("manager") or ""))
+    if resource_type is None:
+        return []
+    cursor: str | None = None
+    while True:
+        try:
+            payload = to_data(
+                client.v1.resources.search(
+                    resource_type=resource_type, limit=100, cursor=cursor
+                )
+            )
+        except Exception:
+            return []
+        entries = (
+            payload if isinstance(payload, list) else payload.get("items", [])
+        )
+        for resource in entries:
+            if not isinstance(resource, dict):
+                continue
+            matches.extend(
+                _resource_version_matches(client, resource, source, revision)
+            )
+        if isinstance(payload, list):
+            break
+        cursor_value = payload.get("next_cursor") or payload.get("nextCursor")
+        if not cursor_value or cursor_value == cursor:
+            break
+        cursor = str(cursor_value)
+    return matches
+
+
+def _resource_version_matches(
+    client: Any,
+    resource: dict[str, object],
+    source: str,
+    revision: str,
+) -> list[dict[str, object]]:
+    canonical = str(resource.get("canonical_uri") or "")
+    if (
+        canonical != source
+        and source not in canonical
+        and canonical not in source
+    ):
+        return []
+    resource_id = resource.get("id")
+    if not resource_id:
+        return []
     try:
-        payload = to_data(
-            client.v1.resources.search(resource_type="agent_skill", limit=100)
+        versions = to_data(
+            client.v1.resources.versions(resource_id=str(resource_id))
         )
     except Exception:
         return []
-    entries = (
-        payload if isinstance(payload, list) else payload.get("items", [])
+    versions = (
+        versions if isinstance(versions, list) else versions.get("items", [])
     )
     matches: list[dict[str, object]] = []
-    for resource in entries:
-        if not isinstance(resource, dict):
+    for version in versions:
+        if not isinstance(version, dict):
             continue
-        canonical = str(resource.get("canonical_uri") or "")
-        if (
-            canonical != source
-            and source not in canonical
-            and canonical not in source
-        ):
+        version_revision = str(version.get("source_revision") or "")
+        if revision and version_revision and revision != version_revision:
             continue
-        resource_id = resource.get("id")
-        if not resource_id:
-            continue
-        try:
-            versions = to_data(
-                client.v1.resources.versions(resource_id=str(resource_id))
-            )
-        except Exception:
-            continue
-        versions = (
-            versions
-            if isinstance(versions, list)
-            else versions.get("items", [])
-        )
-        for version in versions:
-            if not isinstance(version, dict):
-                continue
-            version_revision = str(version.get("source_revision") or "")
-            if revision and version_revision and revision != version_revision:
-                continue
-            matches.append({
-                "resource_id": str(resource_id),
-                "version_id": str(
-                    version.get("id") or version.get("version_id") or ""
-                ),
-                "verification": "source_revision" if revision else "canonical",
-            })
+        matches.append({
+            "resource_id": str(resource_id),
+            "version_id": str(
+                version.get("id") or version.get("version_id") or ""
+            ),
+            "verification": "source_revision" if revision else "canonical",
+        })
     return matches
 
 
@@ -147,7 +176,24 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        receipts = _receipts.load_receipts()
+        harness_filter = str(getattr(args, "harness", "all") or "all")
+        scope_filter = str(getattr(args, "scope", "all") or "all")
+        if scope_filter != "all":
+            from cli._harness.scopes import canonical_scope
+
+            scope_filter = canonical_scope(scope_filter)
+        receipts = [
+            receipt
+            for receipt in _receipts.load_receipts()
+            if (
+                harness_filter == "all"
+                or receipt.get("harness") == harness_filter
+            )
+            and (
+                scope_filter == "all"
+                or receipt.get("scope_kind") == scope_filter
+            )
+        ]
         source = str(getattr(args, "source", "all") or "all")
         root = Path(getattr(args, "cwd", None) or Path.cwd()).resolve()
         native = discover_native_state(root, source)
@@ -164,11 +210,25 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
             for r in receipts
         ]
         matched.extend(
-            item for item in native if item.get("resource_version_id")
+            item
+            for item in native
+            if item.get("resource_version_id")
+            and (
+                harness_filter == "all"
+                or item.get("manager") == harness_filter
+            )
+            and (scope_filter in {"all", "repo-root"})
         )
         unresolved = []
         ambiguous = []
         for item in native:
+            if (
+                harness_filter != "all"
+                and item.get("manager") != harness_filter
+            ):
+                continue
+            if scope_filter not in {"all", "repo-root"}:
+                continue
             if item.get("resource_version_id"):
                 continue
             candidates = _catalog_matches(client, item)
@@ -180,7 +240,7 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
                 ambiguous.append(item)
             else:
                 unresolved.append(item)
-        report = {
+        report: dict[str, Any] = {
             "matched": matched,
             "ambiguous": ambiguous,
             "unresolved": unresolved,

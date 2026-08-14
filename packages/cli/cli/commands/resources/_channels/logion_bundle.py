@@ -99,10 +99,7 @@ class LogionBundleAdapter(ChannelAdapter):
                 aggregate_components
             )
             expected_content_digest = str(plan.get("content_digest") or "")
-            if (
-                not any_unpinned
-                and aggregate_digest != expected_content_digest
-            ):
+            if aggregate_digest != expected_content_digest:
                 raise RuntimeError(
                     "download aggregate digest mismatch: refusing installation"
                 )

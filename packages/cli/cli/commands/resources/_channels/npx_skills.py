@@ -41,7 +41,12 @@ class NpxSkillsAdapter(ChannelAdapter):
                     errors="replace"
                 )
             )
-        evidence, installed_paths = self._read_lockfile_entry(scope_root, plan)
+        try:
+            evidence, installed_paths = self._read_lockfile_entry(
+                scope_root, plan
+            )
+        except TypeError as exc:
+            raise RuntimeError("unsupported skills-lock.json schema") from exc
         installed = installed_paths or (
             [
                 str(p.relative_to(scope_root))
@@ -128,11 +133,18 @@ class NpxSkillsAdapter(ChannelAdapter):
             raw_paths = [str(Path(".agents/skills") / skill_path.parent.name)]
         if isinstance(raw_paths, str):
             raw_paths = [raw_paths]
-        installed = [
-            str((scope_root / str(item)).relative_to(scope_root))
-            for item in raw_paths
-            if isinstance(item, str)
-        ]
+        installed: list[str] = []
+        for item in raw_paths:
+            if not isinstance(item, str):
+                continue
+            candidate = (scope_root / item).resolve()
+            try:
+                relative = candidate.relative_to(scope_root.resolve())
+            except ValueError as exc:
+                raise RuntimeError(
+                    "skills-lock.json contains an unsafe installed path"
+                ) from exc
+            installed.append(relative.as_posix())
         computed_hash = str(entry.get("computedHash") or "")
         content_digest = str(entry.get("contentDigest") or "")
         if not content_digest and computed_hash:

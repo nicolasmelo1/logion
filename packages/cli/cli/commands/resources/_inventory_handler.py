@@ -33,6 +33,7 @@ from cli._harness.scopes import (
     SYSTEM,
     USER,
     ScopeTarget,
+    canonical_scope,
 )
 
 from ._reconciliation import mark_ambiguities, reconciliation_status
@@ -149,6 +150,8 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
         )
         targets = _all_scan_targets(harness, cwd, repo_root, target_path)
         requested_scope = str(getattr(args, "scope", "all") or "all")
+        if requested_scope != "all":
+            requested_scope = canonical_scope(requested_scope)
         if requested_scope != "all":
             targets = [
                 target

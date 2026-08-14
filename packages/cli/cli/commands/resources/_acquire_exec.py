@@ -57,7 +57,7 @@ def run_acquisition(
     effective_target_path = destination
     if outcome.installed_paths and plan["selected_channel"] != "logion_bundle":
         first_path = Path(outcome.installed_paths[0])
-        effective_relative_target_path = first_path
+        effective_relative_target_path = first_path.as_posix()
         effective_target_path = scope_root / first_path
     receipt: dict[str, Any] = {
         "schema_version": _receipts.RECEIPT_SCHEMA_VERSION,

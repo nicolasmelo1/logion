@@ -42,9 +42,13 @@ class HfAdapter(ChannelAdapter):
         components = []
         for path in sorted(destination.rglob("*")):
             if path.is_file():
+                digest = hashlib.sha256()
+                with path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1 << 20), b""):
+                        digest.update(chunk)
                 components.append({
                     "path": str(path.relative_to(destination)),
-                    "digest": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "digest": digest.hexdigest(),
                 })
         evidence = {
             "schema_version": 1,
