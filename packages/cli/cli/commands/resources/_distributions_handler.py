@@ -14,6 +14,7 @@ from cli._errors import handle_error, handle_validation_error
 from cli._output import emit_json, to_data
 
 from ._acquire_plan import normalize_versions
+from ._catalog_reconciliation import catalog_matches
 
 
 def handle_resources_distributions(args: argparse.Namespace) -> int:
@@ -75,92 +76,6 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
         return 0
     finally:
         client.close()
-
-
-def _catalog_matches(
-    client: Any, item: dict[str, object]
-) -> list[dict[str, object]]:
-    """Resolve native source/revision against catalog identity."""
-    source = str(item.get("source") or "")
-    revision = str(item.get("revision") or "")
-    if not source:
-        return []
-    matches: list[dict[str, object]] = []
-    resource_type = {
-        "skills": "agent_skill",
-        "plugins": "agent_plugin",
-        "hf": "model",
-    }.get(str(item.get("manager") or ""))
-    if resource_type is None:
-        return []
-    cursor: str | None = None
-    while True:
-        try:
-            payload = to_data(
-                client.v1.resources.search(
-                    resource_type=resource_type, limit=100, cursor=cursor
-                )
-            )
-        except Exception:
-            return []
-        entries = (
-            payload if isinstance(payload, list) else payload.get("items", [])
-        )
-        for resource in entries:
-            if not isinstance(resource, dict):
-                continue
-            matches.extend(
-                _resource_version_matches(client, resource, source, revision)
-            )
-        if isinstance(payload, list):
-            break
-        cursor_value = payload.get("next_cursor") or payload.get("nextCursor")
-        if not cursor_value or cursor_value == cursor:
-            break
-        cursor = str(cursor_value)
-    return matches
-
-
-def _resource_version_matches(
-    client: Any,
-    resource: dict[str, object],
-    source: str,
-    revision: str,
-) -> list[dict[str, object]]:
-    canonical = str(resource.get("canonical_uri") or "")
-    if (
-        canonical != source
-        and source not in canonical
-        and canonical not in source
-    ):
-        return []
-    resource_id = resource.get("id")
-    if not resource_id:
-        return []
-    try:
-        versions = to_data(
-            client.v1.resources.versions(resource_id=str(resource_id))
-        )
-    except Exception:
-        return []
-    versions = (
-        versions if isinstance(versions, list) else versions.get("items", [])
-    )
-    matches: list[dict[str, object]] = []
-    for version in versions:
-        if not isinstance(version, dict):
-            continue
-        version_revision = str(version.get("source_revision") or "")
-        if revision and version_revision and revision != version_revision:
-            continue
-        matches.append({
-            "resource_id": str(resource_id),
-            "version_id": str(
-                version.get("id") or version.get("version_id") or ""
-            ),
-            "verification": "source_revision" if revision else "canonical",
-        })
-    return matches
 
 
 def handle_resources_reconcile(args: argparse.Namespace) -> int:
@@ -231,7 +146,7 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
                 continue
             if item.get("resource_version_id"):
                 continue
-            candidates = _catalog_matches(client, item)
+            candidates = catalog_matches(client, item)
             if len(candidates) == 1:
                 item.update(candidates[0])
                 matched.append(item)
