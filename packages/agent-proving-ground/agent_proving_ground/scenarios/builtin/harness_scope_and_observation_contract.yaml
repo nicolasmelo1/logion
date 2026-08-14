@@ -1,5 +1,5 @@
 schema_version: "1"
-name: phase_15_9_1_harness_scope_contract
+name: harness_scope_and_observation_contract
 description: |
   Exercise the public CLI against isolated native harness directories using a
   real coding agent and the local devrig API. Assertions consume CLI JSON and

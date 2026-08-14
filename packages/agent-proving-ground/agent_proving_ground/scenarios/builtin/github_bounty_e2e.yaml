@@ -1,8 +1,8 @@
 name: github_bounty_e2e
 description: |
-  Fase 15.5: GitHub bounty real. Cria curso, publica, vincula repo,
-  abre issue com menção ao bot, confirma bounty, abre PR real,
-  merge e verifica premiação — tudo via webhooks reais do GitHub App.
+  Create and publish a course, link its repository, open an issue mentioning
+  the bot, confirm the bounty, merge a real pull request, and verify the reward
+  through real GitHub App webhooks.
 
 agents:
   - id: seller
