@@ -395,15 +395,8 @@
       "ArtifactFile": {
         "properties": {
           "aggregate_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Aggregate Key"
+            "title": "Aggregate Key",
+            "type": "string"
           },
           "digest": {
             "anyOf": [
@@ -438,7 +431,8 @@
         },
         "required": [
           "path",
-          "url"
+          "url",
+          "aggregate_key"
         ],
         "title": "ArtifactFile",
         "type": "object"
