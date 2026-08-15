@@ -1422,6 +1422,51 @@ class LogionApiQueries:
             "evidence": {"source": str(query.get("artifact"))},
         }
 
+    async def _q_native_harness_discovers_installation(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Assert the native harness would load what inventory recorded.
+
+        This reads the harness's own on-disk state — the same manifests a
+        fresh session resolves — rather than a report the agent wrote.
+        A receipt that describes files the harness does not declare means
+        the inventory is claiming an installation the harness never sees.
+        """
+        try:
+            receipt = _load_cli_object(
+                query.get("artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "discovered")
+
+        scope_root = Path(str(query.get("scope_root", "")))
+        harness = str(query.get("harness", "dsh"))
+        if harness != "dsh":
+            return _artifact_failure(
+                f"no native state reader for harness {harness}", "discovered"
+            )
+
+        declared = _dsh_declared_bundles(scope_root / ".dsh")
+        declared_paths = {path for path, _ in declared}
+        installed = [
+            str((scope_root / path).resolve())
+            for path in receipt.get("installed_paths") or []
+        ]
+        missing = [path for path in installed if path not in declared_paths]
+        return {
+            "discovered": bool(installed) and not missing,
+            "harness": harness,
+            "scope": query.get("scope"),
+            "digests": sorted(
+                revision for _, revision in declared if revision
+            ),
+            "paths": sorted(declared_paths),
+            "missing": missing,
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
     async def _q_inventory_receipt_matches(
         self,
         query: dict[str, Any],
@@ -1819,6 +1864,46 @@ def _duplicate_install_state(scope_root: Path) -> list[str]:
 
 def _artifact_failure(reason: str, result_key: str) -> dict[str, Any]:
     return {result_key: False, "reason": reason, "evidence": {}}
+
+
+def _dsh_declared_bundles(dsh_home: Path) -> list[tuple[str, str]]:
+    """Read what a fresh dsh session would load, as an outside observer.
+
+    This deliberately re-derives the layout instead of calling Logion's
+    own reader: an assertion that reuses the code under test would pass
+    whenever that code is self-consistent, including when it is wrong.
+
+    Returns ``[(installed_path, revision)]`` for each declared bundle.
+    """
+    results: list[tuple[str, str]] = []
+    profiles = dsh_home / "profiles"
+    if not profiles.is_dir():
+        return results
+    for directory in sorted(profiles.iterdir()):
+        try:
+            manifest = json.loads(
+                (directory / "package.json").read_text(encoding="utf-8")
+            )
+            bundles = manifest["dsh"]["profile"]["bundles"]
+        except (OSError, KeyError, TypeError, ValueError):
+            continue
+        if not isinstance(bundles, list):
+            continue
+        for name in bundles:
+            if not isinstance(name, str):
+                continue
+            installed = directory / "node_modules" / Path(name)
+            try:
+                bundle = json.loads(
+                    (installed / "package.json").read_text(encoding="utf-8")
+                )
+            except (OSError, TypeError, ValueError):
+                continue
+            results.append((
+                str(installed.resolve()),
+                str(bundle.get("gitHead") or ""),
+            ))
+    return results
 
 
 def _load_json_object(raw_path: Any) -> dict[str, Any]:

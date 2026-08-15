@@ -21,15 +21,70 @@ serialized into the plan file.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import replace
 from urllib.error import URLError
 
-from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
+from .canonical import CanonicalSkillId
+from .dedup import (
+    DedupPlan,
+    ResourceDedupPlan,
+    build_plan,
+    build_resource_plan,
+    merge_discoveries,
+    merge_resource_discoveries,
+    query_known,
+    query_known_resources,
+)
 from .enrichment import enrich_discoveries
 from .github_source import GithubSource, is_permissive_license
 from .mirror import BundleArtifact, mirror_bundle_for
-from .models import DiscoveredSkill
+from .models import DiscoveredResource, DiscoveredSkill
 from .transport import Transport
 from .validation import INFERRED_MAP_INVALID, fragment_errors
+
+
+def partition_discoveries(
+    discoveries: Iterable[DiscoveredSkill | DiscoveredResource],
+) -> tuple[list[DiscoveredSkill], list[DiscoveredResource]]:
+    """Split a crawl into the skill and generic-resource vocabularies.
+
+    A seed file mixes adapters of both kinds, and the two go through
+    different pipelines. Splitting keeps one adapter's vocabulary from
+    discarding another's discoveries.
+    """
+    skills: list[DiscoveredSkill] = []
+    resources: list[DiscoveredResource] = []
+    for item in discoveries:
+        if isinstance(item, DiscoveredResource):
+            resources.append(item)
+        else:
+            skills.append(item)
+    return skills, resources
+
+
+def build_resource_indexing_plan(
+    resources: Iterable[DiscoveredResource],
+    transport: Transport,
+    base_url: str,
+    *,
+    source: GithubSource | None = None,
+    digest: bool = True,
+) -> ResourceDedupPlan:
+    """Plan generic resources, pinning a content digest without hosting.
+
+    Resource artifacts are never mirrored — Logion does not host or
+    redistribute another ecosystem's plugins. The digest is still
+    computed from the pinned revision, because without one the catalog
+    cannot mint a version and therefore cannot carry any distribution.
+    """
+    source = source or GithubSource(transport=transport)
+    merged = merge_resource_discoveries(resources)
+    if digest:
+        merged = [_digest_resource(item, source) for item in merged]
+    known = query_known_resources(
+        [item.canonical for item in merged], transport, base_url
+    )
+    return build_resource_plan(merged, known)
 
 
 def build_indexing_plan(
@@ -41,10 +96,10 @@ def build_indexing_plan(
     mirror: bool = True,
     workers: int = 4,
 ) -> tuple[DedupPlan, dict[str, BundleArtifact]]:
-    """Run the full pipeline and return ``(plan, bundle_artifacts)``."""
+    """Run the skill pipeline and return ``(plan, bundle_artifacts)``."""
     source = source or GithubSource(transport=transport)
-
-    merged = merge_discoveries(discoveries)
+    skills, _ = partition_discoveries(discoveries)
+    merged = merge_discoveries(skills)
     enriched, skips = enrich_discoveries(merged, source, workers=workers)
     remerged = merge_discoveries(enriched)
 
@@ -71,6 +126,38 @@ def build_indexing_plan(
     plan.skip.extend(skips)
     plan.partial = partial
     return plan, artifacts
+
+
+def _digest_resource(
+    resource: DiscoveredResource,
+    source: GithubSource,
+) -> DiscoveredResource:
+    """Attach a content digest derived from the pinned revision.
+
+    The bundle is built only to hash it: the artifact is discarded and
+    never uploaded, so the catalog gains an integrity pin without Logion
+    hosting or redistributing the resource.
+    """
+    if resource.bundle or not resource.source_commit:
+        return resource
+    canonical = CanonicalSkillId.from_str(resource.canonical_uri)
+    try:
+        tarball = source.fetch_tarball(
+            canonical.owner, canonical.repo, resource.source_commit
+        )
+    except (URLError, TimeoutError, ValueError):
+        # A digest Logion could not compute is simply absent; the listing
+        # stays acquisition-less rather than carrying an invented pin.
+        return resource
+    artifact, _reason = mirror_bundle_for(
+        resource.canonical_uri,
+        resource.license_spdx,
+        resource.inferred_map,
+        tarball,
+    )
+    if artifact is None:
+        return resource
+    return replace(resource, bundle=artifact.meta())
 
 
 def _mirror_skill(

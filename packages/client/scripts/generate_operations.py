@@ -248,15 +248,18 @@ def to_python_name(name: str) -> str:
 
 def render_module(operations: list[Operation]) -> str:
     """Render the generated operations module."""
-    model_imports = sorted({
-        name
-        for operation in operations
-        for name in (
-            operation.request_model,
-            operation.response.model_name,
-        )
-        if name is not None
-    })
+    model_imports = sorted(
+        {
+            name
+            for operation in operations
+            for name in (
+                operation.request_model,
+                operation.response.model_name,
+            )
+            if name is not None
+        },
+        key=str.casefold,
+    )
     lines = [
         '"""Generated internal operation functions for the v1 API."""',
         "",

@@ -13,9 +13,14 @@ from urllib.parse import urlparse
 
 from .config import IndexerConfig, SeedFile
 from .crawl import Crawler
+from .dedup import DedupPlan, ResourceDedupPlan
 from .mirror import BundleArtifact
-from .models import DiscoveredSkill
-from .pipeline import build_indexing_plan
+from .models import DiscoveredResource, DiscoveredSkill
+from .pipeline import (
+    build_indexing_plan,
+    build_resource_indexing_plan,
+    partition_discoveries,
+)
 from .progress import RunProgress
 from .pusher import Pusher, PushResult, RunStats
 from .rate_limit import RateLimiter
@@ -37,7 +42,9 @@ class AdapterFailure:
 class DiscoveryResult:
     """Discoveries and adapter failures from one crawl."""
 
-    discoveries: list[DiscoveredSkill] = field(default_factory=list)
+    discoveries: list[DiscoveredSkill | DiscoveredResource] = field(
+        default_factory=list
+    )
     failures: list[AdapterFailure] = field(default_factory=list)
 
 
@@ -100,6 +107,10 @@ def _get_adapter(
             transport=transport,
             rate_limiter=rate_limiter,
         )
+    if adapter_name == "dsh_hub":
+        from .adapters.dsh_hub import DshHubAdapter
+
+        return DshHubAdapter(transport=transport)
     raise ValueError(f"unknown adapter: {adapter_name}")
 
 
@@ -147,26 +158,46 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     """
     transport = _build_transport(config)
     discovery = _discover_all(config, transport)
+    skills, resources = partition_discoveries(discovery.discoveries)
     plan, _ = build_indexing_plan(
-        discovery.discoveries,
+        skills,
         transport,
         config.api_base_url,
         mirror=False,
     )
+    resource_plan = build_resource_indexing_plan(
+        resources, transport, config.api_base_url, digest=False
+    )
     plan.partial = plan.partial or bool(discovery.failures)
+    plan_dict = _merged_plan_dict(plan, resource_plan)
     diagnostics = sys.stderr if args.json else sys.stdout
     print(f"discovered: {len(discovery.discoveries)}", file=diagnostics)
-    print(f"create: {len(plan.create)}", file=diagnostics)
-    print(f"update: {len(plan.update)}", file=diagnostics)
-    print(f"skip: {len(plan.skip)}", file=diagnostics)
+    print(f"create: {len(plan_dict['create'])}", file=diagnostics)
+    print(f"update: {len(plan_dict['update'])}", file=diagnostics)
+    print(f"skip: {len(plan_dict['skip'])}", file=diagnostics)
     print(f"partial: {'yes' if plan.partial else 'no'}", file=diagnostics)
-    plan_dict = plan.to_dict()
     if args.out:
         Path(args.out).write_text(json.dumps(plan_dict, indent=2))
         print(f"wrote plan: {args.out}", file=diagnostics)
     if args.json:
         print(json.dumps(plan_dict, indent=2))
     return 0
+
+
+def _merged_plan_dict(plan: DedupPlan, resources: ResourceDedupPlan) -> dict:
+    """Merge both vocabularies into one push payload.
+
+    Both serialize to the same batch-upsert item shape, so a plan file
+    stays a single resume-able payload no matter which adapters ran.
+    """
+    skill_dict = plan.to_dict()
+    resource_dict = resources.to_dict()
+    return {
+        "create": skill_dict["create"] + resource_dict["create"],
+        "update": skill_dict["update"] + resource_dict["update"],
+        "skip": skill_dict["skip"] + resource_dict["skip"],
+        "partial": skill_dict["partial"] or resource_dict["partial"],
+    }
 
 
 def cmd_resolve(config: IndexerConfig, args: argparse.Namespace) -> int:  # noqa: ARG001
@@ -248,21 +279,28 @@ def cmd_run(  # noqa: C901 - terminal receipts share one lifecycle.
         if progress:
             progress.checkpoint("enriching")
 
+        skills, resources = partition_discoveries(discovery.discoveries)
         plan, _artifacts = build_indexing_plan(
-            discovery.discoveries,
+            skills,
             transport,
             config.api_base_url,
             mirror=not getattr(args, "link_only", False),
         )
-        stats.deduped = plan.total
-        stats.skipped = len(plan.skip)
+        resource_plan = build_resource_indexing_plan(
+            resources,
+            transport,
+            config.api_base_url,
+            digest=not getattr(args, "link_only", False),
+        )
+        stats.deduped = plan.total + resource_plan.total
+        stats.skipped = len(plan.skip) + len(resource_plan.skip)
         stats.partial = plan.partial or bool(discovery.failures)
         if progress:
             progress.checkpoint("planning")
 
         if config.dry_run:
-            stats.created = len(plan.create)
-            stats.updated = len(plan.update)
+            stats.created = len(plan.create) + len(resource_plan.create)
+            stats.updated = len(plan.update) + len(resource_plan.update)
             _print_stats(stats)
             return 1 if stats.partial else 0
 
@@ -285,6 +323,18 @@ def cmd_run(  # noqa: C901 - terminal receipts share one lifecycle.
             if result.errors:
                 stats.partial = True
             _upload_bundles(pusher, result, _artifacts)
+        # Resource artifacts are digested but never uploaded: Logion does
+        # not host another ecosystem's plugins.
+        for batch in (resource_plan.create, resource_plan.update):
+            if not batch:
+                continue
+            result = pusher.push_batch(batch, run_id=run_id)
+            stats.created += result.created
+            stats.updated += result.updated
+            stats.errors += result.errors
+            _print_push_errors(result, config)
+            if result.errors:
+                stats.partial = True
 
         if progress:
             progress.checkpoint("completed", status="completed")

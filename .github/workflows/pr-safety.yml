@@ -227,6 +227,36 @@ jobs:
       - name: Installer tests
         run: make install-test
 
+  dsh-plugin:
+    name: dsh plugin (tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: plugins/dsh-plugin
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: plugins/dsh-plugin/.nvmrc
+          cache: npm
+          cache-dependency-path: plugins/dsh-plugin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The bundle is published as-is, so what npm would ship is what the
+      # tests must have run against.
+      - name: Pack and inspect
+        run: npm pack --dry-run
+
+      - name: Tests (node --test)
+        run: npm test
+
   npm-wrapper:
     name: npm-wrapper (lint, types, tests)
     runs-on: ubuntu-latest

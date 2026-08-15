@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 from .models import DiscoveredResource, DiscoveredSkill
 from .transport import HttpResponse, Transport
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 BATCH_SIZE = 100
+PushableResource: TypeAlias = DiscoveredSkill | DiscoveredResource
 
 
 @dataclass
@@ -103,7 +104,7 @@ class Pusher:
 
     def push_batch(
         self,
-        items: Sequence[DiscoveredSkill],
+        items: Sequence[PushableResource],
         run_id: str | None = None,
     ) -> PushResult:
         """Push a batch of discovered skills to the batch-upsert endpoint.
@@ -111,7 +112,13 @@ class Pusher:
         Batches are capped at ``BATCH_SIZE`` (100) items per call.
         """
         return self.push_serialized(
-            [_serialize_item(item) for item in items], run_id=run_id
+            [
+                _serialize_resource_item(item)
+                if isinstance(item, DiscoveredResource)
+                else _serialize_item(item)
+                for item in items
+            ],
+            run_id=run_id,
         )
 
     def push_serialized(
@@ -273,6 +280,8 @@ def _serialize_resource_item(item: DiscoveredResource) -> dict:
     result["resource_type"] = item.resource_type
     result["canonical_uri"] = item.canonical_uri
     result["resource_id"] = str(item.canonical)
+    result["declared_capabilities"] = item.declared_capabilities
+    result["npm_distribution"] = item.npm_distribution
     return result
 
 

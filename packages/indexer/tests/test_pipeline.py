@@ -146,3 +146,52 @@ class TestMirror:
         assert plan.create[0].bundle is None
         assert BUNDLE_SKIP_NO_TARBALL in plan.create[0].map_flags
         assert artifacts == {}
+
+
+class TestMixedVocabularyCrawl:
+    """A seed file mixes skill and resource adapters in one run."""
+
+    def test_partition_splits_without_discarding_either_kind(self) -> None:
+        from logion_indexer.canonical import (
+            CanonicalResourceId,
+            CanonicalSkillId,
+        )
+        from logion_indexer.models import DiscoveredResource, DiscoveredSkill
+        from logion_indexer.pipeline import partition_discoveries
+
+        skill = DiscoveredSkill(
+            canonical=CanonicalSkillId("octocat", "hello", None)
+        )
+        resource = DiscoveredResource(
+            canonical=CanonicalResourceId("plugin", "gh:owner/plugin"),
+            resource_type="plugin",
+            canonical_uri="gh:owner/plugin",
+        )
+        skills, resources = partition_discoveries([skill, resource, skill])
+        assert len(skills) == 2
+        assert len(resources) == 1
+
+    def test_a_mixed_crawl_does_not_abort_the_skill_plan(self) -> None:
+        """Adding a resource adapter must not break the seeded crawl."""
+        from logion_indexer.canonical import CanonicalResourceId
+        from logion_indexer.models import DiscoveredResource
+
+        skill = DiscoveredSkill(
+            canonical=CanonicalSkillId("octocat", "hello", "skills/foo"),
+            inferred_map=FRAGMENT,
+        )
+        resource = DiscoveredResource(
+            canonical=CanonicalResourceId("plugin", "gh:owner/plugin"),
+            resource_type="plugin",
+            canonical_uri="gh:owner/plugin",
+        )
+        transport = FakeTransport()
+        transport.set_response(KNOWN_FOO, HttpResponse(200, b'{"known": {}}'))
+        plan, _ = build_indexing_plan(
+            [skill, resource],
+            transport,
+            BASE,
+            source=GithubSource(transport=transport),
+            mirror=False,
+        )
+        assert len(plan.create) == 1

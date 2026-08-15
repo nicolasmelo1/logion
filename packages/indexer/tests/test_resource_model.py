@@ -224,7 +224,7 @@ class TestBuildResourcePlan:
     def test_update_indexed_listing(self) -> None:
         d = _make_resource()
         known = {
-            "skill:gh:octocat/hello": {
+            "gh:octocat/hello": {
                 "kind": "indexed_listing",
                 "id": "abc",
             }
@@ -236,7 +236,7 @@ class TestBuildResourcePlan:
     def test_skip_course(self) -> None:
         d = _make_resource()
         known = {
-            "skill:gh:octocat/hello": {
+            "gh:octocat/hello": {
                 "kind": "course",
                 "id": "c1",
             }
@@ -248,7 +248,7 @@ class TestBuildResourcePlan:
     def test_skip_claimed(self) -> None:
         d = _make_resource()
         known = {
-            "skill:gh:octocat/hello": {
+            "gh:octocat/hello": {
                 "kind": "claimed",
                 "id": "cl1",
             }
@@ -338,3 +338,44 @@ class TestPusherSerialization:
         # Resource result has extra keys.
         assert "resource_type" in resource_result
         assert "canonical_uri" in resource_result
+
+
+class TestKnownLookupVocabulary:
+    """The `known` endpoint resolves canonical URLs, not typed ids."""
+
+    def test_lookup_sends_the_uri_not_the_typed_display_form(self) -> None:
+        from logion_indexer.dedup import query_known_resources
+        from logion_indexer.transport import FakeTransport, HttpResponse
+
+        transport = FakeTransport()
+        url = (
+            "https://api.test/v1/admin/indexing/known?ids=gh%3Aoctocat%2Fhello"
+        )
+        transport.set_response(
+            url,
+            HttpResponse(
+                200,
+                json.dumps({
+                    "known": {
+                        "gh:octocat/hello": {
+                            "kind": "indexed_listing",
+                            "id": "abc",
+                        }
+                    }
+                }).encode(),
+            ),
+        )
+        known = query_known_resources(
+            [CanonicalResourceId("plugin", "gh:octocat/hello")],
+            transport,
+            "https://api.test",
+        )
+        assert known["gh:octocat/hello"]["kind"] == "indexed_listing"
+
+    def test_a_known_resource_updates_instead_of_recreating(self) -> None:
+        """A typed key would make every run report the resource as new."""
+        resource = _make_resource()
+        known = {"gh:octocat/hello": {"kind": "indexed_listing", "id": "a"}}
+        plan = build_resource_plan([resource], known)
+        assert len(plan.update) == 1
+        assert plan.create == []

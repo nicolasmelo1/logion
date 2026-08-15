@@ -49,6 +49,31 @@ git tag logion-companion-vX.Y.Z
 git push origin main --follow-tags
 ```
 
+## 3b. Cut a release for a harness plugin
+
+Plugins under `plugins/` version independently of the CLI: they are
+installed by the harness's own package manager, and a plugin fix should
+not force a CLI release. They are deliberately **not** part of the
+coordinated `make release`.
+
+```bash
+# Bump "version" in plugins/dsh-plugin/package.json, then:
+(cd plugins/dsh-plugin && npm test && npm pack --dry-run)
+git add -A
+git commit -m "release(dsh-plugin): @logionsh/dsh-plugin vX.Y.Z"
+git tag dsh-plugin-vX.Y.Z
+git push origin main --follow-tags
+```
+
+The tag triggers `release-dsh-plugin.yml`, which refuses to publish when
+the manifest version disagrees with the tag.
+
+Verify from a real harness afterwards:
+
+```bash
+DSH_HOME="$PWD/.dsh" dsh plugin --profile default add @logionsh/dsh-plugin
+```
+
 ## 4. Cutting a release candidate
 
 Pre-release versions use the `-rc.N` suffix (e.g. `0.2.0-rc.1`).

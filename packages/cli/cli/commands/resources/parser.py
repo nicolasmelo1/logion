@@ -118,6 +118,7 @@ def register(
             "logion_bundle",
             "npx_skills",
             "npx_plugins",
+            "dsh",
             "hf",
             "git",
             "manual",

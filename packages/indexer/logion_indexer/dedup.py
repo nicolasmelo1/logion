@@ -321,7 +321,12 @@ def query_known_resources(
 ) -> dict[str, dict]:
     """Query the API ``known`` endpoint for existing resources.
 
-    Returns ``{canonical_str: {kind, id}}``.
+    The endpoint resolves against stored canonical URLs, so the lookup
+    sends each URI rather than the ``<type>:<uri>`` display form — the
+    typed form matches nothing, which would report every resource as new
+    on every run.
+
+    Returns ``{canonical_uri: {kind, id}}``.
     """
     if not canonical_ids:
         return {}
@@ -330,7 +335,7 @@ def query_known_resources(
     url = f"{base_url.rstrip('/')}/v1/admin/indexing/known"
     for offset in range(0, len(canonical_ids), KNOWN_BATCH_SIZE):
         batch = canonical_ids[offset : offset + KNOWN_BATCH_SIZE]
-        ids_param = ",".join(quote(str(cid), safe="") for cid in batch)
+        ids_param = ",".join(quote(cid.uri, safe="") for cid in batch)
         resp = transport.get(
             f"{url}?ids={ids_param}",
             use_cache=False,
@@ -373,7 +378,7 @@ def build_resource_plan(
 
     for resource in merged:
         cid = str(resource.canonical)
-        info = known.get(cid)
+        info = known.get(resource.canonical.uri)
 
         if info is None:
             plan.create.append(resource)

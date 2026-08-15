@@ -596,11 +596,35 @@
       },
       "BatchItemSchema": {
         "properties": {
+          "bundle": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bundle"
+          },
           "canonical": {
             "maxLength": 512,
             "minLength": 4,
             "title": "Canonical",
             "type": "string"
+          },
+          "canonical_uri": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Uri"
           },
           "channels": {
             "items": {
@@ -608,6 +632,18 @@
             },
             "title": "Channels",
             "type": "array"
+          },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
           },
           "inferred_map": {
             "anyOf": [
@@ -640,10 +676,29 @@
             "title": "Map Flags",
             "type": "array"
           },
+          "npm_distribution": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Npm Distribution"
+          },
           "original_author": {
             "maxLength": 255,
             "minLength": 1,
             "title": "Original Author",
+            "type": "string"
+          },
+          "resource_type": {
+            "default": "skill",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Resource Type",
             "type": "string"
           },
           "source_commit": {

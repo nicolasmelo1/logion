@@ -248,3 +248,4 @@ packages/cli/.artifacts/
 .runs/
 review-bundles/
 .logion/
+plugins/*/node_modules/

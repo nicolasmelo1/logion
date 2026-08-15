@@ -1,0 +1,6 @@
+# `name` resolves through Node module resolution, so it is the package
+# name rather than a file path. This bundle loads its own plugin, which
+# registers the logion_* tools.
+- insert:
+    - id: logion
+      name: '@logionsh/dsh-plugin'

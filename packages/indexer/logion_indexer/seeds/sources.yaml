@@ -20,3 +20,9 @@ sources:
   - {adapter: skillsmp,    target: "https://skillsmp.com"}
   - {adapter: smithery,    target: "https://smithery.ai"}
   - {adapter: skills_lock, target: "https://raw.githubusercontent.com/vercel-labs/open-agents/main/skills-lock.json"}
+  # Verified 2026-08-15: `dsh-external/hub` is not publicly resolvable and
+  # the `dsh-plugin` GitHub topic returns thousands of mostly unrelated
+  # repositories, so neither is authoritative enough to crawl by default.
+  # The harness repository is the one enumerable source of real bundles;
+  # add third-party targets explicitly until a hub list exists.
+  - {adapter: dsh_hub,     mode: repo, target: deepseek-ai/deepseek-harness}
