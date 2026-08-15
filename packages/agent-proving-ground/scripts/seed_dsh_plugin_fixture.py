@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 SEED = (
@@ -23,7 +24,7 @@ def main() -> int:
     )
     commit = "0123456789abcdef0123456789abcdef01234567"
     canonical = "gh:logion-fixtures/dsh-plugin"
-    item = {
+    item: dict[str, Any] = {
         "canonical": canonical,
         "canonical_uri": canonical,
         "resource_type": "plugin",

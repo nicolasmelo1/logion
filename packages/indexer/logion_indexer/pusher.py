@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 from .models import DiscoveredResource, DiscoveredSkill
 from .transport import HttpResponse, Transport
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 BATCH_SIZE = 100
+PushableResource: TypeAlias = DiscoveredSkill | DiscoveredResource
 
 
 @dataclass
@@ -103,7 +104,7 @@ class Pusher:
 
     def push_batch(
         self,
-        items: Sequence[DiscoveredSkill],
+        items: Sequence[PushableResource],
         run_id: str | None = None,
     ) -> PushResult:
         """Push a batch of discovered skills to the batch-upsert endpoint.
