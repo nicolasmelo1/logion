@@ -54,7 +54,16 @@ def build_indexing_plan(
     source = source or GithubSource(transport=transport)
     discoveries = list(discoveries)
 
-    if any(isinstance(item, DiscoveredResource) for item in discoveries):
+    has_resources = any(
+        isinstance(item, DiscoveredResource) for item in discoveries
+    )
+    has_skills = any(isinstance(item, DiscoveredSkill) for item in discoveries)
+    if has_resources and has_skills:
+        raise ValueError(
+            "mixed skill and generic-resource discoveries are not supported "
+            "in one indexing plan"
+        )
+    if has_resources:
         resources = [
             item
             for item in discoveries

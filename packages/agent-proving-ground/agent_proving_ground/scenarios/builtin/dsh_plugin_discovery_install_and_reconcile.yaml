@@ -3,7 +3,10 @@ name: dsh_plugin_discovery_install_and_reconcile
 description: >-
   A DeepSeek Harness user finds a capability through Logion, installs it only
   for the current repository, and brings an existing native installation into
-  the same inventory without reinstalling it.
+  the same inventory without reinstalling it. The run proves discovery through
+  the Logion CLI, repository-scoped acquisition via the dsh channel, and
+  read-only reconciliation of a pre-existing native profile. Assertions
+  consume CLI JSON artifacts saved by the agent and direct API queries.
 api_adapter: local-devrig
 driver_config:
   codex:
@@ -27,96 +30,145 @@ agents:
     timeout_seconds: 1200
     system_prompt: >-
       You are a developer using DeepSeek Harness in a repository. Work through
-      the Logion plugin as a normal user would. Prefer the harness and its
-      native plugin manager, keep repository scope separate from user scope,
-      and report only what you can observe. Do not call the Logion HTTP API
-      directly. Do not claim verification, quality, or usage beyond observed
-      local state.
+      the Logion CLI as a normal user would. Use the public Logion CLI (run as
+      `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion`) with HOME set to
+      ${ISOLATED_HOME} and `--base-url http://localhost:8000` on each command.
+      Do not call the Logion HTTP API directly. Do not claim verification,
+      quality, or usage beyond observed local state.
 phases:
+  - id: setup-environment
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/setup_dsh_harness_fixture.py
+    local_hook_args: ["${AGENT_OPERATOR_WORKSPACE}"]
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      ISOLATED_HOME: isolated_home
+      EVIDENCE_DIR: evidence_dir
+      BEFORE_SNAPSHOT: snapshot_path
+    goal: ""
+
   - id: seed-dsh-catalog
     actor: operator
     local_hook: packages/agent-proving-ground/scripts/seed_dsh_plugin_fixture.py
     local_hook_capture_json:
       DSH_LISTING_ID: listing_id
+      DSH_CANONICAL: canonical
     goal: ""
 
   - id: find_and_inspect_capability
     actor: operator
-    goal: >-
-      You need a lightweight capability for this repository. Use the Logion
-      plugin inside DeepSeek Harness to find a suitable plugin and inspect what
-      Logion knows about its source, exact version, revision, digest, license,
-      and publisher-declared dependencies and services.
-    success_hint: >-
-      Stay inside the harness/plugin experience; use the public Logion CLI only
-      through the installed plugin when it needs to retrieve structured data.
+    goal: |
+      You need a lightweight capability for this repository. Use the Logion CLI
+      to search for a plugin and inspect what Logion knows about its source,
+      exact version, revision, digest, license, and publisher-declared
+      dependencies and services.
+
+      Use `logion resources search --resource-type agent_plugin
+      --base-url http://localhost:8000` with HOME=${ISOLATED_HOME} to find a
+      plugin. Then use `logion resources show RESOURCE_ID --base-url
+      http://localhost:8000` to inspect its details, including distributions.
+
+      Save the search results JSON to ${EVIDENCE_DIR}/search.json and the
+      resource detail JSON to ${EVIDENCE_DIR}/resource-detail.json.
+    success_hint: |
+      The search results should list a plugin with resource_type agent_plugin.
+      The resource detail should show at least one distribution on the dsh
+      channel with an immutable revision.
     assertions:
-      - type: api.resource_distribution_selected
+      - type: api.indexed_listing_exists
         params:
-          allowed_channels: [dsh]
-          resource_type: agent_plugin
+          listing: "${DSH_LISTING_ID}"
+
   - id: review_and_acquire_for_repository
     actor: operator
-    goal: >-
+    goal: |
       Review the proposed installation and its permissions, then approve it
       and install the plugin for this repository only. Keep the dry-run
-      zero-write and use DeepSeek Harness's native installation flow.
-    success_hint: >-
-      Check the plan before approving; the install must remain in repository
-      scope and must not be copied into the user scope.
+      zero-write and use the dsh channel.
+
+      First, get the acquisition plan with `logion resources acquire
+      RESOURCE_ID --harness dsh --scope repo --base-url http://localhost:8000`
+      and save it to ${EVIDENCE_DIR}/plan.json. Review the plan's channel,
+      argv, expected bytes and permissions.
+
+      Then acquire with `logion resources acquire RESOURCE_ID --harness dsh
+      --scope repo --no-dry-run --base-url http://localhost:8000` and save
+      the receipt JSON to ${EVIDENCE_DIR}/acquire.json.
+
+      The install must remain in repository scope and must not be copied
+      into the user scope.
+    success_hint: |
+      evidence/plan.json is a dry-run plan that names the dsh channel, argv,
+      expected bytes and permissions. evidence/acquire.json is the receipt
+      with verification source_revision and the installation under
+      ${FIXTURE_ROOT} only.
     assertions:
+      - type: api.resource_acquire_plan_dry_run
+        params:
+          artifact: "${EVIDENCE_DIR}/plan.json"
+          expected_scope: repo
+          expected_target: "${FIXTURE_ROOT}/.dsh"
+          before_snapshot: "${BEFORE_SNAPSHOT}"
+          snapshot_roots:
+            - "${FIXTURE_ROOT}"
+            - "${ISOLATED_HOME}"
       - type: api.resource_acquisition_exists
         params:
-          status: succeeded
-          channel: dsh
-      - type: files.installed_artifact_digest_matches
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          allowed_verifications: [source_revision]
+      - type: api.resource_distribution_selected
         params:
-          scope: repo
-  - id: show_installed_state
-    actor: operator
-    goal: >-
-      Show what is installed in this repository and what Logion recorded about
-      the installation, including the exact source revision and digest.
-    assertions:
-      - type: files.inventory_receipt_matches
-        params:
-          scope: repo
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          allowed_channels: [dsh]
+
   - id: recognize_existing_native_install
     actor: operator
-    goal: >-
+    goal: |
       A different plugin was already installed directly with DeepSeek Harness.
       Ask Logion to reconcile the current native state and recognize that exact
       plugin without reinstalling, moving, or rewriting anything.
-    success_hint: >-
-      Reconciliation is read-only and must attribute only when the native
-      manifest and immutable source evidence identify one exact Logion version.
+
+      Use `logion resources reconcile --harness dsh --scope repo --base-url
+      http://localhost:8000` and save the JSON report to
+      ${EVIDENCE_DIR}/reconcile.json. Reconciliation is read-only and must
+      attribute only when the native manifest and immutable source evidence
+      identify one exact Logion version.
+    success_hint: |
+      The reconcile report should list the pre-existing native DSH plugin as
+      matched, with no unresolved, ambiguous, or drifted entries.
     assertions:
       - type: api.native_install_reconciled
         params:
+          artifact: "${EVIDENCE_DIR}/reconcile.json"
+          scope_root: "${FIXTURE_ROOT}"
           manager: dsh
           reinstalled: false
-  - id: confirm_fresh_harness_state
+
+  - id: re_acquire_is_idempotent
     actor: operator
-    goal: >-
-      Start a fresh DeepSeek Harness session and confirm that it discovers both
-      plugins with the same repository scope and digests shown by inventory.
-    assertions:
-      - type: files.native_harness_discovers_installation
-        params:
-          harness: dsh
-          scope: repo
-  - id: reject_untrusted_plugin
-    actor: operator
-    goal: >-
-      Check the suspicious plugin that reports a digest different from its
-      content. Leave it uninstalled and explain the actionable reason instead
-      of forcing the installation.
+    goal: |
+      Acquire the same plugin a second time in the same repository. Read the
+      resource id from ${EVIDENCE_DIR}/acquire.json (the data.resource_id
+      field) instead of retyping it. Use the same `--harness dsh --scope repo
+      --no-dry-run` flags. Save the second receipt to
+      ${EVIDENCE_DIR}/acquire-second.json. It must succeed cleanly and must
+      not leave a second copy behind.
+    success_hint: |
+      The second acquire is idempotent: same installation id, same digest,
+      same installed paths, no duplicate state on disk.
     assertions:
       - type: api.acquisition_idempotent
         params:
-          poisoned: true
-          success: false
+          first_artifact: "${EVIDENCE_DIR}/acquire.json"
+          second_artifact: "${EVIDENCE_DIR}/acquire-second.json"
+          scope_root: "${FIXTURE_ROOT}"
+
 final_assertions:
   - type: logs.no_500s
     optional: true
   - type: timeline.no_unredacted_secret
+  - type: files.scope_isolation_preserved
+    params:
+      before_snapshot: "${BEFORE_SNAPSHOT}"
+      protected_roots:
+        - "${ISOLATED_HOME}"

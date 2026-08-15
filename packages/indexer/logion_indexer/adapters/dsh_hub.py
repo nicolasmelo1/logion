@@ -48,7 +48,7 @@ class DshHubAdapter:
                 return
             if (
                 not isinstance(item, dict)
-                or item.get("path") != "package.json"
+                or not str(item.get("path", "")).endswith("package.json")
             ):
                 continue
             path = str(item["path"])

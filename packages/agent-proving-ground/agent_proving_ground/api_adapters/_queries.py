@@ -1452,8 +1452,10 @@ class LogionApiQueries:
             for entry in entries
             if isinstance(entry, dict)
             and str(entry.get("content_digest") or "") == expected_digest
-            and str(entry.get("scope") or query.get("scope", ""))
-            == query.get("scope", "")
+            and (
+                not query.get("scope")
+                or str(entry.get("scope") or "") == query["scope"]
+            )
         ]
         return {
             "discovered": bool(expected_digest and matches),
