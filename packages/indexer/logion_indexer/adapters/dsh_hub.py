@@ -46,10 +46,9 @@ class DshHubAdapter:
         for item in tree:
             if limit is not None and count >= limit:
                 return
-            if (
-                not isinstance(item, dict)
-                or not str(item.get("path", "")).endswith("package.json")
-            ):
+            if not isinstance(item, dict) or not str(
+                item.get("path", "")
+            ).endswith("package.json"):
                 continue
             path = str(item["path"])
             raw_url = (
