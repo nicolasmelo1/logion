@@ -136,3 +136,78 @@ class TestResourcesResourceVersions:
         resource = ResourcesResource(http)
         with pytest.raises(TypeError, match="Expected a JSON object"):
             resource.versions(resource_id=RESOURCE_ID)
+
+
+class TestAcquisitionSurfaceContract:
+    """Pin the acquisition wire contract the CLI depends on.
+
+    These two operations are handwritten ahead of the generated contract
+    sync, so nothing else checks that the SDK builds the paths, methods,
+    and query parameters the backend actually publishes. Until the sync
+    lands, this test is the contract.
+    """
+
+    VERSION_ID = "223e4567-e89b-12d3-a456-426614174111"
+
+    def test_acquisition_plan_path_and_channel_param(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {}
+        resource = ResourcesResource(http)
+        resource.acquisition_plan(
+            resource_id=RESOURCE_ID,
+            version_id=self.VERSION_ID,
+            channel="npx_skills",
+        )
+        http.request.assert_called_once_with(
+            "GET",
+            f"/v1/resources/{RESOURCE_ID}/versions/{self.VERSION_ID}"
+            "/acquisition-plan",
+            params={"channel": "npx_skills"},
+        )
+
+    def test_acquisition_plan_omits_unset_channel(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {}
+        resource = ResourcesResource(http)
+        resource.acquisition_plan(
+            resource_id=RESOURCE_ID, version_id=self.VERSION_ID
+        )
+        assert http.request.call_args.kwargs["params"] == {}
+
+    def test_acquisition_plan_percent_encodes_identifiers(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {}
+        resource = ResourcesResource(http)
+        resource.acquisition_plan(resource_id="a/../b", version_id="c d")
+        path = http.request.call_args.args[1]
+        assert "a%2F..%2Fb" in path
+        assert "c%20d" in path
+
+    def test_create_download_is_a_post_without_body(self) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = {"files": []}
+        resource = ResourcesResource(http)
+        resource.create_download(
+            resource_id=RESOURCE_ID, version_id=self.VERSION_ID
+        )
+        http.request.assert_called_once_with(
+            "POST",
+            f"/v1/resources/{RESOURCE_ID}/versions/{self.VERSION_ID}/download",
+        )
+
+    @pytest.mark.parametrize(
+        "payload",
+        [[], "text", None, 42],
+    )
+    def test_non_object_responses_are_rejected(self, payload: object) -> None:
+        http = MagicMock(spec=HttpClient)
+        http.request.return_value = payload
+        resource = ResourcesResource(http)
+        with pytest.raises(TypeError, match="Expected a JSON object"):
+            resource.acquisition_plan(
+                resource_id=RESOURCE_ID, version_id=self.VERSION_ID
+            )
+        with pytest.raises(TypeError, match="Expected a JSON object"):
+            resource.create_download(
+                resource_id=RESOURCE_ID, version_id=self.VERSION_ID
+            )

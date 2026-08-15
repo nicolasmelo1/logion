@@ -15,6 +15,7 @@ from cli._output import emit_json, to_data
 
 from ._acquire_plan import normalize_versions
 from ._catalog_reconciliation import catalog_matches
+from ._distribution_entries import _distribution_entries
 
 
 def handle_resources_distributions(args: argparse.Namespace) -> int:
@@ -46,19 +47,9 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
             "resource_id": args.resource_id,
             "version_id": version_id,
             "selected_channel": plan.get("selected_channel"),
-            "distributions": [
-                {
-                    "channel": plan.get("selected_channel"),
-                    "integrity": plan.get("integrity"),
-                    "expected": plan.get("expected"),
-                    "native": plan.get("native"),
-                    "enabled": True,
-                }
-            ]
-            + [
-                {"channel": alt, "enabled": True}
-                for alt in (plan.get("alternatives") or [])
-            ],
+            "distributions": _distribution_entries(
+                client, args.resource_id, version_id, plan
+            ),
         }
         if config.json_output:
             emit_json("logion.resources.distributions", payload)
@@ -67,7 +58,19 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
             out.write(f"Resource: {payload['resource_id']}\n")
             out.write(f"Version:  {payload['version_id']}\n")
             for dist in payload["distributions"]:
-                out.write(f"  - {dist['channel']}\n")
+                marker = " (selected)" if dist["selected"] else ""
+                out.write(f"  - {dist['channel']}{marker}\n")
+                if not dist["available"]:
+                    out.write(f"      unavailable: {dist['reason']}\n")
+                    continue
+                native = dist.get("native") or {}
+                if native.get("tool"):
+                    out.write(
+                        f"      native: {native['tool']} "
+                        f"{native.get('tested_version') or '?'}\n"
+                    )
+                if dist.get("expected"):
+                    out.write(f"      expected: {dist['expected']}\n")
     except Exception as exc:
         return handle_error(
             exc, json_output=config.json_output, handle_validation=True
@@ -78,13 +81,62 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
         client.close()
 
 
+def _scope_root_of(receipt: dict[str, Any]) -> Path | None:
+    """Recover the scope root a receipt's relative target hangs off."""
+    target = receipt.get("target_path")
+    relative = receipt.get("relative_target_path")
+    if not isinstance(target, str) or not isinstance(relative, str):
+        return None
+    root = Path(target)
+    for _ in Path(relative).parts:
+        root = root.parent
+    return root
+
+
+def _reconcile_receipts(
+    harness_filter: str, scope_filter: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split local receipts into still-valid and drifted installations.
+
+    A receipt is evidence of what was installed, not proof that it is
+    still there. Each one is re-checked against the filesystem so a
+    deleted or edited installation is reported as drifted instead of
+    being reported as matched forever.
+    """
+    from cli import _receipts
+
+    from ._reconciliation import receipt_status
+
+    matched: list[dict[str, Any]] = []
+    drifted: list[dict[str, Any]] = []
+    for receipt in _receipts.load_receipts():
+        harness = receipt.get("harness")
+        if harness_filter != "all" and harness != harness_filter:
+            continue
+        if scope_filter != "all" and receipt.get("scope_kind") != scope_filter:
+            continue
+        status, evidence = receipt_status(receipt, _scope_root_of(receipt))
+        entry = {
+            "installation_id": receipt.get("installation_id"),
+            "resource_id": receipt.get("resource_id"),
+            "version_id": receipt.get("version_id"),
+            "channel": receipt.get("channel"),
+            "scope_kind": receipt.get("scope_kind"),
+            "relative_target_path": receipt.get("relative_target_path"),
+            "verification": status,
+            "evidence": evidence,
+        }
+        (drifted if status == "drifted" else matched).append(entry)
+    return matched, drifted
+
+
 def handle_resources_reconcile(args: argparse.Namespace) -> int:
     """Match locally installed artifacts to catalog resources.
 
     Reads local receipts and reports matched/unresolved/ambiguous state
     without reinstalling, deleting, or uploading anything.
     """
-    from cli import _receipts
+    from cli._harness.scopes import canonical_scope, default_scope_for_cwd
 
     from ._reconciliation import discover_native_state
 
@@ -94,57 +146,26 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
         harness_filter = str(getattr(args, "harness", "all") or "all")
         scope_filter = str(getattr(args, "scope", "all") or "all")
         if scope_filter != "all":
-            from cli._harness.scopes import canonical_scope
-
             scope_filter = canonical_scope(scope_filter)
-        receipts = [
-            receipt
-            for receipt in _receipts.load_receipts()
-            if (
-                harness_filter == "all"
-                or receipt.get("harness") == harness_filter
-            )
-            and (
-                scope_filter == "all"
-                or receipt.get("scope_kind") == scope_filter
-            )
-        ]
         source = str(getattr(args, "source", "all") or "all")
         root = Path(getattr(args, "cwd", None) or Path.cwd()).resolve()
-        native = discover_native_state(root, source)
-        matched = [
-            {
-                "installation_id": r["installation_id"],
-                "resource_id": r["resource_id"],
-                "version_id": r["version_id"],
-                "channel": r["channel"],
-                "scope_kind": r["scope_kind"],
-                "relative_target_path": r["relative_target_path"],
-                "verification": r["verification"],
-            }
-            for r in receipts
-        ]
-        matched.extend(
-            item
-            for item in native
-            if item.get("resource_version_id")
-            and (
-                harness_filter == "all"
-                or item.get("manager") == harness_filter
-            )
-            and (scope_filter in {"all", "repo-root"})
+        matched, drifted = _reconcile_receipts(harness_filter, scope_filter)
+        # Native manager state is discovered under one root, so it carries
+        # that root's scope. Filtering it by --harness would compare a
+        # harness (codex, claude) with a manager (skills, plugins, hf);
+        # --from already selects the manager.
+        native_scope = default_scope_for_cwd(root)
+        native = (
+            discover_native_state(root, source)
+            if scope_filter in {"all", native_scope}
+            else []
         )
         unresolved = []
         ambiguous = []
         for item in native:
-            if (
-                harness_filter != "all"
-                and item.get("manager") != harness_filter
-            ):
-                continue
-            if scope_filter not in {"all", "repo-root"}:
-                continue
+            item["scope_kind"] = native_scope
             if item.get("resource_version_id"):
+                matched.append(item)
                 continue
             candidates = catalog_matches(client, item)
             if len(candidates) == 1:
@@ -159,8 +180,10 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
             "matched": matched,
             "ambiguous": ambiguous,
             "unresolved": unresolved,
-            "drifted": [],
+            "drifted": drifted,
             "source": source,
+            "scope": scope_filter,
+            "harness": harness_filter,
             "dry_run": bool(getattr(args, "dry_run", False)),
         }
         if config.json_output:
@@ -168,8 +191,14 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
         else:
             out = sys.stdout
             out.write(f"Matched installations: {len(report['matched'])}\n")
+            out.write(f"Drifted:              {len(report['drifted'])}\n")
             out.write(f"Unresolved:           {len(report['unresolved'])}\n")
             out.write(f"Ambiguous:            {len(report['ambiguous'])}\n")
+            for item in report["drifted"]:
+                out.write(
+                    f"  drifted: {item['relative_target_path']} "
+                    f"({item['evidence']})\n"
+                )
     except Exception as exc:
         return handle_error(
             exc, json_output=config.json_output, handle_validation=True

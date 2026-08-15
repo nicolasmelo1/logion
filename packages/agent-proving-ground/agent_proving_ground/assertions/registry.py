@@ -18,6 +18,7 @@ from agent_proving_ground.assertions.api import (
     HarnessScopeTargetsResolvedAssertion,
     IndexedListingExistsAssertion,
     IndexedListingTierAssertion,
+    InstallDriftReportedAssertion,
     InstalledArtifactDigestMatchesAssertion,
     InventoryReceiptMatchesAssertion,
     LegacyCoursePurchaseExistsAssertion,
@@ -36,6 +37,7 @@ from agent_proving_ground.assertions.api import (
     ResourceProjectionExistsAssertion,
     ResourceSearchReturnsKindsAssertion,
     ReviewExistsAssertion,
+    ScopeIsolationPreservedAssertion,
     SetupTokenPendingAssertion,
     SourceLinkExistsAssertion,
     UsageReportExistsAssertion,
@@ -129,6 +131,8 @@ class AssertionRegistry:
             InventoryReceiptMatchesAssertion,
             InstalledArtifactDigestMatchesAssertion,
             AcquisitionIdempotentAssertion,
+            ScopeIsolationPreservedAssertion,
+            InstallDriftReportedAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

@@ -198,7 +198,7 @@ class GithubSource:
                 subpath=comp.root,
             )
 
-            # Build the inferred_map fragment (15.3 schema restricted
+            # Build the inferred_map fragment (schema restricted
             # to this component).
             inferred_map = _build_component_fragment(result, comp)
             map_flags = tuple(flag.code for flag in result.needs_review)

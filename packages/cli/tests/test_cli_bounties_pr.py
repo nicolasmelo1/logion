@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Tests for auto GitHub PR submission rendering (Phase 15.5.2)."""
+"""Tests for auto GitHub PR submission rendering."""
 
 from __future__ import annotations
 

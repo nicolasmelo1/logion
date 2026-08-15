@@ -2228,6 +2228,24 @@
         "title": "CreateCreditTopUpResponse",
         "type": "object"
       },
+      "CreateIndexedBundleUploadRequest": {
+        "description": "Digest declared up front so it can be signed into the PUT URL.\n\nOptional for backward compatibility, but an upload created without it\ncannot be completed: completion reads the digest back from object\nmetadata, and object storage only accepts headers the presigned\nsignature already covers.",
+        "properties": {
+          "checksum_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum Sha256"
+          }
+        },
+        "title": "CreateIndexedBundleUploadRequest",
+        "type": "object"
+      },
       "CreateIndexedBundleUploadResponse": {
         "properties": {
           "bundle_key": {
@@ -10517,6 +10535,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateIndexedBundleUploadRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

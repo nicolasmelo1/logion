@@ -36,7 +36,12 @@ from cli._harness.scopes import (
     canonical_scope,
 )
 
-from ._reconciliation import mark_ambiguities, reconciliation_status
+from ._inventory_entries import (
+    _receipts_by_path,
+    _scan_dir,
+    _unscanned_receipt_entries,
+)
+from ._reconciliation import mark_ambiguities
 from ._scope_resolution import git_root, instantiate_adapter
 
 
@@ -101,33 +106,6 @@ def _all_scan_targets(
     return unique
 
 
-def _scan_dir(target: ScopeTarget, precedence: int) -> list[dict[str, Any]]:
-    """List skill directories under *target* with reconciliation status."""
-    if not target.target_path.is_dir():
-        return []
-    found: list[dict[str, Any]] = []
-    try:
-        children = sorted(target.target_path.iterdir())
-    except OSError:
-        return []
-    for child in children:
-        if not child.is_dir():
-            continue
-        skill_md = child / "SKILL.md"
-        if not skill_md.is_file():
-            continue
-        entry: dict[str, Any] = {
-            "name": child.name,
-            "path": str(child),
-            "scope_kind": target.scope_kind,
-            "scope_root": str(target.scope_root),
-            "precedence": precedence,
-            "reconciliation": reconciliation_status(child),
-        }
-        found.append(entry)
-    return found
-
-
 def handle_resources_inventory(args: argparse.Namespace) -> int:
     """Execute ``logion resources inventory --harness HARNESS``."""
     config = resolve_config_from_args(args)
@@ -162,9 +140,13 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
                     and target.scope_kind == REPO_CURRENT
                 )
             ]
+        receipts_by_path = _receipts_by_path()
         results: list[dict[str, Any]] = []
         for precedence, target in enumerate(targets):
-            results.extend(_scan_dir(target, precedence))
+            results.extend(_scan_dir(target, precedence, receipts_by_path))
+        results.extend(
+            _unscanned_receipt_entries(targets, results, receipts_by_path)
+        )
         mark_ambiguities(results)
         payload: dict[str, Any] = {
             "harness": harness,

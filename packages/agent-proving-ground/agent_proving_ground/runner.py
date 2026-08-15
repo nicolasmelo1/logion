@@ -90,6 +90,28 @@ class _JsonFinder:
         return None
 
 
+def _resolve_hook_path(hook: str, devrig_root: Path) -> str:
+    """Resolve a relative ``local_hook`` against the roots that can own it.
+
+    A scenario's hook may live beside the scenario in this package or in the
+    workspace that owns the dev rig, and ``--devrig-root`` legitimately
+    points at either. Resolving only against the devrig root makes a
+    scenario runnable from one checkout and not the other, which surfaces
+    as a bare FileNotFoundError halfway into a run.
+    """
+    candidates = [devrig_root / hook]
+    public_repo = os.environ.get("LOGION_PUBLIC_REPO_PATH")
+    if public_repo:
+        candidates.append(Path(public_repo) / hook)
+    # The repo that ships this package, so a scenario bundled here always
+    # finds its own hook no matter which root the run was pointed at.
+    candidates.append(Path(__file__).resolve().parents[3] / hook)
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return str(candidates[0])
+
+
 def _scenario_bindings(world: World) -> dict[str, str]:
     bindings = {
         key: value
@@ -659,7 +681,7 @@ class ScenarioRunner:
             hook=hook,
         )
         if not hook.startswith("/"):
-            hook = str(world.root_dir / hook)
+            hook = _resolve_hook_path(hook, world.root_dir)
         bindings = _scenario_bindings(world)
         args = [
             _resolve_scenario_value(a, bindings) if isinstance(a, str) else a

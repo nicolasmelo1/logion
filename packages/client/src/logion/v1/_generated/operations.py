@@ -39,6 +39,7 @@ from logion.v1._types.generated.v1 import (
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
+    CreateIndexedBundleUploadRequest,
     CreateIndexedBundleUploadResponse,
     CreatePlatformBountyRequest,
     CreatePlatformBountyResponse,
@@ -321,12 +322,14 @@ def create_indexed_bundle_upload(
     http: HttpClient,
     *,
     listing_id: str | UUID,
+    body: CreateIndexedBundleUploadRequest,
 ) -> CreateIndexedBundleUploadResponse:
     """Call the create_indexed_bundle_upload API operation."""
     return http.request_model(
         "POST",
         f"/v1/admin/indexing/listings/{listing_id}/bundle-upload",
         CreateIndexedBundleUploadResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

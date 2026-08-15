@@ -346,11 +346,39 @@ class NativeInstallReconciledAssertion(_ApiQueryAssertion):
     type = "api.native_install_reconciled"
     query_type = "native_install_reconciled"
     found_key = "reconciled"
-    evidence_keys = ("matched_count", "unresolved_count", "ambiguous_count")
-    pass_message = (
-        "local inventory reconciled with no unresolved or ambiguous entries"
+    evidence_keys = (
+        "matched_count",
+        "unresolved_count",
+        "ambiguous_count",
+        "drifted_count",
+        "channels",
     )
-    fail_message = "reconciliation left unresolved or ambiguous entries"
+    pass_message = (
+        "local inventory reconciled to on-disk installations with no "
+        "unresolved, ambiguous, or drifted entries"
+    )
+    fail_message = (
+        "reconciliation left unresolved, ambiguous, or drifted entries, "
+        "or claimed installations that are not on disk"
+    )
+
+
+class InstallDriftReportedAssertion(_ApiQueryAssertion):
+    type = "files.install_drift_reported"
+    query_type = "install_drift_reported"
+    found_key = "drift_reported"
+    evidence_keys = ("installation_id", "drifted_count")
+    pass_message = "a tampered installation was reported as drifted"
+    fail_message = "a tampered installation was not reported as drifted"
+
+
+class ScopeIsolationPreservedAssertion(_ApiQueryAssertion):
+    type = "files.scope_isolation_preserved"
+    query_type = "scope_isolation_preserved"
+    found_key = "isolated"
+    evidence_keys = ("added", "removed", "changed")
+    pass_message = "no file changed outside the requested acquisition scope"
+    fail_message = "the acquisition wrote outside its requested scope"
 
 
 class InventoryReceiptMatchesAssertion(_ApiQueryAssertion):

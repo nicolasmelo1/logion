@@ -1,0 +1,741 @@
+"""Regression tests for the native-acquisition query handlers.
+
+These queries are the proving ground's only independent check on what the
+CLI claims it installed, so each one is tested for the case it is meant to
+catch — not just its happy path.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import pytest
+
+from agent_proving_ground.api_adapters._queries import LogionApiQueries
+from agent_proving_ground.assertions.api import (
+    AcquisitionIdempotentAssertion,
+    InstallDriftReportedAssertion,
+    InstalledArtifactDigestMatchesAssertion,
+    InventoryReceiptMatchesAssertion,
+    NativeInstallReconciledAssertion,
+    ResourceAcquisitionExistsAssertion,
+    ResourceDistributionSelectedAssertion,
+    ScopeIsolationPreservedAssertion,
+)
+from agent_proving_ground.assertions.registry import AssertionRegistry
+
+
+def _write_envelope(path: Path, kind: str, data: dict) -> Path:
+    path.write_text(
+        json.dumps({"version": "v1", "kind": kind, "data": data}),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _receipt(**overrides) -> dict:
+    base = {
+        "resource_id": "r1",
+        "version_id": "v1",
+        "distribution_id": "d1",
+        "installation_id": "i1",
+        "content_digest": "",
+        "channel": "logion_bundle",
+        "verification": "exact",
+        "installed_paths": [],
+    }
+    base.update(overrides)
+    return base
+
+
+def _queries() -> LogionApiQueries:
+    return LogionApiQueries("http://x", _DummyKeys())
+
+
+def _installed(
+    tmp_path: Path, body: bytes = b"hello"
+) -> tuple[Path, str, str]:
+    root = tmp_path / "repo"
+    (root / ".agents/skills/x").mkdir(parents=True)
+    (root / ".agents/skills/x/SKILL.md").write_bytes(body)
+    relative = ".agents/skills/x/SKILL.md"
+    return root, relative, hashlib.sha256(body).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_resource_acquisition_exists_passes(tmp_path: Path) -> None:
+    artifact = _write_envelope(
+        tmp_path / "a.json", "logion.resources.acquire", _receipt()
+    )
+    result = await _queries().query(
+        {"type": "resource_acquisition_exists", "artifact": str(artifact)},
+        {},
+    )
+    assert result["acquired"] is True
+    assert result["installation_id"] == "i1"
+
+
+@pytest.mark.asyncio
+async def test_distribution_selected_allows_channels(tmp_path: Path) -> None:
+    artifact = _write_envelope(
+        tmp_path / "a.json",
+        "logion.resources.acquire",
+        _receipt(channel="npx_skills"),
+    )
+    result = await _queries().query(
+        {
+            "type": "resource_distribution_selected",
+            "artifact": str(artifact),
+            "allowed_channels": ["logion_bundle", "npx_skills"],
+        },
+        {},
+    )
+    assert result["selected"] is True
+    bad = await _queries().query(
+        {
+            "type": "resource_distribution_selected",
+            "artifact": str(artifact),
+            "allowed_channels": ["hf"],
+        },
+        {},
+    )
+    assert bad["selected"] is False
+
+
+class TestInstalledArtifactDigest:
+    async def _run(self, artifact: Path, root: Path) -> dict:
+        return await _queries().query(
+            {
+                "type": "installed_artifact_digest_matches",
+                "artifact": str(artifact),
+                "scope_root": str(root),
+            },
+            {},
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_when_bytes_and_evidence_agree(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, digest = _installed(tmp_path)
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(
+                content_digest="sha256:aggregate",
+                installed_paths=[relative],
+                native_evidence={
+                    "content_digest": "sha256:aggregate",
+                    "file_digests": {relative: digest},
+                },
+            ),
+        )
+        assert (await self._run(artifact, root))["digest_matches"] is True
+
+    @pytest.mark.asyncio
+    async def test_fails_when_bytes_were_tampered(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, _ = _installed(tmp_path)
+        (root / relative).write_bytes(b"tampered")
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(
+                content_digest="sha256:aggregate",
+                installed_paths=[relative],
+                native_evidence={
+                    "content_digest": "sha256:aggregate",
+                    "file_digests": {relative: "1" * 64},
+                },
+            ),
+        )
+        assert (await self._run(artifact, root))["digest_matches"] is False
+
+    @pytest.mark.asyncio
+    async def test_fails_when_receipt_carries_no_file_digests(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, _ = _installed(tmp_path)
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(
+                content_digest="sha256:aggregate",
+                installed_paths=[relative],
+                native_evidence={"content_digest": "sha256:aggregate"},
+            ),
+        )
+        result = await self._run(artifact, root)
+        assert result["digest_matches"] is False
+        assert "file_digests" in result["reason"]
+
+    @pytest.mark.asyncio
+    async def test_fails_when_an_installed_path_is_unpinned(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, digest = _installed(tmp_path)
+        (root / ".agents/skills/x/EXTRA.md").write_bytes(b"extra")
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(
+                content_digest="sha256:aggregate",
+                installed_paths=[relative, ".agents/skills/x/EXTRA.md"],
+                native_evidence={
+                    "content_digest": "sha256:aggregate",
+                    "file_digests": {relative: digest},
+                },
+            ),
+        )
+        result = await self._run(artifact, root)
+        assert result["digest_matches"] is False
+        assert "without a recorded digest" in result["reason"]
+
+    @pytest.mark.asyncio
+    async def test_fails_when_content_digest_is_an_unrelated_claim(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, digest = _installed(tmp_path)
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(
+                content_digest="sha256:something-else",
+                installed_paths=[relative],
+                native_evidence={
+                    "content_digest": "sha256:aggregate",
+                    "file_digests": {relative: digest},
+                },
+            ),
+        )
+        result = await self._run(artifact, root)
+        assert result["digest_matches"] is False
+        assert "native evidence" in result["reason"]
+
+
+class TestNativeInstallReconciled:
+    async def _run(self, artifact: Path, root: Path, **extra) -> dict:
+        return await _queries().query(
+            {
+                "type": "native_install_reconciled",
+                "artifact": str(artifact),
+                "scope_root": str(root),
+                **extra,
+            },
+            {},
+        )
+
+    def _report(self, tmp_path: Path, **overrides) -> Path:
+        data = {
+            "matched": [
+                {
+                    "installation_id": "i1",
+                    "channel": "npx_skills",
+                    "relative_target_path": ".agents/skills/x",
+                }
+            ],
+            "unresolved": [],
+            "ambiguous": [],
+            "drifted": [],
+        }
+        data.update(overrides)
+        return _write_envelope(
+            tmp_path / "r.json", "logion.resources.reconcile", data
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_when_matched_install_is_on_disk(
+        self, tmp_path: Path
+    ) -> None:
+        root, _, _ = _installed(tmp_path)
+        result = await self._run(
+            self._report(tmp_path), root, expected_channel="npx_skills"
+        )
+        assert result["reconciled"] is True
+
+    @pytest.mark.asyncio
+    async def test_fails_when_matched_install_is_absent(
+        self, tmp_path: Path
+    ) -> None:
+        root = tmp_path / "repo"
+        root.mkdir()
+        result = await self._run(self._report(tmp_path), root)
+        assert result["reconciled"] is False
+        assert "absent from disk" in result["reason"]
+
+    @pytest.mark.asyncio
+    async def test_fails_when_the_expected_channel_is_missing(
+        self, tmp_path: Path
+    ) -> None:
+        root, _, _ = _installed(tmp_path)
+        result = await self._run(
+            self._report(tmp_path), root, expected_channel="logion_bundle"
+        )
+        assert result["reconciled"] is False
+        assert "logion_bundle" in result["reason"]
+
+    @pytest.mark.asyncio
+    async def test_fails_when_an_installation_drifted(
+        self, tmp_path: Path
+    ) -> None:
+        root, _, _ = _installed(tmp_path)
+        report = self._report(tmp_path, drifted=[{"installation_id": "i2"}])
+        result = await self._run(report, root)
+        assert result["reconciled"] is False
+
+
+@pytest.mark.asyncio
+async def test_inventory_receipt_matches(tmp_path: Path) -> None:
+    report = _write_envelope(
+        tmp_path / "r.json",
+        "logion.resources.reconcile",
+        {
+            "matched": [{"installation_id": "i1"}],
+            "unresolved": [],
+            "ambiguous": [],
+            "drifted": [],
+        },
+    )
+    acquire = _write_envelope(
+        tmp_path / "a.json", "logion.resources.acquire", _receipt()
+    )
+    result = await _queries().query(
+        {
+            "type": "inventory_receipt_matches",
+            "artifact": str(report),
+            "acquire_artifact": str(acquire),
+        },
+        {},
+    )
+    assert result["matches"] is True
+
+
+class TestAcquisitionIdempotent:
+    async def _run(self, first: Path, second: Path, root: Path) -> dict:
+        return await _queries().query(
+            {
+                "type": "acquisition_idempotent",
+                "first_artifact": str(first),
+                "second_artifact": str(second),
+                "scope_root": str(root),
+            },
+            {},
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_for_an_identical_reinstall(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, _ = _installed(tmp_path)
+        payload = _receipt(installed_paths=[relative])
+        first = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", payload
+        )
+        second = _write_envelope(
+            tmp_path / "b.json", "logion.resources.acquire", payload
+        )
+        assert (await self._run(first, second, root))["idempotent"] is True
+
+    @pytest.mark.asyncio
+    async def test_fails_when_a_second_copy_was_left_behind(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, _ = _installed(tmp_path)
+        (root / ".agents/skills/x.logion-backup").mkdir()
+        payload = _receipt(installed_paths=[relative])
+        first = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", payload
+        )
+        second = _write_envelope(
+            tmp_path / "b.json", "logion.resources.acquire", payload
+        )
+        result = await self._run(first, second, root)
+        assert result["idempotent"] is False
+        assert "duplicate install state" in result["reason"]
+
+    @pytest.mark.asyncio
+    async def test_fails_when_the_path_set_changed(
+        self, tmp_path: Path
+    ) -> None:
+        root, relative, _ = _installed(tmp_path)
+        first = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(installed_paths=[relative]),
+        )
+        second = _write_envelope(
+            tmp_path / "b.json",
+            "logion.resources.acquire",
+            _receipt(installed_paths=[relative, "other"]),
+        )
+        result = await self._run(first, second, root)
+        assert result["idempotent"] is False
+
+
+class TestInstallDriftReported:
+    @pytest.mark.asyncio
+    async def test_reports_a_tampered_installation(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [],
+                "drifted": [{"installation_id": "i1"}],
+                "unresolved": [],
+                "ambiguous": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", _receipt()
+        )
+        result = await _queries().query(
+            {
+                "type": "install_drift_reported",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["drift_reported"] is True
+
+    @pytest.mark.asyncio
+    async def test_fails_when_a_tampered_install_stays_matched(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [{"installation_id": "i1"}],
+                "drifted": [],
+                "unresolved": [],
+                "ambiguous": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", _receipt()
+        )
+        result = await _queries().query(
+            {
+                "type": "install_drift_reported",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["drift_reported"] is False
+        assert "still reported as matched" in result["reason"]
+
+
+class TestScopeIsolationPreserved:
+    def _snapshot(self, tmp_path: Path, roots: list[Path]) -> Path:
+        data = {
+            str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest()
+            for root in roots
+            for path in sorted(root.rglob("*"))
+            if path.is_file()
+        }
+        path = tmp_path / "before.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path
+
+    async def _run(self, snapshot: Path, roots: list[Path]) -> dict:
+        return await _queries().query(
+            {
+                "type": "scope_isolation_preserved",
+                "before_snapshot": str(snapshot),
+                "protected_roots": [str(root) for root in roots],
+            },
+            {},
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_when_protected_roots_are_untouched(
+        self, tmp_path: Path
+    ) -> None:
+        home = tmp_path / "home"
+        (home / ".agents/skills/acme").mkdir(parents=True)
+        (home / ".agents/skills/acme/SKILL.md").write_bytes(b"# acme\n")
+        snapshot = self._snapshot(tmp_path, [home])
+        assert (await self._run(snapshot, [home]))["isolated"] is True
+
+    @pytest.mark.asyncio
+    async def test_fails_when_user_scope_gained_a_file(
+        self, tmp_path: Path
+    ) -> None:
+        home = tmp_path / "home"
+        (home / ".agents/skills/acme").mkdir(parents=True)
+        (home / ".agents/skills/acme/SKILL.md").write_bytes(b"# acme\n")
+        snapshot = self._snapshot(tmp_path, [home])
+        (home / ".agents/skills/leaked").mkdir()
+        (home / ".agents/skills/leaked/SKILL.md").write_bytes(b"# leak\n")
+        result = await self._run(snapshot, [home])
+        assert result["isolated"] is False
+        assert any("leaked" in path for path in result["added"])
+
+    @pytest.mark.asyncio
+    async def test_fails_when_a_protected_file_changed(
+        self, tmp_path: Path
+    ) -> None:
+        home = tmp_path / "home"
+        (home / ".agents/skills/acme").mkdir(parents=True)
+        target = home / ".agents/skills/acme/SKILL.md"
+        target.write_bytes(b"# acme\n")
+        snapshot = self._snapshot(tmp_path, [home])
+        target.write_bytes(b"# overwritten\n")
+        result = await self._run(snapshot, [home])
+        assert result["isolated"] is False
+        assert result["changed"]
+
+
+def test_acquisition_assertions_are_registered() -> None:
+    registry = AssertionRegistry()
+    expected = {
+        "api.resource_acquisition_exists": ResourceAcquisitionExistsAssertion,
+        "api.resource_distribution_selected": (
+            ResourceDistributionSelectedAssertion
+        ),
+        "api.native_install_reconciled": NativeInstallReconciledAssertion,
+        "files.inventory_receipt_matches": InventoryReceiptMatchesAssertion,
+        "files.installed_artifact_digest_matches": (
+            InstalledArtifactDigestMatchesAssertion
+        ),
+        "api.acquisition_idempotent": AcquisitionIdempotentAssertion,
+        "files.install_drift_reported": InstallDriftReportedAssertion,
+        "files.scope_isolation_preserved": ScopeIsolationPreservedAssertion,
+    }
+    for type_, cls in expected.items():
+        instance = registry._assertions.get(type_)
+        assert instance is not None, type_
+        assert isinstance(instance, cls), type_
+
+
+class _DummyKeys:
+    configured = True
+
+
+class TestLocalHookResolution:
+    """A scenario must run from either checkout that can own its hook."""
+
+    def test_prefers_the_devrig_root(self, tmp_path: Path) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        devrig = tmp_path / "devrig"
+        (devrig / "scripts").mkdir(parents=True)
+        hook = devrig / "scripts" / "seed.py"
+        hook.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        assert _resolve_hook_path("scripts/seed.py", devrig) == str(hook)
+
+    def test_falls_back_to_the_public_repo(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        devrig = tmp_path / "workspace"
+        devrig.mkdir()
+        public = tmp_path / "public"
+        (public / "scripts").mkdir(parents=True)
+        hook = public / "scripts" / "seed.py"
+        hook.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        monkeypatch.setenv("LOGION_PUBLIC_REPO_PATH", str(public))
+        assert _resolve_hook_path("scripts/seed.py", devrig) == str(hook)
+
+    def test_reports_the_devrig_path_when_nothing_matches(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        monkeypatch.delenv("LOGION_PUBLIC_REPO_PATH", raising=False)
+        resolved = _resolve_hook_path("scripts/missing.py", tmp_path)
+        assert resolved == str(tmp_path / "scripts/missing.py")
+
+    def test_scenario_hooks_resolve_from_the_package(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The shipped scenario's own hooks must always be findable."""
+        from agent_proving_ground.runner import _resolve_hook_path
+
+        monkeypatch.delenv("LOGION_PUBLIC_REPO_PATH", raising=False)
+        for hook in (
+            "packages/agent-proving-ground/scripts/"
+            "setup_harness_scope_fixture.py",
+            "packages/agent-proving-ground/scripts/"
+            "tamper_installed_artifact.py",
+            "packages/agent-proving-ground/scripts/"
+            "seed_acquisition_fixture.py",
+        ):
+            assert Path(_resolve_hook_path(hook, tmp_path)).is_file(), hook
+
+
+class TestVerificationLevelIsPerChannel:
+    @pytest.mark.asyncio
+    async def test_unverified_is_rejected_by_default(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified"),
+        )
+        result = await _queries().query(
+            {"type": "resource_acquisition_exists", "artifact": str(artifact)},
+            {},
+        )
+        assert result["acquired"] is False
+
+    @pytest.mark.asyncio
+    async def test_a_delegated_install_may_allow_unverified(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified", channel="npx_skills"),
+        )
+        result = await _queries().query(
+            {
+                "type": "resource_acquisition_exists",
+                "artifact": str(artifact),
+                "allowed_verifications": ["source_revision", "unverified"],
+            },
+            {},
+        )
+        assert result["acquired"] is True
+
+    @pytest.mark.asyncio
+    async def test_an_unattributable_receipt_never_passes(
+        self, tmp_path: Path
+    ) -> None:
+        artifact = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(verification="unverified", installation_id=None),
+        )
+        result = await _queries().query(
+            {
+                "type": "resource_acquisition_exists",
+                "artifact": str(artifact),
+                "allowed_verifications": ["unverified"],
+            },
+            {},
+        )
+        assert result["acquired"] is False
+
+
+class TestReconcileReportMixesEntryShapes:
+    """Native entries carry a source, not an installation id."""
+
+    @pytest.mark.asyncio
+    async def test_native_entries_do_not_crash_the_receipt_match(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [
+                    {"installation_id": "i1", "channel": "logion_bundle"},
+                    # Reconciled straight from skills-lock.json.
+                    {"manager": "skills", "source": "vercel-labs/skills"},
+                ],
+                "unresolved": [],
+                "ambiguous": [],
+                "drifted": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json", "logion.resources.acquire", _receipt()
+        )
+        result = await _queries().query(
+            {
+                "type": "inventory_receipt_matches",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["matches"] is True
+        assert result["matched_ids"] == ["i1"]
+
+    @pytest.mark.asyncio
+    async def test_a_receipt_without_an_id_never_matches(
+        self, tmp_path: Path
+    ) -> None:
+        report = _write_envelope(
+            tmp_path / "r.json",
+            "logion.resources.reconcile",
+            {
+                "matched": [{"manager": "skills"}],
+                "unresolved": [],
+                "ambiguous": [],
+                "drifted": [],
+            },
+        )
+        acquire = _write_envelope(
+            tmp_path / "a.json",
+            "logion.resources.acquire",
+            _receipt(installation_id=None),
+        )
+        result = await _queries().query(
+            {
+                "type": "inventory_receipt_matches",
+                "artifact": str(report),
+                "acquire_artifact": str(acquire),
+            },
+            {},
+        )
+        assert result["matches"] is False
+
+
+class TestApiLogDiscovery:
+    """The dev rig may live in a different checkout than the run root."""
+
+    def _ctx(self, root: Path, artifacts: Path):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            world=SimpleNamespace(root_dir=root), artifacts_dir=artifacts
+        )
+
+    def test_finds_the_log_under_the_run_root(self, tmp_path: Path) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        root = tmp_path / "repo"
+        (root / ".devrig").mkdir(parents=True)
+        log = root / ".devrig" / "api.log"
+        log.write_text("ok\n", encoding="utf-8")
+        found = _find_log_path(self._ctx(root, tmp_path / "artifacts"))
+        assert found == log
+
+    def test_falls_back_to_the_configured_devrig(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        root = tmp_path / "repo"
+        root.mkdir()
+        workspace_devrig = tmp_path / "workspace" / ".devrig"
+        workspace_devrig.mkdir(parents=True)
+        log = workspace_devrig / "api.log"
+        log.write_text("ok\n", encoding="utf-8")
+        monkeypatch.setenv(
+            "LOGION_PROVING_GROUND_ROLE_KEYS_FILE",
+            str(workspace_devrig / "pg-role-keys.json"),
+        )
+        found = _find_log_path(self._ctx(root, tmp_path / "artifacts"))
+        assert found == log
+
+    def test_reports_nothing_when_no_log_exists(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from agent_proving_ground.assertions.logs import _find_log_path
+
+        monkeypatch.delenv(
+            "LOGION_PROVING_GROUND_ROLE_KEYS_FILE", raising=False
+        )
+        assert _find_log_path(self._ctx(tmp_path, tmp_path)) is None

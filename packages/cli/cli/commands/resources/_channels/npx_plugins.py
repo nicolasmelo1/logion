@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from .._catalog_reconciliation import normalize_locator
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
 
@@ -82,7 +83,11 @@ class NpxPluginsAdapter(ChannelAdapter):
                     or entry.get("repository")
                     or ""
                 )
-                if expected and source != expected and expected not in source:
+                # Exact identity only; never infer a plugin from a
+                # substring or from a directory basename.
+                if expected and normalize_locator(source) != normalize_locator(
+                    expected
+                ):
                     continue
                 return {
                     "schema_version": 1,
