@@ -42,6 +42,7 @@ class DshBundle:
     revision: str = ""
     repository: str = ""
     version: str = ""
+    spec: str = ""
     unsupported: str = ""
     declared: dict[str, Any] = field(default_factory=dict)
 
@@ -63,6 +64,21 @@ def _read_json(path: Path) -> Any:
         raise UnsupportedDshStateError(
             f"unreadable dsh manifest at {path.name}"
         ) from exc
+
+
+def _revision_from_spec(spec: str) -> str:
+    """Extract the pinned revision the profile recorded for a dependency.
+
+    `dsh plugin add` forwards to pnpm, which writes the resolved spec —
+    including the immutable fragment it installed — into the profile's
+    dependencies. That entry is the manager's own record of what it
+    fetched, and unlike npm's `gitHead` it is actually present after a
+    pnpm install. Only a bare 40-character revision counts; a branch or
+    tag fragment names something that can move.
+    """
+    _, _, fragment = spec.partition("#")
+    fragment = fragment.strip().lower()
+    return fragment if _REVISION_RE.fullmatch(fragment) else ""
 
 
 def _declared_bundles(manifest: dict[str, Any]) -> list[str]:
@@ -107,8 +123,14 @@ def read_profile(dsh_home: Path, profile: str) -> list[DshBundle]:
     if not isinstance(manifest, dict):
         raise UnsupportedDshStateError("profile manifest is not an object")
 
+    raw_deps = manifest.get("dependencies")
+    dependencies: dict[str, Any] = (
+        raw_deps if isinstance(raw_deps, dict) else {}
+    )
+
     results: list[DshBundle] = []
     for name in _declared_bundles(manifest):
+        spec = str(dependencies.get(name) or "")
         installed_dir = directory / "node_modules" / Path(name)
         installed_manifest = installed_dir / "package.json"
         try:
@@ -133,15 +155,21 @@ def read_profile(dsh_home: Path, profile: str) -> list[DshBundle]:
                 )
             )
             continue
-        revision = str(installed.get("gitHead") or "").lower()
+        git_head = str(installed.get("gitHead") or "").lower()
+        revision = (
+            git_head
+            if _REVISION_RE.fullmatch(git_head)
+            else _revision_from_spec(spec)
+        )
         results.append(
             DshBundle(
                 name=name,
                 profile=profile,
                 path=installed_dir,
-                revision=revision if _REVISION_RE.fullmatch(revision) else "",
+                revision=revision,
                 repository=_repository_uri(installed.get("repository")),
                 version=str(installed.get("version") or ""),
+                spec=spec,
                 declared=_declared_capabilities(installed),
             )
         )

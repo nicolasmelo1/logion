@@ -20,7 +20,7 @@ def discover_dsh_state(scope_root: Path) -> list[dict[str, Any]]:
             # Attribution runs off the canonical source and the immutable
             # revision. A bundle whose manifest carries neither stays
             # unlinked rather than being matched on its name.
-            "source": bundle.repository,
+            "source": bundle.repository or bundle.spec,
             "revision": bundle.revision,
             "resource_version_id": None,
             "path": str(bundle.path),

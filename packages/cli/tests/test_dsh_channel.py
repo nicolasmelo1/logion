@@ -38,6 +38,7 @@ def _write_profile(
     profile: str = "default",
     *,
     bundles: list[str] | None = None,
+    dependencies: dict | None = None,
     profile_manifest: dict | None = None,
 ) -> Path:
     directory = dsh_home / "profiles" / profile
@@ -47,6 +48,7 @@ def _write_profile(
         if profile_manifest is not None
         else {
             "name": f"dsh-profile-{profile}",
+            "dependencies": dependencies or {},
             "dsh": {"profile": {"bundles": bundles or []}},
         }
     )
@@ -444,3 +446,55 @@ def test_repo_scope_without_a_git_worktree_yields_nothing(
 
 def test_adapter_declares_no_observation_capability() -> None:
     assert DshAdapter.observation == "unsupported"
+
+
+# ── revision evidence ───────────────────────────────────────────────
+
+
+def test_revision_comes_from_the_profile_spec_when_githead_is_absent(
+    tmp_path: Path,
+) -> None:
+    """pnpm does not write gitHead, so the pinned spec is the evidence.
+
+    Matching only on gitHead would fail closed on every real install.
+    """
+    home = dsh_home_for(tmp_path)
+    directory = _write_profile(
+        home,
+        bundles=["@owner/plugin"],
+        dependencies={
+            "@owner/plugin": f"git+https://example.test/p.git#{REVISION}"
+        },
+    )
+    _install_bundle(directory, "@owner/plugin", revision=None)
+
+    bundle = read_profile(home, "default")[0]
+    assert bundle.revision == REVISION
+    assert bundle.spec.endswith(REVISION)
+
+
+def test_a_movable_spec_fragment_is_not_a_revision(tmp_path: Path) -> None:
+    """A branch or tag names something that can change under the pin."""
+    home = dsh_home_for(tmp_path)
+    directory = _write_profile(
+        home,
+        bundles=["@owner/plugin"],
+        dependencies={"@owner/plugin": "git+https://example.test/p.git#main"},
+    )
+    _install_bundle(directory, "@owner/plugin", revision=None)
+    assert read_profile(home, "default")[0].revision == ""
+
+
+def test_githead_wins_over_the_spec_when_both_are_present(
+    tmp_path: Path,
+) -> None:
+    home = dsh_home_for(tmp_path)
+    directory = _write_profile(
+        home,
+        bundles=["@owner/plugin"],
+        dependencies={
+            "@owner/plugin": f"git+https://example.test/p.git#{OTHER_REVISION}"
+        },
+    )
+    _install_bundle(directory, "@owner/plugin", revision=REVISION)
+    assert read_profile(home, "default")[0].revision == REVISION
