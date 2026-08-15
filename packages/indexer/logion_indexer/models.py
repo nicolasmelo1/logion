@@ -50,6 +50,8 @@ class DiscoveredResource:
         inferred_map: Per-resource package-map fragment, or None.
         map_flags: Skillmap needs_review codes, verbatim.
         bundle: Mirrored-bundle metadata when available, else None.
+        declared_capabilities: What the publisher's own manifest declares
+            (``{tools, patch}``), never what Logion verified.
     """
 
     canonical: CanonicalResourceId
@@ -65,6 +67,7 @@ class DiscoveredResource:
     inferred_map: dict[str, Any] | None = None
     map_flags: tuple[str, ...] = field(default_factory=tuple)
     bundle: dict[str, Any] | None = None
+    declared_capabilities: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

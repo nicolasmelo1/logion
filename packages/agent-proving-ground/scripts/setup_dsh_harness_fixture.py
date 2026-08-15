@@ -2,7 +2,12 @@
 """Prepare an isolated DSH harness environment and emit paths as JSON.
 
 Creates a Git repository for the developer, an isolated HOME, an evidence
-directory, and a pre-existing native DSH profile (for the reconcile phase).
+directory, and a pre-existing native DSH profile (for the reconcile
+phase). The profile uses the layout dsh itself writes: profiles live at
+``$DSH_HOME/profiles/<name>``, a profile declares its bundles in its own
+``package.json`` under ``dsh.profile``, and installed bundles sit under
+the profile's ``node_modules``.
+
 The snapshot captures the state before any Logion acquisition runs.
 """
 
@@ -13,6 +18,15 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+#: The bundle installed directly with dsh, which reconciliation must
+#: recognise without reinstalling it.
+PREEXISTING_BUNDLE = "@logion-fixtures/helper-b"
+PREEXISTING_REVISION = "b" * 40
+
+#: A bundle whose profile manifest uses a format Logion was never tested
+#: against; reconciliation must quarantine it, never attribute it.
+UNSUPPORTED_PROFILE = "legacy"
 
 
 def _init_repo(root: Path) -> None:
@@ -36,24 +50,18 @@ def _init_repo(root: Path) -> None:
         )
 
 
-def _write_dsh_profile(repo_root: Path, profile: str) -> None:
-    """Create a pre-existing native DSH profile for the reconcile phase.
-
-    The profile has a plugin installed directly via DSH (not through Logion)
-    so the reconcile phase can recognize it without reinstalling.
-    """
-    profile_dir = repo_root / ".dsh" / "profiles" / profile
-    profile_dir.mkdir(parents=True, exist_ok=True)
-
-    # Minimal package.json with one dependency
-    (profile_dir / "package.json").write_text(
+def _write_profile(dsh_home: Path, profile: str) -> Path:
+    """Create a native DSH profile with one directly-installed bundle."""
+    directory = dsh_home / "profiles" / profile
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "package.json").write_text(
         json.dumps(
             {
                 "name": f"dsh-profile-{profile}",
                 "version": "1.0.0",
-                "dependencies": {
-                    "logion-fixtures/helper-b": "0.1.0",
-                },
+                "private": True,
+                "dependencies": {PREEXISTING_BUNDLE: "0.1.0"},
+                "dsh": {"profile": {"bundles": [PREEXISTING_BUNDLE]}},
             },
             indent=2,
         )
@@ -61,21 +69,38 @@ def _write_dsh_profile(repo_root: Path, profile: str) -> None:
         encoding="utf-8",
     )
 
-    # dsh.profile with bundles list referencing the pre-existing plugin
-    (profile_dir / "dsh.profile").write_text(
+    installed = directory / "node_modules" / Path(PREEXISTING_BUNDLE)
+    installed.mkdir(parents=True, exist_ok=True)
+    (installed / "package.json").write_text(
         json.dumps(
             {
-                "dsh": {
-                    "profile": {
-                        "bundles": ["logion-fixtures/helper-b"],
-                    },
-                },
+                "name": PREEXISTING_BUNDLE,
+                "version": "0.1.0",
+                "gitHead": PREEXISTING_REVISION,
+                "repository": "https://github.com/logion-fixtures/helper-b",
+                "dependencies": {"@deepseek-ai/dsh-tools": "^0.1.0"},
+                "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
             },
             indent=2,
         )
         + "\n",
         encoding="utf-8",
     )
+    return directory
+
+
+def _write_unsupported_profile(dsh_home: Path) -> Path:
+    """A profile in a format this Logion release never recorded."""
+    directory = dsh_home / "profiles" / UNSUPPORTED_PROFILE
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "package.json").write_text(
+        json.dumps(
+            {"name": "dsh-profile-legacy", "dsh": {"schema": 99}}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return directory
 
 
 def _snapshot(roots: list[Path]) -> dict[str, str]:
@@ -89,7 +114,6 @@ def _snapshot(roots: list[Path]) -> dict[str, str]:
         ".npm",
         ".bun",
         ".yarn",
-        "node_modules",
     }
     skip_files = {
         ".bashrc",
@@ -129,10 +153,11 @@ def main() -> int:
 
     _init_repo(fixture_root)
 
-    # Create a pre-existing native DSH installation for the reconcile phase.
-    # This plugin was installed directly via DSH, not through Logion, so
-    # Logion should recognize it without reinstalling.
-    _write_dsh_profile(fixture_root, "default")
+    # The repository owns its harness home, so a repo-scoped install
+    # cannot reach the operator's own profiles.
+    dsh_home = fixture_root / ".dsh"
+    _write_profile(dsh_home, "default")
+    _write_unsupported_profile(dsh_home)
 
     snapshot_path = evidence_dir / "before.json"
     snapshot_path.write_text(
@@ -148,6 +173,9 @@ def main() -> int:
             "isolated_home": str(isolated_home),
             "evidence_dir": str(evidence_dir),
             "snapshot_path": str(snapshot_path),
+            "dsh_home": str(dsh_home),
+            "preexisting_bundle": PREEXISTING_BUNDLE,
+            "preexisting_revision": PREEXISTING_REVISION,
         })
     )
     return 0

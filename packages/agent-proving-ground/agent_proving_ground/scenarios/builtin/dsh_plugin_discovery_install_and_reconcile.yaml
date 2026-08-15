@@ -4,9 +4,11 @@ description: >-
   A DeepSeek Harness user finds a capability through Logion, installs it only
   for the current repository, and brings an existing native installation into
   the same inventory without reinstalling it. The run proves discovery through
-  the Logion CLI, repository-scoped acquisition via the dsh channel, and
-  read-only reconciliation of a pre-existing native profile. Assertions
-  consume CLI JSON artifacts saved by the agent and direct API queries.
+  the Logion CLI, repository-scoped acquisition via the dsh channel, read-only
+  reconciliation of a pre-existing native profile, that a poisoned digest fails
+  closed, and that the harness's own state lists exactly what inventory claims.
+  Assertions consume CLI JSON artifacts saved by the agent, the harness's
+  on-disk state, and direct API queries.
 api_adapter: local-devrig
 driver_config:
   codex:
@@ -45,6 +47,7 @@ phases:
       ISOLATED_HOME: isolated_home
       EVIDENCE_DIR: evidence_dir
       BEFORE_SNAPSHOT: snapshot_path
+      DSH_HOME: dsh_home
     goal: ""
 
   - id: seed-dsh-catalog
@@ -53,6 +56,7 @@ phases:
     local_hook_capture_json:
       DSH_LISTING_ID: listing_id
       DSH_CANONICAL: canonical
+      DSH_POISONED_ID: poisoned_resource_id
     goal: ""
 
   - id: find_and_inspect_capability
@@ -87,12 +91,13 @@ phases:
       zero-write and use the dsh channel.
 
       First, get the acquisition plan with `logion resources acquire
-      RESOURCE_ID --harness dsh --scope repo --base-url http://localhost:8000`
-      and save it to ${EVIDENCE_DIR}/plan.json. Review the plan's channel,
-      argv, expected bytes and permissions.
+      RESOURCE_ID --harness dsh --scope repo-root --base-url
+      http://localhost:8000` and save it to ${EVIDENCE_DIR}/plan.json. Review
+      the plan's channel, argv, expected bytes and permissions. The declared
+      permissions are the publisher's claims, not something Logion verified.
 
       Then acquire with `logion resources acquire RESOURCE_ID --harness dsh
-      --scope repo --no-dry-run --base-url http://localhost:8000` and save
+      --scope repo-root --no-dry-run --base-url http://localhost:8000` and save
       the receipt JSON to ${EVIDENCE_DIR}/acquire.json.
 
       The install must remain in repository scope and must not be copied
@@ -106,8 +111,8 @@ phases:
       - type: api.resource_acquire_plan_dry_run
         params:
           artifact: "${EVIDENCE_DIR}/plan.json"
-          expected_scope: repo
-          expected_target: "${FIXTURE_ROOT}/.dsh"
+          expected_scope: repo-root
+          expected_target: "${DSH_HOME}"
           before_snapshot: "${BEFORE_SNAPSHOT}"
           snapshot_roots:
             - "${FIXTURE_ROOT}"
@@ -120,6 +125,10 @@ phases:
         params:
           artifact: "${EVIDENCE_DIR}/acquire.json"
           allowed_channels: [dsh]
+      - type: files.installed_artifact_digest_matches
+        params:
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          scope_root: "${FIXTURE_ROOT}"
 
   - id: recognize_existing_native_install
     actor: operator
@@ -128,14 +137,16 @@ phases:
       Ask Logion to reconcile the current native state and recognize that exact
       plugin without reinstalling, moving, or rewriting anything.
 
-      Use `logion resources reconcile --harness dsh --scope repo --base-url
-      http://localhost:8000` and save the JSON report to
+      Use `logion resources reconcile --from dsh --harness dsh --scope
+      repo-root --base-url http://localhost:8000` and save the JSON report to
       ${EVIDENCE_DIR}/reconcile.json. Reconciliation is read-only and must
       attribute only when the native manifest and immutable source evidence
-      identify one exact Logion version.
+      identify one exact Logion version. One profile on this machine uses a
+      manifest format Logion does not support; it must be reported as
+      unsupported, never attributed.
     success_hint: |
-      The reconcile report should list the pre-existing native DSH plugin as
-      matched, with no unresolved, ambiguous, or drifted entries.
+      The reconcile report should list the pre-existing native DSH plugin, and
+      report the unsupported profile without attributing it.
     assertions:
       - type: api.native_install_reconciled
         params:
@@ -143,14 +154,39 @@ phases:
           scope_root: "${FIXTURE_ROOT}"
           manager: dsh
           reinstalled: false
+      - type: files.inventory_receipt_matches
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile.json"
+          acquire_artifact: "${EVIDENCE_DIR}/acquire.json"
+
+  - id: refuse_a_poisoned_resource
+    actor: operator
+    goal: |
+      One catalog entry advertises a digest that does not match its content.
+      Try to acquire resource ${DSH_POISONED_ID} the same way, with
+      `--harness dsh --scope repo-root --no-dry-run`. Save whatever the CLI
+      prints — success or failure — to ${EVIDENCE_DIR}/poisoned.json.
+
+      Do not work around a failure, do not retry with different flags, and do
+      not edit any harness state by hand. If it refuses, that is the correct
+      outcome: report it.
+    success_hint: |
+      The acquisition fails closed with no receipt, and the harness state is
+      unchanged.
+    assertions:
+      - type: files.scope_isolation_preserved
+        params:
+          before_snapshot: "${BEFORE_SNAPSHOT}"
+          protected_roots:
+            - "${ISOLATED_HOME}"
 
   - id: re_acquire_is_idempotent
     actor: operator
     goal: |
       Acquire the same plugin a second time in the same repository. Read the
       resource id from ${EVIDENCE_DIR}/acquire.json (the data.resource_id
-      field) instead of retyping it. Use the same `--harness dsh --scope repo
-      --no-dry-run` flags. Save the second receipt to
+      field) instead of retyping it. Use the same `--harness dsh --scope
+      repo-root --no-dry-run` flags. Save the second receipt to
       ${EVIDENCE_DIR}/acquire-second.json. It must succeed cleanly and must
       not leave a second copy behind.
     success_hint: |
@@ -163,9 +199,26 @@ phases:
           second_artifact: "${EVIDENCE_DIR}/acquire-second.json"
           scope_root: "${FIXTURE_ROOT}"
 
+  - id: fresh_session_loads_what_inventory_claims
+    actor: operator
+    goal: |
+      Prove the harness itself would load what Logion says is installed. List
+      the current inventory with `logion resources inventory --base-url
+      http://localhost:8000` and save it to ${EVIDENCE_DIR}/inventory.json.
+      Do not modify any harness file.
+    success_hint: |
+      The harness's own profile state lists the installed plugin at the same
+      path the receipt recorded.
+    assertions:
+      - type: files.native_harness_discovers_installation
+        params:
+          artifact: "${EVIDENCE_DIR}/acquire.json"
+          scope_root: "${FIXTURE_ROOT}"
+          harness: dsh
+          scope: repo-root
+
 final_assertions:
   - type: logs.no_500s
-    optional: true
   - type: timeline.no_unredacted_secret
   - type: files.scope_isolation_preserved
     params:

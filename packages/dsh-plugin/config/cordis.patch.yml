@@ -1,15 +1,6 @@
+# `name` resolves through Node module resolution, so it is the package
+# name rather than a file path. This bundle loads its own plugin, which
+# registers the logion_* tools.
 - insert:
-    - id: logion-agent-instructions
-      name: '@deepseek-ai/dsh-agent-instructions'
-      config:
-        maxBytes: 16384
-        text: >-
-          Logion is available through the local `logion` CLI. Use the bundled
-          `logion-dsh` wrapper or `logion --json` for discovery and acquisition;
-          never call the Logion HTTP API directly. The supported workflow is:
-          search/list a resource, inspect its first-party evidence and publisher
-          declarations, preview the acquisition plan, ask for approval before
-          acquiring, then inspect inventory and reconcile native installations.
-          Treat declared permissions as publisher claims, not verification. Keep
-          repository installs separate from user installs and do not submit usage,
-          ratings, reviews, or network-verification claims.
+    - id: logion
+      name: '@logion/dsh-plugin'

@@ -4,9 +4,14 @@
   "description": "Logion commands for DeepSeek Harness",
   "license": "MIT",
   "type": "module",
-  "files": ["bin", "config", "README.md"],
+  "main": "index.js",
+  "files": ["index.js", "bin", "config", "README.md"],
   "bin": {
     "logion-dsh": "bin/logion-dsh.js"
+  },
+  "keywords": ["dsh-plugin", "logion"],
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0"
   },
   "repository": {
     "type": "git",

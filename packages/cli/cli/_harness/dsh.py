@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
+import subprocess
 from pathlib import Path
 
 from cli._harness.base import GrantResult, HarnessAdapter
@@ -16,8 +19,69 @@ from cli._harness.scopes import (
     canonical_scope,
 )
 
+#: The dsh release this adapter's state formats have been recorded
+#: against. dsh is a developer preview that announces compatibility-
+#: breaking changes, so an unrecognised version fails closed rather than
+#: reading a format it was never tested on.
 SUPPORTED_DSH_VERSION = "0.1.0-rc.6"
+
+#: dsh resolves its harness home from this variable; profiles live in
+#: ``$DSH_HOME/profiles/<name>``. Pointing it at a scope root is the only
+#: way an install stays inside one repository.
 DSH_HOME_ENV = "DSH_HOME"
+
+#: The harness home directory name Logion pins a scope to.
+DSH_HOME_DIRNAME = ".dsh"
+
+_VERSION_RE = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
+
+
+class UnsupportedDshVersionError(RuntimeError):
+    """Raised when the installed dsh is not the pinned tested release."""
+
+
+def dsh_home_for(scope_root: Path) -> Path:
+    """Return the harness home a scope root owns."""
+    return scope_root / DSH_HOME_DIRNAME
+
+
+def detect_dsh_version(executable: str = "dsh") -> str | None:
+    """Return the installed dsh version, or None when it cannot be read."""
+    path = shutil.which(executable)
+    if path is None:
+        return None
+    try:
+        completed = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if completed.returncode:
+        return None
+    output = (completed.stdout or completed.stderr or b"").decode(
+        errors="replace"
+    )
+    match = _VERSION_RE.search(output)
+    return match.group(0) if match else None
+
+
+def require_supported_dsh(executable: str = "dsh") -> str:
+    """Return the installed version, or fail closed with a stable error."""
+    version = detect_dsh_version(executable)
+    if version is None:
+        raise UnsupportedDshVersionError(
+            "resource_native_tool_unsupported: dsh was not found or did "
+            "not report a version"
+        )
+    if version != SUPPORTED_DSH_VERSION:
+        raise UnsupportedDshVersionError(
+            "resource_native_tool_version_unsupported: dsh "
+            f"{version} is not the tested {SUPPORTED_DSH_VERSION}"
+        )
+    return version
 
 
 def _git_root(cwd: Path) -> Path | None:
@@ -33,9 +97,10 @@ def _git_root(cwd: Path) -> Path | None:
 class DshAdapter(HarnessAdapter):
     """DeepSeek Harness adapter with no observation capability.
 
-    The native manager owns profile manifests and plugin configuration.  This
-    adapter only declares isolated roots; it never edits a profile or loads a
-    plugin.  Unknown manager versions are intentionally not accepted here.
+    The native manager owns profile manifests and plugin configuration.
+    This adapter only declares isolated harness homes; it never edits a
+    profile or loads a plugin. Unknown manager versions are intentionally
+    not accepted here.
     """
 
     name = "dsh"
@@ -55,7 +120,15 @@ class DshAdapter(HarnessAdapter):
         self._repo_root = repo_root
 
     def _home(self) -> Path:
-        return self._home_dir if self._home_dir is not None else Path.home()
+        if self._home_dir is not None:
+            return self._home_dir
+        # A user-scope install belongs wherever dsh itself would put it,
+        # so an operator who already moved their harness home keeps one
+        # harness home instead of gaining a second, Logion-only one.
+        configured = os.environ.get(DSH_HOME_ENV)
+        if configured:
+            return Path(configured).parent
+        return Path.home()
 
     def _cwd_path(self) -> Path:
         return self._cwd or Path.cwd()
@@ -65,7 +138,7 @@ class DshAdapter(HarnessAdapter):
 
     @staticmethod
     def _target(scope: str, root: Path) -> ScopeTarget:
-        target = root / ".dsh"
+        target = dsh_home_for(root)
         return ScopeTarget(scope, root, target, "dsh", target.exists())
 
     def scope_targets(self, scope: str) -> list[ScopeTarget]:
@@ -91,22 +164,23 @@ class DshAdapter(HarnessAdapter):
         return []
 
     def is_present(self) -> bool:
-        return shutil.which("dsh") is not None
+        return detect_dsh_version() == SUPPORTED_DSH_VERSION
 
     def config_path(self, scope: str) -> Path:
         targets = self.scope_targets(scope)
-        return (
-            (targets[0].target_path / "profiles" / "default" / "package.json")
-            if targets
-            else self._home()
-            / ".dsh"
-            / "profiles"
-            / "default"
-            / "package.json"
+        root = (
+            targets[0].target_path if targets else dsh_home_for(self._home())
         )
+        return root / "profiles" / "default" / "package.json"
 
-    def is_granted(self, scope: str) -> bool:  # noqa: ARG002
-        return False
+    def is_granted(self, scope: str) -> bool:
+        """A dsh scope is usable as soon as its harness home exists.
+
+        There is nothing for Logion to grant: dsh reads
+        ``$DSH_HOME`` and the acquisition passes it explicitly.
+        """
+        targets = self.scope_targets(scope)
+        return bool(targets) and targets[0].target_path.is_dir()
 
     def grant(self, scope: str) -> GrantResult:
         return GrantResult(

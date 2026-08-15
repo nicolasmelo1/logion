@@ -25,7 +25,7 @@ def register_reconcile(
         "--from",
         dest="source",
         default="all",
-        choices=["skills", "plugins", "hf", "logion", "all"],
+        choices=["skills", "plugins", "hf", "dsh", "logion", "all"],
     )
     reconcile.add_argument(
         "--harness", default="all", choices=["all", *harness_choices]

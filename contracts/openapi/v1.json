@@ -633,6 +633,18 @@
             "title": "Channels",
             "type": "array"
           },
+          "declared_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Capabilities"
+          },
           "inferred_map": {
             "anyOf": [
               {
