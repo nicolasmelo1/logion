@@ -20,3 +20,4 @@ sources:
   - {adapter: skillsmp,    target: "https://skillsmp.com"}
   - {adapter: smithery,    target: "https://smithery.ai"}
   - {adapter: skills_lock, target: "https://raw.githubusercontent.com/vercel-labs/open-agents/main/skills-lock.json"}
+  - {adapter: dsh_hub,      mode: repo, target: deepseek-ai/deepseek-harness}

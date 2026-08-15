@@ -399,6 +399,15 @@ class InstalledArtifactDigestMatchesAssertion(_ApiQueryAssertion):
     fail_message = "installed artifact digest does not match the receipt"
 
 
+class NativeHarnessDiscoversInstallationAssertion(_ApiQueryAssertion):
+    type = "files.native_harness_discovers_installation"
+    query_type = "native_harness_discovers_installation"
+    found_key = "discovered"
+    evidence_keys = ("harness", "scope", "digests", "paths")
+    pass_message = "a fresh native harness session discovers the installation"
+    fail_message = "fresh native harness state does not match inventory"
+
+
 class AcquisitionIdempotentAssertion(_ApiQueryAssertion):
     type = "api.acquisition_idempotent"
     query_type = "acquisition_idempotent"

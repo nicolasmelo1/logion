@@ -1422,6 +1422,50 @@ class LogionApiQueries:
             "evidence": {"source": str(query.get("artifact"))},
         }
 
+    async def _q_native_harness_discovers_installation(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """Compare a retained fresh-session observation with inventory."""
+        try:
+            observed = _load_cli_object(
+                query.get("artifact"), "logion.dsh.session"
+            )
+            receipt = _load_cli_object(
+                query.get("inventory_artifact"), "logion.resources.acquire"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "discovered")
+        if observed.get("harness") != query.get("harness", "dsh"):
+            return {"discovered": False, "harness": observed.get("harness")}
+        if query.get("scope") and observed.get("scope") != query["scope"]:
+            return {"discovered": False, "scope": observed.get("scope")}
+        entries = observed.get("installations")
+        if not isinstance(entries, list):
+            return _artifact_failure(
+                "fresh session artifact has no installations", "discovered"
+            )
+        expected_digest = str(receipt.get("content_digest") or "")
+        matches = [
+            entry
+            for entry in entries
+            if isinstance(entry, dict)
+            and str(entry.get("content_digest") or "") == expected_digest
+            and str(entry.get("scope") or query.get("scope", ""))
+            == query.get("scope", "")
+        ]
+        return {
+            "discovered": bool(expected_digest and matches),
+            "harness": observed.get("harness"),
+            "scope": observed.get("scope"),
+            "digests": [str(item.get("content_digest")) for item in matches],
+            "paths": [
+                str(item.get("path")) for item in matches if item.get("path")
+            ],
+            "evidence": {"source": str(query.get("artifact"))},
+        }
+
     async def _q_inventory_receipt_matches(
         self,
         query: dict[str, Any],

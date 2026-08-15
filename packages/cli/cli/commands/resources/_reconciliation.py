@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ._dsh_reconciliation import discover_dsh_state
+
 
 def content_digest(skill_dir: Path) -> str:
     """Compute SHA-256 over all non-marker files in *skill_dir*."""
@@ -131,6 +133,8 @@ def discover_native_state(  # noqa: C901 - manager schemas differ
 ) -> list[dict[str, Any]]:
     """Read native manager state without modifying files or reinstalling."""
     results: list[dict[str, Any]] = []
+    if source in {"all", "dsh"}:
+        results.extend(discover_dsh_state(scope_root))
     if source in {"all", "skills"}:
         lock = scope_root / "skills-lock.json"
         if lock.is_file():

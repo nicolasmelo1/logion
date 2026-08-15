@@ -5,6 +5,14 @@ description: >-
   for the current repository, and brings an existing native installation into
   the same inventory without reinstalling it.
 api_adapter: local-devrig
+driver_config:
+  codex:
+    model: gpt-5.4-mini
+  claude-code:
+    model: claude-haiku-4-5
+  hermes:
+    model: glm-5.1
+    provider: ollama-cloud
 execution_requirements:
   api_adapters: [local-devrig]
   agent_drivers: [codex, claude-code, hermes]
@@ -25,6 +33,13 @@ agents:
       directly. Do not claim verification, quality, or usage beyond observed
       local state.
 phases:
+  - id: seed-dsh-catalog
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/seed_dsh_plugin_fixture.py
+    local_hook_capture_json:
+      DSH_LISTING_ID: listing_id
+    goal: ""
+
   - id: find_and_inspect_capability
     actor: operator
     goal: >-

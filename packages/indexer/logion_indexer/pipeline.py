@@ -23,28 +23,53 @@ from __future__ import annotations
 from collections.abc import Iterable
 from urllib.error import URLError
 
-from .dedup import DedupPlan, build_plan, merge_discoveries, query_known
+from .dedup import (
+    DedupPlan,
+    ResourceDedupPlan,
+    build_plan,
+    build_resource_plan,
+    merge_discoveries,
+    merge_resource_discoveries,
+    query_known,
+    query_known_resources,
+)
 from .enrichment import enrich_discoveries
 from .github_source import GithubSource, is_permissive_license
 from .mirror import BundleArtifact, mirror_bundle_for
-from .models import DiscoveredSkill
+from .models import DiscoveredResource, DiscoveredSkill
 from .transport import Transport
 from .validation import INFERRED_MAP_INVALID, fragment_errors
 
 
 def build_indexing_plan(
-    discoveries: Iterable[DiscoveredSkill],
+    discoveries: Iterable[DiscoveredSkill | DiscoveredResource],
     transport: Transport,
     base_url: str,
     *,
     source: GithubSource | None = None,
     mirror: bool = True,
     workers: int = 4,
-) -> tuple[DedupPlan, dict[str, BundleArtifact]]:
+) -> tuple[DedupPlan | ResourceDedupPlan, dict[str, BundleArtifact]]:
     """Run the full pipeline and return ``(plan, bundle_artifacts)``."""
     source = source or GithubSource(transport=transport)
+    discoveries = list(discoveries)
 
-    merged = merge_discoveries(discoveries)
+    if any(isinstance(item, DiscoveredResource) for item in discoveries):
+        resources = [
+            item
+            for item in discoveries
+            if isinstance(item, DiscoveredResource)
+        ]
+        merged_resources = merge_resource_discoveries(resources)
+        known_resources = query_known_resources(
+            [item.canonical for item in merged_resources], transport, base_url
+        )
+        return build_resource_plan(merged_resources, known_resources), {}
+
+    skills = [
+        item for item in discoveries if isinstance(item, DiscoveredSkill)
+    ]
+    merged = merge_discoveries(skills)
     enriched, skips = enrich_discoveries(merged, source, workers=workers)
     remerged = merge_discoveries(enriched)
 

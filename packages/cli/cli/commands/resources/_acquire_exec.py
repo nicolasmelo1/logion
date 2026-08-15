@@ -16,6 +16,7 @@ from typing import Any
 from cli import _receipts
 
 from ._channels.base import ChannelAdapter
+from ._channels.dsh import DshChannelAdapter
 from ._channels.hf import HfAdapter
 from ._channels.logion_bundle import LogionBundleAdapter
 from ._channels.npx_plugins import NpxPluginsAdapter
@@ -103,6 +104,8 @@ def _adapter_for(channel: str, *, client: Any) -> ChannelAdapter:
         return NpxPluginsAdapter()
     if channel == "hf":
         return HfAdapter()
+    if channel == "dsh":
+        return DshChannelAdapter()
     raise RuntimeError(
         f"channel {channel!r} is not supported by this CLI version"
     )

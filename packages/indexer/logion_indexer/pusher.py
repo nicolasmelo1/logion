@@ -111,7 +111,13 @@ class Pusher:
         Batches are capped at ``BATCH_SIZE`` (100) items per call.
         """
         return self.push_serialized(
-            [_serialize_item(item) for item in items], run_id=run_id
+            [
+                _serialize_resource_item(item)
+                if isinstance(item, DiscoveredResource)
+                else _serialize_item(item)
+                for item in items
+            ],
+            run_id=run_id,
         )
 
     def push_serialized(

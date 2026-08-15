@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from .config import IndexerConfig, SeedFile
 from .crawl import Crawler
 from .mirror import BundleArtifact
-from .models import DiscoveredSkill
+from .models import DiscoveredResource, DiscoveredSkill
 from .pipeline import build_indexing_plan
 from .progress import RunProgress
 from .pusher import Pusher, PushResult, RunStats
@@ -37,7 +37,9 @@ class AdapterFailure:
 class DiscoveryResult:
     """Discoveries and adapter failures from one crawl."""
 
-    discoveries: list[DiscoveredSkill] = field(default_factory=list)
+    discoveries: list[DiscoveredSkill | DiscoveredResource] = field(
+        default_factory=list
+    )
     failures: list[AdapterFailure] = field(default_factory=list)
 
 
@@ -100,6 +102,10 @@ def _get_adapter(
             transport=transport,
             rate_limiter=rate_limiter,
         )
+    if adapter_name == "dsh_hub":
+        from .adapters.dsh_hub import DshHubAdapter
+
+        return DshHubAdapter(transport=transport)
     raise ValueError(f"unknown adapter: {adapter_name}")
 
 

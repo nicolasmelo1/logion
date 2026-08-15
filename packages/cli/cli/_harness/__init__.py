@@ -18,6 +18,7 @@ from cli._harness.base import (
 )
 from cli._harness.claude_code import ClaudeCodeAdapter
 from cli._harness.codex import CodexAdapter
+from cli._harness.dsh import DshAdapter
 from cli._harness.hermes import HermesAdapter
 from cli._harness.opencode import OpenCodeAdapter
 from cli._harness.pi import PiAdapter
@@ -35,6 +36,7 @@ _ADAPTER_TYPES: tuple[type[HarnessAdapter], ...] = (
     OpenCodeAdapter,
     HermesAdapter,
     PiAdapter,
+    DshAdapter,
 )
 
 
@@ -66,6 +68,7 @@ __all__ = [
     "VALID_SCOPES",
     "ClaudeCodeAdapter",
     "CodexAdapter",
+    "DshAdapter",
     "GrantResult",
     "HarnessAdapter",
     "HarnessConfigError",

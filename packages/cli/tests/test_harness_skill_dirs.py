@@ -48,9 +48,16 @@ def test_codex_prompt_example_matches_adapter_path() -> None:
     assert examples["Codex"] == str(adapter_path)
 
 
-def test_registry_lists_all_five() -> None:
+def test_registry_lists_all_registered_adapters() -> None:
     names = set(adapter_names())
-    assert names == {"claude-code", "codex", "opencode", "hermes", "pi"}
+    assert names == {
+        "claude-code",
+        "codex",
+        "opencode",
+        "hermes",
+        "pi",
+        "dsh",
+    }
 
 
 def test_detect_present_per_harness(tmp_path: Path, monkeypatch) -> None:
