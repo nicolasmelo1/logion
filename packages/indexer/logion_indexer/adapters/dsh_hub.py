@@ -147,12 +147,39 @@ class DshHubAdapter:
             else None,
             source_commit=revision,
             declared_capabilities=_declared_capabilities(manifest, bundle),
+            npm_distribution=self._npm_distribution(manifest),
             channels=(
                 DiscoveryChannel(
                     self.hub_slug, f"https://github.com/{owner}/{repo}"
                 ),
             ),
         )
+
+    def _npm_distribution(
+        self, manifest: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Record an npm distribution only if that version really exists.
+
+        dsh installs registry-hosted bundles too — its own base bundle is
+        one — but a manifest can name a version that was never published.
+        Confirming it against the registry keeps the catalog from
+        offering an acquisition that cannot resolve.
+        """
+        name = manifest.get("name")
+        version = manifest.get("version")
+        if manifest.get("private") is True:
+            return None
+        if not isinstance(name, str) or not isinstance(version, str):
+            return None
+        response = self.transport.get(
+            f"https://registry.npmjs.org/{name}/{version}"
+        )
+        if response.status != 200:
+            return None
+        data = response.json()
+        if not isinstance(data, dict) or data.get("version") != version:
+            return None
+        return {"name": name, "version": version}
 
 
 def _declared_capabilities(

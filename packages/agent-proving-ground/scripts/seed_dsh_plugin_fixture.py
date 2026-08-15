@@ -31,18 +31,30 @@ POISONED_COMMIT = (
 #: must refuse it rather than install whatever it actually receives.
 POISONED_DIGEST = "de" * 32
 
-CANONICAL = "gh:logion-fixtures/dsh-plugin"
+#: Logion's own dsh bundle. Using the artifact we publish anyway keeps
+#: the scenario off a third party's repository and proves our own
+#: distribution point actually installs through the native flow.
+CANONICAL = "gh:nicolasmelo1/logion#plugins/dsh-plugin"
+NPM_NAME = "@logionsh/dsh-plugin"
+NPM_VERSION = "0.1.0"
+
 POISONED_CANONICAL = "gh:logion-fixtures/dsh-plugin-poisoned"
 
 
-def _item(canonical: str, title: str, commit: str) -> dict[str, Any]:
+def _item(
+    canonical: str,
+    title: str,
+    commit: str,
+    npm: dict[str, str] | None = None,
+) -> dict[str, Any]:
     return {
+        "npm_distribution": npm,
         "canonical": canonical,
         "canonical_uri": canonical,
         "resource_type": "plugin",
         "title": title,
-        "summary": "A small plugin for repository work.",
-        "original_author": "logion-fixtures",
+        "summary": "Logion discovery and acquisition inside dsh.",
+        "original_author": canonical.removeprefix("gh:").split("/", 1)[0],
         "license_spdx": "MIT",
         "source_commit": commit,
         "tags": ["dsh", "repository"],
@@ -83,7 +95,12 @@ def main() -> int:
         os.environ.get("PG_API_BASE_URL", "http://localhost:8000"), keys
     )
 
-    item = _item(CANONICAL, "Repository helper plugin", COMMIT)
+    item = _item(
+        CANONICAL,
+        "Logion for DeepSeek Harness",
+        COMMIT,
+        npm={"name": NPM_NAME, "version": NPM_VERSION},
+    )
     listing_id = _upsert(api, item)
     bundle_digest = base._upload_bundle(api, listing_id)
     # Re-upsert after the mirrored bundle exists so the version receives

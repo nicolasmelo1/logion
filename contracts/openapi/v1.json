@@ -676,6 +676,18 @@
             "title": "Map Flags",
             "type": "array"
           },
+          "npm_distribution": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Npm Distribution"
+          },
           "original_author": {
             "maxLength": 255,
             "minLength": 1,

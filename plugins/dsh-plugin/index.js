@@ -87,9 +87,11 @@ export function apply(ctx) {
         name: `logion_${operation}`,
         description: spec.description,
         parameters: {
+          // `required` is omitted rather than set to false: the harness
+          // rejects a schema that declares it as anything but true.
           args: {
             type: "array",
-            required: false,
+            items: { type: "string" },
             description:
               "Extra arguments passed through to the logion CLI verbatim.",
           },

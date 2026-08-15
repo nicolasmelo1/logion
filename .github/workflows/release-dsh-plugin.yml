@@ -1,0 +1,70 @@
+name: Release @logionsh/dsh-plugin to npm
+
+# The bundle a DeepSeek Harness user installs to get Logion inside their
+# harness. It is published from its own tag so a plugin fix never forces
+# a CLI release, and vice versa.
+
+on:
+  push:
+    tags: ["dsh-plugin-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Plugin version to publish, without leading v"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-dsh-plugin-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@logionsh/dsh-plugin
+    defaults:
+      run:
+        working-directory: plugins/dsh-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: plugins/dsh-plugin/.nvmrc
+          registry-url: "https://registry.npmjs.org/"
+          cache: "npm"
+          cache-dependency-path: "plugins/dsh-plugin/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The tag is the release record, so a manifest that disagrees with
+      # it would publish a version nobody asked for.
+      - name: Verify the manifest matches the tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            expected="${{ inputs.version }}"
+          else
+            expected="${GITHUB_REF_NAME#dsh-plugin-v}"
+          fi
+          actual="$(node -p "require('./package.json').version")"
+          if [ "$expected" != "$actual" ]; then
+            echo "tag says $expected, package.json says $actual" >&2
+            exit 1
+          fi
+
+      - name: Tests (node --test)
+        run: npm test
+
+      - name: Pack and inspect
+        run: npm pack --dry-run
+
+      - name: Publish with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

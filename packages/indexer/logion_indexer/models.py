@@ -52,6 +52,10 @@ class DiscoveredResource:
         bundle: Mirrored-bundle metadata when available, else None.
         declared_capabilities: What the publisher's own manifest declares
             (``{tools, patch}``), never what Logion verified.
+        npm_distribution: ``{name, version}`` when that exact version was
+            observed on the npm registry, else None. A bundle may declare
+            a version it never published, so this records only what was
+            actually found.
     """
 
     canonical: CanonicalResourceId
@@ -68,6 +72,7 @@ class DiscoveredResource:
     map_flags: tuple[str, ...] = field(default_factory=tuple)
     bundle: dict[str, Any] | None = None
     declared_capabilities: dict[str, Any] | None = None
+    npm_distribution: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

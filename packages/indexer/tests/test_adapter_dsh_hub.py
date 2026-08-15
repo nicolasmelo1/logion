@@ -189,3 +189,60 @@ def test_a_path_merely_ending_in_package_json_is_not_a_manifest() -> None:
         )
     )
     assert list(adapter.discover(f"{OWNER}/{REPO}")) == []
+
+
+# ── npm distribution ────────────────────────────────────────────────
+
+
+def _npm_url(name: str, version: str) -> str:
+    return f"https://registry.npmjs.org/{name}/{version}"
+
+
+def test_records_an_npm_distribution_only_when_the_version_exists() -> None:
+    """dsh installs registry-hosted bundles, but only if published."""
+    path = "packages/hello/package.json"
+    manifest = _bundle_manifest(version="1.2.3")
+    transport = _transport(manifests={path: manifest})
+    transport.set_response(
+        _npm_url("dsh-hello-plugin", "1.2.3"),
+        _json({"name": "dsh-hello-plugin", "version": "1.2.3"}),
+    )
+    resource = next(iter(DshHubAdapter(transport).discover(f"{OWNER}/{REPO}")))
+    assert resource.npm_distribution == {
+        "name": "dsh-hello-plugin",
+        "version": "1.2.3",
+    }
+
+
+def test_an_unpublished_version_yields_no_npm_distribution() -> None:
+    """A manifest can name a version that was never published."""
+    path = "packages/hello/package.json"
+    transport = _transport(manifests={path: _bundle_manifest(version="9.9.9")})
+    transport.set_response(
+        _npm_url("dsh-hello-plugin", "9.9.9"), HttpResponse(404, b"{}")
+    )
+    resource = next(iter(DshHubAdapter(transport).discover(f"{OWNER}/{REPO}")))
+    assert resource.npm_distribution is None
+
+
+def test_a_private_package_is_never_offered_from_the_registry() -> None:
+    path = "packages/hello/package.json"
+    manifest = _bundle_manifest(version="1.2.3", private=True)
+    transport = _transport(manifests={path: manifest})
+    transport.set_response(
+        _npm_url("dsh-hello-plugin", "1.2.3"),
+        _json({"name": "dsh-hello-plugin", "version": "1.2.3"}),
+    )
+    resource = next(iter(DshHubAdapter(transport).discover(f"{OWNER}/{REPO}")))
+    assert resource.npm_distribution is None
+
+
+def test_a_registry_answer_for_another_version_is_rejected() -> None:
+    path = "packages/hello/package.json"
+    transport = _transport(manifests={path: _bundle_manifest(version="1.2.3")})
+    transport.set_response(
+        _npm_url("dsh-hello-plugin", "1.2.3"),
+        _json({"name": "dsh-hello-plugin", "version": "9.9.9"}),
+    )
+    resource = next(iter(DshHubAdapter(transport).discover(f"{OWNER}/{REPO}")))
+    assert resource.npm_distribution is None

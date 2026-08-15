@@ -22,7 +22,20 @@ from .._dsh_state import (
 )
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
-_DSH_REVISION = re.compile(r"[0-9a-f]{40}")
+#: The two immutable pins a dsh distribution can carry: an exact Git
+#: commit for a repository-hosted bundle, or an exact npm version for a
+#: registry-hosted one (dsh's own base bundle ships that way).
+_GIT_REVISION = re.compile(r"[0-9a-f]{40}")
+_NPM_VERSION = re.compile(
+    r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?"
+)
+
+
+def _is_immutable_pin(value: str) -> bool:
+    return bool(
+        _GIT_REVISION.fullmatch(value) or _NPM_VERSION.fullmatch(value)
+    )
+
 
 #: `dsh plugin --profile NAME add SPEC` — the only form this channel runs.
 _ARGV_PREFIX = ("dsh", "plugin", "--profile")
@@ -103,9 +116,9 @@ class DshChannelAdapter(ChannelAdapter):
                 "resource_native_tool_unsupported: invalid dsh package spec"
             )
         revision = str(native.get("revision") or "")
-        if not _DSH_REVISION.fullmatch(revision):
+        if not _is_immutable_pin(revision):
             raise RuntimeError(
-                "dsh distribution requires an immutable 40-character revision"
+                "dsh distribution requires an exact commit or version pin"
             )
         if revision not in argv[5]:
             raise RuntimeError(
@@ -125,17 +138,19 @@ class DshChannelAdapter(ChannelAdapter):
             ) from exc
 
         expected = str(native.get("revision") or "").lower()
-        # Identity is the immutable revision, never the package name: two
+        # Identity is the immutable pin, never the package name: two
         # bundles can share a name and a name is not evidence of what was
-        # installed.
+        # installed. A Git bundle proves it with its revision, an npm one
+        # with the exact version the manager resolved.
         matches = [
             bundle
             for bundle in bundles
-            if bundle.revision and bundle.revision == expected
+            if expected in {bundle.revision, bundle.version.lower()}
+            and (bundle.revision or bundle.version)
         ]
         if len(matches) != 1:
             raise RuntimeError(
                 "dsh profile state has no unique bundle at the planned "
-                f"revision (found {len(matches)})"
+                f"pin (found {len(matches)})"
             )
         return matches[0]

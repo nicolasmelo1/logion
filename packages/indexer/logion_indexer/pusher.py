@@ -281,6 +281,7 @@ def _serialize_resource_item(item: DiscoveredResource) -> dict:
     result["canonical_uri"] = item.canonical_uri
     result["resource_id"] = str(item.canonical)
     result["declared_capabilities"] = item.declared_capabilities
+    result["npm_distribution"] = item.npm_distribution
     return result
 
 

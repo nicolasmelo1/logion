@@ -245,7 +245,7 @@ def test_rejects_a_plan_without_an_immutable_revision(revision: str) -> None:
         "add",
         "github:owner/plugin",
     ]
-    with pytest.raises(RuntimeError, match="immutable"):
+    with pytest.raises(RuntimeError, match="exact commit or version"):
         DshChannelAdapter._validate_argv(argv, {"revision": revision})
 
 
@@ -498,3 +498,87 @@ def test_githead_wins_over_the_spec_when_both_are_present(
     )
     _install_bundle(directory, "@owner/plugin", revision=REVISION)
     assert read_profile(home, "default")[0].revision == REVISION
+
+
+# ── npm-hosted bundles ──────────────────────────────────────────────
+
+NPM_VERSION = "0.1.0"
+
+
+def test_accepts_an_exact_npm_version_as_the_pin() -> None:
+    """dsh's own base bundle ships from npm, so both pins are valid."""
+    argv = [
+        "dsh",
+        "plugin",
+        "--profile",
+        "default",
+        "add",
+        f"@logionsh/dsh-plugin@{NPM_VERSION}",
+    ]
+    DshChannelAdapter._validate_argv(argv, {"revision": NPM_VERSION})
+
+
+@pytest.mark.parametrize("pin", ["^0.1.0", "~0.1.0", "latest", "0.1"])
+def test_rejects_a_resolvable_range_as_a_pin(pin: str) -> None:
+    """A range lets the manager resolve to something uncatalogued."""
+    argv = [
+        "dsh",
+        "plugin",
+        "--profile",
+        "default",
+        "add",
+        f"@logionsh/dsh-plugin@{pin}",
+    ]
+    with pytest.raises(RuntimeError, match="exact commit or version"):
+        DshChannelAdapter._validate_argv(argv, {"revision": pin})
+
+
+def test_an_npm_install_is_identified_by_its_resolved_version(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = dsh_home_for(tmp_path)
+
+    def fake_run(*_args, **_kwargs):
+        directory = _write_profile(
+            home,
+            bundles=["@logionsh/dsh-plugin"],
+            dependencies={"@logionsh/dsh-plugin": NPM_VERSION},
+        )
+        installed = _install_bundle(
+            directory, "@logionsh/dsh-plugin", revision=None
+        )
+        manifest = json.loads(
+            (installed / "package.json").read_text(encoding="utf-8")
+        )
+        manifest["version"] = NPM_VERSION
+        (installed / "package.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+        return _Completed()
+
+    monkeypatch.setattr(
+        "cli._harness.dsh.detect_dsh_version",
+        lambda *_: SUPPORTED_DSH_VERSION,
+    )
+    monkeypatch.setattr(
+        "cli.commands.resources._channels.dsh.run_argv", fake_run
+    )
+    outcome = DshChannelAdapter().acquire(
+        plan=_plan(
+            argv=[
+                "dsh",
+                "plugin",
+                "--profile",
+                "default",
+                "add",
+                f"@logionsh/dsh-plugin@{NPM_VERSION}",
+            ],
+            revision=NPM_VERSION,
+        ),
+        destination=tmp_path,
+        scope_root=tmp_path,
+    )
+    assert outcome.native_evidence["immutable_revision"] == ""
+    assert outcome.installed_paths == [
+        ".dsh/profiles/default/node_modules/@logionsh/dsh-plugin"
+    ]

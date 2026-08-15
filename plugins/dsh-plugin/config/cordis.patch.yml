@@ -3,4 +3,4 @@
 # registers the logion_* tools.
 - insert:
     - id: logion
-      name: '@logion/dsh-plugin'
+      name: '@logionsh/dsh-plugin'

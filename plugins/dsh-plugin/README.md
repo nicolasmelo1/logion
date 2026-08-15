@@ -9,7 +9,7 @@ a Cordis config entry.
 ## Install
 
 ```bash
-dsh plugin --profile <name> add @logion/dsh-plugin
+dsh plugin --profile <name> add @logionsh/dsh-plugin
 ```
 
 The bundle declares itself through `dsh.bundle.patch`, and its
