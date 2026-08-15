@@ -1,0 +1,107 @@
+schema_version: "1"
+name: dsh_plugin_discovery_install_and_reconcile
+description: >-
+  A DeepSeek Harness user finds a capability through Logion, installs it only
+  for the current repository, and brings an existing native installation into
+  the same inventory without reinstalling it.
+api_adapter: local-devrig
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code, hermes]
+  driver_models:
+    codex: [gpt-5.4-mini]
+    claude-code: [claude-haiku-4-5]
+agents:
+  - id: operator
+    role: developer
+    workspace: dsh_fixture_repo
+    devrig_role: buyer
+    timeout_seconds: 1200
+    system_prompt: >-
+      You are a developer using DeepSeek Harness in a repository. Work through
+      the Logion plugin as a normal user would. Prefer the harness and its
+      native plugin manager, keep repository scope separate from user scope,
+      and report only what you can observe. Do not call the Logion HTTP API
+      directly. Do not claim verification, quality, or usage beyond observed
+      local state.
+phases:
+  - id: find_and_inspect_capability
+    actor: operator
+    goal: >-
+      You need a lightweight capability for this repository. Use the Logion
+      plugin inside DeepSeek Harness to find a suitable plugin and inspect what
+      Logion knows about its source, exact version, revision, digest, license,
+      and publisher-declared dependencies and services.
+    success_hint: >-
+      Stay inside the harness/plugin experience; use the public Logion CLI only
+      through the installed plugin when it needs to retrieve structured data.
+    assertions:
+      - type: api.resource_distribution_selected
+        params:
+          allowed_channels: [dsh]
+          resource_type: agent_plugin
+  - id: review_and_acquire_for_repository
+    actor: operator
+    goal: >-
+      Review the proposed installation and its permissions, then approve it
+      and install the plugin for this repository only. Keep the dry-run
+      zero-write and use DeepSeek Harness's native installation flow.
+    success_hint: >-
+      Check the plan before approving; the install must remain in repository
+      scope and must not be copied into the user scope.
+    assertions:
+      - type: api.resource_acquisition_exists
+        params:
+          status: succeeded
+          channel: dsh
+      - type: files.installed_artifact_digest_matches
+        params:
+          scope: repo
+  - id: show_installed_state
+    actor: operator
+    goal: >-
+      Show what is installed in this repository and what Logion recorded about
+      the installation, including the exact source revision and digest.
+    assertions:
+      - type: files.inventory_receipt_matches
+        params:
+          scope: repo
+  - id: recognize_existing_native_install
+    actor: operator
+    goal: >-
+      A different plugin was already installed directly with DeepSeek Harness.
+      Ask Logion to reconcile the current native state and recognize that exact
+      plugin without reinstalling, moving, or rewriting anything.
+    success_hint: >-
+      Reconciliation is read-only and must attribute only when the native
+      manifest and immutable source evidence identify one exact Logion version.
+    assertions:
+      - type: api.native_install_reconciled
+        params:
+          manager: dsh
+          reinstalled: false
+  - id: confirm_fresh_harness_state
+    actor: operator
+    goal: >-
+      Start a fresh DeepSeek Harness session and confirm that it discovers both
+      plugins with the same repository scope and digests shown by inventory.
+    assertions:
+      - type: files.native_harness_discovers_installation
+        params:
+          harness: dsh
+          scope: repo
+  - id: reject_untrusted_plugin
+    actor: operator
+    goal: >-
+      Check the suspicious plugin that reports a digest different from its
+      content. Leave it uninstalled and explain the actionable reason instead
+      of forcing the installation.
+    assertions:
+      - type: api.acquisition_idempotent
+        params:
+          poisoned: true
+          success: false
+final_assertions:
+  - type: logs.no_500s
+    optional: true
+  - type: timeline.no_unredacted_secret
