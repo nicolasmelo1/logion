@@ -67,6 +67,7 @@ preview = true
 select = ["E", "F", "I", "UP", "B"]
 extend-select = [
     "A",
+    "ANN401",
     "ARG",
     "ASYNC",
     "C4",
@@ -87,6 +88,7 @@ extend-select = [
     "RUF",
     "SIM",
     "T20",
+    "TID251",
     "TRY",
     "W292",
 ]
@@ -99,6 +101,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
+# is shared with packages published on a >=3.11 floor.
+"**/_json.py" = ["UP040"]
 "cli/_errors.py" = ["T201"]
 "cli/_output.py" = ["T201"]
 "cli/commands/courses/capabilities.py" = ["T201"]
@@ -124,6 +129,13 @@ ignore = [
 "cli/commands/courses/package_map.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
 "scripts/sync_docs.py" = ["T201"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Repo-wide ban on `typing.Any`. Banning the *import* is what makes it
+# stick: it kills `dict[str, Any]`, `list[Any]`, `-> Any` and bare
+# `x: Any` in one rule, instead of only the top-level annotations
+# ANN401 can see.
+"typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape, JsonValue/JsonObject from the package's _json module at a JSON boundary, or a TypeVar for generic passthrough. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion"]

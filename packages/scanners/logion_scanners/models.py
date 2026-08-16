@@ -3,11 +3,82 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TypedDict
+
+from logion_scanners._json import (
+    JsonObject,
+    opt_int,
+    opt_object_array,
+    opt_str,
+    opt_str_array,
+    require_bool,
+    require_int,
+    require_object,
+    require_str,
+    require_str_array,
+)
 
 SCANNER_TRIVY = "trivy"
 SCANNER_OSV = "osv_scanner"
 SCANNER_AGENT = "agent_scanner"
+
+
+class ScannerFindingDict(TypedDict):
+    """Serialized :class:`ScannerFinding`."""
+
+    layer: str
+    severity: str
+    rule_id: str
+    description: str
+    file_path: str | None
+    line_number: int | None
+    raw_output: str | None
+
+
+class ScannerResultDict(TypedDict):
+    """Serialized :class:`ScannerResult`."""
+
+    layer: str
+    passed: bool
+    findings: list[ScannerFindingDict]
+    raw_output: str | None
+    error: str | None
+
+
+class ScanPolicyDict(TypedDict):
+    """Serialized :class:`ScanPolicy`."""
+
+    policy_id: str
+    policy_version: str
+    required_scanners: list[str]
+    enabled_agent_checks: list[str]
+    blocking_severities: dict[str, list[str]]
+    max_bundle_size_mb: int
+    max_file_count: int
+    max_file_size_mb: int
+    scanner_timeout_seconds: int
+    block_on_scanner_unavailable: bool
+
+
+class PolicyDecisionDict(TypedDict):
+    """Serialized :class:`PolicyDecision`."""
+
+    allowed: bool
+    blocking_findings: list[ScannerFindingDict]
+    reasons: list[str]
+
+
+class ScanReportDict(TypedDict):
+    """Serialized :class:`ScanReport`."""
+
+    schema_version: int
+    bundle_hash: str
+    policy_id: str
+    policy_version: str
+    policy_hash: str
+    results: list[ScannerResultDict]
+    execution_error: str | None
+    decision: PolicyDecisionDict
 
 
 @dataclass
@@ -22,7 +93,7 @@ class ScannerFinding:
     line_number: int | None = None
     raw_output: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> ScannerFindingDict:
         return {
             "layer": self.layer,
             "severity": self.severity,
@@ -34,15 +105,15 @@ class ScannerFinding:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ScannerFinding:
+    def from_dict(cls, d: JsonObject) -> ScannerFinding:
         return cls(
-            layer=d["layer"],
-            severity=d["severity"],
-            rule_id=d["rule_id"],
-            description=d["description"],
-            file_path=d.get("file_path"),
-            line_number=d.get("line_number"),
-            raw_output=d.get("raw_output"),
+            layer=require_str(d, "layer"),
+            severity=require_str(d, "severity"),
+            rule_id=require_str(d, "rule_id"),
+            description=require_str(d, "description"),
+            file_path=opt_str(d, "file_path"),
+            line_number=opt_int(d, "line_number"),
+            raw_output=opt_str(d, "raw_output"),
         )
 
 
@@ -56,7 +127,7 @@ class ScannerResult:
     raw_output: str | None = None
     error: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> ScannerResultDict:
         return {
             "layer": self.layer,
             "passed": self.passed,
@@ -66,15 +137,16 @@ class ScannerResult:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ScannerResult:
+    def from_dict(cls, d: JsonObject) -> ScannerResult:
         return cls(
-            layer=d["layer"],
-            passed=d["passed"],
+            layer=require_str(d, "layer"),
+            passed=require_bool(d, "passed"),
             findings=[
-                ScannerFinding.from_dict(f) for f in d.get("findings", [])
+                ScannerFinding.from_dict(f)
+                for f in opt_object_array(d, "findings")
             ],
-            raw_output=d.get("raw_output"),
-            error=d.get("error"),
+            raw_output=opt_str(d, "raw_output"),
+            error=opt_str(d, "error"),
         )
 
 
@@ -93,7 +165,7 @@ class ScanPolicy:
     scanner_timeout_seconds: int
     block_on_scanner_unavailable: bool
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> ScanPolicyDict:
         return {
             "policy_id": self.policy_id,
             "policy_version": self.policy_version,
@@ -112,20 +184,26 @@ class ScanPolicy:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ScanPolicy:
+    def from_dict(cls, d: JsonObject) -> ScanPolicy:
+        severities = require_object(d, "blocking_severities")
         return cls(
-            policy_id=d["policy_id"],
-            policy_version=d["policy_version"],
-            required_scanners=tuple(d["required_scanners"]),
-            enabled_agent_checks=tuple(d["enabled_agent_checks"]),
+            policy_id=require_str(d, "policy_id"),
+            policy_version=require_str(d, "policy_version"),
+            required_scanners=tuple(require_str_array(d, "required_scanners")),
+            enabled_agent_checks=tuple(
+                require_str_array(d, "enabled_agent_checks")
+            ),
             blocking_severities={
-                k: tuple(v) for k, v in d["blocking_severities"].items()
+                key: tuple(require_str_array(severities, key))
+                for key in severities
             },
-            max_bundle_size_mb=d["max_bundle_size_mb"],
-            max_file_count=d["max_file_count"],
-            max_file_size_mb=d["max_file_size_mb"],
-            scanner_timeout_seconds=d["scanner_timeout_seconds"],
-            block_on_scanner_unavailable=d["block_on_scanner_unavailable"],
+            max_bundle_size_mb=require_int(d, "max_bundle_size_mb"),
+            max_file_count=require_int(d, "max_file_count"),
+            max_file_size_mb=require_int(d, "max_file_size_mb"),
+            scanner_timeout_seconds=require_int(d, "scanner_timeout_seconds"),
+            block_on_scanner_unavailable=require_bool(
+                d, "block_on_scanner_unavailable"
+            ),
         )
 
 
@@ -137,7 +215,7 @@ class PolicyDecision:
     blocking_findings: tuple[ScannerFinding, ...]
     reasons: tuple[str, ...]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> PolicyDecisionDict:
         return {
             "allowed": self.allowed,
             "blocking_findings": [f.to_dict() for f in self.blocking_findings],
@@ -145,14 +223,14 @@ class PolicyDecision:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> PolicyDecision:
+    def from_dict(cls, d: JsonObject) -> PolicyDecision:
         return cls(
-            allowed=d["allowed"],
+            allowed=require_bool(d, "allowed"),
             blocking_findings=tuple(
                 ScannerFinding.from_dict(f)
-                for f in d.get("blocking_findings", [])
+                for f in opt_object_array(d, "blocking_findings")
             ),
-            reasons=tuple(d.get("reasons", [])),
+            reasons=tuple(opt_str_array(d, "reasons")),
         )
 
 
@@ -169,7 +247,7 @@ class ScanReport:
     execution_error: str | None
     decision: PolicyDecision
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> ScanReportDict:
         return {
             "schema_version": self.schema_version,
             "bundle_hash": self.bundle_hash,
@@ -182,14 +260,17 @@ class ScanReport:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ScanReport:
+    def from_dict(cls, d: JsonObject) -> ScanReport:
         return cls(
-            schema_version=d["schema_version"],
-            bundle_hash=d["bundle_hash"],
-            policy_id=d["policy_id"],
-            policy_version=d["policy_version"],
-            policy_hash=d["policy_hash"],
-            results=[ScannerResult.from_dict(r) for r in d.get("results", [])],
-            execution_error=d.get("execution_error"),
-            decision=PolicyDecision.from_dict(d["decision"]),
+            schema_version=require_int(d, "schema_version"),
+            bundle_hash=require_str(d, "bundle_hash"),
+            policy_id=require_str(d, "policy_id"),
+            policy_version=require_str(d, "policy_version"),
+            policy_hash=require_str(d, "policy_hash"),
+            results=[
+                ScannerResult.from_dict(r)
+                for r in opt_object_array(d, "results")
+            ],
+            execution_error=opt_str(d, "execution_error"),
+            decision=PolicyDecision.from_dict(require_object(d, "decision")),
         )
