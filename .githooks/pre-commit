@@ -38,6 +38,13 @@ fi
 echo "Running public guardrails..."
 make ci-checks
 
+if [ -d packages/cli/cli/usage ] || \
+   [ -d packages/cli/cli/commands/feedback ] || \
+   [ -f packages/client/src/logion/v1/_resources/resource_feedback.py ]; then
+	echo "Active implementation phase detected - running canonical cross-repo guardrails..."
+	make cross-repo-guardrails
+fi
+
 # ── installer checks — mirror the installer job in pr-safety.yml.
 # The security scanner runs for every commit through make ci-checks.
 # Run the heavier installer linters/tests only when installer files change.

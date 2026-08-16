@@ -11,6 +11,83 @@ permissions:
   contents: read
 
 jobs:
+  cross-repo-phase-integrity:
+    name: Cross-repo phase integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out public candidate
+        uses: actions/checkout@v4
+        with:
+          path: logion
+      - name: Detect phase-owned implementation
+        id: phase
+        working-directory: logion
+        run: |
+          if test -d packages/cli/cli/usage || \
+             test -d packages/cli/cli/commands/feedback || \
+             test -f packages/client/src/logion/v1/_resources/resource_feedback.py; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check out canonical guardrails
+        if: steps.phase.outputs.active == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: nicolasmelo1/logion-workspace
+          token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          path: logion-workspace
+      - name: Select matching guardrail branch when present
+        if: steps.phase.outputs.active == 'true'
+        working-directory: logion-workspace
+        env:
+          CANDIDATE_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if git ls-remote --exit-code origin "refs/heads/$CANDIDATE_REF"; then
+            git fetch --depth 1 origin "$CANDIDATE_REF"
+            git checkout --detach FETCH_HEAD
+          else
+            echo "No matching guardrail branch; auditing with workspace main."
+          fi
+      - name: Check out matching backend candidate
+        if: steps.phase.outputs.active == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: nicolasmelo1/logion-private
+          token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          path: logion-private
+      - name: Select matching backend branch when present
+        if: steps.phase.outputs.active == 'true'
+        working-directory: logion-private
+        env:
+          CANDIDATE_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if git ls-remote --exit-code origin "refs/heads/$CANDIDATE_REF"; then
+            git fetch --depth 1 origin "$CANDIDATE_REF"
+            git checkout --detach FETCH_HEAD
+          else
+            echo "No matching backend branch; auditing against backend main."
+          fi
+      - name: Set up uv
+        if: steps.phase.outputs.active == 'true'
+        uses: astral-sh/setup-uv@v5
+      - name: Bootstrap candidate environments and canonical auditor
+        if: steps.phase.outputs.active == 'true'
+        run: make -C logion-workspace bootstrap
+      - name: Reject contract drift and reward-hacked completion
+        if: steps.phase.outputs.active == 'true'
+        env:
+          PUBLIC_REPO: ${{ github.workspace }}/logion
+          PRIVATE_REPO: ${{ github.workspace }}/logion-private
+        run: |
+          audit=logion-workspace/packages/contract-audit/.venv/bin/contract-audit
+          out="$RUNNER_TEMP/contract-audit"
+          "$audit" check --mode fast --strict --out "$out" || {
+            cat "$out/report.md"
+            exit 1
+          }
+
   lint-test-security:
     name: Lint, Test, Security
     runs-on: ubuntu-latest

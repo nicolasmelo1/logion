@@ -17,6 +17,7 @@ def catalog_matches(
     resource_type = {
         "skills": "agent_skill",
         "plugins": "agent_plugin",
+        "dsh": "agent_plugin",
         "hf": "model",
     }.get(str(item.get("manager") or ""))
     if not source or resource_type is None:
@@ -107,6 +108,7 @@ def _resource_version_matches(
             continue
         matches.append({
             "resource_id": str(resource_id),
+            "resource_type": str(resource.get("resource_type") or ""),
             "version_id": str(
                 version.get("id") or version.get("version_id") or ""
             ),

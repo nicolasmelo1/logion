@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -189,6 +190,94 @@ class TestReconcileCommand:
         payload = json.loads(capsys.readouterr().out)
         assert payload["kind"] == "logion.resources.reconcile"
         assert payload["data"]["matched"][0]["channel"] == "logion_bundle"
+
+    def test_unique_native_match_records_reconcile_origin(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from cli.commands.resources._reconcile_receipt import (
+            _save_reconciled_receipt,
+        )
+
+        home = tmp_path / "home"
+        root = tmp_path / "repo"
+        target = root / ".dsh/profiles/vendor/node_modules/@vendor/tool"
+        target.mkdir(parents=True)
+        monkeypatch.setenv("LOGION_HOME", str(home))
+
+        class Resources:
+            def acquisition_plan(self, **_kwargs: object) -> dict:
+                return {
+                    "resource_id": "resource-1",
+                    "version_id": "version-1",
+                    "distribution_id": "distribution-1",
+                    "content_digest": "a" * 64,
+                    "selected_channel": "dsh",
+                    "native": {
+                        "revision": "1.0.0",
+                        "tested_version": "0.1.0-rc.6",
+                        "upstream_locator": "npm:@vendor/tool",
+                    },
+                }
+
+        client = SimpleNamespace(v1=SimpleNamespace(resources=Resources()))
+        receipt = _save_reconciled_receipt(
+            client=client,
+            item={
+                "manager": "dsh",
+                "name": "@vendor/tool",
+                "path": str(target),
+                "source": "https://github.com/vendor/tool",
+                "revision": "b" * 40,
+                "version": "1.0.0",
+            },
+            candidate={
+                "resource_id": "resource-1",
+                "version_id": "version-1",
+                "resource_type": "agent_plugin",
+                "verification": "source_revision",
+            },
+            root=root,
+            scope="repo-root",
+            harness="dsh",
+        )
+
+        assert receipt is not None
+        assert receipt["receipt_origin"] == "resources_reconcile"
+        assert _receipts.load_receipts() == [receipt]
+
+    def test_reconcile_refuses_a_different_native_pin(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from cli.commands.resources._reconcile_receipt import (
+            _save_reconciled_receipt,
+        )
+
+        root = tmp_path / "repo"
+        target = root / ".agents/skills/tool"
+        target.mkdir(parents=True)
+        monkeypatch.setenv("LOGION_HOME", str(tmp_path / "home"))
+
+        class Resources:
+            def acquisition_plan(self, **_kwargs: object) -> dict:
+                return {
+                    "selected_channel": "npx_skills",
+                    "native": {"revision": "expected-pin"},
+                }
+
+        client = SimpleNamespace(v1=SimpleNamespace(resources=Resources()))
+        with pytest.raises(RuntimeError, match="catalog pin"):
+            _save_reconciled_receipt(
+                client=client,
+                item={
+                    "manager": "skills",
+                    "path": str(target),
+                    "revision": "different-pin",
+                },
+                candidate={"resource_id": "r", "version_id": "v"},
+                root=root,
+                scope="repo-root",
+                harness="codex",
+            )
 
 
 class _AcquireResources:

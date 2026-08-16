@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_proving_ground.assertions.base import AssertionContext
 from agent_proving_ground.assertions.db import (
     DbExactCreditLedgerAssertion,
@@ -62,6 +64,28 @@ async def test_logs_no_500s_reads_local_devrig_api_log(tmp_path) -> None:
 
     assert result.status == "passed"
     assert result.evidence["log_path"] == str(devrig / "api.log")
+
+
+async def test_logs_no_500s_prioritizes_role_keys_devrig(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    public_devrig = tmp_path / ".devrig"
+    public_devrig.mkdir()
+    (public_devrig / "prism.log").write_text(
+        'GET /health HTTP/1.1" 200 OK\n', encoding="utf-8"
+    )
+    workspace_devrig = tmp_path / "workspace" / ".devrig"
+    workspace_devrig.mkdir(parents=True)
+    role_keys = workspace_devrig / "pg-role-keys.json"
+    role_keys.write_text("{}", encoding="utf-8")
+    (workspace_devrig / "api.log").write_text(
+        'POST /v1/feedback HTTP/1.1" 500\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("LOGION_PROVING_GROUND_ROLE_KEYS_FILE", str(role_keys))
+
+    result = await LogsNo500sAssertion().evaluate(await _ctx(tmp_path), {})
+
+    assert result.status == "failed"
 
 
 async def test_logs_no_500s_fails_on_500(tmp_path) -> None:

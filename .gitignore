@@ -249,3 +249,4 @@ packages/cli/.artifacts/
 review-bundles/
 .logion/
 plugins/*/node_modules/
+.local/

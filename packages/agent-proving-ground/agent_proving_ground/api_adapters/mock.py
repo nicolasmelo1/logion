@@ -90,6 +90,41 @@ class MockResource(BaseModel):
     projections: list[dict[str, str]] = Field(default_factory=list)
 
 
+class MockResourceFeedback(BaseModel):
+    id: str
+    resource_id: str
+    version_id: str
+    reporter_agent_id: str
+    rating: int = 0
+    acquisition_channel: str = "npx_skills"
+    installation_id: str = ""
+    body: str = ""
+    task_class: str = ""
+    completed_task: bool = True
+    projection_disposition: str = "not_a_course"
+    course_review_id: str | None = None
+
+
+class MockUsageObservation(BaseModel):
+    observation_id: str
+    agent_id: str
+    resource_id: str
+    version_id: str
+    channel: str = "npx_skills"
+    scope_id: str = ""
+    repository: str = ""
+    event: str = "resource_invoked"
+    raw_payload: str = ""
+
+
+class MockPendingUsage(BaseModel):
+    pending_id: str
+    agent_id: str
+    resource_id: str
+    version_id: str
+    repository: str = ""
+
+
 class MockWorldState(BaseModel):
     users: dict[str, MockUser] = Field(default_factory=dict)
     agents: dict[str, MockAgent] = Field(default_factory=dict)
@@ -107,6 +142,11 @@ class MockWorldState(BaseModel):
     )
     resources: dict[str, MockResource] = Field(default_factory=dict)
     backfill_runs: list[dict[str, int]] = Field(default_factory=list)
+    resource_feedback: list[MockResourceFeedback] = Field(default_factory=list)
+    usage_observations: list[MockUsageObservation] = Field(
+        default_factory=list
+    )
+    pending_usage: list[MockPendingUsage] = Field(default_factory=list)
 
 
 class MockApiAdapter(ApiAdapter):
@@ -579,6 +619,112 @@ class MockApiAdapter(ApiAdapter):
                 }
             case "observation_envelope_no_raw_data":
                 return {"clean": True}
+            case "native_use_observed":
+                agent = query.get("agent")
+                repo = query.get("repository", "")
+                for obs in self._state.usage_observations:
+                    if obs.agent_id == f"agent_{agent}" and (
+                        not repo or obs.repository == repo
+                    ):
+                        return {
+                            "observed": True,
+                            "resource_id": obs.resource_id,
+                            "version_id": obs.version_id,
+                            "channel": obs.channel,
+                            "scope_id": obs.scope_id,
+                        }
+                return {"observed": False}
+            case "feedback_pending":
+                agent = query.get("agent")
+                repo = query.get("repository", "")
+                pending = [
+                    p
+                    for p in self._state.pending_usage
+                    if p.agent_id == f"agent_{agent}"
+                    and (not repo or p.repository == repo)
+                ]
+                return {
+                    "has_pending": bool(pending),
+                    "pending_count": len(pending),
+                    "resource_ids": [p.resource_id for p in pending],
+                }
+            case "resource_feedback_exists":
+                reporter = query.get("reporter_agent")
+                for fb in self._state.resource_feedback:
+                    if fb.reporter_agent_id == f"agent_{reporter}":
+                        return {
+                            "found": True,
+                            "feedback_id": fb.id,
+                            "resource_id": fb.resource_id,
+                            "version_id": fb.version_id,
+                        }
+                return {"found": False}
+            case "feedback_linked_to_acquisition":
+                reporter = query.get("reporter_agent")
+                for fb in self._state.resource_feedback:
+                    if (
+                        fb.reporter_agent_id == f"agent_{reporter}"
+                        and fb.installation_id
+                    ):
+                        return {
+                            "linked": True,
+                            "feedback_id": fb.id,
+                            "acquisition_channel": fb.acquisition_channel,
+                            "installation_id": fb.installation_id,
+                        }
+                return {"linked": False}
+            case "course_review_projection_exists":
+                reporter = query.get("reporter_agent")
+                for fb in self._state.resource_feedback:
+                    if (
+                        fb.reporter_agent_id == f"agent_{reporter}"
+                        and fb.course_review_id is not None
+                    ):
+                        return {
+                            "found": True,
+                            "feedback_id": fb.id,
+                            "projection_disposition": fb.projection_disposition,  # noqa: E501
+                            "course_review_id": fb.course_review_id,
+                        }
+                return {
+                    "found": False,
+                    "unsupported": True,
+                    "reason": (
+                        "no course projection exists for this "
+                        "feedback in the mock adapter"
+                    ),
+                }
+            case "raw_observation_not_uploaded":
+                agent = query.get("agent")
+                checked = [
+                    obs
+                    for obs in self._state.usage_observations
+                    if obs.agent_id == f"agent_{agent}"
+                ]
+                has_raw = any(obs.raw_payload for obs in checked)
+                return {
+                    "clean": not has_raw,
+                    "observation_count": len(checked),
+                    "checked_fields": ["raw_payload"],
+                }
+            case "feedback_submission_idempotent":
+                reporter = query.get("reporter_agent")
+                fbs = [
+                    fb
+                    for fb in self._state.resource_feedback
+                    if fb.reporter_agent_id == f"agent_{reporter}"
+                ]
+                if len(fbs) < 2:
+                    return {
+                        "idempotent": True,
+                        "first_feedback_id": fbs[0].id if fbs else "",
+                        "second_feedback_id": "",
+                    }
+                return {
+                    "idempotent": fbs[0].id == fbs[1].id,
+                    "first_feedback_id": fbs[0].id,
+                    "second_feedback_id": fbs[1].id,
+                }
             case _:
                 return {"error": "unknown query type"}
 
@@ -742,6 +888,83 @@ class MockApiAdapter(ApiAdapter):
                     continue
                 sub.status = "accepted"
                 break
+        elif operation == "create_observation":
+            self._state.usage_observations.append(
+                MockUsageObservation(
+                    observation_id=self._next_observation_id(),
+                    agent_id=f"agent_{agent_id}",
+                    resource_id=kwargs.get("resource_id", "r1"),
+                    version_id=kwargs.get("version_id", "v1"),
+                    channel=kwargs.get("channel", "npx_skills"),
+                    scope_id=kwargs.get("scope_id", "scope_repo"),
+                    repository=kwargs.get("repository", ""),
+                    event=kwargs.get("event", "resource_invoked"),
+                )
+            )
+        elif operation == "create_pending_usage":
+            self._state.pending_usage.append(
+                MockPendingUsage(
+                    pending_id=self._next_pending_id(),
+                    agent_id=f"agent_{agent_id}",
+                    resource_id=kwargs.get("resource_id", "r1"),
+                    version_id=kwargs.get("version_id", "v1"),
+                    repository=kwargs.get("repository", ""),
+                )
+            )
+        elif operation == "create_resource_feedback":
+            existing = [
+                fb
+                for fb in self._state.resource_feedback
+                if fb.reporter_agent_id == f"agent_{agent_id}"
+                and fb.resource_id == kwargs.get("resource_id", "r1")
+                and fb.version_id == kwargs.get("version_id", "v1")
+                and fb.task_class == kwargs.get("task_class", "")
+            ]
+            if existing:
+                # Idempotent: return existing
+                return
+            self._state.resource_feedback.append(
+                MockResourceFeedback(
+                    id=self._next_feedback_id(),
+                    resource_id=kwargs.get("resource_id", "r1"),
+                    version_id=kwargs.get("version_id", "v1"),
+                    reporter_agent_id=f"agent_{agent_id}",
+                    rating=kwargs.get("rating", 4),
+                    acquisition_channel=kwargs.get(
+                        "acquisition_channel", "npx_skills"
+                    ),
+                    installation_id=kwargs.get("installation_id", "i1"),
+                    body=kwargs.get("body", ""),
+                    task_class=kwargs.get(
+                        "task_class", "software-development"
+                    ),
+                    completed_task=kwargs.get("completed_task", True),
+                    projection_disposition=kwargs.get(
+                        "projection_disposition", "not_a_course"
+                    ),
+                    course_review_id=kwargs.get("course_review_id"),
+                )
+            )
+        elif operation == "project_feedback_to_course_review":
+            for fb in self._state.resource_feedback:
+                if (
+                    fb.reporter_agent_id == f"agent_{agent_id}"
+                    and fb.course_review_id is None
+                ):
+                    fb.course_review_id = kwargs.get(
+                        "course_review_id", "review_1"
+                    )
+                    fb.projection_disposition = "projected"
+                    break
+
+    def _next_feedback_id(self) -> str:
+        return f"feedback_{len(self._state.resource_feedback)}"
+
+    def _next_observation_id(self) -> str:
+        return f"obs_{len(self._state.usage_observations)}"
+
+    def _next_pending_id(self) -> str:
+        return f"pending_{len(self._state.pending_usage)}"
 
     async def stop(self) -> None:
         pass

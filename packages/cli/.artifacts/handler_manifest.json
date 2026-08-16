@@ -253,6 +253,15 @@
         "get_credit_top_up"
       ]
     },
+    "feedback list": {
+      "operations": []
+    },
+    "feedback submit": {
+      "operations": []
+    },
+    "feedback summary": {
+      "operations": []
+    },
     "health": {
       "operations": [
         "health_health_get"

@@ -220,3 +220,10 @@ commands:
     operations: [get_course]
   skills search:
     operations: [search_listings]
+
+  feedback submit:
+    operations: []
+  feedback list:
+    operations: []
+  feedback summary:
+    operations: []

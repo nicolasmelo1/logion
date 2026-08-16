@@ -446,3 +446,133 @@ class ObservationEnvelopeNoRawDataAssertion(_ApiQueryAssertion):
     evidence_keys = ()
     pass_message = "observation envelope contains no raw task data"
     fail_message = "observation envelope leaked raw task data"
+
+
+class NativeUseObservedAssertion(_ApiQueryAssertion):
+    type = "files.native_use_observed"
+    query_type = "native_use_observed"
+    found_key = "observed"
+    evidence_keys = ("resource_id", "version_id", "channel", "scope_id")
+    pass_message = "native use was observed for the installed resource"
+    fail_message = "no native use observation found for the installed resource"
+
+
+class FeedbackPendingAssertion(_ApiQueryAssertion):
+    type = "files.feedback_pending"
+    query_type = "feedback_pending"
+    found_key = "has_pending"
+    evidence_keys = ("pending_count", "resource_ids")
+    pass_message = "pending usage records exist for the agent"
+    fail_message = "no pending usage records found for the agent"
+
+
+class ResourceFeedbackExistsAssertion(_ApiQueryAssertion):
+    type = "api.resource_feedback_exists"
+    query_type = "resource_feedback_exists"
+    found_key = "found"
+    evidence_keys = ("feedback_id", "resource_id", "version_id")
+    pass_message = "resource feedback exists"
+    fail_message = "no matching resource feedback found"
+
+
+class FeedbackLinkedToAcquisitionAssertion(_ApiQueryAssertion):
+    type = "api.feedback_linked_to_acquisition"
+    query_type = "feedback_linked_to_acquisition"
+    found_key = "linked"
+    evidence_keys = ("feedback_id", "acquisition_channel", "installation_id")
+    pass_message = "feedback is linked to an acquisition record"
+    fail_message = "feedback is not linked to an acquisition record"
+
+
+class CourseReviewProjectionExistsAssertion(_ApiQueryAssertion):
+    type = "api.course_review_projection_exists"
+    query_type = "course_review_projection_exists"
+    found_key = "found"
+    evidence_keys = (
+        "feedback_id",
+        "projection_disposition",
+        "course_review_id",
+    )
+    pass_message = "course review projection exists for the feedback"
+    fail_message = "no course review projection found for the feedback"
+
+
+class RawObservationNotUploadedAssertion(_ApiQueryAssertion):
+    type = "api.raw_observation_not_uploaded"
+    query_type = "raw_observation_not_uploaded"
+    found_key = "clean"
+    evidence_keys = ("observation_count", "checked_fields")
+    pass_message = "no raw observation data was uploaded"
+    fail_message = "raw observation data was detected in uploaded records"
+
+
+class FeedbackSubmissionIdempotentAssertion(_ApiQueryAssertion):
+    type = "api.feedback_submission_idempotent"
+    query_type = "feedback_submission_idempotent"
+    found_key = "idempotent"
+    evidence_keys = ("first_feedback_id", "second_feedback_id")
+    pass_message = "feedback submission is idempotent"
+    fail_message = "feedback submission created duplicate records"
+
+
+class RemoteMcpReconciledAssertion(_ApiQueryAssertion):
+    type = "files.remote_mcp_reconciled"
+    query_type = "remote_mcp_reconciled"
+    found_key = "reconciled"
+    evidence_keys = ("resource_id", "installation_id", "channel")
+    pass_message = "pre-existing remote MCP connector was reconciled"
+    fail_message = "remote MCP connector was not reconciled"
+
+
+class VendorInstallUnchangedAssertion(_ApiQueryAssertion):
+    type = "files.vendor_install_unchanged"
+    query_type = "vendor_install_unchanged"
+    found_key = "unchanged"
+    evidence_keys = ("before", "after")
+    pass_message = "vendor installation remained unchanged"
+    fail_message = "vendor installation was rewritten"
+
+
+class NoMcpProxyInstalledAssertion(_ApiQueryAssertion):
+    type = "files.no_mcp_proxy_installed"
+    query_type = "no_mcp_proxy_installed"
+    found_key = "absent"
+    evidence_keys = ("paths",)
+    pass_message = "no MCP proxy was installed"
+    fail_message = "an MCP proxy was installed"
+
+
+class RemoteMcpUseAttributedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_use_attributed"
+    query_type = "remote_mcp_use_attributed"
+    found_key = "attributed"
+    evidence_keys = ("resource_id", "version_id", "channel")
+    pass_message = "remote MCP use was attributed to the vendor resource"
+    fail_message = "remote MCP use was not attributed"
+
+
+class OriginalPublisherPreservedAssertion(_ApiQueryAssertion):
+    type = "api.original_publisher_preserved"
+    query_type = "original_publisher_preserved"
+    found_key = "preserved"
+    evidence_keys = ("publisher",)
+    pass_message = "original vendor publisher was preserved"
+    fail_message = "original vendor publisher was replaced"
+
+
+class RemoteMcpFeedbackLinkedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_feedback_linked"
+    query_type = "remote_mcp_feedback_linked"
+    found_key = "linked"
+    evidence_keys = ("feedback_id", "acquisition_channel")
+    pass_message = "remote MCP feedback is linked to native acquisition"
+    fail_message = "remote MCP feedback is not linked"
+
+
+class RemoteMcpPrivatePayloadNotRecordedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_private_payload_not_recorded"
+    query_type = "remote_mcp_private_payload_not_recorded"
+    found_key = "clean"
+    evidence_keys = ("checked_fields",)
+    pass_message = "remote MCP private payload was not recorded"
+    fail_message = "remote MCP private payload leaked into evidence"

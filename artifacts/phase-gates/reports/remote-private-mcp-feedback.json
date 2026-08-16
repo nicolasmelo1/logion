@@ -1,0 +1,272 @@
+{
+  "run_id": "20260816T143615-remote_private_mcp_feedback",
+  "scenario": "remote_private_mcp_feedback",
+  "status": "passed",
+  "api_adapter": "local-devrig",
+  "agent_drivers": {
+    "operator": "codex"
+  },
+  "started_at": "2026-08-16T14:36:15.708051Z",
+  "finished_at": "2026-08-16T14:42:58.435275Z",
+  "phase_results": [
+    {
+      "phase_id": "setup",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-16T14:36:15.826499Z",
+      "finished_at": "2026-08-16T14:36:15.889618Z",
+      "duration_seconds": 0.063
+    },
+    {
+      "phase_id": "seed",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-16T14:36:15.889637Z",
+      "finished_at": "2026-08-16T14:36:16.190205Z",
+      "duration_seconds": 0.301
+    },
+    {
+      "phase_id": "reconcile_and_use_vendor_connector",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.remote_mcp_reconciled",
+          "status": "passed",
+          "message": "pre-existing remote MCP connector was reconciled",
+          "evidence": {
+            "query_evidence": {
+              "source": "artifacts/phase-gates/runs/remote-private-mcp-feedback/agents/operator/operator/vendor-repo/evidence/reconcile.json"
+            }
+          }
+        },
+        {
+          "type": "files.no_mcp_proxy_installed",
+          "status": "passed",
+          "message": "no MCP proxy was installed",
+          "evidence": {
+            "paths": []
+          }
+        },
+        {
+          "type": "api.original_publisher_preserved",
+          "status": "passed",
+          "message": "original vendor publisher was preserved",
+          "evidence": {
+            "publisher": "acme-vendor"
+          }
+        }
+      ],
+      "started_at": "2026-08-16T14:36:16.190266Z",
+      "finished_at": "2026-08-16T14:38:50.125427Z",
+      "duration_seconds": 153.949
+    },
+    {
+      "phase_id": "inspect_remote_usage",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "api.remote_mcp_use_attributed",
+          "status": "passed",
+          "message": "remote MCP use was attributed to the vendor resource",
+          "evidence": {
+            "resource_id": "50c1d225-997c-4d9d-a050-c41a96102c3b",
+            "version_id": "aec36dae-e9ba-47c6-84d3-8ae5ae8cf574",
+            "channel": "dsh"
+          }
+        }
+      ],
+      "started_at": "2026-08-16T14:38:50.125506Z",
+      "finished_at": "2026-08-16T14:39:46.480257Z",
+      "duration_seconds": 56.355
+    },
+    {
+      "phase_id": "submit_private_connector_feedback",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "api.remote_mcp_feedback_linked",
+          "status": "passed",
+          "message": "remote MCP feedback is linked to native acquisition",
+          "evidence": {
+            "feedback_id": "224fd621-73cc-42e5-b1c3-33e79e8633bb",
+            "acquisition_channel": "dsh"
+          }
+        },
+        {
+          "type": "api.remote_mcp_private_payload_not_recorded",
+          "status": "passed",
+          "message": "remote MCP private payload was not recorded",
+          "evidence": {
+            "checked_fields": [
+              "acquisition_channel",
+              "completed_task",
+              "course_review_id",
+              "created_at",
+              "id",
+              "projection_disposition",
+              "rating",
+              "resource_id",
+              "resource_version_id",
+              "source_receipt_id",
+              "task_class"
+            ]
+          }
+        }
+      ],
+      "started_at": "2026-08-16T14:39:46.480300Z",
+      "finished_at": "2026-08-16T14:42:58.396265Z",
+      "duration_seconds": 191.918
+    },
+    {
+      "phase_id": "snapshot_vendor_install",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.vendor_install_unchanged",
+          "status": "passed",
+          "message": "vendor installation remained unchanged",
+          "evidence": {
+            "before": {
+              "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+              "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+              "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+            },
+            "after": {
+              "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+              "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+              "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-16T14:42:58.396293Z",
+      "finished_at": "2026-08-16T14:42:58.430116Z",
+      "duration_seconds": 0.034
+    }
+  ],
+  "assertion_results": [
+    {
+      "type": "files.remote_mcp_reconciled",
+      "status": "passed",
+      "message": "pre-existing remote MCP connector was reconciled",
+      "evidence": {
+        "query_evidence": {
+          "source": "artifacts/phase-gates/runs/remote-private-mcp-feedback/agents/operator/operator/vendor-repo/evidence/reconcile.json"
+        }
+      }
+    },
+    {
+      "type": "files.no_mcp_proxy_installed",
+      "status": "passed",
+      "message": "no MCP proxy was installed",
+      "evidence": {
+        "paths": []
+      }
+    },
+    {
+      "type": "api.original_publisher_preserved",
+      "status": "passed",
+      "message": "original vendor publisher was preserved",
+      "evidence": {
+        "publisher": "acme-vendor"
+      }
+    },
+    {
+      "type": "api.remote_mcp_use_attributed",
+      "status": "passed",
+      "message": "remote MCP use was attributed to the vendor resource",
+      "evidence": {
+        "resource_id": "50c1d225-997c-4d9d-a050-c41a96102c3b",
+        "version_id": "aec36dae-e9ba-47c6-84d3-8ae5ae8cf574",
+        "channel": "dsh"
+      }
+    },
+    {
+      "type": "api.remote_mcp_feedback_linked",
+      "status": "passed",
+      "message": "remote MCP feedback is linked to native acquisition",
+      "evidence": {
+        "feedback_id": "224fd621-73cc-42e5-b1c3-33e79e8633bb",
+        "acquisition_channel": "dsh"
+      }
+    },
+    {
+      "type": "api.remote_mcp_private_payload_not_recorded",
+      "status": "passed",
+      "message": "remote MCP private payload was not recorded",
+      "evidence": {
+        "checked_fields": [
+          "acquisition_channel",
+          "completed_task",
+          "course_review_id",
+          "created_at",
+          "id",
+          "projection_disposition",
+          "rating",
+          "resource_id",
+          "resource_version_id",
+          "source_receipt_id",
+          "task_class"
+        ]
+      }
+    },
+    {
+      "type": "files.vendor_install_unchanged",
+      "status": "passed",
+      "message": "vendor installation remained unchanged",
+      "evidence": {
+        "before": {
+          "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+          "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+          "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+        },
+        "after": {
+          "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+          "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+          "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+        }
+      }
+    },
+    {
+      "type": "logs.no_500s",
+      "status": "passed",
+      "message": "API log contains no obvious 500 responses",
+      "evidence": {
+        "log_path": ".devrig/api.log"
+      }
+    },
+    {
+      "type": "timeline.no_unredacted_secret",
+      "status": "passed",
+      "message": "timeline contains no obvious unredacted secrets",
+      "evidence": {}
+    },
+    {
+      "type": "files.vendor_install_unchanged",
+      "status": "passed",
+      "message": "vendor installation remained unchanged",
+      "evidence": {
+        "before": {
+          "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+          "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+          "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+        },
+        "after": {
+          "node_modules/@acme-vendor/private-mcp-connector/invoke": "18aefbd47ff3b1ff7d1f3e22770324998a20406223122add656fce8e24e5703b",
+          "node_modules/@acme-vendor/private-mcp-connector/package.json": "a65b145bdadd1da48921140de6ef6a53772b4e290ffd40b69951c685ed7f2709",
+          "package.json": "aa69dfc79b966fc58eac465bd21a12fdfee31103e21bb3ba2bb4ec1813d08228"
+        }
+      }
+    },
+    {
+      "type": "files.no_mcp_proxy_installed",
+      "status": "passed",
+      "message": "no MCP proxy was installed",
+      "evidence": {
+        "paths": []
+      }
+    }
+  ],
+  "failure_message": null,
+  "artifact_root": "artifacts/phase-gates/runs/remote-private-mcp-feedback"
+}
