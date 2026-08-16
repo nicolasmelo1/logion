@@ -3,13 +3,19 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
-from cli._output import to_data
+from cli._lazy_import import LazyModule
+from cli._output import to_data, to_items
+
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 
 
 def catalog_matches(
-    client: Any, item: dict[str, object]
+    client: logion.LogionClient, item: dict[str, object]
 ) -> list[dict[str, object]]:
     """Resolve native source/revision against the paginated catalog."""
     source = str(item.get("source") or "")
@@ -33,16 +39,10 @@ def catalog_matches(
             )
         except Exception:
             return []
-        entries = (
-            payload if isinstance(payload, list) else payload.get("items", [])
-        )
-        for resource in entries:
-            if isinstance(resource, dict):
-                matches.extend(
-                    _resource_version_matches(
-                        client, resource, source, revision
-                    )
-                )
+        for resource in to_items(payload):
+            matches.extend(
+                _resource_version_matches(client, resource, source, revision)
+            )
         if isinstance(payload, list):
             break
         cursor_value = payload.get("next_cursor") or payload.get("nextCursor")
@@ -77,7 +77,7 @@ def normalize_locator(value: str) -> str:
 
 
 def _resource_version_matches(
-    client: Any,
+    client: logion.LogionClient,
     resource: dict[str, object],
     source: str,
     revision: str,
@@ -96,13 +96,8 @@ def _resource_version_matches(
         )
     except Exception:
         return []
-    versions = (
-        versions if isinstance(versions, list) else versions.get("items", [])
-    )
     matches: list[dict[str, object]] = []
-    for version in versions:
-        if not isinstance(version, dict):
-            continue
+    for version in to_items(versions):
         version_revision = str(version.get("source_revision") or "")
         if revision and version_revision and revision != version_revision:
             continue

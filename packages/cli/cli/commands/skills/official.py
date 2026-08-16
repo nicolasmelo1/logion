@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from cli._first_party import LOGION_MARKETPLACE_COMPANION_COURSE_ID
+from cli._json import JsonObject
 from cli._local_state import get_home, list_installed
 
 
@@ -23,7 +23,7 @@ class CompanionInstallStatus:
     needs_update: bool
     reason: str | None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonObject:
         return {
             "installed": self.installed,
             "course_id": self.course_id,
@@ -41,7 +41,7 @@ class OfficialCompanionService:
     def __init__(
         self,
         home: Path | None = None,
-        manifest_data: dict[str, Any] | None = None,
+        manifest_data: JsonObject | None = None,
     ) -> None:
         self._home = home or get_home()
         self._manifest = manifest_data
@@ -78,7 +78,7 @@ class OfficialCompanionService:
 
     def install_from_manifest(
         self,
-        manifest: dict[str, Any],
+        manifest: JsonObject,
     ) -> CompanionInstallStatus:
         """Install companion from a release manifest dict."""
         packages = manifest.get("packages", {})

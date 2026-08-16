@@ -17,14 +17,14 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any
 
 from cli import _local_state
+from cli._json import JsonObject, child
 
 RECEIPT_SCHEMA_VERSION = 1
 
 
-def _canonical_json_dumps(data: dict[str, Any]) -> bytes:
+def _canonical_json_dumps(data: JsonObject) -> bytes:
     """RFC 8785 (JCS) canonical serialization for receipt digests."""
     return json.dumps(
         data,
@@ -35,7 +35,7 @@ def _canonical_json_dumps(data: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
-def native_receipt_digest(native_evidence: dict[str, Any]) -> str:
+def native_receipt_digest(native_evidence: JsonObject) -> str:
     """Recompute the digest over canonical native evidence bytes.
 
     Fails closed on unserializable evidence rather than minting a receipt
@@ -45,7 +45,7 @@ def native_receipt_digest(native_evidence: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def aggregate_content_digest(components: list[dict[str, Any]]) -> str:
+def aggregate_content_digest(components: list[JsonObject]) -> str:
     """Recompute the hosted-bundle digest using the API canonical format."""
     content_hash_input = ""
     for component in components:
@@ -61,7 +61,7 @@ def aggregate_content_digest(components: list[dict[str, Any]]) -> str:
     return "sha256:" + digest
 
 
-def native_manager_tag(native_evidence: dict[str, Any]) -> str:
+def native_manager_tag(native_evidence: JsonObject) -> str:
     """Build the ``<manager_name>@<manager_version>`` identity string."""
     name = str(native_evidence.get("manager_name") or "")
     version = str(native_evidence.get("manager_version") or "")
@@ -99,7 +99,7 @@ def installation_id_for(scope_id: str, relative_target_path: str) -> str:
     return hmac.new(key, message, "sha256").hexdigest()
 
 
-def save_receipt(receipt: dict[str, Any]) -> Path:
+def save_receipt(receipt: JsonObject) -> Path:
     """Persist a receipt atomically under ``$LOGION_HOME/inventory/``."""
     _validate_receipt(receipt)
     installation_id = receipt["installation_id"]
@@ -122,12 +122,12 @@ def save_receipt(receipt: dict[str, Any]) -> Path:
     return path
 
 
-def load_receipts() -> list[dict[str, Any]]:
+def load_receipts() -> list[JsonObject]:
     """Load all local receipts, skipping unreadable/corrupt files."""
     root = _local_state.get_home() / "inventory"
     if not root.is_dir():
         return []
-    receipts: list[dict[str, Any]] = []
+    receipts: list[JsonObject] = []
     for path in sorted(root.glob("*.json")):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -140,7 +140,7 @@ def load_receipts() -> list[dict[str, Any]]:
 
 def find_receipt(
     *, scope_kind: str, scope_root: Path, relative_target_path: str
-) -> dict[str, Any] | None:
+) -> JsonObject | None:
     """Look up the receipt for one installation identity, if recorded."""
     installation_id = installation_id_for(
         scope_id_for_target(scope_kind, scope_root), relative_target_path
@@ -151,7 +151,7 @@ def find_receipt(
     return None
 
 
-def _validate_receipt(receipt: dict[str, Any]) -> None:
+def _validate_receipt(receipt: JsonObject) -> None:
     required = (
         "schema_version",
         "resource_id",
@@ -172,7 +172,7 @@ def _validate_receipt(receipt: dict[str, Any]) -> None:
     missing = [key for key in required if key not in receipt]
     if missing:
         raise ValueError(f"receipt missing keys: {missing}")
-    evidence = receipt.get("native_evidence")
+    evidence = child(receipt, "native_evidence")
     if evidence is not None:
         digest = native_receipt_digest(evidence)
         if receipt.get("native_receipt_digest") != digest:

@@ -9,8 +9,9 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._json import elements
 from cli._options import COMMON_PARSER
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_object
 from cli._utils import only_not_none
 
 from ._cmd_help import CMD_HELP
@@ -59,8 +60,8 @@ def handle_mine(args: argparse.Namespace) -> int:
             cursor=args.cursor,
         )
         result = client.v1.courses.mine(**kwargs)
-        data = to_data(result)
-        courses = data.get("courses", [])
+        data = to_object(result)
+        courses = elements(data, "courses")
         if config.json_output:
             emit_json(
                 "logion.courses.mine",

@@ -11,8 +11,8 @@ import datetime
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject
 from cli._local_state import (
     build_index,
     enrich_manifest,
@@ -32,7 +32,7 @@ def copy_and_finalize(
     dest: Path,
     course_id: str,
     version_id: str,
-    manifest_data: dict[str, Any],
+    manifest_data: JsonObject,
     home: Path,
 ) -> tuple[int, list[Path]]:
     """Copy files, write manifest+index+recall, and release the lock.

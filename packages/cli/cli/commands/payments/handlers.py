@@ -9,7 +9,7 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, print_err
-from cli._output import emit, emit_json, to_data
+from cli._output import emit, emit_json, to_data, to_object
 
 from ._orders_helpers import (
     order_to_payload,
@@ -113,7 +113,7 @@ def handle_cash_out(args: argparse.Namespace) -> int:
                 minimum_payout_cents=args.minimum_payout_cents,
                 dry_run=True,
             )
-            preview_data = to_data(preview)
+            preview_data = to_object(preview)
             actual = preview_data.get("gross_payout_cents")
             if actual != args.expected_gross_payout_cents:
                 print_err(

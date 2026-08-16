@@ -27,7 +27,6 @@ is identical to loading ``course/capabilities.yaml`` directly.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -35,11 +34,12 @@ from cli._course_capabilities import (
     CapabilityManifestError,
     normalize_capability_manifest,
 )
+from cli._json import JsonObject
 
 
 def extract_logion_capabilities_from_skill(
     skill_path: Path,
-) -> dict[str, Any] | None:
+) -> JsonObject | None:
     """Return a normalised capability manifest from SKILL.md frontmatter.
 
     Returns ``None`` when the file has no ``metadata.logion`` section.
@@ -66,7 +66,7 @@ def extract_logion_capabilities_from_skill(
     return normalize_capability_manifest(manifest)
 
 
-def _read_frontmatter(skill_path: Path) -> dict[str, Any] | None:
+def _read_frontmatter(skill_path: Path) -> JsonObject | None:
     """Parse the YAML frontmatter block from *skill_path*.
 
     Returns ``None`` if the file is missing or has no frontmatter block.
@@ -104,8 +104,8 @@ def _read_frontmatter(skill_path: Path) -> dict[str, Any] | None:
 
 
 def _extract_logion_mapping(
-    frontmatter: dict[str, Any],
-) -> Any | None:
+    frontmatter: JsonObject,
+) -> JsonObject | None:
     """Pull the Logion capability manifest from parsed frontmatter.
 
     Accepts ``metadata.logion`` (direct manifest) or

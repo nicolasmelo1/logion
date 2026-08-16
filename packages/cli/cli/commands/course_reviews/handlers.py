@@ -11,6 +11,7 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
+from cli._json import child, elements, opt_str
 from cli._output import emit
 from cli._utils import only_not_none
 from cli.commands.course_reviews._render import (
@@ -142,7 +143,7 @@ def _to_data(value: object) -> dict:
 def _render_list(result: object) -> None:
     """Render queue list with human-readable capability summary."""
     data = _to_data(result)
-    items = data.get("items", [])
+    items = elements(data, "items")
     if not items:
         sys.stdout.write("No reviews in the queue.\n")
         return
@@ -174,15 +175,15 @@ def _render_get(result: object) -> None:
     ]
     append_review_capability_evidence_lines(lines, data)
 
-    findings_by_layer = data.get("findings_by_layer", {})
+    findings_by_layer = child(data, "findings_by_layer")
     if findings_by_layer:
         lines.append("findings:")
         for layer, findings in findings_by_layer.items():
             lines.append(f"  {layer}:")
             for f in findings:
-                severity = f.get("severity", "unknown")
-                rule_id = f.get("rule_id", "unknown")
-                desc = f.get("description", "")
+                severity = opt_str(f, "severity", "unknown")
+                rule_id = opt_str(f, "rule_id", "unknown")
+                desc = opt_str(f, "description", "")
                 pass_marker = " [PASS]" if f.get("is_pass") else ""
                 lines.append(f"    - {severity}: {rule_id}{pass_marker}")
                 if desc:

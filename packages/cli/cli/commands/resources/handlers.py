@@ -9,6 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
+from cli._json import elements, opt_str
 from cli._output import emit_json, to_data
 
 from ._acquire_handler import handle_resources_acquire
@@ -85,7 +86,7 @@ def handle_resources_search(args: argparse.Namespace) -> int:
             items = (
                 payload
                 if isinstance(payload, list)
-                else payload.get("items", [])
+                else elements(payload, "items")
             )
             if not items:
                 sys.stdout.write("No resources found.\n")
@@ -94,9 +95,9 @@ def handle_resources_search(args: argparse.Namespace) -> int:
                     idata = (
                         to_data(item) if not isinstance(item, dict) else item
                     )
-                    rid = idata.get("id", "?")
-                    rtype = idata.get("resource_type", "?")
-                    title = idata.get("title", "")
+                    rid = opt_str(idata, "id", "?")
+                    rtype = opt_str(idata, "resource_type", "?")
+                    title = opt_str(idata, "title", "")
                     line = f"  {rid} [{rtype}]"
                     if title:
                         line += f" — {title}"
@@ -155,7 +156,7 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
             items = (
                 payload
                 if isinstance(payload, list)
-                else payload.get("items", [])
+                else elements(payload, "items")
             )
             if not items:
                 sys.stdout.write("No versions found.\n")
@@ -164,8 +165,8 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
                     idata = (
                         to_data(item) if not isinstance(item, dict) else item
                     )
-                    vid = idata.get("id", "?")
-                    discovered = idata.get("discovered_at", "")
+                    vid = opt_str(idata, "id", "?")
+                    discovered = opt_str(idata, "discovered_at", "")
                     line = f"  {vid}"
                     if discovered:
                         line += f" ({discovered})"

@@ -79,12 +79,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# The canonical JSON-boundary module and its synced copies. UP040 wants
-# the PEP 695 `type` keyword, which is 3.12+; logion-bot, logion-indexer
-# and logion-skillmap are published with a >=3.11 floor, so the aliases
-# stay on `TypeAlias`. Bumping those floors is a breaking change for
-# downstreams, not a lint fix.
-"**/_json.py" = ["UP040"]
 "scripts/release_manifest.py" = ["T201"]
 # Release automation scripts: console output is the primary UI.
 "scripts/release_orchestrator.py" = ["T201"]

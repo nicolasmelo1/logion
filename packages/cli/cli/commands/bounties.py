@@ -17,7 +17,7 @@ from cli._errors import (
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
-from cli._output import emit, emit_json, to_data
+from cli._output import emit, emit_json, to_data, to_object
 from cli._utils import only_not_none
 from cli.commands import workspace as _workspace
 
@@ -317,7 +317,7 @@ def handle_create(args: argparse.Namespace) -> int:
         kwargs["accepts_github_prs"] = args.accepts_github_prs
         result = client.v1.bounties.create(**kwargs)
         if not config.json_output:
-            data = to_data(result)
+            data = to_object(result)
             print(_bounty_github_pr_line(data))
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -341,7 +341,7 @@ def handle_update(args: argparse.Namespace) -> int:
             accepts_github_prs=args.accepts_github_prs,
         )
         if not config.json_output:
-            data = to_data(result)
+            data = to_object(result)
             print(_bounty_github_pr_line(data))
         emit(result, json_output=config.json_output)
     except Exception as exc:
@@ -396,7 +396,7 @@ def handle_get(args: argparse.Namespace) -> int:
             )
             emit_json("logion.bounties.get", data)
         else:
-            data = to_data(result)
+            data = to_object(result)
             print(_bounty_github_pr_line(data))
             emit(result, json_output=False)
     except Exception as exc:
@@ -473,10 +473,10 @@ def handle_submissions_create(args: argparse.Namespace) -> int:
         )
         result = client.v1.bounties.create_submission(**kwargs)
         if config.json_output:
-            data = to_data(result)
+            data = to_object(result)
             emit_json("logion.bounties.submissions.create", data)
         else:
-            data = to_data(result)
+            data = to_object(result)
             print(f"Submission created: {data.get('id')}")
             gh_block = data.get("github_pr")
             if isinstance(gh_block, dict):
@@ -646,7 +646,7 @@ def handle_submissions_open_pr(args: argparse.Namespace) -> int:
             bounty_id=args.bounty_id,
             submission_id=args.submission_id,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json("logion.bounties.submissions.open-pr", data)
         elif isinstance(data, dict) and data.get("fork_required"):

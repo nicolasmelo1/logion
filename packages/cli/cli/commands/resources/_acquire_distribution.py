@@ -10,11 +10,17 @@ execution does.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 from cli._harness.scopes import ScopeTarget
+from cli._json import JsonObject, child, elements
+from cli._lazy_import import LazyModule
 from cli._output import to_data
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 #: Channels Logion installs itself; every other channel delegates to the
 #: upstream package manager named in ``native.tool``.
 _LOGION_OWNED_CHANNELS = frozenset({"logion_bundle"})
@@ -23,8 +29,8 @@ _LOGION_OWNED_CHANNELS = frozenset({"logion_bundle"})
 def _target_plan(
     target: ScopeTarget,
     name: str,
-    distribution: dict[str, Any] | None,
-) -> dict[str, Any]:
+    distribution: JsonObject | None,
+) -> JsonObject:
     destination = target.target_path / name
     if not target.target_path.exists():
         state = "create-target"
@@ -47,8 +53,8 @@ def _target_plan(
 
 
 def _operation(
-    distribution: dict[str, Any] | None, destination: Path
-) -> dict[str, Any]:
+    distribution: JsonObject | None, destination: Path
+) -> JsonObject:
     """Describe the exact operation the executable path would perform."""
     if distribution is None:
         return {
@@ -58,7 +64,7 @@ def _operation(
             "ready": False,
         }
     channel = str(distribution.get("selected_channel") or "")
-    native = distribution.get("native") or {}
+    native = child(distribution, "native")
     if channel in _LOGION_OWNED_CHANNELS:
         return {
             "kind": "download",
@@ -73,7 +79,7 @@ def _operation(
         "tool": native.get("tool"),
         "tested_version": native.get("tested_version"),
         # argv is a display/execution array, never a shell string.
-        "argv": list(native.get("argv") or []),
+        "argv": list(elements(native, "argv")),
         "source": native.get("upstream_locator"),
         "revision": native.get("revision"),
         "destination": str(destination),
@@ -82,8 +88,8 @@ def _operation(
 
 
 def _distribution_plan(
-    distribution: dict[str, Any] | None, error: str | None
-) -> dict[str, Any]:
+    distribution: JsonObject | None, error: str | None
+) -> JsonObject:
     """Project the server plan into the local dry-run serialization.
 
     Only server-owned fields are copied. Local paths, scope ids, and
@@ -93,25 +99,25 @@ def _distribution_plan(
     """
     if distribution is None:
         return {"resolved": False, "reason": error or "not resolved"}
-    native = distribution.get("native") or {}
-    expected = distribution.get("expected") or {}
+    native = child(distribution, "native")
+    expected = child(distribution, "expected")
     return {
         "resolved": True,
         "distribution_id": distribution.get("distribution_id"),
         "channel": distribution.get("selected_channel"),
-        "alternatives": list(distribution.get("alternatives") or []),
+        "alternatives": list(elements(distribution, "alternatives")),
         "content_digest": distribution.get("content_digest"),
-        "integrity": distribution.get("integrity") or {},
-        "license": distribution.get("license") or {},
-        "entitlement": distribution.get("entitlement") or {},
+        "integrity": child(distribution, "integrity"),
+        "license": child(distribution, "license"),
+        "entitlement": child(distribution, "entitlement"),
         "expected_bytes": expected.get("bytes"),
         "expected_files": expected.get("files"),
-        "permissions": distribution.get("permissions") or {},
-        "warnings": list(distribution.get("warnings") or []),
+        "permissions": child(distribution, "permissions"),
+        "warnings": list(elements(distribution, "warnings")),
         "native": {
             "tool": native.get("tool"),
             "tested_version": native.get("tested_version"),
-            "argv": list(native.get("argv") or []),
+            "argv": list(elements(native, "argv")),
             "upstream_locator": native.get("upstream_locator"),
             "revision": native.get("revision"),
         },
@@ -119,8 +125,8 @@ def _distribution_plan(
 
 
 def _verification(
-    version: dict[str, Any] | None, distribution: dict[str, Any] | None
-) -> dict[str, Any]:
+    version: JsonObject | None, distribution: JsonObject | None
+) -> JsonObject:
     if not version:
         return {"ready": False, "reason": "no resource version available"}
     digest = version.get("content_digest")
@@ -138,24 +144,24 @@ def _verification(
     }
 
 
-def _expected_verification(distribution: dict[str, Any] | None) -> str:
+def _expected_verification(distribution: JsonObject | None) -> str:
     """The verification level the executable path would be able to reach."""
     if distribution is None:
         return "unknown"
     channel = str(distribution.get("selected_channel") or "")
     if channel in _LOGION_OWNED_CHANNELS:
         return "exact" if distribution.get("content_digest") else "unverified"
-    revision = (distribution.get("native") or {}).get("revision")
+    revision = (child(distribution, "native")).get("revision")
     return "source_revision" if revision else "unverified"
 
 
 def fetch_distribution(
-    client: Any,
+    client: logion.LogionClient,
     *,
     resource_id: str,
-    versions: list[dict[str, Any]],
+    versions: list[JsonObject],
     channel: str,
-) -> tuple[dict[str, Any] | None, str | None]:
+) -> tuple[JsonObject | None, str | None]:
     """Fetch and validate the server-owned acquisition plan.
 
     Returns ``(None, reason)`` instead of raising so a dry-run can still

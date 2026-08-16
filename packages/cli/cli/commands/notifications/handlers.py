@@ -8,7 +8,8 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._output import emit, emit_json, to_data
+from cli._json import opt_int, opt_str
+from cli._output import emit, emit_json, to_data, to_object
 
 
 def _extract_count(raw: object) -> int:
@@ -26,7 +27,7 @@ def _extract_count(raw: object) -> int:
     if isinstance(raw, int):
         return raw
     if isinstance(raw, dict):
-        return _coerce(raw.get("unread_count", raw.get("count", 0)))
+        return _coerce(raw.get("unread_count", opt_int(raw, "count", 0)))
     return _coerce(getattr(raw, "unread_count", getattr(raw, "count", 0)))
 
 
@@ -94,7 +95,7 @@ def handle_peek(args: argparse.Namespace) -> int:
             unread_only=True,
             limit=5,
         )
-        items_data = to_data(items_raw)
+        items_data = to_object(items_raw)
         if isinstance(items_data, dict) and "items" in items_data:
             items = items_data["items"]
         elif isinstance(items_data, list):
@@ -109,8 +110,12 @@ def handle_peek(args: argparse.Namespace) -> int:
         else:
             print(f"You have {unread_count} unread notification(s):")
             for item in items:
-                title = item.get("title", "") if isinstance(item, dict) else ""
-                nid = item.get("id", "") if isinstance(item, dict) else ""
+                title = (
+                    opt_str(item, "title", "")
+                    if isinstance(item, dict)
+                    else ""
+                )
+                nid = opt_str(item, "id", "") if isinstance(item, dict) else ""
                 print(f"  {nid}: {title}")
     except Exception as exc:
         return handle_error(exc)

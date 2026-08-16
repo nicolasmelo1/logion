@@ -21,8 +21,8 @@ from __future__ import annotations
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject
 from cli._local_state import (
     _read_json_entries,
     _utc_iso_now,
@@ -38,7 +38,7 @@ def _copies_path(home: Path) -> Path:
     return home / AGENT_COPIES_FILE
 
 
-def read_agent_copies(home: Path) -> list[dict[str, Any]]:
+def read_agent_copies(home: Path) -> list[JsonObject]:
     """Return all recorded harness copies (empty on missing/bad file)."""
     return _read_json_entries(_copies_path(home))
 
@@ -99,7 +99,7 @@ def sync_agent_copies(
     next update retries.
     """
     entries = read_agent_copies(home)
-    kept: list[dict[str, Any]] = []
+    kept: list[JsonObject] = []
     synced: list[str] = []
     changed = False
     for entry in entries:

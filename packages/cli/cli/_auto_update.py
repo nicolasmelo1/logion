@@ -11,8 +11,8 @@ import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject, opt_int
 from cli._local_state import _atomic_write_text, get_home
 
 STATE_FILENAME = "auto_update.json"
@@ -40,7 +40,7 @@ def _parse_time(value: object) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def _read_state(home: Path | None = None) -> dict[str, Any]:
+def _read_state(home: Path | None = None) -> JsonObject:
     path = state_path(home)
     if not path.is_file():
         return {}
@@ -51,7 +51,7 @@ def _read_state(home: Path | None = None) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def _write_state(data: dict[str, Any], home: Path | None = None) -> None:
+def _write_state(data: JsonObject, home: Path | None = None) -> None:
     path = state_path(home)
     data["schema_version"] = 1
     _atomic_write_text(
@@ -62,7 +62,7 @@ def _write_state(data: dict[str, Any], home: Path | None = None) -> None:
         os.chmod(path, 0o600)
 
 
-def _try_write_state(data: dict[str, Any], home: Path | None = None) -> bool:
+def _try_write_state(data: JsonObject, home: Path | None = None) -> bool:
     """Best-effort state write for automatic update bookkeeping."""
     try:
         _write_state(data, home)
@@ -76,7 +76,7 @@ def is_enabled(home: Path | None = None) -> bool:
     return bool(_read_state(home).get("enabled", True))
 
 
-def set_enabled(enabled: bool, home: Path | None = None) -> dict[str, Any]:
+def set_enabled(enabled: bool, home: Path | None = None) -> JsonObject:
     """Persist the auto-update enabled flag."""
     data = _read_state(home)
     data["enabled"] = enabled
@@ -84,13 +84,15 @@ def set_enabled(enabled: bool, home: Path | None = None) -> dict[str, Any]:
     return data
 
 
-def status(home: Path | None = None) -> dict[str, Any]:
+def status(home: Path | None = None) -> JsonObject:
     """Return a stable auto-update status payload."""
     data = _read_state(home)
     return {
         "enabled": data.get("enabled", True),
-        "command_count": int(data.get("command_count", 0) or 0),
-        "commands_since_check": int(data.get("commands_since_check", 0) or 0),
+        "command_count": int(opt_int(data, "command_count", 0) or 0),
+        "commands_since_check": int(
+            opt_int(data, "commands_since_check", 0) or 0
+        ),
         "last_checked_at": data.get("last_checked_at"),
         "last_attempt_at": data.get("last_attempt_at"),
         "last_success_at": data.get("last_success_at"),
@@ -130,9 +132,9 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
 
     data = _read_state()
     data["enabled"] = bool(data.get("enabled", True))
-    data["command_count"] = int(data.get("command_count", 0) or 0) + 1
+    data["command_count"] = int(opt_int(data, "command_count", 0) or 0) + 1
     data["commands_since_check"] = (
-        int(data.get("commands_since_check", 0) or 0) + 1
+        int(opt_int(data, "commands_since_check", 0) or 0) + 1
     )
 
     if os.environ.get("LOGION_AUTO_UPDATE") == "0":
@@ -183,8 +185,8 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
     _try_write_state(data)
 
 
-def _is_due(data: dict[str, Any]) -> bool:
-    commands = int(data.get("commands_since_check", 0) or 0)
+def _is_due(data: JsonObject) -> bool:
+    commands = int(opt_int(data, "commands_since_check", 0) or 0)
     if commands >= DEFAULT_COMMAND_THRESHOLD:
         return True
     last_checked = _parse_time(data.get("last_checked_at"))

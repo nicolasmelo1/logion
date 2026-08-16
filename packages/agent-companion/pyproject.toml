@@ -91,9 +91,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
-# is shared with packages published on a >=3.11 floor.
-"**/_json.py" = ["UP040"]
 "scripts/package_skill.py" = ["T201", "C901"]
 "scripts/verify_bundle.py" = ["T201", "C901"]
 # Graders are a flat list of rule checks; nested-if / complexity rules

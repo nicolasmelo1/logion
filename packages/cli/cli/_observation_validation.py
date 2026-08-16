@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Any
 
 from cli._harness.scopes import VALID_SCOPES
+from cli._json import JsonObject
 
 ALLOWED_EVENTS = frozenset({"resource.use.completed"})
 ALLOWED_OUTCOMES = frozenset({"completed", "failed", "abandoned", "unknown"})
@@ -94,7 +94,7 @@ def validate_envelope_fields(
 
 
 def assert_allowed_payload_keys(
-    payload: dict[str, Any], allowed_field_names: frozenset[str]
+    payload: JsonObject, allowed_field_names: frozenset[str]
 ) -> None:
     for key in payload:
         forbidden_name = any(

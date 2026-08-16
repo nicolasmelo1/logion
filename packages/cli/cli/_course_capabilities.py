@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 import yaml
+
+from cli._json import JsonObject, JsonValue, child, elements
 
 CAPABILITY_MANIFEST_PATH = Path("course/capabilities.yaml")
 ALLOWED_TOOLS = {"browser", "terminal", "file", "web", "vision"}
@@ -46,7 +47,7 @@ class CapabilityManifestError(ValueError):
 
 def load_and_validate_capability_manifest(
     bundle_dir: Path,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Load and validate a capability manifest from *bundle_dir*.
 
     Returns the normalised manifest dictionary on success.
@@ -67,8 +68,8 @@ def load_and_validate_capability_manifest(
 
 
 def normalize_capability_manifest(
-    raw: dict[str, Any],
-) -> dict[str, Any]:
+    raw: JsonObject,
+) -> JsonObject:
     """Normalise and validate a raw parsed capability manifest."""
     unknown = set(raw) - {
         "version",
@@ -134,16 +135,16 @@ def normalize_capability_manifest(
 
 
 def summarize_capability_manifest(
-    manifest: dict[str, Any],
-) -> dict[str, Any]:
+    manifest: JsonObject,
+) -> JsonObject:
     """Return a human-oriented summary dict from a normalised manifest."""
-    tools = manifest.get("tools") or []
-    domains = manifest.get("network", {}).get("allow_domains") or []
-    fs = manifest.get("filesystem", {})
-    secrets = manifest.get("secrets", {})
-    runtime = manifest.get("runtime") or {}
-    requires = runtime.get("requires") or {}
-    install = runtime.get("install") or []
+    tools = elements(manifest, "tools")
+    domains = child(manifest, "network").get("allow_domains") or []
+    fs = child(manifest, "filesystem")
+    secrets = child(manifest, "secrets")
+    runtime = child(manifest, "runtime")
+    requires = child(runtime, "requires")
+    install = elements(runtime, "install")
     summary = {
         "tools": tools,
         "allows_shell": "terminal" in tools,
@@ -151,18 +152,18 @@ def summarize_capability_manifest(
             bool(domains) or "web" in tools or "browser" in tools
         ),
         "allowed_domains": domains,
-        "filesystem_read": fs.get("read") or [],
-        "filesystem_write": fs.get("write") or [],
-        "secrets_env": secrets.get("env") or [],
+        "filesystem_read": elements(fs, "read"),
+        "filesystem_write": elements(fs, "write"),
+        "secrets_env": elements(secrets, "env"),
         "human_approval_required": bool(
-            manifest.get("human_approval", {}).get("required", False)
+            child(manifest, "human_approval").get("required", False)
         ),
-        "runtime_requires_env": requires.get("env") or [],
-        "runtime_requires_bins": requires.get("bins") or [],
-        "runtime_requires_any_bins": requires.get("any_bins") or [],
-        "runtime_requires_config": requires.get("config") or [],
-        "runtime_requires_os": requires.get("os") or [],
-        "runtime_requires_software": requires.get("software") or [],
+        "runtime_requires_env": elements(requires, "env"),
+        "runtime_requires_bins": elements(requires, "bins"),
+        "runtime_requires_any_bins": elements(requires, "any_bins"),
+        "runtime_requires_config": elements(requires, "config"),
+        "runtime_requires_os": elements(requires, "os"),
+        "runtime_requires_software": elements(requires, "software"),
         "runtime_install": install,
     }
     summary["runtime_warning_codes"] = [
@@ -177,7 +178,7 @@ def summarize_capability_manifest(
 # ---------------------------------------------------------------------------
 
 
-def _mapping_or_empty(value: Any, field_name: str) -> dict[str, Any]:
+def _mapping_or_empty(value: JsonValue, field_name: str) -> JsonObject:
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -185,11 +186,11 @@ def _mapping_or_empty(value: Any, field_name: str) -> dict[str, Any]:
     return value
 
 
-def _default_list(value: Any) -> Any:
+def _default_list(value: JsonValue) -> JsonValue:
     return [] if value is None else value
 
 
-def _normalize_tools(tools: Any) -> list[str]:
+def _normalize_tools(tools: JsonValue) -> list[str]:
     if not isinstance(tools, list):
         raise CapabilityManifestError("tools must be a list")
     result: list[str] = []
@@ -202,7 +203,7 @@ def _normalize_tools(tools: Any) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_domains(domains: Any) -> list[str]:
+def _normalize_domains(domains: JsonValue) -> list[str]:
     if not isinstance(domains, list):
         raise CapabilityManifestError("allow_domains must be a list")
     result: list[str] = []
@@ -229,7 +230,7 @@ def _normalize_domains(domains: Any) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_paths(paths: Any) -> list[str]:
+def _normalize_paths(paths: JsonValue) -> list[str]:
     if not isinstance(paths, list):
         raise CapabilityManifestError("Filesystem paths must be a list")
     result: list[str] = []
@@ -245,7 +246,7 @@ def _normalize_paths(paths: Any) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_env(env_vars: Any) -> list[str]:
+def _normalize_env(env_vars: JsonValue) -> list[str]:
     if not isinstance(env_vars, list):
         raise CapabilityManifestError("env must be a list")
     result: list[str] = []
@@ -263,7 +264,7 @@ def _normalize_env(env_vars: Any) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _normalize_runtime(value: Any) -> dict[str, Any]:
+def _normalize_runtime(value: JsonValue) -> JsonObject:
     """Normalise the optional top-level ``runtime`` mapping.
 
     Defaults to an empty requires/install shape when absent.
@@ -282,7 +283,7 @@ def _normalize_runtime(value: Any) -> dict[str, Any]:
     return {"requires": requires, "install": install}
 
 
-def _empty_requires() -> dict[str, Any]:
+def _empty_requires() -> JsonObject:
     return {
         "env": [],
         "bins": [],
@@ -293,7 +294,7 @@ def _empty_requires() -> dict[str, Any]:
     }
 
 
-def _normalize_runtime_requires(value: Any) -> dict[str, Any]:
+def _normalize_runtime_requires(value: JsonValue) -> JsonObject:
     if value is None:
         return _empty_requires()
     if not isinstance(value, dict):
@@ -320,7 +321,7 @@ def _normalize_runtime_requires(value: Any) -> dict[str, Any]:
     }
 
 
-def _normalize_required_bins(value: Any) -> list[str]:
+def _normalize_required_bins(value: JsonValue) -> list[str]:
     if not isinstance(value, list):
         raise CapabilityManifestError("runtime.requires.bins must be a list")
     result: list[str] = []
@@ -338,7 +339,7 @@ def _normalize_required_bins(value: Any) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_any_bins(value: Any) -> list[list[str]]:
+def _normalize_any_bins(value: JsonValue) -> list[list[str]]:
     if not isinstance(value, list):
         raise CapabilityManifestError(
             "runtime.requires.any_bins must be a list"
@@ -366,7 +367,7 @@ def _normalize_any_bins(value: Any) -> list[list[str]]:
     return deduped
 
 
-def _normalize_os(value: Any) -> list[str]:
+def _normalize_os(value: JsonValue) -> list[str]:
     if not isinstance(value, list):
         raise CapabilityManifestError("runtime.requires.os must be a list")
     result: list[str] = []
@@ -382,12 +383,12 @@ def _normalize_os(value: Any) -> list[str]:
     return sorted(set(result))
 
 
-def _normalize_software(value: Any) -> list[dict[str, Any]]:
+def _normalize_software(value: JsonValue) -> list[JsonObject]:
     if not isinstance(value, list):
         raise CapabilityManifestError(
             "runtime.requires.software must be a list"
         )
-    result: list[dict[str, Any]] = []
+    result: list[JsonObject] = []
     for i, entry in enumerate(value):
         if not isinstance(entry, dict):
             raise CapabilityManifestError(
@@ -443,18 +444,18 @@ def _normalize_software(value: Any) -> list[dict[str, Any]]:
     return result
 
 
-def _normalize_install(value: Any) -> list[dict[str, Any]]:
+def _normalize_install(value: JsonValue) -> list[JsonObject]:
     if value is None:
         return []
     if not isinstance(value, list):
         raise CapabilityManifestError("runtime.install must be a list")
-    result: list[dict[str, Any]] = []
+    result: list[JsonObject] = []
     for i, entry in enumerate(value):
         result.append(_normalize_install_entry(entry, i))
     return result
 
 
-def _normalize_install_entry(entry: Any, i: int) -> dict[str, Any]:
+def _normalize_install_entry(entry: JsonValue, i: int) -> JsonObject:
     """Validate and normalise a single runtime.install entry."""
     if not isinstance(entry, dict):
         raise CapabilityManifestError(
@@ -511,7 +512,7 @@ def _normalize_install_entry(entry: Any, i: int) -> dict[str, Any]:
 
 
 def runtime_requirement_warnings(
-    manifest: dict[str, Any],
+    manifest: JsonObject,
 ) -> list[dict[str, str]]:
     """Derive cross-field warnings from a normalised manifest.
 
@@ -522,17 +523,17 @@ def runtime_requirement_warnings(
     ``network``/``human_approval`` declarations.
     """
     warnings: list[dict[str, str]] = []
-    runtime = manifest.get("runtime") or {}
-    requires = runtime.get("requires") or {}
-    install = runtime.get("install") or []
-    secrets_env = set(manifest.get("secrets", {}).get("env") or [])
-    tools = manifest.get("tools") or []
+    runtime = child(manifest, "runtime")
+    requires = child(runtime, "requires")
+    install = elements(runtime, "install")
+    secrets_env = set(child(manifest, "secrets").get("env") or [])
+    tools = elements(manifest, "tools")
     human_approval_required = bool(
-        manifest.get("human_approval", {}).get("required", False)
+        child(manifest, "human_approval").get("required", False)
     )
-    domains = manifest.get("network", {}).get("allow_domains") or []
+    domains = child(manifest, "network").get("allow_domains") or []
 
-    for env_name in requires.get("env") or []:
+    for env_name in elements(requires, "env"):
         if env_name not in secrets_env:
             warnings.append({
                 "code": "runtime_env_not_declared_as_secret",

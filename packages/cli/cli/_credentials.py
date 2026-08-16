@@ -11,8 +11,8 @@ import contextlib
 import json
 import os
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject
 from cli._local_state import _atomic_write_text, get_home
 
 CREDENTIALS_FILENAME = "credentials.json"
@@ -25,7 +25,7 @@ def credentials_path(home: Path | None = None) -> Path:
     return (home or get_home()) / CREDENTIALS_FILENAME
 
 
-def read_credentials(home: Path | None = None) -> dict[str, Any]:
+def read_credentials(home: Path | None = None) -> JsonObject:
     """Read stored credentials; empty dict if absent or unreadable."""
     path = credentials_path(home)
     if not path.is_file():

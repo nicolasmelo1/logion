@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 from .models import DiscoveredResource, DiscoveredSkill
 from .transport import HttpResponse, Transport
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 BATCH_SIZE = 100
-PushableResource: TypeAlias = DiscoveredSkill | DiscoveredResource
+type PushableResource = DiscoveredSkill | DiscoveredResource
 
 
 @dataclass

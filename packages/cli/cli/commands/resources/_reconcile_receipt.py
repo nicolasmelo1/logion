@@ -4,11 +4,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 from cli import _receipts
+from cli._json import JsonObject, child
+from cli._lazy_import import LazyModule
 from cli._output import to_data
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 _RECONCILE_CHANNELS = {
     "skills": "npx_skills",
     "plugins": "npx_plugins",
@@ -19,13 +25,13 @@ _RECONCILE_CHANNELS = {
 
 def _save_reconciled_receipt(
     *,
-    client: Any,
-    item: dict[str, Any],
-    candidate: dict[str, Any],
+    client: logion.LogionClient,
+    item: JsonObject,
+    candidate: JsonObject,
     root: Path,
     scope: str,
     harness: str,
-) -> dict[str, Any] | None:
+) -> JsonObject | None:
     """Persist Logion inventory after an exact, unique native-state match."""
     channel = _RECONCILE_CHANNELS.get(str(item.get("manager") or ""))
     if channel is None or harness == "all":
@@ -69,10 +75,10 @@ def _save_reconciled_receipt(
         "canonical_source": str(item.get("source") or ""),
         "immutable_revision": observed_revision,
         "content_digest": str(plan.get("content_digest") or ""),
-        "declared_capabilities": item.get("declared_capabilities") or {},
+        "declared_capabilities": child(item, "declared_capabilities"),
     }
     reconciled_at = _receipts.now_rfc3339()
-    receipt: dict[str, Any] = {
+    receipt: JsonObject = {
         "schema_version": _receipts.RECEIPT_SCHEMA_VERSION,
         "resource_id": str(candidate["resource_id"]),
         "version_id": str(candidate["version_id"]),

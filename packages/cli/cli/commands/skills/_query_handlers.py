@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any
 
+from cli._json import JsonObject, opt_str
 from cli._local_state import (
     list_installed,
     verify_installed_content,
@@ -27,10 +27,10 @@ def handle_skills_installed(args: argparse.Namespace) -> int:
         return 0
     print(f"Installed capabilities ({len(installed)}):")
     for m in installed:
-        course_id = m.get("course_id", "?")
-        version_id = m.get("version_id", "?")
-        title = m.get("title", "")
-        status = m.get("review_status", "unknown")
+        course_id = opt_str(m, "course_id", "?")
+        version_id = opt_str(m, "version_id", "?")
+        title = opt_str(m, "title", "")
+        status = opt_str(m, "review_status", "unknown")
         line = f"  {course_id}/{version_id}"
         if title:
             line += f" — {title}"
@@ -49,22 +49,22 @@ def handle_skills_updates(args: argparse.Namespace) -> int:
     if not installed:
         print(f"No installed capabilities under {home / 'installed'}.")
         return 0
-    out: list[dict[str, Any]] = []
+    out: list[JsonObject] = []
     for m in installed:
-        course_id = m.get("course_id", "?")
-        version_id = m.get("version_id", "?")
+        course_id = opt_str(m, "course_id", "?")
+        version_id = opt_str(m, "version_id", "?")
         verification = verify_installed_content(course_id, version_id, home)
         out.append({
             "course_id": course_id,
             "version_id": version_id,
-            "title": m.get("title", ""),
-            "source": m.get("source", "manual"),
-            "entitlement_status": m.get("entitlement_status", "unknown"),
-            "license_scope": m.get("license_scope", "unknown"),
+            "title": opt_str(m, "title", ""),
+            "source": opt_str(m, "source", "manual"),
+            "entitlement_status": opt_str(m, "entitlement_status", "unknown"),
+            "license_scope": opt_str(m, "license_scope", "unknown"),
             "official_update_channel": m.get("official_update_channel", False),
             "last_verified_at": m.get("last_verified_at"),
             "manifest_path": m.get("manifest_path"),
-            "entrypoint": m.get("entrypoint", "SKILL.md"),
+            "entrypoint": opt_str(m, "entrypoint", "SKILL.md"),
             "ok": verification["ok"],
             "user_modified": verification["user_modified"],
         })

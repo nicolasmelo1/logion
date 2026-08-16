@@ -6,7 +6,8 @@ from __future__ import annotations
 import hashlib
 import shutil
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject, child, elements
 
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
@@ -15,10 +16,10 @@ class HfAdapter(ChannelAdapter):
     channel = "hf"
 
     def acquire(
-        self, *, plan: dict[str, Any], destination: Path, scope_root: Path
+        self, *, plan: JsonObject, destination: Path, scope_root: Path
     ) -> AcquisitionOutcome:
-        native = plan.get("native") or {}
-        argv = list(native.get("argv") or [])
+        native = child(plan, "native")
+        argv = list(elements(native, "argv"))
         if not argv or argv[:2] != ["hf", "download"]:
             raise RuntimeError(
                 "native_tool_unsupported: expected hf download argv"

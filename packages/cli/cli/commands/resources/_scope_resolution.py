@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any
 
 from cli._harness import get_adapter
 from cli._harness.base import HarnessAdapter
@@ -17,6 +16,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
+from cli._json import JsonObject
 
 
 def instantiate_adapter(
@@ -29,7 +29,7 @@ def instantiate_adapter(
         raise ValueError(f"unknown harness: {harness!r}")
     cls = type(adapter)
     parameters = inspect.signature(cls).parameters
-    kwargs: dict[str, Any] = {}
+    kwargs: JsonObject = {}
     if "cwd" in parameters:
         kwargs["cwd"] = cwd
     if repo_root is not None and "repo_root" in parameters:

@@ -8,11 +8,11 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import print_err, validate_uuid_id
+from cli._json import JsonObject, JsonValue, child, opt_int, opt_str
 from cli._output import emit_json
 
 from ._upload_bundle_validation import validate_bundle_files_for_upload
@@ -29,7 +29,7 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT_S = 60.0
 
 
-def _read_session(path: str) -> dict[str, Any] | None:
+def _read_session(path: str) -> JsonObject | None:
     """Load the upload-session JSON from *path* (``-`` for stdin)."""
     try:
         raw = (
@@ -58,7 +58,7 @@ def _read_session(path: str) -> dict[str, Any] | None:
 
 
 def _put_one(
-    upload: dict[str, Any],
+    upload: JsonObject,
     local_path: Path,
     max_retries: int,
     timeout: float,
@@ -72,7 +72,7 @@ def _put_one(
     import httpx
 
     url = upload.get("put_url")
-    headers = upload.get("required_headers") or {}
+    headers = child(upload, "required_headers")
     if not isinstance(url, str) or not url:
         return False, "missing put_url"
 
@@ -81,7 +81,7 @@ def _put_one(
         try:
             with local_path.open("rb") as fh:
                 response = httpx.request(
-                    upload.get("method", "PUT"),
+                    opt_str(upload, "method", "PUT"),
                     url,
                     content=fh,
                     headers=headers,
@@ -115,13 +115,13 @@ def _build_filename_map(
 
 
 def _validate_session_ids(
-    session: dict[str, Any],
+    session: JsonObject,
     course_id: str,
     version_id: str,
 ) -> bool:
     """Refuse to push if the session is for a different course/version."""
-    s_course = str(session.get("course_id", ""))
-    s_version = str(session.get("version_id", ""))
+    s_course = str(opt_str(session, "course_id", ""))
+    s_version = str(opt_str(session, "version_id", ""))
     if s_course and s_course != course_id:
         print_err(
             f"session is for course {s_course}, "
@@ -139,7 +139,7 @@ def _validate_session_ids(
 
 def _prepare_push(
     args: argparse.Namespace,
-) -> tuple[int, list[dict[str, Any]] | None, dict[str, Path] | None]:
+) -> tuple[int, list[JsonObject] | None, dict[str, Path] | None]:
     """Validate args + session and return ``(rc, uploads, file_map)``.
 
     On any validation failure the returned ``rc`` is non-zero and the
@@ -182,7 +182,7 @@ def _prepare_push(
 
 
 def _emit_results(
-    results: list[dict[str, Any]],
+    results: list[JsonObject],
     failures: int,
     json_output: bool,
 ) -> None:
@@ -196,10 +196,10 @@ def _emit_results(
     print(f"Pushed {len(results) - failures}/{len(results)} files.")
 
 
-def _course_price_cents(course: Any) -> int:
+def _course_price_cents(course: JsonValue) -> int:
     """Read ``price_cents`` from a SDK response object or plain dict."""
     if isinstance(course, dict):
-        return int(course.get("price_cents", 0) or 0)
+        return int(opt_int(course, "price_cents", 0) or 0)
     return int(getattr(course, "price_cents", 0) or 0)
 
 
@@ -227,7 +227,7 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
         print_err(f"invalid course bundle for upload: {error}")
         return EXIT_BAD_ARGS
 
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     failures = 0
     # COMMON_PARSER leaves --max-retries / --timeout as None when the
     # caller omits them; fall back to push-specific defaults.
@@ -238,7 +238,7 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
     )
     timeout = args.timeout if args.timeout is not None else DEFAULT_TIMEOUT_S
     for upload in uploads:
-        filename = upload.get("filename", "")
+        filename = opt_str(upload, "filename", "")
         local = file_map[filename]
         ok, msg = _put_one(upload, local, max_retries, timeout)
         results.append({"filename": filename, "ok": ok, "detail": msg})

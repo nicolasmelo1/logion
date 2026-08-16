@@ -2,7 +2,7 @@
 name = "logion-indexer"
 version = "0.1.0"
 description = "External skillhub indexer for Logion: crawl, resolve, dedup, push."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -45,7 +45,7 @@ module-name = "logion_indexer"
 
 [tool.ruff]
 line-length = 79
-target-version = "py311"
+target-version = "py312"
 preview = true
 
 [tool.ruff.lint]
@@ -100,9 +100,6 @@ known-first-party = ["logion_indexer"]
 max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
-# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
-# is shared with packages published on a >=3.11 floor.
-"**/_json.py" = ["UP040"]
 # CLI module prints to stdout — that's its primary UI.
 "logion_indexer/cli.py" = ["T201"]
 

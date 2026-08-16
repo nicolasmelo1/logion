@@ -8,7 +8,8 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._output import emit_json, to_data, truncate_summary
+from cli._json import elements, opt_str
+from cli._output import emit_json, to_object, truncate_summary
 
 _DEFAULT_LIMIT = 5
 _MAX_LIMIT = 50
@@ -31,7 +32,9 @@ def _compact_match(item: dict[str, object]) -> dict[str, object]:
             "currency": item.get("currency"),
         },
         "status": (
-            item["tier"] if "tier" in item else item.get("status", "published")
+            item["tier"]
+            if "tier" in item
+            else opt_str(item, "status", "published")
         ),
         "external": item.get("external", False),
         "source_url": item.get("source_url"),
@@ -44,9 +47,9 @@ def _format_search_payload(
     result: object, *, limit: int, verbose: bool
 ) -> dict[str, object]:
     """Normalise the SDK response into the CLI's stable payload shape."""
-    data = to_data(result)
+    data = to_object(result)
     if isinstance(data, dict):
-        raw_items = data.get("items", [])
+        raw_items = elements(data, "items")
         next_cursor = data.get("next_cursor")
     else:
         raw_items = []
@@ -79,14 +82,14 @@ def _print_human(payload: dict[str, object]) -> None:
     for match in matches:
         if not isinstance(match, dict):
             continue
-        listing_id = match.get("id", "?")
-        title = match.get("title", "")
-        summary = match.get("summary", "")
+        listing_id = opt_str(match, "id", "?")
+        title = opt_str(match, "title", "")
+        summary = opt_str(match, "summary", "")
         price_value = match.get("price")
         price = price_value if isinstance(price_value, dict) else {}
         amount = price.get("amount_cents")
         currency = price.get("currency")
-        status = match.get("status", "unknown")
+        status = opt_str(match, "status", "unknown")
 
         line = f"  {listing_id}"
         if title:

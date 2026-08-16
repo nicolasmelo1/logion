@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 from cli._harness.dsh import (
     DSH_HOME_ENV,
@@ -13,6 +12,7 @@ from cli._harness.dsh import (
     dsh_home_for,
     require_supported_dsh,
 )
+from cli._json import JsonObject, child, elements
 
 from .._dsh_state import (
     DshBundle,
@@ -48,11 +48,11 @@ class DshChannelAdapter(ChannelAdapter):
     channel = "dsh"
 
     def acquire(
-        self, *, plan: dict[str, Any], destination: Path, scope_root: Path
+        self, *, plan: JsonObject, destination: Path, scope_root: Path
     ) -> AcquisitionOutcome:
         del destination
-        native = plan.get("native") or {}
-        argv = [str(value) for value in native.get("argv") or []]
+        native = child(plan, "native")
+        argv = [str(value) for value in elements(native, "argv")]
         self._validate_argv(argv, native)
         try:
             manager_version = require_supported_dsh()
@@ -95,7 +95,7 @@ class DshChannelAdapter(ChannelAdapter):
         )
 
     @staticmethod
-    def _validate_argv(argv: list[str], native: dict[str, Any]) -> None:
+    def _validate_argv(argv: list[str], native: JsonObject) -> None:
         if (
             len(argv) != _ARGV_LENGTH
             or tuple(argv[:3]) != _ARGV_PREFIX
@@ -127,7 +127,7 @@ class DshChannelAdapter(ChannelAdapter):
 
     @staticmethod
     def _installed_bundle(
-        dsh_home: Path, profile: str, native: dict[str, Any]
+        dsh_home: Path, profile: str, native: JsonObject
     ) -> DshBundle:
         """Find the one installed bundle at the planned revision."""
         try:

@@ -94,9 +94,6 @@ ignore = [
 known-first-party = ["social_management"]
 
 [tool.ruff.lint.per-file-ignores]
-# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
-# is shared with packages published on a >=3.11 floor.
-"**/_json.py" = ["UP040"]
 "social_management/cli.py" = ["T20"]
 "social_management/__main__.py" = ["T20"]
 "tests/**/*.py" = ["S101", "ARG", "PLR2004", "PT"]

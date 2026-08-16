@@ -101,9 +101,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
-# is shared with packages published on a >=3.11 floor.
-"**/_json.py" = ["UP040"]
+# The one sanctioned Any in the CLI: only_not_none builds the kwargs
+# for `client.v1.<resource>.<op>(**kwargs)`, and Python cannot type a
+# mapping against a callable's parameters. See its docstring.
+"cli/_utils.py" = ["TID251"]
 "cli/_errors.py" = ["T201"]
 "cli/_output.py" = ["T201"]
 "cli/commands/courses/capabilities.py" = ["T201"]

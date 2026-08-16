@@ -90,9 +90,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# UP040 wants the PEP 695 `type` keyword (3.12+); the JSON module
-# is shared with packages published on a >=3.11 floor.
-"**/_json.py" = ["UP040"]
 "src/logion/v1/_types/generated/**" = ["ALL"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]

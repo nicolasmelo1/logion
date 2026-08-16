@@ -21,7 +21,8 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject, JsonValue, elements, opt_int, opt_str
 
 # ---------------------------------------------------------------------------
 # Layout
@@ -76,11 +77,11 @@ def ensure_layout(home: Path | None = None) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _wrap(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _wrap(entries: list[JsonObject]) -> JsonObject:
     return {"schema_version": SCHEMA_VERSION, "entries": entries}
 
 
-def _unwrap(raw: Any) -> list[dict[str, Any]]:
+def _unwrap(raw: JsonValue) -> list[JsonObject]:
     """Return entries from envelope or legacy bare-list form."""
     if isinstance(raw, list):
         return raw
@@ -89,7 +90,7 @@ def _unwrap(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _read_json_entries(path: Path) -> list[dict[str, Any]]:
+def _read_json_entries(path: Path) -> list[JsonObject]:
     if not path.is_file():
         return []
     try:
@@ -116,7 +117,7 @@ def _atomic_write_text(path: Path, text: str) -> None:
                 tmp.unlink()
 
 
-def _write_json_entries(path: Path, entries: list[dict[str, Any]]) -> Path:
+def _write_json_entries(path: Path, entries: list[JsonObject]) -> Path:
     _atomic_write_text(
         path,
         json.dumps(_wrap(entries), indent=2, ensure_ascii=False) + "\n",
@@ -196,7 +197,7 @@ def _looks_like_secret_key(key: str) -> bool:
     return any(p.search(key) for p in SECRET_KEY_PATTERNS)
 
 
-def mask_secrets(data: dict[str, Any]) -> dict[str, Any]:
+def mask_secrets(data: JsonObject) -> JsonObject:
     """Return a copy of *data* with secret-like fields masked.
 
     Walks nested dicts and lists.  String values under keys that match
@@ -207,7 +208,7 @@ def mask_secrets(data: dict[str, Any]) -> dict[str, Any]:
     return _mask_value(data)  # type: ignore[return-value]
 
 
-def _mask_value(value: Any, parent_key: str | None = None) -> Any:
+def _mask_value(value: JsonValue, parent_key: str | None = None) -> JsonValue:
     if parent_key is not None and _looks_like_secret_key(parent_key):
         return MASK_PLACEHOLDER
     if isinstance(value, dict):
@@ -256,7 +257,7 @@ VALID_LICENSE_SCOPES = frozenset({
 })
 
 
-def normalize_source(value: Any) -> str:
+def normalize_source(value: JsonValue) -> str:
     """Normalize persisted source values to the public enum."""
     if value == "logion":
         return "logion-marketplace"
@@ -265,7 +266,7 @@ def normalize_source(value: Any) -> str:
     return "manual"
 
 
-def normalize_license_scope(value: Any) -> str:
+def normalize_license_scope(value: JsonValue) -> str:
     """Normalize persisted license scope values to the public enum."""
     if value == "single_buyer":
         return "single-buyer"
@@ -275,11 +276,11 @@ def normalize_license_scope(value: Any) -> str:
 
 
 def enrich_manifest(
-    manifest: dict[str, Any],
+    manifest: JsonObject,
     course_id: str,
     version_id: str,
     home: Path | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Return *manifest* with normalized provenance and manifest_path."""
     h = home or get_home()
     path = (
@@ -290,7 +291,7 @@ def enrich_manifest(
     data["course_id"] = course_id
     data["version_id"] = version_id
     data["source"] = source
-    data["entitlement_status"] = data.get("entitlement_status", "unknown")
+    data["entitlement_status"] = opt_str(data, "entitlement_status", "unknown")
     data["license_scope"] = normalize_license_scope(data.get("license_scope"))
     data["official_update_channel"] = bool(
         data.get("official_update_channel", source == "logion-marketplace")
@@ -301,7 +302,7 @@ def enrich_manifest(
     return data
 
 
-def validate_manifest(data: dict[str, Any]) -> list[str]:
+def validate_manifest(data: JsonObject) -> list[str]:
     """Return validation errors for *data*; empty list means valid."""
     errors: list[str] = []
     missing = REQUIRED_MANIFEST_KEYS - set(data.keys())
@@ -421,7 +422,7 @@ def installed_dir(course_id: str, version_id: str, home: Path) -> Path:
 
 
 def write_manifest(
-    manifest: dict[str, Any],
+    manifest: JsonObject,
     course_id: str,
     version_id: str,
     home: Path | None = None,
@@ -443,7 +444,7 @@ def read_manifest(
     course_id: str,
     version_id: str,
     home: Path | None = None,
-) -> dict[str, Any] | None:
+) -> JsonObject | None:
     """Read an installed capability's manifest, or ``None`` if absent."""
     h = home or get_home()
     try:
@@ -460,13 +461,13 @@ def read_manifest(
     return enrich_manifest(raw, course_id, version_id, h)
 
 
-def list_installed(home: Path | None = None) -> list[dict[str, Any]]:
+def list_installed(home: Path | None = None) -> list[JsonObject]:
     """Return manifest dicts for all installed capabilities."""
     h = home or get_home()
     installed_root = h / "installed"
     if not installed_root.is_dir():
         return []
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     for course_dir in sorted(installed_root.iterdir()):
         if not course_dir.is_dir():
             continue
@@ -504,7 +505,7 @@ def verify_installed_content(
     course_id: str,
     version_id: str,
     home: Path | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Compare manifest ``content_sha256`` to on-disk hash.
 
     Returns a dict with ``ok`` (bool), ``expected``, ``actual``, and
@@ -530,33 +531,33 @@ def verify_installed_content(
 INDEX_FILENAME = "index.json"
 
 
-def build_index(home: Path | None = None) -> list[dict[str, Any]]:
+def build_index(home: Path | None = None) -> list[JsonObject]:
     """Build the compact index from installed manifests (no skill bodies)."""
     manifests = list_installed(home)
-    index: list[dict[str, Any]] = []
+    index: list[JsonObject] = []
     for m in manifests:
         index.append({
-            "course_id": m.get("course_id", ""),
-            "version_id": m.get("version_id", ""),
-            "title": m.get("title", ""),
+            "course_id": opt_str(m, "course_id", ""),
+            "version_id": opt_str(m, "version_id", ""),
+            "title": opt_str(m, "title", ""),
             "source": normalize_source(m.get("source")),
-            "entrypoint": m.get("entrypoint", "SKILL.md"),
-            "capabilities": m.get("capabilities", []),
-            "required_tools": m.get("required_tools", []),
-            "review_status": m.get("review_status", ""),
-            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "entrypoint": opt_str(m, "entrypoint", "SKILL.md"),
+            "capabilities": elements(m, "capabilities"),
+            "required_tools": elements(m, "required_tools"),
+            "review_status": opt_str(m, "review_status", ""),
+            "entitlement_status": opt_str(m, "entitlement_status", "unknown"),
             "license_scope": normalize_license_scope(
-                m.get("license_scope", "unknown")
+                opt_str(m, "license_scope", "unknown")
             ),
             "official_update_channel": m.get("official_update_channel", False),
             "last_verified_at": m.get("last_verified_at"),
-            "manifest_path": m.get("manifest_path", ""),
+            "manifest_path": opt_str(m, "manifest_path", ""),
         })
     return index
 
 
 def write_index(
-    index: list[dict[str, Any]],
+    index: list[JsonObject],
     home: Path | None = None,
 ) -> Path:
     """Write the compact index to ``index.json`` (enveloped)."""
@@ -566,7 +567,7 @@ def write_index(
         return _write_json_entries(h / INDEX_FILENAME, index)
 
 
-def read_index(home: Path | None = None) -> list[dict[str, Any]]:
+def read_index(home: Path | None = None) -> list[JsonObject]:
     """Read the compact index; empty list if absent."""
     h = home or get_home()
     return _read_json_entries(h / INDEX_FILENAME)
@@ -638,18 +639,18 @@ def _recall_tokens(*parts: str) -> list[str]:
 
 
 def build_recall_entries(
-    installed: list[dict[str, Any]],
-    workflows: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
+    installed: list[JsonObject],
+    workflows: list[JsonObject] | None = None,
+) -> list[JsonObject]:
     """Build compact recall entries with provenance and secret masking."""
-    entries: list[dict[str, Any]] = []
+    entries: list[JsonObject] = []
 
     for m in installed:
         entry = {
             "type": "installed_capability",
-            "id": m.get("course_id", ""),
-            "title": m.get("title", ""),
-            "summary": (m.get("summary", "") or "")[:200],
+            "id": opt_str(m, "course_id", ""),
+            "title": opt_str(m, "title", ""),
+            "summary": (opt_str(m, "summary", "") or "")[:200],
             "source": "installed_index",
             "entrypoint": (
                 f"installed/{m.get('course_id', '')}/"
@@ -657,18 +658,18 @@ def build_recall_entries(
                 f"{m.get('entrypoint', 'SKILL.md')}"
             ),
             "tokens": _recall_tokens(
-                str(m.get("course_id", "")),
-                str(m.get("version_id", "")),
-                str(m.get("entrypoint", "SKILL.md")),
+                str(opt_str(m, "course_id", "")),
+                str(opt_str(m, "version_id", "")),
+                str(opt_str(m, "entrypoint", "SKILL.md")),
             ),
             "danger_flags": [],
-            "entitlement_status": m.get("entitlement_status", "unknown"),
+            "entitlement_status": opt_str(m, "entitlement_status", "unknown"),
         }
         entries.append(mask_secrets(entry))
 
     if workflows:
         for w in workflows:
-            raw_commands = w.get("commands", []) or []
+            raw_commands = elements(w, "commands") or []
             # Danger-flag detection runs on the *original* string so a
             # token like ``--token=…`` does not get masked into
             # invisibility before the regex sees it.  Persisted
@@ -680,18 +681,18 @@ def build_recall_entries(
             ]
             entry = {
                 "type": "workflow",
-                "id": w.get("id", ""),
-                "title": w.get("title", ""),
-                "summary": (w.get("summary", "") or "")[:200],
+                "id": opt_str(w, "id", ""),
+                "title": opt_str(w, "title", ""),
+                "summary": (opt_str(w, "summary", "") or "")[:200],
                 "confidence": float(w.get("confidence", 0.5)),
                 "source": "workflow_history",
                 "commands": redacted_commands,
                 "tokens": _recall_tokens(
-                    str(w.get("id", "")),
+                    str(opt_str(w, "id", "")),
                     *[str(command) for command in redacted_commands],
                 ),
-                "success_count": int(w.get("success_count", 0)),
-                "last_success_at": w.get("last_success_at", ""),
+                "success_count": int(opt_int(w, "success_count", 0)),
+                "last_success_at": opt_str(w, "last_success_at", ""),
                 "danger_flags": danger_flags,
             }
             entries.append(mask_secrets(entry))
@@ -700,7 +701,7 @@ def build_recall_entries(
 
 
 def write_recall(
-    entries: list[dict[str, Any]],
+    entries: list[JsonObject],
     home: Path | None = None,
 ) -> Path:
     """Write recall index to ``recall.json`` (enveloped)."""
@@ -710,7 +711,7 @@ def write_recall(
         return _write_json_entries(h / RECALL_FILENAME, entries)
 
 
-def read_recall(home: Path | None = None) -> list[dict[str, Any]]:
+def read_recall(home: Path | None = None) -> list[JsonObject]:
     """Read recall entries; empty list if absent."""
     h = home or get_home()
     return _read_json_entries(h / RECALL_FILENAME)
@@ -728,7 +729,7 @@ def search_recall(
     query: str,
     home: Path | None = None,
     limit: int = 5,
-) -> list[dict[str, Any]]:
+) -> list[JsonObject]:
     """Search recall with fuzzy ranking and confidence calibration."""
     from cli._recall_calibration import (
         band_for,
@@ -742,18 +743,18 @@ def search_recall(
         return []
 
     ranked = rank(query, entries, limit=limit)
-    out: list[dict[str, Any]] = []
+    out: list[JsonObject] = []
     for similarity, entry in ranked:
         if similarity < 0.10:
             continue
 
-        entry_type = entry.get("type", "")
+        entry_type = opt_str(entry, "type", "")
         if entry_type == "installed_capability":
             confidence = calibrate_installed_confidence(similarity)
         elif entry_type == "workflow":
             confidence = calibrate_workflow_confidence(
                 similarity,
-                entry.get("success_count", 0),
+                opt_int(entry, "success_count", 0),
                 entry.get("last_success_at"),
             )
         elif entry_type == "reference":
@@ -910,7 +911,7 @@ def read_lock(
     course_id: str,
     version_id: str,
     home: Path | None = None,
-) -> dict[str, Any] | None:
+) -> JsonObject | None:
     """Read the lock for one course/version; ``None`` if absent."""
     h = home or get_home()
     try:
@@ -988,14 +989,14 @@ def any_locks(home: Path | None = None) -> list[tuple[str, str]]:
 WORKFLOWS_FILENAME = "workflows.json"
 
 
-def read_workflows(home: Path | None = None) -> list[dict[str, Any]]:
+def read_workflows(home: Path | None = None) -> list[JsonObject]:
     """Read workflow history; empty list if absent."""
     h = home or get_home()
     return _read_json_entries(h / WORKFLOWS_FILENAME)
 
 
 def write_workflows(
-    workflows: list[dict[str, Any]],
+    workflows: list[JsonObject],
     home: Path | None = None,
 ) -> Path:
     """Write workflow history (enveloped)."""
@@ -1011,7 +1012,7 @@ def record_workflow_success(
     commands: list[str],
     home: Path | None = None,
     confidence: float = 0.5,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Record a successful workflow invocation.
 
     If a workflow with *workflow_id* exists, increments ``success_count``
@@ -1025,12 +1026,12 @@ def record_workflow_success(
     with state_lock(h):
         workflows = read_workflows(h)
         now = _utc_iso_now()
-        updated: dict[str, Any] | None = None
+        updated: JsonObject | None = None
         for w in workflows:
             if w.get("id") == workflow_id:
-                w["title"] = title or w.get("title", "")
-                w["commands"] = commands or w.get("commands", [])
-                w["success_count"] = int(w.get("success_count", 0)) + 1
+                w["title"] = title or opt_str(w, "title", "")
+                w["commands"] = commands or elements(w, "commands")
+                w["success_count"] = int(opt_int(w, "success_count", 0)) + 1
                 w["last_success_at"] = now
                 w["confidence"] = min(
                     float(w.get("confidence", confidence)) + 0.05, 1.0

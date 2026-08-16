@@ -51,10 +51,6 @@ COPIES: tuple[tuple[str, bool], ...] = (
         False,
     ),
     (
-        os.path.join("packages", "skillmap", "logion_skillmap", "_json.py"),
-        False,
-    ),
-    (
         os.path.join(
             "packages", "social-management", "social_management", "_json.py"
         ),

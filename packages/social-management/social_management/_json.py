@@ -22,7 +22,7 @@ package gains a dependency purely for typing. ``make check-json-module``
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TypeAlias, overload
+from typing import overload
 
 #: Any value the JSON grammar can produce, recursively.
 #:
@@ -32,9 +32,14 @@ from typing import TypeAlias, overload
 #: forcing a rewrite at every site that builds a payload out of already
 #: concrete values. Covariance makes ``{"tags": tags}`` type-check with
 #: ``tags: list[str]``, which is the overwhelmingly common case.
-JsonValue: TypeAlias = (
-    "str | int | float | bool | None"
-    " | Sequence[JsonValue] | Mapping[str, JsonValue]"
+type JsonValue = (
+    str
+    | int
+    | float
+    | bool
+    | None
+    | Sequence[JsonValue]
+    | Mapping[str, JsonValue]
 )
 
 #: A JSON object — the common case for a decoded body or document.
@@ -43,15 +48,17 @@ JsonValue: TypeAlias = (
 #: built up key by key, so ``dict`` is what callers want. Only the
 #: values nested inside it are covariant.
 #:
-#: Written as a real subscription with a forward-referenced parameter,
-#: not as a whole-alias string. Only ``JsonValue`` has to be a string
-#: (it refers to itself); keeping these two evaluable means they can be
-#: used in runtime expressions such as ``str | JsonObject``, which a
-#: plain string alias would fail on with a ``TypeError``.
-JsonObject: TypeAlias = dict[str, "JsonValue"]
+#: These are PEP 695 aliases rather than strings assigned to
+#: ``TypeAlias``. A string alias is not evaluable, so ``str |
+#: JsonObject`` raises ``TypeError``; and a nested forward reference
+#: makes ``get_type_hints`` fail in any module that imports
+#: ``JsonObject`` without also importing ``JsonValue``. The CLI's
+#: startup guardrail introspects annotations at runtime and needs both
+#: to work.
+type JsonObject = dict[str, JsonValue]
 
 #: A JSON array — the common case for a decoded list body.
-JsonArray: TypeAlias = list["JsonValue"]
+type JsonArray = list[JsonValue]
 
 __all__ = [
     "JsonArray",

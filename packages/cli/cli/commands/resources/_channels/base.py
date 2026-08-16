@@ -11,7 +11,8 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject
 
 
 @dataclass
@@ -19,7 +20,7 @@ class AcquisitionOutcome:
     """Result of a single channel acquisition."""
 
     installed_paths: list[str]
-    native_evidence: dict[str, Any] | None
+    native_evidence: JsonObject | None
     verification: str  # exact | source_revision | unverified
     notes: list[str] = field(default_factory=list)
     projection_paths: list[str] = field(default_factory=list)
@@ -33,7 +34,7 @@ class ChannelAdapter:
     def acquire(
         self,
         *,
-        plan: dict[str, Any],
+        plan: JsonObject,
         destination: Path,
         scope_root: Path,
     ) -> AcquisitionOutcome:

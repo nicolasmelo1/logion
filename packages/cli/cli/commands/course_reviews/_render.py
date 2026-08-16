@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from cli._json import JsonObject, child, children, opt_str
 
 
 def append_review_capability_evidence_lines(
     lines: list[str],
-    payload: dict[str, Any],
+    payload: JsonObject,
 ) -> None:
     """Append human-readable capability evidence lines to *lines*.
 
@@ -33,12 +33,12 @@ def append_review_capability_evidence_lines(
         lines.append("observed_capabilities:")
         _append_observed_lines(lines, observed)
 
-    mismatches = payload.get("capability_mismatches")
+    mismatches = children(payload, "capability_mismatches")
     if mismatches:
         lines.append("capability_mismatches:")
         for m in mismatches:
-            severity = m.get("severity", "unknown")
-            code = m.get("code", "unknown")
+            severity = opt_str(m, "severity", "unknown")
+            code = opt_str(m, "code", "unknown")
             lines.append(f"  - {severity}: {code}")
             if "observed" in m:
                 lines.append(f"    observed: {m['observed']}")
@@ -50,7 +50,7 @@ def append_review_capability_evidence_lines(
 
 def append_queue_capability_summary_lines(
     lines: list[str],
-    item: dict[str, Any],
+    item: JsonObject,
 ) -> None:
     """Append compact capability summary lines for queue list items.
 
@@ -71,31 +71,31 @@ def append_queue_capability_summary_lines(
 
 def _append_declared_lines(
     lines: list[str],
-    declared: dict[str, Any],
+    declared: JsonObject,
 ) -> None:
     tools = declared.get("tools")
     if tools:
         lines.append(f"  tools: {', '.join(tools)}")
 
-    network = declared.get("network")
+    network = child(declared, "network")
     if network:
         domains = network.get("allow_domains")
         if domains:
             lines.append(f"  network.allow_domains: {', '.join(domains)}")
 
-    filesystem = declared.get("filesystem")
+    filesystem = child(declared, "filesystem")
     if filesystem:
         write_paths = filesystem.get("write")
         if write_paths:
             lines.append(f"  filesystem.write: {', '.join(write_paths)}")
 
-    secrets = declared.get("secrets")
+    secrets = child(declared, "secrets")
     if secrets:
         env_vars = secrets.get("env")
         if env_vars:
             lines.append(f"  secrets.env: {', '.join(env_vars)}")
 
-    human_approval = declared.get("human_approval")
+    human_approval = child(declared, "human_approval")
     if human_approval:
         required = human_approval.get("required")
         if required is not None:
@@ -104,7 +104,7 @@ def _append_declared_lines(
 
 def _append_observed_lines(
     lines: list[str],
-    observed: dict[str, Any],
+    observed: JsonObject,
 ) -> None:
     tools = observed.get("tools")
     if tools:

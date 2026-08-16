@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from cli._harness.dsh import dsh_home_for
+from cli._json import JsonObject
 
 from ._dsh_state import read_all_profiles
 
 
-def discover_dsh_state(scope_root: Path) -> list[dict[str, Any]]:
+def discover_dsh_state(scope_root: Path) -> list[JsonObject]:
     """Read dsh profile state without invoking or mutating the manager."""
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     for bundle in read_all_profiles(dsh_home_for(scope_root)):
-        entry: dict[str, Any] = {
+        entry: JsonObject = {
             "manager": "dsh",
             "name": bundle.name,
             # Attribution runs off the canonical source and the immutable

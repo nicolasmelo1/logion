@@ -13,7 +13,8 @@ from cli._errors import (
     print_err,
     validate_uuid_id,
 )
-from cli._output import emit, emit_json, to_data
+from cli._json import children, elements
+from cli._output import emit, emit_json, to_object
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
     append_capability_feedback_lines,
@@ -71,7 +72,7 @@ def handle_reviews_list(args: argparse.Namespace) -> int:
             data = data_or_model_dump(result)
             reviews = [
                 compact_review(review)
-                for review in data.get("reviews", [])
+                for review in elements(data, "reviews")
                 if isinstance(review, dict)
             ]
             emit_json(
@@ -216,13 +217,13 @@ def handle_feedback(args: argparse.Namespace) -> int:
             data = data_or_model_dump(result)
             emit_json("logion.courses.feedback", data)
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines: list[str] = []
             if data.get("summary"):
                 lines.append(f"summary: {data['summary']}")
             if data.get("findings"):
                 lines.append("findings:")
-                for f in data["findings"]:
+                for f in children(data, "findings"):
                     lines.append(f"  - {f}")
             append_capability_feedback_lines(lines, data)
             if not lines:

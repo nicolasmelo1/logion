@@ -13,9 +13,9 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 from cli._course_bundle import CourseBundleError, validate_course_bundle
+from cli._json import JsonObject
 from cli._local_state import (
     LockHeldError,
     UnsafeIdentifierError,
@@ -53,11 +53,11 @@ def _build_manifest_data(
     course_id: str,
     version_id: str,
     source_dir: Path,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Build the manifest dict for an install."""
     install_source = getattr(args, "install_source", "manual")
     is_marketplace = install_source == "logion-marketplace"
-    data: dict[str, Any] = {
+    data: JsonObject = {
         "course_id": course_id,
         "version_id": version_id,
         "title": args.title or "",
@@ -80,7 +80,7 @@ def _build_manifest_data(
 
 
 def _validate_pre_install(
-    manifest_data: dict[str, Any],
+    manifest_data: JsonObject,
     course_id: str,
     version_id: str,
     home: Path,

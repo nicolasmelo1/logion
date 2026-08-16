@@ -8,9 +8,9 @@ import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from cli._errors import print_err, validate_uuid_id
+from cli._json import JsonObject
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -52,7 +52,7 @@ def write_json_atomic(path: Path, data: dict[str, object]) -> None:
         raise
 
 
-def _read_json(path: Path) -> dict[str, Any]:
+def _read_json(path: Path) -> JsonObject:
     """Read and parse a JSON file.
 
     Returns an empty dict when the file does not exist.
@@ -274,7 +274,7 @@ def _handle_evidence(args: argparse.Namespace) -> int:
         return 2
     current_dir = root / "current"
 
-    evidence: dict[str, Any] = {
+    evidence: JsonObject = {
         "files": [],
         "generated_at": _now_iso(),
     }

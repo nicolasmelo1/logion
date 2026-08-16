@@ -6,7 +6,8 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject, child
 
 from ._dsh_reconciliation import discover_dsh_state
 
@@ -27,7 +28,7 @@ def content_digest(skill_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def read_marker(path: Path) -> dict[str, Any] | None:
+def read_marker(path: Path) -> JsonObject | None:
     """Read and validate a JSON marker file."""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -37,7 +38,7 @@ def read_marker(path: Path) -> dict[str, Any] | None:
 
 
 def receipt_status(
-    receipt: dict[str, Any], scope_root: Path | None
+    receipt: JsonObject, scope_root: Path | None
 ) -> tuple[str, str]:
     """Re-verify a local acquisition receipt against bytes on disk.
 
@@ -46,8 +47,8 @@ def receipt_status(
     after acquisition reports ``drifted`` instead of inheriting the
     verification level it had at install time.
     """
-    evidence = receipt.get("native_evidence") or {}
-    file_digests = evidence.get("file_digests") or {}
+    evidence = child(receipt, "native_evidence")
+    file_digests = child(evidence, "file_digests")
     claimed = str(receipt.get("verification") or "unverified")
     if scope_root is None or not file_digests:
         # Channels that delegate to a native manager record no per-file
@@ -65,7 +66,7 @@ def receipt_status(
 
 def reconciliation_status(
     skill_dir: Path,
-    receipt: dict[str, Any] | None = None,
+    receipt: JsonObject | None = None,
     scope_root: Path | None = None,
 ) -> dict[str, str]:
     """Validate local evidence before assigning a reconciliation status."""
@@ -113,9 +114,9 @@ def reconciliation_status(
     return {"status": status, "content_digest": digest, "evidence": evidence}
 
 
-def mark_ambiguities(results: list[dict[str, Any]]) -> None:
+def mark_ambiguities(results: list[JsonObject]) -> None:
     """Mark resources that share a name across different scopes."""
-    by_name: dict[str, list[dict[str, Any]]] = {}
+    by_name: dict[str, list[JsonObject]] = {}
     for result in results:
         by_name.setdefault(str(result["name"]), []).append(result)
     for entries in by_name.values():
@@ -123,16 +124,16 @@ def mark_ambiguities(results: list[dict[str, Any]]) -> None:
             continue
         for entry in entries:
             entry["ambiguous_name"] = True
-            reconciliation = entry["reconciliation"]
+            reconciliation = child(entry, "reconciliation")
             if reconciliation["status"] == "unlinked":
                 reconciliation["status"] = "ambiguous"
 
 
 def discover_native_state(  # noqa: C901 - manager schemas differ
     scope_root: Path, source: str = "all"
-) -> list[dict[str, Any]]:
+) -> list[JsonObject]:
     """Read native manager state without modifying files or reinstalling."""
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     if source in {"all", "dsh"}:
         results.extend(discover_dsh_state(scope_root))
     if source in {"all", "skills"}:

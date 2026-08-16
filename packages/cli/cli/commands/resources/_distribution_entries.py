@@ -10,38 +10,44 @@ enabled.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
+from cli._json import JsonObject, child, elements
+from cli._lazy_import import LazyModule
 from cli._output import to_data
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 #: Bounds the per-channel plan fetches behind `resources distributions`.
 _MAX_ALTERNATIVE_CHANNELS = 8
 
 
 def _plan_entry(
-    plan: dict[str, Any], channel: str, *, selected: bool
-) -> dict[str, Any]:
+    plan: JsonObject, channel: str, *, selected: bool
+) -> JsonObject:
     return {
         "channel": channel,
         "selected": selected,
         "available": True,
         "distribution_id": plan.get("distribution_id"),
         "content_digest": plan.get("content_digest"),
-        "integrity": plan.get("integrity") or {},
-        "license": plan.get("license") or {},
-        "entitlement": plan.get("entitlement") or {},
-        "expected": plan.get("expected") or {},
-        "native": plan.get("native") or {},
-        "warnings": list(plan.get("warnings") or []),
+        "integrity": child(plan, "integrity"),
+        "license": child(plan, "license"),
+        "entitlement": child(plan, "entitlement"),
+        "expected": child(plan, "expected"),
+        "native": child(plan, "native"),
+        "warnings": list(elements(plan, "warnings")),
     }
 
 
 def _distribution_entries(
-    client: Any,
+    client: logion.LogionClient,
     resource_id: str,
     version_id: str,
-    selected_plan: dict[str, Any],
-) -> list[dict[str, Any]]:
+    selected_plan: JsonObject,
+) -> list[JsonObject]:
     """List the channels the server actually offers for a version.
 
     Every entry is server-reported. Alternatives are resolved by asking
@@ -53,7 +59,7 @@ def _distribution_entries(
     entries = [_plan_entry(selected_plan, selected_channel, selected=True)]
     alternatives = [
         str(alt)
-        for alt in (selected_plan.get("alternatives") or [])
+        for alt in (elements(selected_plan, "alternatives"))
         if str(alt) and str(alt) != selected_channel
     ]
     for channel in alternatives[:_MAX_ALTERNATIVE_CHANNELS]:

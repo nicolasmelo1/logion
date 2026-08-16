@@ -16,9 +16,9 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
 from cli import _auto_update
+from cli._json import JsonObject, child, children
 from cli._local_state import INDEX_FILENAME, get_home, read_index
 from cli._options import COMMON_PARSER
 from cli._output import emit_json
@@ -48,7 +48,7 @@ def _detect_install_method(executable: Path) -> str:
     return "other"
 
 
-def _read_marker() -> dict[str, Any] | None:
+def _read_marker() -> JsonObject | None:
     """Read the npm wrapper install marker, or None if absent/unreadable."""
     try:
         raw = json.loads(MARKER_PATH.read_text(encoding="utf-8"))
@@ -57,7 +57,7 @@ def _read_marker() -> dict[str, Any] | None:
     return raw if isinstance(raw, dict) else None
 
 
-def _collect(home: Path | None = None) -> dict[str, Any]:
+def _collect(home: Path | None = None) -> JsonObject:
     """Gather the diagnostic payload."""
     executable = Path(sys.executable)
     install_method = _detect_install_method(executable)
@@ -104,7 +104,7 @@ def _collect(home: Path | None = None) -> dict[str, Any]:
     }
 
 
-def _print_human(data: dict[str, Any]) -> None:
+def _print_human(data: JsonObject) -> None:
     out = sys.stdout
     out.write(f"logion CLI {data['cli_version']}\n")
     out.write(f"  install method : {data['install_method']}\n")
@@ -112,7 +112,7 @@ def _print_human(data: dict[str, Any]) -> None:
     out.write(f"  LOGION_HOME     : {data['logion_home']}\n")
     out.write(f"  installed courses: {data['installed_courses']}\n")
 
-    marker = data["npm_marker"]
+    marker = child(data, "npm_marker")
     if marker:
         out.write(
             "  npm marker     : "
@@ -123,7 +123,7 @@ def _print_human(data: dict[str, Any]) -> None:
     else:
         out.write("  npm marker     : none\n")
 
-    au = data["auto_update"]
+    au = child(data, "auto_update")
     state = "enabled" if au["enabled"] else "disabled"
     out.write(
         f"  auto-update    : {state}, "
@@ -133,7 +133,7 @@ def _print_human(data: dict[str, Any]) -> None:
 
     if data["warnings"]:
         out.write("\nwarnings:\n")
-        for warning in data["warnings"]:
+        for warning in children(data, "warnings"):
             out.write(f"  ! {warning}\n")
     else:
         out.write("\nNo divergence detected.\n")

@@ -14,9 +14,9 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
-from cli._config import resolve_config_from_args
+from cli._config import CliConfig, resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
 from cli._harness.scopes import (
@@ -25,8 +25,14 @@ from cli._harness.scopes import (
     default_scope_for_cwd,
     is_valid_scope,
 )
+from cli._json import JsonArray, JsonObject, child
+from cli._lazy_import import LazyModule
 from cli._output import emit_json, to_data
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 from ._acquire_display import print_plan
 from ._acquire_distribution import fetch_distribution
 from ._acquire_exec import run_acquisition
@@ -174,15 +180,15 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
 
 def _execute_plan(
     args: argparse.Namespace,
-    config: Any,
-    client: Any,
-    plan: dict[str, Any],
+    config: CliConfig,
+    client: logion.LogionClient,
+    plan: JsonObject,
     *,
-    distribution: dict[str, Any],
+    distribution: JsonObject,
     scope: str,
     harness: str,
-    targets: list[Any],
-    resource: dict[str, Any],
+    targets: JsonArray,
+    resource: JsonObject,
     requested_channel: str,
 ) -> int:
     """Execute the already-validated plan and persist the receipt."""
@@ -207,11 +213,11 @@ def _execute_plan(
             "distribution_id": server_plan["distribution_id"],
             "content_digest": server_plan["content_digest"],
             "selected_channel": selected,
-            "license": server_plan.get("license") or {},
-            "entitlement": server_plan.get("entitlement") or {},
-            "expected": server_plan.get("expected") or {},
-            "native": server_plan.get("native") or {},
-            "permissions": server_plan.get("permissions") or {},
+            "license": child(server_plan, "license"),
+            "entitlement": child(server_plan, "entitlement"),
+            "expected": child(server_plan, "expected"),
+            "native": child(server_plan, "native"),
+            "permissions": child(server_plan, "permissions"),
         },
         scope=scope,
         harness=harness,

@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
 from uuid import UUID
 
 from cli._config import CliConfig
 from cli._errors import emit_error_json
+from cli._json import JsonObject, JsonValue
 from cli._output import emit_json
 
 TERMINAL_STATUSES = frozenset({"fulfilled", "failed", "refunded", "cancelled"})
@@ -43,7 +43,7 @@ def validate_uuid_arg(
     return None
 
 
-def order_to_payload(result: Any) -> dict[str, Any]:
+def order_to_payload(result: JsonValue) -> JsonObject:
     """Normalize SDK order responses to the public CLI shape."""
     raw = (
         result.model_dump(mode="json")
@@ -55,7 +55,7 @@ def order_to_payload(result: Any) -> dict[str, Any]:
         or raw.get("paid_at")
         or raw.get("transferred_at")
     )
-    payload: dict[str, Any] = {
+    payload: JsonObject = {
         "order_id": raw.get("order_id") or raw.get("id"),
         "status": raw.get("status"),
         "course_id": raw.get("course_id"),
@@ -74,7 +74,7 @@ def order_to_payload(result: Any) -> dict[str, Any]:
 
 def emit_wait_result(
     config: CliConfig,
-    payload: dict[str, Any],
+    payload: JsonObject,
     elapsed: float,
     *,
     final: bool,
@@ -99,7 +99,7 @@ def emit_wait_result(
     sys.stdout.write("\n")
 
 
-def timeout_payload(order_id: str) -> dict[str, Any]:
+def timeout_payload(order_id: str) -> JsonObject:
     """Return the fallback payload for an unfinished wait call."""
     return {
         "order_id": order_id,

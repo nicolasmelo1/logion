@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
 
 from cli._errors import emit_error_json
+from cli._json import JsonObject, opt_str
 from cli._local_state import (
     VALID_ENTITLEMENT_STATUSES,
     UnsafeIdentifierError,
@@ -35,7 +35,7 @@ def _error(
     return exit_code
 
 
-def _local_verify_status(manifest: dict[str, Any]) -> str:
+def _local_verify_status(manifest: JsonObject) -> str:
     """Preserve the locally recorded entitlement status.
 
     The public SDK currently exposes no entitlements read endpoint, so this
@@ -51,7 +51,7 @@ def _local_verify_status(manifest: dict[str, Any]) -> str:
     return "unknown"
 
 
-def _verification_mode(_manifest: dict[str, Any]) -> str:
+def _verification_mode(_manifest: JsonObject) -> str:
     """Return the verification mode reported to callers."""
     return "local-manifest-only"
 
@@ -71,11 +71,11 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
     if course_id is not None:
         installed = [m for m in installed if m.get("course_id") == course_id]
 
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
 
     for manifest in installed:
-        cid = str(manifest.get("course_id", "?"))
-        vid = str(manifest.get("version_id", "?"))
+        cid = str(opt_str(manifest, "course_id", "?"))
+        vid = str(opt_str(manifest, "version_id", "?"))
         new_status = _local_verify_status(manifest)
         old_status = manifest.get("entitlement_status")
         manifest["entitlement_status"] = new_status
@@ -85,7 +85,7 @@ def handle_skills_verify(args: argparse.Namespace) -> int:
             "course_id": cid,
             "entitlement_status": new_status,
             "last_verified_at": manifest.get("last_verified_at"),
-            "source": manifest.get("source", "unknown"),
+            "source": opt_str(manifest, "source", "unknown"),
             "verification_mode": _verification_mode(manifest),
         })
 

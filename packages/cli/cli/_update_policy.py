@@ -28,8 +28,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject, JsonValue
 from cli._local_state import verify_installed_content
 
 # Fields that force ``requires_approval`` when local ≠ remote.
@@ -58,7 +58,7 @@ class UpdatePolicyResult:
     notices: list[str] = field(default_factory=list)
     changed_fields: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonObject:
         return {
             "applicable": self.applicable,
             "requires_approval": self.requires_approval,
@@ -69,7 +69,7 @@ class UpdatePolicyResult:
         }
 
 
-def _normalize(value: Any) -> Any:
+def _normalize(value: JsonValue) -> JsonValue:
     """Make values comparable: lists become sorted tuples; dicts sort keys."""
     if isinstance(value, list):
         return tuple(sorted((_normalize(v) for v in value), key=repr))
@@ -79,8 +79,8 @@ def _normalize(value: Any) -> Any:
 
 
 def check_update_policy(
-    local_manifest: dict[str, Any],
-    remote_manifest: dict[str, Any],
+    local_manifest: JsonObject,
+    remote_manifest: JsonObject,
 ) -> UpdatePolicyResult:
     """Diff gated manifest fields and return an :class:`UpdatePolicyResult`.
 
@@ -126,8 +126,8 @@ def check_update_policy(
 def evaluate_update(
     course_id: str,
     version_id: str,
-    remote_manifest: dict[str, Any],
-    local_manifest: dict[str, Any],
+    remote_manifest: JsonObject,
+    local_manifest: JsonObject,
     home: Path | None = None,
 ) -> UpdatePolicyResult:
     """Combine :func:`check_update_policy` with content verification.

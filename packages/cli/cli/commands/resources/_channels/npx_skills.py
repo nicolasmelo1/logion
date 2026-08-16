@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
+
+from cli._json import JsonObject, child, elements
 
 from ._skills_lock import (
     UnsupportedLockfileError,
@@ -36,12 +38,12 @@ class NpxSkillsAdapter(ChannelAdapter):
     def acquire(
         self,
         *,
-        plan: dict[str, Any],
+        plan: JsonObject,
         destination: Path,
         scope_root: Path,
     ) -> AcquisitionOutcome:
-        native = plan.get("native") or {}
-        argv = list(native.get("argv") or [])
+        native = child(plan, "native")
+        argv = list(elements(native, "argv"))
         self._validate_argv(argv)
         # The lockfile records no manager version, so the identity comes
         # from the immutable spec we are about to execute.
@@ -94,12 +96,12 @@ class NpxSkillsAdapter(ChannelAdapter):
             raise RuntimeError(f"native tool unsupported: {name} not found")
 
     def _read_lockfile_entry(
-        self, scope_root: Path, plan: dict[str, Any], manager_version: str
-    ) -> tuple[dict[str, Any], list[str]]:
+        self, scope_root: Path, plan: JsonObject, manager_version: str
+    ) -> tuple[JsonObject, list[str]]:
         lock = scope_root / "skills-lock.json"
         if not lock.is_file():
             raise RuntimeError("skills-lock.json missing after npx skills")
-        native = plan.get("native") or {}
+        native = child(plan, "native")
         locator = str(native.get("upstream_locator") or "")
         try:
             entry = select_entry(
