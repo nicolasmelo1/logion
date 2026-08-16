@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
+from logion._json import JsonObject
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     CompleteCourseVersionUploadSessionResponse,
@@ -103,7 +103,9 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         visibility: Visibility | None = SENTINEL,  # type: ignore[assignment]
     ) -> UpdateCourseResponse:
         """Update an existing course."""
-        fields: dict[str, Any] = {}
+        # Not a JSON boundary: typed values on their way into a
+        # Pydantic model, which validates and coerces them below.
+        fields: dict[str, object] = {}
         if title is not SENTINEL:
             fields["title"] = title
         if description is not SENTINEL:
@@ -136,10 +138,12 @@ class _CoursesCoreMixin(_CoursesResourceBase):
         self,
         *,
         course_id: str | UUID,
-        files: list[dict[str, Any]],
+        files: list[JsonObject],
     ) -> CreateCourseVersionUploadSessionResponse:
         """Create a new course version upload session."""
-        typed_files = [FileUploadRequest(**entry) for entry in files]
+        typed_files = [
+            FileUploadRequest.model_validate(entry) for entry in files
+        ]
         body = CreateCourseVersionUploadSessionRequest(files=typed_files)
         return operations.create_upload_session(
             self._http,

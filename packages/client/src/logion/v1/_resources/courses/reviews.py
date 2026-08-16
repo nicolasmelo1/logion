@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
+from logion._json import JsonObject
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     GetCourseReviewFeedbackResponse,
@@ -31,10 +31,12 @@ class _CoursesReviewsMixin(_CoursesResourceBase):
         usefulness: float | None = None,
         tool_safety: float | None = None,
         token_efficiency: float | None = None,
-        telemetry: dict[str, Any] | None = None,
+        telemetry: JsonObject | None = None,
     ) -> UpsertCourseReviewResponse:
         """Create or update a marketplace review for a course version."""
-        kwargs: dict[str, Any] = {"rating": rating}
+        # Not a JSON boundary: these are typed values on their way
+        # into a Pydantic model, which validates and coerces them.
+        kwargs: dict[str, object] = {"rating": rating}
         if body is not None:
             kwargs["body"] = body
         if completed_task is not None:
@@ -49,7 +51,7 @@ class _CoursesReviewsMixin(_CoursesResourceBase):
             kwargs["token_efficiency"] = token_efficiency
         if telemetry is not None:
             kwargs["telemetry"] = telemetry
-        body_model = UpsertCourseReviewRequest(**kwargs)
+        body_model = UpsertCourseReviewRequest.model_validate(kwargs)
         return operations.upsert_course_review(
             self._http,
             course_id=course_id,

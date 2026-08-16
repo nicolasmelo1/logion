@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
+from logion._json import JsonObject
 
 
 class UsageReceiptResource:
@@ -27,7 +26,7 @@ class UsageReceiptResource:
         outcome: str | None = None,
         observed_at: str | None = None,
         coarse_counters: dict[str, int] | None = None,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Submit a narrow usage receipt for a resource observation.
 
         Only opaque metadata is sent — no raw prompts, source code,
@@ -48,7 +47,7 @@ class UsageReceiptResource:
         acquisition_channel:
             How the resource was acquired (e.g. ``logion-marketplace``).
         """
-        payload: dict[str, Any] = {
+        payload: JsonObject = {
             "observation_id": observation_id,
             "task_class": task_class,
             "acquisition_channel": acquisition_channel,
@@ -62,18 +61,11 @@ class UsageReceiptResource:
             payload["observed_at"] = observed_at
         if coarse_counters is not None:
             payload["coarse_counters"] = coarse_counters
-        result = self._http.request(
+        return self._http.request_object(
             "POST",
             f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
             json=payload,
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from POST usage receipt, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
 
 # Operation-map discovery derives the resource class name from the plural

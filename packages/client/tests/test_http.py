@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import uuid
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -269,3 +270,140 @@ class TestRaiseForStatus:
         with pytest.raises(ValidationError) as exc_info:
             _raise_for_status(resp)
         assert exc_info.value.detail == detail
+
+
+class TestShapeNarrowingHelpers:
+    """Response-shape guards, which live on the transport.
+
+    ``request`` returns the full JSON grammar, so every caller that
+    needs an object or an array of objects goes through one of these.
+    Keeping the check here means each resource does not re-implement it,
+    and a malformed body fails with the method and path in the message.
+    """
+
+    @patch("httpx.Client.request")
+    def test_request_object_returns_an_object(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data={"status": "ok"}
+        )
+        client = HttpClient(_make_config())
+        assert client.request_object("GET", "/health") == {"status": "ok"}
+
+    @pytest.mark.parametrize(
+        "payload",
+        [[], ["a"], 42, True],
+    )
+    @patch("httpx.Client.request")
+    def test_request_object_rejects_non_objects(
+        self, mock_request, payload: object
+    ) -> None:
+        mock_request.return_value = _mock_response(200, json_data=payload)
+        client = HttpClient(_make_config())
+        with pytest.raises(TypeError, match="Expected a JSON object"):
+            client.request_object("GET", "/v1/resources")
+
+    @patch("httpx.Client.request")
+    def test_request_object_names_the_method_and_path(
+        self, mock_request
+    ) -> None:
+        mock_request.return_value = _mock_response(200, json_data=["nope"])
+        client = HttpClient(_make_config())
+        with pytest.raises(TypeError, match=r"GET /v1/resources"):
+            client.request_object("GET", "/v1/resources")
+
+    @patch("httpx.Client.request")
+    def test_request_list_returns_objects(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data=[{"id": 1}, {"id": 2}]
+        )
+        client = HttpClient(_make_config())
+        assert client.request_list("GET", "/v1/bounties") == [
+            {"id": 1},
+            {"id": 2},
+        ]
+
+    @patch("httpx.Client.request")
+    def test_request_list_rejects_a_non_array(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(200, json_data={"a": 1})
+        client = HttpClient(_make_config())
+        with pytest.raises(TypeError, match="Expected a JSON array"):
+            client.request_list("GET", "/v1/bounties")
+
+    @patch("httpx.Client.request")
+    def test_request_list_rejects_a_non_object_element(
+        self, mock_request
+    ) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data=[{"id": 1}, "nope"]
+        )
+        client = HttpClient(_make_config())
+        with pytest.raises(TypeError, match=r"at index 1"):
+            client.request_list("GET", "/v1/bounties")
+
+    @patch("httpx.Client.request")
+    def test_request_items_accepts_a_bare_array(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data=[{"feedback_id": "fb-1"}]
+        )
+        client = HttpClient(_make_config())
+        assert client.request_items("GET", "/v1/feedback/mine") == [
+            {"feedback_id": "fb-1"}
+        ]
+
+    @patch("httpx.Client.request")
+    def test_request_items_unwraps_an_items_envelope(
+        self, mock_request
+    ) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data={"items": [{"feedback_id": "fb-1"}]}
+        )
+        client = HttpClient(_make_config())
+        assert client.request_items("GET", "/v1/feedback/mine") == [
+            {"feedback_id": "fb-1"}
+        ]
+
+    @patch("httpx.Client.request")
+    def test_request_items_rejects_a_non_collection(
+        self, mock_request
+    ) -> None:
+        mock_request.return_value = _mock_response(
+            200, json_data={"not": "a list"}
+        )
+        client = HttpClient(_make_config())
+        with pytest.raises(TypeError, match="Expected a JSON array"):
+            client.request_items("GET", "/v1/feedback/mine")
+
+
+class TestQueryParamEncoding:
+    """UUIDs and repeated parameters are encoded in one place."""
+
+    @patch("httpx.Client.request")
+    def test_uuid_values_become_strings(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(200, json_data={})
+        client = HttpClient(_make_config())
+        agent_id = uuid.UUID("123e4567-e89b-12d3-a456-426614174000")
+        client.request("GET", "/v1/admin/courses", params={"a": agent_id})
+        assert mock_request.call_args.kwargs["params"] == {
+            "a": "123e4567-e89b-12d3-a456-426614174000"
+        }
+
+    @patch("httpx.Client.request")
+    def test_none_values_are_dropped(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(200, json_data={})
+        client = HttpClient(_make_config())
+        client.request("GET", "/v1/x", params={"a": "1", "b": None})
+        assert mock_request.call_args.kwargs["params"] == {"a": "1"}
+
+    @patch("httpx.Client.request")
+    def test_sequences_survive_as_repeated_params(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(200, json_data={})
+        client = HttpClient(_make_config())
+        client.request("GET", "/v1/x", params={"ids": ["a", "b"]})
+        assert mock_request.call_args.kwargs["params"] == {"ids": ["a", "b"]}
+
+    @patch("httpx.Client.request")
+    def test_none_inside_a_sequence_is_dropped(self, mock_request) -> None:
+        mock_request.return_value = _mock_response(200, json_data={})
+        client = HttpClient(_make_config())
+        client.request("GET", "/v1/x", params={"ids": ["a", None, "b"]})
+        assert mock_request.call_args.kwargs["params"] == {"ids": ["a", "b"]}

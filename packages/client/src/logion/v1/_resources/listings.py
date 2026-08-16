@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from logion._http import HttpClient
+from logion._http import HttpClient, QueryValue
 from logion.v1._types.generated.v1 import SearchListingsResponse
 
 _VALID_SORT_VALUES = (
@@ -30,8 +30,8 @@ def _build_search_params(
     cursor: str | None = None,
     include_indexed: bool = False,
     tier: str | None = None,
-) -> dict[str, object]:
-    params: dict[str, object] = {}
+) -> dict[str, QueryValue]:
+    params: dict[str, QueryValue] = {}
     if query is not None:
         params["query"] = query
     if tags is not None:

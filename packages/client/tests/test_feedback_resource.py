@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from logion._http import HttpClient
 from logion.v1._resources.resource_feedback import ResourceFeedbackResource
 from logion.v1._resources.usage_receipts import UsageReceiptResource
@@ -18,7 +16,7 @@ VERSION_ID = "123e4567-e89b-12d3-a456-426614174001"
 class TestResourceFeedbackSubmit:
     def test_submit_calls_post(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"feedback_id": "fb-001"}
+        http.request_object.return_value = {"feedback_id": "fb-001"}
         resource = ResourceFeedbackResource(http)
 
         result = resource.submit(
@@ -33,8 +31,8 @@ class TestResourceFeedbackSubmit:
         )
 
         assert result == {"feedback_id": "fb-001"}
-        http.request.assert_called_once()
-        call_args = http.request.call_args
+        http.request_object.assert_called_once()
+        call_args = http.request_object.call_args
         assert call_args.args[0] == "POST"
         assert (
             call_args.args[1]
@@ -49,7 +47,7 @@ class TestResourceFeedbackSubmit:
 
     def test_submit_all_scores(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"feedback_id": "fb-003"}
+        http.request_object.return_value = {"feedback_id": "fb-003"}
         resource = ResourceFeedbackResource(http)
 
         resource.submit(
@@ -64,75 +62,49 @@ class TestResourceFeedbackSubmit:
             token_efficiency=3,
         )
 
-        json_body = http.request.call_args.kwargs["json"]
+        json_body = http.request_object.call_args.kwargs["json"]
         assert json_body["rating"] == 5
         assert json_body["usefulness"] == 4
         assert json_body["reliability"] == 5
         assert json_body["tool_safety"] == 4
         assert json_body["token_efficiency"] == 3
 
-    def test_submit_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = ["not", "a", "dict"]
-        resource = ResourceFeedbackResource(http)
-
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.submit(
-                RESOURCE_ID,
-                VERSION_ID,
-                rating=4,
-                acquisition_channel="logion-marketplace",
-                task_class="coding",
-            )
-
 
 class TestResourceFeedbackListMine:
     def test_list_mine_calls_get(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = [{"feedback_id": "fb-001", "rating": 4}]
+        http.request_items.return_value = [
+            {"feedback_id": "fb-001", "rating": 4}
+        ]
         resource = ResourceFeedbackResource(http)
 
         result = resource.list_mine()
 
         assert result == [{"feedback_id": "fb-001", "rating": 4}]
-        http.request.assert_called_once_with("GET", "/v1/feedback/mine")
-
-    def test_list_mine_raises_on_non_list_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"not": "a list"}
-        resource = ResourceFeedbackResource(http)
-
-        with pytest.raises(TypeError, match="Expected a JSON array"):
-            resource.list_mine()
+        http.request_items.assert_called_once_with("GET", "/v1/feedback/mine")
 
 
 class TestResourceFeedbackListForResource:
     def test_list_for_resource_calls_get(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = [{"feedback_id": "fb-001", "rating": 4}]
+        http.request_items.return_value = [
+            {"feedback_id": "fb-001", "rating": 4}
+        ]
         resource = ResourceFeedbackResource(http)
 
         result = resource.list_for_resource(RESOURCE_ID)
 
         assert result == [{"feedback_id": "fb-001", "rating": 4}]
-        http.request.assert_called_once_with(
+        http.request_items.assert_called_once_with(
             "GET",
             f"/v1/resources/{RESOURCE_ID}/feedback",
         )
-
-    def test_list_for_resource_raises_on_non_list_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"not": "a list"}
-        resource = ResourceFeedbackResource(http)
-
-        with pytest.raises(TypeError, match="Expected a JSON array"):
-            resource.list_for_resource(RESOURCE_ID)
 
 
 class TestResourceFeedbackGetSummary:
     def test_get_summary_calls_get(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {
+        http.request_object.return_value = {
             "resource_id": RESOURCE_ID,
             "total_feedback": 5,
             "average_rating": 4.2,
@@ -143,24 +115,16 @@ class TestResourceFeedbackGetSummary:
 
         assert result["total_feedback"] == 5
         assert result["average_rating"] == 4.2
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "GET",
             f"/v1/resources/{RESOURCE_ID}/feedback/summary",
         )
-
-    def test_get_summary_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = ["not", "a", "dict"]
-        resource = ResourceFeedbackResource(http)
-
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.get_summary(RESOURCE_ID)
 
 
 class TestUsageReceiptSubmit:
     def test_submit_calls_post(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"receipt_id": "r-001"}
+        http.request_object.return_value = {"receipt_id": "r-001"}
         resource = UsageReceiptResource(http)
 
         result = resource.submit(
@@ -175,8 +139,8 @@ class TestUsageReceiptSubmit:
         )
 
         assert result == {"receipt_id": "r-001"}
-        http.request.assert_called_once()
-        call_args = http.request.call_args
+        http.request_object.assert_called_once()
+        call_args = http.request_object.call_args
         assert call_args.args[0] == "POST"
         assert (
             call_args.args[1] == f"/v1/resources/{RESOURCE_ID}/versions/"
@@ -187,21 +151,6 @@ class TestUsageReceiptSubmit:
         assert json_body["harness"] == "codex"
         assert json_body["outcome"] == "completed"
         assert json_body["acquisition_channel"] == "logion-marketplace"
-
-    def test_submit_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = ["not", "a", "dict"]
-        resource = UsageReceiptResource(http)
-
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.submit(
-                RESOURCE_ID,
-                VERSION_ID,
-                observation_id="123e4567-e89b-12d3-a456-426614174002",
-                task_class="coding",
-                acquisition_channel="logion-marketplace",
-                consent_policy_digest="sha256:policy",
-            )
 
 
 class TestV1NamespaceRegistration:

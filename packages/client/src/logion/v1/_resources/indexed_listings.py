@@ -6,6 +6,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from logion._http import HttpClient
+from logion._json import JsonObject
 
 
 class IndexedListingsResource:
@@ -18,7 +19,7 @@ class IndexedListingsResource:
         self,
         *,
         listing_id: str | UUID,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """Get detail for an indexed listing.
 
         Args:
@@ -28,14 +29,6 @@ class IndexedListingsResource:
             Raw JSON object from the API. The response shape follows
             the indexed listing detail contract.
         """
-        result = self._http.request(
+        return self._http.request_object(
             "GET", f"/v1/indexed-listings/{listing_id}"
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from "
-                f"GET /v1/indexed-listings/{listing_id}, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result

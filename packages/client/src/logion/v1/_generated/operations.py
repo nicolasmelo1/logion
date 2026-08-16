@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 from uuid import UUID
 
-from logion._http import HttpClient
+from logion._http import HttpClient, QueryValue
+from logion._json import JsonObject
 from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
     AcceptPlatformBountySubmissionRequest,
@@ -265,7 +266,7 @@ def list_moderation_queue(
     cursor: str | None = None,
 ) -> ListModerationQueueResponse:
     """Call the list_moderation_queue API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if status is not None:
         params["status"] = status
     if owner_agent_id is not None:
@@ -314,7 +315,7 @@ def get_known_indexed_sources(
     ids: list[str],
 ) -> GetKnownIndexedSourcesResponse:
     """Call the get_known_indexed_sources API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if ids is not None:
         params["ids"] = ids
     return http.request_model(
@@ -448,7 +449,7 @@ def list_reports(
     cursor: str | None = None,
 ) -> ListReportsResponse:
     """Call the list_reports API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if status is not None:
         params["status"] = status
     if severity is not None:
@@ -555,7 +556,7 @@ def list_bounties(
     scope: str | None = None,
 ) -> list[ListBountiesResponse]:
     """Call the list_bounties API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if scope is not None:
         params["scope"] = scope
     return [
@@ -780,7 +781,7 @@ def list_human_review_queue(
     cursor: str | None = None,
 ) -> ListHumanReviewQueueResponse:
     """Call the list_human_review_queue API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if limit is not None:
         params["limit"] = limit
     if cursor is not None:
@@ -872,7 +873,7 @@ def list_my_courses(
     cursor: str | None = None,
 ) -> ListMyCoursesResponse:
     """Call the list_my_courses API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if status is not None:
         params["status"] = status
     if visibility is not None:
@@ -924,7 +925,7 @@ def get_my_course_review(
     version_id: str | UUID | None = None,
 ) -> GetMyCourseReviewResponse:
     """Call the get_my_course_review API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if version_id is not None:
         params["version_id"] = version_id
     return http.request_model(
@@ -955,7 +956,7 @@ def get_review_status(
     include_pass: bool | None = None,
 ) -> GetReviewStatusResponse:
     """Call the get_review_status API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if include_pass is not None:
         params["include_pass"] = include_pass
     return http.request_model(
@@ -1003,7 +1004,7 @@ def list_course_reviews(
     cursor: str | None = None,
 ) -> ListCourseReviewsResponse:
     """Call the list_course_reviews API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if version is not None:
         params["version"] = version
     if limit is not None:
@@ -1022,10 +1023,10 @@ def delete_course_source_link(
     http: HttpClient,
     *,
     course_id: str | UUID,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Call the delete_course_source_link API operation."""
     return cast(
-        dict[str, Any],
+        JsonObject,
         http.request(
             "DELETE",
             f"/v1/courses/{course_id}/source-link",
@@ -1178,7 +1179,7 @@ def list_my_feedback(
     offset: int | None = None,
 ) -> ListMyFeedbackResponse:
     """Call the list_my_feedback API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if limit is not None:
         params["limit"] = limit
     if offset is not None:
@@ -1193,10 +1194,10 @@ def list_my_feedback(
 
 def revoke_github_identity(
     http: HttpClient,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Call the revoke_github_identity API operation."""
     return cast(
-        dict[str, Any],
+        JsonObject,
         http.request(
             "DELETE",
             "/v1/identity/github",
@@ -1235,9 +1236,9 @@ def complete_github_callback(
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Call the complete_github_callback API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if code is not None:
         params["code"] = code
     if state is not None:
@@ -1245,7 +1246,7 @@ def complete_github_callback(
     if error is not None:
         params["error"] = error
     return cast(
-        dict[str, Any],
+        JsonObject,
         http.request(
             "GET",
             "/v1/identity/github/callback",
@@ -1356,7 +1357,7 @@ def search_listings(
     tier: str | None = None,
 ) -> SearchListingsResponse:
     """Call the search_listings API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if query is not None:
         params["query"] = query
     if tags is not None:
@@ -1396,7 +1397,7 @@ def list_notifications(
     cursor: str | None = None,
 ) -> ListNotificationsResponse:
     """Call the list_notifications API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if unread_only is not None:
         params["unread_only"] = unread_only
     if type_ is not None:
@@ -1514,7 +1515,7 @@ def get_referral_link(
     course_id: str | UUID | None = None,
 ) -> GetReferralLinkResponse:
     """Call the get_referral_link API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if course_id is not None:
         params["course_id"] = course_id
     return http.request_model(
@@ -1559,7 +1560,7 @@ def list_resources(
     limit: int | None = None,
 ) -> ListResourcesResponse:
     """Call the list_resources API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if resource_type is not None:
         params["resource_type"] = resource_type
     if lifecycle_status is not None:
@@ -1597,7 +1598,7 @@ def list_resource_feedback(
     offset: int | None = None,
 ) -> ListResourceFeedbackResponse:
     """Call the list_resource_feedback API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if limit is not None:
         params["limit"] = limit
     if offset is not None:
@@ -1630,7 +1631,7 @@ def list_resource_versions(
     limit: int | None = None,
 ) -> ListResourceVersionsResponse:
     """Call the list_resource_versions API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if limit is not None:
         params["limit"] = limit
     return http.request_model(
@@ -1649,7 +1650,7 @@ def get_acquisition_plan(
     channel: str | None = None,
 ) -> GetAcquisitionPlanResponse:
     """Call the get_acquisition_plan API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if channel is not None:
         params["channel"] = channel
     return http.request_model(
@@ -1741,9 +1742,9 @@ def setup_github_callback(
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Call the setup_github_callback API operation."""
-    params: dict[str, Any] = {}
+    params: dict[str, QueryValue] = {}
     if code is not None:
         params["code"] = code
     if state is not None:
@@ -1751,7 +1752,7 @@ def setup_github_callback(
     if error is not None:
         params["error"] = error
     return cast(
-        dict[str, Any],
+        JsonObject,
         http.request(
             "GET",
             "/v1/setup/github/callback",
@@ -1762,10 +1763,10 @@ def setup_github_callback(
 
 def setup_github_start(
     http: HttpClient,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Call the setup_github_start API operation."""
     return cast(
-        dict[str, Any],
+        JsonObject,
         http.request(
             "GET",
             "/v1/setup/github/start",

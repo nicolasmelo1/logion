@@ -19,18 +19,18 @@ class TestResourcesResourceSearch:
         resource = ResourcesResource(http)
         with pytest.raises(ValueError, match="does not support query"):
             resource.search(query="rag")
-        http.request.assert_not_called()
+        http.request_object.assert_not_called()
 
     def test_rejects_tags_missing_from_public_contract(self) -> None:
         http = MagicMock(spec=HttpClient)
         resource = ResourcesResource(http)
         with pytest.raises(ValueError, match="does not support tags"):
             resource.search(tags="ai")
-        http.request.assert_not_called()
+        http.request_object.assert_not_called()
 
     def test_search_with_contract_filters(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"items": []}
+        http.request_object.return_value = {"items": []}
         resource = ResourcesResource(http)
         resource.search(
             resource_type="agent_skill",
@@ -38,7 +38,7 @@ class TestResourcesResourceSearch:
             limit=100,
             cursor="abc123",
         )
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "GET",
             "/v1/resources",
             params={
@@ -57,60 +57,48 @@ class TestResourcesResourceSearch:
         resource = ResourcesResource(http)
         with pytest.raises(ValueError, match="between 1 and 100"):
             resource.search(limit=limit)
-        http.request.assert_not_called()
+        http.request_object.assert_not_called()
 
     def test_search_no_params(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"items": []}
+        http.request_object.return_value = {"items": []}
         resource = ResourcesResource(http)
         resource.search()
-        http.request.assert_called_once_with("GET", "/v1/resources", params={})
-
-    def test_search_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = ["not", "a", "dict"]
-        resource = ResourcesResource(http)
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.search()
+        http.request_object.assert_called_once_with(
+            "GET", "/v1/resources", params={}
+        )
 
 
 class TestResourcesResourceGet:
     def test_get_by_resource_uuid(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {
+        http.request_object.return_value = {
             "resource": {"id": RESOURCE_ID, "title": "Hello"}
         }
         resource = ResourcesResource(http)
         result = resource.get(resource_id=RESOURCE_ID)
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "GET", f"/v1/resources/{RESOURCE_ID}"
         )
         assert result["resource"]["title"] == "Hello"  # type: ignore[index]
-
-    def test_get_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = "not a dict"
-        resource = ResourcesResource(http)
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.get(resource_id=RESOURCE_ID)
 
 
 class TestResourcesResourceVersions:
     def test_versions_with_defaults(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"items": []}
+        http.request_object.return_value = {"items": []}
         resource = ResourcesResource(http)
         resource.versions(resource_id=RESOURCE_ID)
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "GET", f"/v1/resources/{RESOURCE_ID}/versions", params={}
         )
 
     def test_versions_with_limit(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"items": []}
+        http.request_object.return_value = {"items": []}
         resource = ResourcesResource(http)
         resource.versions(resource_id=RESOURCE_ID, limit=5)
-        call_args = http.request.call_args
+        call_args = http.request_object.call_args
         assert call_args.kwargs["params"]["limit"] == 5
 
     @pytest.mark.parametrize("limit", [0, 101, -1, True])
@@ -121,21 +109,14 @@ class TestResourcesResourceVersions:
         resource = ResourcesResource(http)
         with pytest.raises(ValueError, match="between 1 and 100"):
             resource.versions(resource_id=RESOURCE_ID, limit=limit)
-        http.request.assert_not_called()
+        http.request_object.assert_not_called()
 
     def test_versions_rejects_cursor_missing_from_contract(self) -> None:
         http = MagicMock(spec=HttpClient)
         resource = ResourcesResource(http)
         with pytest.raises(ValueError, match="does not support cursor"):
             resource.versions(resource_id=RESOURCE_ID, cursor="next")
-        http.request.assert_not_called()
-
-    def test_versions_raises_on_non_dict_response(self) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = ["not", "a", "dict"]
-        resource = ResourcesResource(http)
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.versions(resource_id=RESOURCE_ID)
+        http.request_object.assert_not_called()
 
 
 class TestAcquisitionSurfaceContract:
@@ -151,14 +132,14 @@ class TestAcquisitionSurfaceContract:
 
     def test_acquisition_plan_path_and_channel_param(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {}
+        http.request_object.return_value = {}
         resource = ResourcesResource(http)
         resource.acquisition_plan(
             resource_id=RESOURCE_ID,
             version_id=self.VERSION_ID,
             channel="npx_skills",
         )
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "GET",
             f"/v1/resources/{RESOURCE_ID}/versions/{self.VERSION_ID}"
             "/acquisition-plan",
@@ -167,47 +148,30 @@ class TestAcquisitionSurfaceContract:
 
     def test_acquisition_plan_omits_unset_channel(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {}
+        http.request_object.return_value = {}
         resource = ResourcesResource(http)
         resource.acquisition_plan(
             resource_id=RESOURCE_ID, version_id=self.VERSION_ID
         )
-        assert http.request.call_args.kwargs["params"] == {}
+        assert http.request_object.call_args.kwargs["params"] == {}
 
     def test_acquisition_plan_percent_encodes_identifiers(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {}
+        http.request_object.return_value = {}
         resource = ResourcesResource(http)
         resource.acquisition_plan(resource_id="a/../b", version_id="c d")
-        path = http.request.call_args.args[1]
+        path = http.request_object.call_args.args[1]
         assert "a%2F..%2Fb" in path
         assert "c%20d" in path
 
     def test_create_download_is_a_post_without_body(self) -> None:
         http = MagicMock(spec=HttpClient)
-        http.request.return_value = {"files": []}
+        http.request_object.return_value = {"files": []}
         resource = ResourcesResource(http)
         resource.create_download(
             resource_id=RESOURCE_ID, version_id=self.VERSION_ID
         )
-        http.request.assert_called_once_with(
+        http.request_object.assert_called_once_with(
             "POST",
             f"/v1/resources/{RESOURCE_ID}/versions/{self.VERSION_ID}/download",
         )
-
-    @pytest.mark.parametrize(
-        "payload",
-        [[], "text", None, 42],
-    )
-    def test_non_object_responses_are_rejected(self, payload: object) -> None:
-        http = MagicMock(spec=HttpClient)
-        http.request.return_value = payload
-        resource = ResourcesResource(http)
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.acquisition_plan(
-                resource_id=RESOURCE_ID, version_id=self.VERSION_ID
-            )
-        with pytest.raises(TypeError, match="Expected a JSON object"):
-            resource.create_download(
-                resource_id=RESOURCE_ID, version_id=self.VERSION_ID
-            )

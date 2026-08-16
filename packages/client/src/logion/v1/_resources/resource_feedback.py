@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
+from logion._json import JsonObject
 
 
 class ResourceFeedbackResource:
@@ -29,7 +28,7 @@ class ResourceFeedbackResource:
         completed_task: bool | None = None,
         body: str | None = None,
         source_receipt_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Submit feedback for a resource version.
 
         Parameters
@@ -49,7 +48,7 @@ class ResourceFeedbackResource:
         body:
             Optional free-text review.
         """
-        payload: dict[str, Any] = {
+        payload: JsonObject = {
             "rating": rating,
             "acquisition_channel": acquisition_channel,
             "task_class": task_class,
@@ -68,60 +67,26 @@ class ResourceFeedbackResource:
             payload["body"] = body
         if source_receipt_id is not None:
             payload["source_receipt_id"] = source_receipt_id
-        result = self._http.request(
+        return self._http.request_object(
             "POST",
             f"/v1/resources/{resource_id}/versions/{version_id}/feedback",
             json=payload,
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from POST feedback, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
-    def list_mine(self) -> list[dict[str, Any]]:
+    def list_mine(self) -> list[JsonObject]:
         """List feedback submitted by the authenticated user."""
-        result = self._http.request("GET", "/v1/feedback/mine")
-        items: Any = (
-            result.get("items") if isinstance(result, dict) else result
-        )
-        if not isinstance(items, list):
-            msg = (
-                f"Expected a JSON array from GET /v1/feedback/mine, "
-                f"got {type(items).__name__}"
-            )
-            raise TypeError(msg)
-        return items
+        return self._http.request_items("GET", "/v1/feedback/mine")
 
-    def list_for_resource(self, resource_id: str) -> list[dict[str, Any]]:
+    def list_for_resource(self, resource_id: str) -> list[JsonObject]:
         """List public feedback for a specific resource."""
-        result = self._http.request(
+        return self._http.request_items(
             "GET",
             f"/v1/resources/{resource_id}/feedback",
         )
-        items: Any = (
-            result.get("items") if isinstance(result, dict) else result
-        )
-        if not isinstance(items, list):
-            msg = (
-                f"Expected a JSON array from GET feedback, "
-                f"got {type(items).__name__}"
-            )
-            raise TypeError(msg)
-        return items
 
-    def get_summary(self, resource_id: str) -> dict[str, Any]:
+    def get_summary(self, resource_id: str) -> JsonObject:
         """Get aggregated feedback summary for a resource."""
-        result = self._http.request(
+        return self._http.request_object(
             "GET",
             f"/v1/resources/{resource_id}/feedback/summary",
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from feedback summary, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result

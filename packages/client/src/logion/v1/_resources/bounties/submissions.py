@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import builtins
-from typing import Any
 from uuid import UUID
 
+from logion._json import JsonObject
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
@@ -29,7 +29,7 @@ class _BountySubmissionsMixin(_BountyResourceBase):
         *,
         title: str,
         description: str,
-        evidence: dict[str, Any] | None = None,
+        evidence: JsonObject | None = None,
         proposed_course_version_id: str | UUID | None = None,
         github_pr: bool | None = None,
     ) -> CreateBountySubmissionResponse:

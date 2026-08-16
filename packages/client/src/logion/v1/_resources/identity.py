@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 from logion._http import HttpClient
+from logion._json import JsonObject
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     AddAgentToUserRequest,
@@ -212,7 +213,7 @@ class IdentityResource:
             scope_tier=scope_tier,
         )
         data = cast(
-            dict[str, Any],
+            JsonObject,
             self._http.request(
                 "POST",
                 "/v1/identity/github/device/poll",

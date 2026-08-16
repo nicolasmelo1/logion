@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
 from logion.v1._generated import operations
 
@@ -15,7 +13,7 @@ class HealthResource:
     def __init__(self, http: HttpClient) -> None:
         self._http = http
 
-    def check(self) -> dict[str, Any]:
+    def check(self) -> dict[str, str]:
         """Check if the API is healthy.
 
         The health endpoint returns a free-form dict
