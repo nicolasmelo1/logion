@@ -55,6 +55,8 @@ __all__ = [
     "JsonValue",
     "as_array",
     "as_object",
+    "child",
+    "children",
     "opt_bool",
     "opt_int",
     "opt_object",
@@ -239,6 +241,33 @@ def opt_object(obj: JsonObject, key: str) -> JsonObject | None:
     if isinstance(value, dict):
         return value
     raise _fail(key, "an object or null", value)
+
+
+def child(obj: JsonObject, key: str) -> JsonObject:
+    """Return the nested object at *key*, or an empty one.
+
+    This is the typed replacement for a ``.get(key, {})`` traversal
+    chain over a document whose branches are all optional — a config
+    file, an OpenAPI spec, a CMS-style content tree. Unlike
+    :func:`opt_object` it never raises, so a branch of the wrong type
+    reads as absent; use it only where that is the intent.
+    """
+    value = obj.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def children(obj: JsonObject, key: str) -> list[JsonObject]:
+    """Return the objects in the array at *key*, skipping the rest.
+
+    The array counterpart of :func:`child`, with the same forgiving
+    contract: a missing key, a non-array, or a non-object entry is
+    skipped rather than raised on. Use :func:`require_object_array`
+    when a malformed entry should be an error instead.
+    """
+    value = obj.get(key)
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
 
 
 def opt_str_array(obj: JsonObject, key: str) -> list[str]:

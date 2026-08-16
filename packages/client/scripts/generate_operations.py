@@ -15,7 +15,8 @@ from pathlib import Path
 from logion._json import (
     JsonObject,
     as_object,
-    opt_object,
+    child,
+    children,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -100,25 +101,6 @@ def generate_operations() -> str:
     return render_module(operations)
 
 
-def child(schema: JsonObject, key: str) -> JsonObject:
-    """Return the nested object at *key*, or an empty one.
-
-    The OpenAPI document is a JSON boundary, so every step of a
-    traversal has to be narrowed. Falling back to ``{}`` keeps the
-    behaviour of the ``.get(key, {})`` chains this replaces: an absent
-    branch simply yields no annotation.
-    """
-    return opt_object(schema, key) or {}
-
-
-def objects(schema: JsonObject, key: str) -> list[JsonObject]:
-    """Return the array at *key* keeping only its object entries."""
-    value = schema.get(key)
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
-
-
 def collect_operations(spec: JsonObject) -> list[Operation]:
     """Extract supported OpenAPI operations in stable order."""
     operations: list[Operation] = []
@@ -141,7 +123,7 @@ def parse_operation(
     """Parse the parts of an OpenAPI operation used by the generator."""
     parameters = [
         parse_parameter(param)
-        for param in objects(operation, "parameters")
+        for param in children(operation, "parameters")
         if param.get("in") in {"path", "query"}
     ]
     request_model = parse_ref(
@@ -222,7 +204,7 @@ def parse_ref_schema(schema: JsonObject) -> str | None:
     if isinstance(ref, str):
         return ref.rsplit("/", maxsplit=1)[-1]
     # Handle anyOf: [{$ref}, {type: null}] — nullable request bodies.
-    for item in objects(schema, "anyOf"):
+    for item in children(schema, "anyOf"):
         name = parse_ref_schema(item)
         if name is not None:
             return name
@@ -238,7 +220,7 @@ def schema_to_annotation(
     if "anyOf" in schema:
         non_null = [
             item
-            for item in objects(schema, "anyOf")
+            for item in children(schema, "anyOf")
             if item.get("type") != "null"
         ]
         if len(non_null) == 1:
