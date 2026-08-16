@@ -20,6 +20,28 @@ def _command_packages() -> list[Path]:
     ]
 
 
+def _command_source_files() -> list[Path]:
+    """Every command source file, packaged or flat.
+
+    Flat modules are included deliberately. The size cap used to apply
+    only to files inside a command package, so a command that had not
+    been split yet was exempt from the very rule meant to make it split
+    -- which is how bounties.py reached 670 lines.
+    """
+    files = [
+        path
+        for package in _command_packages()
+        for path in package.rglob("*.py")
+        if path.name != "__init__.py"
+    ]
+    files.extend(
+        path
+        for path in COMMANDS_DIR.glob("*.py")
+        if path.name != "__init__.py"
+    )
+    return files
+
+
 def test_command_modules_use_package_layout() -> None:
     """Every CLI command must live in a package with a fixed layout."""
     package_names = set()
@@ -66,14 +88,12 @@ def test_top_level_command_imports_are_registered() -> None:
     assert registered == imported
 
 
-def test_command_package_source_files_stay_small() -> None:
-    """Command packages must be split before files grow too large."""
-    for path in _command_packages():
-        for file_path in path.rglob("*.py"):
-            if file_path.name == "__init__.py":
-                continue
-            line_count = len(file_path.read_text().splitlines())
-            assert line_count <= MAX_SOURCE_LINES, (
-                f"{path.name}/{file_path.name} has {line_count} lines; "
-                f"split it before it exceeds {MAX_SOURCE_LINES}."
-            )
+def test_command_source_files_stay_small() -> None:
+    """Command modules must be split before files grow too large."""
+    for file_path in _command_source_files():
+        line_count = len(file_path.read_text().splitlines())
+        relative = file_path.relative_to(COMMANDS_DIR)
+        assert line_count <= MAX_SOURCE_LINES, (
+            f"{relative} has {line_count} lines; "
+            f"split it before it exceeds {MAX_SOURCE_LINES}."
+        )

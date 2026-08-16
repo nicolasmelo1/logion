@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from cli._config import CliConfig
@@ -50,3 +52,19 @@ def make_client(config: CliConfig) -> logion.LogionClient:
         timeout=config.timeout,
         max_retries=config.max_retries,
     )
+
+
+@contextlib.contextmanager
+def client_for(config: CliConfig) -> Iterator[logion.LogionClient]:
+    """Yield a client for *config*, closing it on the way out.
+
+    Handlers otherwise repeat a five-line ``try/except/else/finally``
+    around every call, and the ``finally: client.close()`` is easy to
+    forget. Pair with :func:`cli._errors.handle_error` in the caller's
+    ``except`` so the exit code stays the handler's decision.
+    """
+    client = make_client(config)
+    try:
+        yield client
+    finally:
+        client.close()
