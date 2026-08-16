@@ -21,14 +21,27 @@ package gains a dependency purely for typing. ``make check-json-module``
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TypeAlias
 
 #: Any value the JSON grammar can produce, recursively.
+#:
+#: The container arms are the *covariant* ``Sequence``/``Mapping`` rather
+#: than ``list``/``dict``. ``list`` is invariant, so a plain
+#: ``list[JsonValue]`` arm would reject an ordinary ``list[str]`` —
+#: forcing a rewrite at every site that builds a payload out of already
+#: concrete values. Covariance makes ``{"tags": tags}`` type-check with
+#: ``tags: list[str]``, which is the overwhelmingly common case.
 JsonValue: TypeAlias = (
-    "str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]"
+    "str | int | float | bool | None"
+    " | Sequence[JsonValue] | Mapping[str, JsonValue]"
 )
 
 #: A JSON object — the common case for a decoded body or document.
+#:
+#: Mutable and invariant on purpose: the *outer* container is usually
+#: built up key by key, so ``dict`` is what callers want. Only the
+#: values nested inside it are covariant.
 JsonObject: TypeAlias = "dict[str, JsonValue]"
 
 #: A JSON array — the common case for a decoded list body.

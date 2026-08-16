@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+
+from logion_indexer._json import JsonObject
 
 from .canonical import CanonicalResourceId, CanonicalSkillId
 
@@ -68,11 +69,11 @@ class DiscoveredResource:
     source_commit: str | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)
     channels: tuple[DiscoveryChannel, ...] = field(default_factory=tuple)
-    inferred_map: dict[str, Any] | None = None
+    inferred_map: JsonObject | None = None
     map_flags: tuple[str, ...] = field(default_factory=tuple)
-    bundle: dict[str, Any] | None = None
-    declared_capabilities: dict[str, Any] | None = None
-    npm_distribution: dict[str, Any] | None = None
+    bundle: JsonObject | None = None
+    declared_capabilities: JsonObject | None = None
+    npm_distribution: JsonObject | None = None
 
 
 @dataclass(frozen=True)
@@ -108,9 +109,9 @@ class DiscoveredSkill:
     source_commit: str | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)
     channels: tuple[DiscoveryChannel, ...] = field(default_factory=tuple)
-    inferred_map: dict[str, Any] | None = None
+    inferred_map: JsonObject | None = None
     map_flags: tuple[str, ...] = field(default_factory=tuple)
-    bundle: dict[str, Any] | None = None
+    bundle: JsonObject | None = None
 
     def to_resource(self) -> DiscoveredResource:
         """Convert to a :class:`DiscoveredResource`."""
