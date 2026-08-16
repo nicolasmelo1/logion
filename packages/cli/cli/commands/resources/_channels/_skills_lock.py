@@ -36,6 +36,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from cli._json import JsonObject
+
 from .._catalog_reconciliation import normalize_locator
 
 #: Lockfile schema versions this adapter has been tested against.
@@ -108,7 +110,7 @@ def _normalized_digest(raw: object) -> str:
 _NATIVE_SKILLS_DIR = Path(".agents/skills")
 
 
-def _entry_paths(name: str, info: dict[str, object]) -> tuple[str, ...]:
+def _entry_paths(name: str, info: JsonObject) -> tuple[str, ...]:
     """Local install paths for one entry, relative to the project root.
 
     ``skillPath`` is the skill's location *inside the upstream repository*

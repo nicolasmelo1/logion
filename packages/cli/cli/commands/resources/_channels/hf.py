@@ -7,7 +7,7 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from cli._json import JsonObject, child, elements
+from cli._json import JsonObject, child, require_str_array
 
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
@@ -19,7 +19,10 @@ class HfAdapter(ChannelAdapter):
         self, *, plan: JsonObject, destination: Path, scope_root: Path
     ) -> AcquisitionOutcome:
         native = child(plan, "native")
-        argv = list(elements(native, "argv"))
+        # require_ rather than the permissive reader: this argv is
+        # executed, so a non-string entry must fail loudly instead
+        # of being coerced into one.
+        argv = require_str_array(native, "argv")
         if not argv or argv[:2] != ["hf", "download"]:
             raise RuntimeError(
                 "native_tool_unsupported: expected hf download argv"

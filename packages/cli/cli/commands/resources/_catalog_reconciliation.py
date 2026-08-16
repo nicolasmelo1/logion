@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from cli._json import JsonObject
 from cli._lazy_import import LazyModule
 from cli._output import to_data, to_items
 
@@ -15,8 +16,8 @@ else:
 
 
 def catalog_matches(
-    client: logion.LogionClient, item: dict[str, object]
-) -> list[dict[str, object]]:
+    client: logion.LogionClient, item: JsonObject
+) -> list[JsonObject]:
     """Resolve native source/revision against the paginated catalog."""
     source = str(item.get("source") or "")
     revision = str(item.get("revision") or "")
@@ -28,7 +29,7 @@ def catalog_matches(
     }.get(str(item.get("manager") or ""))
     if not source or resource_type is None:
         return []
-    matches: list[dict[str, object]] = []
+    matches: list[JsonObject] = []
     cursor: str | None = None
     while True:
         try:
@@ -78,10 +79,10 @@ def normalize_locator(value: str) -> str:
 
 def _resource_version_matches(
     client: logion.LogionClient,
-    resource: dict[str, object],
+    resource: JsonObject,
     source: str,
     revision: str,
-) -> list[dict[str, object]]:
+) -> list[JsonObject]:
     canonical = str(resource.get("canonical_uri") or "")
     # Exact identity only. Fuzzy or display-name linking silently
     # attributes an installation to the wrong resource.
@@ -96,7 +97,7 @@ def _resource_version_matches(
         )
     except Exception:
         return []
-    matches: list[dict[str, object]] = []
+    matches: list[JsonObject] = []
     for version in to_items(versions):
         version_revision = str(version.get("source_revision") or "")
         if revision and version_revision and revision != version_revision:

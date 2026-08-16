@@ -8,14 +8,14 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._json import elements, opt_str
+from cli._json import JsonObject, elements, opt_str
 from cli._output import emit_json, to_object, truncate_summary
 
 _DEFAULT_LIMIT = 5
 _MAX_LIMIT = 50
 
 
-def _compact_match(item: dict[str, object]) -> dict[str, object]:
+def _compact_match(item: JsonObject) -> JsonObject:
     """Build the compact listing payload for default JSON output."""
     summary_source = item.get("short_summary") or item.get("summary")
     tags_value = item.get("tags")
@@ -45,7 +45,7 @@ def _compact_match(item: dict[str, object]) -> dict[str, object]:
 
 def _format_search_payload(
     result: object, *, limit: int, verbose: bool
-) -> dict[str, object]:
+) -> JsonObject:
     """Normalise the SDK response into the CLI's stable payload shape."""
     data = to_object(result)
     if isinstance(data, dict):
@@ -57,7 +57,7 @@ def _format_search_payload(
 
     items = [item for item in raw_items if isinstance(item, dict)]
     matches = items if verbose else [_compact_match(item) for item in items]
-    payload: dict[str, object] = {
+    payload: JsonObject = {
         "matches": matches,
         "total": len(items),
         "limit": limit,
@@ -67,7 +67,7 @@ def _format_search_payload(
     return payload
 
 
-def _print_human(payload: dict[str, object]) -> None:
+def _print_human(payload: JsonObject) -> None:
     """Render a compact human-readable search result list."""
     matches = payload.get("matches")
     if not isinstance(matches, list) or not matches:

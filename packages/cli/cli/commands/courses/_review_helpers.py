@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 from cli._json import JsonObject, elements, opt_int
-from cli._output import to_data, truncate_summary
+from cli._output import to_object, truncate_summary
 
 
 def data_or_model_dump(result: object) -> JsonObject:
-    """Return model_dump() for Pydantic models, else to_data."""
-    if hasattr(result, "model_dump"):
-        return result.model_dump(mode="json")  # type: ignore[union-attr]
-    return to_data(result)
+    """Return the response as a JSON object.
+
+    to_object already unwraps a Pydantic model, so the hasattr probe
+    and its type: ignore are gone.
+    """
+    return to_object(result)
 
 
 def collect_reviews(

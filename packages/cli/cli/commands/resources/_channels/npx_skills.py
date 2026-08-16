@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 from typing import ClassVar
 
-from cli._json import JsonObject, child, elements
+from cli._json import JsonObject, child, require_str_array
 
 from ._skills_lock import (
     UnsupportedLockfileError,
@@ -43,7 +43,10 @@ class NpxSkillsAdapter(ChannelAdapter):
         scope_root: Path,
     ) -> AcquisitionOutcome:
         native = child(plan, "native")
-        argv = list(elements(native, "argv"))
+        # require_ rather than the permissive reader: this argv is
+        # executed, so a non-string entry must fail loudly instead
+        # of being coerced into one.
+        argv = require_str_array(native, "argv")
         self._validate_argv(argv)
         # The lockfile records no manager version, so the identity comes
         # from the immutable spec we are about to execute.

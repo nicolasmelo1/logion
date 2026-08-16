@@ -15,6 +15,7 @@ import sys
 
 from cli._errors import print_err
 from cli._harness.base import GrantResult, HarnessAdapter, HarnessConfigError
+from cli._json import JsonObject
 
 
 def _prompt_yes_no(question: str, *, default: bool = False) -> bool:
@@ -61,7 +62,7 @@ def resolve_optin(args: argparse.Namespace) -> bool:
 def apply(
     args: argparse.Namespace,
     adapters: list[HarnessAdapter],
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     """Grant the autopost permission across the resolved harnesses.
 
     *adapters* is the harness selection resolved once by

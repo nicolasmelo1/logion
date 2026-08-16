@@ -22,7 +22,14 @@ import os
 import re
 from pathlib import Path
 
-from cli._json import JsonObject, JsonValue, elements, opt_int, opt_str
+from cli._json import (
+    JsonObject,
+    JsonValue,
+    elements,
+    opt_int,
+    opt_str,
+    strings,
+)
 
 # ---------------------------------------------------------------------------
 # Layout
@@ -619,6 +626,13 @@ def detect_danger_flags(commands: list[str] | None) -> list[str]:
     return sorted(found)
 
 
+def _as_confidence(value: JsonValue, default: float = 0.5) -> float:
+    """Read a stored confidence score, falling back when unusable."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return default
+    return float(value)
+
+
 def _recall_tokens(*parts: str) -> list[str]:
     """Return compact searchable tokens for recall ranking."""
     tokens: list[str] = []
@@ -646,7 +660,7 @@ def build_recall_entries(
     entries: list[JsonObject] = []
 
     for m in installed:
-        entry = {
+        entry: JsonObject = {
             "type": "installed_capability",
             "id": opt_str(m, "course_id", ""),
             "title": opt_str(m, "title", ""),
@@ -669,27 +683,25 @@ def build_recall_entries(
 
     if workflows:
         for w in workflows:
-            raw_commands = elements(w, "commands") or []
+            raw_commands = strings(w, "commands")
             # Danger-flag detection runs on the *original* string so a
             # token like ``--token=…`` does not get masked into
             # invisibility before the regex sees it.  Persisted
             # commands are the redacted form.
             danger_flags = detect_danger_flags(raw_commands)
             redacted_commands = [
-                mask_command_string(c) if isinstance(c, str) else c
-                for c in raw_commands
+                mask_command_string(command) for command in raw_commands
             ]
             entry = {
                 "type": "workflow",
                 "id": opt_str(w, "id", ""),
                 "title": opt_str(w, "title", ""),
                 "summary": (opt_str(w, "summary", "") or "")[:200],
-                "confidence": float(w.get("confidence", 0.5)),
+                "confidence": _as_confidence(w.get("confidence")),
                 "source": "workflow_history",
                 "commands": redacted_commands,
                 "tokens": _recall_tokens(
-                    str(opt_str(w, "id", "")),
-                    *[str(command) for command in redacted_commands],
+                    opt_str(w, "id", ""), *redacted_commands
                 ),
                 "success_count": int(opt_int(w, "success_count", 0)),
                 "last_success_at": opt_str(w, "last_success_at", ""),
@@ -755,7 +767,7 @@ def search_recall(
             confidence = calibrate_workflow_confidence(
                 similarity,
                 opt_int(entry, "success_count", 0),
-                entry.get("last_success_at"),
+                opt_str(entry, "last_success_at"),
             )
         elif entry_type == "reference":
             confidence = 0.8 * similarity
@@ -1034,7 +1046,8 @@ def record_workflow_success(
                 w["success_count"] = int(opt_int(w, "success_count", 0)) + 1
                 w["last_success_at"] = now
                 w["confidence"] = min(
-                    float(w.get("confidence", confidence)) + 0.05, 1.0
+                    _as_confidence(w.get("confidence"), confidence) + 0.05,
+                    1.0,
                 )
                 updated = w
                 break

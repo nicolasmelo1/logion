@@ -7,7 +7,7 @@ import json
 import shutil
 from pathlib import Path
 
-from cli._json import JsonObject, child
+from cli._json import JsonObject, child, require_str_array
 
 from .._catalog_reconciliation import normalize_locator
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
@@ -19,7 +19,9 @@ class NpxPluginsAdapter(ChannelAdapter):
     def acquire(
         self, *, plan: JsonObject, destination: Path, scope_root: Path
     ) -> AcquisitionOutcome:
-        argv = list((child(plan, "native")).get("argv") or [])
+        # Executed argv: reject a wrong-typed entry rather than
+        # coercing it into a command-line argument.
+        argv = require_str_array(child(plan, "native"), "argv")
         if not argv or argv[:2] != ["npx", "plugins"]:
             raise RuntimeError(
                 "native_tool_unsupported: expected npx plugins argv"

@@ -8,10 +8,11 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._json import JsonObject
 from cli._output import emit_json, to_object
 
 
-def _print_human(payload: dict[str, object]) -> None:
+def _print_human(payload: JsonObject) -> None:
     """Render an indexed listing in compact human-readable form."""
     from sys import stdout
 

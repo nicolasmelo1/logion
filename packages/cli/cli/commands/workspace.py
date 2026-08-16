@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from cli._errors import print_err, validate_uuid_id
-from cli._json import JsonObject
+from cli._json import JsonArray, JsonObject
 from cli._options import COMMON_PARSER
 from cli._output import emit
 
@@ -28,7 +28,7 @@ def has_dirty_files(path: Path) -> bool:
     return any(item.is_file() for item in path.rglob("*"))
 
 
-def write_json_atomic(path: Path, data: dict[str, object]) -> None:
+def write_json_atomic(path: Path, data: JsonObject) -> None:
     """Write *data* as JSON to *path* atomically via a temp file.
 
     Uses a uniquely-named temp file in the same directory so that
@@ -100,7 +100,7 @@ def _handle_init(args: argparse.Namespace) -> int:
     if state_path.exists() and not args.force:
         print_err("Error: state.json exists. Use --force.")
         return 2
-    state: dict[str, object] = {
+    state: JsonObject = {
         "active_bounty_id": None,
         "active_submission_id": None,
         "current_path": str(root / "current"),
@@ -185,7 +185,7 @@ def _handle_checkout(args: argparse.Namespace) -> int:
     submission_dir.mkdir(parents=True, exist_ok=True)
 
     # Write metadata for the new submission
-    meta: dict[str, object] = {
+    meta: JsonObject = {
         "bounty_id": bounty_id,
         "submission_id": submission_id,
         "title": getattr(args, "title", None),
@@ -275,16 +275,17 @@ def _handle_evidence(args: argparse.Namespace) -> int:
     current_dir = root / "current"
 
     evidence: JsonObject = {
-        "files": [],
         "generated_at": _now_iso(),
     }
+    files: JsonArray = []
     for item in sorted(current_dir.rglob("*")):
         if item.is_file():
             rel = item.relative_to(current_dir)
-            evidence["files"].append({
+            files.append({
                 "path": str(rel),
                 "size": item.stat().st_size,
             })
+    evidence["files"] = files
 
     output_path = Path(args.output) if args.output else root / "evidence.json"
     write_json_atomic(output_path, evidence)

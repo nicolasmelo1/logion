@@ -39,6 +39,7 @@ from cli._harness.scopes import (
 from cli._harness.scopes import (
     VALID_SCOPES as SCOPE_VOCABULARY,
 )
+from cli._json import JsonObject
 
 # The command whose autonomous execution the autopost grant authorizes.
 # Defined once; each adapter renders it into its harness's permission
@@ -70,7 +71,7 @@ class GrantResult:
     changed: bool  # True if the file was actually written
     already: bool  # grant: rule was already present; revoke: already absent
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonObject:
         """JSON-safe view for ``--json`` output."""
         return {
             "harness": self.harness,

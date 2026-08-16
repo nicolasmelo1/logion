@@ -40,7 +40,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
-from cli._json import JsonArray, JsonObject
+from cli._json import JsonArray, JsonObject, child
 from cli._local_state import _atomic_write_text
 
 
@@ -268,7 +268,9 @@ class ClaudeCodeAdapter(HarnessAdapter):
                 changed=False,
                 already=True,
             )
-        settings["permissions"]["allow"] = [m for m in allow if m != matcher]
+        permissions = child(settings, "permissions")
+        permissions["allow"] = [m for m in allow if m != matcher]
+        settings["permissions"] = permissions
         self._write_settings(path, settings)
         return GrantResult(
             self.name,

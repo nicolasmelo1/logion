@@ -9,8 +9,8 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
-from cli._json import elements, opt_str
-from cli._output import emit_json, to_data, to_object
+from cli._json import JsonObject, elements, opt_str
+from cli._output import emit_json, to_object
 
 from ._acquire_handler import handle_resources_acquire
 from ._distributions_handler import handle_resources_distributions
@@ -28,7 +28,7 @@ __all__ = [
 ]
 
 
-def _print_resource(payload: dict[str, object]) -> None:
+def _print_resource(payload: JsonObject) -> None:
     """Render a resource-detail envelope in human-readable form."""
     nested = payload.get("resource")
     resource = nested if isinstance(nested, dict) else payload
@@ -92,9 +92,7 @@ def handle_resources_search(args: argparse.Namespace) -> int:
                 sys.stdout.write("No resources found.\n")
             else:
                 for item in items:
-                    idata = (
-                        to_data(item) if not isinstance(item, dict) else item
-                    )
+                    idata = to_object(item)
                     rid = opt_str(idata, "id", "?")
                     rtype = opt_str(idata, "resource_type", "?")
                     title = opt_str(idata, "title", "")
@@ -162,9 +160,7 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
                 sys.stdout.write("No versions found.\n")
             else:
                 for item in items:
-                    idata = (
-                        to_data(item) if not isinstance(item, dict) else item
-                    )
+                    idata = to_object(item)
                     vid = opt_str(idata, "id", "?")
                     discovered = opt_str(idata, "discovered_at", "")
                     line = f"  {vid}"

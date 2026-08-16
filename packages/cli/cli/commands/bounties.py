@@ -16,6 +16,7 @@ from cli._errors import (
     print_err,
     validate_uuid_id,
 )
+from cli._json import JsonObject
 from cli._options import COMMON_PARSER
 from cli._output import emit, emit_json, to_data, to_object
 from cli._utils import only_not_none
@@ -29,7 +30,7 @@ def parse_datetime(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def load_evidence(path: Path | None) -> dict[str, object] | None:
+def load_evidence(path: Path | None) -> JsonObject | None:
     """Load a JSON evidence file, returning None if *path* is None.
 
     Returns ``None`` and prints a user-facing error when the file
@@ -283,7 +284,7 @@ def _make_lifecycle_handler(cmd: str, sdk_method: str, action: str):
 # ── Handlers ──────────────────────────────────────────────────────
 
 
-def _bounty_github_pr_line(data: dict[str, object]) -> str:
+def _bounty_github_pr_line(data: JsonObject) -> str:
     """Return a human-readable GitHub PR enabled line."""
     enabled = data.get("github_pr_enabled")
     return f"GitHub PRs: {'enabled' if enabled else 'disabled'}"
@@ -410,9 +411,7 @@ def handle_get(args: argparse.Namespace) -> int:
 # ── Submission handlers ──────────────────────────────────────────
 
 
-def _render_github_pr_block(
-    block: dict[str, object], *, indent: str = "  "
-) -> None:
+def _render_github_pr_block(block: JsonObject, *, indent: str = "  ") -> None:
     """Render the github_pr block returned by submissions create."""
     status = block.get("status")
     pr_url = block.get("pr_url")

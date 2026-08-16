@@ -23,12 +23,12 @@ def append_review_capability_evidence_lines(
     if score is not None:
         lines.append(f"capability_risk_score: {score}")
 
-    declared = payload.get("declared_capabilities")
+    declared = child(payload, "declared_capabilities")
     if declared:
         lines.append("declared_capabilities:")
         _append_declared_lines(lines, declared)
 
-    observed = payload.get("observed_capabilities")
+    observed = child(payload, "observed_capabilities")
     if observed:
         lines.append("observed_capabilities:")
         _append_observed_lines(lines, observed)

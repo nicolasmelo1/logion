@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from cli._json import JsonObject, children, elements, opt_str
+from cli._json import JsonObject, children, elements, opt_str, strings
 
 
 def _append_meta_fields(
@@ -75,13 +75,13 @@ def _append_runtime_fields(
     Only rendered when any runtime field is non-empty, so minimal
     manifests stay compact.
     """
-    env = elements(summary, "runtime_requires_env")
-    bins = elements(summary, "runtime_requires_bins")
+    env = strings(summary, "runtime_requires_env")
+    bins = strings(summary, "runtime_requires_bins")
     any_bins = elements(summary, "runtime_requires_any_bins")
-    config = elements(summary, "runtime_requires_config")
-    os_vals = elements(summary, "runtime_requires_os")
+    config = strings(summary, "runtime_requires_config")
+    os_vals = strings(summary, "runtime_requires_os")
     software = children(summary, "runtime_requires_software")
-    install = elements(summary, "runtime_install")
+    install = children(summary, "runtime_install")
     if not any([env, bins, any_bins, config, os_vals, software, install]):
         return
     lines.append("runtime_requirements:")
@@ -90,7 +90,12 @@ def _append_runtime_fields(
     if bins:
         lines.append(f"  bins: {', '.join(bins)}")
     if any_bins:
-        groups = [" or ".join(g) for g in any_bins]
+        groups = [
+            " or ".join(str(item) for item in group)
+            if isinstance(group, list)
+            else str(group)
+            for group in any_bins
+        ]
         lines.append(f"  any_bins: {', '.join(groups)}")
     if config:
         lines.append(f"  config: {', '.join(config)}")

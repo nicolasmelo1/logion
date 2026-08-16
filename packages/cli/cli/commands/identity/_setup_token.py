@@ -16,6 +16,8 @@ import os
 from cli._context import make_client
 from cli._credentials import save_user_identity
 from cli._errors import handle_error, print_err
+from cli._json import JsonObject
+from cli.commands.identity._fields import field
 
 # The logion.sh URL shown to the user when a token is expired or
 # already redeemed, so they can mint a fresh one.
@@ -37,7 +39,7 @@ def redeem_setup_token(
     args: argparse.Namespace,
     config: object,
     token: str,
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     """Redeem a setup token and persist the resulting credentials.
 
     Returns a summary dict on success, or ``None`` on failure (caller
@@ -70,10 +72,10 @@ def redeem_setup_token(
         client.close()
 
     # Extract response fields.
-    user_id = _field(result, "user_id")
-    agent_id = _field(result, "agent_id")
-    api_key = _field(result, "api_key")
-    api_key_prefix = _field(result, "api_key_prefix")
+    user_id = field(result, "user_id")
+    agent_id = field(result, "agent_id")
+    api_key = field(result, "api_key")
+    api_key_prefix = field(result, "api_key_prefix")
 
     if user_id is not None:
         try:
@@ -97,10 +99,3 @@ def redeem_setup_token(
         "created": True,
         "path": "github_setup_token",
     }
-
-
-def _field(data: dict[str, object] | object, key: str) -> object | None:
-    """Extract a field from an SDK response object or plain dict."""
-    if isinstance(data, dict):
-        return data.get(key)
-    return getattr(data, key, None)

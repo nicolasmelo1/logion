@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 from cli import _local_state
-from cli._json import JsonObject, child
+from cli._json import JsonObject, child, opt_str
 
 RECEIPT_SCHEMA_VERSION = 1
 
@@ -102,7 +102,7 @@ def installation_id_for(scope_id: str, relative_target_path: str) -> str:
 def save_receipt(receipt: JsonObject) -> Path:
     """Persist a receipt atomically under ``$LOGION_HOME/inventory/``."""
     _validate_receipt(receipt)
-    installation_id = receipt["installation_id"]
+    installation_id = opt_str(receipt, "installation_id", "")
     if not re.fullmatch(r"[0-9a-f]{64}", installation_id):
         raise ValueError("installation_id must be an opaque hex id")
     path = _inventory_dir() / f"{installation_id}.json"

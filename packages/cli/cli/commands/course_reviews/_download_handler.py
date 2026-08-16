@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -53,7 +54,7 @@ class ReviewBundle(Protocol):
     def review_id(self) -> str: ...
 
     @property
-    def files(self) -> list[BundleFile]: ...
+    def files(self) -> Sequence[BundleFile]: ...
 
 
 def handle_download(args: argparse.Namespace) -> int:
@@ -97,7 +98,7 @@ def handle_download(args: argparse.Namespace) -> int:
 
 def _download_files(
     http: httpx.Client,
-    files: list[BundleFile],
+    files: Sequence[BundleFile],
     target: Path,
 ) -> int:
     for f in files:
@@ -117,7 +118,7 @@ def _download_files(
 
 def _emit_result(
     bundle: ReviewBundle,
-    files: list[BundleFile],
+    files: Sequence[BundleFile],
     target: Path,
     *,
     json_output: bool,

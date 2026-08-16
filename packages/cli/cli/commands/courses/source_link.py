@@ -22,6 +22,7 @@ from cli._errors import (
     print_err,
     validate_uuid_id,
 )
+from cli._json import JsonObject
 from cli._options import COMMON_PARSER
 from cli._output import emit_json, to_object
 
@@ -141,7 +142,7 @@ def handle_remove(args: argparse.Namespace) -> int:
         client.close()
 
 
-def _emit_set_human(data: dict[str, object]) -> None:
+def _emit_set_human(data: JsonObject) -> None:
     lines: list[str] = []
     repo = data.get("repository")
     if repo is not None:
@@ -156,7 +157,7 @@ def _emit_set_human(data: dict[str, object]) -> None:
         sys.stdout.write("\n".join(lines) + "\n")
 
 
-def _emit_show_human(data: dict[str, object]) -> None:
+def _emit_show_human(data: JsonObject) -> None:
     lines: list[str] = []
     repo = data.get("repository")
     if repo is not None:

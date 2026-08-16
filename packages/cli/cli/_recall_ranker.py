@@ -15,7 +15,7 @@ import difflib
 import re
 from types import ModuleType
 
-from cli._json import JsonObject, elements, opt_str, strings
+from cli._json import JsonObject, opt_str, strings
 
 try:
     from rapidfuzz import fuzz as _rapidfuzz_fuzz
@@ -84,7 +84,7 @@ def rank(
         composed = _compose_entry_text(entry)
         similarity = max(
             _compute_similarity(q, composed),
-            _token_similarity(q, list(elements(entry, "tokens"))),
+            _token_similarity(q, strings(entry, "tokens")),
         )
         if similarity < _MINIMUM_SIMILARITY:
             continue

@@ -6,6 +6,7 @@ from __future__ import annotations
 from cli._context import make_client
 from cli._credentials import save_user_identity
 from cli._errors import handle_error, print_err
+from cli._json import JsonObject
 
 
 def field(obj: object, name: str) -> object:
@@ -34,7 +35,7 @@ def save_api_key(
     user_id: str,
     agent_id: str | None,
     result: object,
-) -> dict[str, object]:
+) -> JsonObject:
     """Persist an API key from an identity response."""
     api_key, api_key_prefix = api_key_parts(result)
     if api_key is None:
@@ -58,7 +59,7 @@ def rotate_and_save_api_key(
     user_id: str,
     agent_id: str,
     password: str,
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     """Rotate an agent API key and persist it."""
     client = make_client(config)  # type: ignore[arg-type]
     try:

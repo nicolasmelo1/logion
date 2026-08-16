@@ -9,9 +9,11 @@ import sys
 from cli._context import make_client
 from cli._credentials import save_user_identity
 from cli._errors import handle_error, print_err
+from cli._json import JsonObject
+from cli.commands.identity._fields import field
 
 from ._api_keys import api_key_parts
-from .handlers import API_KEY_WARNING, _field, _resolve_password
+from .handlers import API_KEY_WARNING, _resolve_password
 
 
 def _prompt(question: str, default: str | None = None) -> str:
@@ -38,7 +40,7 @@ def _resolve_email(cli_value: str | None) -> str | None:
 def provision_identity(
     args: argparse.Namespace,
     config: object,
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     """Create a user + first agent and persist identity context."""
     email = _resolve_email(args.email)
     if email is None:
@@ -71,11 +73,11 @@ def provision_identity(
     finally:
         client.close()
 
-    user = _field(result, "user")
-    agent = _field(result, "agent")
-    user_id = _field(user, "id")
-    agent_id = _field(agent, "id")
-    resolved_email = _field(user, "email")
+    user = field(result, "user")
+    agent = field(result, "agent")
+    user_id = field(user, "id")
+    agent_id = field(agent, "id")
+    resolved_email = field(user, "email")
     api_key, api_key_prefix = api_key_parts(result)
 
     if user_id is not None:
@@ -97,7 +99,7 @@ def provision_identity(
         "user_id": str(user_id) if user_id is not None else None,
         "agent_id": str(agent_id) if agent_id is not None else None,
         "email": str(resolved_email) if resolved_email is not None else None,
-        "api_key": _field(result, "api_key"),
-        "api_key_prefix": _field(result, "api_key_prefix"),
+        "api_key": field(result, "api_key"),
+        "api_key_prefix": field(result, "api_key_prefix"),
         "created": True,
     }

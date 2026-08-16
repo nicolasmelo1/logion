@@ -26,10 +26,18 @@ def to_data(value: object) -> JsonValue:
     if value is None or isinstance(value, str | int | float | bool):
         return value
 
-    from pydantic import BaseModel
-
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
+    # Duck-typed rather than isinstance(BaseModel): it keeps pydantic
+    # out of this module entirely, which matters because _output is on
+    # the parser-setup import path (see test_cli_startup).
+    #
+    # The result has to be a real mapping to count. Without that check a
+    # MagicMock -- which answers every getattr -- would dump to another
+    # MagicMock and recurse forever.
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        dumped = model_dump(mode="json")
+        if isinstance(dumped, dict):
+            return {str(key): to_data(item) for key, item in dumped.items()}
     # Anything left is not JSON-safe. This used to be returned as-is and
     # blew up inside json.dumps one frame later; raising here says the
     # same thing at the point that actually knows what went wrong.

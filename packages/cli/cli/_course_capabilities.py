@@ -13,7 +13,15 @@ from pathlib import Path
 
 import yaml
 
-from cli._json import JsonObject, JsonValue, child, elements
+from cli._json import (
+    JsonObject,
+    JsonValue,
+    child,
+    children,
+    elements,
+    opt_str,
+    strings,
+)
 
 CAPABILITY_MANIFEST_PATH = Path("course/capabilities.yaml")
 ALLOWED_TOOLS = {"browser", "terminal", "file", "web", "vision"}
@@ -139,12 +147,12 @@ def summarize_capability_manifest(
 ) -> JsonObject:
     """Return a human-oriented summary dict from a normalised manifest."""
     tools = elements(manifest, "tools")
-    domains = child(manifest, "network").get("allow_domains") or []
+    domains = strings(child(manifest, "network"), "allow_domains")
     fs = child(manifest, "filesystem")
     secrets = child(manifest, "secrets")
     runtime = child(manifest, "runtime")
     requires = child(runtime, "requires")
-    install = elements(runtime, "install")
+    install = children(runtime, "install")
     summary = {
         "tools": tools,
         "allows_shell": "terminal" in tools,
@@ -167,7 +175,8 @@ def summarize_capability_manifest(
         "runtime_install": install,
     }
     summary["runtime_warning_codes"] = [
-        w["code"] for w in runtime_requirement_warnings(manifest)
+        opt_str(warning, "code", "")
+        for warning in runtime_requirement_warnings(manifest)
     ]
     summary["runtime_warnings"] = runtime_requirement_warnings(manifest)
     return summary
@@ -525,13 +534,13 @@ def runtime_requirement_warnings(
     warnings: list[dict[str, str]] = []
     runtime = child(manifest, "runtime")
     requires = child(runtime, "requires")
-    install = elements(runtime, "install")
-    secrets_env = set(child(manifest, "secrets").get("env") or [])
+    install = children(runtime, "install")
+    secrets_env = set(strings(child(manifest, "secrets"), "env"))
     tools = elements(manifest, "tools")
     human_approval_required = bool(
         child(manifest, "human_approval").get("required", False)
     )
-    domains = child(manifest, "network").get("allow_domains") or []
+    domains = strings(child(manifest, "network"), "allow_domains")
 
     for env_name in elements(requires, "env"):
         if env_name not in secrets_env:
@@ -568,7 +577,8 @@ def runtime_requirement_warnings(
         })
 
     network_kinds = {"uv", "npm", "pip", "brew", "apt", "go", "cargo"}
-    if any(step["kind"] in network_kinds for step in install) and not domains:
+    install_kinds = {opt_str(step, "kind", "") for step in install}
+    if install_kinds & network_kinds and not domains:
         warnings.append({
             "code": "install_steps_without_network_domains",
             "severity": "low",

@@ -9,6 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
+from cli._json import JsonObject
 from cli._output import emit, emit_json, to_data, to_object
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
@@ -30,7 +31,7 @@ MUTABLE_UPDATE_FIELDS = [
 
 def _append_course_capability_lines(
     lines: list[str],
-    data: dict[str, object],
+    data: JsonObject,
 ) -> None:
     """Append latest-version capability summary lines for course detail."""
     status = data.get("latest_version_capabilities_status")
@@ -58,7 +59,7 @@ def _check_clear_price_conflict(args: argparse.Namespace) -> int | None:
 
 def _apply_update_overrides(
     args: argparse.Namespace,
-    kwargs: dict[str, object],
+    kwargs: JsonObject,
 ) -> None:
     if args.clear_tags:
         kwargs["tags"] = []
