@@ -1,0 +1,124 @@
+schema_version: "1"
+name: native_use_observation_and_feedback
+description: >-
+  A user installs a skill from an external source into one repository, uses it
+  on a real task, and then submits honest feedback through Logion linked to the
+  exact resource and version — without reinstalling through Logion. A second
+  user in a separate repository proves that observations from one repo do not
+  leak into another. The scenario exercises observation spool, pending usage,
+  feedback submission, and the Course-review projection disposition.
+api_adapter: mock
+
+agents:
+  - id: user_a
+    role: Developer using an externally installed skill in repo xpto
+    driver: scripted
+    workspace: user_a
+    devrig_role: buyer
+    timeout_seconds: 1800
+
+  - id: user_b
+    role: Developer working in a separate repo acme with the same skill
+    driver: scripted
+    workspace: user_b
+    devrig_role: buyer
+    timeout_seconds: 1800
+
+phases:
+  - id: install_and_use_in_xpto
+    actor: user_a
+    goal: |
+      You are working in repository "xpto". Install the "review-helper" skill
+      from the public skills registry using the standard npx command shown on
+      its listing page. Then use it to review a small piece of code in the
+      repo. After finishing the task, check what usage Logion recorded for the
+      skills you actually used, and submit honest feedback about the
+      review-helper skill.
+    success_hint: |
+      Steps:
+      1. Search Logion for the review-helper resource:
+         logion resources search "review-helper" --json
+      2. Install it directly with npx (NOT through logion resources acquire):
+         npx skills add vercel-labs/skills --skill review-helper
+      3. Run logion resources reconcile --from skills --scope repo-root --json
+         and verify the review-helper appears with an exact resource/version.
+      4. Use the review-helper skill on a small code review task in the repo.
+      5. Check pending usage:
+         logion usage pending --json
+      6. Submit feedback:
+         logion feedback submit RESOURCE_ID VERSION_ID \
+           --rating 4 --usefulness 4 --reliability 3 --tool-safety 5 \
+           --token-efficiency 4 --completed-task --task-class software-development \
+           --body "Worked well for small reviews, room to improve on edge cases" \
+           --json
+      Finish with RESULT: completed.
+    assertions:
+      - type: files.native_use_observed
+        params:
+          agent: user_a
+          repository: xpto
+      - type: files.feedback_pending
+        params:
+          agent: user_a
+          repository: xpto
+      - type: api.resource_feedback_exists
+        params:
+          reporter_agent: user_a
+      - type: api.feedback_linked_to_acquisition
+        params:
+          reporter_agent: user_a
+
+  - id: use_in_acme_no_leak
+    actor: user_b
+    goal: |
+      You are working in repository "acme" — a completely separate project.
+      Install the same "review-helper" skill from npx into this repo. Use it
+      briefly on a task. Then check pending usage — it should show only your
+      own activity in acme, not anything from repo xpto.
+    success_hint: |
+      Steps:
+      1. Install the skill with npx into the acme repo:
+         npx skills add vercel-labs/skills --skill review-helper
+      2. Run logion resources reconcile --from skills --scope repo-root --json
+      3. Use the skill briefly on a task in the acme repo.
+      4. Check pending usage:
+         logion usage pending --json
+      Finish with RESULT: completed.
+    assertions:
+      - type: files.scope_isolation_preserved
+        params:
+          agent: user_b
+          repository: acme
+
+  - id: submit_feedback_in_acme
+    actor: user_b
+    goal: |
+      Submit feedback for the review-helper skill you just used in the acme
+      repo. Be honest — your experience may differ from the other user.
+    success_hint: |
+      Steps:
+      1. Check pending usage:
+         logion usage pending --json
+      2. Submit feedback:
+         logion feedback submit RESOURCE_ID VERSION_ID \
+           --rating 3 --usefulness 3 --reliability 4 --tool-safety 5 \
+           --token-efficiency 3 --completed-task --task-class software-development \
+           --body "Decent for basic reviews" --json
+      Finish with RESULT: completed.
+    assertions:
+      - type: api.resource_feedback_exists
+        params:
+          reporter_agent: user_b
+      - type: api.feedback_submission_idempotent
+        params:
+          reporter_agent: user_b
+
+final_assertions:
+  - type: api.raw_observation_not_uploaded
+    params:
+      agent: user_a
+  - type: api.course_review_projection_exists
+    optional: true
+    params:
+      reporter_agent: user_a
+  - type: timeline.no_unredacted_secret

@@ -446,3 +446,70 @@ class ObservationEnvelopeNoRawDataAssertion(_ApiQueryAssertion):
     evidence_keys = ()
     pass_message = "observation envelope contains no raw task data"
     fail_message = "observation envelope leaked raw task data"
+
+
+class NativeUseObservedAssertion(_ApiQueryAssertion):
+    type = "files.native_use_observed"
+    query_type = "native_use_observed"
+    found_key = "observed"
+    evidence_keys = ("resource_id", "version_id", "channel", "scope_id")
+    pass_message = "native use was observed for the installed resource"
+    fail_message = "no native use observation found for the installed resource"
+
+
+class FeedbackPendingAssertion(_ApiQueryAssertion):
+    type = "files.feedback_pending"
+    query_type = "feedback_pending"
+    found_key = "has_pending"
+    evidence_keys = ("pending_count", "resource_ids")
+    pass_message = "pending usage records exist for the agent"
+    fail_message = "no pending usage records found for the agent"
+
+
+class ResourceFeedbackExistsAssertion(_ApiQueryAssertion):
+    type = "api.resource_feedback_exists"
+    query_type = "resource_feedback_exists"
+    found_key = "found"
+    evidence_keys = ("feedback_id", "resource_id", "version_id")
+    pass_message = "resource feedback exists"
+    fail_message = "no matching resource feedback found"
+
+
+class FeedbackLinkedToAcquisitionAssertion(_ApiQueryAssertion):
+    type = "api.feedback_linked_to_acquisition"
+    query_type = "feedback_linked_to_acquisition"
+    found_key = "linked"
+    evidence_keys = ("feedback_id", "acquisition_channel", "installation_id")
+    pass_message = "feedback is linked to an acquisition record"
+    fail_message = "feedback is not linked to an acquisition record"
+
+
+class CourseReviewProjectionExistsAssertion(_ApiQueryAssertion):
+    type = "api.course_review_projection_exists"
+    query_type = "course_review_projection_exists"
+    found_key = "found"
+    evidence_keys = (
+        "feedback_id",
+        "projection_disposition",
+        "course_review_id",
+    )
+    pass_message = "course review projection exists for the feedback"
+    fail_message = "no course review projection found for the feedback"
+
+
+class RawObservationNotUploadedAssertion(_ApiQueryAssertion):
+    type = "api.raw_observation_not_uploaded"
+    query_type = "raw_observation_not_uploaded"
+    found_key = "clean"
+    evidence_keys = ("observation_count", "checked_fields")
+    pass_message = "no raw observation data was uploaded"
+    fail_message = "raw observation data was detected in uploaded records"
+
+
+class FeedbackSubmissionIdempotentAssertion(_ApiQueryAssertion):
+    type = "api.feedback_submission_idempotent"
+    query_type = "feedback_submission_idempotent"
+    found_key = "idempotent"
+    evidence_keys = ("first_feedback_id", "second_feedback_id")
+    pass_message = "feedback submission is idempotent"
+    fail_message = "feedback submission created duplicate records"
