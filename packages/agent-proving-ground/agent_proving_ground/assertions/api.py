@@ -513,3 +513,66 @@ class FeedbackSubmissionIdempotentAssertion(_ApiQueryAssertion):
     evidence_keys = ("first_feedback_id", "second_feedback_id")
     pass_message = "feedback submission is idempotent"
     fail_message = "feedback submission created duplicate records"
+
+
+class RemoteMcpReconciledAssertion(_ApiQueryAssertion):
+    type = "files.remote_mcp_reconciled"
+    query_type = "remote_mcp_reconciled"
+    found_key = "reconciled"
+    evidence_keys = ("resource_id", "installation_id", "channel")
+    pass_message = "pre-existing remote MCP connector was reconciled"
+    fail_message = "remote MCP connector was not reconciled"
+
+
+class VendorInstallUnchangedAssertion(_ApiQueryAssertion):
+    type = "files.vendor_install_unchanged"
+    query_type = "vendor_install_unchanged"
+    found_key = "unchanged"
+    evidence_keys = ("before", "after")
+    pass_message = "vendor installation remained unchanged"
+    fail_message = "vendor installation was rewritten"
+
+
+class NoMcpProxyInstalledAssertion(_ApiQueryAssertion):
+    type = "files.no_mcp_proxy_installed"
+    query_type = "no_mcp_proxy_installed"
+    found_key = "absent"
+    evidence_keys = ("paths",)
+    pass_message = "no MCP proxy was installed"
+    fail_message = "an MCP proxy was installed"
+
+
+class RemoteMcpUseAttributedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_use_attributed"
+    query_type = "remote_mcp_use_attributed"
+    found_key = "attributed"
+    evidence_keys = ("resource_id", "version_id", "channel")
+    pass_message = "remote MCP use was attributed to the vendor resource"
+    fail_message = "remote MCP use was not attributed"
+
+
+class OriginalPublisherPreservedAssertion(_ApiQueryAssertion):
+    type = "api.original_publisher_preserved"
+    query_type = "original_publisher_preserved"
+    found_key = "preserved"
+    evidence_keys = ("publisher",)
+    pass_message = "original vendor publisher was preserved"
+    fail_message = "original vendor publisher was replaced"
+
+
+class RemoteMcpFeedbackLinkedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_feedback_linked"
+    query_type = "remote_mcp_feedback_linked"
+    found_key = "linked"
+    evidence_keys = ("feedback_id", "acquisition_channel")
+    pass_message = "remote MCP feedback is linked to native acquisition"
+    fail_message = "remote MCP feedback is not linked"
+
+
+class RemoteMcpPrivatePayloadNotRecordedAssertion(_ApiQueryAssertion):
+    type = "api.remote_mcp_private_payload_not_recorded"
+    query_type = "remote_mcp_private_payload_not_recorded"
+    found_key = "clean"
+    evidence_keys = ("checked_fields",)
+    pass_message = "remote MCP private payload was not recorded"
+    fail_message = "remote MCP private payload leaked into evidence"

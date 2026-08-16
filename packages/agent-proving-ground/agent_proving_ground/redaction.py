@@ -15,7 +15,10 @@ DEFAULT_SECRET_KEYWORDS = {
 
 _TOKEN_LIKE_RE = re.compile(r"[A-Za-z0-9_\-]{16,}")
 _BEARER_RE = re.compile(r"(?i)bearer\s+[a-z0-9_\-\.]{8,}")
-_API_KEY_RE = re.compile(r"(?i)logion_[a-z0-9_\-]{8,}")
+# API keys use the lowercase ``logion_`` prefix. Keep this case-sensitive so
+# harmless environment variable names such as ``LOGION_HOME_NATIVE`` do not
+# become false positives in the timeline integrity check.
+_API_KEY_RE = re.compile(r"logion_[a-z0-9_\-]{8,}")
 _GITHUB_TOKEN_RE = re.compile(
     r"(?i)gh[pousr]_[a-z0-9_]{36,}|github[_-]?token[=:]\s*[a-z0-9]{35,}"
 )

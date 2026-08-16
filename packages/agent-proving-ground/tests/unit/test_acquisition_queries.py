@@ -27,7 +27,7 @@ from agent_proving_ground.assertions.api import (
 from agent_proving_ground.assertions.registry import AssertionRegistry
 
 
-def _write_envelope(path: Path, kind: str, data: dict) -> Path:
+def _write_envelope(path: Path, kind: str, data: object) -> Path:
     path.write_text(
         json.dumps({"version": "v1", "kind": kind, "data": data}),
         encoding="utf-8",
@@ -285,6 +285,138 @@ class TestNativeInstallReconciled:
         report = self._report(tmp_path, drifted=[{"installation_id": "i2"}])
         result = await self._run(report, root)
         assert result["reconciled"] is False
+
+
+@pytest.mark.asyncio
+async def test_native_use_rejects_a_manually_fabricated_receipt(
+    tmp_path: Path,
+) -> None:
+    inventory = tmp_path / "inventory"
+    inventory.mkdir()
+    (inventory / "receipt.json").write_text(
+        json.dumps({
+            "resource_id": "r1",
+            "version_id": "v1",
+            "installation_id": "i1",
+            "channel": "npx_skills",
+        })
+    )
+    pending = _write_envelope(
+        tmp_path / "pending.json",
+        "logion.usage.pending",
+        [
+            {
+                "resource_id": "r1",
+                "version_id": "v1",
+                "installation_id": "i1",
+            }
+        ],
+    )
+    observe = _write_envelope(
+        tmp_path / "observe.json",
+        "logion.usage.observe",
+        {
+            "disposition": "recorded",
+            "observation": {"observation_id": "o1"},
+        },
+    )
+
+    result = await _queries().query(
+        {
+            "type": "native_use_observed",
+            "pending_artifact": str(pending),
+            "observe_artifact": str(observe),
+            "inventory_dir": str(inventory),
+            "resource_id": "r1",
+        },
+        {},
+    )
+
+    assert result["observed"] is False
+
+
+@pytest.mark.asyncio
+async def test_native_use_rejects_ignored_observe_disposition(
+    tmp_path: Path,
+) -> None:
+    inventory = tmp_path / "inventory"
+    inventory.mkdir()
+    (inventory / "receipt.json").write_text(
+        json.dumps({
+            "resource_id": "r1",
+            "version_id": "v1",
+            "installation_id": "i1",
+            "channel": "npx_skills",
+            "receipt_origin": "resources_reconcile",
+        })
+    )
+    pending = _write_envelope(
+        tmp_path / "pending.json", "logion.usage.pending", []
+    )
+    observe = _write_envelope(
+        tmp_path / "observe.json",
+        "logion.usage.observe",
+        {"disposition": "ignored", "reason": "integration_disabled"},
+    )
+
+    result = await _queries().query(
+        {
+            "type": "native_use_observed",
+            "pending_artifact": str(pending),
+            "observe_artifact": str(observe),
+            "inventory_dir": str(inventory),
+            "resource_id": "r1",
+        },
+        {},
+    )
+
+    assert result["observed"] is False
+
+
+@pytest.mark.asyncio
+async def test_remote_reconcile_requires_cli_origin_on_inventory_receipt(
+    tmp_path: Path,
+) -> None:
+    root, _, _ = _installed(tmp_path)
+    inventory = tmp_path / "inventory"
+    inventory.mkdir()
+    (inventory / "receipt.json").write_text(
+        json.dumps({
+            "resource_id": "r1",
+            "installation_id": "i1",
+        })
+    )
+    report = _write_envelope(
+        tmp_path / "report.json",
+        "logion.resources.reconcile",
+        {
+            "matched": [
+                {
+                    "resource_id": "r1",
+                    "installation_id": "i1",
+                    "channel": "dsh",
+                    "relative_target_path": ".agents/skills/x",
+                }
+            ],
+            "unresolved": [],
+            "ambiguous": [],
+            "drifted": [],
+        },
+    )
+
+    result = await _queries().query(
+        {
+            "type": "remote_mcp_reconciled",
+            "artifact": str(report),
+            "inventory_dir": str(inventory),
+            "resource_id": "r1",
+            "scope_root": str(root),
+            "expected_channel": "dsh",
+        },
+        {},
+    )
+
+    assert result["reconciled"] is False
 
 
 @pytest.mark.asyncio

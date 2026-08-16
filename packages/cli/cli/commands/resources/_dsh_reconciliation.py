@@ -22,6 +22,7 @@ def discover_dsh_state(scope_root: Path) -> list[dict[str, Any]]:
             # unlinked rather than being matched on its name.
             "source": bundle.repository or bundle.spec,
             "revision": bundle.revision,
+            "version": bundle.version,
             "resource_version_id": None,
             "path": str(bundle.path),
             "profile": bundle.profile,

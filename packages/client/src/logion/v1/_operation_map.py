@@ -28,6 +28,12 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "list_resource_versions": "client.v1.resources.versions",
     "get_acquisition_plan": "client.v1.resources.acquisition_plan",
     "create_artifact_download": "client.v1.resources.create_download",
+    # Native-use feedback and narrow receipts
+    "submit_feedback": "client.v1.resource_feedback.submit",
+    "list_my_feedback": "client.v1.resource_feedback.list_mine",
+    "list_resource_feedback": "client.v1.resource_feedback.list_for_resource",
+    "get_feedback_summary": "client.v1.resource_feedback.get_summary",
+    "submit_usage_receipt": "client.v1.usage_receipts.submit",
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",

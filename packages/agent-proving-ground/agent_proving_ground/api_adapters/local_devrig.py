@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +21,28 @@ from agent_proving_ground.api_adapters._queries import (
     RoleKeyStore,
 )
 from agent_proving_ground.api_adapters.base import ApiAdapter, World
+
+# Native feedback observed-effect queries are implemented by LogionApiQueries
+# and explicitly enumerated here so local-devrig support cannot silently
+# regress.
+_NATIVE_FEEDBACK_REAL_QUERIES = frozenset({
+    "native_use_observed",
+    "feedback_pending",
+    "usage_pending_empty",
+    "resource_feedback_exists",
+    "feedback_linked_to_acquisition",
+    "course_review_projection_exists",
+    "raw_observation_not_uploaded",
+    "feedback_submission_idempotent",
+    "remote_mcp_reconciled",
+    "vendor_install_unchanged",
+    "no_mcp_proxy_installed",
+    "remote_mcp_use_attributed",
+    "original_publisher_preserved",
+    "remote_mcp_feedback_linked",
+    "remote_mcp_private_payload_not_recorded",
+    "no_500s",
+})
 
 
 class LocalDevrigAdapter(ApiAdapter):
@@ -45,11 +66,7 @@ class LocalDevrigAdapter(ApiAdapter):
     ) -> None:
         self._root = _resolve_devrig_root(devrig_root)
         self._env_path = self._root / ".devrig" / "devrig.env"
-        self._api_log_path = (
-            Path(api_log_path)
-            if api_log_path
-            else self._root / ".devrig" / "prism.log"
-        )
+        self._api_log_path = _resolve_api_log_path(self._root, api_log_path)
         self._base_env: dict[str, str] = {}
         self._queries: LogionApiQueries | None = None
 
@@ -342,12 +359,18 @@ def _tail_text(path: Path, max_bytes: int = 65536) -> str:
     return data.decode("utf-8", errors="replace")
 
 
-def _copy_api_log_to_artifacts(
-    api_log_path: Path, artifacts_root: Path
-) -> Path | None:
-    if not api_log_path.is_file():
-        return None
-    destination = artifacts_root / "services" / "api.log"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(api_log_path, destination)
-    return destination
+def _resolve_api_log_path(root: Path, explicit: Path | str | None) -> Path:
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    env_path = os.environ.get("LOGION_PROVING_GROUND_API_LOG_PATH")
+    if env_path:
+        return Path(env_path).expanduser().resolve()
+    for devrig_root in _workspace_devrig_roots({}):
+        candidate = devrig_root / "api.log"
+        if candidate.is_file():
+            return candidate
+    for name in ("api.log", "prism.log"):
+        candidate = root / ".devrig" / name
+        if candidate.is_file():
+            return candidate
+    return root / ".devrig" / "api.log"

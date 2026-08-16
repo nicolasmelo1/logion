@@ -1,0 +1,26 @@
+{
+  "phase_id": "15.11",
+  "runs": [
+    {
+      "api_adapter": "local-devrig",
+      "driver": "codex",
+      "model": "gpt-5.4-mini",
+      "report": "artifacts/phase-gates/reports/native-use-observation-and-feedback.json",
+      "report_sha256": "6566e62f19ed0b34460a11ca57ea4eb15cf2e96e800525232e66f512ab4ad0c5",
+      "scenario": "native_use_observation_and_feedback",
+      "status": "passed",
+      "unsupported_assertions": []
+    },
+    {
+      "api_adapter": "local-devrig",
+      "driver": "codex",
+      "model": "gpt-5.4-mini",
+      "report": "artifacts/phase-gates/reports/remote-private-mcp-feedback.json",
+      "report_sha256": "fbb797f01765c5fd924e8847364dd20a49099984bbee94ce0864e05327dd028d",
+      "scenario": "remote_private_mcp_feedback",
+      "status": "passed",
+      "unsupported_assertions": []
+    }
+  ],
+  "schema_version": 1
+}

@@ -107,9 +107,6 @@ def _devrig_dirs(ctx: AssertionContext) -> list[Path]:
     assertion turns into a failure that looks like a 500 but is not one.
     """
     dirs: list[Path] = []
-    root_devrig = ctx.world.root_dir / ".devrig"
-    if root_devrig.is_dir():
-        dirs.append(root_devrig)
     # The role-keys file the run is already configured with sits in the
     # same `.devrig` the API writes its log into.
     role_keys = os.environ.get("LOGION_PROVING_GROUND_ROLE_KEYS_FILE")
@@ -117,6 +114,9 @@ def _devrig_dirs(ctx: AssertionContext) -> list[Path]:
         candidate = Path(role_keys).parent
         if candidate.is_dir() and candidate not in dirs:
             dirs.append(candidate)
+    root_devrig = ctx.world.root_dir / ".devrig"
+    if root_devrig.is_dir() and root_devrig not in dirs:
+        dirs.append(root_devrig)
     return dirs
 
 

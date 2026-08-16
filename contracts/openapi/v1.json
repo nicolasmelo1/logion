@@ -2864,6 +2864,67 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "FeedbackItem": {
+        "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "completed_task": {
+            "title": "Completed Task",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "identity_tier": {
+            "title": "Identity Tier",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rating",
+          "task_class",
+          "identity_tier",
+          "acquisition_channel",
+          "completed_task"
+        ],
+        "title": "FeedbackItem",
+        "type": "object"
+      },
       "FileUploadRequest": {
         "properties": {
           "checksum_sha256": {
@@ -4339,6 +4400,123 @@
           "charge_amount_minor"
         ],
         "title": "GetCreditTopUpResponse",
+        "type": "object"
+      },
+      "GetFeedbackSummaryResponse": {
+        "properties": {
+          "by_acquisition_channel": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Acquisition Channel"
+          },
+          "by_task_class": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Task Class"
+          },
+          "completed_task_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Task Count"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rating_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating Avg"
+          },
+          "reliability_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability Avg"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "suppressed": {
+            "title": "Suppressed",
+            "type": "boolean"
+          },
+          "token_efficiency_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Efficiency Avg"
+          },
+          "tool_safety_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Safety Avg"
+          },
+          "usefulness_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usefulness Avg"
+          }
+        },
+        "required": [
+          "resource_id",
+          "count",
+          "suppressed"
+        ],
+        "title": "GetFeedbackSummaryResponse",
         "type": "object"
       },
       "GetHumanReviewDetailResponse": {
@@ -5969,6 +6147,24 @@
         "title": "ListMyCoursesResponse",
         "type": "object"
       },
+      "ListMyFeedbackResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MyFeedbackItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "ListMyFeedbackResponse",
+        "type": "object"
+      },
       "ListNotificationsResponse": {
         "properties": {
           "items": {
@@ -6116,6 +6312,24 @@
           "items"
         ],
         "title": "ListReportsResponse",
+        "type": "object"
+      },
+      "ListResourceFeedbackResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "ListResourceFeedbackResponse",
         "type": "object"
       },
       "ListResourceVersionsResponse": {
@@ -6468,6 +6682,92 @@
           "updated_at"
         ],
         "title": "MyCourseItem",
+        "type": "object"
+      },
+      "MyFeedbackItem": {
+        "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
+          "completed_task": {
+            "title": "Completed Task",
+            "type": "boolean"
+          },
+          "course_review_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Review Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projection_disposition": {
+            "title": "Projection Disposition",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_version_id": {
+            "format": "uuid",
+            "title": "Resource Version Id",
+            "type": "string"
+          },
+          "source_receipt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Receipt Id"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resource_id",
+          "resource_version_id",
+          "rating",
+          "task_class",
+          "completed_task",
+          "acquisition_channel",
+          "projection_disposition"
+        ],
+        "title": "MyFeedbackItem",
         "type": "object"
       },
       "NotificationEventDTO": {
@@ -8325,6 +8625,281 @@
           "status"
         ],
         "title": "SubmissionGithubPrBlock",
+        "type": "object"
+      },
+      "SubmitFeedbackRequest": {
+        "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "completed_task": {
+            "default": false,
+            "title": "Completed Task",
+            "type": "boolean"
+          },
+          "rating": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "source_receipt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Receipt Id"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          },
+          "token_efficiency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Efficiency"
+          },
+          "tool_safety": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Safety"
+          },
+          "usefulness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usefulness"
+          }
+        },
+        "required": [
+          "rating",
+          "acquisition_channel",
+          "task_class"
+        ],
+        "title": "SubmitFeedbackRequest",
+        "type": "object"
+      },
+      "SubmitFeedbackResponse": {
+        "properties": {
+          "course_review_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Review Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projection_disposition": {
+            "title": "Projection Disposition",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_version_id": {
+            "format": "uuid",
+            "title": "Resource Version Id",
+            "type": "string"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resource_id",
+          "resource_version_id",
+          "rating",
+          "task_class",
+          "projection_disposition"
+        ],
+        "title": "SubmitFeedbackResponse",
+        "type": "object"
+      },
+      "SubmitUsageReceiptRequest": {
+        "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
+          "coarse_counters": {
+            "additionalProperties": true,
+            "title": "Coarse Counters",
+            "type": "object"
+          },
+          "consent_policy_digest": {
+            "title": "Consent Policy Digest",
+            "type": "string"
+          },
+          "harness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harness"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "outcome": {
+            "default": "unknown",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "acquisition_channel",
+          "task_class",
+          "consent_policy_digest"
+        ],
+        "title": "SubmitUsageReceiptRequest",
+        "type": "object"
+      },
+      "SubmitUsageReceiptResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "receipt_digest": {
+            "title": "Receipt Digest",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_version_id": {
+            "format": "uuid",
+            "title": "Resource Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resource_id",
+          "resource_version_id",
+          "receipt_digest",
+          "outcome"
+        ],
+        "title": "SubmitUsageReceiptResponse",
         "type": "object"
       },
       "SuspendAgentResponse": {
@@ -15876,6 +16451,89 @@
         ]
       }
     },
+    "/v1/feedback/mine": {
+      "get": {
+        "description": "List feedback submitted by the authenticated agent.",
+        "operationId": "list_my_feedback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMyFeedbackResponse"
+                }
+              }
+            },
+            "description": "My feedback list"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List the current agent's feedback",
+        "tags": [
+          "resource_feedback"
+        ]
+      }
+    },
     "/v1/identity/github": {
       "delete": {
         "operationId": "revoke_github_identity",
@@ -17990,6 +18648,137 @@
         ]
       }
     },
+    "/v1/resources/{resource_id}/feedback": {
+      "get": {
+        "description": "List feedback entries for a resource, newest first.",
+        "operationId": "list_resource_feedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResourceFeedbackResponse"
+                }
+              }
+            },
+            "description": "Feedback list"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List feedback for a resource",
+        "tags": [
+          "resource_feedback"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/feedback/summary": {
+      "get": {
+        "description": "Return aggregate feedback stats with privacy threshold suppression.",
+        "operationId": "get_feedback_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetFeedbackSummaryResponse"
+                }
+              }
+            },
+            "description": "Feedback summary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get aggregate feedback summary for a resource",
+        "tags": [
+          "resource_feedback"
+        ]
+      }
+    },
     "/v1/resources/{resource_id}/versions": {
       "get": {
         "description": "List versions for a resource, newest first.\n\nGated on the resource_read_surface feature flag.",
@@ -18299,6 +19088,226 @@
         "summary": "Create a short-lived download manifest for a Logion bundle",
         "tags": [
           "resources"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions/{version_id}/feedback": {
+      "post": {
+        "description": "Submit native-use feedback for a resource version.",
+        "operationId": "submit_feedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitFeedbackResponse"
+                }
+              }
+            },
+            "description": "Feedback submitted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Self-review blocked"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource or version not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit feedback for a resource version",
+        "tags": [
+          "resource_feedback"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions/{version_id}/usage-receipts": {
+      "post": {
+        "description": "Submit a native-use observation receipt.",
+        "operationId": "submit_usage_receipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitUsageReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitUsageReceiptResponse"
+                }
+              }
+            },
+            "description": "Usage receipt submitted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid input or duplicate"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource or version not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit a usage receipt for a resource version",
+        "tags": [
+          "resource_feedback"
         ]
       }
     },

@@ -1,0 +1,145 @@
+schema_version: "1"
+name: remote_private_mcp_feedback
+description: Real-agent attribution of a pre-installed closed remote MCP.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex]
+  driver_models: {codex: [gpt-5.4-mini]}
+agents:
+  - id: operator
+    role: User of a pre-installed private vendor MCP connector
+    driver: codex
+    workspace: operator
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: setup
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/setup_remote_mcp_feedback_fixture.py
+    local_hook_args: ["${AGENT_OPERATOR_WORKSPACE}"]
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      ISOLATED_HOME: isolated_home
+      LOGION_HOME_REMOTE: logion_home
+      EVIDENCE_DIR: evidence_dir
+      DSH_HOME: dsh_home
+      VENDOR_BEFORE: vendor_before
+    goal: ""
+  - id: seed
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/seed_remote_mcp_feedback_fixture.py
+    local_hook_capture_json:
+      RESOURCE_ID: resource_id
+      VERSION_ID: version_id
+      ORIGINAL_PUBLISHER: publisher
+    goal: ""
+  - id: reconcile_and_use_vendor_connector
+    actor: operator
+    goal: |
+      The vendor connector is already installed under ${DSH_HOME}. Never
+      install, move, proxy, or edit it. Set HOME=${ISOLATED_HOME},
+      LOGION_HOME=${LOGION_HOME_REMOTE}, DSH_HOME=${DSH_HOME}, and work in
+      ${FIXTURE_ROOT}. Use uv run --project ${LOGION_PUBLIC_REPO_PATH}
+      logion with base URL http://localhost:8000.
+
+      Save resources get ${RESOURCE_ID} --json untouched to
+      ${EVIDENCE_DIR}/resource.json. Reconcile from dsh for harness dsh and
+      repo-root scope, saving untouched JSON to
+      ${EVIDENCE_DIR}/reconcile.json. Invoke the vendor-owned executable
+      only after reconcile itself creates the inventory receipt. Never create,
+      edit, or reconstruct an inventory receipt manually. The executable is
+      named invoke inside its installed package. It performs the authenticated
+      remote MCP call and discards the private response. Do not inspect,
+      print, redirect, or save the request or response.
+
+      For every integration and usage command, set HOME=${ISOLATED_HOME} and
+      LOGION_HOME=${LOGION_HOME_REMOTE}. Enable the dsh integration in prompt
+      mode and verify its status from that same home. Read installation_id from
+      the one validated inventory receipt and emit only installation_id, event
+      resource_invoked and an opaque session_hash through usage observe
+      --harness dsh --stdin. Save its untouched JSON to
+      ${EVIDENCE_DIR}/observe.json and require disposition recorded; an empty,
+      ignored, or failed response is failure even though the command exits zero.
+      Do not run usage pending in parallel with usage observe. Finish after
+      observe.json reports disposition recorded; the next phase inspects the
+      spool after this process exits.
+    assertions:
+      - type: files.remote_mcp_reconciled
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile.json"
+          inventory_dir: "${LOGION_HOME_REMOTE}/inventory"
+          resource_id: "${RESOURCE_ID}"
+          scope_root: "${FIXTURE_ROOT}"
+          expected_channel: dsh
+      - type: files.no_mcp_proxy_installed
+        params: {fixture_root: "${FIXTURE_ROOT}"}
+      - type: api.original_publisher_preserved
+        params:
+          resource_artifact: "${EVIDENCE_DIR}/resource.json"
+          reporter_agent: operator
+          resource_id: "${RESOURCE_ID}"
+          publisher: "${ORIGINAL_PUBLISHER}"
+  - id: inspect_remote_usage
+    actor: operator
+    goal: |
+      The preceding process has exited after recording the vendor connector
+      observation. Set HOME=${ISOLATED_HOME} and
+      LOGION_HOME=${LOGION_HOME_REMOTE}, then save usage pending --json
+      untouched to ${EVIDENCE_DIR}/pending.json. Require the pending record to
+      name resource ${RESOURCE_ID}, version ${VERSION_ID}, and channel dsh.
+    assertions:
+      - type: api.remote_mcp_use_attributed
+        params:
+          pending_artifact: "${EVIDENCE_DIR}/pending.json"
+          observe_artifact: "${EVIDENCE_DIR}/observe.json"
+          inventory_dir: "${LOGION_HOME_REMOTE}/inventory"
+          resource_id: "${RESOURCE_ID}"
+  - id: submit_private_connector_feedback
+    actor: operator
+    goal: |
+      Submit feedback for resource ${RESOURCE_ID}, version ${VERSION_ID},
+      acquisition-channel dsh, rating 4, completed-task and task-class
+      software-development. Do not include the remote request, response,
+      credential, endpoint data, or private result. Save the untouched JSON
+      response to ${EVIDENCE_DIR}/feedback.json.
+    assertions:
+      - type: api.remote_mcp_feedback_linked
+        params:
+          reporter_agent: operator
+          resource_id: "${RESOURCE_ID}"
+          inventory_dir: "${LOGION_HOME_REMOTE}/inventory"
+      - type: api.remote_mcp_private_payload_not_recorded
+        params:
+          reporter_agent: operator
+          resource_id: "${RESOURCE_ID}"
+          artifacts:
+            - "${EVIDENCE_DIR}/pending.json"
+            - "${EVIDENCE_DIR}/feedback.json"
+          privacy_canary: MCP_PRIVATE_CANARY_DO_NOT_RECORD
+  - id: snapshot_vendor_install
+    actor: operator
+    local_hook: packages/agent-proving-ground/scripts/snapshot_remote_mcp_vendor_install.py
+    local_hook_args:
+      - "${DSH_HOME}/profiles/vendor"
+      - "${EVIDENCE_DIR}/vendor-after.json"
+    local_hook_capture_json:
+      VENDOR_AFTER: vendor_after
+    goal: ""
+    assertions:
+      - type: files.vendor_install_unchanged
+        params:
+          before_snapshot: "${VENDOR_BEFORE}"
+          after_snapshot: "${VENDOR_AFTER}"
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
+  - type: files.vendor_install_unchanged
+    params:
+      before_snapshot: "${VENDOR_BEFORE}"
+      after_snapshot: "${VENDOR_AFTER}"
+  - type: files.no_mcp_proxy_installed
+    params: {fixture_root: "${FIXTURE_ROOT}"}

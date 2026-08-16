@@ -20,6 +20,11 @@ def test_redacts_logion_api_key() -> None:
     assert "<redacted>" in redact_text(text)
 
 
+def test_does_not_treat_logion_environment_name_as_api_key() -> None:
+    text = '"captured": ["LOGION_HOME_NATIVE", "ACME_LOGION_HOME"]'
+    assert redact_text(text) == text
+
+
 def test_redacts_nested_setup_token() -> None:
     data = {"user": {"setup_token": "secret-value-12345"}}
     result = redact_json(data)

@@ -68,6 +68,7 @@ from logion.v1._types.generated.v1 import (
     GetCreatorEarningsResponse,
     GetCreditBalanceResponse,
     GetCreditTopUpResponse,
+    GetFeedbackSummaryResponse,
     GetHumanReviewDetailResponse,
     GetIndexedListingResponse,
     GetIndexingRunProgressResponse,
@@ -90,9 +91,11 @@ from logion.v1._types.generated.v1 import (
     ListHumanReviewQueueResponse,
     ListModerationQueueResponse,
     ListMyCoursesResponse,
+    ListMyFeedbackResponse,
     ListNotificationsResponse,
     ListReferralAttributionsResponse,
     ListReportsResponse,
+    ListResourceFeedbackResponse,
     ListResourcesResponse,
     ListResourceVersionsResponse,
     OnboardingLinkResponse,
@@ -124,6 +127,10 @@ from logion.v1._types.generated.v1 import (
     SetCourseSourceLinkResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
+    SubmitFeedbackRequest,
+    SubmitFeedbackResponse,
+    SubmitUsageReceiptRequest,
+    SubmitUsageReceiptResponse,
     SuspendAgentResponse,
     SuspendUserResponse,
     UpdateBountyRequest,
@@ -1164,6 +1171,26 @@ def get_credit_top_up(
     )
 
 
+def list_my_feedback(
+    http: HttpClient,
+    *,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> ListMyFeedbackResponse:
+    """Call the list_my_feedback API operation."""
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if offset is not None:
+        params["offset"] = offset
+    return http.request_model(
+        "GET",
+        "/v1/feedback/mine",
+        ListMyFeedbackResponse,
+        params=params,
+    )
+
+
 def revoke_github_identity(
     http: HttpClient,
 ) -> dict[str, Any]:
@@ -1562,6 +1589,40 @@ def get_resource(
     )
 
 
+def list_resource_feedback(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> ListResourceFeedbackResponse:
+    """Call the list_resource_feedback API operation."""
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if offset is not None:
+        params["offset"] = offset
+    return http.request_model(
+        "GET",
+        f"/v1/resources/{resource_id}/feedback",
+        ListResourceFeedbackResponse,
+        params=params,
+    )
+
+
+def get_feedback_summary(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+) -> GetFeedbackSummaryResponse:
+    """Call the get_feedback_summary API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/resources/{resource_id}/feedback/summary",
+        GetFeedbackSummaryResponse,
+    )
+
+
 def list_resource_versions(
     http: HttpClient,
     *,
@@ -1610,6 +1671,38 @@ def create_artifact_download(
         "POST",
         f"/v1/resources/{resource_id}/versions/{version_id}/download",
         CreateArtifactDownloadResponse,
+    )
+
+
+def submit_feedback(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+    body: SubmitFeedbackRequest,
+) -> SubmitFeedbackResponse:
+    """Call the submit_feedback API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/resources/{resource_id}/versions/{version_id}/feedback",
+        SubmitFeedbackResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def submit_usage_receipt(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+    body: SubmitUsageReceiptRequest,
+) -> SubmitUsageReceiptResponse:
+    """Call the submit_usage_receipt API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
+        SubmitUsageReceiptResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

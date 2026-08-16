@@ -14,9 +14,11 @@ from cli.commands import (
     courses,
     docs,
     doctor,
+    feedback,
     health,
     identity,
     indexed,
+    integrations,
     listings,
     notifications,
     payments,
@@ -25,6 +27,7 @@ from cli.commands import (
     resources,
     skills,
     update,
+    usage,
 )
 from cli.commands import (
     credits as credits_mod,
@@ -73,6 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
     recall.register(subparsers)
     update.register(subparsers)
     completion.register(subparsers)
+    feedback.register(subparsers)
+    usage.register(subparsers)
+    integrations.register(subparsers)
 
     # Top-level `logion onboarding` alias — same handler as
     # `logion identity onboarding`.

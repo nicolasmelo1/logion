@@ -18,7 +18,7 @@ def register_reconcile(
     """Register the read-only native reconciliation command."""
     reconcile = sub.add_parser(
         "reconcile",
-        help="Match local installations to catalog resources (read-only)",
+        help="Match local installations and record unique inventory links",
         parents=[COMMON_PARSER],
     )
     reconcile.add_argument(

@@ -6,7 +6,7 @@ AGENT ?= codex
 ROLE ?= seller
 LOGION_DEVRIG_API_BASE_URL ?=
 
-.PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks companion-verify companion-bundle companion-bundle-verify public-audit \
+.PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links check-roadmap-mirror check-protocol-specs \
 	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http \
 	check-installer-security \
@@ -51,6 +51,18 @@ security: audit bandit secrets
 install-hooks:
 	git config core.hooksPath .githooks
 	@echo "Configured Git hooks path to .githooks"
+
+WORKSPACE_REPO ?= $(abspath $(ROOT)/../logion-workspace)
+PRIVATE_REPO ?= $(abspath $(ROOT)/../logion-private)
+
+cross-repo-guardrails:
+	@test -d $(WORKSPACE_REPO)/packages/contract-audit || (echo "Missing canonical guardrails at $(WORKSPACE_REPO)" >&2; exit 1)
+	@test -d $(PRIVATE_REPO)/packages/api || (echo "Missing backend candidate at $(PRIVATE_REPO)" >&2; exit 1)
+	$(MAKE) -C $(WORKSPACE_REPO)/packages/contract-audit install
+	@PUBLIC_REPO=$(ROOT) PRIVATE_REPO=$(PRIVATE_REPO) \
+		$(WORKSPACE_REPO)/packages/contract-audit/.venv/bin/contract-audit \
+		check --mode fast --strict --out $(ROOT)/.local/contract-audit || { \
+		cat $(ROOT)/.local/contract-audit/report.md; exit 1; }
 
 mock:
 	@mkdir -p .devrig

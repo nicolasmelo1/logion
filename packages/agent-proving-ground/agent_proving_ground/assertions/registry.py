@@ -30,10 +30,16 @@ from agent_proving_ground.assertions.api import (
     NativeInstallReconciledAssertion,
     NativeUseObservedAssertion,
     NoDoubleCreditDebitAssertion,
+    NoMcpProxyInstalledAssertion,
     ObservationEnvelopeNoRawDataAssertion,
+    OriginalPublisherPreservedAssertion,
     PlatformBountyAcceptedAssertion,
     PurchaseExistsAssertion,
     RawObservationNotUploadedAssertion,
+    RemoteMcpFeedbackLinkedAssertion,
+    RemoteMcpPrivatePayloadNotRecordedAssertion,
+    RemoteMcpReconciledAssertion,
+    RemoteMcpUseAttributedAssertion,
     ResourceAcquirePlanDryRunAssertion,
     ResourceAcquisitionExistsAssertion,
     ResourceBackfillAppliedAssertion,
@@ -49,6 +55,7 @@ from agent_proving_ground.assertions.api import (
     SetupTokenPendingAssertion,
     SourceLinkExistsAssertion,
     UsageReportExistsAssertion,
+    VendorInstallUnchangedAssertion,
 )
 from agent_proving_ground.assertions.base import (
     Assertion,
@@ -60,7 +67,10 @@ from agent_proving_ground.assertions.db import (
     DbRowExistsAssertion,
     EventsOutboxContainsAssertion,
 )
-from agent_proving_ground.assertions.files import FileExistsAssertion
+from agent_proving_ground.assertions.files import (
+    FileExistsAssertion,
+    UsagePendingEmptyAssertion,
+)
 from agent_proving_ground.assertions.github import (
     GithubInstallationDeliveredAssertion,
     GithubIssueBotCommentMatchAssertion,
@@ -101,6 +111,7 @@ class AssertionRegistry:
             AdminStateObservedAssertion,
             TimelineNoUnredactedSecretAssertion,
             FileExistsAssertion,
+            UsagePendingEmptyAssertion,
             LogsNo500sAssertion,
             LogsContainsRequestAssertion,
             DbRowExistsAssertion,
@@ -149,6 +160,13 @@ class AssertionRegistry:
             CourseReviewProjectionExistsAssertion,
             RawObservationNotUploadedAssertion,
             FeedbackSubmissionIdempotentAssertion,
+            RemoteMcpReconciledAssertion,
+            VendorInstallUnchangedAssertion,
+            NoMcpProxyInstalledAssertion,
+            RemoteMcpUseAttributedAssertion,
+            OriginalPublisherPreservedAssertion,
+            RemoteMcpFeedbackLinkedAssertion,
+            RemoteMcpPrivatePayloadNotRecordedAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

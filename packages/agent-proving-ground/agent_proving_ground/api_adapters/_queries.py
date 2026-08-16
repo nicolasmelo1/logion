@@ -1830,6 +1830,314 @@ class LogionApiQueries:
             "evidence": {"source": str(path)},
         }
 
+    async def _q_native_use_observed(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            pending = _load_cli_list(
+                query.get("pending_artifact"), "logion.usage.pending"
+            )
+            observe = _load_cli_object(
+                query.get("observe_artifact"), "logion.usage.observe"
+            )
+            receipt = _load_inventory_receipt(query)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "observed")
+        match = next(
+            (
+                item
+                for item in pending
+                if isinstance(item, dict)
+                and item.get("resource_id") == receipt.get("resource_id")
+                and item.get("version_id") == receipt.get("version_id")
+                and item.get("installation_id")
+                == receipt.get("installation_id")
+            ),
+            None,
+        )
+        return {
+            "observed": (
+                match is not None
+                and receipt.get("receipt_origin") == "resources_reconcile"
+                and observe.get("disposition") == "recorded"
+                and isinstance(observe.get("observation"), dict)
+                and observe["observation"].get("observation_id")
+                == match.get("observation_id")
+            ),
+            "resource_id": receipt.get("resource_id"),
+            "version_id": receipt.get("version_id"),
+            "channel": receipt.get("channel"),
+            "scope_id": receipt.get("scope_id"),
+        }
+
+    async def _q_feedback_pending(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            items = _load_cli_list(
+                query.get("pending_artifact"), "logion.usage.pending"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "has_pending")
+        resource_ids = sorted({
+            str(item["resource_id"])
+            for item in items
+            if isinstance(item, dict) and item.get("resource_id")
+        })
+        return {
+            "has_pending": bool(items),
+            "pending_count": len(items),
+            "resource_ids": resource_ids,
+        }
+
+    async def _feedback_for(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> tuple[int, dict[str, Any] | None]:
+        reporter = query.get("reporter_agent") or query.get("agent")
+        role = self._role_of(reporter, agent_roles)
+        status, payload = await self._get("/v1/feedback/mine", role)
+        if not isinstance(payload, dict):
+            return status, None
+        items = payload.get("items")
+        if not isinstance(items, list):
+            return status, None
+        expected_resource = query.get("resource_id")
+        candidates = [
+            item
+            for item in items
+            if isinstance(item, dict)
+            and (
+                not expected_resource
+                or item.get("resource_id") == expected_resource
+            )
+        ]
+        return status, candidates[0] if candidates else None
+
+    async def _q_resource_feedback_exists(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        status, feedback = await self._feedback_for(query, agent_roles)
+        return {
+            "found": status == 200 and feedback is not None,
+            "feedback_id": feedback.get("id") if feedback else None,
+            "resource_id": feedback.get("resource_id") if feedback else None,
+            "version_id": (
+                feedback.get("resource_version_id") if feedback else None
+            ),
+        }
+
+    async def _q_feedback_linked_to_acquisition(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        try:
+            receipt = _load_inventory_receipt(query)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "linked")
+        query = {**query, "resource_id": receipt.get("resource_id")}
+        status, feedback = await self._feedback_for(query, agent_roles)
+        linked = (
+            status == 200
+            and feedback is not None
+            and feedback.get("resource_version_id")
+            == receipt.get("version_id")
+            and feedback.get("acquisition_channel") == receipt.get("channel")
+        )
+        return {
+            "linked": linked,
+            "feedback_id": feedback.get("id") if feedback else None,
+            "acquisition_channel": (
+                feedback.get("acquisition_channel") if feedback else None
+            ),
+            "installation_id": receipt.get("installation_id"),
+        }
+
+    async def _q_course_review_projection_exists(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        _, feedback = await self._feedback_for(query, agent_roles)
+        disposition = (
+            feedback.get("projection_disposition") if feedback else None
+        )
+        return {
+            "found": disposition is not None,
+            "feedback_id": feedback.get("id") if feedback else None,
+            "projection_disposition": disposition,
+            "course_review_id": (
+                feedback.get("course_review_id") if feedback else None
+            ),
+        }
+
+    async def _q_raw_observation_not_uploaded(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        _, feedback = await self._feedback_for(query, agent_roles)
+        forbidden = {
+            "prompt",
+            "source_code",
+            "path",
+            "tool_arguments",
+            "request",
+            "response",
+            "raw_payload",
+        }
+        keys = set(feedback or {})
+        return {
+            "clean": feedback is not None and not keys.intersection(forbidden),
+            "observation_count": 0,
+            "checked_fields": sorted(keys),
+        }
+
+    async def _q_feedback_submission_idempotent(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        try:
+            first = _load_cli_object(
+                query.get("first_artifact"), "logion.feedback.submit"
+            )
+            second = _load_cli_object(
+                query.get("second_artifact"), "logion.feedback.submit"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "idempotent")
+        status, feedback = await self._feedback_for(query, agent_roles)
+        first_id = first.get("id") or first.get("feedback_id")
+        second_id = second.get("id") or second.get("feedback_id")
+        persisted_id = feedback.get("id") if feedback else None
+        return {
+            "idempotent": (
+                status == 200
+                and first_id
+                and first_id == second_id == persisted_id
+            ),
+            "first_feedback_id": first_id,
+            "second_feedback_id": second_id,
+        }
+
+    async def _q_remote_mcp_reconciled(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        result = await self._q_native_install_reconciled(query, agent_roles)
+        try:
+            report = _load_cli_object(
+                query.get("artifact"), "logion.resources.reconcile"
+            )
+            receipt = _load_inventory_receipt(query)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "reconciled")
+        matched_ids = {
+            item.get("installation_id")
+            for item in report.get("matched") or []
+            if isinstance(item, dict)
+        }
+        receipt_linked = (
+            receipt.get("receipt_origin") == "resources_reconcile"
+            and receipt.get("installation_id") in matched_ids
+        )
+        return {
+            **result,
+            "reconciled": result.get("reconciled") is True and receipt_linked,
+            "receipt_origin": receipt.get("receipt_origin"),
+        }
+
+    async def _q_vendor_install_unchanged(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        try:
+            before = _load_json_object(query.get("before_snapshot"))
+            after = _load_json_object(query.get("after_snapshot"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "unchanged")
+        return {"unchanged": before == after, "before": before, "after": after}
+
+    async def _q_no_mcp_proxy_installed(
+        self,
+        query: dict[str, Any],
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> dict[str, Any]:
+        root = Path(str(query.get("fixture_root", "")))
+        proxies = [
+            str(path)
+            for path in root.rglob("*")  # noqa: ASYNC240
+            if path.is_file() and "proxy" in path.name.lower()
+        ]
+        return {"absent": not proxies, "paths": proxies}
+
+    async def _q_remote_mcp_use_attributed(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        result = await self._q_native_use_observed(query, agent_roles)
+        return {"attributed": result.get("observed") is True, **result}
+
+    async def _q_original_publisher_preserved(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        try:
+            detail = _load_cli_object(
+                query.get("resource_artifact"), "logion.resources.get"
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "preserved")
+        expected = query.get("publisher")
+        projections = detail.get("projections") or []
+        projection_id = next(
+            (
+                item.get("projection_id")
+                for item in projections
+                if isinstance(item, dict)
+                and item.get("projection_kind") == "indexed_listing"
+            ),
+            None,
+        )
+        reporter = query.get("reporter_agent") or query.get("agent")
+        role = self._role_of(reporter, agent_roles)
+        status, listing = (
+            await self._get(f"/v1/indexed-listings/{projection_id}", role)
+            if projection_id
+            else (0, {})
+        )
+        actual = listing.get("original_author")
+        return {
+            "preserved": status == 200
+            and bool(expected)
+            and actual == expected,
+            "publisher": actual,
+            "projection_id": projection_id,
+        }
+
+    async def _q_remote_mcp_feedback_linked(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        result = await self._q_feedback_linked_to_acquisition(
+            query, agent_roles
+        )
+        return {"linked": result.get("linked") is True, **result}
+
+    async def _q_remote_mcp_private_payload_not_recorded(
+        self, query: dict[str, Any], agent_roles: dict[str, str]
+    ) -> dict[str, Any]:
+        result = await self._q_raw_observation_not_uploaded(query, agent_roles)
+        artifacts = query.get("artifacts") or []
+        canary = str(query.get("privacy_canary") or "")
+        leaked = False
+        for raw_path in artifacts:
+            path = Path(str(raw_path))
+            try:
+                leaked = leaked or bool(
+                    canary and canary in path.read_text()  # noqa: ASYNC240
+                )
+            except OSError:
+                leaked = True
+        return {
+            "clean": result.get("clean") is True and not leaked,
+            "checked_fields": result.get("checked_fields", []),
+        }
+
 
 def _resolved_scope_root(raw: Any) -> Path:
     """Validate a scenario-supplied scope root outside the async path."""
@@ -1916,6 +2224,33 @@ def _load_json_object(raw_path: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise TypeError(f"artifact is not a JSON object: {path}")
     return payload
+
+
+def _load_inventory_receipt(query: dict[str, Any]) -> dict[str, Any]:
+    raw_path = query.get("inventory_receipt")
+    if raw_path:
+        return _load_json_object(raw_path)
+    raw_dir = query.get("inventory_dir")
+    if not isinstance(raw_dir, str) or not raw_dir:
+        raise ValueError("inventory_receipt or inventory_dir is required")
+    directory = Path(raw_dir)
+    candidates = [
+        _load_json_object(str(path))
+        for path in sorted(directory.glob("*.json"))
+        if path.is_file() and not path.is_symlink()
+    ]
+    resource_id = query.get("resource_id")
+    if resource_id:
+        candidates = [
+            item
+            for item in candidates
+            if item.get("resource_id") == resource_id
+        ]
+    if len(candidates) != 1:
+        raise ValueError(
+            "inventory attribution must resolve to exactly one receipt"
+        )
+    return candidates[0]
 
 
 def _load_cli_data(raw_path: Any, expected_kind: str) -> Any:
