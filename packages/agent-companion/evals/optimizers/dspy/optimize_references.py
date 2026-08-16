@@ -29,7 +29,6 @@ import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
 
 # Allow ``python evals/optimizers/dspy/optimize_references.py`` from
 # the package root.  evals/ is not part of the installed wheel.
@@ -40,6 +39,7 @@ if str(ROOT) not in sys.path:
 import dspy
 import yaml
 
+from evals.harness._json import JsonObject
 from evals.optimizers.dspy.optimize_policy import (
     OPTIMIZER_CONFIGS,
     OPTIMIZERS,
@@ -64,13 +64,13 @@ SIGNATURE_NAME = "reference_routing"
 
 
 def _split_scenarios(
-    scenarios: list[dict[str, Any]],
+    scenarios: list[JsonObject],
     *,
     seed: int = 42,
     train_ratio: float = 0.7,
     dev_ratio: float = 0.15,
     test_ratio: float = 0.15,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, list[JsonObject]]:
     """Deterministic 70/15/15 split keyed on (seed, scenario id).
 
     Mirrors the behaviour of ``split_scenarios.split_scenarios`` but
@@ -87,7 +87,7 @@ def _split_scenarios(
 
     digest_seed = str(seed).encode("utf-8")
 
-    def _stable_key(entry: dict[str, Any]) -> tuple[str, str]:
+    def _stable_key(entry: JsonObject) -> tuple[str, str]:
         sid = entry["id"]
         h = hashlib.sha256(digest_seed + sid.encode("utf-8")).hexdigest()
         return (h, sid)
@@ -109,7 +109,7 @@ def _split_scenarios(
     }
 
 
-def _load_scenarios(path: Path) -> list[dict[str, Any]]:
+def _load_scenarios(path: Path) -> list[JsonObject]:
     """Load and validate reference-routing scenarios from YAML."""
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     raw = data.get("scenarios") if isinstance(data, dict) else None
@@ -118,7 +118,7 @@ def _load_scenarios(path: Path) -> list[dict[str, Any]]:
             f"Expected a top-level `scenarios:` list in {path}; got "
             f"{type(raw).__name__}."
         )
-    scenarios: list[dict[str, Any]] = []
+    scenarios: list[JsonObject] = []
     seen_ids: set[str] = set()
     for idx, entry in enumerate(raw):
         if not isinstance(entry, dict):
@@ -161,7 +161,7 @@ def _load_scenarios(path: Path) -> list[dict[str, Any]]:
 
 
 def _build_examples(
-    bucket: list[dict[str, Any]],
+    bucket: list[JsonObject],
 ) -> list[dspy.Example]:
     examples: list[dspy.Example] = []
     for entry in bucket:
@@ -184,19 +184,19 @@ def _build_examples(
 
 
 def _evaluate_module(
-    module: Any,
+    module: object,
     examples: list[dspy.Example],
     metric: ReferenceRoutingMetric,
 ) -> tuple[
     list[float],
-    list[dict[str, Any]],
+    list[JsonObject],
     list[float],
     list[ReferenceRoutingFinding],
 ]:
     """Score ``module`` and collect findings for aggregate-rate reporting."""
     final_scores: list[float] = []
     routing_scores: list[float] = []
-    breakdown: list[dict[str, Any]] = []
+    breakdown: list[JsonObject] = []
     findings_all: list[ReferenceRoutingFinding] = []
     for ex in examples:
         try:
@@ -240,7 +240,7 @@ def _evaluate_module(
     return final_scores, breakdown, routing_scores, findings_all
 
 
-def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
+def _per_suite_averages(breakdown: list[JsonObject]) -> dict[str, float]:
     by_suite: dict[str, list[float]] = {}
     for entry in breakdown:
         suite = entry.get("suite", "unknown") or "unknown"
@@ -253,7 +253,7 @@ def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def _per_suite_failure_counts(
-    breakdown: list[dict[str, Any]],
+    breakdown: list[JsonObject],
 ) -> dict[str, int]:
     by_suite: dict[str, int] = {}
     for entry in breakdown:
@@ -272,10 +272,10 @@ def _baseline_program_tokens() -> int:
     return _approx_tokens(ReferenceRoutingSignature.__doc__ or "")
 
 
-def _optimized_program_tokens(optimized: Any) -> int:
+def _optimized_program_tokens(optimized: object) -> int:
     predictor = getattr(optimized, "predictor", None)
     instructions = ""
-    demos: list[Any] = []
+    demos: list[object] = []
     if predictor is not None:
         sig = getattr(predictor, "signature", None)
         if sig is not None:
@@ -285,7 +285,7 @@ def _optimized_program_tokens(optimized: Any) -> int:
     return _approx_tokens(instructions) + _approx_tokens(demos_blob)
 
 
-def _split_hash(split: dict[str, Any]) -> str:
+def _split_hash(split: JsonObject) -> str:
     parts: list[str] = []
     for bucket in ("train", "dev", "test"):
         ids = sorted(e["id"] for e in split.get(bucket, []))
@@ -300,7 +300,7 @@ def run_optimization(
     optimizer_name: str,
     seed: int = 42,
     output_path: Path | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Run reference-routing optimisation; return the candidate report.
 
     Mirror of ``optimize_policy.run_optimization`` field-for-field on
@@ -336,10 +336,7 @@ def run_optimization(
             f"Available: {sorted(OPTIMIZERS)}"
         )
     # The OPTIMIZERS factory is typed for DecisionPolicyMetric, but
-    # the DSPy optimisers accept any callable metric — including this
-    # one.  Cast through Any to satisfy mypy without widening the
-    # decision-policy factory's published signature.
-    optimizer = optimizer_factory(cast("Any", metric))
+    optimizer = optimizer_factory(metric)
 
     module = ReferenceRoutingModule()
     if optimizer_name == "gepa":
@@ -409,7 +406,7 @@ def run_optimization(
     if output_path is not None:
         program_path = output_path.with_suffix(".program.json")
 
-    report: dict[str, Any] = {
+    report: JsonObject = {
         "signature": SIGNATURE_NAME,
         "timestamp": datetime.now(UTC).isoformat(),
         "optimizer": optimizer_name,

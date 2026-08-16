@@ -21,7 +21,6 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
 # Allow `python evals/optimizers/dspy/split_scenarios.py` from the
 # package root.  evals/ is not part of the installed wheel.
@@ -29,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals.harness._json import JsonObject
 from evals.harness.schema import (
     Scenario,
     load_scenarios_from_dir,
@@ -68,7 +68,7 @@ def _bucket_counts(
     return counts
 
 
-def _expected_dict(scenario: Scenario) -> dict[str, Any]:
+def _expected_dict(scenario: Scenario) -> JsonObject:
     """Extract expected fields into a JSON-serializable dict."""
     return {
         "should_query_marketplace": (
@@ -95,7 +95,7 @@ def split_scenarios(
     train_ratio: float = 0.6,
     dev_ratio: float = 0.2,
     test_ratio: float = 0.2,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, list[JsonObject]]:
     """Split scenarios into train, dev, and test by stable hash.
 
     Each scenario gets a deterministic bucket based on its ID hash.
@@ -114,7 +114,7 @@ def split_scenarios(
             f"test={test_ratio})"
         )
 
-    buckets: dict[str, list[dict[str, Any]]] = {
+    buckets: dict[str, list[JsonObject]] = {
         "train": [],
         "dev": [],
         "test": [],
@@ -140,7 +140,7 @@ def split_scenarios(
 
     for bucket, bucket_scenarios in assignments:
         for scenario in bucket_scenarios:
-            entry: dict[str, Any] = {
+            entry: JsonObject = {
                 "id": scenario.id,
                 "suite": scenario.suite,
                 "prompt": scenario.prompt,
@@ -214,7 +214,7 @@ def main() -> int:
         test_ratio=ratios[2],
     )
 
-    output: dict[str, Any] = {
+    output: JsonObject = {
         "seed": args.seed,
         "ratios": {
             "train": ratios[0],

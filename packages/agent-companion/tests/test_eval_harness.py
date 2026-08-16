@@ -18,13 +18,13 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 from urllib import error as urllib_error
 
 import pytest
 import yaml
 
 from evals import run_eval as run_eval_cli
+from evals.harness._json import JsonObject
 from evals.harness.graders import (
     METRIC_CONTEXT_EFFICIENCY,
     METRIC_COURSE_SELECTION,
@@ -1225,7 +1225,7 @@ models:
         ])
         seen_payloads: list[dict[str, object]] = []
 
-        def _fake_post(_self, payload: dict[str, Any]) -> dict[str, Any]:
+        def _fake_post(_self, payload: JsonObject) -> JsonObject:
             seen_payloads.append(json.loads(json.dumps(payload)))
             return next(responses)
 
@@ -1329,7 +1329,7 @@ models:
         ])
         seen_payloads: list[dict[str, object]] = []
 
-        def _fake_post(_self, payload: dict[str, Any]) -> dict[str, Any]:
+        def _fake_post(_self, payload: JsonObject) -> JsonObject:
             seen_payloads.append(json.loads(json.dumps(payload)))
             return next(responses)
 

@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import yaml
+
+from evals.harness._json import JsonObject, JsonValue
 
 KNOWN_TOOLS = {
     "logion_bounties_create",
@@ -95,7 +96,7 @@ class Catalog:
 @dataclass(frozen=True)
 class ToolCall:
     tool: str
-    args: dict[str, Any]
+    args: JsonObject
 
 
 @dataclass(frozen=True)
@@ -150,14 +151,14 @@ class Scenario:
     prompt: str
     suite: str
     installed_capabilities: tuple[str, ...]
-    local_recall: tuple[dict[str, Any], ...]
+    local_recall: tuple[JsonObject, ...]
     catalog_fixture: str
     expected: Expected
     fake_trace: FakeTrace
     notes: str = ""
 
 
-def _as_tuple(value: Any, *, kind: str) -> tuple[str, ...]:
+def _as_tuple(value: JsonValue, *, kind: str) -> tuple[str, ...]:
     if value is None:
         return ()
     if not isinstance(value, list):
@@ -165,14 +166,14 @@ def _as_tuple(value: Any, *, kind: str) -> tuple[str, ...]:
     return tuple(str(v) for v in value)
 
 
-def _load_local_recall(value: Any) -> tuple[dict[str, Any], ...]:
+def _load_local_recall(value: JsonValue) -> tuple[JsonObject, ...]:
     if value is None:
         return ()
     if not isinstance(value, list):
         raise SchemaError(
             f"local_recall must be a list, got {type(value).__name__}"
         )
-    entries: list[dict[str, Any]] = []
+    entries: list[JsonObject] = []
     for entry in value:
         if not isinstance(entry, dict):
             raise SchemaError(
@@ -182,7 +183,7 @@ def _load_local_recall(value: Any) -> tuple[dict[str, Any], ...]:
     return tuple(entries)
 
 
-def _load_token_estimate(value: Any) -> dict[str, int]:
+def _load_token_estimate(value: JsonValue) -> dict[str, int]:
     if value is None:
         value = {"input": 0, "output": 0}
     if not isinstance(value, dict):
@@ -205,7 +206,7 @@ def _load_token_estimate(value: Any) -> dict[str, int]:
     return token_estimate
 
 
-def _optional_bool(value: Any, *, kind: str) -> bool | None:
+def _optional_bool(value: JsonValue, *, kind: str) -> bool | None:
     if value is None:
         return None
     if not isinstance(value, bool):
@@ -213,7 +214,7 @@ def _optional_bool(value: Any, *, kind: str) -> bool | None:
     return value
 
 
-def _optional_non_negative_int(value: Any, *, kind: str) -> int | None:
+def _optional_non_negative_int(value: JsonValue, *, kind: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int):
@@ -326,7 +327,7 @@ def load_catalog(path: Path) -> Catalog:  # noqa: C901
     return Catalog(version=1, courses=tuple(courses))
 
 
-def _load_expected(raw: dict[str, Any]) -> Expected:
+def _load_expected(raw: JsonObject) -> Expected:
     if not isinstance(raw, dict):
         raise SchemaError("'expected' must be a mapping")
     allowed_keys = {
@@ -405,7 +406,7 @@ def _load_expected(raw: dict[str, Any]) -> Expected:
     )
 
 
-def _load_calls(raw: Any) -> tuple[ToolCall, ...]:
+def _load_calls(raw: JsonValue) -> tuple[ToolCall, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list):
@@ -428,7 +429,7 @@ def _load_calls(raw: Any) -> tuple[ToolCall, ...]:
     return tuple(calls)
 
 
-def _load_fake_trace(raw: Any) -> FakeTrace:
+def _load_fake_trace(raw: JsonValue) -> FakeTrace:
     if not isinstance(raw, dict):
         raise SchemaError("'fake_trace' must be a mapping")
     return FakeTrace(

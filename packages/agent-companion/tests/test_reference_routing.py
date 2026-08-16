@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 import yaml
 
+from evals.harness._json import JsonObject
 from evals.optimizers.dspy.reference_routing_inventory import (
     REFERENCE_NAMES,
 )
@@ -243,7 +243,7 @@ class TestAggregateRates:
 # ---------------------------------------------------------------------------
 
 
-def _load_scenarios() -> list[dict[str, Any]]:
+def _load_scenarios() -> list[JsonObject]:
     data = yaml.safe_load(SCENARIOS_PATH.read_text(encoding="utf-8"))
     return data["scenarios"]
 

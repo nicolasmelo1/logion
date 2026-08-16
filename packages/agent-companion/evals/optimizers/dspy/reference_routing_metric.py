@@ -22,8 +22,8 @@ populate the renderer report.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
 
+from evals.harness._json import JsonObject
 from evals.optimizers.dspy.metrics import (
     _policy_token_estimate,
     _policy_token_factor,
@@ -138,7 +138,7 @@ class ReferenceRoutingMetric:
         self,
         *,
         program_instructions: str = "",
-        program_demos: Any = None,  # accepted for backward compat, ignored
+        program_demos: object = None,  # backward compat, ignored
     ) -> None:
         self._program_tokens = _policy_token_estimate(
             program_instructions, program_demos
@@ -146,7 +146,7 @@ class ReferenceRoutingMetric:
         self._policy_token_factor = _policy_token_factor(self._program_tokens)
 
     def evaluate_with_finding(
-        self, gold: Any, pred: Any
+        self, gold: object, pred: object
     ) -> tuple[float, ReferenceRoutingFinding]:
         gold_ref = _resolve_reference(getattr(gold, "reference", None))
         pred_ref = _resolve_reference(getattr(pred, "reference", None))
@@ -156,12 +156,13 @@ class ReferenceRoutingMetric:
 
     def __call__(
         self,
-        gold: Any,
-        pred: Any,
-        trace: Any = None,
-        pred_name: str | None = None,
-        pred_trace: Any = None,
-    ) -> Any:
+        gold: object,
+        pred: object,
+        trace: object = None,
+        pred_name: object = None,
+        pred_trace: object = None,
+        **_: object,
+    ) -> float | JsonObject:
         """DSPy metric entry.
 
         Mirrors the decision-policy metric's heuristic for
@@ -190,7 +191,7 @@ def _feedback_for(finding: ReferenceRoutingFinding) -> str:
 
 def aggregate_rates(
     findings: Iterable[ReferenceRoutingFinding],
-) -> dict[str, Any]:
+) -> JsonObject:
     """Compute aggregate rates + per-class accuracy for the report."""
     none_total = 0
     none_fp = 0

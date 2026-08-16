@@ -16,17 +16,18 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Any
+
+from evals.harness._json import JsonObject
 
 
-def _load_json(path: Path) -> dict[str, Any]:
+def _load_json(path: Path) -> JsonObject:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 _PREDICTOR_KEYS = ("predictor", "predict")
 
 
-def _predictor_blocks(program: dict[str, Any]) -> list[dict[str, Any]]:
+def _predictor_blocks(program: JsonObject) -> list[JsonObject]:
     """Return every predictor-shaped block in a saved DSPy program.
 
     DSPy 3.x serializes a single-predictor module as
@@ -35,7 +36,7 @@ def _predictor_blocks(program: dict[str, Any]) -> list[dict[str, Any]]:
     or use flat dotted keys. Collect all shapes so downstream
     extractors can iterate uniformly.
     """
-    blocks: list[dict[str, Any]] = []
+    blocks: list[JsonObject] = []
     for key in _PREDICTOR_KEYS:
         block = program.get(key)
         if isinstance(block, dict):
@@ -46,7 +47,7 @@ def _predictor_blocks(program: dict[str, Any]) -> list[dict[str, Any]]:
     return blocks
 
 
-def _extract_instructions(program: dict[str, Any]) -> str | None:
+def _extract_instructions(program: JsonObject) -> str | None:
     """Pull the rewritten signature instructions from a saved program."""
     for block in _predictor_blocks(program):
         sig = block.get("signature")
@@ -66,7 +67,7 @@ def _extract_instructions(program: dict[str, Any]) -> str | None:
     return None
 
 
-def _extract_demos(program: dict[str, Any]) -> list[dict[str, Any]]:
+def _extract_demos(program: JsonObject) -> list[JsonObject]:
     """Pull selected few-shot demos from a saved program."""
     for block in _predictor_blocks(program):
         demos = block.get("demos")
@@ -79,7 +80,7 @@ def _extract_demos(program: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def _failure_summary(breakdown: list[dict[str, Any]]) -> Counter[str]:
+def _failure_summary(breakdown: list[JsonObject]) -> Counter[str]:
     """Count which sub-metrics dragged each dev scenario down."""
     counter: Counter[str] = Counter()
     for entry in breakdown:
@@ -90,7 +91,7 @@ def _failure_summary(breakdown: list[dict[str, Any]]) -> Counter[str]:
     return counter
 
 
-def _format_demo(idx: int, demo: dict[str, Any]) -> str:
+def _format_demo(idx: int, demo: JsonObject) -> str:
     """Render a single few-shot demo as a Markdown block."""
     fields = []
     for key in (
@@ -305,7 +306,7 @@ def _instruction_invented_references(
     return found
 
 
-def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
+def _catalog_leak_count(demos: list[JsonObject]) -> int:
     """Count catalog course IDs in demo marketplace_results."""
     max_leaks = 0
     for demo in demos:
@@ -320,9 +321,9 @@ def _catalog_leak_count(demos: list[dict[str, Any]]) -> int:
 
 
 def _verdict(  # noqa: C901 — gate chain is intentionally flat
-    report: dict[str, Any],
+    report: JsonObject,
     *,
-    demos: list[dict[str, Any]] | None = None,
+    demos: list[JsonObject] | None = None,
     instructions: str | None = None,
 ) -> tuple[str, list[str]]:
     """Compute promotion verdict. Returns (verdict, reasons).
@@ -547,7 +548,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
         if program_str:
             program_path = Path(program_str)
 
-    program: dict[str, Any] = {}
+    program: JsonObject = {}
     if program_path is not None and program_path.is_file():
         program = _load_json(program_path)
 

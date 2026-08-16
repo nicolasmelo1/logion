@@ -16,11 +16,11 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 from urllib import error, request
 
 import yaml
 
+from evals.harness._json import JsonObject, JsonValue
 from evals.harness.schema import (
     Catalog,
     Scenario,
@@ -89,7 +89,7 @@ class ToolSpec:
 
     name: str
     description: str
-    parameters: dict[str, Any]
+    parameters: JsonObject
 
 
 TOOL_SPECS: tuple[ToolSpec, ...] = (
@@ -647,9 +647,9 @@ class LlamaCppModelConfig:
     quant: str | None
     context: int
     server_args: tuple[str, ...]
-    chat_template_kwargs: tuple[tuple[str, Any], ...] = ()
+    chat_template_kwargs: tuple[tuple[str, JsonValue], ...] = ()
 
-    def chat_template_kwargs_dict(self) -> dict[str, Any]:
+    def chat_template_kwargs_dict(self) -> JsonObject:
         return dict(self.chat_template_kwargs)
 
 
@@ -667,7 +667,7 @@ class LlamaCppProvider:
     def base_url(self) -> str:
         return self.config.base_url.rstrip("/")
 
-    def report_metadata(self) -> dict[str, Any]:
+    def report_metadata(self) -> JsonObject:
         quant = self.model.quant or infer_quant_from_filename(self.model.file)
         return {
             "provider": self.name,
@@ -698,7 +698,7 @@ class LlamaCppProvider:
             )
             calls: list[ToolCall] = []
             token_estimate = {"input": 0, "output": 0}
-            last_response: dict[str, Any] | None = None
+            last_response: JsonObject | None = None
             try:
                 for _round in range(1, MAX_TOOL_ROUNDS + 1):
                     response = self._post_json(
@@ -758,7 +758,7 @@ class LlamaCppProvider:
         *,
         previous_response: str | None = None,
         validation_feedback: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         return self._build_payload_from_messages(
             self._build_messages(
                 scenario,
@@ -769,9 +769,9 @@ class LlamaCppProvider:
         )
 
     def _build_payload_from_messages(
-        self, messages: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
+        self, messages: list[JsonObject]
+    ) -> JsonObject:
+        payload: JsonObject = {
             "model": self.model.id,
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
@@ -793,7 +793,7 @@ class LlamaCppProvider:
         *,
         previous_response: str | None = None,
         validation_feedback: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[JsonObject]:
         messages = [
             {"role": "system", "content": self._system_prompt()},
             {"role": "user", "content": self._build_user_prompt(scenario)},
@@ -836,7 +836,7 @@ class LlamaCppProvider:
             f"Retry now. {OUTPUT_CONTRACT}"
         )
 
-    def _post_json(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _post_json(self, payload: JsonObject) -> JsonObject:
         endpoint = f"{self.base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
@@ -887,7 +887,7 @@ class LlamaCppProvider:
 
     def _trace_from_message_content(
         self,
-        content: Any,
+        content: JsonValue,
         scenario_id: str,
         calls: tuple[ToolCall, ...],
         token_estimate: dict[str, int],
@@ -925,7 +925,7 @@ def load_llama_cpp_provider(
             f"Config {config_path} must declare at least one model"
         )
 
-    selected_model_raw: dict[str, Any] | None = None
+    selected_model_raw: JsonObject | None = None
     for entry in models_raw:
         if isinstance(entry, dict) and entry.get("id") == model_id:
             selected_model_raw = entry
@@ -999,7 +999,7 @@ def load_llama_cpp_provider(
     )
 
 
-def build_openai_tools() -> list[dict[str, Any]]:
+def build_openai_tools() -> list[JsonObject]:
     return [
         {
             "type": "function",
@@ -1019,7 +1019,7 @@ def raise_tool_loop_exceeded() -> None:
     )
 
 
-def extract_response_message(response: dict[str, Any]) -> dict[str, Any]:
+def extract_response_message(response: JsonObject) -> JsonObject:
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
         raise LlamaCppProviderError("llama-server response has no choices")
@@ -1031,7 +1031,7 @@ def extract_response_message(response: dict[str, Any]) -> dict[str, Any]:
     return message
 
 
-def message_for_history(message: dict[str, Any]) -> dict[str, Any]:
+def message_for_history(message: JsonObject) -> JsonObject:
     history = {"role": "assistant"}
     content = message.get("content")
     history["content"] = content if isinstance(content, str) else ""
@@ -1055,11 +1055,11 @@ def build_final_json_reminder(
 
 
 def build_tool_result_message(
-    raw_call: dict[str, Any],
+    raw_call: JsonObject,
     call: ToolCall,
     scenario: Scenario,
     catalog: Catalog,
-) -> dict[str, Any]:
+) -> JsonObject:
     return {
         "role": "tool",
         "tool_call_id": str(raw_call.get("id") or call.tool),
@@ -1073,7 +1073,7 @@ def build_tool_result_message(
 
 def execute_synthetic_tool(  # noqa: C901
     call: ToolCall, scenario: Scenario, catalog: Catalog
-) -> dict[str, Any]:
+) -> JsonObject:
     if call.tool == "logion_recall_search":
         limit = _tool_limit(call.args.get("limit"), default=5)
         return {
@@ -1246,9 +1246,9 @@ def execute_synthetic_tool(  # noqa: C901
     return {"ok": False, "error": f"unsupported tool: {call.tool}"}
 
 
-def search_catalog(query: str, catalog: Catalog) -> list[dict[str, Any]]:
+def search_catalog(query: str, catalog: Catalog) -> list[JsonObject]:
     terms = {term for term in re.findall(r"[a-z0-9]+", query.lower()) if term}
-    scored: list[tuple[int, dict[str, Any]]] = []
+    scored: list[tuple[int, JsonObject]] = []
     for course in catalog.courses:
         haystack = " ".join([
             course.id,
@@ -1267,7 +1267,7 @@ def search_catalog(query: str, catalog: Catalog) -> list[dict[str, Any]]:
     return [payload for _score, payload in scored[:5]]
 
 
-def course_to_payload(course: Any) -> dict[str, Any]:
+def course_to_payload(course: JsonValue) -> JsonObject:
     return {
         "id": course.id,
         "name": course.name,
@@ -1293,7 +1293,7 @@ def merge_token_estimates(
     }
 
 
-def _tool_limit(value: Any, *, default: int) -> int:
+def _tool_limit(value: JsonValue, *, default: int) -> int:
     try:
         parsed = int(value)
     except (TypeError, ValueError):
@@ -1301,7 +1301,7 @@ def _tool_limit(value: Any, *, default: int) -> int:
     return max(parsed, 0)
 
 
-def parse_trace_metadata(content: Any) -> dict[str, Any]:
+def parse_trace_metadata(content: JsonValue) -> JsonObject:
     if not isinstance(content, str) or not content.strip():
         raise LlamaCppProviderError(
             "llama-server response message content must be non-empty JSON"
@@ -1314,7 +1314,7 @@ def parse_trace_metadata(content: Any) -> dict[str, Any]:
     return data
 
 
-def parse_tool_calls(tool_calls: Any) -> tuple[ToolCall, ...]:
+def parse_tool_calls(tool_calls: JsonValue) -> tuple[ToolCall, ...]:
     if tool_calls is None:
         return ()
     if not isinstance(tool_calls, list):
@@ -1343,7 +1343,7 @@ def parse_tool_calls(tool_calls: Any) -> tuple[ToolCall, ...]:
     return tuple(calls)
 
 
-def parse_tool_arguments(arguments: Any, tool_name: str) -> dict[str, Any]:
+def parse_tool_arguments(arguments: JsonValue, tool_name: str) -> JsonObject:
     if arguments in (None, ""):
         return {}
     if isinstance(arguments, dict):
@@ -1365,7 +1365,7 @@ def parse_tool_arguments(arguments: Any, tool_name: str) -> dict[str, Any]:
     return data
 
 
-def parse_trace_json(content: str) -> dict[str, Any]:
+def parse_trace_json(content: str) -> JsonObject:
     text = content.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -1391,7 +1391,7 @@ def truncate_validation_error(message: str) -> str:
     )
 
 
-def extract_message_content(response: dict[str, Any]) -> str | None:
+def extract_message_content(response: JsonObject) -> str | None:
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
         return None
@@ -1413,7 +1413,7 @@ def extract_message_content(response: dict[str, Any]) -> str | None:
     return content.strip() or None
 
 
-def usage_to_token_estimate(usage: Any) -> dict[str, int]:
+def usage_to_token_estimate(usage: JsonValue) -> dict[str, int]:
     if not isinstance(usage, dict):
         return {"input": 0, "output": 0}
     prompt_tokens = usage.get("prompt_tokens", 0)
@@ -1433,7 +1433,7 @@ def infer_quant_from_filename(filename: str) -> str | None:
     return match.group(1)
 
 
-def _as_str_tuple(value: Any) -> tuple[str, ...]:
+def _as_str_tuple(value: JsonValue) -> tuple[str, ...]:
     if value is None:
         return ()
     if not isinstance(value, list):
@@ -1441,19 +1441,19 @@ def _as_str_tuple(value: Any) -> tuple[str, ...]:
     return tuple(str(item) for item in value)
 
 
-def _coerce_non_empty_str(value: Any, *, kind: str) -> str:
+def _coerce_non_empty_str(value: JsonValue, *, kind: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise LlamaCppProviderError(f"{kind} must be a non-empty string")
     return value.strip()
 
 
-def _coerce_optional_str(value: Any) -> str | None:
+def _coerce_optional_str(value: JsonValue) -> str | None:
     if value is None:
         return None
     return _coerce_non_empty_str(value, kind="quant")
 
 
-def _coerce_str_tuple(value: Any) -> tuple[str, ...]:
+def _coerce_str_tuple(value: JsonValue) -> tuple[str, ...]:
     if value is None:
         return ()
     if not isinstance(value, list):
@@ -1462,8 +1462,8 @@ def _coerce_str_tuple(value: Any) -> tuple[str, ...]:
 
 
 def _coerce_template_kwargs(
-    value: Any,
-) -> tuple[tuple[str, Any], ...]:
+    value: JsonValue,
+) -> tuple[tuple[str, JsonValue], ...]:
     if value is None:
         return ()
     if not isinstance(value, dict):
@@ -1471,14 +1471,14 @@ def _coerce_template_kwargs(
     return tuple((str(key), val) for key, val in value.items())
 
 
-def _coerce_positive_int(value: Any, *, kind: str) -> int:
+def _coerce_positive_int(value: JsonValue, *, kind: str) -> int:
     parsed = _coerce_non_negative_int(value, kind=kind)
     if parsed <= 0:
         raise LlamaCppProviderError(f"{kind} must be > 0")
     return parsed
 
 
-def _coerce_non_negative_int(value: Any, *, kind: str) -> int:
+def _coerce_non_negative_int(value: JsonValue, *, kind: str) -> int:
     if isinstance(value, bool):
         raise LlamaCppProviderError(f"{kind} must be an integer")
     try:
@@ -1490,7 +1490,7 @@ def _coerce_non_negative_int(value: Any, *, kind: str) -> int:
     return parsed
 
 
-def _coerce_optional_int(value: Any) -> int | None:
+def _coerce_optional_int(value: JsonValue) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -1501,7 +1501,7 @@ def _coerce_optional_int(value: Any) -> int | None:
         raise LlamaCppProviderError("seed must be an integer") from exc
 
 
-def _coerce_float(value: Any, *, kind: str) -> float:
+def _coerce_float(value: JsonValue, *, kind: str) -> float:
     if isinstance(value, bool):
         raise LlamaCppProviderError(f"{kind} must be numeric")
     try:

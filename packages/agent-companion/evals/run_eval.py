@@ -21,13 +21,13 @@ import argparse
 import subprocess  # nosec B404 - local git metadata lookup only
 import sys
 from pathlib import Path
-from typing import Any
 
 # Allow `python evals/run_eval.py` from the package root.
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals.harness._json import JsonObject  # noqa: E402
 from evals.harness.providers import (  # noqa: E402
     FakeProvider,
     LlamaCppProviderError,
@@ -104,7 +104,7 @@ def _git_commit() -> str | None:
 
 def _resolve_provider(
     args: argparse.Namespace,
-) -> tuple[Provider, dict[str, Any]]:
+) -> tuple[Provider, JsonObject]:
     if args.provider == "fake":
         return (
             FakeProvider(model=args.model),

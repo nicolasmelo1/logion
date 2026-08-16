@@ -31,7 +31,7 @@ import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Protocol
 
 # Allow `python evals/optimizers/dspy/optimize_policy.py` from the
 # package root.  evals/ is not part of the installed wheel.
@@ -41,6 +41,7 @@ if str(ROOT) not in sys.path:
 
 import dspy
 
+from evals.harness._json import JsonObject
 from evals.harness.schema import Catalog, load_catalog, load_scenarios_from_dir
 from evals.optimizers.dspy.metrics import (
     DecisionPolicyMetric,
@@ -48,12 +49,12 @@ from evals.optimizers.dspy.metrics import (
 from evals.optimizers.dspy.signatures import DecisionPolicyModule
 from evals.optimizers.dspy.split_scenarios import split_scenarios
 
-_BOOTSTRAP_FEW_SHOT_CONFIG: dict[str, Any] = {
+_BOOTSTRAP_FEW_SHOT_CONFIG: JsonObject = {
     "max_bootstrapped_demos": 4,
     "max_labeled_demos": 8,
 }
 
-_MIPRO_V2_CONFIG: dict[str, Any] = {
+_MIPRO_V2_CONFIG: JsonObject = {
     "auto": "medium",
     "num_threads": 1,
 }
@@ -63,20 +64,58 @@ _MIPRO_V2_CONFIG: dict[str, Any] = {
 # stays at ``light`` because heavier budgets multiply rollout count
 # and we've seen reflection-bloat get worse, not better, with more
 # iterations on this signature.
-_GEPA_CONFIG: dict[str, Any] = {
+_GEPA_CONFIG: JsonObject = {
     "auto": os.environ.get("LOGION_GEPA_AUTO", "light"),
 }
 
 
-def _bootstrap_few_shot(metric: DecisionPolicyMetric) -> Any:
+class Metric(Protocol):
+    """The DSPy metric surface the optimizer factories require.
+
+    Widening the factories to this Protocol is what lets the reference
+    routing optimizer reuse them: it has its own metric class, and the
+    two share no base.
+    """
+
+    def __call__(
+        self,
+        gold: object,
+        pred: object,
+        trace: object = ...,
+        pred_name: object = ...,
+        pred_trace: object = ...,
+        **kwargs: object,
+    ) -> float | JsonObject: ...
+
+
+class CompiledProgram(Protocol):
+    """The compiled DSPy program surface this optimizer relies on."""
+
+    def save(self, path: str) -> None: ...
+
+
+class Teleprompter(Protocol):
+    """The DSPy optimizer surface this module relies on.
+
+    A Protocol rather than a union of the three concrete DSPy classes:
+    BootstrapFewShot, MIPROv2 and GEPA share no useful base, and only
+    ``compile`` is ever called on them here.
+    """
+
+    def compile(
+        self, student: object, /, **kwargs: object
+    ) -> CompiledProgram: ...
+
+
+def _bootstrap_few_shot(metric: Metric) -> Teleprompter:
     return dspy.BootstrapFewShot(metric=metric, **_BOOTSTRAP_FEW_SHOT_CONFIG)
 
 
-def _mipro_v2(metric: DecisionPolicyMetric) -> Any:
+def _mipro_v2(metric: Metric) -> Teleprompter:
     return dspy.MIPROv2(metric=metric, **_MIPRO_V2_CONFIG)
 
 
-def _build_reflection_lm() -> Any:
+def _build_reflection_lm() -> object:
     """Build the GEPA reflection LM from env, defaulting to the task LM."""
     model = os.environ.get("DSPY_REFLECTION_LM") or os.environ.get("DSPY_LM")
     if not model:
@@ -84,7 +123,7 @@ def _build_reflection_lm() -> Any:
             "GEPA requires a reflection LM: set DSPY_REFLECTION_LM (or "
             "fall back to DSPY_LM)."
         )
-    kwargs: dict[str, Any] = {}
+    kwargs: JsonObject = {}
     api_base = os.environ.get("DSPY_REFLECTION_API_BASE") or os.environ.get(
         "DSPY_API_BASE"
     )
@@ -102,7 +141,7 @@ def _build_reflection_lm() -> Any:
     return dspy.LM(model, **kwargs)
 
 
-def _gepa(metric: DecisionPolicyMetric) -> Any:
+def _gepa(metric: Metric) -> Teleprompter:
     return dspy.GEPA(
         metric=metric,
         reflection_lm=_build_reflection_lm(),
@@ -116,7 +155,7 @@ OPTIMIZERS = {
     "gepa": _gepa,
 }
 
-OPTIMIZER_CONFIGS: dict[str, dict[str, Any]] = {
+OPTIMIZER_CONFIGS: dict[str, JsonObject] = {
     "bootstrap_few_shot": _BOOTSTRAP_FEW_SHOT_CONFIG,
     "mipro_v2": _MIPRO_V2_CONFIG,
     "gepa": _GEPA_CONFIG,
@@ -163,7 +202,7 @@ def _configure_dspy_lm_from_env() -> None:
 
 
 def _build_examples(
-    bucket_scenarios: list[dict[str, Any]],
+    bucket_scenarios: list[JsonObject],
     *,
     catalog: Catalog,
     current_policy_text: str,
@@ -195,17 +234,17 @@ def _build_examples(
     return examples
 
 
-def _load_split(path: Path) -> dict[str, list[dict[str, Any]]]:
+def _load_split(path: Path) -> dict[str, list[JsonObject]]:
     """Load a previously written split JSON file."""
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["splits"]
 
 
 def _evaluate_module(
-    module: Any,
+    module: object,
     dev_examples: list[dspy.Example],
     metric: DecisionPolicyMetric,
-) -> tuple[list[float], list[dict[str, Any]], list[float]]:
+) -> tuple[list[float], list[JsonObject], list[float]]:
     """Score ``module`` on dev examples; return per-scenario findings.
 
     Returns ``(final_scores, breakdown, routing_scores)`` where
@@ -215,7 +254,7 @@ def _evaluate_module(
     """
     final_scores: list[float] = []
     routing_scores: list[float] = []
-    breakdown: list[dict[str, Any]] = []
+    breakdown: list[JsonObject] = []
     for ex in dev_examples:
         try:
             pred = module(
@@ -255,7 +294,7 @@ def _evaluate_module(
     return final_scores, breakdown, routing_scores
 
 
-def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
+def _per_suite_averages(breakdown: list[JsonObject]) -> dict[str, float]:
     """Aggregate per-scenario scores into per-suite averages."""
     by_suite: dict[str, list[float]] = {}
     for entry in breakdown:
@@ -269,7 +308,7 @@ def _per_suite_averages(breakdown: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def _per_suite_failure_counts(
-    breakdown: list[dict[str, Any]],
+    breakdown: list[JsonObject],
 ) -> dict[str, int]:
     """Count scenarios with at least one failure per suite."""
     by_suite: dict[str, int] = {}
@@ -292,7 +331,7 @@ def _baseline_program_tokens() -> int:
     return _approx_tokens(docstring)
 
 
-def _demo_to_dict(demo: Any) -> dict[str, Any]:
+def _demo_to_dict(demo: object) -> JsonObject:
     """Best-effort conversion of a DSPy demo to a JSON-able dict."""
     to_dict = getattr(demo, "toDict", None)
     if callable(to_dict):
@@ -302,11 +341,11 @@ def _demo_to_dict(demo: Any) -> dict[str, Any]:
     return {}
 
 
-def _optimized_program_tokens(optimized: Any) -> int:
+def _optimized_program_tokens(optimized: object) -> int:
     """Token estimate for compiled program: instructions + serialized demos."""
     predictor = getattr(optimized, "predictor", None)
     instructions = ""
-    demos: list[Any] = []
+    demos: list[object] = []
     if predictor is not None:
         sig = getattr(predictor, "signature", None)
         if sig is not None:
@@ -316,9 +355,9 @@ def _optimized_program_tokens(optimized: Any) -> int:
     return _approx_tokens(instructions) + _approx_tokens(demos_blob)
 
 
-def _capture_model_matrix(optimizer_name: str) -> dict[str, Any]:
+def _capture_model_matrix(optimizer_name: str) -> JsonObject:
     """Record the LM and optimizer configuration used for this run."""
-    matrix: dict[str, Any] = {
+    matrix: JsonObject = {
         "dspy_lm": os.environ.get("DSPY_LM", ""),
         "dspy_api_base": os.environ.get("DSPY_API_BASE", ""),
         "optimizer": optimizer_name,
@@ -342,7 +381,7 @@ def run_optimization(
     seed: int = 42,
     split_path: Path | None = None,
     output_path: Path | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Run a DSPy optimizer and return the candidate report.
 
     If ``split_path`` is provided, the train/dev/test split is loaded
@@ -483,7 +522,7 @@ def run_optimization(
     if output_path is not None:
         program_path = output_path.with_suffix(".program.json")
 
-    report: dict[str, Any] = {
+    report: JsonObject = {
         "timestamp": datetime.now(UTC).isoformat(),
         "optimizer": optimizer_name,
         "seed": seed,
@@ -554,7 +593,7 @@ def run_optimization(
     return report
 
 
-def _split_hash(split: dict[str, Any]) -> str:
+def _split_hash(split: JsonObject) -> str:
     """Deterministic hash of the split assignment for reproducibility."""
     import hashlib
 
