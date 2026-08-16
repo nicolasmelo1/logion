@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from urllib import error, request
@@ -1071,107 +1072,281 @@ def build_tool_result_message(
     }
 
 
-def execute_synthetic_tool(  # noqa: C901
-    call: ToolCall, scenario: Scenario, catalog: Catalog
+def _tool_recall_search(
+    call: ToolCall,
+    scenario: Scenario,
+    catalog: Catalog,  # noqa: ARG001
 ) -> JsonObject:
-    if call.tool == "logion_recall_search":
-        limit = _tool_limit(call.args.get("limit"), default=5)
-        return {
-            "results": list(scenario.local_recall)[:limit],
-            "installed_capabilities": list(scenario.installed_capabilities),
-        }
-    if call.tool == "logion_listings_search":
-        query = str(call.args.get("query", ""))
-        return {"results": search_catalog(query, catalog)}
-    if call.tool == "logion_skills_updates":
-        # `logion skills updates` lists available updates across installed
-        # skills; the fake catalog has none.
-        return {"ok": True, "updates": []}
-    if call.tool == "logion_notifications_unread_count":
-        count = 0 if "no-noise-when-zero" in scenario.id else 2
-        return {"ok": True, "count": count}
-    if call.tool == "logion_notifications_list":
-        return {
-            "ok": True,
-            "notifications": [
-                {"id": "notif-1", "title": "New review on browser.automation"},
-                {
-                    "id": "notif-2",
-                    "title": "Publication feedback on video.editor",
-                },
-            ],
-        }
-    if call.tool == "logion_course_reviews_list":
-        course_id = str(call.args.get("course_id", ""))
-        course = catalog.by_id(course_id)
-        if course is None:
-            return {"ok": False, "error": f"unknown course_id: {course_id}"}
-        return {
-            "ok": True,
-            "course_id": course_id,
-            "rating_avg": course.rating_avg,
-            "rating_count": course.rating_count,
-            "reviews": [],
-        }
-    if call.tool == "logion_bounties_ls":
-        return {
-            "ok": True,
-            "results": [
-                {
-                    "id": "bounty-ocr-1",
-                    "title": "OCR receipt cleanup",
-                    "reward_usd": 300,
-                    "tags": ["ocr", "documents"],
-                }
-            ],
-        }
-    if call.tool == "logion_bounties_get":
-        bounty_id = str(call.args.get("bounty_id", ""))
-        return {
-            "ok": True,
-            "bounty": {
-                "id": bounty_id or "bounty-ocr-1",
+    """Answer the ``logion_recall_search`` synthetic tool call."""
+    limit = _tool_limit(call.args.get("limit"), default=5)
+    return {
+        "results": list(scenario.local_recall)[:limit],
+        "installed_capabilities": list(scenario.installed_capabilities),
+    }
+
+
+def _tool_listings_search(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,
+) -> JsonObject:
+    """Answer the ``logion_listings_search`` synthetic tool call."""
+    query = str(call.args.get("query", ""))
+    return {"results": search_catalog(query, catalog)}
+
+
+def _tool_skills_updates(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_skills_updates`` synthetic tool call."""
+    return {"ok": True, "updates": []}
+
+
+def _tool_notifications_unread_count(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_notifications_unread_count`` synthetic tool call."""
+    count = 0 if "no-noise-when-zero" in scenario.id else 2
+    return {"ok": True, "count": count}
+
+
+def _tool_notifications_list(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_notifications_list`` synthetic tool call."""
+    return {
+        "ok": True,
+        "notifications": [
+            {"id": "notif-1", "title": "New review on browser.automation"},
+            {
+                "id": "notif-2",
+                "title": "Publication feedback on video.editor",
+            },
+        ],
+    }
+
+
+def _tool_course_reviews_list(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,
+) -> JsonObject:
+    """Answer the ``logion_course_reviews_list`` synthetic tool call."""
+    course_id = str(call.args.get("course_id", ""))
+    course = catalog.by_id(course_id)
+    if course is None:
+        return {"ok": False, "error": f"unknown course_id: {course_id}"}
+    return {
+        "ok": True,
+        "course_id": course_id,
+        "rating_avg": course.rating_avg,
+        "rating_count": course.rating_count,
+        "reviews": [],
+    }
+
+
+def _tool_bounties_ls(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_bounties_ls`` synthetic tool call."""
+    return {
+        "ok": True,
+        "results": [
+            {
+                "id": "bounty-ocr-1",
                 "title": "OCR receipt cleanup",
                 "reward_usd": 300,
-                "status": "open",
-            },
-        }
-    if call.tool == "logion_bounties_submission_create":
-        return {
-            "ok": True,
-            "submission_id": "submission-1",
-            "bounty_id": str(call.args.get("bounty_id", "")),
-            "status": "draft",
-        }
-    if call.tool == "logion_bounties_fund":
-        return {
-            "ok": True,
-            "checkout_provider": "stripe",
-            "bounty_id": str(call.args.get("bounty_id", "")),
-        }
-    if call.tool == "logion_reports_create":
-        return {
-            "ok": True,
-            "report_id": "report-1",
-            "target_type": str(call.args.get("target_type", "")),
-            "target_id": str(call.args.get("target_id", "")),
-        }
-    if call.tool == "logion_payments_orders_get":
-        return {
-            "ok": True,
-            "order_id": str(call.args.get("order_id", "")),
-            "status": "paid",
-        }
-    if call.tool == "logion_skills_inspect":
-        course_id = str(call.args.get("course_id", ""))
-        return {"ok": True, "course_id": course_id, "loaded": True}
-    if call.tool == "logion_skills_permission_expand":
-        return {
-            "ok": True,
-            "capability_id": str(call.args.get("capability_id", "")),
-            "scope": str(call.args.get("scope", "")),
-            "granted": False,
-        }
+                "tags": ["ocr", "documents"],
+            }
+        ],
+    }
+
+
+def _tool_bounties_get(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_bounties_get`` synthetic tool call."""
+    bounty_id = str(call.args.get("bounty_id", ""))
+    return {
+        "ok": True,
+        "bounty": {
+            "id": bounty_id or "bounty-ocr-1",
+            "title": "OCR receipt cleanup",
+            "reward_usd": 300,
+            "status": "open",
+        },
+    }
+
+
+def _tool_bounties_submission_create(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_bounties_submission_create`` synthetic tool call."""
+    return {
+        "ok": True,
+        "submission_id": "submission-1",
+        "bounty_id": str(call.args.get("bounty_id", "")),
+        "status": "draft",
+    }
+
+
+def _tool_bounties_fund(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_bounties_fund`` synthetic tool call."""
+    return {
+        "ok": True,
+        "checkout_provider": "stripe",
+        "bounty_id": str(call.args.get("bounty_id", "")),
+    }
+
+
+def _tool_reports_create(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_reports_create`` synthetic tool call."""
+    return {
+        "ok": True,
+        "report_id": "report-1",
+        "target_type": str(call.args.get("target_type", "")),
+        "target_id": str(call.args.get("target_id", "")),
+    }
+
+
+def _tool_payments_orders_get(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_payments_orders_get`` synthetic tool call."""
+    return {
+        "ok": True,
+        "order_id": str(call.args.get("order_id", "")),
+        "status": "paid",
+    }
+
+
+def _tool_skills_inspect(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_skills_inspect`` synthetic tool call."""
+    course_id = str(call.args.get("course_id", ""))
+    return {"ok": True, "course_id": course_id, "loaded": True}
+
+
+def _tool_skills_permission_expand(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_skills_permission_expand`` synthetic tool call."""
+    return {
+        "ok": True,
+        "capability_id": str(call.args.get("capability_id", "")),
+        "scope": str(call.args.get("scope", "")),
+        "granted": False,
+    }
+
+
+def _tool_courses_create(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_courses_create`` synthetic tool call."""
+    return {
+        "ok": True,
+        "course": {
+            "id": "creator.draft",
+            "title": str(call.args.get("title", "Untitled course")),
+            "slug": str(call.args.get("slug", "untitled-course")),
+            "review_status": "draft",
+        },
+    }
+
+
+def _tool_courses_report_usage(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_courses_report_usage`` synthetic tool call."""
+    return {
+        "ok": True,
+        "review_id": "review-synthetic-001",
+        "course_id": str(call.args.get("course_id", "")),
+        "version_id": str(call.args.get("version_id", "")),
+        "rating": call.args.get("rating"),
+        "persisted_fields": sorted(call.args.keys()),
+    }
+
+
+def _tool_payments_seller_readiness(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_payments_seller_readiness`` synthetic tool call."""
+    return {"ok": True, "ready": False, "missing": ["onboarding"]}
+
+
+def _tool_payments_onboarding_link(
+    call: ToolCall,  # noqa: ARG001
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_payments_onboarding_link`` synthetic tool call."""
+    return {
+        "ok": True,
+        "url": "https://payments.example.test/onboarding/session",
+    }
+
+
+def _tool_credits_top_up(
+    call: ToolCall,
+    scenario: Scenario,  # noqa: ARG001
+    catalog: Catalog,  # noqa: ARG001
+) -> JsonObject:
+    """Answer the ``logion_credits_top_up`` synthetic tool call."""
+    amount_cents = int(call.args.get("amount_cents", 0))
+    return {
+        "ok": True,
+        "top_up_id": "topup-synthetic-001",
+        "amount_cents": amount_cents,
+        "status": "pending",
+        "checkout_url": "https://checkout.stripe.test/session/topup-synthetic",
+    }
+
+
+def execute_synthetic_tool(
+    call: ToolCall, scenario: Scenario, catalog: Catalog
+) -> JsonObject:
+    """Answer one synthetic tool call from the fake catalog.
+
+    Each tool is a function registered in ``_SYNTHETIC_TOOLS``, so
+    adding one does not grow this dispatcher.
+    """
+    handler = _SYNTHETIC_TOOLS.get(call.tool)
+    if handler is not None:
+        return handler(call, scenario, catalog)
     if call.tool in {
         "logion_courses_capabilities_validate",
         "logion_courses_capabilities_print",
@@ -1180,16 +1355,6 @@ def execute_synthetic_tool(  # noqa: C901
             "ok": True,
             "bundle_dir": str(call.args.get("bundle_dir", "")),
             "capabilities": ["terminal", "file"],
-        }
-    if call.tool == "logion_courses_create":
-        return {
-            "ok": True,
-            "course": {
-                "id": "creator.draft",
-                "title": str(call.args.get("title", "Untitled course")),
-                "slug": str(call.args.get("slug", "untitled-course")),
-                "review_status": "draft",
-            },
         }
     if call.tool in {
         "logion_courses_update",
@@ -1208,31 +1373,6 @@ def execute_synthetic_tool(  # noqa: C901
             "status": "in_review",
             "feedback": "Address reviewer notes before publication.",
         }
-    if call.tool == "logion_courses_report_usage":
-        return {
-            "ok": True,
-            "review_id": "review-synthetic-001",
-            "course_id": str(call.args.get("course_id", "")),
-            "version_id": str(call.args.get("version_id", "")),
-            "rating": call.args.get("rating"),
-            "persisted_fields": sorted(call.args.keys()),
-        }
-    if call.tool == "logion_payments_seller_readiness":
-        return {"ok": True, "ready": False, "missing": ["onboarding"]}
-    if call.tool == "logion_payments_onboarding_link":
-        return {
-            "ok": True,
-            "url": "https://payments.example.test/onboarding/session",
-        }
-    if call.tool == "logion_credits_top_up":
-        amount_cents = int(call.args.get("amount_cents", 0))
-        return {
-            "ok": True,
-            "top_up_id": "topup-synthetic-001",
-            "amount_cents": amount_cents,
-            "status": "pending",
-            "checkout_url": "https://checkout.stripe.test/session/topup-synthetic",
-        }
     if call.tool in {
         "logion_courses_get",
         "logion_skills_install",
@@ -1244,6 +1384,33 @@ def execute_synthetic_tool(  # noqa: C901
             return {"ok": False, "error": f"unknown course_id: {course_id}"}
         return {"ok": True, "course": course_to_payload(course)}
     return {"ok": False, "error": f"unsupported tool: {call.tool}"}
+
+
+#: Tool name -> handler, defined after the functions so each name
+#: is already bound.
+_SYNTHETIC_TOOLS: dict[
+    str, Callable[[ToolCall, Scenario, Catalog], JsonObject]
+] = {
+    "logion_recall_search": _tool_recall_search,
+    "logion_listings_search": _tool_listings_search,
+    "logion_skills_updates": _tool_skills_updates,
+    "logion_notifications_unread_count": _tool_notifications_unread_count,
+    "logion_notifications_list": _tool_notifications_list,
+    "logion_course_reviews_list": _tool_course_reviews_list,
+    "logion_bounties_ls": _tool_bounties_ls,
+    "logion_bounties_get": _tool_bounties_get,
+    "logion_bounties_submission_create": _tool_bounties_submission_create,
+    "logion_bounties_fund": _tool_bounties_fund,
+    "logion_reports_create": _tool_reports_create,
+    "logion_payments_orders_get": _tool_payments_orders_get,
+    "logion_skills_inspect": _tool_skills_inspect,
+    "logion_skills_permission_expand": _tool_skills_permission_expand,
+    "logion_courses_create": _tool_courses_create,
+    "logion_courses_report_usage": _tool_courses_report_usage,
+    "logion_payments_seller_readiness": _tool_payments_seller_readiness,
+    "logion_payments_onboarding_link": _tool_payments_onboarding_link,
+    "logion_credits_top_up": _tool_credits_top_up,
+}
 
 
 def search_catalog(query: str, catalog: Catalog) -> list[JsonObject]:

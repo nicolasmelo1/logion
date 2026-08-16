@@ -106,7 +106,11 @@ def _validate_pre_install(
     return 0
 
 
-def handle_skills_install(args: argparse.Namespace) -> int:  # noqa: C901
+def handle_skills_install(  # noqa: C901 - a flat chain of install
+    # preconditions, each returning its own exit code; nesting them
+    # to satisfy the metric would read worse than the sequence does.
+    args: argparse.Namespace,
+) -> int:
     """Install a skill bundle from a local source directory."""
     home = resolve_target(args)
     source_dir = args.source.resolve()

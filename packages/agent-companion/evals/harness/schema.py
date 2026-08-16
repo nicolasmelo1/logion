@@ -228,7 +228,11 @@ def _optional_non_negative_int(value: JsonValue, *, kind: str) -> int | None:
     return value
 
 
-def load_catalog(path: Path) -> Catalog:  # noqa: C901
+def load_catalog(  # noqa: C901 - one shape check per catalog field,
+    # each with its own SchemaError message; splitting them would
+    # scatter the schema definition across a dozen helpers.
+    path: Path,
+) -> Catalog:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise SchemaError(f"Catalog {path} must be a mapping")
