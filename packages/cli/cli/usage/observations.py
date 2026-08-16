@@ -26,7 +26,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
-from cli._json import JsonObject, opt_int, opt_str
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home
 
 SCOPE_KINDS = Literal[
@@ -45,7 +45,48 @@ EVENTS = Literal[
     "resource_tool_used",
 ]
 
+#: The runtime tuples behind the Literal aliases. Kept beside them so
+#: the narrowing helpers below can check membership without repeating
+#: the values; a mismatch is caught by test_usage_commands.
+SCOPE_KIND_VALUES: tuple[SCOPE_KINDS, ...] = (
+    "repo-current",
+    "repo-parent",
+    "repo-root",
+    "user",
+    "admin",
+    "system",
+    "custom",
+)
+
+EVENT_VALUES: tuple[EVENTS, ...] = (
+    "resource_invoked",
+    "resource_file_read",
+    "resource_tool_used",
+)
+
 DEDUP_WINDOW_SECONDS = 300  # 5 minutes
+
+
+def observation_event(value: str | None) -> EVENTS:
+    """Narrow a wire value to a known observation event.
+
+    Defaults to ``resource_invoked`` rather than raising: an unknown
+    event name from a harness hook should still record *that the
+    resource was used*, which is the point of the observation.
+    """
+    for event in EVENT_VALUES:
+        if value == event:
+            return event
+    return "resource_invoked"
+
+
+def observation_scope_kind(value: str) -> SCOPE_KINDS:
+    """Narrow a receipt's scope kind, or raise if it is not one."""
+    for kind in SCOPE_KIND_VALUES:
+        if value == kind:
+            return kind
+    msg = f"unknown scope kind: {value!r}"
+    raise ValueError(msg)
 
 
 @dataclass(frozen=True)
@@ -372,19 +413,19 @@ def _dict_to_observation(
     """Reconstruct a UsageObservation from a dict, or None if invalid."""
     try:
         return UsageObservation(
-            schema_version=opt_int(data, "schema_version", 1),
+            schema_version=1,
             observation_id=opt_str(data, "observation_id", ""),
             observed_at=opt_str(data, "observed_at", ""),
             harness=opt_str(data, "harness", ""),
-            event=opt_str(data, "event", ""),  # type: ignore[arg-type]
+            event=observation_event(opt_str(data, "event")),
             resource_id=opt_str(data, "resource_id", ""),
             version_id=opt_str(data, "version_id", ""),
             resource_type=opt_str(data, "resource_type", ""),
             acquisition_channel=opt_str(data, "acquisition_channel", ""),
             installation_id=opt_str(data, "installation_id", ""),
-            scope_kind=opt_str(data, "scope_kind", ""),  # type: ignore[arg-type]
+            scope_kind=observation_scope_kind(opt_str(data, "scope_kind", "")),
             scope_id=opt_str(data, "scope_id", ""),
-            session_hash=data.get("session_hash"),
+            session_hash=opt_str(data, "session_hash"),
         )
     except (TypeError, ValueError):
         return None

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from cli import _receipts
-from cli._json import JsonObject, children
+from cli._json import JsonObject, children, opt_int, require_str
 from cli._lazy_import import LazyModule
 from cli._local_state import UnsafeIdentifierError
 
@@ -65,9 +65,9 @@ class LogionBundleAdapter(ChannelAdapter):
             file_digests: dict[str, str] = {}
             aggregate_components: list[JsonObject] = []
             for entry in files:
-                rel = self._safe_relative(entry["path"])
-                url = entry["url"]
-                expected_size = entry.get("size_bytes")
+                rel = self._safe_relative(require_str(entry, "path"))
+                url = require_str(entry, "url")
+                expected_size = opt_int(entry, "size_bytes")
                 expected_digest = entry.get("digest")
                 aggregate_key = entry.get("aggregate_key")
                 if not isinstance(aggregate_key, str) or not aggregate_key:
@@ -79,7 +79,7 @@ class LogionBundleAdapter(ChannelAdapter):
                 total += size
                 if total > _MAX_TOTAL_BYTES:
                     raise RuntimeError("bundle exceeds size cap")
-                if expected_size is not None and size != int(expected_size):
+                if expected_size is not None and size != expected_size:
                     raise RuntimeError(
                         f"download size mismatch for {rel.as_posix()}"
                     )

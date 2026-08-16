@@ -16,7 +16,6 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
-from cli._json import JsonObject
 
 
 def instantiate_adapter(
@@ -29,7 +28,7 @@ def instantiate_adapter(
         raise ValueError(f"unknown harness: {harness!r}")
     cls = type(adapter)
     parameters = inspect.signature(cls).parameters
-    kwargs: JsonObject = {}
+    kwargs: dict[str, Path] = {}
     if "cwd" in parameters:
         kwargs["cwd"] = cwd
     if repo_root is not None and "repo_root" in parameters:

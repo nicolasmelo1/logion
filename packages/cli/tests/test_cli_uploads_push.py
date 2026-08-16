@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from cli.commands.courses import _uploads_push
+from cli.commands.courses import _uploads_push, _uploads_transfer
 from cli.main import main
 
 
@@ -423,7 +423,7 @@ class TestRetries:
             [_FakeResponse(503), _FakeResponse(503), _FakeResponse(200)],
         )
         # Skip the linear-backoff sleep so the test stays fast.
-        monkeypatch.setattr(_uploads_push.time, "sleep", lambda _s: None)
+        monkeypatch.setattr(_uploads_transfer.time, "sleep", lambda _s: None)
 
         rc = main([
             "courses",

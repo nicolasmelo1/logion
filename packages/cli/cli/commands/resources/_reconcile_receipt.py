@@ -67,7 +67,7 @@ def _save_reconciled_receipt(
         planned_revision if planned_revision in observed_pins else ""
     )
     scope_id = _receipts.scope_id_for_target(scope, root)
-    native_evidence = {
+    native_evidence: JsonObject = {
         "schema_version": 1,
         "manager_name": str(item.get("manager") or ""),
         "manager_version": str(native.get("tested_version") or ""),

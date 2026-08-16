@@ -178,9 +178,9 @@ def _render_get(result: object) -> None:
     findings_by_layer = child(data, "findings_by_layer")
     if findings_by_layer:
         lines.append("findings:")
-        for layer, findings in findings_by_layer.items():
+        for layer in findings_by_layer:
             lines.append(f"  {layer}:")
-            for f in findings:
+            for f in children(findings_by_layer, layer):
                 severity = opt_str(f, "severity", "unknown")
                 rule_id = opt_str(f, "rule_id", "unknown")
                 desc = opt_str(f, "description", "")

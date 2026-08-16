@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cli._json import JsonObject
+from cli._json import JsonObject, opt_str
 from cli._lazy_import import LazyModule
 from cli._output import to_data, to_items
 
@@ -46,10 +46,13 @@ def catalog_matches(
             )
         if isinstance(payload, list):
             break
-        cursor_value = payload.get("next_cursor") or payload.get("nextCursor")
+        page = payload if isinstance(payload, dict) else {}
+        cursor_value = opt_str(page, "next_cursor") or opt_str(
+            page, "nextCursor"
+        )
         if not cursor_value or cursor_value == cursor:
             break
-        cursor = str(cursor_value)
+        cursor = cursor_value
     return matches
 
 

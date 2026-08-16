@@ -153,7 +153,7 @@ def summarize_capability_manifest(
     runtime = child(manifest, "runtime")
     requires = child(runtime, "requires")
     install = children(runtime, "install")
-    summary = {
+    summary: JsonObject = {
         "tools": tools,
         "allows_shell": "terminal" in tools,
         "allows_network": (
@@ -174,11 +174,11 @@ def summarize_capability_manifest(
         "runtime_requires_software": elements(requires, "software"),
         "runtime_install": install,
     }
+    warnings = runtime_requirement_warnings(manifest)
     summary["runtime_warning_codes"] = [
-        opt_str(warning, "code", "")
-        for warning in runtime_requirement_warnings(manifest)
+        opt_str(warning, "code", "") for warning in warnings
     ]
-    summary["runtime_warnings"] = runtime_requirement_warnings(manifest)
+    summary["runtime_warnings"] = warnings
     return summary
 
 
@@ -522,7 +522,7 @@ def _normalize_install_entry(entry: JsonValue, i: int) -> JsonObject:
 
 def runtime_requirement_warnings(
     manifest: JsonObject,
-) -> list[dict[str, str]]:
+) -> list[JsonObject]:
     """Derive cross-field warnings from a normalised manifest.
 
     Warnings are reviewer/author-facing disclosure only. They never become
@@ -531,7 +531,7 @@ def runtime_requirement_warnings(
     still needs the normal ``tools``/``secrets``/``filesystem``/
     ``network``/``human_approval`` declarations.
     """
-    warnings: list[dict[str, str]] = []
+    warnings: list[JsonObject] = []
     runtime = child(manifest, "runtime")
     requires = child(runtime, "requires")
     install = children(runtime, "install")

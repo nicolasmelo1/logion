@@ -35,7 +35,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
-from cli._json import JsonObject, child, children
+from cli._json import JsonObject, child, children, opt_str
 
 from ._inventory_entries import (
     _receipts_by_path,
@@ -187,7 +187,10 @@ def _print_inventory(payload: JsonObject) -> None:
     out.write(f"\nFound {payload['count']} resource(s):\n")
     for r in children(payload, "resources"):
         recon = child(r, "reconciliation")
+        digest = opt_str(recon, "content_digest", "")
         out.write(
-            f"  {r['name']} [{r['scope_kind']}] — {recon['status']} "
-            f"(digest={recon['content_digest'][:12]}...)\n"
+            f"  {opt_str(r, 'name', '')} "
+            f"[{opt_str(r, 'scope_kind', '')}] — "
+            f"{opt_str(recon, 'status', '')} "
+            f"(digest={digest[:12]}...)\n"
         )

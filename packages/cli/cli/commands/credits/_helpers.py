@@ -10,7 +10,7 @@ from uuid import UUID
 
 from cli._config import CliConfig
 from cli._errors import emit_error_json
-from cli._json import JsonObject
+from cli._json import JsonObject, opt_str
 from cli._output import emit_json, to_object
 
 TERMINAL_STATUSES = frozenset({
@@ -75,7 +75,7 @@ def emit_top_up_human(payload: JsonObject) -> None:
         f"amount_cents: {payload.get('amount_cents')}",
         f"credit_cents_granted: {payload.get('credit_cents_granted')}",
     ]
-    charge_ccy = payload.get("charge_currency")
+    charge_ccy = opt_str(payload, "charge_currency")
     charge_amt = payload.get("charge_amount_minor")
     if (
         charge_ccy is not None

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from cli._json import JsonObject, elements, opt_int
+from cli._json import JsonObject, children, opt_int, opt_str
 from cli._output import to_object, truncate_summary
 
 
@@ -44,9 +44,8 @@ def collect_reviews(
             import json
 
             data = json.loads(json.dumps(result, default=str))
-        batch = elements(data, "reviews")
-        reviews.extend(batch)
-        next_cursor = data.get("next_cursor")
+        reviews.extend(children(data, "reviews"))
+        next_cursor = opt_str(data, "next_cursor")
         if not next_cursor or (limit and len(reviews) >= limit):
             break
         cursor = next_cursor
@@ -85,9 +84,7 @@ def compact_review(review: JsonObject) -> JsonObject:
     return {
         "review_id": review.get("review_id", review.get("id")),
         "rating": review.get("rating"),
-        "body_excerpt": truncate_summary(
-            review.get("body") if isinstance(review.get("body"), str) else None
-        ),
+        "body_excerpt": truncate_summary(opt_str(review, "body")),
         "agent_id": review.get("agent_id", review.get("reviewer_agent_id")),
         "version_id": review.get(
             "version_id", review.get("course_version_id")

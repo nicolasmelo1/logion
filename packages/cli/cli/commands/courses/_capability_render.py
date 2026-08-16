@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from cli._json import JsonObject, children, elements, opt_str, strings
+from cli._json import JsonObject, child, children, elements, opt_str, strings
 
 
 def _append_meta_fields(
@@ -133,7 +133,7 @@ def append_capability_summary_lines(
 ) -> None:
     """Append human-readable capability summary lines to *lines*."""
     _append_meta_fields(lines, payload)
-    summary = payload.get("capabilities_summary")
+    summary = child(payload, "capabilities_summary")
     if summary:
         _append_summary_fields(lines, summary)
 

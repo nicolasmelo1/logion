@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cli._first_party import LOGION_MARKETPLACE_COMPANION_COURSE_ID
-from cli._json import JsonObject
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home, list_installed
 
 
@@ -57,9 +57,10 @@ class OfficialCompanionService:
                 return CompanionInstallStatus(
                     installed=True,
                     course_id=LOGION_MARKETPLACE_COMPANION_COURSE_ID,
-                    version_id=entry.get("version_id"),
-                    version=entry.get("version", entry.get("version_id")),
-                    source=entry.get("source"),
+                    version_id=opt_str(entry, "version_id"),
+                    version=opt_str(entry, "version")
+                    or opt_str(entry, "version_id"),
+                    source=opt_str(entry, "source"),
                     needs_update=False,
                     reason=None,
                 )

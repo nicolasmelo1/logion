@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from cli import _receipts
-from cli._json import JsonObject, child
+from cli._json import JsonObject, child, opt_str, strings
 from cli._lazy_import import LazyModule
 
 if TYPE_CHECKING:
@@ -54,7 +54,9 @@ def run_acquisition(
         if answer not in {"y", "yes"}:
             raise RuntimeError("acquisition declined")
 
-    adapter = _adapter_for(plan["selected_channel"], client=client)
+    adapter = _adapter_for(
+        opt_str(plan, "selected_channel", ""), client=client
+    )
     outcome = adapter.acquire(
         plan=plan, destination=destination, scope_root=scope_root
     )
@@ -139,7 +141,7 @@ def _display_plan(
         out.write(f"  bytes:      {expected['bytes']}\n")
     native = child(plan, "native")
     if native.get("argv"):
-        out.write(f"  argv:       {' '.join(native['argv'])}\n")
+        out.write(f"  argv:       {' '.join(strings(native, 'argv'))}\n")
     permissions = child(plan, "permissions")
     out.write(
         f"  permissions: network={permissions.get('network')}"

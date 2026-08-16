@@ -134,10 +134,8 @@ class InstalledVersionRetention:
         refs: list[InstalledVersionRef] = []
         for m in course_versions:
             vid = str(opt_str(m, "version_id", ""))
-            installed_at = _parse_iso(m.get("installed_at"))
-            version_label = m.get("version")
-            if not isinstance(version_label, str):
-                version_label = None
+            installed_at = _parse_iso(opt_str(m, "installed_at"))
+            version_label = opt_str(m, "version")
             version_dir = home / "installed" / course_id / vid
             protected = False
             if vid == active_vid or vid in workflow_vids:

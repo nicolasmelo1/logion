@@ -9,7 +9,7 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
 from cli._json import opt_int, opt_str
-from cli._output import emit, emit_json, to_data, to_object
+from cli._output import emit, emit_json, to_data, to_items
 
 
 def _extract_count(raw: object) -> int:
@@ -95,13 +95,7 @@ def handle_peek(args: argparse.Namespace) -> int:
             unread_only=True,
             limit=5,
         )
-        items_data = to_object(items_raw)
-        if isinstance(items_data, dict) and "items" in items_data:
-            items = items_data["items"]
-        elif isinstance(items_data, list):
-            items = items_data
-        else:
-            items = []
+        items = to_items(items_raw)
         if config.json_output:
             emit_json(
                 "logion.notifications.peek",

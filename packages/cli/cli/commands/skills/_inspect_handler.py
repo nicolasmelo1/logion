@@ -15,14 +15,14 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json
 from cli._first_party import get_first_party_course
-from cli._json import JsonObject, JsonValue, opt_str
+from cli._json import JsonObject, opt_str
 from cli._local_state import (
     UnsafeIdentifierError,
     _safe_segment,
     list_installed,
     read_manifest,
 )
-from cli._output import emit_json
+from cli._output import emit_json, to_data
 
 from ._install_helpers import resolve_target
 
@@ -52,15 +52,12 @@ def _error(
     return exit_code
 
 
-def _to_plain_dict(value: JsonValue) -> JsonObject | None:
-    """Convert SDK values to plain dicts when possible."""
+def _to_plain_dict(value: object) -> JsonObject | None:
+    """Convert an SDK response to a plain dict, or None."""
     if value is None:
         return None
-    if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")  # type: ignore[union-attr]
-    if isinstance(value, dict):
-        return dict(value)
-    return None
+    data = to_data(value)
+    return dict(data) if isinstance(data, dict) else None
 
 
 def _fetch_remote_payloads(

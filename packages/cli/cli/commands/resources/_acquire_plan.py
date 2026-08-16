@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 
 from cli._harness.scopes import ADMIN, USER, ScopeTarget
-from cli._json import JsonObject, JsonValue, child, elements
+from cli._json import JsonObject, JsonValue, child, elements, opt_str
 
 from ._acquire_distribution import (
     _distribution_plan,
@@ -93,11 +93,11 @@ def build_plan(
         blocked_reasons.append("no installable target resolved")
     if not versions:
         blocked_reasons.append("no resource version available")
-    if any(not item["operation"]["ready"] for item in target_plans):
+    if any(not child(item, "operation").get("ready") for item in target_plans):
         blocked_reasons.append(
             "selected version has no installable distribution"
         )
-    if any(item["state"] == "conflict" for item in target_plans):
+    if any(opt_str(item, "state") == "conflict" for item in target_plans):
         blocked_reasons.append(
             "target path conflicts with non-resource content"
         )

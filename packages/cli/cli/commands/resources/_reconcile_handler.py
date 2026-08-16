@@ -11,7 +11,7 @@ from cli import _receipts
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._json import JsonObject, children
+from cli._json import JsonObject, children, elements
 from cli._output import emit_json
 
 from ._catalog_reconciliation import catalog_matches
@@ -144,10 +144,14 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
             emit_json("logion.resources.reconcile", report)
         else:
             out = sys.stdout
-            out.write(f"Matched installations: {len(report['matched'])}\n")
-            out.write(f"Drifted:              {len(report['drifted'])}\n")
-            out.write(f"Unresolved:           {len(report['unresolved'])}\n")
-            out.write(f"Ambiguous:            {len(report['ambiguous'])}\n")
+            for label, key in (
+                ("Matched installations", "matched"),
+                ("Drifted", "drifted"),
+                ("Unresolved", "unresolved"),
+                ("Ambiguous", "ambiguous"),
+            ):
+                count = len(elements(report, key))
+                out.write(f"{label + ':':<22}{count}\n")
             for item in children(report, "drifted"):
                 out.write(
                     f"  drifted: {item['relative_target_path']} "

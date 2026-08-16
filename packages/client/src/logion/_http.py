@@ -91,7 +91,7 @@ def _raise_for_status(response: httpx.Response) -> None:
 
     status_code = response.status_code
     request_id: str | None = response.headers.get("x-request-id")
-    detail: str | list[dict[str, object]] = response.text
+    detail: str | list[JsonObject] = response.text
 
     try:
         body = response.json()

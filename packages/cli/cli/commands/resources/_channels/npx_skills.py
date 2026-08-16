@@ -139,7 +139,7 @@ class NpxSkillsAdapter(ChannelAdapter):
                     "skills-lock.json contains an unsafe installed path"
                 ) from exc
             installed.append(relative.as_posix())
-        evidence = {
+        evidence: JsonObject = {
             "schema_version": 1,
             "manager_name": "skills",
             "manager_version": manager_version,

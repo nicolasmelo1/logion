@@ -9,7 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._json import JsonObject
+from cli._json import JsonObject, strings
 from cli._output import emit, emit_json, to_data, to_object
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
@@ -156,7 +156,7 @@ def handle_get(args: argparse.Namespace) -> int:
             if data.get("language"):
                 lines.append(f"language: {data['language']}")
             if data.get("tags"):
-                lines.append(f"tags: {', '.join(data['tags'])}")
+                lines.append(f"tags: {', '.join(strings(data, 'tags'))}")
             lines.append(f"current_version: {data.get('current_version')}")
             latest_version_id = data.get("latest_version_id")
             if latest_version_id:

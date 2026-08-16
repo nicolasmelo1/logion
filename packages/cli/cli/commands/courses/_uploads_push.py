@@ -6,16 +6,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import print_err, validate_uuid_id
-from cli._json import JsonObject, child, opt_int, opt_str
+from cli._json import JsonObject, opt_int, opt_str
 from cli._output import emit_json
 
 from ._upload_bundle_validation import validate_bundle_files_for_upload
+from ._uploads_transfer import put_one
 from .uploads import _resolve_upload_files
 
 # Exit codes used by ``handle_uploads_push``.
@@ -55,53 +55,6 @@ def _read_session(path: str) -> JsonObject | None:
     if isinstance(data.get("data"), dict) and "kind" in data:
         data = data["data"]
     return data
-
-
-def _put_one(
-    upload: JsonObject,
-    local_path: Path,
-    max_retries: int,
-    timeout: float,
-) -> tuple[bool, str]:
-    """PUT *local_path* to ``upload['put_url']`` with retries.
-
-    Returns ``(success, message)``.  Retries on transient httpx
-    errors and HTTP 5xx; aborts immediately on 4xx (presigned URL
-    rejected — usually a content-length / header mismatch).
-    """
-    import httpx
-
-    url = upload.get("put_url")
-    headers = child(upload, "required_headers")
-    if not isinstance(url, str) or not url:
-        return False, "missing put_url"
-
-    last_err = ""
-    for attempt in range(max_retries + 1):
-        try:
-            with local_path.open("rb") as fh:
-                response = httpx.request(
-                    opt_str(upload, "method", "PUT"),
-                    url,
-                    content=fh,
-                    headers=headers,
-                    timeout=timeout,
-                )
-        except httpx.RequestError as exc:
-            last_err = f"network error: {exc}"
-        else:
-            if 200 <= response.status_code < 300:
-                return True, f"HTTP {response.status_code}"
-            if 400 <= response.status_code < 500:
-                # Client errors won't recover on retry.
-                return False, (
-                    f"HTTP {response.status_code}: {response.text[:200]}"
-                )
-            last_err = f"HTTP {response.status_code}"
-        if attempt < max_retries:
-            # Linear backoff is enough — presigned URLs are short-lived.
-            time.sleep(0.5 * (attempt + 1))
-    return False, last_err or "exhausted retries"
 
 
 def _build_filename_map(
@@ -240,7 +193,7 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
     for upload in uploads:
         filename = opt_str(upload, "filename", "")
         local = file_map[filename]
-        ok, msg = _put_one(upload, local, max_retries, timeout)
+        ok, msg = put_one(upload, local, max_retries, timeout)
         results.append({"filename": filename, "ok": ok, "detail": msg})
         if not ok:
             failures += 1

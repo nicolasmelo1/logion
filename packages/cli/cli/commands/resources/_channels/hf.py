@@ -54,7 +54,7 @@ class HfAdapter(ChannelAdapter):
                     "path": str(path.relative_to(destination)),
                     "digest": digest.hexdigest(),
                 })
-        evidence = {
+        evidence: JsonObject = {
             "schema_version": 1,
             "manager_name": "hf",
             "manager_version": "unknown",
