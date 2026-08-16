@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -15,14 +15,14 @@ class FakeFeedbackResource:
     """Fake feedback resource for unit tests."""
 
     def __init__(self) -> None:
-        self.last_submit: dict[str, Any] = {}
-        self.submit_result: dict[str, Any] = {
+        self.last_submit: JsonObject = {}
+        self.submit_result: JsonObject = {
             "feedback_id": "fb-001",
             "resource_id": "res-001",
             "version_id": "ver-001",
             "rating": 4,
         }
-        self.list_result: list[dict[str, Any]] = [
+        self.list_result: list[JsonObject] = [
             {
                 "feedback_id": "fb-001",
                 "resource_id": "res-001",
@@ -30,7 +30,7 @@ class FakeFeedbackResource:
                 "rating": 4,
             }
         ]
-        self.summary_result: dict[str, Any] = {
+        self.summary_result: JsonObject = {
             "resource_id": "res-001",
             "total_feedback": 3,
             "average_rating": 4.2,
@@ -51,7 +51,7 @@ class FakeFeedbackResource:
         task_class: str,
         body: str | None = None,
         source_receipt_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         self.last_submit = {
             "resource_id": resource_id,
             "version_id": version_id,
@@ -68,13 +68,13 @@ class FakeFeedbackResource:
         }
         return self.submit_result
 
-    def list_mine(self) -> list[dict[str, Any]]:
+    def list_mine(self) -> list[JsonObject]:
         return self.list_result
 
-    def list_for_resource(self, _resource_id: str) -> list[dict[str, Any]]:
+    def list_for_resource(self, _resource_id: str) -> list[JsonObject]:
         return self.list_result
 
-    def get_summary(self, _resource_id: str) -> dict[str, Any]:
+    def get_summary(self, _resource_id: str) -> JsonObject:
         return self.summary_result
 
 

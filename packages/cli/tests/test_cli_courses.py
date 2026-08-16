@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -15,6 +14,7 @@ from cli._course_capabilities import (
     normalize_capability_manifest,
     summarize_capability_manifest,
 )
+from cli._json import JsonObject
 from cli.main import main
 from logion import APIError
 
@@ -23,9 +23,9 @@ class FakeCoursesResource:
     """Fake courses resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def create(self, **kwargs: Any) -> dict[str, Any]:
+    def create(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create", kwargs)
         return {
             "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -33,11 +33,11 @@ class FakeCoursesResource:
             "slug": kwargs["slug"],
         }
 
-    def get(self, **kwargs: Any) -> dict[str, Any]:
+    def get(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get", kwargs)
         return {"id": kwargs["course_id"], "title": "Test Course"}
 
-    def mine(self, **kwargs: Any) -> dict[str, Any]:
+    def mine(self, **kwargs: object) -> JsonObject:
         self.last_call = ("mine", kwargs)
         return {
             "courses": [
@@ -60,50 +60,50 @@ class FakeCoursesResource:
             "next_cursor": None,
         }
 
-    def update(self, **kwargs: Any) -> dict[str, Any]:
+    def update(self, **kwargs: object) -> JsonObject:
         self.last_call = ("update", kwargs)
         return {"id": kwargs["course_id"], "updated": True}
 
-    def create_upload_session(self, **kwargs: Any) -> dict[str, Any]:
+    def create_upload_session(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_upload_session", kwargs)
         return {
             "version_id": "660e8400-e29b-41d4-a716-446655440001",
             "files": kwargs["files"],
         }
 
-    def complete_upload_session(self, **kwargs: Any) -> dict[str, Any]:
+    def complete_upload_session(self, **kwargs: object) -> JsonObject:
         self.last_call = ("complete_upload_session", kwargs)
         return {"status": "completed"}
 
-    def get_version(self, **kwargs: Any) -> dict[str, Any]:
+    def get_version(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_version", kwargs)
         return {"id": kwargs["version_id"]}
 
-    def request_publication_review(self, **kwargs: Any) -> dict[str, Any]:
+    def request_publication_review(self, **kwargs: object) -> JsonObject:
         self.last_call = ("request_publication_review", kwargs)
         return {"review_id": "r1", "status": "pending"}
 
-    def get_latest_publication_review(self, **kwargs: Any) -> dict[str, Any]:
+    def get_latest_publication_review(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_latest_publication_review", kwargs)
         return {"status": "approved"}
 
-    def review_version(self, **kwargs: Any) -> dict[str, Any]:
+    def review_version(self, **kwargs: object) -> JsonObject:
         self.last_call = ("review_version", kwargs)
         return {"review_id": "rev1", "rating": kwargs["rating"]}
 
-    def get_my_review(self, **kwargs: Any) -> dict[str, Any]:
+    def get_my_review(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_my_review", kwargs)
         return {"review_id": "rev1", "rating": 5}
 
-    def list_reviews(self, **kwargs: Any) -> dict[str, Any]:
+    def list_reviews(self, **kwargs: object) -> JsonObject:
         self.last_call = ("list_reviews", kwargs)
         return {"items": [], "next_cursor": None}
 
-    def get_review_feedback(self, **kwargs: Any) -> dict[str, Any]:
+    def get_review_feedback(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_review_feedback", kwargs)
         return {"feedback": "Looks good"}
 
-    def purchase(self, **kwargs: Any) -> dict[str, Any]:
+    def purchase(self, **kwargs: object) -> JsonObject:
         self.last_call = ("purchase", kwargs)
         return {
             "purchase_flow": "credits",
@@ -1528,7 +1528,7 @@ def test_courses_get_approved_capability_summary_human(
         "updated_at": "2025-01-01T00:00:00Z",
     }
 
-    def _get(**kwargs: Any) -> dict[str, Any]:
+    def _get(**kwargs: object) -> JsonObject:
         courses.last_call = ("get", kwargs)
         return courses._get_response
 
@@ -1555,7 +1555,7 @@ def test_courses_versions_get_approved_capability_summary_human(
     """courses versions get human output includes approved summary."""
     courses = FakeCoursesResource()
 
-    def _get_version(**kwargs: Any) -> dict[str, Any]:
+    def _get_version(**kwargs: object) -> JsonObject:
         courses.last_call = ("get_version", kwargs)
         return {
             "id": kwargs["version_id"],
@@ -1603,7 +1603,7 @@ def test_courses_feedback_capability_feedback_human(
     """courses feedback human output includes structured capability blocks."""
     courses = FakeCoursesResource()
 
-    def _feedback(**kwargs: Any) -> dict[str, Any]:
+    def _feedback(**kwargs: object) -> JsonObject:
         courses.last_call = ("get_review_feedback", kwargs)
         return {
             "summary": "Rejected due to capability mismatch",
@@ -1640,7 +1640,7 @@ def test_courses_feedback_capability_feedback_json(
     """courses feedback --json preserves capability_feedback."""
     courses = FakeCoursesResource()
 
-    def _feedback(**kwargs: Any) -> dict[str, Any]:
+    def _feedback(**kwargs: object) -> JsonObject:
         courses.last_call = ("get_review_feedback", kwargs)
         return {
             "summary": "Rejected",

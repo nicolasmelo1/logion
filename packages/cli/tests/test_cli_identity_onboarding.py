@@ -6,10 +6,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 MATCHER = "Bash(logion courses report-usage:*)"
@@ -17,9 +17,9 @@ MATCHER = "Bash(logion courses report-usage:*)"
 
 class FakeIdentityResource:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.calls: list[tuple[str, JsonObject]] = []
 
-    def create_user_with_agent(self, **kwargs: Any) -> dict[str, Any]:
+    def create_user_with_agent(self, **kwargs: object) -> JsonObject:
         self.calls.append(("create_user_with_agent", kwargs))
         return {
             "user": {"id": "u1", "email": kwargs["email"]},
@@ -28,7 +28,7 @@ class FakeIdentityResource:
             "api_key_prefix": "lg-abc",  # pragma: allowlist secret
         }
 
-    def rotate_api_key(self, **kwargs: Any) -> dict[str, Any]:
+    def rotate_api_key(self, **kwargs: object) -> JsonObject:
         self.calls.append(("rotate_api_key", kwargs))
         return {
             "api_key": {"key": "lg-repaired", "prefix": "lg-rep"},
@@ -67,7 +67,7 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     )
 
 
-def _stdout_data(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
+def _stdout_data(capsys: pytest.CaptureFixture[str]) -> JsonObject:
     return json.loads(capsys.readouterr().out)["data"]
 
 

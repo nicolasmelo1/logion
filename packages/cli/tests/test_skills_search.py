@@ -6,16 +6,16 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
 
+from cli._json import JsonObject
 from cli._output import truncate_summary
 from cli.commands.skills._search_handler import handle_skills_search
 
 
-def _make_args(**overrides: Any) -> argparse.Namespace:
+def _make_args(**overrides: object) -> argparse.Namespace:
     """Build a minimal argparse Namespace for skills search."""
     defaults = {
         "query": "test-query",
@@ -35,11 +35,11 @@ def _make_args(**overrides: Any) -> argparse.Namespace:
 class FakeListingsResource:
     """Fake listings.search resource."""
 
-    def __init__(self, items: list[dict[str, Any]] | None = None) -> None:
+    def __init__(self, items: list[JsonObject] | None = None) -> None:
         self._items = items or []
-        self.calls: list[dict[str, Any]] = []
+        self.calls: list[JsonObject] = []
 
-    def search(self, **kwargs: Any) -> dict[str, Any]:
+    def search(self, **kwargs: object) -> JsonObject:
         self.calls.append(kwargs)
         return {"items": self._items, "next_cursor": None}
 
@@ -47,10 +47,10 @@ class FakeListingsResource:
 class FakeCoursesResource:
     """Fake courses.get resource."""
 
-    def __init__(self, data: dict[str, Any] | None = None) -> None:
+    def __init__(self, data: JsonObject | None = None) -> None:
         self._data = data or {}
 
-    def get(self, **_kwargs: Any) -> dict[str, Any]:
+    def get(self, **_kwargs: object) -> JsonObject:
         return self._data
 
 

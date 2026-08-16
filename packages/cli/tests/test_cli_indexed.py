@@ -5,20 +5,20 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.commands.indexed.parser import register
 from cli.main import main
 
 
 class FakeIndexedListingsResource:
-    def __init__(self, payload: dict[str, Any]) -> None:
+    def __init__(self, payload: JsonObject) -> None:
         self.payload = payload
-        self.calls: list[dict[str, Any]] = []
+        self.calls: list[JsonObject] = []
 
-    def get(self, *, listing_id: str) -> dict[str, Any]:
+    def get(self, *, listing_id: str) -> JsonObject:
         self.calls.append({"listing_id": listing_id})
         return self.payload
 

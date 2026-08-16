@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -15,13 +15,13 @@ class FakeReferralsResource:
     """Fake referrals resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def get_code(self) -> dict[str, Any]:
+    def get_code(self) -> JsonObject:
         self.last_call = ("get_code", {})
         return {"referral_code": "ABC123"}
 
-    def get_link(self, **kwargs: Any) -> dict[str, Any]:
+    def get_link(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_link", kwargs)
         return {
             "course_id": kwargs["course_id"],
@@ -29,7 +29,7 @@ class FakeReferralsResource:
             + kwargs["course_id"],
         }
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> JsonObject:
         self.last_call = ("get_stats", {})
         return {
             "total_referrals": 5,
@@ -37,7 +37,7 @@ class FakeReferralsResource:
             "creator_lane": 2,
         }
 
-    def list_attributions(self) -> list[dict[str, Any]]:
+    def list_attributions(self) -> list[JsonObject]:
         self.last_call = ("list_attributions", {})
         return [
             {

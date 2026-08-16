@@ -6,12 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 
+from cli._json import JsonObject
 from cli._local_state import ensure_layout, write_manifest
 from cli.commands.skills._inspect_handler import handle_skills_inspect
 
@@ -20,10 +20,10 @@ def _install_manifest(
     course_id: str,
     version_id: str,
     home: Path,
-    overrides: dict[str, Any] | None = None,
+    overrides: JsonObject | None = None,
 ) -> None:
     ensure_layout(home)
-    manifest: dict[str, Any] = {
+    manifest: JsonObject = {
         "course_id": course_id,
         "version_id": version_id,
         "title": f"Test {course_id}",
@@ -50,18 +50,18 @@ def _install_manifest(
 class FakeCoursesResource:
     def __init__(
         self,
-        course_data: dict[str, Any] | None = None,
-        version_data: dict[str, Any] | None = None,
+        course_data: JsonObject | None = None,
+        version_data: JsonObject | None = None,
     ) -> None:
         self._course_data = course_data
         self._version_data = version_data
 
-    def get(self, **_kwargs: Any) -> dict[str, Any]:
+    def get(self, **_kwargs: object) -> JsonObject:
         if self._course_data is None:
             raise RuntimeError("missing")
         return self._course_data
 
-    def get_version(self, **_kwargs: Any) -> dict[str, Any]:
+    def get_version(self, **_kwargs: object) -> JsonObject:
         if self._version_data is None:
             raise RuntimeError("missing")
         return self._version_data
@@ -80,7 +80,7 @@ class FakeClient:
         pass
 
 
-def _args(home: Path, **overrides: Any) -> argparse.Namespace:
+def _args(home: Path, **overrides: object) -> argparse.Namespace:
     defaults = {
         "course_id": "test-course",
         "version_id": "1.0.0",

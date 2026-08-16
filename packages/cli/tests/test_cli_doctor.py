@@ -6,7 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+
+import pytest
 
 from cli._version import __version__
 from cli.commands import doctor
@@ -17,9 +18,9 @@ def _run(json_output: bool = False) -> int:
 
 
 def test_doctor_reports_authoritative_version_when_clean(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    capsys: Any,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
     monkeypatch.setattr(doctor.sys, "executable", "/usr/bin/python3")
@@ -39,7 +40,7 @@ def test_doctor_reports_authoritative_version_when_clean(
 
 
 def test_doctor_flags_stale_npm_marker(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -67,7 +68,7 @@ def test_doctor_flags_stale_npm_marker(
 
 
 def test_doctor_detects_pipx_install(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -83,9 +84,9 @@ def test_doctor_detects_pipx_install(
 
 
 def test_doctor_json_envelope(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    capsys: Any,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
     monkeypatch.setattr(doctor.sys, "executable", "/usr/bin/python3")

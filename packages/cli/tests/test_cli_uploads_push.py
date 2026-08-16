@@ -12,10 +12,10 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.commands.courses import _uploads_push, _uploads_transfer
 from cli.main import main
 
@@ -58,7 +58,7 @@ class _FakeCoursesResource:
     def __init__(self, price_cents: int = 0) -> None:
         self.price_cents = price_cents
 
-    def get(self, **_kwargs: Any) -> dict[str, Any]:
+    def get(self, **_kwargs: object) -> JsonObject:
         return {"price_cents": self.price_cents}
 
 
@@ -87,7 +87,7 @@ def _make_session(
     course_id: str,
     version_id: str,
     files: dict[str, Path],
-) -> dict[str, Any]:
+) -> JsonObject:
     """Build a session-JSON payload shaped like create_upload_session."""
     return {
         "course_id": course_id,
@@ -126,7 +126,7 @@ def _patch_httpx_seq(monkeypatch: pytest.MonkeyPatch, responses: list) -> list:
     seq = list(responses)
     calls: list[tuple[str, str]] = []
 
-    def fake(method: str, url: str, **_kw: Any) -> _FakeResponse:
+    def fake(method: str, url: str, **_kw: object) -> _FakeResponse:
         calls.append((url, method))
         result = seq.pop(0)
         if isinstance(result, Exception):

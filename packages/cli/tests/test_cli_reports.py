@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -15,9 +15,9 @@ class FakeReportsResource:
     """Fake reports resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def create(self, **kwargs: Any) -> dict[str, Any]:
+    def create(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create", kwargs)
         return {
             "id": "770e8400-e29b-41d4-a716-446655440002",

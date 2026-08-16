@@ -7,10 +7,10 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -55,10 +55,10 @@ class FakeCourseReviewsResource:
     """Fake course_reviews resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
         self.bundle_files: list[dict[str, str]] = []
 
-    def list(self, **kwargs: Any) -> dict[str, Any]:
+    def list(self, **kwargs: object) -> JsonObject:
         self.last_call = ("list", kwargs)
         return {
             "items": [
@@ -80,7 +80,7 @@ class FakeCourseReviewsResource:
             "next_cursor": None,
         }
 
-    def get(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
+    def get(self, review_id: str, **kwargs: object) -> JsonObject:
         self.last_call = ("get", {"review_id": review_id, **kwargs})
         return {
             "review_id": review_id,
@@ -132,15 +132,15 @@ class FakeCourseReviewsResource:
             "findings_by_layer": {},
         }
 
-    def approve(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
+    def approve(self, review_id: str, **kwargs: object) -> JsonObject:
         self.last_call = ("approve", {"review_id": review_id, **kwargs})
         return {"id": review_id, "status": "approved"}
 
-    def reject(self, review_id: str, **kwargs: Any) -> dict[str, Any]:
+    def reject(self, review_id: str, **kwargs: object) -> JsonObject:
         self.last_call = ("reject", {"review_id": review_id, **kwargs})
         return {"id": review_id, "status": "rejected"}
 
-    def get_bundle(self, review_id: str, **kwargs: Any) -> SimpleNamespace:
+    def get_bundle(self, review_id: str, **kwargs: object) -> SimpleNamespace:
         self.last_call = ("get_bundle", {"review_id": review_id, **kwargs})
         return SimpleNamespace(
             review_id=review_id,

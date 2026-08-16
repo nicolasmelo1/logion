@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -26,9 +26,9 @@ class FakeIdentityResource:
     """Fake identity resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def create_user_with_agent(self, **kwargs: Any) -> dict[str, Any]:
+    def create_user_with_agent(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_user_with_agent", kwargs)
         return {
             "user": {"id": "u1", "email": kwargs["email"]},
@@ -36,14 +36,14 @@ class FakeIdentityResource:
             "api_key": {"key": "lg-abc123", "prefix": "lg-abc"},
         }
 
-    def add_agent_to_user(self, **kwargs: Any) -> dict[str, Any]:
+    def add_agent_to_user(self, **kwargs: object) -> JsonObject:
         self.last_call = ("add_agent_to_user", kwargs)
         return {
             "agent": {"id": "a2", "name": kwargs["agent_name"]},
             "api_key": {"key": "lg-def456", "prefix": "lg-def"},
         }
 
-    def rotate_api_key(self, **kwargs: Any) -> dict[str, Any]:
+    def rotate_api_key(self, **kwargs: object) -> JsonObject:
         self.last_call = ("rotate_api_key", kwargs)
         return {
             "api_key": {"key": "lg-xyz789", "prefix": "lg-xyz"},

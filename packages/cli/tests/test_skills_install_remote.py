@@ -18,11 +18,11 @@ import io
 import json
 import tarfile
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
 
+from cli._json import JsonObject
 from cli._local_state import ensure_layout, installed_dir, read_manifest
 from cli.commands.skills.handlers import handle_skills_install
 
@@ -81,7 +81,7 @@ def _build_tarball(
     bundle_dir: Path,
     dest_dir: Path,
     version: str = "0.1.0",
-    manifest_overrides: dict[str, Any] | None = None,
+    manifest_overrides: JsonObject | None = None,
 ) -> Path:
     """Build a .tar.gz from *bundle_dir* into *dest_dir*.
 
@@ -91,7 +91,7 @@ def _build_tarball(
     """
     arc_prefix = f"logion-marketplace-companion-{version}"
     tar_path = dest_dir / f"{arc_prefix}.tar.gz"
-    manifest: dict[str, Any] = {
+    manifest: JsonObject = {
         "schema_version": 1,
         "bundle_kind": "logion-marketplace-companion",
         "version": version,
@@ -409,7 +409,7 @@ class TestSkillsInstallManifestReference:
         tar_bytes = tar_path.read_bytes()
         tar_sha = hashlib.sha256(tar_bytes).hexdigest()
 
-        fake_manifest: dict[str, Any] = {
+        fake_manifest: JsonObject = {
             "schema_version": 1,
             "channel": "stable",
             "packages": {
