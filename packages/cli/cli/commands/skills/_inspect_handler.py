@@ -15,7 +15,7 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json
 from cli._first_party import get_first_party_course
-from cli._json import JsonObject, opt_str
+from cli._json import JsonObject, JsonValue, opt_str
 from cli._local_state import (
     UnsafeIdentifierError,
     _safe_segment,
@@ -139,6 +139,11 @@ def _synthesized_remote_manifest(
     }
 
 
+def _render_flag(value: JsonValue) -> str:
+    """Render a boolean field the way an untyped read would print it."""
+    return "" if value is None else str(value)
+
+
 def handle_skills_inspect(args: argparse.Namespace) -> int:
     """Inspect a local skill install, enriched with remote metadata."""
     home = resolve_target(args)
@@ -203,8 +208,11 @@ def handle_skills_inspect(args: argparse.Namespace) -> int:
             ("entitlement_status", opt_str(merged, "entitlement_status", "")),
             ("license_scope", opt_str(merged, "license_scope", "")),
             (
+                # A flag, not a name: the merged record sets it to True
+                # for marketplace-tracked skills. Rendered the way the
+                # untyped read used to render it.
                 "official_update_channel",
-                opt_str(merged, "official_update_channel", ""),
+                _render_flag(merged.get("official_update_channel")),
             ),
             (
                 "last_verified_at",
