@@ -27,6 +27,7 @@ import argparse
 import hashlib
 import json
 import sys
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -39,7 +40,13 @@ if str(ROOT) not in sys.path:
 import dspy
 import yaml
 
-from evals.harness._json import JsonObject
+from evals.harness._json import (
+    JsonObject,
+    opt_number,
+    opt_str,
+    require_str,
+    strings,
+)
 from evals.optimizers.dspy.optimize_policy import (
     OPTIMIZER_CONFIGS,
     OPTIMIZERS,
@@ -88,7 +95,7 @@ def _split_scenarios(
     digest_seed = str(seed).encode("utf-8")
 
     def _stable_key(entry: JsonObject) -> tuple[str, str]:
-        sid = entry["id"]
+        sid = require_str(entry, "id")
         h = hashlib.sha256(digest_seed + sid.encode("utf-8")).hexdigest()
         return (h, sid)
 
@@ -135,7 +142,7 @@ def _load_scenarios(path: Path) -> list[JsonObject]:
                 f"{sid}: gold_reference={gold!r} is not in the canonical "
                 f"inventory {REFERENCE_NAMES}"
             )
-        band = entry.get("current_recall_band", "NONE")
+        band = opt_str(entry, "current_recall_band", "NONE")
         if band not in {"HIGH", "MEDIUM", "LOW", "NONE"}:
             raise ValueError(
                 f"{sid}: current_recall_band={band!r} must be one of "
@@ -155,7 +162,7 @@ def _load_scenarios(path: Path) -> list[JsonObject]:
             "current_recall_band": band,
             "gold_reference": gold,
             "suite": gold,  # use the gold class as the suite key
-            "why": entry.get("why", ""),
+            "why": opt_str(entry, "why", ""),
         })
     return scenarios
 
@@ -165,11 +172,11 @@ def _build_examples(
 ) -> list[dspy.Example]:
     examples: list[dspy.Example] = []
     for entry in bucket:
-        installed = ",".join(entry.get("installed_capabilities", []))
+        installed = ",".join(strings(entry, "installed_capabilities"))
         ex = dspy.Example(
-            id=entry["id"],
-            suite=entry["suite"],
-            user_prompt=entry["user_prompt"],
+            id=opt_str(entry, "id", ""),
+            suite=opt_str(entry, "suite", ""),
+            user_prompt=opt_str(entry, "user_prompt", ""),
             installed_capabilities=installed,
             current_recall_band=entry["current_recall_band"],
             reference=entry["gold_reference"],
@@ -184,7 +191,7 @@ def _build_examples(
 
 
 def _evaluate_module(
-    module: object,
+    module: Callable[..., object],
     examples: list[dspy.Example],
     metric: ReferenceRoutingMetric,
 ) -> tuple[
@@ -243,8 +250,8 @@ def _evaluate_module(
 def _per_suite_averages(breakdown: list[JsonObject]) -> dict[str, float]:
     by_suite: dict[str, list[float]] = {}
     for entry in breakdown:
-        suite = entry.get("suite", "unknown") or "unknown"
-        by_suite.setdefault(suite, []).append(float(entry.get("score", 0.0)))
+        suite = opt_str(entry, "suite", "unknown") or "unknown"
+        by_suite.setdefault(suite, []).append(opt_number(entry, "score", 0.0))
     return {
         suite: round(sum(scores) / len(scores), 4)
         for suite, scores in by_suite.items()
@@ -257,7 +264,7 @@ def _per_suite_failure_counts(
 ) -> dict[str, int]:
     by_suite: dict[str, int] = {}
     for entry in breakdown:
-        suite = entry.get("suite", "unknown") or "unknown"
+        suite = opt_str(entry, "suite", "unknown") or "unknown"
         if entry.get("kind") != ReferenceRoutingFinding.EXACT:
             by_suite[suite] = by_suite.get(suite, 0) + 1
     return by_suite
@@ -285,10 +292,10 @@ def _optimized_program_tokens(optimized: object) -> int:
     return _approx_tokens(instructions) + _approx_tokens(demos_blob)
 
 
-def _split_hash(split: JsonObject) -> str:
+def _split_hash(split: Mapping[str, Sequence[JsonObject]]) -> str:
     parts: list[str] = []
     for bucket in ("train", "dev", "test"):
-        ids = sorted(e["id"] for e in split.get(bucket, []))
+        ids = sorted(opt_str(e, "id", "") for e in split.get(bucket, ()))
         parts.append(f"{bucket}:{','.join(ids)}")
     blob = "|".join(parts)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
@@ -314,7 +321,7 @@ def run_optimization(
 
     train_examples = _build_examples(split["train"])
     dev_examples = _build_examples(split["dev"])
-    test_examples = _build_examples(split.get("test", []))
+    test_examples = _build_examples(split["test"])
 
     if not train_examples:
         raise ValueError("No training examples after split")
@@ -451,25 +458,34 @@ def run_optimization(
         "program_path": str(program_path) if program_path else None,
         # Reference-routing-specific aggregates.
         "false_positive_rate_on_none_avg": round(
-            optimized_rates["false_positive_rate_on_none"], 4
+            opt_number(optimized_rates, "false_positive_rate_on_none", 0.0), 4
         ),
         "false_negative_rate_on_named_avg": round(
-            optimized_rates["false_negative_rate_on_named"], 4
+            opt_number(optimized_rates, "false_negative_rate_on_named", 0.0), 4
         ),
         "baseline_false_positive_rate_on_none_avg": round(
-            baseline_rates["false_positive_rate_on_none"], 4
+            opt_number(baseline_rates, "false_positive_rate_on_none", 0.0), 4
         ),
         "baseline_false_negative_rate_on_named_avg": round(
-            baseline_rates["false_negative_rate_on_named"], 4
+            opt_number(baseline_rates, "false_negative_rate_on_named", 0.0), 4
         ),
         "test_false_positive_rate_on_none_avg": round(
-            optimized_test_rates["false_positive_rate_on_none"], 4
+            opt_number(
+                optimized_test_rates, "false_positive_rate_on_none", 0.0
+            ),
+            4,
         ),
         "test_false_negative_rate_on_named_avg": round(
-            optimized_test_rates["false_negative_rate_on_named"], 4
+            opt_number(
+                optimized_test_rates, "false_negative_rate_on_named", 0.0
+            ),
+            4,
         ),
         "baseline_test_false_positive_rate_on_none_avg": round(
-            baseline_test_rates["false_positive_rate_on_none"], 4
+            opt_number(
+                baseline_test_rates, "false_positive_rate_on_none", 0.0
+            ),
+            4,
         ),
         "per_class_accuracy": optimized_rates["per_class_accuracy"],
         "baseline_per_class_accuracy": baseline_rates["per_class_accuracy"],

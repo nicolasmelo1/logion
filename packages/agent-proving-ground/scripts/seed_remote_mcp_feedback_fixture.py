@@ -8,7 +8,11 @@ import os
 import sys
 from pathlib import Path
 
-from agent_proving_ground._json import JsonObject
+from agent_proving_ground._json import (
+    JsonObject,
+    collection,
+    require_str,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).parent))
@@ -59,8 +63,8 @@ def main() -> int:
         body={"items": [item]},
     )
     listing_id = next(
-        str(entry["indexed_listing_id"])
-        for entry in payload.get("results", [])
+        require_str(entry, "indexed_listing_id")
+        for entry in collection(payload, "results")
         if entry.get("indexed_listing_id")
     )
     digest = base._upload_bundle(api, listing_id)

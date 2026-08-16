@@ -69,9 +69,12 @@ __all__ = [
     "as_object",
     "child",
     "children",
+    "collection",
     "elements",
+    "numbers",
     "opt_bool",
     "opt_int",
+    "opt_number",
     "opt_object",
     "opt_object_array",
     "opt_str",
@@ -257,6 +260,26 @@ def opt_int(
 
 
 @overload
+def opt_number(obj: JsonObject, key: str) -> float | None: ...
+
+
+@overload
+def opt_number(obj: JsonObject, key: str, default: float) -> float: ...
+
+
+def opt_number(
+    obj: JsonObject, key: str, default: float | None = None
+) -> float | None:
+    """Return ``obj[key]`` as a float when present, else *default*."""
+    value = obj.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise _fail(key, "a number or null", value)
+    return float(value)
+
+
+@overload
 def opt_bool(obj: JsonObject, key: str) -> bool | None: ...
 
 
@@ -327,6 +350,35 @@ def strings(obj: JsonObject, key: str) -> list[str]:
     human-readable listing should not fail on one odd element.
     """
     return [str(item) for item in elements(obj, key)]
+
+
+def collection(value: JsonValue, key: str = "items") -> list[JsonObject]:
+    """Return the objects a decoded collection body holds.
+
+    Tolerates both encodings an API uses for a collection: a bare array,
+    and an object wrapping the array under *key*. Entries that are not
+    objects are skipped. This is the whole-body counterpart of
+    :func:`children`, which reads a nested field.
+    """
+    if isinstance(value, dict):
+        value = value.get(key)
+    if not isinstance(value, list):
+        return []
+    return [entry for entry in value if isinstance(entry, dict)]
+
+
+def numbers(obj: JsonObject, key: str) -> dict[str, float]:
+    """Return the object at *key* as a name-to-number mapping.
+
+    For the common report shape where a nested object holds one metric
+    per key. Entries that are not numbers are skipped rather than
+    raising, matching :func:`child`'s forgiving contract.
+    """
+    return {
+        name: float(value)
+        for name, value in child(obj, key).items()
+        if isinstance(value, int | float) and not isinstance(value, bool)
+    }
 
 
 def children(obj: JsonObject, key: str) -> list[JsonObject]:

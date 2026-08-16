@@ -29,6 +29,7 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -41,7 +42,13 @@ if str(ROOT) not in sys.path:
 
 import dspy
 
-from evals.harness._json import JsonObject
+from evals.harness._json import (
+    JsonObject,
+    elements,
+    opt_number,
+    opt_str,
+    strings,
+)
 from evals.harness.schema import Catalog, load_catalog, load_scenarios_from_dir
 from evals.optimizers.dspy.metrics import (
     DecisionPolicyMetric,
@@ -92,6 +99,8 @@ class CompiledProgram(Protocol):
     """The compiled DSPy program surface this optimizer relies on."""
 
     def save(self, path: str) -> None: ...
+
+    def __call__(self, **kwargs: object) -> object: ...
 
 
 class Teleprompter(Protocol):
@@ -212,7 +221,7 @@ def _build_examples(
     examples: list[dspy.Example] = []
     for entry in bucket_scenarios:
         installed_capabilities = ",".join(
-            entry.get("installed_capabilities", [])
+            strings(entry, "installed_capabilities")
         )
         payload = dict(entry)
         payload.update({
@@ -241,7 +250,7 @@ def _load_split(path: Path) -> dict[str, list[JsonObject]]:
 
 
 def _evaluate_module(
-    module: object,
+    module: Callable[..., object],
     dev_examples: list[dspy.Example],
     metric: DecisionPolicyMetric,
 ) -> tuple[list[float], list[JsonObject], list[float]]:
@@ -298,8 +307,8 @@ def _per_suite_averages(breakdown: list[JsonObject]) -> dict[str, float]:
     """Aggregate per-scenario scores into per-suite averages."""
     by_suite: dict[str, list[float]] = {}
     for entry in breakdown:
-        suite = entry.get("suite", "unknown") or "unknown"
-        by_suite.setdefault(suite, []).append(float(entry.get("score", 0.0)))
+        suite = opt_str(entry, "suite", "unknown") or "unknown"
+        by_suite.setdefault(suite, []).append(opt_number(entry, "score", 0.0))
     return {
         suite: round(sum(scores) / len(scores), 4)
         for suite, scores in by_suite.items()
@@ -313,8 +322,8 @@ def _per_suite_failure_counts(
     """Count scenarios with at least one failure per suite."""
     by_suite: dict[str, int] = {}
     for entry in breakdown:
-        suite = entry.get("suite", "unknown") or "unknown"
-        failures = entry.get("failures") or []
+        suite = opt_str(entry, "suite", "unknown") or "unknown"
+        failures = elements(entry, "failures")
         if failures or entry.get("error"):
             by_suite[suite] = by_suite.get(suite, 0) + 1
     return by_suite
@@ -473,7 +482,7 @@ def run_optimization(
     # Holdout test pass: never seen by the optimizer; this is the
     # number that gates promotion.
     test_examples = _build_examples(
-        split.get("test", []),
+        split["test"],
         catalog=catalog,
         current_policy_text=current_policy,
     )
@@ -593,13 +602,13 @@ def run_optimization(
     return report
 
 
-def _split_hash(split: JsonObject) -> str:
+def _split_hash(split: Mapping[str, Sequence[JsonObject]]) -> str:
     """Deterministic hash of the split assignment for reproducibility."""
     import hashlib
 
     parts: list[str] = []
     for bucket in ("train", "dev", "test"):
-        ids = sorted(e["id"] for e in split.get(bucket, []))
+        ids = sorted(opt_str(e, "id", "") for e in split.get(bucket, ()))
         parts.append(f"{bucket}:{','.join(ids)}")
     blob = "|".join(parts)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]

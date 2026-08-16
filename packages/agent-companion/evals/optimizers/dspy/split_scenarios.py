@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals.harness._json import JsonObject
+from evals.harness._json import JsonObject, numbers
 from evals.harness.schema import (
     Scenario,
     load_scenarios_from_dir,
@@ -234,7 +234,7 @@ def main() -> int:
         json.dumps(output, indent=2, sort_keys=False) + "\n",
         encoding="utf-8",
     )
-    counts = output["counts"]
+    counts = numbers(output, "counts")
     total = sum(counts.values())
     print(
         f"Split {total} scenarios: "

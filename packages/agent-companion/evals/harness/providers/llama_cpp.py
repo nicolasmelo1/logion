@@ -21,9 +21,16 @@ from urllib import error, request
 
 import yaml
 
-from evals.harness._json import JsonObject, JsonValue
+from evals.harness._json import (
+    JsonObject,
+    JsonValue,
+    children,
+    opt_int,
+    opt_str,
+)
 from evals.harness.schema import (
     Catalog,
+    CatalogCourse,
     Scenario,
     ToolCall,
     Trace,
@@ -728,7 +735,7 @@ class LlamaCppProvider:
                         continue
                     messages.append(message_for_history(message))
                     for index, call in enumerate(round_calls):
-                        raw_call = message["tool_calls"][index]
+                        raw_call = children(message, "tool_calls")[index]
                         messages.append(
                             build_tool_result_message(
                                 raw_call, call, scenario, catalog
@@ -795,7 +802,7 @@ class LlamaCppProvider:
         previous_response: str | None = None,
         validation_feedback: str | None = None,
     ) -> list[JsonObject]:
-        messages = [
+        messages: list[JsonObject] = [
             {"role": "system", "content": self._system_prompt()},
             {"role": "user", "content": self._build_user_prompt(scenario)},
         ]
@@ -898,7 +905,7 @@ class LlamaCppProvider:
             scenario_id=scenario_id,
             model=self.model.id,
             calls=calls,
-            final_answer=str(trace_payload.get("final_answer", "")),
+            final_answer=str(opt_str(trace_payload, "final_answer", "")),
             selected_course_ids=_as_str_tuple(
                 trace_payload.get("selected_course_ids")
             ),
@@ -949,8 +956,10 @@ def load_llama_cpp_provider(
 
     provider_config = LlamaCppProviderConfig(
         name=provider_name,
-        base_url=str(provider_raw.get("base_url", "http://127.0.0.1:8080/v1")),
-        api_key=str(provider_raw.get("api_key", "not-needed")),
+        base_url=str(
+            opt_str(provider_raw, "base_url", "http://127.0.0.1:8080/v1")
+        ),
+        api_key=str(opt_str(provider_raw, "api_key", "not-needed")),
         timeout_seconds=_coerce_positive_int(
             provider_raw.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS),
             kind="timeout_seconds",
@@ -960,7 +969,7 @@ def load_llama_cpp_provider(
             kind="retries",
         ),
         validation_retries=_coerce_non_negative_int(
-            provider_raw.get("validation_retries", 1),
+            opt_int(provider_raw, "validation_retries", 1),
             kind="validation_retries",
         ),
         temperature=_coerce_float(
@@ -986,7 +995,7 @@ def load_llama_cpp_provider(
         ),
         quant=_coerce_optional_str(selected_model_raw.get("quant")),
         context=_coerce_positive_int(
-            selected_model_raw.get("context", 8192), kind="context"
+            opt_int(selected_model_raw, "context", 8192), kind="context"
         ),
         server_args=_coerce_str_tuple(selected_model_raw.get("server_args")),
         chat_template_kwargs=_coerce_template_kwargs(
@@ -1033,7 +1042,7 @@ def extract_response_message(response: JsonObject) -> JsonObject:
 
 
 def message_for_history(message: JsonObject) -> JsonObject:
-    history = {"role": "assistant"}
+    history: JsonObject = {"role": "assistant"}
     content = message.get("content")
     history["content"] = content if isinstance(content, str) else ""
     tool_calls = message.get("tool_calls")
@@ -1044,7 +1053,7 @@ def message_for_history(message: JsonObject) -> JsonObject:
 
 def build_final_json_reminder(
     scenario: Scenario,  # noqa: ARG001 - kept for backwards-compat signature
-) -> dict[str, str]:
+) -> JsonObject:
     return {
         "role": "user",
         "content": (
@@ -1326,7 +1335,7 @@ def _tool_credits_top_up(
     catalog: Catalog,  # noqa: ARG001
 ) -> JsonObject:
     """Answer the ``logion_credits_top_up`` synthetic tool call."""
-    amount_cents = int(call.args.get("amount_cents", 0))
+    amount_cents = opt_int(call.args, "amount_cents", 0)
     return {
         "ok": True,
         "top_up_id": "topup-synthetic-001",
@@ -1434,7 +1443,7 @@ def search_catalog(query: str, catalog: Catalog) -> list[JsonObject]:
     return [payload for _score, payload in scored[:5]]
 
 
-def course_to_payload(course: JsonValue) -> JsonObject:
+def course_to_payload(course: CatalogCourse) -> JsonObject:
     return {
         "id": course.id,
         "name": course.name,
@@ -1461,9 +1470,11 @@ def merge_token_estimates(
 
 
 def _tool_limit(value: JsonValue, *, default: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return default
     try:
         parsed = int(value)
-    except (TypeError, ValueError):
+    except ValueError:
         return default
     return max(parsed, 0)
 
@@ -1504,7 +1515,7 @@ def parse_tool_calls(tool_calls: JsonValue) -> tuple[ToolCall, ...]:
             raise LlamaCppProviderError(
                 f"tool_call references unknown function: {tool_name!r}"
             )
-        arguments = function.get("arguments", "{}")
+        arguments = opt_str(function, "arguments", "{}")
         args = parse_tool_arguments(arguments, tool_name)
         calls.append(ToolCall(tool=tool_name, args=args))
     return tuple(calls)
@@ -1583,8 +1594,8 @@ def extract_message_content(response: JsonObject) -> str | None:
 def usage_to_token_estimate(usage: JsonValue) -> dict[str, int]:
     if not isinstance(usage, dict):
         return {"input": 0, "output": 0}
-    prompt_tokens = usage.get("prompt_tokens", 0)
-    completion_tokens = usage.get("completion_tokens", 0)
+    prompt_tokens = opt_int(usage, "prompt_tokens", 0)
+    completion_tokens = opt_int(usage, "completion_tokens", 0)
     return {
         "input": _coerce_non_negative_int(prompt_tokens, kind="prompt_tokens"),
         "output": _coerce_non_negative_int(
@@ -1648,6 +1659,9 @@ def _coerce_positive_int(value: JsonValue, *, kind: str) -> int:
 def _coerce_non_negative_int(value: JsonValue, *, kind: str) -> int:
     if isinstance(value, bool):
         raise LlamaCppProviderError(f"{kind} must be an integer")
+    if not isinstance(value, int | float | str):
+        raise LlamaCppProviderError(f"{kind} must be an integer")
+
     try:
         parsed = int(value)
     except (TypeError, ValueError) as exc:
@@ -1660,7 +1674,7 @@ def _coerce_non_negative_int(value: JsonValue, *, kind: str) -> int:
 def _coerce_optional_int(value: JsonValue) -> int | None:
     if value is None:
         return None
-    if isinstance(value, bool):
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
         raise LlamaCppProviderError("seed must be an integer")
     try:
         return int(value)
@@ -1669,7 +1683,7 @@ def _coerce_optional_int(value: JsonValue) -> int | None:
 
 
 def _coerce_float(value: JsonValue, *, kind: str) -> float:
-    if isinstance(value, bool):
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
         raise LlamaCppProviderError(f"{kind} must be numeric")
     try:
         return float(value)

@@ -15,9 +15,18 @@ import json
 import re
 import sys
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
-from evals.harness._json import JsonObject
+from evals.harness._json import (
+    JsonObject,
+    child,
+    children,
+    elements,
+    numbers,
+    opt_str,
+    strings,
+)
 
 
 def _load_json(path: Path) -> JsonObject:
@@ -70,7 +79,7 @@ def _extract_instructions(program: JsonObject) -> str | None:
 def _extract_demos(program: JsonObject) -> list[JsonObject]:
     """Pull selected few-shot demos from a saved program."""
     for block in _predictor_blocks(program):
-        demos = block.get("demos")
+        demos = children(block, "demos")
         if isinstance(demos, list):
             return [d for d in demos if isinstance(d, dict)]
     for key in ("predictor.demos", "predict.demos", "demos"):
@@ -84,8 +93,8 @@ def _failure_summary(breakdown: list[JsonObject]) -> Counter[str]:
     """Count which sub-metrics dragged each dev scenario down."""
     counter: Counter[str] = Counter()
     for entry in breakdown:
-        for failure in entry.get("failures", []) or []:
-            metric = failure.get("metric")
+        for failure in children(entry, "failures"):
+            metric = opt_str(failure, "metric")
             if metric:
                 counter[metric] += 1
     return counter
@@ -142,7 +151,7 @@ def _format_per_suite(
     label: str,
     baseline: dict[str, float],
     optimized: dict[str, float],
-    failures: dict[str, int] | None = None,
+    failures: Mapping[str, float] | None = None,
 ) -> list[str]:
     """Markdown rows comparing per-suite baseline vs optimized averages."""
     rows: list[str] = []
@@ -457,7 +466,7 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
                 "classifier stays on the primary path more often than "
                 "the baseline when a reference was needed."
             )
-        canonical = set(report.get("canonical_reference_names", []) or [])
+        canonical = set(strings(report, "canonical_reference_names"))
         if instructions:
             invented = _instruction_invented_references(
                 instructions, canonical
@@ -471,7 +480,7 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
                     "hallucinated a reference file that does not "
                     "exist on disk."
                 )
-        invalid = report.get("invalid_classes") or []
+        invalid = elements(report, "invalid_classes")
         invalid_predictions = report.get("invalid_predictions", 0)
         offending = [c for c in invalid if c not in canonical]
         if offending or (
@@ -494,8 +503,8 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
         reasons.append(f"dev_delta {dev_delta:+.4f} did not beat baseline")
     if isinstance(test_delta, (int, float)) and test_delta < 0:
         reasons.append(f"test_delta {test_delta:+.4f} regressed on holdout")
-    safety_baseline = report.get("baseline_dev_per_suite", {}).get("safety")
-    safety_opt = report.get("dev_per_suite", {}).get("safety")
+    safety_baseline = numbers(report, "baseline_dev_per_suite").get("safety")
+    safety_opt = numbers(report, "dev_per_suite").get("safety")
     if (
         isinstance(safety_baseline, (int, float))
         and isinstance(safety_opt, (int, float))
@@ -505,10 +514,10 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
             f"safety suite regressed on dev "
             f"({safety_baseline:.4f} -> {safety_opt:.4f})"
         )
-    test_safety_baseline = report.get("baseline_test_per_suite", {}).get(
+    test_safety_baseline = numbers(report, "baseline_test_per_suite").get(
         "safety"
     )
-    test_safety_opt = report.get("test_per_suite", {}).get("safety")
+    test_safety_opt = numbers(report, "test_per_suite").get("safety")
     if (
         isinstance(test_safety_baseline, (int, float))
         and isinstance(test_safety_opt, (int, float))
@@ -519,8 +528,8 @@ def _verdict(  # noqa: C901 — gate chain is intentionally flat
             f"({test_safety_baseline:.4f} -> {test_safety_opt:.4f})"
         )
     for suite, b, o in _per_suite_regressions(
-        report.get("baseline_dev_per_suite", {}) or {},
-        report.get("dev_per_suite", {}) or {},
+        numbers(report, "baseline_dev_per_suite"),
+        numbers(report, "dev_per_suite"),
         tolerance=1e-6,
     ):
         if suite == "safety":
@@ -546,7 +555,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     if program_path is None:
         program_str = report.get("program_path")
         if program_str:
-            program_path = Path(program_str)
+            program_path = Path(str(program_str))
 
     program: JsonObject = {}
     if program_path is not None and program_path.is_file():
@@ -555,7 +564,7 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     instructions = _extract_instructions(program) or ""
     demos = _extract_demos(program)
     current_doc = _current_signature_docstring()
-    failure_counts = _failure_summary(report.get("dev_breakdown", []) or [])
+    failure_counts = _failure_summary(children(report, "dev_breakdown"))
     verdict, verdict_reasons = _verdict(
         report, demos=demos, instructions=instructions
     )
@@ -623,14 +632,14 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     lines.append("")
     if demos:
         for idx, demo in enumerate(demos, start=1):
-            suite = demo.get("suite", "unknown")
-            gold_action = demo.get("action", "?")
-            reason = demo.get("reason", "")
+            suite = opt_str(demo, "suite", "unknown")
+            gold_action = opt_str(demo, "action", "?")
+            reason = opt_str(demo, "reason", "")
             lines.append(
                 f"**Demo {idx}** (suite: `{suite}`, "
                 f"gold answer: `{gold_action}`):"
             )
-            prompt = demo.get("user_prompt", "")
+            prompt = opt_str(demo, "user_prompt", "")
             if prompt:
                 excerpt = prompt[:120] + ("…" if len(prompt) > 120 else "")
                 lines.append(f'> Prompt: "{excerpt}"')
@@ -642,13 +651,13 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
         lines.append("")
 
     # Per-scenario movements
-    dev_breakdown = report.get("dev_breakdown") or []
+    dev_breakdown = children(report, "dev_breakdown")
     if dev_breakdown:
         # Compute per-scenario movements from breakdown
         movements = []
         for entry in dev_breakdown:
-            sid = entry.get("id", "?")
-            suite = entry.get("suite", "unknown") or "unknown"
+            sid = opt_str(entry, "id", "?")
+            suite = opt_str(entry, "suite", "unknown") or "unknown"
             baseline_score = entry.get("baseline_score")
             opt_score = entry.get("score")
             if isinstance(baseline_score, (int, float)) and isinstance(
@@ -704,9 +713,9 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
         )
     if demos:
         action_counts: dict[str, int] = {}
-        for d in demos:  # type: ignore[assignment,union-attr]
-            a = str(d.get("action", "?"))  # type: ignore[union-attr]
-            action_counts[a] = action_counts.get(a, 0) + 1
+        for demo in demos:
+            action = opt_str(demo, "action", "?")
+            action_counts[action] = action_counts.get(action, 0) + 1
         dist = ", ".join(
             f"`{k}` x{v}" for k, v in sorted(action_counts.items())
         )
@@ -760,24 +769,24 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
     lines.extend(
         _format_per_suite(
             "Dev — per-suite",
-            report.get("baseline_dev_per_suite", {}) or {},
-            report.get("dev_per_suite", {}) or {},
-            report.get("dev_failures_per_suite", {}) or {},
+            numbers(report, "baseline_dev_per_suite"),
+            numbers(report, "dev_per_suite"),
+            numbers(report, "dev_failures_per_suite"),
         )
     )
     lines.extend(
         _format_per_suite(
             "Test — per-suite",
-            report.get("baseline_test_per_suite", {}) or {},
-            report.get("test_per_suite", {}) or {},
-            report.get("test_failures_per_suite", {}) or {},
+            numbers(report, "baseline_test_per_suite"),
+            numbers(report, "test_per_suite"),
+            numbers(report, "test_failures_per_suite"),
         )
     )
 
     # 2. model matrix.
     lines.append("## 2. Model matrix")
     lines.append("")
-    matrix = report.get("model_matrix") or {}
+    matrix = child(report, "model_matrix")
     lines.append(f"- DSPY_LM: `{matrix.get('dspy_lm') or '?'}`")
     lines.append(f"- DSPY_API_BASE: `{matrix.get('dspy_api_base') or '?'}`")
     if matrix.get("dspy_reflection_lm"):
@@ -791,8 +800,8 @@ def render_candidate(  # noqa: C901 — single-purpose packet builder
             )
     lines.append(f"- optimizer: `{matrix.get('optimizer') or '?'}`")
     lines.append(f"- seed: `{report.get('seed', '?')}`")
-    optimizer_config = (
-        matrix.get("optimizer_config") or report.get("optimizer_config") or {}
+    optimizer_config = matrix.get("optimizer_config") or child(
+        report, "optimizer_config"
     )
     if optimizer_config:
         lines.append(f"- optimizer_config: `{json.dumps(optimizer_config)}`")

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from evals.harness._json import JsonObject, JsonValue
+from evals.harness._json import JsonObject, JsonValue, child, opt_str
 
 KNOWN_TOOLS = {
     "logion_bounties_create",
@@ -262,7 +262,7 @@ def load_catalog(  # noqa: C901 - one shape check per catalog field,
                 f"Course {course_id} has invalid price_usd: {price!r}"
             )
         valid_statuses = {"approved", "pending", "rejected", "in_review"}
-        review_status = entry.get("review_status", "approved")
+        review_status = opt_str(entry, "review_status", "approved")
         if review_status not in valid_statuses:
             raise SchemaError(
                 f"Course {course_id} has invalid review_status: "
@@ -306,7 +306,7 @@ def load_catalog(  # noqa: C901 - one shape check per catalog field,
             CatalogCourse(
                 id=course_id,
                 name=str(entry.get("name", course_id)),
-                summary=str(entry.get("summary", "")).strip(),
+                summary=str(opt_str(entry, "summary", "")).strip(),
                 price_usd=float(price),
                 review_status=review_status,
                 required_tools=_as_tuple(
@@ -438,7 +438,7 @@ def _load_fake_trace(raw: JsonValue) -> FakeTrace:
         raise SchemaError("'fake_trace' must be a mapping")
     return FakeTrace(
         calls=_load_calls(raw.get("calls")),
-        final_answer=str(raw.get("final_answer", "")),
+        final_answer=str(opt_str(raw, "final_answer", "")),
         selected_course_ids=_as_tuple(
             raw.get("selected_course_ids"), kind="selected_course_ids"
         ),
@@ -495,9 +495,9 @@ def load_scenarios_from_file(
                 ),
                 local_recall=_load_local_recall(entry.get("local_recall")),
                 catalog_fixture=catalog_fixture,
-                expected=_load_expected(entry.get("expected", {})),
-                fake_trace=_load_fake_trace(entry.get("fake_trace", {})),
-                notes=str(entry.get("notes", "")),
+                expected=_load_expected(child(entry, "expected")),
+                fake_trace=_load_fake_trace(child(entry, "fake_trace")),
+                notes=str(opt_str(entry, "notes", "")),
             )
         )
     return out

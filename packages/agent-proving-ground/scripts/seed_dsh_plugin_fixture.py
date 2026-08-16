@@ -13,7 +13,7 @@ import os
 import sys
 from pathlib import Path
 
-from agent_proving_ground._json import JsonObject
+from agent_proving_ground._json import JsonObject, collection
 
 ROOT = Path(__file__).resolve().parents[3]
 SEED = (
@@ -73,7 +73,7 @@ def _upsert(api: base.Api, item: JsonObject) -> str:
         "/v1/admin/indexing/listings:batch-upsert",
         body={"items": [item]},
     )
-    results = payload.get("results") or []
+    results = collection(payload, "results")
     errors = [entry for entry in results if entry.get("error")]
     if errors:
         raise SystemExit(f"plugin fixture upsert failed: {errors}")

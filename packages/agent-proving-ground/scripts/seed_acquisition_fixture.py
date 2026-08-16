@@ -31,7 +31,16 @@ import urllib.request
 from io import BytesIO
 from pathlib import Path
 
-from agent_proving_ground._json import JsonObject, JsonValue
+from agent_proving_ground._json import (
+    JsonArray,
+    JsonObject,
+    JsonValue,
+    as_object,
+    children,
+    collection,
+    opt_str,
+    require_str,
+)
 
 #: Pinned so re-running the seed reuses the same fixtures instead of
 #: accumulating near-duplicates the reconciler would call ambiguous.
@@ -112,6 +121,23 @@ class Api:
             )
         return payload
 
+    def expect_object(
+        self,
+        method: str,
+        path: str,
+        *,
+        role: str = "admin",
+        body: JsonObject | None = None,
+        ok: tuple[int, ...] = (200, 201),
+    ) -> JsonObject:
+        """Like :meth:`expect`, for the endpoints that return an object.
+
+        Narrowing here keeps the isinstance check out of every caller
+        that then reads a field off the response.
+        """
+        payload = self.expect(method, path, role=role, body=body, ok=ok)
+        return as_object(payload, where=f"{method} {path}")
+
 
 SKILL_MD = (
     "---\n"
@@ -172,7 +198,7 @@ def _upsert_listing(api: Api, *, with_commit: bool) -> str:
         "/v1/admin/indexing/listings:batch-upsert",
         body={"items": [item]},
     )
-    results = payload.get("results") or payload.get("items") or []
+    results = collection(payload, "results") or collection(payload)
     for entry in results:
         if not isinstance(entry, dict):
             continue
@@ -182,14 +208,12 @@ def _upsert_listing(api: Api, *, with_commit: bool) -> str:
         if listing_id:
             return str(listing_id)
     listings = api.expect("GET", "/v1/listings?limit=50&include_indexed=true")
-    items = (
-        listings if isinstance(listings, list) else listings.get("items", [])
-    )
+    items = collection(listings)
     for entry in items:
         if not isinstance(entry, dict):
             continue
         if entry.get("canonical_url") == LISTING_CANONICAL:
-            return str(entry.get("listing_id") or entry["id"])
+            return str(entry.get("listing_id") or require_str(entry, "id"))
     raise SystemExit(f"batch-upsert returned no listing id: {payload}")
 
 
@@ -198,7 +222,7 @@ def _upload_bundle(api: Api, listing_id: str) -> str:
     digest = hashlib.sha256(bundle).hexdigest()
     # The digest is declared up front so the API can sign it into the PUT
     # URL; completion reads it back from the object's metadata.
-    session = api.expect(
+    session = api.expect_object(
         "POST",
         f"/v1/admin/indexing/listings/{listing_id}/bundle-upload",
         body={"checksum_sha256": digest},
@@ -206,7 +230,7 @@ def _upload_bundle(api: Api, listing_id: str) -> str:
     # The URL is signed for this exact content type; sending anything else
     # makes object storage reject the signature.
     put = urllib.request.Request(
-        session["put_url"],
+        require_str(session, "put_url"),
         data=bundle,
         # Both headers are covered by the signature the API minted from the
         # declared digest; sending anything else is rejected as unsigned.
@@ -229,7 +253,7 @@ def _upload_bundle(api: Api, listing_id: str) -> str:
         "POST",
         f"/v1/admin/indexing/listings/{listing_id}/bundle-upload/completion",
         body={
-            "bundle_key": session["bundle_key"],
+            "bundle_key": require_str(session, "bundle_key"),
             "sha256": digest,
             "size_bytes": len(bundle),
         },
@@ -287,9 +311,9 @@ def _existing_course(api: Api) -> JsonObject | None:
     payload = api.expect("GET", "/v1/courses/mine?limit=50", role="seller")
     candidates = [
         course
-        for course in payload.get("courses", [])
+        for course in collection(payload, "courses")
         if isinstance(course, dict)
-        and str(course.get("slug", "")).startswith(COURSE_SLUG)
+        and str(opt_str(course, "slug", "")).startswith(COURSE_SLUG)
     ]
     for course in candidates:
         if course.get("status") != "published":
@@ -301,7 +325,7 @@ def _existing_course(api: Api) -> JsonObject | None:
 
 
 def _upload_course_assets(api: Api, course_id: str) -> str:
-    specs = []
+    specs: JsonArray = []
     for name, content_type, body in COURSE_FILES:
         specs.append({
             "filename": name,
@@ -309,18 +333,19 @@ def _upload_course_assets(api: Api, course_id: str) -> str:
             "size_bytes": len(body),
             "checksum_sha256": hashlib.sha256(body).hexdigest(),
         })
-    session = api.expect(
+    session = api.expect_object(
         "POST",
         f"/v1/courses/{course_id}/versions",
         role="seller",
         body={"files": specs},
     )
-    version_id = str(session["version_id"])
+    version_id = str(require_str(session, "version_id"))
     by_name = {name: (ctype, body) for name, ctype, body in COURSE_FILES}
-    for upload in session["uploads"]:
-        content_type, body = by_name[upload["filename"]]
+    for upload in children(session, "uploads"):
+        filename = require_str(upload, "filename")
+        content_type, body = by_name[filename]
         put = urllib.request.Request(
-            upload["put_url"],
+            require_str(upload, "put_url"),
             data=body,
             headers={
                 "Content-Type": content_type,
@@ -330,9 +355,7 @@ def _upload_course_assets(api: Api, course_id: str) -> str:
         )
         with urllib.request.urlopen(put) as response:
             if response.status not in (200, 204):
-                raise SystemExit(
-                    f"course asset PUT failed for {upload['filename']}"
-                )
+                raise SystemExit(f"course asset PUT failed for {filename}")
     api.expect(
         "PATCH",
         f"/v1/courses/{course_id}/versions/{version_id}/upload-session",
@@ -348,7 +371,7 @@ def _await(
     for _ in range(tries):
         status, payload = api.request("GET", path, role=role)
         if status == 200 and check(payload):
-            return payload
+            return as_object(payload, where=path)
         time.sleep(1)
     raise SystemExit(f"timed out waiting for {what}")
 
@@ -358,7 +381,7 @@ def _publish_course(api: Api) -> str:
     course = _existing_course(api)
     if course is None:
         course = _create_course(api)
-    course_id = str(course["id"])
+    course_id = str(require_str(course, "id"))
     if course.get("status") == "published":
         return course_id
     _publish_existing(api, course_id)
@@ -388,7 +411,7 @@ def _create_course(api: Api) -> JsonObject:
             },
         )
         if status in (200, 201):
-            return body
+            return as_object(body, where="create fixture course")
         if "slug already exists" not in str(body):
             raise SystemExit(f"cannot create fixture course: {body}")
     raise SystemExit("every fixture course slug is taken; reset the dev DB")
@@ -403,13 +426,13 @@ def _publish_existing(api: Api, course_id: str) -> None:
         check=lambda v: v.get("status") in {"ready", "validated"},
         what="course version to become ready",
     )
-    review = api.expect(
+    review = api.expect_object(
         "POST",
         f"/v1/courses/{course_id}/publication-reviews",
         role="seller",
         body={"version_id": version_id},
     )
-    review_id = str(review["id"])
+    review_id = str(require_str(review, "id"))
     _await(
         api,
         f"/v1/course-reviews/{review_id}",
@@ -436,7 +459,7 @@ def _find_resource(api: Api, canonical: str) -> JsonObject | None:
     while True:
         suffix = f"&cursor={cursor}" if cursor else ""
         page = api.expect("GET", f"/v1/resources?limit=100{suffix}")
-        items = page if isinstance(page, list) else page.get("items", [])
+        items = collection(page)
         for entry in items:
             if not isinstance(entry, dict):
                 continue
@@ -458,9 +481,7 @@ def _require_single_version(api: Api, resource: JsonObject) -> None:
     versions = api.expect(
         "GET", f"/v1/resources/{resource['id']}/versions?limit=50"
     )
-    items = (
-        versions if isinstance(versions, list) else versions.get("items", [])
-    )
+    items = collection(versions)
     if len(items) > 1:
         raise SystemExit(
             f"fixture resource {resource.get('canonical_uri')} has "
@@ -475,11 +496,9 @@ def _acquirable(api: Api, resource: JsonObject) -> JsonObject | None:
     versions = api.expect(
         "GET", f"/v1/resources/{resource['id']}/versions?limit=50"
     )
-    items = (
-        versions if isinstance(versions, list) else versions.get("items", [])
-    )
+    items = collection(versions)
     for version in items:
-        version_id = version.get("id") or version.get("version_id")
+        version_id = opt_str(version, "id") or opt_str(version, "version_id")
         if not version_id:
             continue
         status, plan = api.request(
@@ -489,7 +508,7 @@ def _acquirable(api: Api, resource: JsonObject) -> JsonObject | None:
         )
         if status == 200 and isinstance(plan, dict):
             return {
-                "resource_id": str(resource["id"]),
+                "resource_id": str(require_str(resource, "id")),
                 "version_id": str(version_id),
                 "channel": plan.get("selected_channel"),
                 "content_digest": plan.get("content_digest"),
@@ -542,11 +561,11 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(
             {
                 "indexed_resource_id": indexed["resource_id"],
-                "indexed_version_id": indexed["version_id"],
+                "indexed_version_id": require_str(indexed, "version_id"),
                 "indexed_channel": indexed["channel"],
                 "indexed_canonical": LISTING_CANONICAL,
                 "hosted_resource_id": hosted["resource_id"],
-                "hosted_version_id": hosted["version_id"],
+                "hosted_version_id": require_str(hosted, "version_id"),
                 "hosted_channel": hosted["channel"],
                 "hosted_course_id": course_id,
             },
