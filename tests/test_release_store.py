@@ -127,9 +127,7 @@ def test_store_publish_plan_strips_tarball_root_for_upload(
     assert "course/capabilities.yaml" in specs
     assert "references/troubleshooting.md" in specs
     assert all(not path.startswith(f"{bundle_root}/") for path in specs)
-    assert specs["LICENSE"] == (
-        plan.extracted_dir / bundle_root / "LICENSE"
-    )
+    assert specs["LICENSE"] == (plan.extracted_dir / bundle_root / "LICENSE")
 
 
 def test_store_publish_requires_existing_tarball(
@@ -181,9 +179,7 @@ def test_store_publish_requests_publication_after_upload(
                     "kind": "logion.courses.uploads.create",
                     "data": {
                         "course_id": COMPANION_UUID,
-                        "version_id": (
-                            "11111111-2222-3333-4444-555555555555"
-                        ),
+                        "version_id": ("11111111-2222-3333-4444-555555555555"),
                         "uploads": [],
                     },
                 },
@@ -206,9 +202,10 @@ def test_store_publish_requests_publication_after_upload(
         / "dist"
         / "upload-session-11111111-2222-3333-4444-555555555555.json"
     )
-    assert json.loads(session_file.read_text(encoding="utf-8"))[
-        "version_id"
-    ] == "11111111-2222-3333-4444-555555555555"
+    assert (
+        json.loads(session_file.read_text(encoding="utf-8"))["version_id"]
+        == "11111111-2222-3333-4444-555555555555"
+    )
 
 
 def test_store_publish_extracts_text_version_id_not_course_id(

@@ -29,9 +29,11 @@ import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Literal, Protocol
 
 from packaging.version import InvalidVersion, Version
+
+from logion._json import JsonObject
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -801,7 +803,7 @@ class ReleaseExecutor:
         self,
         *,
         dry_run: bool = False,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Run the full release sequence.
 
         In dry-run mode only plans and validates — no mutations.

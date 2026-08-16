@@ -21,9 +21,11 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
 	release-plan release release-dry-run release-store release-smoke-input
 
+# scripts/ and tests/ are in scope too: the typing.Any ban is only
+# real if every path the repo actually runs is checked.
 lint:
-	uv run ruff check packages/
-	uv run ruff format --check packages/
+	uv run ruff check packages/ scripts/ tests/
+	uv run ruff format --check packages/ scripts/ tests/
 
 dead-code:
 	uv run vulture

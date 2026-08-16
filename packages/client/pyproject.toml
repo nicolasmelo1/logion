@@ -106,7 +106,6 @@ known-first-party = ["cli", "landing", "logion"]
 max-complexity = 12
 
 [tool.mypy]
-exclude = ["src/logion/v1/_types/generated/"]
 
 [tool.pytest.ini_options]
 markers = [

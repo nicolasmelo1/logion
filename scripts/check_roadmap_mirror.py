@@ -41,13 +41,13 @@ def sha(path: Path) -> str:
 
 
 def update() -> None:
-    previous = (
-        json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
-    )
+    previous = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
     data = {
         "schema_version": 1,
         "source_revision": previous.get("source_revision", "public-proposal"),
-        "files": [{"path": str(path), "sha256": sha(path)} for path in files()],
+        "files": [
+            {"path": str(path), "sha256": sha(path)} for path in files()
+        ],
     }
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     MANIFEST.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")

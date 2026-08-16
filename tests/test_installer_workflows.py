@@ -123,7 +123,6 @@ def test_install_smoke_runs_psscriptanalyzer_and_pester() -> None:
     assert "Invoke-Pester" in joined, "Windows job must invoke Pester"
 
 
-
 # ---------------------------------------------------------------------------
 # 7. Installer release workflow trigger
 # ---------------------------------------------------------------------------
@@ -134,7 +133,6 @@ def test_release_installer_runs_on_installer_tags() -> None:
     triggers = _triggers(INSTALLER_RELEASE)
     push_tags = triggers.get("push", {}).get("tags", [])
     assert "installer-v*" in push_tags
-
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +148,11 @@ def test_release_installer_runs_security_scanner() -> None:
     ]
     assert any("check_installer_security.py" in cmd for cmd in run_commands)
 
+
 # ---------------------------------------------------------------------------
 # 9. Installer release environment gate
 # ---------------------------------------------------------------------------
+
 
 def test_release_installer_is_environment_gated() -> None:
     """The GitHub Release attachment is gated by the release environment."""

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -15,6 +15,7 @@ from pydantic import (
     Field,
     RootModel,
 )
+from logion._json import JsonObject, JsonValue
 
 
 class AcceptBountySubmissionResponse(BaseModel):
@@ -24,7 +25,7 @@ class AcceptBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -40,13 +41,13 @@ class AcceptPlatformBountySubmissionRequest(BaseModel):
         extra="allow",
     )
     candidate_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Candidate Capabilities")
+        JsonObject | None, Field(title="Candidate Capabilities")
     ] = None
     decision_reason: Annotated[
         str, Field(max_length=4000, min_length=1, title="Decision Reason")
     ]
     eval_evidence: Annotated[
-        dict[str, Any] | None, Field(title="Eval Evidence")
+        JsonObject | None, Field(title="Eval Evidence")
     ] = None
     improved_bundle_key: Annotated[
         str | None, Field(title="Improved Bundle Key")
@@ -63,7 +64,7 @@ class AcceptPlatformBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     status: Annotated[str, Field(title="Status")]
     submitter_agent_id: Annotated[UUID, Field(title="Submitter Agent Id")]
@@ -308,10 +309,10 @@ class CapabilitySummaryResponse(BaseModel):
         bool | None, Field(title="Human Approval Required")
     ] = False
     runtime_install: Annotated[
-        list[dict[str, Any]] | None, Field(title="Runtime Install")
+        list[JsonObject] | None, Field(title="Runtime Install")
     ] = None
     runtime_requires_any_bins: Annotated[
-        list[list[str]] | None, Field(title="Runtime Requires Any Bins")
+        list[list[str]] | None, Field(title="Runtime Requires JsonValue Bins")
     ] = None
     runtime_requires_bins: Annotated[
         list[str] | None, Field(title="Runtime Requires Bins")
@@ -326,13 +327,13 @@ class CapabilitySummaryResponse(BaseModel):
         list[str] | None, Field(title="Runtime Requires Os")
     ] = None
     runtime_requires_software: Annotated[
-        list[dict[str, Any]] | None, Field(title="Runtime Requires Software")
+        list[JsonObject] | None, Field(title="Runtime Requires Software")
     ] = None
     runtime_warning_codes: Annotated[
         list[str] | None, Field(title="Runtime Warning Codes")
     ] = None
     runtime_warnings: Annotated[
-        list[dict[str, Any]] | None, Field(title="Runtime Warnings")
+        list[JsonObject] | None, Field(title="Runtime Warnings")
     ] = None
     secrets_env: Annotated[list[str] | None, Field(title="Secrets Env")] = None
     tools: Annotated[list[str] | None, Field(title="Tools")] = None
@@ -397,7 +398,7 @@ class CompleteIndexingRunRequest(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    stats: Annotated[dict[str, Any] | None, Field(title="Stats")] = None
+    stats: Annotated[JsonObject | None, Field(title="Stats")] = None
 
 
 class CompleteIndexingRunResponse(BaseModel):
@@ -405,7 +406,7 @@ class CompleteIndexingRunResponse(BaseModel):
         extra="allow",
     )
     run_id: Annotated[UUID, Field(title="Run Id")]
-    stats: Annotated[dict[str, Any] | None, Field(title="Stats")]
+    stats: Annotated[JsonObject | None, Field(title="Stats")]
     status: Annotated[str, Field(title="Status")]
 
 
@@ -499,7 +500,7 @@ class CreateBountySubmissionRequest(BaseModel):
         extra="allow",
     )
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any] | None, Field(title="Evidence")] = None
+    evidence: Annotated[JsonObject | None, Field(title="Evidence")] = None
     github_pr: Annotated[bool | None, Field(title="Github Pr")] = None
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -812,7 +813,7 @@ class ErrorResponse(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    detail: Annotated[str | list[dict[str, Any]], Field(title="Detail")]
+    detail: Annotated[str | list[JsonObject], Field(title="Detail")]
 
 
 class FeedbackItem(BaseModel):
@@ -933,18 +934,16 @@ class GetAcquisitionPlanResponse(BaseModel):
     )
     content_digest: Annotated[str, Field(title="Content Digest")]
     distribution_id: Annotated[UUID, Field(title="Distribution Id")]
-    entitlement: Annotated[
-        dict[str, Any] | None, Field(title="Entitlement")
-    ] = None
-    expected: Annotated[dict[str, Any] | None, Field(title="Expected")] = None
-    integrity: Annotated[dict[str, Any] | None, Field(title="Integrity")] = (
+    entitlement: Annotated[JsonObject | None, Field(title="Entitlement")] = (
         None
     )
-    license: Annotated[dict[str, Any] | None, Field(title="License")] = None
-    native: Annotated[dict[str, Any] | None, Field(title="Native")] = None
-    permissions: Annotated[
-        dict[str, Any] | None, Field(title="Permissions")
-    ] = None
+    expected: Annotated[JsonObject | None, Field(title="Expected")] = None
+    integrity: Annotated[JsonObject | None, Field(title="Integrity")] = None
+    license: Annotated[JsonObject | None, Field(title="License")] = None
+    native: Annotated[JsonObject | None, Field(title="Native")] = None
+    permissions: Annotated[JsonObject | None, Field(title="Permissions")] = (
+        None
+    )
     resource_id: Annotated[UUID, Field(title="Resource Id")]
     selected_channel: Annotated[str, Field(title="Selected Channel")]
     version_id: Annotated[UUID, Field(title="Version Id")]
@@ -1012,7 +1011,7 @@ class GetBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -1144,7 +1143,7 @@ class GetCourseVersionResponse(BaseModel):
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     created_by_agent_id: Annotated[UUID, Field(title="Created By Agent Id")]
     declared_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Declared Capabilities")
+        JsonObject | None, Field(title="Declared Capabilities")
     ] = None
     human_approval_required: Annotated[
         bool | None, Field(title="Human Approval Required")
@@ -1248,7 +1247,7 @@ class GetHumanReviewDetailResponse(BaseModel):
         str | None, Field(title="Capabilities Status")
     ] = None
     capability_mismatches: Annotated[
-        list[dict[str, Any]] | None, Field(title="Capability Mismatches")
+        list[JsonObject] | None, Field(title="Capability Mismatches")
     ] = None
     capability_risk_score: Annotated[
         int | None, Field(title="Capability Risk Score")
@@ -1259,14 +1258,14 @@ class GetHumanReviewDetailResponse(BaseModel):
     course_title: Annotated[str, Field(title="Course Title")]
     decision_reason: Annotated[str | None, Field(title="Decision Reason")]
     declared_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Declared Capabilities")
+        JsonObject | None, Field(title="Declared Capabilities")
     ] = None
     findings_by_layer: Annotated[
         dict[str, list[FindingResponse]], Field(title="Findings By Layer")
     ]
     initiated_by: Annotated[str, Field(title="Initiated By")]
     observed_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Observed Capabilities")
+        JsonObject | None, Field(title="Observed Capabilities")
     ] = None
     owner_agent_id: Annotated[str, Field(title="Owner Agent Id")]
     review_id: Annotated[str, Field(title="Review Id")]
@@ -1297,7 +1296,7 @@ class GetIndexedListingResponse(BaseModel):
     license_spdx: Annotated[str | None, Field(title="License Spdx")] = None
     observation_status: Annotated[str, Field(title="Observation Status")]
     observed_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Observed Capabilities")
+        JsonObject | None, Field(title="Observed Capabilities")
     ] = None
     original_author: Annotated[str, Field(title="Original Author")]
     slug: Annotated[str, Field(title="Slug")]
@@ -1319,7 +1318,7 @@ class GetIndexingRunProgressResponse(BaseModel):
     closed_at: Annotated[AwareDatetime | None, Field(title="Closed At")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     run_id: Annotated[UUID, Field(title="Run Id")]
-    stats: Annotated[dict[str, Any] | None, Field(title="Stats")]
+    stats: Annotated[JsonObject | None, Field(title="Stats")]
     status: Annotated[Literal["open", "closed"], Field(title="Status")]
     updated_at: Annotated[AwareDatetime, Field(title="Updated At")]
 
@@ -1513,7 +1512,7 @@ class ListBountySubmissionsResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -1675,7 +1674,7 @@ class NotificationEventDTO(BaseModel):
         None
     )
     id: Annotated[UUID, Field(title="Id")]
-    payload: Annotated[dict[str, Any] | None, Field(title="Payload")] = None
+    payload: Annotated[JsonObject | None, Field(title="Payload")] = None
     target_id: Annotated[UUID | None, Field(title="Target Id")] = None
     target_type: Annotated[str | None, Field(title="Target Type")] = None
     type: Annotated[str, Field(title="Type")]
@@ -1884,7 +1883,7 @@ class RejectBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -1963,7 +1962,7 @@ class RejectPlatformBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     status: Annotated[str, Field(title="Status")]
     submitter_agent_id: Annotated[UUID, Field(title="Submitter Agent Id")]
@@ -2036,7 +2035,7 @@ class ResourceDetail(BaseModel):
     created_at: Annotated[str | None, Field(title="Created At")] = None
     id: Annotated[UUID, Field(title="Id")]
     lifecycle_status: Annotated[str, Field(title="Lifecycle Status")]
-    metadata: Annotated[dict[str, Any] | None, Field(title="Metadata")] = None
+    metadata: Annotated[JsonObject | None, Field(title="Metadata")] = None
     resource_type: Annotated[str, Field(title="Resource Type")]
     summary: Annotated[str | None, Field(title="Summary")] = None
     title: Annotated[str, Field(title="Title")]
@@ -2321,7 +2320,7 @@ class SubmitUsageReceiptRequest(BaseModel):
     )
     acquisition_channel: Annotated[str, Field(title="Acquisition Channel")]
     coarse_counters: Annotated[
-        dict[str, Any] | None, Field(title="Coarse Counters")
+        JsonObject | None, Field(title="Coarse Counters")
     ] = None
     consent_policy_digest: Annotated[str, Field(title="Consent Policy Digest")]
     harness: Annotated[str | None, Field(title="Harness")] = None
@@ -2471,7 +2470,7 @@ class UpdateIndexingRunProgressResponse(BaseModel):
     closed_at: Annotated[AwareDatetime | None, Field(title="Closed At")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     run_id: Annotated[UUID, Field(title="Run Id")]
-    stats: Annotated[dict[str, Any], Field(title="Stats")]
+    stats: Annotated[JsonObject, Field(title="Stats")]
     status: Annotated[Literal["open", "closed"], Field(title="Status")]
     updated_at: Annotated[AwareDatetime, Field(title="Updated At")]
 
@@ -2547,8 +2546,8 @@ class ValidationError(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    ctx: Annotated[dict[str, Any] | None, Field(title="Context")] = None
-    input: Annotated[Any | None, Field(title="Input")] = None
+    ctx: Annotated[JsonObject | None, Field(title="Context")] = None
+    input: Annotated[JsonValue | None, Field(title="Input")] = None
     loc: Annotated[list[str | int], Field(title="Location")]
     msg: Annotated[str, Field(title="Message")]
     type: Annotated[str, Field(title="Error Type")]
@@ -2575,7 +2574,7 @@ class WithdrawBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
         UUID | None, Field(title="Proposed Course Version Id")
@@ -2599,7 +2598,7 @@ class BatchItemSchema(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    bundle: Annotated[dict[str, Any] | None, Field(title="Bundle")] = None
+    bundle: Annotated[JsonObject | None, Field(title="Bundle")] = None
     canonical: Annotated[
         str, Field(max_length=512, min_length=4, title="Canonical")
     ]
@@ -2610,17 +2609,17 @@ class BatchItemSchema(BaseModel):
         list[ChannelSchema] | None, Field(title="Channels")
     ] = None
     declared_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Declared Capabilities")
+        JsonObject | None, Field(title="Declared Capabilities")
     ] = None
-    inferred_map: Annotated[
-        dict[str, Any] | None, Field(title="Inferred Map")
-    ] = None
+    inferred_map: Annotated[JsonObject | None, Field(title="Inferred Map")] = (
+        None
+    )
     license_spdx: Annotated[
         LicenseSpdx | None, Field(title="License Spdx")
     ] = None
     map_flags: Annotated[list[str] | None, Field(title="Map Flags")] = None
     npm_distribution: Annotated[
-        dict[str, Any] | None, Field(title="Npm Distribution")
+        JsonObject | None, Field(title="Npm Distribution")
     ] = None
     original_author: Annotated[
         str, Field(max_length=255, min_length=1, title="Original Author")
@@ -2664,7 +2663,7 @@ class CompleteCourseVersionUploadSessionResponse(BaseModel):
     capabilities_summary: CapabilitySummaryResponse | None = None
     content_hash: Annotated[str, Field(title="Content Hash")]
     declared_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Declared Capabilities")
+        JsonObject | None, Field(title="Declared Capabilities")
     ] = None
     manifest_s3_key: Annotated[str, Field(title="Manifest S3 Key")]
     status: Annotated[str, Field(title="Status")]
@@ -2679,7 +2678,7 @@ class CreateBountySubmissionResponse(BaseModel):
     bounty_id: Annotated[UUID, Field(title="Bounty Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     description: Annotated[str, Field(title="Description")]
-    evidence: Annotated[dict[str, Any], Field(title="Evidence")]
+    evidence: Annotated[JsonObject, Field(title="Evidence")]
     github_pr: SubmissionGithubPrBlock
     id: Annotated[UUID, Field(title="Id")]
     proposed_course_version_id: Annotated[
@@ -2750,7 +2749,7 @@ class GetReviewStatusResponse(BaseModel):
         str | None, Field(title="Capabilities Status")
     ] = None
     capability_mismatches: Annotated[
-        list[dict[str, Any]] | None, Field(title="Capability Mismatches")
+        list[JsonObject] | None, Field(title="Capability Mismatches")
     ] = None
     capability_risk_score: Annotated[
         int | None, Field(title="Capability Risk Score")
@@ -2761,7 +2760,7 @@ class GetReviewStatusResponse(BaseModel):
     course_id: Annotated[UUID, Field(title="Course Id")]
     created_at: Annotated[AwareDatetime, Field(title="Created At")]
     declared_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Declared Capabilities")
+        JsonObject | None, Field(title="Declared Capabilities")
     ] = None
     findings: Annotated[
         list[ReviewFindingResponse] | None, Field(title="Findings")
@@ -2769,7 +2768,7 @@ class GetReviewStatusResponse(BaseModel):
     id: Annotated[UUID, Field(title="Id")]
     initiated_by: Annotated[UUID, Field(title="Initiated By")]
     observed_capabilities: Annotated[
-        dict[str, Any] | None, Field(title="Observed Capabilities")
+        JsonObject | None, Field(title="Observed Capabilities")
     ] = None
     started_at: Annotated[AwareDatetime | None, Field(title="Started At")] = (
         None

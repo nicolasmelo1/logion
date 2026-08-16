@@ -55,9 +55,11 @@ _UUID_RE = re.compile(
     re.IGNORECASE,
 )
 
-_REQUIRED_BUNDLE_ROOT_FILES = frozenset(
-    {"SKILL.md", "LICENSE", "course/capabilities.yaml"}
-)
+_REQUIRED_BUNDLE_ROOT_FILES = frozenset({
+    "SKILL.md",
+    "LICENSE",
+    "course/capabilities.yaml",
+})
 
 
 def _common_bundle_root(paths: Sequence[str]) -> str | None:

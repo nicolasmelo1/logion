@@ -9,9 +9,7 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SCRIPT = os.path.join(
-    REPO_ROOT, "scripts", "check_pytest_skip_reasons.py"
-)
+SCRIPT = os.path.join(REPO_ROOT, "scripts", "check_pytest_skip_reasons.py")
 
 
 def test_real_repo_is_clean() -> None:
@@ -49,10 +47,7 @@ def _run(fake) -> subprocess.CompletedProcess[str]:  # type: ignore[no-untyped-d
 def test_bare_mark_skip_flagged(tmp_path) -> None:  # type: ignore[no-untyped-def]
     fake = _setup_fake(
         tmp_path,
-        "import pytest\n"
-        "@pytest.mark.skip\n"
-        "def test_a():\n"
-        "    pass\n",
+        "import pytest\n@pytest.mark.skip\ndef test_a():\n    pass\n",
     )
     result = _run(fake)
     assert result.returncode == 1
@@ -62,9 +57,7 @@ def test_bare_mark_skip_flagged(tmp_path) -> None:  # type: ignore[no-untyped-de
 def test_skip_call_without_reason_flagged(tmp_path) -> None:  # type: ignore[no-untyped-def]
     fake = _setup_fake(
         tmp_path,
-        "import pytest\n"
-        "def test_a():\n"
-        "    pytest.skip()\n",
+        "import pytest\ndef test_a():\n    pytest.skip()\n",
     )
     result = _run(fake)
     assert result.returncode == 1
@@ -74,10 +67,7 @@ def test_skip_call_without_reason_flagged(tmp_path) -> None:  # type: ignore[no-
 def test_skipif_without_reason_flagged(tmp_path) -> None:  # type: ignore[no-untyped-def]
     fake = _setup_fake(
         tmp_path,
-        "import pytest\n"
-        "@pytest.mark.skipif(True)\n"
-        "def test_a():\n"
-        "    pass\n",
+        "import pytest\n@pytest.mark.skipif(True)\ndef test_a():\n    pass\n",
     )
     result = _run(fake)
     assert result.returncode == 1
@@ -88,12 +78,12 @@ def test_reason_present_is_ok(tmp_path) -> None:  # type: ignore[no-untyped-def]
     fake = _setup_fake(
         tmp_path,
         "import pytest\n"
-        "@pytest.mark.skip(reason=\"flaky on macOS, see #123\")\n"
+        '@pytest.mark.skip(reason="flaky on macOS, see #123")\n'
         "def test_a():\n"
         "    pass\n"
-        "@pytest.mark.xfail(\"known bug\")\n"
+        '@pytest.mark.xfail("known bug")\n'
         "def test_b():\n"
-        "    pytest.skip(\"setup failed\")\n",
+        '    pytest.skip("setup failed")\n',
     )
     result = _run(fake)
     assert result.returncode == 0, result.stdout

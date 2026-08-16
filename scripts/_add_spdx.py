@@ -23,8 +23,8 @@ PACKAGES_DIR = os.path.join(ROOT, "packages")
 
 
 def add_spdx(filepath: str) -> bool:
-    """Add SPDX header to a file if it doesn't already have one. Return True if changed."""
-    with open(filepath, "r", encoding="utf-8") as fh:
+    """Add an SPDX header when absent; return True when changed."""
+    with open(filepath, encoding="utf-8") as fh:
         lines = fh.readlines()
 
     # Check if SPDX header already exists

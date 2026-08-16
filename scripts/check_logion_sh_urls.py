@@ -12,7 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_PATHS_FILE = ROOT / "scripts" / "logion_sh_public_paths.txt"
 
-URL_RE = re.compile(r"https://logion\.sh(?P<path>/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?")
+URL_RE = re.compile(
+    r"https://logion\.sh(?P<path>/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?"
+)
 
 SKIP_DIRS = {
     ".git",

@@ -33,13 +33,18 @@ if "--root" in sys.argv:
 FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
     ("private repo path", re.compile(r"logion-private")),
     ("private employer domain", re.compile(r"revvadas\.com")),
-    ("absolute user path", re.compile(r"/Users/\w+/|/home/\w+/|C:\\Users\\\\")),
+    (
+        "absolute user path",
+        re.compile(r"/Users/\w+/|/home/\w+/|C:\\Users\\\\"),
+    ),
     ("AWS access key", re.compile(r"AKIA[0-9A-Z]{16}")),
     ("GitHub PAT", re.compile(r"ghp_[A-Za-z0-9]{36}")),
     ("Slack token", re.compile(r"xox[bsap]-[A-Za-z0-9-]{10,}")),
     (
         "private key",
-        re.compile(r"-----BEGIN (RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----"),
+        re.compile(
+            r"-----BEGIN (RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----"
+        ),
     ),
     ("OpenAI / Anthropic-style key", re.compile(r"sk-[A-Za-z0-9]{20,}")),
     ("hardcoded password", re.compile(r"""password\s*=\s*["'][^"']""")),
@@ -108,9 +113,7 @@ def should_skip(rel_path: str) -> bool:
     components = rel_path.replace("\\", "/").split("/")
     if SKIP_DIRS.intersection(components):
         return True
-    for prefix in SKIP_PREFIXES:
-        if full.startswith(prefix):
-            return True
+    return any(full.startswith(prefix) for prefix in SKIP_PREFIXES)
     return False
 
 

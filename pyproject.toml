@@ -79,14 +79,13 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/release_manifest.py" = ["T201"]
-# Release automation scripts: console output is the primary UI.
-"scripts/release_orchestrator.py" = ["T201"]
-"scripts/release_store.py" = ["T201"]
-"scripts/release_smoke.py" = ["T201"]
-# Guardrails: print their findings to the console.
-"scripts/check_cli_http.py" = ["T201"]
-"scripts/check_json_module_sync.py" = ["T201"]
+# Repo tooling: the console *is* the interface for a guardrail that
+# reports findings and for release automation that narrates its steps.
+"scripts/*.py" = ["T201"]
+# Mirrored byte-for-byte from the canonical planning repo and verified
+# by check_roadmap_mirror; reformatting it here breaks that check. Any
+# style fix has to land upstream first.
+"scripts/check_protocol_specs.py" = ["E501", "RUF100"]
 # Build utility: console output (T201) and long checksum/URL literals (E501).
 "packages/landing/scripts/subset_brand_fonts.py" = ["T201", "E501"]
 # OG-image generator: console output (T201) and the Greek matrix-rain glyph
