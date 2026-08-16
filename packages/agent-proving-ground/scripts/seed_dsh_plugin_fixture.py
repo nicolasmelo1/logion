@@ -12,7 +12,8 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+
+from agent_proving_ground._json import JsonObject
 
 ROOT = Path(__file__).resolve().parents[3]
 SEED = (
@@ -46,7 +47,7 @@ def _item(
     title: str,
     commit: str,
     npm: dict[str, str] | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     return {
         "npm_distribution": npm,
         "canonical": canonical,
@@ -66,7 +67,7 @@ def _item(
     }
 
 
-def _upsert(api: base.Api, item: dict[str, Any]) -> str:
+def _upsert(api: base.Api, item: JsonObject) -> str:
     payload = api.expect(
         "POST",
         "/v1/admin/indexing/listings:batch-upsert",

@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from typing import Any
 
+from agent_proving_ground._json import JsonObject, JsonValue
 from agent_proving_ground.config import InconclusiveRun
 
 
@@ -17,7 +17,7 @@ def _http_get_json_sync(
     *,
     timeout_seconds: float = 10.0,
     headers: dict[str, str] | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Fetch JSON from a URL using stdlib urllib.
 
     Raises HealthCheckError on network or HTTP failures so adapters can
@@ -46,7 +46,7 @@ def _http_get_json_sync(
             f"health check timed out after {timeout_seconds}s at {url}"
         ) from exc
     try:
-        data: dict[str, Any] = json.loads(body.decode("utf-8"))
+        data: JsonObject = json.loads(body.decode("utf-8"))
     except json.JSONDecodeError as exc:
         raise HealthCheckError(
             f"health check returned non-JSON from {url}: {exc}"
@@ -59,7 +59,7 @@ async def http_get_json(
     *,
     timeout_seconds: float = 10.0,
     headers: dict[str, str] | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Async wrapper around :func:`_http_get_json_sync`."""
     import asyncio
 
@@ -78,8 +78,8 @@ def _http_request_json_sync(
     *,
     timeout_seconds: float = 15.0,
     headers: dict[str, str] | None = None,
-    body: dict[str, Any] | None = None,
-) -> tuple[int, Any]:
+    body: JsonObject | None = None,
+) -> tuple[int, JsonValue]:
     """Perform an HTTP request and return ``(status, parsed_json)``.
 
     Unlike the health-check helper, HTTP error statuses are returned to
@@ -124,8 +124,8 @@ async def http_request_json(
     *,
     timeout_seconds: float = 15.0,
     headers: dict[str, str] | None = None,
-    body: dict[str, Any] | None = None,
-) -> tuple[int, Any]:
+    body: JsonObject | None = None,
+) -> tuple[int, JsonValue]:
     """Async wrapper around :func:`_http_request_json_sync`."""
     import asyncio
 

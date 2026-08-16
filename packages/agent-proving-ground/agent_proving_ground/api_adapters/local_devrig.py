@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
 
+from agent_proving_ground._json import JsonObject
 from agent_proving_ground.api_adapters._env import (
     DevrigEnvError,
     build_devrig_env_for_agent,
@@ -134,8 +134,8 @@ class LocalDevrigAdapter(ApiAdapter):
     async def snapshot(
         self,
         world: World,  # noqa: ARG002
-    ) -> dict[str, Any]:
-        snapshot: dict[str, Any] = {
+    ) -> JsonObject:
+        snapshot: JsonObject = {
             "base_url": self._base_env.get("LOGION_API_BASE_URL"),
             "devrig_env": env_file_description(self._base_env),
         }
@@ -146,8 +146,8 @@ class LocalDevrigAdapter(ApiAdapter):
     async def query(
         self,
         world: World,
-        query: dict[str, Any],
-    ) -> dict[str, Any]:
+        query: JsonObject,
+    ) -> JsonObject:
         query_type = query.get("type")
         if query_type == "health_ok":
             try:

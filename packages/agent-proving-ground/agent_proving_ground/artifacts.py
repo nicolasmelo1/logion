@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from agent_proving_ground.redaction import redact_json, redact_text
 
@@ -33,7 +32,7 @@ class ArtifactStore:
     def write_json(
         self,
         relative: str,
-        value: Any,
+        value: object,
         *,
         redact: bool = True,
     ) -> Path:
@@ -69,7 +68,7 @@ class NullArtifactStore:
     def write_json(
         self,
         relative: str,  # noqa: ARG002
-        value: Any,  # noqa: ARG002
+        value: object,  # noqa: ARG002
         *,
         redact: bool = True,  # noqa: ARG002
     ) -> Path:
@@ -79,7 +78,7 @@ class NullArtifactStore:
         pass
 
 
-def _json_default(value: Any) -> Any:
+def _json_default(value: object) -> str:
     if isinstance(value, Path):
         return str(value)
     raise TypeError(

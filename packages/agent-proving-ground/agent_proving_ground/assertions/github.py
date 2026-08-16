@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
+from agent_proving_ground._json import (
+    JsonObject,
+    JsonValue,
+    child,
+    opt_str,
+)
 from agent_proving_ground.api_adapters.github_observer import (
     GithubObserver,
 )
@@ -15,12 +20,17 @@ from agent_proving_ground.assertions.base import (
 )
 
 
-def _as_int(value: Any) -> int:
-    if isinstance(value, bool):
+def _as_int(value: JsonValue) -> int:
+    """Read a GitHub API numeric field, defaulting to 0 when unusable.
+
+    Booleans are excluded deliberately: ``int(True)`` is 1, which would
+    silently turn a flag into a count.
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
         return 0
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except ValueError:
         return 0
 
 
@@ -31,11 +41,13 @@ class _GithubAssertionBase(Assertion):
     optional = False
 
     def _observer(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> GithubObserver | None:
-        repo = params.get("repository") or ""
-        role = params.get("role", "creator")
-        env_repo = ctx.world.data.get("gh_repo") if ctx.world.data else ""
+        repo = opt_str(params, "repository", "")
+        role = opt_str(params, "role", "creator")
+        env_repo = (
+            opt_str(ctx.world.data, "gh_repo", "") if ctx.world.data else ""
+        )
         return GithubObserver.from_env(role=role, repo=repo or env_repo or "")
 
 
@@ -43,7 +55,7 @@ class GithubPrExistsAssertion(_GithubAssertionBase):
     type = "github.pr_exists"
 
     async def evaluate(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> AssertionOutcome:
         observer = self._observer(ctx, params)
         if observer is None:
@@ -53,8 +65,8 @@ class GithubPrExistsAssertion(_GithubAssertionBase):
                 message="GitHub token or repo not configured",
                 evidence={},
             )
-        marker = params.get("marker")
-        head_branch = params.get("head_branch")
+        marker = opt_str(params, "marker")
+        head_branch = opt_str(params, "head_branch")
         pr = observer.pr_exists(head_branch=head_branch, marker=marker)
         if pr is not None:
             return AssertionOutcome(
@@ -78,7 +90,7 @@ class GithubPrMergedAssertion(_GithubAssertionBase):
     type = "github.pr_merged"
 
     async def evaluate(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> AssertionOutcome:
         observer = self._observer(ctx, params)
         if observer is None:
@@ -90,7 +102,7 @@ class GithubPrMergedAssertion(_GithubAssertionBase):
             )
         pr_number = _as_int(params.get("pr_number", 0))
         if not pr_number:
-            marker = params.get("marker")
+            marker = opt_str(params, "marker")
             pr = observer.pr_exists(marker=marker)
             if pr is not None:
                 pr_number = _as_int(pr.get("number", 0))
@@ -121,7 +133,7 @@ class GithubPrClosedUnmergedAssertion(_GithubAssertionBase):
     type = "github.pr_closed_unmerged"
 
     async def evaluate(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> AssertionOutcome:
         observer = self._observer(ctx, params)
         if observer is None:
@@ -159,7 +171,7 @@ class GithubIssueBotCommentMatchAssertion(_GithubAssertionBase):
     type = "github.issue_bot_comment_matches"
 
     async def evaluate(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> AssertionOutcome:
         issue_number = _as_int(params.get("issue", 0))
         pattern = str(params.get("pattern", ""))
@@ -191,7 +203,7 @@ class GithubIssueBotCommentMatchAssertion(_GithubAssertionBase):
         comments = observer.issue_comments(issue_number)
         bot_suffix = "[bot]"
         for comment in comments:
-            author = str(comment.get("user", {}).get("login", ""))
+            author = opt_str(child(comment, "user"), "login", "")
             body = str(comment.get("body", ""))
             if author.endswith(bot_suffix) and regex.search(body):
                 return AssertionOutcome(
@@ -219,7 +231,7 @@ class GithubInstallationDeliveredAssertion(_GithubAssertionBase):
     optional = True
 
     async def evaluate(
-        self, ctx: AssertionContext, params: dict[str, Any]
+        self, ctx: AssertionContext, params: JsonObject
     ) -> AssertionOutcome:
         observer = self._observer(ctx, params)
         if observer is None:

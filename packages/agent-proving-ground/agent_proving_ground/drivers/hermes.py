@@ -4,9 +4,17 @@ import asyncio
 import os
 import re
 import shutil
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
+from agent_proving_ground._json import (
+    JsonObject,
+    JsonValue,
+    child,
+    elements,
+    opt_str,
+)
 from agent_proving_ground.drivers._provider import _override_flag
 from agent_proving_ground.drivers.base import (
     AgentDriver,
@@ -20,7 +28,7 @@ from agent_proving_ground.redaction import redact_text
 async def _stream_output(
     proc: asyncio.subprocess.Process,
     transcript_path: Path,
-    redactor: Any,
+    redactor: Callable[[str], str],
 ) -> None:
     assert proc.stdout is not None
     while True:
@@ -39,7 +47,7 @@ async def _run_with_pty(
     env: dict[str, str],
     transcript_path: Path,
     timeout_seconds: int,
-    redactor: Any,
+    redactor: Callable[[str], str],
 ) -> tuple[int | None, str]:
     """Run hermes in a real pseudo-terminal so it believes stdin is a TTY."""
     import pty
@@ -225,7 +233,7 @@ class HermesDriver(AgentDriver):
 
     def __init__(
         self,
-        driver_config: dict[str, Any] | None = None,
+        driver_config: JsonObject | None = None,
     ) -> None:
         self._driver_config = driver_config or {}
         self._launch: AgentLaunch | None = None
@@ -313,7 +321,7 @@ class HermesDriver(AgentDriver):
         self._launch = None
 
     def _resolve_executable(self) -> str | None:
-        provider_cfg = self._driver_config.get("hermes", {})
+        provider_cfg = child(self._driver_config, "hermes")
         explicit = provider_cfg.get("command")
         if explicit:
             path = shutil.which(str(explicit))
@@ -321,14 +329,14 @@ class HermesDriver(AgentDriver):
         return shutil.which(self.default_command)
 
     def _effective_args(self) -> list[str]:
-        provider_cfg = self._driver_config.get("hermes", {})
+        provider_cfg = child(self._driver_config, "hermes")
         args = self._coerce_arg_list(
             provider_cfg.get("args", self.default_args)
         )
-        extra = self._coerce_arg_list(provider_cfg.get("extra_args", []))
+        extra = self._coerce_arg_list(elements(provider_cfg, "extra_args"))
         combined = [*args, *extra]
-        model = provider_cfg.get("model")
-        provider = provider_cfg.get("provider")
+        model = opt_str(provider_cfg, "model")
+        provider = opt_str(provider_cfg, "provider")
         if model:
             combined = _override_flag(combined, "--model", model)
         if provider:
@@ -336,7 +344,9 @@ class HermesDriver(AgentDriver):
         return combined
 
     @staticmethod
-    def _coerce_arg_list(value: Any) -> list[str]:
+    def _coerce_arg_list(value: JsonValue) -> list[str]:
         if isinstance(value, str):
             return [value]
-        return [str(item) for item in value]
+        if isinstance(value, Sequence):
+            return [str(item) for item in value]
+        return []

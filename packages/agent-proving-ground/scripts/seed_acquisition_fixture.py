@@ -30,7 +30,8 @@ import urllib.error
 import urllib.request
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+
+from agent_proving_ground._json import JsonObject, JsonValue
 
 #: Pinned so re-running the seed reuses the same fixtures instead of
 #: accumulating near-duplicates the reconciler would call ambiguous.
@@ -75,8 +76,8 @@ class Api:
         path: str,
         *,
         role: str = "admin",
-        body: dict[str, Any] | None = None,
-    ) -> tuple[int, Any]:
+        body: JsonObject | None = None,
+    ) -> tuple[int, JsonValue]:
         data = json.dumps(body).encode() if body is not None else None
         headers = {"Authorization": f"Bearer {self._keys[role]}"}
         if data is not None:
@@ -101,9 +102,9 @@ class Api:
         path: str,
         *,
         role: str = "admin",
-        body: dict[str, Any] | None = None,
+        body: JsonObject | None = None,
         ok: tuple[int, ...] = (200, 201),
-    ) -> Any:
+    ) -> JsonValue:
         status, payload = self.request(method, path, role=role, body=body)
         if status not in ok:
             raise SystemExit(
@@ -155,7 +156,7 @@ def _skill_bundle() -> bytes:
 
 
 def _upsert_listing(api: Api, *, with_commit: bool) -> str:
-    item: dict[str, Any] = {
+    item: JsonObject = {
         "canonical": LISTING_CANONICAL,
         "title": "Find Skills (upstream)",
         "summary": "Upstream skill-discovery helper, installed by npx skills.",
@@ -274,7 +275,7 @@ def _bundle_digest() -> str:
     return hashlib.sha256(_skill_bundle()).hexdigest()
 
 
-def _existing_course(api: Api) -> dict[str, Any] | None:
+def _existing_course(api: Api) -> JsonObject | None:
     """The newest fixture course, if one is already usable.
 
     A course published before the projection wiring existed is published
@@ -343,7 +344,7 @@ def _upload_course_assets(api: Api, course_id: str) -> str:
 
 def _await(
     api: Api, path: str, *, role: str, check, what: str, tries: int = 60
-) -> dict[str, Any]:
+) -> JsonObject:
     for _ in range(tries):
         status, payload = api.request("GET", path, role=role)
         if status == 200 and check(payload):
@@ -364,7 +365,7 @@ def _publish_course(api: Api) -> str:
     return course_id
 
 
-def _create_course(api: Api) -> dict[str, Any]:
+def _create_course(api: Api) -> JsonObject:
     """Create the fixture course, stepping aside from a stale namesake."""
     # The digest-derived slug lets a re-seed reuse its own course. A
     # leftover published-but-unacquirable course from an older backend
@@ -430,7 +431,7 @@ def _publish_existing(api: Api, course_id: str) -> None:
     )
 
 
-def _find_resource(api: Api, canonical: str) -> dict[str, Any] | None:
+def _find_resource(api: Api, canonical: str) -> JsonObject | None:
     cursor: str | None = None
     while True:
         suffix = f"&cursor={cursor}" if cursor else ""
@@ -446,7 +447,7 @@ def _find_resource(api: Api, canonical: str) -> dict[str, Any] | None:
             return None
 
 
-def _require_single_version(api: Api, resource: dict[str, Any]) -> None:
+def _require_single_version(api: Api, resource: JsonObject) -> None:
     """Refuse to seed a fixture the reconciler cannot attribute.
 
     Several versions of one resource at the same upstream revision are
@@ -469,7 +470,7 @@ def _require_single_version(api: Api, resource: dict[str, Any]) -> None:
         )
 
 
-def _acquirable(api: Api, resource: dict[str, Any]) -> dict[str, Any] | None:
+def _acquirable(api: Api, resource: JsonObject) -> JsonObject | None:
     """Return the first version whose acquisition plan actually resolves."""
     versions = api.expect(
         "GET", f"/v1/resources/{resource['id']}/versions?limit=50"

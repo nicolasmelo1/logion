@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
+from agent_proving_ground._json import JsonObject
 from agent_proving_ground.config import InconclusiveRun
 
 
@@ -77,7 +77,7 @@ def validate_devrig_env(env: dict[str, str], *, label: str = "devrig") -> None:
         )
 
 
-def env_file_description(env: dict[str, str]) -> dict[str, Any]:
+def env_file_description(env: dict[str, str]) -> JsonObject:
     """Return a redaction-safe summary of devrig env for artifacts."""
     return {
         "mode": env.get("LOGION_DEVRIG_MODE"),

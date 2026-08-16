@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agent_proving_ground._json import (
+    JsonObject,
+    JsonValue,
+    children,
+    elements,
+    opt_bool,
+    opt_int,
+    opt_str,
+)
 from agent_proving_ground.api_adapters._queries import (
     LogionApiQueries,
     RoleKeyStore,
@@ -162,12 +170,12 @@ class MockApiAdapter(ApiAdapter):
     async def start(self) -> None:
         pass
 
-    def seed_resource_fixture(self, fixture: dict[str, Any]) -> None:
+    def seed_resource_fixture(self, fixture: JsonObject) -> None:
         """Load the public fixture used by the deterministic scenario test."""
-        for listing in fixture.get("indexed_listings", []):
+        for listing in children(fixture, "indexed_listings"):
             listing_item = MockIndexedListing.model_validate(listing)
             self._state.indexed_listings[listing_item.id] = listing_item
-        for course in fixture.get("courses", []):
+        for course in children(fixture, "courses"):
             course_item = MockCourse.model_validate(course)
             self._state.courses[course_item.id] = course_item
 
@@ -208,14 +216,14 @@ class MockApiAdapter(ApiAdapter):
             },
         )
 
-    async def snapshot(self, world: World) -> dict[str, Any]:  # noqa: ARG002
+    async def snapshot(self, world: World) -> JsonObject:  # noqa: ARG002
         return self._state.model_dump(mode="json")
 
     async def query(  # noqa: C901
         self,
         world: World,  # noqa: ARG002
-        query: dict[str, Any],
-    ) -> dict[str, Any]:
+        query: JsonObject,
+    ) -> JsonObject:
         match query.get("type"):
             case "course_exists":
                 status = query.get("status")
@@ -297,7 +305,7 @@ class MockApiAdapter(ApiAdapter):
                         entry.reference or "",
                     )
                     seen[marker] = seen.get(marker, 0) + 1
-                duplicates = [
+                duplicates: list[JsonObject] = [
                     {"user_id": m[0], "reference": m[2], "count": count}
                     for m, count in seen.items()
                     if count > 1
@@ -351,8 +359,10 @@ class MockApiAdapter(ApiAdapter):
             case "bounty_submission_rejected":
                 return {"rejected": True}
             case "resource_projection_exists":
-                projection_kind = query.get(
-                    "projection_kind", "indexed_listing"
+                projection_kind = opt_str(
+                    query,
+                    "projection_kind",
+                    "indexed_listing",
                 )
                 for resource in self._state.resources.values():
                     if any(
@@ -424,7 +434,7 @@ class MockApiAdapter(ApiAdapter):
                 }
             case "resource_search_returns_kinds":
                 kinds = query.get("projection_kinds")
-                canonicals = query.get("canonicals", [])
+                canonicals = elements(query, "canonicals")
                 if (
                     not isinstance(kinds, list)
                     or not kinds
@@ -443,11 +453,14 @@ class MockApiAdapter(ApiAdapter):
                         "unsupported": True,
                         "reason": "invalid fixture expectations",
                     }
-                expected_pairs = set(zip(canonicals, kinds, strict=True))
+                expected_pairs = {
+                    (str(canonical), str(kind))
+                    for canonical, kind in zip(canonicals, kinds, strict=True)
+                }
                 found_pairs = {
                     (
                         resource.canonical_uri,
-                        projection.get("projection_kind"),
+                        str(projection.get("projection_kind")),
                     )
                     for resource in self._state.resources.values()
                     for projection in resource.projections
@@ -467,8 +480,8 @@ class MockApiAdapter(ApiAdapter):
                     return {"found": True, "purchase_id": purchase.id}
                 return {"found": False}
             case "harness_scope_targets_resolved":
-                harnesses = query.get("harnesses", [])
-                scopes = query.get("scopes", [])
+                harnesses = elements(query, "harnesses")
+                scopes = elements(query, "scopes")
                 if (
                     not isinstance(harnesses, list)
                     or not isinstance(scopes, list)
@@ -507,7 +520,7 @@ class MockApiAdapter(ApiAdapter):
             case "resource_acquire_plan_dry_run":
                 harness = query.get("harness")
                 scope = query.get("scope")
-                zero_write = query.get("zero_write", True)
+                zero_write = opt_bool(query, "zero_write", default=True)
                 if not harness or not scope:
                     return {
                         "valid": False,
@@ -525,8 +538,8 @@ class MockApiAdapter(ApiAdapter):
                     ),
                 }
             case "harness_scope_nested_repo":
-                harnesses = query.get("harnesses", [])
-                nested_repo = query.get("nested_repo", "")
+                harnesses = elements(query, "harnesses")
+                nested_repo = opt_str(query, "nested_repo", "")
                 if (
                     not isinstance(harnesses, list)
                     or not harnesses
@@ -545,7 +558,7 @@ class MockApiAdapter(ApiAdapter):
                     "nested_repo": nested_repo,
                 }
             case "harness_inventory_distinct_scopes":
-                harnesses = query.get("harnesses", [])
+                harnesses = elements(query, "harnesses")
                 if not isinstance(harnesses, list) or not harnesses:
                     return {
                         "distinct": False,
@@ -559,18 +572,18 @@ class MockApiAdapter(ApiAdapter):
             case "resource_acquisition_exists":
                 return {
                     "acquired": True,
-                    "resource_id": query.get("resource_id", "r"),
+                    "resource_id": opt_str(query, "resource_id", "r"),
                     "installation_id": "i",
-                    "verification": query.get("verification", "exact"),
-                    "channel": query.get("channel", "logion_bundle"),
+                    "verification": opt_str(query, "verification", "exact"),
+                    "channel": opt_str(query, "channel", "logion_bundle"),
                 }
             case "resource_distribution_selected":
-                channel = query.get("channel", "logion_bundle")
-                allowed = query.get("allowed_channels") or []
+                channel = opt_str(query, "channel", "logion_bundle")
+                allowed = elements(query, "allowed_channels")
                 return {
                     "selected": channel in allowed if allowed else True,
                     "channel": channel,
-                    "distribution_id": query.get("distribution_id", "d"),
+                    "distribution_id": opt_str(query, "distribution_id", "d"),
                 }
             case "native_install_reconciled":
                 return {
@@ -580,11 +593,11 @@ class MockApiAdapter(ApiAdapter):
                     "ambiguous_count": 0,
                     "drifted_count": 0,
                     "channels": [
-                        query.get("expected_channel", "logion_bundle")
+                        opt_str(query, "expected_channel", "logion_bundle")
                     ],
                 }
             case "inventory_receipt_matches":
-                iid = query.get("installation_id", "i")
+                iid = opt_str(query, "installation_id", "i")
                 return {
                     "matches": True,
                     "installation_id": iid,
@@ -593,14 +606,14 @@ class MockApiAdapter(ApiAdapter):
             case "installed_artifact_digest_matches":
                 return {
                     "digest_matches": True,
-                    "content_digest": query.get("content_digest", ""),
-                    "computed_digest": query.get("content_digest", ""),
+                    "content_digest": opt_str(query, "content_digest", ""),
+                    "computed_digest": opt_str(query, "content_digest", ""),
                     "files": 1,
                 }
             case "install_drift_reported":
                 return {
                     "drift_reported": True,
-                    "installation_id": query.get("installation_id", "i"),
+                    "installation_id": opt_str(query, "installation_id", "i"),
                     "drifted_count": 1,
                 }
             case "scope_isolation_preserved":
@@ -611,7 +624,7 @@ class MockApiAdapter(ApiAdapter):
                     "changed": [],
                 }
             case "acquisition_idempotent":
-                iid = query.get("installation_id", "i")
+                iid = opt_str(query, "installation_id", "i")
                 return {
                     "idempotent": True,
                     "first_installation_id": iid,
@@ -621,7 +634,7 @@ class MockApiAdapter(ApiAdapter):
                 return {"clean": True}
             case "native_use_observed":
                 agent = query.get("agent")
-                repo = query.get("repository", "")
+                repo = opt_str(query, "repository", "")
                 for obs in self._state.usage_observations:
                     if obs.agent_id == f"agent_{agent}" and (
                         not repo or obs.repository == repo
@@ -636,7 +649,7 @@ class MockApiAdapter(ApiAdapter):
                 return {"observed": False}
             case "feedback_pending":
                 agent = query.get("agent")
-                repo = query.get("repository", "")
+                repo = opt_str(query, "repository", "")
                 pending = [
                     p
                     for p in self._state.pending_usage
@@ -729,7 +742,7 @@ class MockApiAdapter(ApiAdapter):
                 return {"error": "unknown query type"}
 
     def record_operation(  # noqa: C901
-        self, agent_id: str, operation: str, **kwargs: Any
+        self, agent_id: str, operation: str, **kwargs: JsonValue
     ) -> None:
         if operation == "backfill_resources":
             created = 0
@@ -772,8 +785,8 @@ class MockApiAdapter(ApiAdapter):
                 "projections_linked": linked,
             })
         elif operation == "create_usage_report":
-            course_id = kwargs.get("course_id", "course_fixture")
-            version = kwargs.get("course_version", "v1")
+            course_id = opt_str(kwargs, "course_id", "course_fixture")
+            version = opt_str(kwargs, "course_version", "v1")
             self._state.usage_reports.append(
                 MockUsageReport(
                     id=f"usage_{len(self._state.usage_reports)}",
@@ -783,29 +796,32 @@ class MockApiAdapter(ApiAdapter):
                 )
             )
         elif operation == "publish_course":
-            course_id = kwargs.get(
-                "course_id", f"course_{len(self._state.courses)}"
+            course_id = opt_str(
+                kwargs, "course_id", f"course_{len(self._state.courses)}"
             )
             self._state.courses[course_id] = MockCourse(
                 id=course_id,
                 owner_agent_id=f"agent_{agent_id}",
-                title=kwargs.get("title", "Untitled"),
+                title=opt_str(kwargs, "title", "Untitled"),
                 status="published",
-                price_cents=kwargs.get("price_cents", 0),
+                price_cents=opt_int(kwargs, "price_cents", 0),
                 version="v1",
             )
         elif operation == "purchase_course":
-            course_id = kwargs.get("course_id")
-            if course_id is None:
+            resolved_id = opt_str(kwargs, "course_id")
+            if resolved_id is None:
                 published = [
                     c
                     for c in self._state.courses.values()
                     if c.status == "published"
                 ]
-                course_id = published[0].id if published else "course_fixture"
+                resolved_id = (
+                    published[0].id if published else "course_fixture"
+                )
+            course_id = resolved_id
             course = self._state.courses.get(course_id)
-            price = kwargs.get(
-                "price_cents", course.price_cents if course else 0
+            price = opt_int(
+                kwargs, "price_cents", course.price_cents if course else 0
             )
             self._state.purchases.append(
                 MockPurchase(
@@ -825,7 +841,7 @@ class MockApiAdapter(ApiAdapter):
                 )
             )
         elif operation == "create_review":
-            course_id = kwargs.get("course_id", "course_fixture")
+            course_id = opt_str(kwargs, "course_id", "course_fixture")
             course = self._state.courses.get(course_id)
             self._state.reviews.append(
                 MockReview(
@@ -833,25 +849,25 @@ class MockApiAdapter(ApiAdapter):
                     course_id=course_id,
                     course_version=course.version if course else "v1",
                     reviewer_agent_id=f"agent_{agent_id}",
-                    rating=kwargs.get("rating", 5),
+                    rating=opt_int(kwargs, "rating", 5),
                 )
             )
         elif operation == "create_bounty":
-            bounty_id = kwargs.get(
-                "bounty_id", f"bounty_{len(self._state.bounties)}"
+            bounty_id = opt_str(
+                kwargs, "bounty_id", f"bounty_{len(self._state.bounties)}"
             )
             self._state.bounties[bounty_id] = MockBounty(
                 id=bounty_id,
                 creator_agent_id=f"agent_{agent_id}",
-                course_id=kwargs.get("course_id", "course_fixture"),
+                course_id=opt_str(kwargs, "course_id", "course_fixture"),
                 status="open",
-                amount_cents=kwargs.get("amount_cents", 0),
+                amount_cents=opt_int(kwargs, "amount_cents", 0),
             )
         elif operation == "fund_bounty":
-            bounty_id = kwargs.get("bounty_id")
+            fund_bounty_id = opt_str(kwargs, "bounty_id")
             bounty = (
-                self._state.bounties.get(bounty_id)
-                if isinstance(bounty_id, str)
+                self._state.bounties.get(fund_bounty_id)
+                if fund_bounty_id is not None
                 else None
             )
             if bounty is not None and bounty.status == "open":
@@ -866,20 +882,20 @@ class MockApiAdapter(ApiAdapter):
                     )
                 )
         elif operation == "submit_bounty":
-            bounty_id = kwargs.get("bounty_id")
-            if bounty_id in self._state.bounties:
+            submit_bounty_id = opt_str(kwargs, "bounty_id", "")
+            if submit_bounty_id in self._state.bounties:
                 self._state.bounty_submissions.append(
                     MockBountySubmission(
                         id=f"submission_{len(self._state.bounty_submissions)}",
-                        bounty_id=bounty_id,
+                        bounty_id=submit_bounty_id,
                         submitter_agent_id=f"agent_{agent_id}",
                         status="submitted",
                     )
                 )
         elif operation == "accept_bounty_submission":
-            bounty_id = kwargs.get("bounty_id")
+            accept_bounty_id = opt_str(kwargs, "bounty_id")
             for sub in self._state.bounty_submissions:
-                if bounty_id and sub.bounty_id != bounty_id:
+                if accept_bounty_id and sub.bounty_id != accept_bounty_id:
                     continue
                 bounty = self._state.bounties.get(sub.bounty_id)
                 if bounty is None:
@@ -893,12 +909,12 @@ class MockApiAdapter(ApiAdapter):
                 MockUsageObservation(
                     observation_id=self._next_observation_id(),
                     agent_id=f"agent_{agent_id}",
-                    resource_id=kwargs.get("resource_id", "r1"),
-                    version_id=kwargs.get("version_id", "v1"),
-                    channel=kwargs.get("channel", "npx_skills"),
-                    scope_id=kwargs.get("scope_id", "scope_repo"),
-                    repository=kwargs.get("repository", ""),
-                    event=kwargs.get("event", "resource_invoked"),
+                    resource_id=opt_str(kwargs, "resource_id", "r1"),
+                    version_id=opt_str(kwargs, "version_id", "v1"),
+                    channel=opt_str(kwargs, "channel", "npx_skills"),
+                    scope_id=opt_str(kwargs, "scope_id", "scope_repo"),
+                    repository=opt_str(kwargs, "repository", ""),
+                    event=opt_str(kwargs, "event", "resource_invoked"),
                 )
             )
         elif operation == "create_pending_usage":
@@ -906,9 +922,9 @@ class MockApiAdapter(ApiAdapter):
                 MockPendingUsage(
                     pending_id=self._next_pending_id(),
                     agent_id=f"agent_{agent_id}",
-                    resource_id=kwargs.get("resource_id", "r1"),
-                    version_id=kwargs.get("version_id", "v1"),
-                    repository=kwargs.get("repository", ""),
+                    resource_id=opt_str(kwargs, "resource_id", "r1"),
+                    version_id=opt_str(kwargs, "version_id", "v1"),
+                    repository=opt_str(kwargs, "repository", ""),
                 )
             )
         elif operation == "create_resource_feedback":
@@ -916,9 +932,9 @@ class MockApiAdapter(ApiAdapter):
                 fb
                 for fb in self._state.resource_feedback
                 if fb.reporter_agent_id == f"agent_{agent_id}"
-                and fb.resource_id == kwargs.get("resource_id", "r1")
-                and fb.version_id == kwargs.get("version_id", "v1")
-                and fb.task_class == kwargs.get("task_class", "")
+                and fb.resource_id == opt_str(kwargs, "resource_id", "r1")
+                and fb.version_id == opt_str(kwargs, "version_id", "v1")
+                and fb.task_class == opt_str(kwargs, "task_class", "")
             ]
             if existing:
                 # Idempotent: return existing
@@ -926,23 +942,31 @@ class MockApiAdapter(ApiAdapter):
             self._state.resource_feedback.append(
                 MockResourceFeedback(
                     id=self._next_feedback_id(),
-                    resource_id=kwargs.get("resource_id", "r1"),
-                    version_id=kwargs.get("version_id", "v1"),
+                    resource_id=opt_str(kwargs, "resource_id", "r1"),
+                    version_id=opt_str(kwargs, "version_id", "v1"),
                     reporter_agent_id=f"agent_{agent_id}",
-                    rating=kwargs.get("rating", 4),
-                    acquisition_channel=kwargs.get(
-                        "acquisition_channel", "npx_skills"
+                    rating=opt_int(kwargs, "rating", 4),
+                    acquisition_channel=opt_str(
+                        kwargs,
+                        "acquisition_channel",
+                        "npx_skills",
                     ),
-                    installation_id=kwargs.get("installation_id", "i1"),
-                    body=kwargs.get("body", ""),
-                    task_class=kwargs.get(
-                        "task_class", "software-development"
+                    installation_id=opt_str(kwargs, "installation_id", "i1"),
+                    body=opt_str(kwargs, "body", ""),
+                    task_class=opt_str(
+                        kwargs,
+                        "task_class",
+                        "software-development",
                     ),
-                    completed_task=kwargs.get("completed_task", True),
-                    projection_disposition=kwargs.get(
-                        "projection_disposition", "not_a_course"
+                    completed_task=opt_bool(
+                        kwargs, "completed_task", default=True
                     ),
-                    course_review_id=kwargs.get("course_review_id"),
+                    projection_disposition=opt_str(
+                        kwargs,
+                        "projection_disposition",
+                        "not_a_course",
+                    ),
+                    course_review_id=opt_str(kwargs, "course_review_id"),
                 )
             )
         elif operation == "project_feedback_to_course_review":
@@ -951,8 +975,10 @@ class MockApiAdapter(ApiAdapter):
                     fb.reporter_agent_id == f"agent_{agent_id}"
                     and fb.course_review_id is None
                 ):
-                    fb.course_review_id = kwargs.get(
-                        "course_review_id", "review_1"
+                    fb.course_review_id = opt_str(
+                        kwargs,
+                        "course_review_id",
+                        "review_1",
                     )
                     fb.projection_disposition = "projected"
                     break

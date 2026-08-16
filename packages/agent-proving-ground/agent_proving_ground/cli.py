@@ -7,6 +7,7 @@ import sys
 from datetime import UTC
 from pathlib import Path
 
+from agent_proving_ground._json import as_object, children
 from agent_proving_ground.api_adapters.base import ApiAdapter
 from agent_proving_ground.api_adapters.local_devrig import (
     LocalDevrigAdapter,
@@ -147,14 +148,17 @@ async def _cmd_report(args: argparse.Namespace) -> int:
     if not report_json.exists():
         print(f"no report.json in {run_dir}", file=sys.stderr)
         return 2
-    data = json.loads(report_json.read_text(encoding="utf-8"))
+    data = as_object(
+        json.loads(report_json.read_text(encoding="utf-8")),
+        where="report",
+    )
     print(f"run_id: {data['run_id']}")
     print(f"scenario: {data['scenario']}")
     print(f"status: {data['status']}")
     print(f"api_adapter: {data['api_adapter']}")
-    for phase in data.get("phase_results", []):
+    for phase in children(data, "phase_results"):
         print(f"phase {phase['phase_id']}: {phase['status']}")
-    for assertion in data.get("assertion_results", []):
+    for assertion in children(data, "assertion_results"):
         print(f"assertion {assertion['type']}: {assertion['status']}")
     failure = data.get("failure_message")
     if failure:

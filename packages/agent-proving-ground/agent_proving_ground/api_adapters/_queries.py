@@ -5,9 +5,17 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any
 from urllib.parse import urlencode
 
+from agent_proving_ground._json import (
+    JsonArray,
+    JsonObject,
+    JsonValue,
+    child,
+    children,
+    elements,
+    opt_str,
+)
 from agent_proving_ground.api_adapters._http import http_request_json
 
 ROLE_KEYS_FILE_ENV = "LOGION_PROVING_GROUND_ROLE_KEYS_FILE"
@@ -101,9 +109,9 @@ class LogionApiQueries:
 
     async def query(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         if not self._keys.configured:
             return _unsupported("no proving-ground API keys configured")
         query_type = query.get("type")
@@ -112,7 +120,7 @@ class LogionApiQueries:
             return _unsupported(f"query {query_type} not implemented")
         return await handler(query, agent_roles)
 
-    async def baseline(self, agent_roles: dict[str, str]) -> dict[str, Any]:
+    async def baseline(self, agent_roles: dict[str, str]) -> JsonObject:
         """Capture existing marketplace state before a scenario mutates it."""
         course_ids: set[str] = set()
         review_ids: set[str] = set()
@@ -155,7 +163,7 @@ class LogionApiQueries:
             "credit_ledger_ids": credit_ledger_ids,
         }
 
-    async def _get(self, path: str, role: str | None) -> tuple[int, Any]:
+    async def _get(self, path: str, role: str | None) -> tuple[int, JsonValue]:
         key = self._keys.api_key(role)
         headers = {"Authorization": f"Bearer {key}"} if key else {}
         try:
@@ -171,9 +179,9 @@ class LogionApiQueries:
         role: str | None,
         *,
         limit: int = 50,
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         """Collect a cursor-paginated JSON collection without truncation."""
-        rows: list[dict[str, Any]] = []
+        rows: list[JsonObject] = []
         cursor: str | None = None
         for _ in range(1000):
             separator = "&" if "?" in path else "?"
@@ -214,15 +222,22 @@ class LogionApiQueries:
         return 0, rows
 
     def _role_of(
-        self, agent_id: str | None, agent_roles: dict[str, str]
+        self, agent_id: JsonValue, agent_roles: dict[str, str]
     ) -> str | None:
-        if agent_id is None:
+        """Map a scenario's agent reference to a devrig role.
+
+        Takes ``JsonValue`` because every caller reads the id straight
+        out of the scenario query, where it is whatever the YAML held.
+        A non-string is treated as absent rather than raising: an
+        unresolved role already means "run this query unauthenticated".
+        """
+        if not isinstance(agent_id, str):
             return None
         return agent_roles.get(agent_id)
 
     async def _q_github_identity_linked(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         role = self._role_of(
             query.get("identity_agent") or query.get("agent"), agent_roles
         )
@@ -252,8 +267,8 @@ class LogionApiQueries:
         }
 
     async def _q_setup_token_pending(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         role = self._role_of(query.get("owner_agent"), agent_roles)
         prefix = str(query.get("token_prefix") or "")
         if not prefix:
@@ -285,7 +300,7 @@ class LogionApiQueries:
             },
         }
 
-    async def _my_courses(self, role: str | None) -> list[dict[str, Any]]:
+    async def _my_courses(self, role: str | None) -> list[JsonObject]:
         status, data = await self._get("/v1/courses/mine", role)
         if status != 200 or not isinstance(data, dict):
             return []
@@ -299,7 +314,7 @@ class LogionApiQueries:
         balance = data.get("balance_cents")
         return balance if isinstance(balance, int) else None
 
-    async def _ledger(self, role: str | None) -> list[dict[str, Any]]:
+    async def _ledger(self, role: str | None) -> list[JsonObject]:
         status, data = await self._get("/v1/credits/ledger", role)
         if status != 200:
             return []
@@ -309,7 +324,7 @@ class LogionApiQueries:
             return data["items"]
         return []
 
-    async def _bounties(self, role: str | None) -> list[dict[str, Any]]:
+    async def _bounties(self, role: str | None) -> list[JsonObject]:
         status, data = await self._get("/v1/bounties", role)
         if status != 200:
             return []
@@ -320,8 +335,8 @@ class LogionApiQueries:
         return []
 
     async def _q_course_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         owner_role = self._role_of(query.get("owner_agent"), agent_roles)
         wanted_status = query.get("status")
         baseline_course_ids = _baseline_ids(query, "course_ids")
@@ -350,13 +365,13 @@ class LogionApiQueries:
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _q_purchase_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         buyer_role = self._role_of(query.get("buyer_agent"), agent_roles)
         entries = await self._ledger(buyer_role)
         for entry in entries:
-            kind = str(entry.get("kind", "")).lower()
-            direction = str(entry.get("direction", "")).lower()
+            kind = str(opt_str(entry, "kind", "")).lower()
+            direction = str(opt_str(entry, "direction", "")).lower()
             if "purchase" in kind and direction in {"debit", "out", ""}:
                 return {
                     "found": True,
@@ -392,7 +407,7 @@ class LogionApiQueries:
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _candidate_course_ids(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
+        self, query: JsonObject, agent_roles: dict[str, str]
     ) -> list[str]:
         candidates: list[str] = []
         baseline_course_ids = _baseline_ids(query, "course_ids")
@@ -407,10 +422,10 @@ class LogionApiQueries:
 
     async def _review_for(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         reviewer_role: str | None,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any] | None:
+    ) -> JsonObject | None:
         candidates = await self._candidate_course_ids(query, agent_roles)
         baseline_review_ids = _baseline_ids(query, "review_ids")
         for course_id in candidates:
@@ -430,8 +445,8 @@ class LogionApiQueries:
         return None
 
     async def _q_review_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         reviewer_role = self._role_of(
             query.get("reviewer_agent") or query.get("agent"), agent_roles
         )
@@ -445,8 +460,8 @@ class LogionApiQueries:
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _q_usage_report_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         # In the real product the usage report and the course review share
         # the same API surface (upsert_course_review + telemetry fields).
         result = await self._q_review_exists(query, agent_roles)
@@ -455,8 +470,8 @@ class LogionApiQueries:
         return result
 
     async def _q_bounty_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         wanted_status = query.get("status")
         wanted_bounty_id = query.get("bounty")
@@ -488,8 +503,8 @@ class LogionApiQueries:
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _q_bounty_submission_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         submitter_role = self._role_of(
             query.get("submitter_agent"), agent_roles
         )
@@ -540,8 +555,8 @@ class LogionApiQueries:
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _q_bounty_accepted(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         baseline_bounty_ids = _baseline_ids(query, "bounty_ids")
         for bounty in await self._bounties(creator_role):
@@ -560,26 +575,26 @@ class LogionApiQueries:
 
     async def _q_no_double_credit_debit(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         roles = set(agent_roles.values()) or {"buyer"}
         for role in roles:
             entries = await self._ledger(role)
             baseline = query.get("_baseline")
             baseline_ids = set()
             if isinstance(baseline, dict):
-                role_ids = baseline.get("credit_ledger_ids", {}).get(role, [])
+                role_ids = child(baseline, "credit_ledger_ids").get(role, [])
                 if isinstance(role_ids, list):
                     baseline_ids = {str(entry_id) for entry_id in role_ids}
             seen: dict[tuple[str, int], int] = {}
             for entry in entries:
                 if str(entry.get("id")) in baseline_ids:
                     continue
-                kind = str(entry.get("kind", "")).lower()
+                kind = str(opt_str(entry, "kind", "")).lower()
                 if "purchase" not in kind:
                     continue
-                marker = (kind, int(entry.get("amount_cents") or 0))
+                marker = (kind, _as_count(entry.get("amount_cents")))
                 seen[marker] = seen.get(marker, 0) + 1
             duplicates = {k: v for k, v in seen.items() if v > 1}
             if duplicates:
@@ -598,12 +613,12 @@ class LogionApiQueries:
 
     async def _q_course_remains_purchasable(
         self,
-        query: dict[str, Any],  # noqa: ARG002
+        query: JsonObject,  # noqa: ARG002
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         buyer_role = "buyer" if "buyer" in agent_roles.values() else None
         status, data = await self._get("/v1/listings", buyer_role)
-        items: list[dict[str, Any]] = []
+        items: list[JsonObject] = []
         if status == 200:
             if isinstance(data, dict) and isinstance(data.get("items"), list):
                 items = data["items"]
@@ -619,9 +634,9 @@ class LogionApiQueries:
 
     async def _q_admin_state_observed(
         self,
-        query: dict[str, Any],  # noqa: ARG002
+        query: JsonObject,  # noqa: ARG002
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         admin_role = "admin"
         if not self._keys.api_key(admin_role):
             return _unsupported("no admin API key configured")
@@ -643,9 +658,9 @@ class LogionApiQueries:
 
     async def _q_credit_balance_changed(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         requested_role = str(query.get("role") or "buyer")
         role = self._role_of(requested_role, agent_roles) or requested_role
         baseline = query.get("_baseline")
@@ -680,9 +695,9 @@ class LogionApiQueries:
 
     async def _q_source_link_exists(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         course_id = query.get("course")
         if not course_id:
             return {"found": False, "evidence": {"source": "api"}}
@@ -707,9 +722,9 @@ class LogionApiQueries:
 
     async def _q_bounty_submission_pr_opened(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         bounty_id = query.get("bounty")
         if not bounty_id:
@@ -742,9 +757,9 @@ class LogionApiQueries:
 
     async def _q_bounty_submission_accepted(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         bounty_id = query.get("bounty")
         if not bounty_id:
@@ -767,9 +782,9 @@ class LogionApiQueries:
 
     async def _q_bounty_submission_rejected(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         creator_role = self._role_of(query.get("creator_agent"), agent_roles)
         bounty_id = query.get("bounty")
         if not bounty_id:
@@ -796,9 +811,9 @@ class LogionApiQueries:
 
     async def _q_indexed_listing_exists(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         listing_id = query.get("listing")
         if not listing_id:
             return {"found": False, "evidence": {"source": "api"}}
@@ -809,7 +824,7 @@ class LogionApiQueries:
         if status == 200 and isinstance(data, dict):
             return {
                 "found": True,
-                "listing_id": str(data.get("id", "")),
+                "listing_id": str(opt_str(data, "id", "")),
                 "tier": data.get("tier"),
                 "evidence": {"source": "api"},
             }
@@ -817,9 +832,9 @@ class LogionApiQueries:
 
     async def _q_indexed_listing_tier(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         listing_id = query.get("listing")
         expected_tier = query.get("expected_tier")
         if not listing_id or not expected_tier:
@@ -832,7 +847,7 @@ class LogionApiQueries:
             actual_tier = data.get("tier")
             return {
                 "tier_matches": actual_tier == expected_tier,
-                "listing_id": str(data.get("id", "")),
+                "listing_id": str(opt_str(data, "id", "")),
                 "tier": actual_tier,
                 "evidence": {"source": "api"},
             }
@@ -840,9 +855,9 @@ class LogionApiQueries:
 
     async def _q_platform_bounty_accepted(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         # Platform bounties are admin-created; use admin role to list
         # submissions (the admin has full read access).
         admin_role = "admin"
@@ -862,18 +877,18 @@ class LogionApiQueries:
                 return {
                     "accepted": True,
                     "bounty_id": bounty_id,
-                    "submission_id": str(sub.get("id", "")),
+                    "submission_id": str(opt_str(sub, "id", "")),
                     "evidence": {"source": "api"},
                 }
         return {"accepted": False, "evidence": {"source": "api"}}
 
     async def _q_resource_projection_exists(
         self,
-        query: dict[str, Any],
-        agent_roles: dict[str, Any],  # noqa: ARG002
-    ) -> dict[str, Any]:
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
         """Check the complete resource collection for a projection kind."""
-        projection_kind = query.get("projection_kind", "indexed_listing")
+        projection_kind = opt_str(query, "projection_kind", "indexed_listing")
         if not isinstance(projection_kind, str) or not projection_kind:
             return _unsupported("projection_kind has an invalid shape")
         status, items = await self._paged_get("/v1/resources", "admin")
@@ -920,9 +935,9 @@ class LogionApiQueries:
 
     async def _q_resource_backfill_complete(
         self,
-        query: dict[str, Any],  # noqa: ARG002
-        agent_roles: dict[str, Any],  # noqa: ARG002
-    ) -> dict[str, Any]:
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
         """Verify that all indexed listings have resource projections."""
         listing_status, listings = await self._paged_get(
             "/v1/listings?tier=indexed", "admin"
@@ -968,7 +983,7 @@ class LogionApiQueries:
             )
             if detail_status != 200 or not isinstance(detail, dict):
                 return _unsupported("resource detail endpoint not available")
-            projections = detail.get("projections", [])
+            projections = detail.get("projections")
             if not isinstance(projections, list) or not all(
                 isinstance(projection, dict)
                 and isinstance(projection.get("projection_kind"), str)
@@ -978,8 +993,10 @@ class LogionApiQueries:
                 for projection in projections
             ):
                 return _unsupported("resource detail has invalid projections")
-            for projection in projections:
-                projection_ids.add(projection["projection_id"])
+            projection_ids.update(
+                str(projection["projection_id"])
+                for projection in children(detail, "projections")
+            )
             if listing_ids.issubset(projection_ids):
                 break
         missing = sorted(listing_ids - projection_ids)
@@ -995,9 +1012,9 @@ class LogionApiQueries:
 
     async def _q_resource_identity_unique(
         self,
-        query: dict[str, Any],  # noqa: ARG002
-        agent_roles: dict[str, Any],  # noqa: ARG002
-    ) -> dict[str, Any]:
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
         """Verify no duplicate (resource_type, canonical_uri) pairs."""
         status, items = await self._paged_get("/v1/resources", "admin")
         if status != 200:
@@ -1036,9 +1053,9 @@ class LogionApiQueries:
 
     async def _q_resource_backfill_idempotent(
         self,
-        query: dict[str, Any],
-        agent_roles: dict[str, Any],  # noqa: ARG002
-    ) -> dict[str, Any]:
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
         """Check a backfill rerun changed neither counters nor identities."""
         required = (
             "rerun_created",
@@ -1059,8 +1076,8 @@ class LogionApiQueries:
             counters_unchanged = (
                 not isinstance(created, bool)
                 and not isinstance(linked, bool)
-                and int(created) == 0
-                and int(linked) == 0
+                and _as_count(created) == 0
+                and _as_count(linked) == 0
             )
         except (TypeError, ValueError):
             counters_unchanged = False
@@ -1084,9 +1101,9 @@ class LogionApiQueries:
 
     async def _q_resource_backfill_applied(
         self,
-        query: dict[str, Any],
-        agent_roles: dict[str, Any],  # noqa: ARG002
-    ) -> dict[str, Any]:
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
         """Check the clean fixture produced two identities and links."""
         required = (
             "resources_created",
@@ -1105,8 +1122,8 @@ class LogionApiQueries:
             expected_changes = (
                 not isinstance(created, bool)
                 and not isinstance(linked, bool)
-                and int(created) == 2
-                and int(linked) == 2
+                and _as_count(created) == 2
+                and _as_count(linked) == 2
             )
         except (TypeError, ValueError):
             expected_changes = False
@@ -1126,12 +1143,12 @@ class LogionApiQueries:
 
     async def _q_resource_search_returns_kinds(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Verify each fixture canonical has its expected projection kind."""
         raw_kinds = query.get("projection_kinds")
-        raw_canonicals = query.get("canonicals", [])
+        raw_canonicals = query.get("canonicals")
         if (
             not isinstance(raw_kinds, list)
             or not raw_kinds
@@ -1146,7 +1163,11 @@ class LogionApiQueries:
             return _unsupported(
                 "projection_kinds/canonicals have invalid shape"
             )
-        expected_pairs = set(zip(raw_canonicals, raw_kinds, strict=True))
+        # The guard above proved both lists hold non-empty strings.
+        expected_pairs = {
+            (str(canonical), str(kind))
+            for canonical, kind in zip(raw_canonicals, raw_kinds, strict=True)
+        }
         observer_agent = query.get("observer_agent")
         observer_role = self._role_of(observer_agent, agent_roles)
         if observer_agent is not None and observer_role is None:
@@ -1185,9 +1206,10 @@ class LogionApiQueries:
                 for projection in projections
             ):
                 return _unsupported("resource detail has invalid projections")
+            canonical_uri = str(canonical)
             resource_pairs = {
-                (canonical, str(projection["projection_kind"]))
-                for projection in projections
+                (canonical_uri, str(projection["projection_kind"]))
+                for projection in children(detail, "projections")
                 if isinstance(projection.get("projection_kind"), str)
                 and projection["projection_kind"]
             }
@@ -1211,9 +1233,9 @@ class LogionApiQueries:
 
     async def _q_legacy_course_purchase_exists(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Verify that legacy course purchase still works."""
         buyer_role = self._role_of(query.get("buyer_agent"), agent_roles)
         status, data = await self._get("/v1/credits/ledger", buyer_role)
@@ -1222,11 +1244,10 @@ class LogionApiQueries:
         baseline = query.get("_baseline")
         baseline_ids = set()
         if isinstance(baseline, dict):
-            role_ids = baseline.get("credit_ledger_ids", {}).get(
-                buyer_role, []
+            role_ids = elements(
+                child(baseline, "credit_ledger_ids"), buyer_role or ""
             )
-            if isinstance(role_ids, list):
-                baseline_ids = {str(entry_id) for entry_id in role_ids}
+            baseline_ids = {str(entry_id) for entry_id in role_ids}
         for entry in data:
             if (
                 isinstance(entry, dict)
@@ -1235,18 +1256,20 @@ class LogionApiQueries:
             ):
                 return {
                     "found": True,
-                    "purchase_id": str(entry.get("id", "")),
+                    "purchase_id": str(opt_str(entry, "id", "")),
                     "evidence": {"source": "api", "surface": "credit_ledger"},
                 }
         return {"found": False, "evidence": {"source": "api"}}
 
     async def _q_harness_scope_targets_resolved(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         artifacts = query.get("artifacts")
-        required_scopes = set(query.get("required_scopes", []))
+        required_scopes = {
+            str(scope) for scope in elements(query, "required_scopes")
+        }
         if not isinstance(artifacts, dict) or not artifacts:
             return _artifact_failure(
                 "artifacts mapping is required", "resolved"
@@ -1273,15 +1296,15 @@ class LogionApiQueries:
 
     async def _q_resource_acquire_plan_dry_run(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             plan = _load_cli_object(
                 query.get("artifact"), "logion.resources.acquire"
             )
             before = _load_json_object(query.get("before_snapshot"))
-            after = _snapshot_roots(query.get("snapshot_roots", []))
+            after = _snapshot_roots(elements(query, "snapshot_roots"))
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "valid")
         targets = plan.get("targets")
@@ -1311,9 +1334,9 @@ class LogionApiQueries:
 
     async def _q_resource_acquisition_exists(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             receipt = _load_cli_object(
                 query.get("artifact"), "logion.resources.acquire"
@@ -1324,8 +1347,9 @@ class LogionApiQueries:
         # the acquisition happened: a delegated native install can only
         # reach `unverified` when its manager records no immutable
         # revision. Scenarios that require a stronger level say so.
-        allowed = set(
-            query.get("allowed_verifications") or ("exact", "source_revision")
+        allowed: set[JsonValue] = set(
+            elements(query, "allowed_verifications")
+            or ("exact", "source_revision")
         )
         acquired = (
             receipt.get("resource_id")
@@ -1343,9 +1367,9 @@ class LogionApiQueries:
 
     async def _q_resource_distribution_selected(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             receipt = _load_cli_object(
                 query.get("artifact"), "logion.resources.acquire"
@@ -1353,7 +1377,7 @@ class LogionApiQueries:
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "selected")
         channel = receipt.get("channel")
-        allowed = query.get("allowed_channels") or []
+        allowed = elements(query, "allowed_channels")
         selected = bool(channel) and channel in allowed
         return {
             "selected": selected,
@@ -1364,19 +1388,19 @@ class LogionApiQueries:
 
     async def _q_native_install_reconciled(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             report = _load_cli_object(
                 query.get("artifact"), "logion.resources.reconcile"
             )
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "reconciled")
-        matched = report.get("matched") or []
-        unresolved = report.get("unresolved") or []
-        ambiguous = report.get("ambiguous") or []
-        drifted = report.get("drifted") or []
+        matched = elements(report, "matched")
+        unresolved = elements(report, "unresolved")
+        ambiguous = elements(report, "ambiguous")
+        drifted = elements(report, "drifted")
         try:
             scope_root = _resolved_scope_root(query.get("scope_root"))
         except ValueError as exc:
@@ -1424,9 +1448,9 @@ class LogionApiQueries:
 
     async def _q_native_harness_discovers_installation(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Assert the native harness would load what inventory recorded.
 
         This reads the harness's own on-disk state — the same manifests a
@@ -1441,8 +1465,8 @@ class LogionApiQueries:
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "discovered")
 
-        scope_root = Path(str(query.get("scope_root", "")))
-        harness = str(query.get("harness", "dsh"))
+        scope_root = Path(str(opt_str(query, "scope_root", "")))
+        harness = str(opt_str(query, "harness", "dsh"))
         if harness != "dsh":
             return _artifact_failure(
                 f"no native state reader for harness {harness}", "discovered"
@@ -1451,8 +1475,8 @@ class LogionApiQueries:
         declared = _dsh_declared_bundles(scope_root / ".dsh")
         declared_paths = {path for path, _ in declared}
         installed = [
-            str((scope_root / path).resolve())
-            for path in receipt.get("installed_paths") or []
+            str((scope_root / str(path)).resolve())
+            for path in elements(receipt, "installed_paths")
         ]
         missing = [path for path in installed if path not in declared_paths]
         return {
@@ -1469,9 +1493,9 @@ class LogionApiQueries:
 
     async def _q_inventory_receipt_matches(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             report = _load_cli_object(
                 query.get("artifact"), "logion.resources.reconcile"
@@ -1486,7 +1510,7 @@ class LogionApiQueries:
         # than sorted with a None in it.
         ids = {
             str(entry.get("installation_id"))
-            for entry in (report.get("matched") or [])
+            for entry in (elements(report, "matched"))
             if isinstance(entry, dict) and entry.get("installation_id")
         }
         installation_id = receipt.get("installation_id")
@@ -1499,23 +1523,25 @@ class LogionApiQueries:
 
     async def _q_installed_artifact_digest_matches(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             receipt = _load_cli_object(
                 query.get("artifact"), "logion.resources.acquire"
             )
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "digest_matches")
-        scope_root = Path(str(query.get("scope_root", "")))
-        installed = receipt.get("installed_paths") or []
+        scope_root = Path(str(opt_str(query, "scope_root", "")))
+        installed = [
+            str(path) for path in elements(receipt, "installed_paths")
+        ]
         if not installed:
             return _artifact_failure(
                 "receipt lists no installed paths", "digest_matches"
             )
-        evidence = receipt.get("native_evidence") or {}
-        file_digests = evidence.get("file_digests") or {}
+        evidence = child(receipt, "native_evidence")
+        file_digests = child(evidence, "file_digests")
         if not file_digests:
             # Without per-file digests there is nothing to re-verify, so
             # passing here would only assert that some files exist.
@@ -1569,9 +1595,9 @@ class LogionApiQueries:
 
     async def _q_acquisition_idempotent(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             first = _load_cli_object(
                 query.get("first_artifact"), "logion.resources.acquire"
@@ -1595,10 +1621,10 @@ class LogionApiQueries:
         # the two receipts claim have to be the same set and nothing may
         # linger from an interrupted swap.
         first_paths = sorted(
-            str(p) for p in first.get("installed_paths") or []
+            str(p) for p in elements(first, "installed_paths")
         )
         second_paths = sorted(
-            str(p) for p in second.get("installed_paths") or []
+            str(p) for p in elements(second, "installed_paths")
         )
         if first_paths != second_paths:
             return _artifact_failure(
@@ -1625,9 +1651,9 @@ class LogionApiQueries:
 
     async def _q_install_drift_reported(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Assert a tampered installation is reported as drifted.
 
         The negative path: once an installed artifact no longer matches the
@@ -1646,12 +1672,12 @@ class LogionApiQueries:
         installation_id = receipt.get("installation_id")
         drifted_ids = {
             entry.get("installation_id")
-            for entry in report.get("drifted") or []
+            for entry in elements(report, "drifted")
             if isinstance(entry, dict)
         }
         matched_ids = {
             entry.get("installation_id")
-            for entry in report.get("matched") or []
+            for entry in elements(report, "matched")
             if isinstance(entry, dict)
         }
         if installation_id in matched_ids:
@@ -1668,9 +1694,9 @@ class LogionApiQueries:
 
     async def _q_scope_isolation_preserved(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Assert an acquisition touched nothing outside its own scope.
 
         Compares a pre-acquisition snapshot against the protected roots
@@ -1680,7 +1706,7 @@ class LogionApiQueries:
         try:
             before = _load_json_object(query.get("before_snapshot"))
             protected = [
-                str(root) for root in query.get("protected_roots", [])
+                str(root) for root in elements(query, "protected_roots")
             ]
             after = _snapshot_roots(protected)
         except (OSError, TypeError, ValueError) as exc:
@@ -1707,11 +1733,11 @@ class LogionApiQueries:
 
     async def _q_harness_scope_nested_repo(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         artifacts = query.get("artifacts")
-        expected_root = str(query.get("expected_root", ""))
+        expected_root = str(opt_str(query, "expected_root", ""))
         if (
             not isinstance(artifacts, dict)
             or not artifacts
@@ -1744,11 +1770,11 @@ class LogionApiQueries:
 
     async def _q_harness_inventory_distinct_scopes(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         artifacts = query.get("artifacts")
-        resource_name = str(query.get("resource_name", ""))
+        resource_name = str(opt_str(query, "resource_name", ""))
         if (
             not isinstance(artifacts, dict)
             or not artifacts
@@ -1790,10 +1816,10 @@ class LogionApiQueries:
 
     async def _q_observation_envelope_no_raw_data(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
-        path = Path(str(query.get("artifact", "")))
+    ) -> JsonObject:
+        path = Path(str(opt_str(query, "artifact", "")))
         try:
             lines = [
                 line
@@ -1832,9 +1858,9 @@ class LogionApiQueries:
 
     async def _q_native_use_observed(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             pending = _load_cli_list(
                 query.get("pending_artifact"), "logion.usage.pending"
@@ -1863,7 +1889,7 @@ class LogionApiQueries:
                 and receipt.get("receipt_origin") == "resources_reconcile"
                 and observe.get("disposition") == "recorded"
                 and isinstance(observe.get("observation"), dict)
-                and observe["observation"].get("observation_id")
+                and child(observe, "observation").get("observation_id")
                 == match.get("observation_id")
             ),
             "resource_id": receipt.get("resource_id"),
@@ -1874,9 +1900,9 @@ class LogionApiQueries:
 
     async def _q_feedback_pending(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             items = _load_cli_list(
                 query.get("pending_artifact"), "logion.usage.pending"
@@ -1895,8 +1921,8 @@ class LogionApiQueries:
         }
 
     async def _feedback_for(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> tuple[int, dict[str, Any] | None]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> tuple[int, JsonObject | None]:
         reporter = query.get("reporter_agent") or query.get("agent")
         role = self._role_of(reporter, agent_roles)
         status, payload = await self._get("/v1/feedback/mine", role)
@@ -1918,8 +1944,8 @@ class LogionApiQueries:
         return status, candidates[0] if candidates else None
 
     async def _q_resource_feedback_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         status, feedback = await self._feedback_for(query, agent_roles)
         return {
             "found": status == 200 and feedback is not None,
@@ -1931,8 +1957,8 @@ class LogionApiQueries:
         }
 
     async def _q_feedback_linked_to_acquisition(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         try:
             receipt = _load_inventory_receipt(query)
         except (OSError, TypeError, ValueError) as exc:
@@ -1956,8 +1982,8 @@ class LogionApiQueries:
         }
 
     async def _q_course_review_projection_exists(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         _, feedback = await self._feedback_for(query, agent_roles)
         disposition = (
             feedback.get("projection_disposition") if feedback else None
@@ -1972,8 +1998,8 @@ class LogionApiQueries:
         }
 
     async def _q_raw_observation_not_uploaded(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         _, feedback = await self._feedback_for(query, agent_roles)
         forbidden = {
             "prompt",
@@ -1992,8 +2018,8 @@ class LogionApiQueries:
         }
 
     async def _q_feedback_submission_idempotent(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         try:
             first = _load_cli_object(
                 query.get("first_artifact"), "logion.feedback.submit"
@@ -2018,8 +2044,8 @@ class LogionApiQueries:
         }
 
     async def _q_remote_mcp_reconciled(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         result = await self._q_native_install_reconciled(query, agent_roles)
         try:
             report = _load_cli_object(
@@ -2030,7 +2056,7 @@ class LogionApiQueries:
             return _artifact_failure(str(exc), "reconciled")
         matched_ids = {
             item.get("installation_id")
-            for item in report.get("matched") or []
+            for item in elements(report, "matched")
             if isinstance(item, dict)
         }
         receipt_linked = (
@@ -2045,9 +2071,9 @@ class LogionApiQueries:
 
     async def _q_vendor_install_unchanged(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         try:
             before = _load_json_object(query.get("before_snapshot"))
             after = _load_json_object(query.get("after_snapshot"))
@@ -2057,10 +2083,10 @@ class LogionApiQueries:
 
     async def _q_no_mcp_proxy_installed(
         self,
-        query: dict[str, Any],
+        query: JsonObject,
         agent_roles: dict[str, str],  # noqa: ARG002
-    ) -> dict[str, Any]:
-        root = Path(str(query.get("fixture_root", "")))
+    ) -> JsonObject:
+        root = Path(str(opt_str(query, "fixture_root", "")))
         proxies = [
             str(path)
             for path in root.rglob("*")  # noqa: ASYNC240
@@ -2069,14 +2095,14 @@ class LogionApiQueries:
         return {"absent": not proxies, "paths": proxies}
 
     async def _q_remote_mcp_use_attributed(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         result = await self._q_native_use_observed(query, agent_roles)
         return {"attributed": result.get("observed") is True, **result}
 
     async def _q_original_publisher_preserved(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         try:
             detail = _load_cli_object(
                 query.get("resource_artifact"), "logion.resources.get"
@@ -2084,7 +2110,7 @@ class LogionApiQueries:
         except (OSError, TypeError, ValueError) as exc:
             return _artifact_failure(str(exc), "preserved")
         expected = query.get("publisher")
-        projections = detail.get("projections") or []
+        projections = elements(detail, "projections")
         projection_id = next(
             (
                 item.get("projection_id")
@@ -2096,11 +2122,12 @@ class LogionApiQueries:
         )
         reporter = query.get("reporter_agent") or query.get("agent")
         role = self._role_of(reporter, agent_roles)
-        status, listing = (
+        status, body = (
             await self._get(f"/v1/indexed-listings/{projection_id}", role)
             if projection_id
             else (0, {})
         )
+        listing = body if isinstance(body, dict) else {}
         actual = listing.get("original_author")
         return {
             "preserved": status == 200
@@ -2111,18 +2138,18 @@ class LogionApiQueries:
         }
 
     async def _q_remote_mcp_feedback_linked(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         result = await self._q_feedback_linked_to_acquisition(
             query, agent_roles
         )
         return {"linked": result.get("linked") is True, **result}
 
     async def _q_remote_mcp_private_payload_not_recorded(
-        self, query: dict[str, Any], agent_roles: dict[str, str]
-    ) -> dict[str, Any]:
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
         result = await self._q_raw_observation_not_uploaded(query, agent_roles)
-        artifacts = query.get("artifacts") or []
+        artifacts = elements(query, "artifacts")
         canary = str(query.get("privacy_canary") or "")
         leaked = False
         for raw_path in artifacts:
@@ -2135,11 +2162,11 @@ class LogionApiQueries:
                 leaked = True
         return {
             "clean": result.get("clean") is True and not leaked,
-            "checked_fields": result.get("checked_fields", []),
+            "checked_fields": elements(result, "checked_fields"),
         }
 
 
-def _resolved_scope_root(raw: Any) -> Path:
+def _resolved_scope_root(raw: JsonValue) -> Path:
     """Validate a scenario-supplied scope root outside the async path."""
     root = Path(str(raw or ""))
     if not root.is_dir():
@@ -2170,7 +2197,7 @@ def _duplicate_install_state(scope_root: Path) -> list[str]:
     return sorted(leftovers)
 
 
-def _artifact_failure(reason: str, result_key: str) -> dict[str, Any]:
+def _artifact_failure(reason: str, result_key: str) -> JsonObject:
     return {result_key: False, "reason": reason, "evidence": {}}
 
 
@@ -2214,7 +2241,7 @@ def _dsh_declared_bundles(dsh_home: Path) -> list[tuple[str, str]]:
     return results
 
 
-def _load_json_object(raw_path: Any) -> dict[str, Any]:
+def _load_json_object(raw_path: JsonValue) -> JsonObject:
     if not isinstance(raw_path, str) or not raw_path:
         raise ValueError("artifact path is required")
     path = Path(raw_path)
@@ -2226,7 +2253,7 @@ def _load_json_object(raw_path: Any) -> dict[str, Any]:
     return payload
 
 
-def _load_inventory_receipt(query: dict[str, Any]) -> dict[str, Any]:
+def _load_inventory_receipt(query: JsonObject) -> JsonObject:
     raw_path = query.get("inventory_receipt")
     if raw_path:
         return _load_json_object(raw_path)
@@ -2253,7 +2280,7 @@ def _load_inventory_receipt(query: dict[str, Any]) -> dict[str, Any]:
     return candidates[0]
 
 
-def _load_cli_data(raw_path: Any, expected_kind: str) -> Any:
+def _load_cli_data(raw_path: JsonValue, expected_kind: str) -> JsonValue:
     envelope = _load_json_object(raw_path)
     if (
         envelope.get("version") != "v1"
@@ -2263,14 +2290,14 @@ def _load_cli_data(raw_path: Any, expected_kind: str) -> Any:
     return envelope.get("data")
 
 
-def _load_cli_object(raw_path: Any, expected_kind: str) -> dict[str, Any]:
+def _load_cli_object(raw_path: JsonValue, expected_kind: str) -> JsonObject:
     data = _load_cli_data(raw_path, expected_kind)
     if not isinstance(data, dict):
         raise TypeError(f"CLI data is not an object: {raw_path}")
     return data
 
 
-def _load_cli_list(raw_path: Any, expected_kind: str) -> list[Any]:
+def _load_cli_list(raw_path: JsonValue, expected_kind: str) -> JsonArray:
     data = _load_cli_data(raw_path, expected_kind)
     if isinstance(data, list):
         return data
@@ -2286,7 +2313,7 @@ def _load_cli_list(raw_path: Any, expected_kind: str) -> list[Any]:
     raise TypeError(f"CLI data is not a list: {raw_path}")
 
 
-def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
+def _snapshot_roots(raw_roots: JsonValue) -> dict[str, str]:
     if not isinstance(raw_roots, list) or not raw_roots:
         raise ValueError("snapshot_roots list is required")
     result: dict[str, str] = {}
@@ -2319,7 +2346,7 @@ def _snapshot_roots(raw_roots: Any) -> dict[str, str]:
     return result
 
 
-def _contains_forbidden_observation_data(envelope: dict[str, Any]) -> bool:
+def _contains_forbidden_observation_data(envelope: JsonObject) -> bool:
     identifier_fields = {
         "harness_session_id",
         "installation_id",
@@ -2361,11 +2388,25 @@ def _contains_forbidden_observation_data(envelope: dict[str, Any]) -> bool:
     return False
 
 
-def _unsupported(reason: str) -> dict[str, Any]:
+def _as_count(value: JsonValue) -> int:
+    """Read a counter out of a snapshot, or -1 when it is not one.
+
+    A sentinel rather than 0: several callers compare against 0, and a
+    missing counter must not read as "observed zero".
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return -1
+    try:
+        return int(value)
+    except ValueError:
+        return -1
+
+
+def _unsupported(reason: str) -> JsonObject:
     return {"found": False, "unsupported": True, "reason": reason}
 
 
-def _baseline_ids(query: dict[str, Any], key: str) -> set[str]:
+def _baseline_ids(query: JsonObject, key: str) -> set[str]:
     # Scenarios that rely on pre-seeded fixtures (e.g. a published
     # fixture course) opt out of baseline-delta filtering per assertion.
     if query.get("include_baseline"):

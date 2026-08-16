@@ -7,7 +7,8 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+
+from agent_proving_ground._json import JsonObject
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,7 +21,7 @@ NPM_VERSION = "1.0.0"
 ENDPOINT = "http://127.0.0.1:18765/mcp"
 
 
-def _item() -> dict[str, Any]:
+def _item() -> JsonObject:
     return {
         "npm_distribution": {"name": NPM_NAME, "version": NPM_VERSION},
         "canonical": CANONICAL,

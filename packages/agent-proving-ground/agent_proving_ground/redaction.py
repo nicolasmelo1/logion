@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 DEFAULT_SECRET_KEYWORDS = {
     "api_key",
@@ -48,10 +47,17 @@ def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
 
 
 def redact_json(
-    value: Any,
+    value: object,
     sensitive_keys: set[str] | None = None,
     redact_emails: bool = False,
-) -> Any:
+) -> object:
+    """Return *value* with secrets in its strings replaced.
+
+    Takes ``object`` rather than ``JsonValue`` because the artifact
+    store also passes trees containing ``Path``, which its
+    ``json.dumps`` default hook renders later. Everything it does
+    not recognise is returned untouched.
+    """
     keys = (sensitive_keys or set()) | DEFAULT_SECRET_KEYWORDS
     if isinstance(value, dict):
         return {

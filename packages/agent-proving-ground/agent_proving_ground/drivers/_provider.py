@@ -2,8 +2,16 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Any, ClassVar
+from collections.abc import Sequence
+from typing import ClassVar
 
+from agent_proving_ground._json import (
+    JsonObject,
+    JsonValue,
+    child,
+    elements,
+    opt_str,
+)
 from agent_proving_ground.drivers.base import (
     AgentDriver,
     AgentLaunch,
@@ -52,7 +60,7 @@ class ProviderDriver(AgentDriver):
 
     def __init__(
         self,
-        driver_config: dict[str, Any] | None = None,
+        driver_config: JsonObject | None = None,
     ) -> None:
         self._driver_config = driver_config or {}
         self._launch: AgentLaunch | None = None
@@ -98,22 +106,22 @@ class ProviderDriver(AgentDriver):
         self._session = None
 
     def _resolve_executable(self) -> str | None:
-        provider_cfg = self._driver_config.get(self.provider_name, {})
-        explicit = provider_cfg.get("command")
+        provider_cfg = child(self._driver_config, self.provider_name)
+        explicit = opt_str(provider_cfg, "command")
         if explicit:
-            path = shutil.which(str(explicit))
+            path = shutil.which(explicit)
             return path if path else None
         return shutil.which(self.default_command)
 
     def _effective_args(self) -> list[str]:
-        provider_cfg = self._driver_config.get(self.provider_name, {})
+        provider_cfg = child(self._driver_config, self.provider_name)
         args = self._coerce_arg_list(
             provider_cfg.get("args", self.default_args)
         )
-        extra = self._coerce_arg_list(provider_cfg.get("extra_args", []))
+        extra = self._coerce_arg_list(elements(provider_cfg, "extra_args"))
         combined = [*args, *extra]
-        model = provider_cfg.get("model")
-        provider = provider_cfg.get("provider")
+        model = opt_str(provider_cfg, "model")
+        provider = opt_str(provider_cfg, "provider")
         if model:
             combined = _override_flag(combined, "--model", model)
         if provider:
@@ -124,9 +132,9 @@ class ProviderDriver(AgentDriver):
         """Expose only safe host config plus the isolated role environment."""
         if self._launch is None:
             return {}
-        provider_cfg = self._driver_config.get(self.provider_name, {})
+        provider_cfg = child(self._driver_config, self.provider_name)
         explicit_names = self._coerce_arg_list(
-            provider_cfg.get("env_allowlist", [])
+            elements(provider_cfg, "env_allowlist")
         )
         allowed_names = self.safe_host_env | frozenset(explicit_names)
         host_env = {
@@ -137,10 +145,17 @@ class ProviderDriver(AgentDriver):
         return {**host_env, **self._launch.env}
 
     @staticmethod
-    def _coerce_arg_list(value: Any) -> list[str]:
+    def _coerce_arg_list(value: JsonValue) -> list[str]:
+        """Read a driver-config arg list, tolerating a bare string.
+
+        A scenario may write ``args: --json`` instead of a list; that
+        stays one argument rather than being split into characters.
+        """
         if isinstance(value, str):
             return [value]
-        return [str(item) for item in value]
+        if isinstance(value, Sequence):
+            return [str(item) for item in value]
+        return []
 
 
 class OpencodeDriver(ProviderDriver):

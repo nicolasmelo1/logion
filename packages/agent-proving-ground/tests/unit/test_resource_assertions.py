@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
+from agent_proving_ground._json import JsonObject
 from agent_proving_ground.assertions.api import (
     ResourceBackfillAppliedAssertion,
     ResourceBackfillCompleteAssertion,
@@ -13,19 +13,20 @@ from agent_proving_ground.assertions.api import (
     ResourceProjectionExistsAssertion,
     ResourceSearchReturnsKindsAssertion,
 )
-from agent_proving_ground.assertions.base import AssertionContext
+from agent_proving_ground.assertions.base import (
+    Assertion,
+    AssertionContext,
+)
 from agent_proving_ground.models import World
 from agent_proving_ground.timeline import Timeline
 
 
 class StaticQueryApi:
-    def __init__(self, result: dict[str, Any]) -> None:
+    def __init__(self, result: JsonObject) -> None:
         self.result = result
-        self.last_query: dict[str, Any] | None = None
+        self.last_query: JsonObject | None = None
 
-    async def query(
-        self, _world: World, query: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def query(self, _world: World, query: JsonObject) -> JsonObject:
         self.last_query = query
         return self.result
 
@@ -78,8 +79,8 @@ def _context(tmp_path: Path, api: StaticQueryApi) -> AssertionContext:
 )
 async def test_resource_assertions_have_explicit_pass_and_fail_paths(
     tmp_path: Path,
-    assertion: Any,
-    result: dict[str, Any],
+    assertion: Assertion,
+    result: JsonObject,
     expected_status: str,
 ) -> None:
     api = StaticQueryApi(result)
@@ -107,7 +108,7 @@ async def test_resource_assertions_have_explicit_pass_and_fail_paths(
     ],
 )
 async def test_resource_assertions_fail_closed_on_result_contract_drift(
-    tmp_path: Path, assertion: Any
+    tmp_path: Path, assertion: Assertion
 ) -> None:
     outcome = await assertion.evaluate(
         _context(tmp_path, StaticQueryApi({})), {}

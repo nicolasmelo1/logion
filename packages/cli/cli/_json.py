@@ -23,7 +23,7 @@ package gains a dependency purely for typing. ``make check-json-module``
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TypeAlias
+from typing import TypeAlias, overload
 
 #: Any value the JSON grammar can produce, recursively.
 #:
@@ -43,10 +43,16 @@ JsonValue: TypeAlias = (
 #: Mutable and invariant on purpose: the *outer* container is usually
 #: built up key by key, so ``dict`` is what callers want. Only the
 #: values nested inside it are covariant.
-JsonObject: TypeAlias = "dict[str, JsonValue]"
+#:
+#: Written as a real subscription with a forward-referenced parameter,
+#: not as a whole-alias string. Only ``JsonValue`` has to be a string
+#: (it refers to itself); keeping these two evaluable means they can be
+#: used in runtime expressions such as ``str | JsonObject``, which a
+#: plain string alias would fail on with a ``TypeError``.
+JsonObject: TypeAlias = dict[str, "JsonValue"]
 
 #: A JSON array — the common case for a decoded list body.
-JsonArray: TypeAlias = "list[JsonValue]"
+JsonArray: TypeAlias = list["JsonValue"]
 
 __all__ = [
     "JsonArray",
@@ -57,6 +63,7 @@ __all__ = [
     "as_object",
     "child",
     "children",
+    "elements",
     "opt_bool",
     "opt_int",
     "opt_object",
@@ -197,16 +204,37 @@ def require_object_array(obj: JsonObject, key: str) -> list[JsonObject]:
 # so a typo in a payload is never silently swallowed as a default.
 
 
+@overload
+def opt_str(obj: JsonObject, key: str) -> str | None: ...
+
+
+@overload
+def opt_str(obj: JsonObject, key: str, default: str) -> str: ...
+
+
 def opt_str(
     obj: JsonObject, key: str, default: str | None = None
 ) -> str | None:
-    """Return ``obj[key]`` as a string when present, else *default*."""
+    """Return ``obj[key]`` as a string when present, else *default*.
+
+    Overloaded so that passing a default narrows the result to ``str``:
+    a caller that supplied a fallback should not have to re-check for
+    ``None`` afterwards.
+    """
     value = obj.get(key)
     if value is None:
         return default
     if isinstance(value, str):
         return value
     raise _fail(key, "a string or null", value)
+
+
+@overload
+def opt_int(obj: JsonObject, key: str) -> int | None: ...
+
+
+@overload
+def opt_int(obj: JsonObject, key: str, default: int) -> int: ...
 
 
 def opt_int(
@@ -219,6 +247,14 @@ def opt_int(
     if isinstance(value, bool) or not isinstance(value, int):
         raise _fail(key, "an integer or null", value)
     return value
+
+
+@overload
+def opt_bool(obj: JsonObject, key: str) -> bool | None: ...
+
+
+@overload
+def opt_bool(obj: JsonObject, key: str, default: bool) -> bool: ...
 
 
 def opt_bool(
@@ -251,9 +287,28 @@ def child(obj: JsonObject, key: str) -> JsonObject:
     file, an OpenAPI spec, a CMS-style content tree. Unlike
     :func:`opt_object` it never raises, so a branch of the wrong type
     reads as absent; use it only where that is the intent.
+
+    .. warning::
+       Do not use this (or :func:`children`/:func:`elements`) to feed a
+       validation guard. Turning a wrong-typed branch into an empty one
+       makes ``isinstance(value, dict)`` vacuously true, silently
+       disabling the check. Read with ``.get`` and narrow explicitly
+       when rejecting the wrong shape is the point.
     """
     value = obj.get(key)
     return value if isinstance(value, dict) else {}
+
+
+def elements(obj: JsonObject, key: str) -> JsonArray:
+    """Return the array at *key*, or an empty one.
+
+    The permissive sibling of :func:`require_array`, matching
+    :func:`child`: a missing key or a non-array reads as empty. Use it
+    for a list whose entries are scalars; :func:`children` is the
+    version that also filters the entries down to objects.
+    """
+    value = obj.get(key)
+    return value if isinstance(value, list) else []
 
 
 def children(obj: JsonObject, key: str) -> list[JsonObject]:

@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
+from agent_proving_ground._json import (
+    JsonObject,
+    child,
+)
 from agent_proving_ground.drivers.base import (
     AgentDriver,
     AgentLaunch,
     AgentTurnResult,
 )
 
-ScriptedOperation = str | dict[str, Any]
-ApplyOperation = Callable[[str, str, dict[str, Any]], None]
+ScriptedOperation = str | JsonObject
+ApplyOperation = Callable[[str, str, JsonObject], None]
 
 
 class ScriptedDriver(AgentDriver):
@@ -61,7 +65,7 @@ class ScriptedDriver(AgentDriver):
             for op in ops:
                 if isinstance(op, dict):
                     name = str(op.get("operation", ""))
-                    params = dict(op.get("params", {}))
+                    params = dict(child(op, "params"))
                     if name and self._apply_operation is not None:
                         self._apply_operation(
                             self._launch.agent_id, name, params
