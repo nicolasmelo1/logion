@@ -15,7 +15,7 @@ import difflib
 import re
 from types import ModuleType
 
-from cli._json import JsonObject, elements, opt_str
+from cli._json import JsonObject, elements, opt_str, strings
 
 try:
     from rapidfuzz import fuzz as _rapidfuzz_fuzz
@@ -58,7 +58,7 @@ def _compose_entry_text(entry: JsonObject) -> str:
     """Build a single lowercase string from entry fields for matching."""
     title = opt_str(entry, "title", "")
     summary = opt_str(entry, "summary", "")
-    tokens = elements(entry, "tokens")
+    tokens = strings(entry, "tokens")
     return f"{title} {summary} {' '.join(tokens)}".lower()
 
 

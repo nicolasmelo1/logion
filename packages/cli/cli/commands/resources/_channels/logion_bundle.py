@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from cli import _receipts
-from cli._json import JsonObject, elements
+from cli._json import JsonObject, children
 from cli._lazy_import import LazyModule
 from cli._local_state import UnsafeIdentifierError
 
@@ -52,7 +52,7 @@ class LogionBundleAdapter(ChannelAdapter):
             resource_id=str(plan["resource_id"]),
             version_id=str(plan["version_id"]),
         )
-        files = elements(manifest, "files")
+        files = children(manifest, "files")
         if not files:
             raise RuntimeError("download manifest has no files")
 

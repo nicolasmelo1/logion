@@ -10,7 +10,7 @@ from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
 from cli._json import elements, opt_str
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_data, to_object
 
 from ._acquire_handler import handle_resources_acquire
 from ._distributions_handler import handle_resources_distributions
@@ -78,7 +78,7 @@ def handle_resources_search(args: argparse.Namespace) -> int:
             limit=getattr(args, "limit", None),
             cursor=getattr(args, "cursor", None),
         )
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             command = getattr(args, "resources_command", "list")
             emit_json(f"logion.resources.{command}", payload)
@@ -125,7 +125,7 @@ def handle_resources_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.resources.get(resource_id=args.resource_id)
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             emit_json("logion.resources.get", payload)
         else:
@@ -149,7 +149,7 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
             resource_id=args.resource_id,
             limit=getattr(args, "limit", None),
         )
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             emit_json("logion.resources.versions", payload)
         else:

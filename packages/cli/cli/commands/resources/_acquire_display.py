@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from typing import TextIO
 
-from cli._json import JsonObject, child, children, elements
+from cli._json import JsonObject, child, children, elements, strings
 
 
 def print_plan(plan: JsonObject) -> None:
@@ -75,7 +75,7 @@ def _print_distribution(out: TextIO, plan: JsonObject) -> None:
     entitlement = child(distribution, "entitlement")
     out.write("\nDistribution:\n")
     out.write(f"  channel:     {distribution.get('channel')}\n")
-    alternatives = elements(distribution, "alternatives")
+    alternatives = strings(distribution, "alternatives")
     if alternatives:
         out.write(f"  alternatives: {', '.join(alternatives)}\n")
     out.write(f"  digest:      {distribution.get('content_digest')}\n")

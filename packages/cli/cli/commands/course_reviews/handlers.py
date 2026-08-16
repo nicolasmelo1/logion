@@ -11,7 +11,7 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._json import child, elements, opt_str
+from cli._json import child, children, opt_str
 from cli._output import emit
 from cli._utils import only_not_none
 from cli.commands.course_reviews._render import (
@@ -143,7 +143,7 @@ def _to_data(value: object) -> dict:
 def _render_list(result: object) -> None:
     """Render queue list with human-readable capability summary."""
     data = _to_data(result)
-    items = elements(data, "items")
+    items = children(data, "items")
     if not items:
         sys.stdout.write("No reviews in the queue.\n")
         return

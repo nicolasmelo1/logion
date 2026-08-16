@@ -13,12 +13,13 @@ from cli._harness import (
     detect_present,
     get_adapter,
 )
-from cli._json import JsonObject, JsonValue
+from cli._harness.base import HarnessAdapter
+from cli._json import JsonObject
 from cli._output import emit_json
 from cli.integrations_state import get_mode, set_mode
 
 
-def _adapter_to_dict(adapter: JsonValue) -> JsonObject:
+def _adapter_to_dict(adapter: HarnessAdapter) -> JsonObject:
     """Return a JSON-safe summary of one harness adapter."""
     return {
         "name": adapter.name,

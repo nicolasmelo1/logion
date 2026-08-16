@@ -84,6 +84,7 @@ __all__ = [
     "require_object_array",
     "require_str",
     "require_str_array",
+    "strings",
 ]
 
 
@@ -315,6 +316,17 @@ def elements(obj: JsonObject, key: str) -> JsonArray:
     """
     value = obj.get(key)
     return value if isinstance(value, list) else []
+
+
+def strings(obj: JsonObject, key: str) -> list[str]:
+    """Return the array at *key* rendered as text, empty when absent.
+
+    The permissive text counterpart of :func:`require_str_array`, for
+    display paths that are going to ``join`` the values anyway: a
+    non-string entry is coerced rather than raising, because a
+    human-readable listing should not fail on one odd element.
+    """
+    return [str(item) for item in elements(obj, key)]
 
 
 def children(obj: JsonObject, key: str) -> list[JsonObject]:

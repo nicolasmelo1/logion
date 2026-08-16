@@ -80,7 +80,7 @@ def _append_runtime_fields(
     any_bins = elements(summary, "runtime_requires_any_bins")
     config = elements(summary, "runtime_requires_config")
     os_vals = elements(summary, "runtime_requires_os")
-    software = elements(summary, "runtime_requires_software")
+    software = children(summary, "runtime_requires_software")
     install = elements(summary, "runtime_install")
     if not any([env, bins, any_bins, config, os_vals, software, install]):
         return

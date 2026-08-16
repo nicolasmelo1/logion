@@ -23,7 +23,7 @@ from cli._errors import (
     validate_uuid_id,
 )
 from cli._options import COMMON_PARSER
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_object
 
 _SET_KIND = "logion.courses.source-link.set"
 _SHOW_KIND = "logion.courses.source-link.show"
@@ -68,7 +68,7 @@ def handle_set(args: argparse.Namespace) -> int:
             ref=args.ref,
             package_map_path=args.map,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json(_SET_KIND, data)
         else:
@@ -91,7 +91,7 @@ def handle_show(args: argparse.Namespace) -> int:
         result = client.v1.courses.get_source_link(
             course_id=args.course_id,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json(_SHOW_KIND, data)
         else:

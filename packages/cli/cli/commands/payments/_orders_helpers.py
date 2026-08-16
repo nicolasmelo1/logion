@@ -9,8 +9,8 @@ from uuid import UUID
 
 from cli._config import CliConfig
 from cli._errors import emit_error_json
-from cli._json import JsonObject, JsonValue
-from cli._output import emit_json
+from cli._json import JsonObject
+from cli._output import emit_json, to_object
 
 TERMINAL_STATUSES = frozenset({"fulfilled", "failed", "refunded", "cancelled"})
 
@@ -43,13 +43,9 @@ def validate_uuid_arg(
     return None
 
 
-def order_to_payload(result: JsonValue) -> JsonObject:
+def order_to_payload(result: object) -> JsonObject:
     """Normalize SDK order responses to the public CLI shape."""
-    raw = (
-        result.model_dump(mode="json")
-        if hasattr(result, "model_dump")
-        else dict(result)
-    )
+    raw = to_object(result)
     settled_at = (
         raw.get("settled_at")
         or raw.get("paid_at")

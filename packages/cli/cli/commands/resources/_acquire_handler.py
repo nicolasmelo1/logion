@@ -21,11 +21,12 @@ from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
 from cli._harness.scopes import (
     SYSTEM,
+    ScopeTarget,
     canonical_scope,
     default_scope_for_cwd,
     is_valid_scope,
 )
-from cli._json import JsonArray, JsonObject, child
+from cli._json import JsonObject, child, opt_str_array
 from cli._lazy_import import LazyModule
 from cli._output import emit_json, to_data
 
@@ -155,7 +156,7 @@ def handle_resources_acquire(args: argparse.Namespace) -> int:
         if not plan["executable"] or distribution is None:
             return handle_validation_error(
                 "acquisition is not executable: "
-                + "; ".join(plan["blocked_reasons"]),
+                + "; ".join(opt_str_array(plan, "blocked_reasons")),
                 json_output=config.json_output,
             )
         return _execute_plan(
@@ -187,7 +188,7 @@ def _execute_plan(
     distribution: JsonObject,
     scope: str,
     harness: str,
-    targets: JsonArray,
+    targets: list[ScopeTarget],
     resource: JsonObject,
     requested_channel: str,
 ) -> int:

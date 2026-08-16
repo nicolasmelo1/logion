@@ -9,7 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._json import elements, opt_str
+from cli._json import children, opt_str
 from cli._output import emit_json, to_data, to_items, to_object
 
 
@@ -63,7 +63,7 @@ def handle_feedback_list(args: argparse.Namespace) -> int:
         else:
             items = to_items(result)
             if isinstance(items, dict):
-                items = elements(items, "items")
+                items = children(items, "items")
             if not items:
                 sys.stdout.write("No feedback submitted.\n")
             else:

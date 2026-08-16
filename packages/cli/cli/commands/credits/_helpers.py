@@ -10,8 +10,8 @@ from uuid import UUID
 
 from cli._config import CliConfig
 from cli._errors import emit_error_json
-from cli._json import JsonObject, JsonValue
-from cli._output import emit_json
+from cli._json import JsonObject
+from cli._output import emit_json, to_object
 
 TERMINAL_STATUSES = frozenset({
     "paid",
@@ -51,13 +51,9 @@ def validate_uuid_arg(
     return None
 
 
-def top_up_to_payload(result: JsonValue) -> JsonObject:
+def top_up_to_payload(result: object) -> JsonObject:
     """Normalize a CreateCreditTopUpResponse to the CLI shape."""
-    raw = (
-        result.model_dump(mode="json")
-        if hasattr(result, "model_dump")
-        else dict(result)
-    )
+    raw = to_object(result)
     payload: JsonObject = {
         "top_up_id": raw.get("top_up_id"),
         "status": raw.get("status"),

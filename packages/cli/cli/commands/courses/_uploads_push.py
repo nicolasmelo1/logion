@@ -12,7 +12,7 @@ from pathlib import Path
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import print_err, validate_uuid_id
-from cli._json import JsonObject, JsonValue, child, opt_int, opt_str
+from cli._json import JsonObject, child, opt_int, opt_str
 from cli._output import emit_json
 
 from ._upload_bundle_validation import validate_bundle_files_for_upload
@@ -196,7 +196,7 @@ def _emit_results(
     print(f"Pushed {len(results) - failures}/{len(results)} files.")
 
 
-def _course_price_cents(course: JsonValue) -> int:
+def _course_price_cents(course: object) -> int:
     """Read ``price_cents`` from a SDK response object or plain dict."""
     if isinstance(course, dict):
         return int(opt_int(course, "price_cents", 0) or 0)
