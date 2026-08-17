@@ -25,7 +25,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cli._harness.base import GrantResult, HarnessAdapter
+from cli._harness._hooks import apply_observation_hook
+from cli._harness.base import GrantResult, HarnessAdapter, ObservationPlan
 from cli._harness.scopes import (
     ADMIN,
     REPO_CURRENT,
@@ -201,3 +202,49 @@ class CodexAdapter(HarnessAdapter):
             changed=False,
             already=True,
         )
+
+    # -- use observation ---------------------------------------------------
+
+    def observation_config_path(self, scope: str) -> Path | None:
+        """``hooks.json`` beside the active config layer.
+
+        Codex reads hooks from either ``hooks.json`` or an inline
+        ``[hooks]`` table in ``config.toml``. Logion writes the JSON file
+        so it never has to rewrite the user's TOML config.
+        """
+        cscope = canonical_scope(scope)
+        if cscope == USER:
+            return self._home() / ".codex" / "hooks.json"
+        if cscope in (REPO_CURRENT, REPO_PARENT, REPO_ROOT):
+            root = self._repo_root_path() if cscope == REPO_ROOT else None
+            base = root if root is not None else self._cwd_path()
+            return base / ".codex" / "hooks.json"
+        return None
+
+    def _observation(
+        self, scope: str, *, remove: bool = False, dry_run: bool = False
+    ) -> ObservationPlan:
+        path = self.observation_config_path(scope)
+        if path is None:
+            return self._unsupported(scope)
+        return apply_observation_hook(
+            harness=self.name,
+            scope=scope,
+            path=path,
+            # Codex's tool-name vocabulary is not pinned in its public
+            # hook docs, so match every tool event and let local
+            # attribution drop the ones that carry no installed path.
+            matcher=".*",
+            command=self.observation_command(),
+            remove=remove,
+            dry_run=dry_run,
+        )
+
+    def plan_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope, dry_run=True)
+
+    def enable_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope)
+
+    def disable_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope, remove=True)

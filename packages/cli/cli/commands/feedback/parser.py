@@ -47,7 +47,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     submit.add_argument(
         "--acquisition-channel",
         dest="acquisition_channel",
-        required=True,
+        default=None,
+        help=(
+            "Override the channel; resolved from the local acquisition"
+            " receipt when omitted."
+        ),
+    )
+    submit.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Revise feedback already submitted for this version/task class.",
     )
     submit.add_argument("--source-receipt-id", default=None)
     submit.add_argument(

@@ -7,8 +7,8 @@ driver_config:
   claude-code: {model: claude-haiku-4-5}
 execution_requirements:
   api_adapters: [local-devrig]
-  agent_drivers: [codex]
-  driver_models: {codex: [gpt-5.4-mini]}
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
 agents:
   - id: user_a
     role: Developer using a native skill in xpto
@@ -56,16 +56,28 @@ phases:
       create, edit, or reconstruct an inventory receipt manually.
 
       For every integration and usage command, set HOME=${ISOLATED_HOME} and
-      LOGION_HOME=${LOGION_HOME_NATIVE}. Enable the Codex integration in prompt
-      mode and verify its status from that same home. Read the installed SKILL.md
-      and apply it to review ${FIXTURE_ROOT}/buggy.py. From the one validated
-      inventory receipt, read only installation_id. Pipe a JSON object with
-      installation_id, event resource_invoked, and an opaque session_hash to
-      usage observe --harness codex --stdin. Save its untouched JSON to
-      ${EVIDENCE_DIR}/observe-xpto.json and require disposition recorded; an
-      empty, ignored, or failed response is failure, even though the command
-      exits zero. Save usage pending --json to ${EVIDENCE_DIR}/pending-xpto.json.
-      Do not put task data or paths in either payload.
+      LOGION_HOME=${LOGION_HOME_NATIVE}. Run
+      integrations enable codex --dry-run --json first, save it untouched to
+      ${EVIDENCE_DIR}/integration-plan.json, then enable the Codex integration
+      in prompt mode and verify its status from that same home. Save the
+      resulting hooks config to ${EVIDENCE_DIR}/hooks-xpto.json.
+
+      Then use the resource: read the installed SKILL.md and apply it to review
+      ${FIXTURE_ROOT}/buggy.py. The observation must come from the hook the
+      integration installed, fed the harness's own PostToolUse payload. Do not
+      read installation_id out of the receipt and do not hand-assemble an
+      observation payload: an agent asserting that it used something is not an
+      observation. If your harness cannot deliver the payload, replay the exact
+      recorded payload for this harness from
+      ${LOGION_PUBLIC_REPO_PATH}/packages/cli/tests/fixtures/hook_payloads/,
+      rewriting only its placeholder paths, and pipe that to
+      usage observe --harness codex --stdin.
+
+      Save the observe response untouched to ${EVIDENCE_DIR}/observe-xpto.json
+      and require disposition recorded; an empty, ignored, or failed response is
+      failure, even though the command exits zero. Save usage pending --json to
+      ${EVIDENCE_DIR}/pending-xpto.json and confirm it carries an
+      observation_group_id. Do not put task data or paths in either payload.
     assertions:
       - type: files.native_use_observed
         params:
@@ -78,13 +90,25 @@ phases:
   - id: inspect_and_submit_feedback
     actor: user_a
     goal: |
-      Inspect pending-xpto.json. Submit honest feedback twice with the same
+      Inspect pending-xpto.json. Submit honest feedback with the same
       resource ${RESOURCE_ID}, version ${VERSION_ID}, rating 4, usefulness
       4, reliability 4, tool-safety 5, token-efficiency 4, completed-task,
-      task-class software-development, acquisition-channel
-      ${ACQUISITION_CHANNEL}, and repository-safe prose. Save untouched JSON
-      responses to ${EVIDENCE_DIR}/feedback-first.json and
-      ${EVIDENCE_DIR}/feedback-second.json. Their IDs must match.
+      task-class software-development, and repository-safe prose. Do not pass
+      an acquisition channel: Logion must resolve it from the local receipt,
+      and it must come back as ${ACQUISITION_CHANNEL}. Save the untouched JSON
+      response to ${EVIDENCE_DIR}/feedback-first.json.
+
+      Submitting the same report again must be refused by the local
+      tombstone. Run it once more without --force and save that untouched
+      JSON to ${EVIDENCE_DIR}/feedback-refused.json; an error envelope is
+      the expected content of that one file.
+
+      Then submit the identical report again with --force and save the
+      untouched JSON to ${EVIDENCE_DIR}/feedback-second.json.
+      feedback-first.json and feedback-second.json must both hold a
+      successful response, and their feedback IDs must match — one resource
+      version and task class is one report, however many times a hook
+      fires. Never save an error envelope into either of those two files.
     assertions:
       - type: api.resource_feedback_exists
         params: {reporter_agent: user_a, resource_id: "${RESOURCE_ID}"}

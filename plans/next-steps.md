@@ -169,6 +169,7 @@ Umbrella: [`phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md`](pha
 | Phase | Outcome | Dogfood level |
 | --- | --- | --- |
 | [`15.10`](phase-15.10-native-acquisition-artifact-delivery-and-inventory.md) | Hosted artifact downloads plus `npx skills`, `npx plugins`, and `hf` acquisition/reconciliation | Level 1: acquisition |
+| [`15.10.1`](phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md) | Index, acquire, and reconcile DeepSeek Harness (dsh) plugins through the native manager, plus a thin Logion dsh plugin entry surface | Level 1.1: new-ecosystem acquisition |
 | [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) | Observe native usage and submit generic feedback linked to the exact resource/Course | Level 2: real feedback |
 | [`15.11.1`](phase-15.11.1-publisher-integrated-consented-observation.md) | Let publishers ship thin consented skill/plugin projections that emit minimum receipts automatically without requiring the full Logion CLI | Level 2.1: publisher-side adoption |
 | [`15.12`](phase-15.12-ai-catalog-publication-and-ard-discovery.md) | AI Catalog publication/ingestion plus server-side ARD Agent Finder indexing from `ard-connectors`, with zero-duplicate self-crawl and no premature ASM-specific contract | Level 3: discovery |

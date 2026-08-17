@@ -1,207 +1,285 @@
 # SPDX-License-Identifier: MIT
-"""Tests for integrations CLI commands."""
+"""Tests for integrations CLI commands.
+
+These drive the real adapters against a temporary ``HOME`` rather than a
+fake: the thing worth testing is the edit that lands in the user's
+harness config, and a fake adapter cannot get that wrong.
+"""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
+from cli._harness import get_adapter
+from cli.integrations_state import get_mode, managed_hooks
 from cli.main import main
 
-
-class FakeAdapter:
-    """Fake harness adapter for testing."""
-
-    def __init__(
-        self,
-        name: str = "codex",
-        display_name: str = "Codex",
-        present: bool = True,
-    ) -> None:
-        self.name = name
-        self.display_name = display_name
-        self._present = present
-
-    def is_present(self) -> bool:
-        return self._present
+OBSERVE_COMMAND = "logion usage observe"
 
 
-def _patch_adapters(
-    monkeypatch: pytest.MonkeyPatch,
-    adapters: list[FakeAdapter],
-) -> None:
-    """Replace the harness registry with fake adapters."""
-    monkeypatch.setattr("cli._harness.all_adapters", lambda: list(adapters))
-    monkeypatch.setattr(
-        "cli._harness.adapter_names", lambda: [a.name for a in adapters]
-    )
-    monkeypatch.setattr(
-        "cli._harness.detect_present",
-        lambda: [a for a in adapters if a.is_present()],
-    )
-    monkeypatch.setattr(
-        "cli._harness.get_adapter",
-        lambda name: next((a for a in adapters if a.name == name), None),
-    )
-    # Also patch the imports in the handlers module
-    monkeypatch.setattr(
-        "cli.commands.integrations.handlers.all_adapters",
-        lambda: list(adapters),
-    )
-    monkeypatch.setattr(
-        "cli.commands.integrations.handlers.adapter_names",
-        lambda: [a.name for a in adapters],
-    )
-    monkeypatch.setattr(
-        "cli.commands.integrations.handlers.detect_present",
-        lambda: [a for a in adapters if a.is_present()],
-    )
-    monkeypatch.setattr(
-        "cli.commands.integrations.handlers.get_adapter",
-        lambda name: next((a for a in adapters if a.name == name), None),
-    )
+@pytest.fixture
+def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A throwaway ``HOME`` so adapters edit a temp config, not the user's."""
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    (home / ".codex").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    return home
 
 
-def test_integrations_detect_json(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """integrations detect --json lists detected and supported harnesses."""
-    adapters = [
-        FakeAdapter("codex", "Codex", present=True),
-        FakeAdapter("claude-code", "Claude Code", present=False),
+def _settings(home: Path) -> dict[str, object]:
+    path = home / ".claude" / "settings.json"
+    if not path.is_file():
+        return {}
+    loaded = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+def _hook_commands(settings: dict[str, object]) -> list[str]:
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return []
+    groups = hooks.get("PostToolUse")
+    if not isinstance(groups, list):
+        return []
+    return [
+        entry["command"]
+        for group in groups
+        if isinstance(group, dict)
+        for entry in group.get("hooks", [])
+        if isinstance(entry, dict) and isinstance(entry.get("command"), str)
     ]
-    _patch_adapters(monkeypatch, adapters)
 
+
+def test_detect_reports_which_harnesses_can_observe(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Detect must distinguish "installed" from "observable"."""
     assert main(["integrations", "detect", "--json"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["kind"] == "logion.integrations.detect"
-    assert len(payload["data"]["detected"]) == 1
-    assert payload["data"]["detected"][0]["name"] == "codex"
-    assert len(payload["data"]["supported"]) == 2
+    supported = json.loads(capsys.readouterr().out)["data"]["supported"]
+    by_name = {entry["name"]: entry for entry in supported}
+
+    assert by_name["claude-code"]["observation_supported"] is True
+    assert by_name["codex"]["observation_supported"] is True
+    assert by_name["hermes"]["observation_supported"] is False
 
 
-def test_integrations_detect_human_readable(
-    monkeypatch: pytest.MonkeyPatch,
+def test_enable_dry_run_shows_the_diff_and_writes_nothing(
+    fake_home: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """integrations detect without --json prints detected harnesses."""
-    adapters = [FakeAdapter("codex", "Codex", present=True)]
-    _patch_adapters(monkeypatch, adapters)
-
-    assert main(["integrations", "detect"]) == 0
-    out = capsys.readouterr().out
-    assert "codex" in out
-
-
-def test_integrations_enable_json(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """integrations enable --json emits the v1 JSON envelope."""
-    adapters = [FakeAdapter("codex", "Codex", present=True)]
-    _patch_adapters(monkeypatch, adapters)
-
+    """The user has to be able to read the edit before consenting to it."""
     assert (
         main([
             "integrations",
             "enable",
-            "codex",
-            "--mode",
-            "auto",
+            "claude-code",
+            "--dry-run",
             "--json",
         ])
         == 0
     )
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["kind"] == "logion.integrations.enable"
-    assert payload["data"]["harness"] == "codex"
-    assert payload["data"]["mode"] == "auto"
-    assert payload["data"]["enabled"] is True
+
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert data["dry_run"] is True
+    assert data["plan"]["supported"] is True
+    assert OBSERVE_COMMAND in data["plan"]["diff"]
+    assert "PostToolUse" in data["plan"]["diff"]
+    assert not (fake_home / ".claude" / "settings.json").exists()
+    assert get_mode("claude-code") is None
 
 
-def test_integrations_enable_dry_run(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
+def test_enable_installs_the_hook_and_preserves_user_config(
+    fake_home: Path,
 ) -> None:
-    """integrations enable --dry-run does not mark as enabled."""
-    adapters = [FakeAdapter("codex", "Codex", present=True)]
-    _patch_adapters(monkeypatch, adapters)
+    """Logion adds its hook without touching anything it does not own."""
+    settings_path = fake_home / ".claude" / "settings.json"
+    settings_path.write_text(
+        json.dumps({
+            "model": "opus",
+            "permissions": {"allow": ["Bash(ls:*)"]},
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": "Write",
+                        "hooks": [{"type": "command", "command": "./mine.sh"}],
+                    }
+                ]
+            },
+        }),
+        encoding="utf-8",
+    )
 
     assert (
-        main(["integrations", "enable", "codex", "--dry-run", "--json"]) == 0
+        main(["integrations", "enable", "claude-code", "--mode", "auto"]) == 0
     )
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["data"]["dry_run"] is True
-    assert payload["data"]["enabled"] is False
+
+    settings = _settings(fake_home)
+    assert settings["model"] == "opus"
+    assert settings["permissions"] == {"allow": ["Bash(ls:*)"]}
+    commands = _hook_commands(settings)
+    assert "./mine.sh" in commands
+    assert any(c.startswith(OBSERVE_COMMAND) for c in commands)
+    assert get_mode("claude-code") == "auto"
+    recorded = managed_hooks("claude-code")
+    assert len(recorded) == 1
+    assert recorded[0]["config_path"] == str(settings_path)
 
 
-def test_integrations_enable_unknown_harness(
-    monkeypatch: pytest.MonkeyPatch,
+def test_enable_is_idempotent(fake_home: Path) -> None:
+    """Enabling twice must not stack duplicate hooks."""
+    assert main(["integrations", "enable", "claude-code"]) == 0
+    first = (fake_home / ".claude" / "settings.json").read_text()
+
+    assert main(["integrations", "enable", "claude-code"]) == 0
+
+    assert (fake_home / ".claude" / "settings.json").read_text() == first
+    assert len(_hook_commands(_settings(fake_home))) == 1
+
+
+def test_disable_removes_only_the_logion_hook(fake_home: Path) -> None:
+    """Uninstall is scoped to entries Logion installed."""
+    assert main(["integrations", "enable", "claude-code"]) == 0
+    settings = _settings(fake_home)
+    groups = settings["hooks"]["PostToolUse"]  # type: ignore[index]
+    groups[0]["hooks"].append({"type": "command", "command": "./mine.sh"})
+    (fake_home / ".claude" / "settings.json").write_text(
+        json.dumps(settings), encoding="utf-8"
+    )
+
+    assert main(["integrations", "disable", "claude-code"]) == 0
+
+    commands = _hook_commands(_settings(fake_home))
+    assert commands == ["./mine.sh"]
+    assert get_mode("claude-code") == "off"
+    assert managed_hooks("claude-code") == []
+
+
+def test_disable_leaves_no_empty_scaffolding(fake_home: Path) -> None:
+    """Removing the only hook removes the keys Logion created."""
+    assert main(["integrations", "enable", "claude-code"]) == 0
+    assert main(["integrations", "disable", "claude-code"]) == 0
+
+    assert "hooks" not in _settings(fake_home)
+
+
+def test_enable_mode_off_disables(fake_home: Path) -> None:
+    """``--mode off`` is a real mode, not an unsupported choice."""
+    assert main(["integrations", "enable", "claude-code"]) == 0
+    assert (
+        main(["integrations", "enable", "claude-code", "--mode", "off"]) == 0
+    )
+
+    assert get_mode("claude-code") == "off"
+    assert "hooks" not in _settings(fake_home)
+
+
+def test_codex_hook_goes_to_hooks_json_not_the_toml_config(
+    fake_home: Path,
 ) -> None:
-    """integrations enable with unknown harness returns exit code 2."""
-    _patch_adapters(monkeypatch, [])
+    """Logion writes its own JSON file rather than rewriting user TOML."""
+    (fake_home / ".codex" / "config.toml").write_text(
+        'model = "gpt-5.4"\n', encoding="utf-8"
+    )
 
-    assert main(["integrations", "enable", "unknown", "--json"]) == 2
+    assert main(["integrations", "enable", "codex"]) == 0
+
+    hooks_path = fake_home / ".codex" / "hooks.json"
+    assert hooks_path.is_file()
+    payload = json.loads(hooks_path.read_text(encoding="utf-8"))
+    entry = payload["hooks"]["PostToolUse"][0]["hooks"][0]
+    assert entry["command"].startswith(OBSERVE_COMMAND)
+    assert entry["async"] is True
+    assert (fake_home / ".codex" / "config.toml").read_text() == (
+        'model = "gpt-5.4"\n'
+    )
 
 
-def test_integrations_disable_json(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.usefixtures("fake_home")
+def test_unhookable_harness_reports_inventory_only(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """integrations disable --json emits the v1 JSON envelope."""
-    adapters = [FakeAdapter("codex", "Codex", present=True)]
-    _patch_adapters(monkeypatch, adapters)
+    """No fabricated support for a harness with no trustworthy hook."""
+    assert main(["integrations", "enable", "hermes", "--json"]) == 0
 
-    assert main(["integrations", "disable", "codex", "--json"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["kind"] == "logion.integrations.disable"
-    assert payload["data"]["harness"] == "codex"
-    assert payload["data"]["disabled"] is True
+    plan = json.loads(capsys.readouterr().out)["data"]["plan"]
+    assert plan["supported"] is False
+    assert plan["reason"] == "inventory_only_observation_unsupported"
+    assert plan["path"] is None
 
 
-def test_integrations_disable_unknown_harness(
-    monkeypatch: pytest.MonkeyPatch,
+def test_enable_refuses_to_clobber_an_unparseable_config(
+    fake_home: Path,
 ) -> None:
-    """integrations disable with unknown harness returns exit code 2."""
-    _patch_adapters(monkeypatch, [])
+    """A config Logion cannot parse is left exactly as it was."""
+    settings_path = fake_home / ".claude" / "settings.json"
+    settings_path.write_text("{ not json", encoding="utf-8")
 
-    assert main(["integrations", "disable", "unknown", "--json"]) == 2
+    assert main(["integrations", "enable", "claude-code"]) != 0
+
+    assert settings_path.read_text() == "{ not json"
 
 
-def test_integrations_status_json(
-    monkeypatch: pytest.MonkeyPatch,
+def test_enable_unknown_harness(capsys: pytest.CaptureFixture[str]) -> None:
+    """An unknown harness is rejected."""
+    assert main(["integrations", "enable", "nope"]) == 2
+    assert "Unknown harness" in capsys.readouterr().err
+
+
+@pytest.mark.usefixtures("fake_home")
+def test_status_reports_effective_mode(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """integrations status --json lists all harnesses with presence."""
-    adapters = [
-        FakeAdapter("codex", "Codex", present=True),
-        FakeAdapter("claude-code", "Claude Code", present=False),
-    ]
-    _patch_adapters(monkeypatch, adapters)
+    """Status distinguishes stored consent from what is in force."""
+    assert (
+        main(["integrations", "enable", "claude-code", "--mode", "auto"]) == 0
+    )
+    capsys.readouterr()
 
     assert main(["integrations", "status", "--json"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["kind"] == "logion.integrations.status"
-    assert len(payload["data"]) == 2
-    assert payload["data"][0]["name"] == "codex"
-    assert payload["data"][0]["present"] is True
-    assert payload["data"][1]["present"] is False
+    statuses = {
+        entry["name"]: entry
+        for entry in json.loads(capsys.readouterr().out)["data"]
+    }
+
+    assert statuses["claude-code"]["mode"] == "auto"
+    assert statuses["claude-code"]["effective_mode"] == "auto"
+    assert statuses["claude-code"]["enabled"] is True
+    assert statuses["hermes"]["effective_mode"] == "off"
+    assert statuses["hermes"]["enabled"] is False
 
 
-def test_integrations_status_human_readable(
+@pytest.mark.usefixtures("fake_home")
+def test_status_flags_do_not_track(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """integrations status without --json prints human-readable output."""
-    adapters = [
-        FakeAdapter("codex", "Codex", present=True),
-        FakeAdapter("claude-code", "Claude Code", present=False),
-    ]
-    _patch_adapters(monkeypatch, adapters)
+    """A machine-wide opt-out is visible in status, not silently ignored."""
+    assert (
+        main(["integrations", "enable", "claude-code", "--mode", "auto"]) == 0
+    )
+    capsys.readouterr()
+    monkeypatch.setenv("DO_NOT_TRACK", "1")
 
-    assert main(["integrations", "status"]) == 0
-    out = capsys.readouterr().out
-    assert "codex" in out
-    assert "disabled" in out
+    assert main(["integrations", "status", "--json"]) == 0
+    statuses = {
+        entry["name"]: entry
+        for entry in json.loads(capsys.readouterr().out)["data"]
+    }
+
+    assert statuses["claude-code"]["mode"] == "auto"
+    assert statuses["claude-code"]["effective_mode"] == "off"
+    assert statuses["claude-code"]["enabled"] is False
+
+
+def test_observation_command_names_its_harness() -> None:
+    """The hook has to tell Logion which harness fired it."""
+    adapter = get_adapter("claude-code")
+    assert adapter is not None
+    assert adapter.observation_command() == (
+        "logion usage observe --harness claude-code --stdin"
+    )

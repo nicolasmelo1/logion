@@ -57,6 +57,7 @@ All paths are relative to the top-level directory
 | `references/credits-and-payments.md` | stable |
 | `references/referrals.md` | stable |
 | `references/troubleshooting.md` | stable |
+| `references/use-observation-and-feedback.md` | stable |
 
 **Stability annotations:**
 

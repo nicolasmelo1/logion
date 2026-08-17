@@ -51,6 +51,7 @@ REQUIRED_FILES = [
     "references/admin-operations.md",
     "references/troubleshooting.md",
     "references/referrals.md",
+    "references/use-observation-and-feedback.md",
 ]
 
 # High-confidence secret patterns: always FAIL the check.

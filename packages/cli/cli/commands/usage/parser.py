@@ -7,6 +7,7 @@ import argparse
 
 from cli._options import COMMON_PARSER
 
+from ._upload import handle_usage_upload
 from .handlers import (
     handle_usage_dismiss,
     handle_usage_observe,
@@ -57,6 +58,37 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Read observation data from stdin.",
     )
     observe.set_defaults(handler=handle_usage_observe)
+
+    # usage upload
+    upload = sub.add_parser(
+        "upload",
+        help="Upload spooled observations as narrow usage receipts",
+        parents=[COMMON_PARSER],
+    )
+    upload.add_argument(
+        "--since",
+        dest="since",
+        default="24h",
+        help="Only upload observations newer than this window (e.g. 24h).",
+    )
+    upload.add_argument(
+        "--task-class",
+        dest="task_class",
+        required=True,
+        help="Coarse task class for the receipts (e.g. software-development).",
+    )
+    upload.add_argument(
+        "--outcome",
+        choices=["completed", "not_completed", "unknown"],
+        default="unknown",
+    )
+    upload.add_argument(
+        "--yes",
+        action="store_true",
+        default=False,
+        help="Confirm upload in prompt mode after reviewing the payload.",
+    )
+    upload.set_defaults(handler=handle_usage_upload)
 
     # usage dismiss
     dismiss = sub.add_parser(

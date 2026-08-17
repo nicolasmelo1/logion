@@ -5,7 +5,7 @@
 #   none | creator-course-management | account-and-identity |
 #   notifications-and-reports | credits-and-payments | bounties |
 #   course-review-queue | admin-operations | troubleshooting |
-#   referrals
+#   referrals | use-observation-and-feedback
 #
 # Distribution targets (see plan §6):
 #   none                          : 12
@@ -18,7 +18,8 @@
 #   admin-operations              :  4
 #   troubleshooting                :  3
 #   referrals                     :  3
-# total: 43
+#   use-observation-and-feedback  :  3
+# total: 46
 
 scenarios:
 
@@ -362,3 +363,28 @@ scenarios:
     current_recall_band: NONE
     gold_reference: referrals
     why: "`logion referrals stats` / `logion referrals attributions` — referral analytics."
+
+  # ----------------------------------------------------------------
+  # use-observation-and-feedback — native install, consent, feedback
+  # ----------------------------------------------------------------
+
+  - id: ref-route-observation-enable-harness
+    prompt: "Let Logion learn from the skill I installed with npx skills."
+    installed_capabilities: []
+    current_recall_band: NONE
+    gold_reference: use-observation-and-feedback
+    why: "`logion integrations enable` — harness observation and consent mode."
+
+  - id: ref-route-observation-pending-review
+    prompt: "Show what Logion queued from capabilities I actually used and submit an honest review."
+    installed_capabilities: [review.helper]
+    current_recall_band: LOW
+    gold_reference: use-observation-and-feedback
+    why: "`logion usage pending` then `logion feedback submit` — the pending-to-feedback flow."
+
+  - id: ref-route-observation-turn-telemetry-off
+    prompt: "Stop Logion from recording which skills I use."
+    installed_capabilities: [review.helper]
+    current_recall_band: NONE
+    gold_reference: use-observation-and-feedback
+    why: "`logion integrations disable` — consent mode off."

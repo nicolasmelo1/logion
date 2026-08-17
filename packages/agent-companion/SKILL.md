@@ -368,6 +368,10 @@ keyword.
 - `references/referrals.md` — referral codes, links, and attribution
   (placeholder until program launch).
   *Example intent:* "Show me my referral code."
+- `references/use-observation-and-feedback.md` — observing use of a natively
+  installed resource, harness consent modes, or feedback for anything that is
+  not a Course.
+  *Example intent:* "Let Logion learn from the skill I installed with npx."
 - `references/course-review-queue.md` — reviewer-side approve/reject on the
   publication queue (`logion course-reviews`).
   *Example intent:* "Show me courses waiting for my review."

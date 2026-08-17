@@ -21,4 +21,5 @@ REFERENCE_NAMES: tuple[str, ...] = (
     "admin-operations",
     "troubleshooting",
     "referrals",
+    "use-observation-and-feedback",
 )

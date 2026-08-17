@@ -1,0 +1,17 @@
+{
+  "session_id": "01JCODEXSESSION",
+  "transcript_path": null,
+  "cwd": "/PLACEHOLDER_REPO",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-5.4-mini",
+  "turn_id": "turn_7",
+  "tool_name": "shell",
+  "tool_use_id": "call_42",
+  "tool_input": {
+    "command": "cat /PLACEHOLDER_INSTALL/SKILL.md"
+  },
+  "tool_response": {
+    "exit_code": 0
+  },
+  "permission_mode": "on-request"
+}

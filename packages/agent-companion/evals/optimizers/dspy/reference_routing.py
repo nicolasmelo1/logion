@@ -29,6 +29,7 @@ ReferenceName = Literal[
     "admin-operations",
     "troubleshooting",
     "referrals",
+    "use-observation-and-feedback",
 ]
 
 
