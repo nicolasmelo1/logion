@@ -11,8 +11,12 @@ import sys
 from cli._errors import handle_error, print_err
 from cli._json import JsonObject, opt_str, require_str
 from cli._output import emit_json, to_data
-from cli._receipts import load_receipts
-from cli.integrations_state import get_mode
+from cli.integrations_state import effective_mode, may_spool
+from cli.usage.attribution import (
+    receipt_by_installation_id,
+    resolve_installations,
+    session_hash_for,
+)
 from cli.usage.observations import (
     dismiss_observations,
     list_pending_observations,
@@ -20,6 +24,7 @@ from cli.usage.observations import (
     observation_event,
     observation_scope_kind,
     spool_observation,
+    with_group_ids,
 )
 
 
@@ -44,7 +49,9 @@ def handle_usage_pending(args: argparse.Namespace) -> int:
     json_output = getattr(args, "json_output", False)
     since_seconds = _parse_since(getattr(args, "since", "24h"))
     try:
-        observations = list_pending_observations(since_seconds=since_seconds)
+        observations = with_group_ids(
+            list_pending_observations(since_seconds=since_seconds)
+        )
         if json_output:
             emit_json("logion.usage.pending", to_data(observations))
         else:
@@ -52,8 +59,10 @@ def handle_usage_pending(args: argparse.Namespace) -> int:
                 sys.stdout.write("No pending usage observations.\n")
             else:
                 for obs in observations:
+                    group_id = obs.get("observation_group_id", "")
                     lines = [
                         f"observation_id: {obs.get('observation_id', '')}",
+                        f"observation_group_id: {group_id}",
                         f"observed_at: {obs.get('observed_at', '')}",
                         f"harness: {obs.get('harness', '')}",
                         f"event: {obs.get('event', '')}",
@@ -68,7 +77,7 @@ def handle_usage_pending(args: argparse.Namespace) -> int:
 
 def _read_stdin_json() -> JsonObject:
     """Read one bounded JSON object from stdin."""
-    max_bytes = 64 * 1024
+    max_bytes = 1024 * 1024
     try:
         raw = sys.stdin.buffer.read(max_bytes + 1)
     except (AttributeError, OSError):
@@ -78,7 +87,7 @@ def _read_stdin_json() -> JsonObject:
             text_payload = sys.stdin.read()
         raw = text_payload.encode()
     if len(raw) > max_bytes:
-        raise ValueError("observation payload exceeds 64 KiB")
+        raise ValueError("observation payload exceeds 1 MiB")
     if not raw.strip():
         raise ValueError("observation payload is required")
     try:
@@ -90,71 +99,100 @@ def _read_stdin_json() -> JsonObject:
     return data
 
 
-def _receipt_for_observation(
-    harness: str, installation_id: object
-) -> JsonObject:
-    if not isinstance(installation_id, str) or not installation_id:
-        raise ValueError("installation_id is required")
-    matches = [
-        receipt
-        for receipt in load_receipts()
-        if receipt.get("installation_id") == installation_id
-        and receipt.get("harness") == harness
-    ]
-    if len(matches) != 1:
-        raise ValueError(
-            "installation_id is not uniquely attributed in local inventory"
-        )
-    return matches[0]
+def _session_hash(payload: JsonObject) -> str | None:
+    """Opaque session grouping key, hashing the raw id if that is all we got.
+
+    A companion may pass an already-opaque ``session_hash``; a native hook
+    passes the harness's own ``session_id``, which never reaches the spool.
+    """
+    provided = opt_str(payload, "session_hash")
+    if provided:
+        return provided
+    session_id = opt_str(payload, "session_id")
+    return session_hash_for(session_id) if session_id else None
+
+
+def _receipts_for_payload(payload: JsonObject) -> list[JsonObject]:
+    """Every installation this payload is evidence of use for.
+
+    An explicit ``installation_id`` short-circuits path resolution; a raw
+    harness payload is matched against local inventory in memory.
+    """
+    if payload.get("installation_id") is not None:
+        return [receipt_by_installation_id(payload.get("installation_id"))]
+    return resolve_installations(payload)
 
 
 def handle_usage_observe(args: argparse.Namespace) -> int:
     """Read an observation from stdin and write it to the local spool."""
     json_output = getattr(args, "json_output", False)
     try:
-        if get_mode(args.harness) is None:
+        if not may_spool(args.harness):
+            # Consent gate comes first: with observation off there is no
+            # read, no write, and no network call beyond this check.
             if json_output:
                 emit_json(
                     "logion.usage.observe",
                     {
                         "disposition": "ignored",
-                        "reason": "integration_disabled",
+                        "reason": "observation_not_consented",
+                        "mode": effective_mode(args.harness),
                     },
                 )
             return 0
-        data = _read_stdin_json()
-        receipt = _receipt_for_observation(
-            args.harness, data.get("installation_id")
-        )
-        obs = make_observation(
-            harness=args.harness,
-            event=observation_event(opt_str(data, "event")),
-            resource_id=require_str(receipt, "resource_id"),
-            version_id=require_str(receipt, "version_id"),
-            resource_type=require_str(receipt, "resource_type"),
-            acquisition_channel=require_str(receipt, "channel"),
-            installation_id=require_str(receipt, "installation_id"),
-            scope_kind=observation_scope_kind(
-                require_str(receipt, "scope_kind")
-            ),
-            scope_id=require_str(receipt, "scope_id"),
-            session_hash=opt_str(data, "session_hash"),
-        )
-        spool_observation(obs)
+        payload = _read_stdin_json()
+        receipts = _receipts_for_payload(payload)
+        if not receipts:
+            if json_output:
+                emit_json(
+                    "logion.usage.observe",
+                    {
+                        "disposition": "ignored",
+                        "reason": "no_attributed_installation",
+                    },
+                )
+            return 0
+        session_hash = _session_hash(payload)
+        event = observation_event(opt_str(payload, "event"))
+        recorded: list[JsonObject] = []
+        for receipt in receipts:
+            obs = make_observation(
+                harness=args.harness,
+                event=event,
+                resource_id=require_str(receipt, "resource_id"),
+                version_id=require_str(receipt, "version_id"),
+                resource_type=require_str(receipt, "resource_type"),
+                acquisition_channel=require_str(receipt, "channel"),
+                installation_id=require_str(receipt, "installation_id"),
+                scope_kind=observation_scope_kind(
+                    require_str(receipt, "scope_kind")
+                ),
+                scope_id=require_str(receipt, "scope_id"),
+                session_hash=session_hash,
+            )
+            spool_observation(obs)
+            recorded.append(obs.to_dict())
         if json_output:
             emit_json(
                 "logion.usage.observe",
                 {
                     "disposition": "recorded",
-                    "observation": to_data(obs.to_dict()),
+                    "observation": to_data(recorded[0]),
+                    "observations": to_data(recorded),
                 },
             )
         else:
-            sys.stdout.write(f"observation_id: {obs.observation_id}\n")
-            sys.stdout.write(f"event: {obs.event}\n")
-            sys.stdout.write(f"resource_id: {obs.resource_id}\n")
+            for entry in recorded:
+                sys.stdout.write(
+                    f"observation_id: {entry.get('observation_id', '')}\n"
+                )
+                sys.stdout.write(f"event: {entry.get('event', '')}\n")
+                sys.stdout.write(
+                    f"resource_id: {entry.get('resource_id', '')}\n"
+                )
     except Exception as exc:
-        # observe must always exit 0 per contract
+        # observe must always exit 0 per contract: a broken hook must
+        # never break the harness that called it.
         if json_output:
             emit_json(
                 "logion.usage.observe",

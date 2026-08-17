@@ -28,6 +28,7 @@ from typing import Literal
 
 from cli._json import JsonObject, opt_str
 from cli._local_state import get_home
+from cli._observation_validation import OPAQUE_ID_RE, SLUG_RE
 
 SCOPE_KINDS = Literal[
     "repo-current",
@@ -155,6 +156,28 @@ class UsageObservation:
         )
         if any(not value for value in required):
             raise ValueError("observation identifiers must be non-empty")
+        # Field *names* carry no free text by construction; these checks
+        # are what stop a caller from smuggling one through a value.
+        if not SLUG_RE.fullmatch(self.harness):
+            raise ValueError("harness must be a lowercase slug")
+        for name, value in (
+            ("installation_id", self.installation_id),
+            ("scope_id", self.scope_id),
+            ("resource_id", self.resource_id),
+            ("version_id", self.version_id),
+        ):
+            if not OPAQUE_ID_RE.fullmatch(value):
+                raise ValueError(
+                    f"{name} must be an opaque identifier"
+                    " without paths or whitespace"
+                )
+        if self.session_hash is not None and not OPAQUE_ID_RE.fullmatch(
+            self.session_hash
+        ):
+            raise ValueError(
+                "session_hash must be an opaque identifier"
+                " without paths or whitespace"
+            )
 
     def to_dict(self) -> JsonObject:
         """Return a JSON-safe dict for spool emission."""
@@ -190,8 +213,12 @@ def _utc_iso_now() -> str:
     return datetime.datetime.now(datetime.UTC).isoformat()
 
 
-def _observation_group_id(obs: UsageObservation) -> str:
-    """Deterministic group id for deduplication."""
+def observation_group_id(obs: UsageObservation) -> str:
+    """Deterministic group id for deduplication and dismissal.
+
+    Derived rather than stored: the spool record stays exactly the pinned
+    field set, and ``usage pending`` recomputes the id it prints.
+    """
     raw = "\0".join([
         str(obs.session_hash or ""),
         obs.resource_id,
@@ -348,6 +375,25 @@ def list_pending_observations(
     return pending
 
 
+def with_group_ids(observations: list[JsonObject]) -> list[JsonObject]:
+    """Annotate spool records with the id ``usage dismiss`` accepts.
+
+    Without this the group id is unreachable from the CLI's own output,
+    which makes dismissal impossible for the agent that is supposed to
+    perform it.
+    """
+    annotated: list[JsonObject] = []
+    for entry in observations:
+        obs = _dict_to_observation(entry)
+        if obs is None:
+            continue
+        annotated.append({
+            **entry,
+            "observation_group_id": observation_group_id(obs),
+        })
+    return annotated
+
+
 def dismiss_observations(
     group_id: str,
     *,
@@ -371,7 +417,7 @@ def dismiss_observations(
             obs_obj = _dict_to_observation(obs)
             if (
                 obs_obj is not None
-                and _observation_group_id(obs_obj) == group_id
+                and observation_group_id(obs_obj) == group_id
             ):
                 removed += 1
             else:
@@ -469,5 +515,7 @@ __all__ = [
     "dismiss_observations",
     "list_pending_observations",
     "make_observation",
+    "observation_group_id",
     "spool_observation",
+    "with_group_ids",
 ]

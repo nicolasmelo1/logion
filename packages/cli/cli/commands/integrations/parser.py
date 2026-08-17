@@ -48,8 +48,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     enable.add_argument(
         "--mode",
-        choices=["prompt", "auto", "local-only"],
+        choices=["off", "local-only", "prompt", "auto"],
         default="prompt",
+    )
+    enable.add_argument(
+        "--scope",
+        default="user",
+        help="Config scope the hook is written to (default: user).",
     )
     enable.set_defaults(handler=handle_integrations_enable)
 
@@ -60,6 +65,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         parents=[COMMON_PARSER],
     )
     disable.add_argument("harness", metavar="HARNESS")
+    disable.add_argument(
+        "--scope",
+        default="user",
+        help="Config scope the hook is removed from (default: user).",
+    )
     disable.set_defaults(handler=handle_integrations_disable)
 
     # integrations status

@@ -414,6 +414,11 @@
       "operations": [
         "search_listings"
       ]
+    },
+    "usage upload": {
+      "operations": [
+        "submit_usage_receipt"
+      ]
     }
   },
   "version": 1

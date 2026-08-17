@@ -1981,20 +1981,40 @@ class LogionApiQueries:
             "installation_id": receipt.get("installation_id"),
         }
 
+    #: Every disposition the feedback API may report. An unknown value means
+    #: the server invented one, which is a failure, not a pass.
+    _PROJECTION_DISPOSITIONS = frozenset({
+        "projected",
+        "not_a_course",
+        "ineligible",
+        "self_review",
+        "paid_entitlement_missing",
+    })
+
     async def _q_course_review_projection_exists(
         self, query: JsonObject, agent_roles: dict[str, str]
     ) -> JsonObject:
+        """Assert the projection was *decided*, and decided consistently.
+
+        A disposition merely being present is not evidence: it used to pass
+        on ``not_a_course``, which is the branch where nothing projects.
+        What must hold is that the disposition is a known one and that a
+        marketplace review exists exactly when it says ``projected`` — so a
+        non-projecting outcome can never carry a review id.
+        """
         _, feedback = await self._feedback_for(query, agent_roles)
         disposition = (
             feedback.get("projection_disposition") if feedback else None
         )
+        review_id = feedback.get("course_review_id") if feedback else None
+        projected = disposition == "projected"
+        known = disposition in self._PROJECTION_DISPOSITIONS
+        consistent = known and (review_id is not None) == projected
         return {
-            "found": disposition is not None,
+            "found": consistent,
             "feedback_id": feedback.get("id") if feedback else None,
             "projection_disposition": disposition,
-            "course_review_id": (
-                feedback.get("course_review_id") if feedback else None
-            ),
+            "course_review_id": review_id,
         }
 
     async def _q_raw_observation_not_uploaded(

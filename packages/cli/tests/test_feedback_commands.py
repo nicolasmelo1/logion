@@ -264,3 +264,103 @@ def test_feedback_summary_human_readable(
 
     out = capsys.readouterr().out
     assert "total_feedback" in out
+
+
+def _receipt_for(channel: str) -> JsonObject:
+    return {
+        "schema_version": 1,
+        "resource_id": RESOURCE_ID,
+        "version_id": VERSION_ID,
+        "resource_type": "agent_skill",
+        "channel": channel,
+        "harness": "codex",
+        "scope_kind": "repo-root",
+        "scope_id": "b" * 64,
+        "installation_id": "a" * 64,
+        "target_path": "/tmp/skills/helper",
+        "relative_target_path": "helper",
+    }
+
+
+def _submit(*extra: str) -> int:
+    return main([
+        "feedback",
+        "submit",
+        RESOURCE_ID,
+        VERSION_ID,
+        "--rating",
+        "4",
+        "--task-class",
+        "software-development",
+        *extra,
+    ])
+
+
+def test_acquisition_channel_comes_from_the_local_receipt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The link to the acquisition must be a fact, not a typed claim."""
+    feedback = FakeFeedbackResource()
+    _patch_client(monkeypatch, feedback)
+    monkeypatch.setattr(
+        "cli.commands.feedback.handlers.load_receipts",
+        lambda: [_receipt_for("npx_skills")],
+    )
+
+    assert _submit() == 0
+
+    assert feedback.last_submit["acquisition_channel"] == "npx_skills"
+
+
+def test_submit_without_a_receipt_asks_for_an_explicit_channel(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Rather than inventing a channel, say what is missing."""
+    feedback = FakeFeedbackResource()
+    _patch_client(monkeypatch, feedback)
+    monkeypatch.setattr("cli.commands.feedback.handlers.load_receipts", list)
+
+    assert _submit() != 0
+
+    assert feedback.last_submit == {}
+    assert "--acquisition-channel" in capsys.readouterr().err
+
+
+def test_ambiguous_channel_requires_an_explicit_choice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feedback = FakeFeedbackResource()
+    _patch_client(monkeypatch, feedback)
+    monkeypatch.setattr(
+        "cli.commands.feedback.handlers.load_receipts",
+        lambda: [_receipt_for("npx_skills"), _receipt_for("hugging_face")],
+    )
+
+    assert _submit() != 0
+    assert feedback.last_submit == {}
+
+    assert _submit("--acquisition-channel", "npx_skills") == 0
+    assert feedback.last_submit["acquisition_channel"] == "npx_skills"
+
+
+def test_repeat_submission_is_refused_until_forced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hook firing twice must not become two outbound reports."""
+    feedback = FakeFeedbackResource()
+    feedback.submit_result = {"id": "fb-777", "rating": 4}
+    _patch_client(monkeypatch, feedback)
+    monkeypatch.setattr(
+        "cli.commands.feedback.handlers.load_receipts",
+        lambda: [_receipt_for("npx_skills")],
+    )
+
+    assert _submit() == 0
+    feedback.last_submit = {}
+
+    assert _submit() != 0
+    assert feedback.last_submit == {}
+
+    assert _submit("--force") == 0
+    assert feedback.last_submit["rating"] == 4

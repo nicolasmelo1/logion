@@ -26,11 +26,13 @@ import json
 import shutil
 from pathlib import Path
 
+from cli._harness._hooks import apply_observation_hook
 from cli._harness.base import (
     AUTOPOST_COMMAND,
     GrantResult,
     HarnessAdapter,
     HarnessConfigError,
+    ObservationPlan,
 )
 from cli._harness.scopes import (
     REPO_CURRENT,
@@ -58,6 +60,12 @@ def _git_root(cwd: Path) -> Path | None:
 def _autopost_matcher() -> str:
     """Render :data:`AUTOPOST_COMMAND` as a Bash matcher."""
     return f"Bash({' '.join(AUTOPOST_COMMAND)}:*)"
+
+
+# Tool events whose ``tool_input`` can name a path inside an installed
+# resource. Anything else cannot be attributed, so hooking it would only
+# spend the user's time. Claude Code matches this against ``tool_name``.
+OBSERVATION_MATCHER = "Read|Edit|Write|NotebookEdit|Bash"
 
 
 class ClaudeCodeAdapter(HarnessAdapter):
@@ -246,6 +254,35 @@ class ClaudeCodeAdapter(HarnessAdapter):
             changed=True,
             already=False,
         )
+
+    # -- use observation ---------------------------------------------------
+
+    def observation_config_path(self, scope: str) -> Path | None:
+        """Claude Code reads hooks from the same ``settings.json``."""
+        return self.config_path(scope)
+
+    def _observation(
+        self, scope: str, *, remove: bool = False, dry_run: bool = False
+    ) -> ObservationPlan:
+        path = self.config_path(scope)
+        return apply_observation_hook(
+            harness=self.name,
+            scope=scope,
+            path=path,
+            matcher=OBSERVATION_MATCHER,
+            command=self.observation_command(),
+            remove=remove,
+            dry_run=dry_run,
+        )
+
+    def plan_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope, dry_run=True)
+
+    def enable_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope)
+
+    def disable_observation(self, scope: str) -> ObservationPlan:
+        return self._observation(scope, remove=True)
 
     def revoke(self, scope: str) -> GrantResult:
         path = self.config_path(scope)

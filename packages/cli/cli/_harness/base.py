@@ -27,6 +27,7 @@ hard-coding in the command layer.
 
 from __future__ import annotations
 
+import difflib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,6 +46,15 @@ from cli._json import JsonObject
 # Defined once; each adapter renders it into its harness's permission
 # syntax (e.g. Claude Code's ``Bash(logion courses report-usage:*)``).
 AUTOPOST_COMMAND: tuple[str, ...] = ("logion", "courses", "report-usage")
+
+# The command a harness hook invokes to report one use event. Adapters
+# render it into their own hook syntax; the prefix is also what uninstall
+# matches on, so it must stay stable.
+OBSERVATION_COMMAND: tuple[str, ...] = ("logion", "usage", "observe")
+
+# Typed result for a harness that exposes no trustworthy local tool-use
+# event. Reported as-is rather than inferring use from installation.
+INVENTORY_ONLY = "inventory_only_observation_unsupported"
 
 # Permission scopes an adapter must understand. Kept as the canonical
 # semantic vocabulary from :mod:`cli._harness.scopes`; aliases
@@ -79,6 +89,53 @@ class GrantResult:
             "path": str(self.path),
             "changed": self.changed,
             "already": self.already,
+        }
+
+
+@dataclass(frozen=True)
+class ObservationPlan:
+    """What enabling/disabling observation on one harness would do.
+
+    Carries the rendered config diff so ``--dry-run`` can show the exact
+    edit before the user consents to it.
+    """
+
+    harness: str
+    scope: str
+    supported: bool
+    path: Path | None
+    already: bool
+    changed: bool
+    before: str = ""
+    after: str = ""
+    reason: str | None = None
+
+    @property
+    def diff(self) -> str:
+        """Unified diff of the config file this plan would write."""
+        if self.path is None or self.before == self.after:
+            return ""
+        name = str(self.path)
+        return "".join(
+            difflib.unified_diff(
+                self.before.splitlines(keepends=True),
+                self.after.splitlines(keepends=True),
+                fromfile=f"a/{name}",
+                tofile=f"b/{name}",
+            )
+        )
+
+    def to_dict(self) -> JsonObject:
+        """JSON-safe view for ``--json`` output."""
+        return {
+            "harness": self.harness,
+            "scope": self.scope,
+            "supported": self.supported,
+            "path": str(self.path) if self.path is not None else None,
+            "already": self.already,
+            "changed": self.changed,
+            "diff": self.diff,
+            "reason": self.reason,
         }
 
 
@@ -132,6 +189,44 @@ class HarnessAdapter(ABC):
         """
         ...
 
+    # -- use observation ---------------------------------------------------
+
+    def observation_command(self) -> str:
+        """The hook command line that reports one use event to Logion."""
+        return f"{' '.join(OBSERVATION_COMMAND)} --harness {self.name} --stdin"
+
+    def observation_config_path(self, scope: str) -> Path | None:  # noqa: ARG002
+        """Config file that would carry the hook, or ``None`` if unsupported.
+
+        The base implementation returns ``None``: a harness supports use
+        observation only once an adapter has been written against its
+        documented hook schema and a recorded payload fixture.
+        """
+        return None
+
+    def plan_observation(self, scope: str) -> ObservationPlan:
+        """Describe enabling observation without writing anything."""
+        return self._unsupported(scope)
+
+    def enable_observation(self, scope: str) -> ObservationPlan:
+        """Install the observation hook at *scope*.  Idempotent."""
+        return self._unsupported(scope)
+
+    def disable_observation(self, scope: str) -> ObservationPlan:
+        """Remove the Logion-owned observation hook.  Idempotent."""
+        return self._unsupported(scope)
+
+    def _unsupported(self, scope: str) -> ObservationPlan:
+        return ObservationPlan(
+            harness=self.name,
+            scope=canonical_scope(scope),
+            supported=False,
+            path=None,
+            already=False,
+            changed=False,
+            reason=INVENTORY_ONLY,
+        )
+
     def skill_dir(self) -> Path:
         """Absolute dir this harness loads user skills from.
 
@@ -154,9 +249,12 @@ def _canonical(scope: str) -> str:
 
 __all__ = [
     "AUTOPOST_COMMAND",
+    "INVENTORY_ONLY",
+    "OBSERVATION_COMMAND",
     "VALID_SCOPES",
     "GrantResult",
     "HarnessAdapter",
     "HarnessConfigError",
+    "ObservationPlan",
     "ScopeTarget",
 ]

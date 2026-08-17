@@ -221,6 +221,9 @@ commands:
   skills search:
     operations: [search_listings]
 
+  usage upload:
+    operations: [submit_usage_receipt]
+
   feedback submit:
     operations: []
   feedback list:

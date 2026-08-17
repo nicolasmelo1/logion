@@ -1,6 +1,9 @@
 {
+  "note": "The recorded runs no longer prove this phase. They passed against a scenario that let the agent hand-assemble the observation payload, and against an api.course_review_projection_exists assertion that passed on the not_a_course disposition. Both were tightened, so the gate must be re-run with a real driver before 15.11 may be called complete. The superseded reports are kept for history and are not evidence.",
   "phase_id": "15.11",
-  "runs": [
+  "runs": [],
+  "schema_version": 1,
+  "superseded_runs": [
     {
       "api_adapter": "local-devrig",
       "driver": "codex",
@@ -9,6 +12,7 @@
       "report_sha256": "6566e62f19ed0b34460a11ca57ea4eb15cf2e96e800525232e66f512ab4ad0c5",
       "scenario": "native_use_observation_and_feedback",
       "status": "passed",
+      "superseded_reason": "observation was agent-assembled; the projection assertion passed on not_a_course",
       "unsupported_assertions": []
     },
     {
@@ -19,8 +23,8 @@
       "report_sha256": "fbb797f01765c5fd924e8847364dd20a49099984bbee94ce0864e05327dd028d",
       "scenario": "remote_private_mcp_feedback",
       "status": "passed",
+      "superseded_reason": "shares the strengthened projection assertion",
       "unsupported_assertions": []
     }
-  ],
-  "schema_version": 1
+  ]
 }
