@@ -3,14 +3,21 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
-from cli._output import to_data
+from cli._json import JsonObject, opt_str
+from cli._lazy_import import LazyModule
+from cli._output import to_data, to_items
+
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 
 
 def catalog_matches(
-    client: Any, item: dict[str, object]
-) -> list[dict[str, object]]:
+    client: logion.LogionClient, item: JsonObject
+) -> list[JsonObject]:
     """Resolve native source/revision against the paginated catalog."""
     source = str(item.get("source") or "")
     revision = str(item.get("revision") or "")
@@ -22,7 +29,7 @@ def catalog_matches(
     }.get(str(item.get("manager") or ""))
     if not source or resource_type is None:
         return []
-    matches: list[dict[str, object]] = []
+    matches: list[JsonObject] = []
     cursor: str | None = None
     while True:
         try:
@@ -33,22 +40,19 @@ def catalog_matches(
             )
         except Exception:
             return []
-        entries = (
-            payload if isinstance(payload, list) else payload.get("items", [])
-        )
-        for resource in entries:
-            if isinstance(resource, dict):
-                matches.extend(
-                    _resource_version_matches(
-                        client, resource, source, revision
-                    )
-                )
+        for resource in to_items(payload):
+            matches.extend(
+                _resource_version_matches(client, resource, source, revision)
+            )
         if isinstance(payload, list):
             break
-        cursor_value = payload.get("next_cursor") or payload.get("nextCursor")
+        page = payload if isinstance(payload, dict) else {}
+        cursor_value = opt_str(page, "next_cursor") or opt_str(
+            page, "nextCursor"
+        )
         if not cursor_value or cursor_value == cursor:
             break
-        cursor = str(cursor_value)
+        cursor = cursor_value
     return matches
 
 
@@ -77,11 +81,11 @@ def normalize_locator(value: str) -> str:
 
 
 def _resource_version_matches(
-    client: Any,
-    resource: dict[str, object],
+    client: logion.LogionClient,
+    resource: JsonObject,
     source: str,
     revision: str,
-) -> list[dict[str, object]]:
+) -> list[JsonObject]:
     canonical = str(resource.get("canonical_uri") or "")
     # Exact identity only. Fuzzy or display-name linking silently
     # attributes an installation to the wrong resource.
@@ -96,13 +100,8 @@ def _resource_version_matches(
         )
     except Exception:
         return []
-    versions = (
-        versions if isinstance(versions, list) else versions.get("items", [])
-    )
-    matches: list[dict[str, object]] = []
-    for version in versions:
-        if not isinstance(version, dict):
-            continue
+    matches: list[JsonObject] = []
+    for version in to_items(versions):
         version_revision = str(version.get("source_revision") or "")
         if revision and version_revision and revision != version_revision:
             continue

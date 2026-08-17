@@ -16,6 +16,7 @@ from pathlib import Path
 from cli._errors import print_err
 from cli._harness import adapter_names, get_adapter
 from cli._harness.base import HarnessAdapter
+from cli._json import JsonObject
 
 from ._companion import (
     COMPANION_COURSE_ID,
@@ -26,7 +27,7 @@ from ._companion import (
 )
 
 
-def empty_companion_summary() -> dict[str, object]:
+def empty_companion_summary() -> JsonObject:
     return {
         "installed": False,
         "skill_dir": None,
@@ -59,7 +60,7 @@ def validate_explicit_harness(args: argparse.Namespace) -> int | None:
 def run_companion_step(
     args: argparse.Namespace,
     adapters: list[HarnessAdapter],
-) -> tuple[dict[str, object], int | None]:
+) -> tuple[JsonObject, int | None]:
     """Run the companion install step.
 
     Returns ``(summary_dict, exit_code_or_none)``.  A non-None exit
@@ -86,7 +87,7 @@ def run_companion_step(
     # Install the companion into each resolved adapter.  The canonical
     # install (manifest + content hash) happens once per (course_id,
     # version_id); subsequent adapters get a synced skill copy.
-    summaries: list[dict[str, object]] = []
+    summaries: list[JsonObject] = []
     for adapter in adapters:
         try:
             companion = install_companion(args, adapter)

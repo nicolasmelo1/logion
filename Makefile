@@ -8,9 +8,9 @@ LOGION_DEVRIG_API_BASE_URL ?=
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links check-roadmap-mirror check-protocol-specs \
-	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http \
+	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module check-noqa-reasons \
 	check-installer-security \
-	update-generated-lock update-deps-lock \
+	update-generated-lock update-deps-lock update-json-module \
 	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-dead-code agent-proving-ground-test agent-proving-ground-verify \
 	agent-proving-ground-smoke agent-proving-ground-release \
 	release-manifest release-manifest-check version-bump-cli version-bump-client version-bump-companion build-check \
@@ -21,9 +21,11 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
 	release-plan release release-dry-run release-store release-smoke-input
 
+# scripts/ and tests/ are in scope too: the typing.Any ban is only
+# real if every path the repo actually runs is checked.
 lint:
-	uv run ruff check packages/
-	uv run ruff format --check packages/
+	uv run ruff check packages/ scripts/ tests/
+	uv run ruff format --check packages/ scripts/ tests/
 
 dead-code:
 	uv run vulture
@@ -109,6 +111,12 @@ check-forbidden-imports:
 check-cli-http:
 	uv run python scripts/check_cli_http.py
 
+check-json-module:
+	uv run python scripts/check_json_module_sync.py
+
+check-noqa-reasons:
+	uv run python scripts/check_noqa_reasons.py
+
 check-installer-security:
 	python3 scripts/check_installer_security.py
 
@@ -117,13 +125,17 @@ check-installer-security:
 # ruff, security audit) stay separate so this stays cheap.
 ci-checks: public-audit check-generated-lock check-root-files check-deps-lock check-roadmap-mirror check-protocol-specs \
 	check-doc-links check-logion-sh-urls check-skip-reasons \
-	check-forbidden-imports check-cli-http check-installer-security
+	check-forbidden-imports check-cli-http check-installer-security check-json-module \
+	check-noqa-reasons
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update
 
 update-deps-lock:
 	uv run python scripts/check_deps_lock.py --update
+
+update-json-module:
+	uv run python scripts/check_json_module_sync.py --update
 
 companion-verify:
 	uv run make -C packages/agent-companion verify

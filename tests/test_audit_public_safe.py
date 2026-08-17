@@ -8,9 +8,7 @@ import subprocess
 import sys
 import tempfile
 
-REPO_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 AUDIT_SCRIPT = os.path.join(REPO_ROOT, "scripts", "audit_public_safe.py")
 
 

@@ -13,6 +13,7 @@ from cli._context import make_client
 from cli._credentials import save_user_identity, stored_user_id
 from cli._errors import handle_error, print_err
 from cli._output import emit
+from cli.commands.identity._fields import field
 
 from ._api_keys import api_key_parts, save_api_key
 
@@ -57,24 +58,17 @@ def _resolve_password(cli_value: str | None) -> str | None:
     return None
 
 
-def _field(obj: object, name: str) -> object:
-    """Read *name* from a dict or attribute-style response object."""
-    if isinstance(obj, dict):
-        return obj.get(name)
-    return getattr(obj, name, None)
-
-
 def _save_user_identity_from_result(result: object) -> None:
     """Persist the created user's id/email; never fail the command."""
-    user = _field(result, "user")
+    user = field(result, "user")
     if user is None:
         return
-    user_id = _field(user, "id")
+    user_id = field(user, "id")
     if user_id is None:
         return
-    email = _field(user, "email")
-    agent = _field(result, "agent")
-    agent_id = _field(agent, "id") if agent is not None else None
+    email = field(user, "email")
+    agent = field(result, "agent")
+    agent_id = field(agent, "id") if agent is not None else None
     api_key, api_key_prefix = api_key_parts(result)
     try:
         save_user_identity(

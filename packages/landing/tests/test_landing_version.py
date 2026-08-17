@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import io
 import json
-from typing import Any
+from typing import NoReturn
 
+import pytest
 from fastapi.testclient import TestClient
 
 from landing import main
@@ -24,7 +25,9 @@ def test_fallback_is_channel_only() -> None:
     assert not fallback.startswith("v")
 
 
-def test_release_readout_uses_fetched_version(monkeypatch: Any) -> None:
+def test_release_readout_uses_fetched_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _reset_cache()
     monkeypatch.setattr(
         main, "_fetch_release_readout", lambda: "v9.9.9 · stable"
@@ -32,13 +35,17 @@ def test_release_readout_uses_fetched_version(monkeypatch: Any) -> None:
     assert main.release_readout(now=0.0) == "v9.9.9 · stable"
 
 
-def test_release_readout_falls_back_when_fetch_fails(monkeypatch: Any) -> None:
+def test_release_readout_falls_back_when_fetch_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _reset_cache()
     monkeypatch.setattr(main, "_fetch_release_readout", lambda: None)
     assert main.release_readout(now=0.0) == main._fallback_readout()
 
 
-def test_release_readout_caches_within_ttl(monkeypatch: Any) -> None:
+def test_release_readout_caches_within_ttl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _reset_cache()
     calls = {"n": 0}
 
@@ -57,7 +64,9 @@ def test_release_readout_caches_within_ttl(monkeypatch: Any) -> None:
     assert calls["n"] == 2
 
 
-def test_fetch_parses_cli_version_from_manifest(monkeypatch: Any) -> None:
+def test_fetch_parses_cli_version_from_manifest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     manifest = {
         "channel": "stable",
         "packages": {"logion-cli": {"version": "1.2.3"}},
@@ -70,7 +79,7 @@ def test_fetch_parses_cli_version_from_manifest(monkeypatch: Any) -> None:
         def __exit__(self, *exc: object) -> None:
             self.close()
 
-    def fake_urlopen(*args: Any, **kwargs: Any) -> _Resp:
+    def fake_urlopen(*args: object, **kwargs: object) -> _Resp:
         del args, kwargs
         return _Resp(json.dumps(manifest).encode("utf-8"))
 
@@ -78,8 +87,10 @@ def test_fetch_parses_cli_version_from_manifest(monkeypatch: Any) -> None:
     assert main._fetch_release_readout() == "v1.2.3 · stable"
 
 
-def test_fetch_returns_none_on_network_error(monkeypatch: Any) -> None:
-    def boom(*args: Any, **kwargs: Any) -> Any:
+def test_fetch_returns_none_on_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def boom(*args: object, **kwargs: object) -> NoReturn:
         del args, kwargs
         raise OSError("no network")
 
@@ -87,7 +98,9 @@ def test_fetch_returns_none_on_network_error(monkeypatch: Any) -> None:
     assert main._fetch_release_readout() is None
 
 
-def test_index_renders_live_readout(monkeypatch: Any) -> None:
+def test_index_renders_live_readout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _reset_cache()
     monkeypatch.setattr(
         main, "_fetch_release_readout", lambda: "v7.7.7 · stable"

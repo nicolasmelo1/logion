@@ -6,19 +6,19 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 from cli import _receipts
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._json import JsonObject, children, elements
 from cli._output import emit_json
 
 from ._catalog_reconciliation import catalog_matches
 from ._reconcile_receipt import _save_reconciled_receipt
 
 
-def _scope_root_of(receipt: dict[str, Any]) -> Path | None:
+def _scope_root_of(receipt: JsonObject) -> Path | None:
     """Recover the scope root a receipt's relative target hangs off."""
     target = receipt.get("target_path")
     relative = receipt.get("relative_target_path")
@@ -32,7 +32,7 @@ def _scope_root_of(receipt: dict[str, Any]) -> Path | None:
 
 def _reconcile_receipts(
     harness_filter: str, scope_filter: str
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[JsonObject], list[JsonObject]]:
     """Split local receipts into still-valid and drifted installations.
 
     A receipt is evidence of what was installed, not proof that it is
@@ -43,8 +43,8 @@ def _reconcile_receipts(
 
     from ._reconciliation import receipt_status
 
-    matched: list[dict[str, Any]] = []
-    drifted: list[dict[str, Any]] = []
+    matched: list[JsonObject] = []
+    drifted: list[JsonObject] = []
     for receipt in _receipts.load_receipts():
         harness = receipt.get("harness")
         if harness_filter != "all" and harness != harness_filter:
@@ -130,7 +130,7 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
                 ambiguous.append(item)
             else:
                 unresolved.append(item)
-        report: dict[str, Any] = {
+        report: JsonObject = {
             "matched": matched,
             "ambiguous": ambiguous,
             "unresolved": unresolved,
@@ -144,11 +144,15 @@ def handle_resources_reconcile(args: argparse.Namespace) -> int:
             emit_json("logion.resources.reconcile", report)
         else:
             out = sys.stdout
-            out.write(f"Matched installations: {len(report['matched'])}\n")
-            out.write(f"Drifted:              {len(report['drifted'])}\n")
-            out.write(f"Unresolved:           {len(report['unresolved'])}\n")
-            out.write(f"Ambiguous:            {len(report['ambiguous'])}\n")
-            for item in report["drifted"]:
+            for label, key in (
+                ("Matched installations", "matched"),
+                ("Drifted", "drifted"),
+                ("Unresolved", "unresolved"),
+                ("Ambiguous", "ambiguous"),
+            ):
+                count = len(elements(report, key))
+                out.write(f"{label + ':':<22}{count}\n")
+            for item in children(report, "drifted"):
                 out.write(
                     f"  drifted: {item['relative_target_path']} "
                     f"({item['evidence']})\n"

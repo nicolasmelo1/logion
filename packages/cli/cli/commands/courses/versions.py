@@ -9,7 +9,7 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, validate_uuid_id
-from cli._output import emit, to_data
+from cli._output import emit, to_object
 from cli.commands.courses._capability_render import (
     append_approved_capability_summary_lines,
     append_capability_summary_lines,
@@ -34,7 +34,7 @@ def handle_versions_get(args: argparse.Namespace) -> int:
         if config.json_output:
             emit(result, json_output=True)
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines: list[str] = [
                 f"id: {data['id']}",
                 f"course_id: {data['course_id']}",

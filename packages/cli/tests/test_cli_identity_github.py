@@ -6,10 +6,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli._parser import build_parser
 from cli.main import main
 from logion import APIError
@@ -28,8 +28,8 @@ class FakeGithubIdentityResource:
     """Fake identity resource that simulates the GitHub device flow."""
 
     def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-        self._poll_responses: list[Any] = []
+        self.calls: list[tuple[str, JsonObject]] = []
+        self._poll_responses: list[object] = []
         self._poll_index = 0
         self.begin_response = SimpleNamespace(
             device_code="dev-code-123",
@@ -39,15 +39,15 @@ class FakeGithubIdentityResource:
             interval=1,
         )
 
-    def set_poll_responses(self, responses: list[Any]) -> None:
+    def set_poll_responses(self, responses: list[object]) -> None:
         self._poll_responses = responses
         self._poll_index = 0
 
-    def begin_github_device_flow(self, **kwargs: Any) -> SimpleNamespace:
+    def begin_github_device_flow(self, **kwargs: object) -> SimpleNamespace:
         self.calls.append(("begin_github_device_flow", kwargs))
         return self.begin_response
 
-    def poll_github_device_flow(self, **kwargs: Any) -> Any:
+    def poll_github_device_flow(self, **kwargs: object) -> object:
         self.calls.append(("poll_github_device_flow", kwargs))
         if self._poll_index < len(self._poll_responses):
             resp = self._poll_responses[self._poll_index]
@@ -70,24 +70,24 @@ class FakeGithubIdentityResource:
             connected_at="2025-01-01T00:00:00Z",
         )
 
-    def revoke_github_identity(self) -> dict[str, Any]:
+    def revoke_github_identity(self) -> JsonObject:
         self.calls.append(("revoke_github_identity", {}))
         return {"status": "disconnected"}
 
     # Stubs for other identity methods so the fake is reusable.
-    def create_user_with_agent(self, **_kwargs: Any) -> dict[str, Any]:
+    def create_user_with_agent(self, **_kwargs: object) -> JsonObject:
         return {}
 
-    def add_agent_to_user(self, **_kwargs: Any) -> dict[str, Any]:
+    def add_agent_to_user(self, **_kwargs: object) -> JsonObject:
         return {}
 
-    def rotate_api_key(self, **_kwargs: Any) -> dict[str, Any]:
+    def rotate_api_key(self, **_kwargs: object) -> JsonObject:
         return {}
 
-    def begin_github_authorization(self, **_kwargs: Any) -> Any:
+    def begin_github_authorization(self, **_kwargs: object) -> object:
         return SimpleNamespace()
 
-    def complete_github_callback(self, **_kwargs: Any) -> dict[str, Any]:
+    def complete_github_callback(self, **_kwargs: object) -> JsonObject:
         return {}
 
 
@@ -615,7 +615,7 @@ def test_disconnect_json_api_error_envelope(
     """disconnect emits structured JSON for GitHub identity conflicts."""
 
     class RaisingResource(FakeGithubIdentityResource):
-        def revoke_github_identity(self) -> dict[str, Any]:
+        def revoke_github_identity(self) -> JsonObject:
             self.calls.append(("revoke_github_identity", {}))
             raise APIError(409, "github_identity_conflict")
 
@@ -665,7 +665,9 @@ def test_connect_json_api_error_envelope(
     """connect emits structured JSON for backend GitHub OAuth outages."""
 
     class RaisingResource(FakeGithubIdentityResource):
-        def begin_github_device_flow(self, **kwargs: Any) -> SimpleNamespace:
+        def begin_github_device_flow(
+            self, **kwargs: object
+        ) -> SimpleNamespace:
             self.calls.append(("begin_github_device_flow", kwargs))
             raise APIError(503, "github_oauth_unconfigured")
 

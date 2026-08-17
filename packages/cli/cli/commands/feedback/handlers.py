@@ -9,7 +9,8 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._output import emit_json, to_data
+from cli._json import children, opt_str
+from cli._output import emit_json, to_data, to_items, to_object
 
 
 def handle_feedback_submit(args: argparse.Namespace) -> int:
@@ -34,7 +35,7 @@ def handle_feedback_submit(args: argparse.Namespace) -> int:
         if config.json_output:
             emit_json("logion.feedback.submit", to_data(result))
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines = [
                 f"feedback_id: {data.get('feedback_id', data.get('id', ''))}",
                 f"resource_id: {data.get('resource_id', args.resource_id)}",
@@ -60,14 +61,14 @@ def handle_feedback_list(args: argparse.Namespace) -> int:
         if config.json_output:
             emit_json("logion.feedback.list", to_data(result))
         else:
-            items = to_data(result)
+            items = to_items(result)
             if isinstance(items, dict):
-                items = items.get("items", [])
+                items = children(items, "items")
             if not items:
                 sys.stdout.write("No feedback submitted.\n")
             else:
                 for item in items:
-                    fb_id = item.get("feedback_id", item.get("id", ""))
+                    fb_id = item.get("feedback_id", opt_str(item, "id", ""))
                     lines = [
                         f"feedback_id: {fb_id}",
                         f"resource_id: {item.get('resource_id', '')}",
@@ -92,7 +93,7 @@ def handle_feedback_summary(args: argparse.Namespace) -> int:
         if config.json_output:
             emit_json("logion.feedback.summary", to_data(result))
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines = [
                 f"resource_id: {data.get('resource_id', args.resource_id)}",
                 f"total_feedback: {data.get('count', 0)}",

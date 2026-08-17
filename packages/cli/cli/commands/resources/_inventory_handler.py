@@ -19,7 +19,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from cli._config import resolve_config_from_args
 from cli._errors import handle_error, handle_validation_error
@@ -35,6 +35,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
+from cli._json import JsonObject, child, children, opt_str
 
 from ._inventory_entries import (
     _receipts_by_path,
@@ -141,14 +142,14 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
                 )
             ]
         receipts_by_path = _receipts_by_path()
-        results: list[dict[str, Any]] = []
+        results: list[JsonObject] = []
         for precedence, target in enumerate(targets):
             results.extend(_scan_dir(target, precedence, receipts_by_path))
         results.extend(
             _unscanned_receipt_entries(targets, results, receipts_by_path)
         )
         mark_ambiguities(results)
-        payload: dict[str, Any] = {
+        payload: JsonObject = {
             "harness": harness,
             "scope": requested_scope,
             "targets": [
@@ -176,17 +177,20 @@ def handle_resources_inventory(args: argparse.Namespace) -> int:
         return 0
 
 
-def _print_inventory(payload: dict[str, Any]) -> None:
+def _print_inventory(payload: JsonObject) -> None:
     out = sys.stdout
     out.write(f"Harness: {payload['harness']}\n")
     out.write("\nScanned targets:\n")
-    for t in payload["targets"]:
+    for t in children(payload, "targets"):
         state = "exists" if t["exists"] else "missing"
         out.write(f"  [{t['scope_kind']}] {t['target_path']} ({state})\n")
     out.write(f"\nFound {payload['count']} resource(s):\n")
-    for r in payload["resources"]:
-        recon = r["reconciliation"]
+    for r in children(payload, "resources"):
+        recon = child(r, "reconciliation")
+        digest = opt_str(recon, "content_digest", "")
         out.write(
-            f"  {r['name']} [{r['scope_kind']}] — {recon['status']} "
-            f"(digest={recon['content_digest'][:12]}...)\n"
+            f"  {opt_str(r, 'name', '')} "
+            f"[{opt_str(r, 'scope_kind', '')}] — "
+            f"{opt_str(recon, 'status', '')} "
+            f"(digest={digest[:12]}...)\n"
         )

@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -15,21 +15,21 @@ class FakePaymentsResource:
     """Fake payments resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def get_seller_readiness(self) -> dict[str, Any]:
+    def get_seller_readiness(self) -> JsonObject:
         self.last_call = ("get_seller_readiness", {})
         return {"ready": True, "charges_enabled": True}
 
-    def create_onboarding_link(self) -> dict[str, Any]:
+    def create_onboarding_link(self) -> JsonObject:
         self.last_call = ("create_onboarding_link", {})
         return {"url": "https://stripe.example.com/onboard"}
 
-    def get_order(self, **kwargs: Any) -> dict[str, Any]:
+    def get_order(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_order", kwargs)
         return {"id": kwargs["order_id"], "status": "paid"}
 
-    def request_cash_out(self, **kwargs: Any) -> dict[str, Any]:
+    def request_cash_out(self, **kwargs: object) -> JsonObject:
         self.last_call = ("request_cash_out", kwargs)
         return {
             "dry_run": kwargs.get("dry_run", False),
@@ -38,25 +38,25 @@ class FakePaymentsResource:
             "minimum_payout_cents": kwargs.get("minimum_payout_cents"),
         }
 
-    def get_creator_earnings(self) -> dict[str, Any]:
+    def get_creator_earnings(self) -> JsonObject:
         self.last_call = ("get_creator_earnings", {})
         return {"available_cents": 1000}
 
 
 class FakeV1Namespace:
-    def __init__(self, payments: Any) -> None:
+    def __init__(self, payments: object) -> None:
         self.payments = payments
 
 
 class FakeClient:
-    def __init__(self, v1: Any) -> None:
+    def __init__(self, v1: object) -> None:
         self.v1 = v1
 
     def close(self) -> None:
         pass
 
 
-def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: Any) -> None:
+def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: object) -> None:
     monkeypatch.setattr("cli._context.LogionClient", lambda **_: fake)
 
 

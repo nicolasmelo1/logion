@@ -21,13 +21,19 @@ import argparse
 import subprocess  # nosec B404 - local git metadata lookup only
 import sys
 from pathlib import Path
-from typing import Any
 
 # Allow `python evals/run_eval.py` from the package root.
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals.harness._json import (  # noqa: E402
+    JsonObject,
+    child,
+    children,
+    opt_int,
+    opt_str,
+)
 from evals.harness.providers import (  # noqa: E402
     FakeProvider,
     LlamaCppProviderError,
@@ -104,7 +110,7 @@ def _git_commit() -> str | None:
 
 def _resolve_provider(
     args: argparse.Namespace,
-) -> tuple[Provider, dict[str, Any]]:
+) -> tuple[Provider, JsonObject]:
     if args.provider == "fake":
         return (
             FakeProvider(model=args.model),
@@ -140,23 +146,26 @@ def main() -> int:
         "report_path": str(args.report),
     }
     write_report(summary, args.report)
-    totals = summary["totals"]
+    totals = child(summary, "totals")
     print(
-        f"scenarios={totals['scenarios']} "
-        f"passed={totals['passed']} "
-        f"failed={totals['failed']} "
-        f"provider={summary['run']['provider']} "
-        f"model={summary['run']['model_id']} "
+        f"scenarios={opt_int(totals, 'scenarios', 0)} "
+        f"passed={opt_int(totals, 'passed', 0)} "
+        f"failed={opt_int(totals, 'failed', 0)} "
+        f"provider={opt_str(child(summary, 'run'), 'provider', '')} "
+        f"model={opt_str(child(summary, 'run'), 'model_id', '')} "
         f"report={args.report}"
     )
-    for failure in summary["failures"]:
+    for failure in children(summary, "failures"):
+        suite = opt_str(failure, "suite", "")
+        scenario_id = opt_str(failure, "scenario_id", "")
         print(
-            f"FAIL {failure['suite']}/{failure['scenario_id']}: "
+            f"FAIL {suite}/{scenario_id}: "
             + "; ".join(
-                f"{f['metric']}: {f['message']}" for f in failure["failures"]
+                f"{opt_str(f, 'metric', '')}: {opt_str(f, 'message', '')}"
+                for f in children(failure, "failures")
             )
         )
-    return 0 if totals["failed"] == 0 else 1
+    return 0 if opt_int(totals, "failed", 0) == 0 else 1
 
 
 if __name__ == "__main__":

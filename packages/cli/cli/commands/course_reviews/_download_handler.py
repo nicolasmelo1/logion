@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Protocol
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
@@ -30,6 +31,30 @@ if TYPE_CHECKING:
     import httpx
 else:
     httpx = LazyModule("httpx")
+
+
+# Structural types rather than the SDK's generated models: the CLI is
+# barred from importing logion.v1._types.generated (see
+# scripts/check_forbidden_imports.py), and logion.v1 does not re-export
+# them. These say exactly which fields this handler reads.
+class BundleFile(Protocol):
+    """A single downloadable file in a review bundle."""
+
+    @property
+    def filename(self) -> str: ...
+
+    @property
+    def download_url(self) -> str: ...
+
+
+class ReviewBundle(Protocol):
+    """The bundle manifest returned by ``get_bundle``."""
+
+    @property
+    def review_id(self) -> str: ...
+
+    @property
+    def files(self) -> Sequence[BundleFile]: ...
 
 
 def handle_download(args: argparse.Namespace) -> int:
@@ -71,7 +96,11 @@ def handle_download(args: argparse.Namespace) -> int:
     return 0
 
 
-def _download_files(http: httpx.Client, files: list[Any], target: Path) -> int:
+def _download_files(
+    http: httpx.Client,
+    files: Sequence[BundleFile],
+    target: Path,
+) -> int:
     for f in files:
         filename = f.filename
         dest = target / filename
@@ -88,7 +117,11 @@ def _download_files(http: httpx.Client, files: list[Any], target: Path) -> int:
 
 
 def _emit_result(
-    bundle: Any, files: list[Any], target: Path, *, json_output: bool
+    bundle: ReviewBundle,
+    files: Sequence[BundleFile],
+    target: Path,
+    *,
+    json_output: bool,
 ) -> None:
     if json_output:
         emit(

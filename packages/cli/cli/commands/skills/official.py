@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from cli._first_party import LOGION_MARKETPLACE_COMPANION_COURSE_ID
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home, list_installed
 
 
@@ -23,7 +23,7 @@ class CompanionInstallStatus:
     needs_update: bool
     reason: str | None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonObject:
         return {
             "installed": self.installed,
             "course_id": self.course_id,
@@ -41,7 +41,7 @@ class OfficialCompanionService:
     def __init__(
         self,
         home: Path | None = None,
-        manifest_data: dict[str, Any] | None = None,
+        manifest_data: JsonObject | None = None,
     ) -> None:
         self._home = home or get_home()
         self._manifest = manifest_data
@@ -57,9 +57,10 @@ class OfficialCompanionService:
                 return CompanionInstallStatus(
                     installed=True,
                     course_id=LOGION_MARKETPLACE_COMPANION_COURSE_ID,
-                    version_id=entry.get("version_id"),
-                    version=entry.get("version", entry.get("version_id")),
-                    source=entry.get("source"),
+                    version_id=opt_str(entry, "version_id"),
+                    version=opt_str(entry, "version")
+                    or opt_str(entry, "version_id"),
+                    source=opt_str(entry, "source"),
                     needs_update=False,
                     reason=None,
                 )
@@ -78,7 +79,7 @@ class OfficialCompanionService:
 
     def install_from_manifest(
         self,
-        manifest: dict[str, Any],
+        manifest: JsonObject,
     ) -> CompanionInstallStatus:
         """Install companion from a release manifest dict."""
         packages = manifest.get("packages", {})

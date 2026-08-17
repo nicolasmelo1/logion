@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -23,17 +23,17 @@ class FakeNotificationsResource:
     def __init__(
         self,
         unread_count: object = 0,
-        items: list[dict[str, Any]] | None = None,
+        items: list[JsonObject] | None = None,
     ) -> None:
         self._unread_count = unread_count
         self._items = items or []
-        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.calls: list[tuple[str, JsonObject]] = []
 
     def get_unread_count(self) -> object:
         self.calls.append(("get_unread_count", {}))
         return self._unread_count
 
-    def list(self, **kwargs: Any) -> dict[str, Any]:
+    def list(self, **kwargs: object) -> JsonObject:
         self.calls.append(("list", kwargs))
         return {"items": self._items, "next_cursor": None}
 

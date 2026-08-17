@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from cli._json import JsonObject, child, children, elements, opt_str, strings
 
 
 def _append_meta_fields(
     lines: list[str],
-    payload: dict[str, Any],
+    payload: JsonObject,
 ) -> None:
     """Append capability metadata fields."""
     status = payload.get("capabilities_status")
@@ -24,10 +24,10 @@ def _append_meta_fields(
 
 def _append_summary_fields(
     lines: list[str],
-    summary: dict[str, Any],
+    summary: JsonObject,
 ) -> None:
     """Append capability summary detail fields (tools, permissions, paths)."""
-    for tool in summary.get("tools") or []:
+    for tool in elements(summary, "tools"):
         lines.append(f"tools: {tool}")
     allows_shell = summary.get("allows_shell")
     if allows_shell is not None:
@@ -35,13 +35,13 @@ def _append_summary_fields(
     allows_network = summary.get("allows_network")
     if allows_network is not None:
         lines.append(f"allows_network: {str(allows_network).lower()}")
-    for domain in summary.get("allowed_domains") or []:
+    for domain in elements(summary, "allowed_domains"):
         lines.append(f"allowed_domains: {domain}")
-    for rpath in summary.get("filesystem_read") or []:
+    for rpath in elements(summary, "filesystem_read"):
         lines.append(f"filesystem_read: {rpath}")
-    for wpath in summary.get("filesystem_write") or []:
+    for wpath in elements(summary, "filesystem_write"):
         lines.append(f"filesystem_write: {wpath}")
-    for env_var in summary.get("secrets_env") or []:
+    for env_var in elements(summary, "secrets_env"):
         lines.append(f"secrets_env: {env_var}")
     human_approval = summary.get("human_approval_required")
     if human_approval is not None:
@@ -52,15 +52,15 @@ def _append_summary_fields(
 
 def _render_install_steps(
     lines: list[str],
-    install: list[dict[str, Any]],
+    install: list[JsonObject],
 ) -> None:
     """Append install-step detail lines."""
     lines.append("  install_steps:")
     for step in install:
         req = "required" if step.get("required") else "optional"
-        kind = step.get("kind", "")
-        command = step.get("command", "")
-        notes = step.get("notes", "")
+        kind = opt_str(step, "kind", "")
+        command = opt_str(step, "command", "")
+        notes = opt_str(step, "notes", "")
         cmd_part = f": {command}" if command else ""
         note_part = f": {notes}" if notes else ""
         lines.append(f"    - {kind}{cmd_part} ({req}){note_part}")
@@ -68,20 +68,20 @@ def _render_install_steps(
 
 def _append_runtime_fields(
     lines: list[str],
-    summary: dict[str, Any],
+    summary: JsonObject,
 ) -> None:
     """Append runtime requirement and install-step detail fields.
 
     Only rendered when any runtime field is non-empty, so minimal
     manifests stay compact.
     """
-    env = summary.get("runtime_requires_env") or []
-    bins = summary.get("runtime_requires_bins") or []
-    any_bins = summary.get("runtime_requires_any_bins") or []
-    config = summary.get("runtime_requires_config") or []
-    os_vals = summary.get("runtime_requires_os") or []
-    software = summary.get("runtime_requires_software") or []
-    install = summary.get("runtime_install") or []
+    env = strings(summary, "runtime_requires_env")
+    bins = strings(summary, "runtime_requires_bins")
+    any_bins = elements(summary, "runtime_requires_any_bins")
+    config = strings(summary, "runtime_requires_config")
+    os_vals = strings(summary, "runtime_requires_os")
+    software = children(summary, "runtime_requires_software")
+    install = children(summary, "runtime_install")
     if not any([env, bins, any_bins, config, os_vals, software, install]):
         return
     lines.append("runtime_requirements:")
@@ -90,7 +90,12 @@ def _append_runtime_fields(
     if bins:
         lines.append(f"  bins: {', '.join(bins)}")
     if any_bins:
-        groups = [" or ".join(g) for g in any_bins]
+        groups = [
+            " or ".join(str(item) for item in group)
+            if isinstance(group, list)
+            else str(group)
+            for group in any_bins
+        ]
         lines.append(f"  any_bins: {', '.join(groups)}")
     if config:
         lines.append(f"  config: {', '.join(config)}")
@@ -100,9 +105,9 @@ def _append_runtime_fields(
         lines.append("  software:")
         for sw in software:
             req = "required" if sw.get("required") else "optional"
-            install_kind = sw.get("install", "external")
-            name = sw.get("name", "")
-            notes = sw.get("notes", "")
+            install_kind = opt_str(sw, "install", "external")
+            name = opt_str(sw, "name", "")
+            notes = opt_str(sw, "notes", "")
             suffix = f": {notes}" if notes else ""
             lines.append(f"    - {name} ({install_kind}, {req}){suffix}")
     if install:
@@ -111,10 +116,10 @@ def _append_runtime_fields(
 
 def _append_runtime_warnings(
     lines: list[str],
-    summary: dict[str, Any],
+    summary: JsonObject,
 ) -> None:
     """Append runtime cross-field warning codes."""
-    codes = summary.get("runtime_warning_codes") or []
+    codes = elements(summary, "runtime_warning_codes")
     if not codes:
         return
     lines.append("runtime_warnings:")
@@ -124,18 +129,18 @@ def _append_runtime_warnings(
 
 def append_capability_summary_lines(
     lines: list[str],
-    payload: dict[str, Any],
+    payload: JsonObject,
 ) -> None:
     """Append human-readable capability summary lines to *lines*."""
     _append_meta_fields(lines, payload)
-    summary = payload.get("capabilities_summary")
+    summary = child(payload, "capabilities_summary")
     if summary:
         _append_summary_fields(lines, summary)
 
 
 def append_approved_capability_summary_lines(
     lines: list[str],
-    payload: dict[str, Any],
+    payload: JsonObject,
 ) -> None:
     """Append human-readable approved capability summary lines.
 
@@ -147,7 +152,7 @@ def append_approved_capability_summary_lines(
     if not approved or not isinstance(approved, dict):
         return
     lines.append("approved_capabilities_summary:")
-    for tool in approved.get("tools") or []:
+    for tool in elements(approved, "tools"):
         lines.append(f"  tools: {tool}")
     allows_shell = approved.get("allows_shell")
     if allows_shell is not None:
@@ -155,7 +160,7 @@ def append_approved_capability_summary_lines(
     allows_network = approved.get("allows_network")
     if allows_network is not None:
         lines.append(f"  allows_network: {str(allows_network).lower()}")
-    for domain in approved.get("allowed_domains") or []:
+    for domain in elements(approved, "allowed_domains"):
         lines.append(f"  allowed_domains: {domain}")
     human_approval = approved.get("human_approval_required")
     if human_approval is not None:
@@ -165,16 +170,16 @@ def append_approved_capability_summary_lines(
 
 def append_capability_feedback_lines(
     lines: list[str],
-    payload: dict[str, Any],
+    payload: JsonObject,
 ) -> None:
     """Append human-readable capability feedback items."""
-    feedback_items = payload.get("capability_feedback")
+    feedback_items = children(payload, "capability_feedback")
     if not feedback_items:
         return
     lines.append("capability_feedback:")
     for item in feedback_items:
-        code = item.get("reason_code", "unknown")
-        msg = item.get("message", "")
+        code = opt_str(item, "reason_code", "unknown")
+        msg = opt_str(item, "message", "")
         lines.append(f"  - reason_code: {code}")
         if msg:
             lines.append(f"    message: {msg}")

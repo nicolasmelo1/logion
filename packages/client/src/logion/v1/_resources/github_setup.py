@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from logion._http import HttpClient
+from logion._json import JsonObject
 from logion.v1._generated import operations
 from logion.v1._types.generated.v1 import (
     ClaimSetupHandoffRequest,
@@ -21,7 +20,7 @@ class GithubSetupResource:
     def __init__(self, http: HttpClient) -> None:
         self._http = http
 
-    def start(self) -> dict[str, Any]:
+    def start(self) -> JsonObject:
         """Begin the landing-page GitHub App setup flow."""
         return operations.setup_github_start(self._http)
 
@@ -31,7 +30,7 @@ class GithubSetupResource:
         code: str | None = None,
         state: str | None = None,
         error: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Handle the landing-page GitHub App setup callback."""
         return operations.setup_github_callback(
             self._http,

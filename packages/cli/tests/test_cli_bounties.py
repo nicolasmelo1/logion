@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -16,65 +16,65 @@ class FakeBountiesResource:
     """Fake bounties resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
-        self.open_pr_response: dict[str, Any] = {
+        self.last_call: tuple[str, JsonObject] = ("", {})
+        self.open_pr_response: JsonObject = {
             "pr_number": 1,
             "pr_url": "https://github.com/owner/repo/pull/1",
         }
 
-    def create(self, **kwargs: Any) -> dict[str, Any]:
+    def create(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create", kwargs)
         return {"id": "bounty-1", "title": kwargs.get("title", "")}
 
-    def list(self, **kwargs: Any) -> list[dict[str, Any]]:
+    def list(self, **kwargs: object) -> list[JsonObject]:
         self.last_call = ("list", kwargs)
         return []
 
-    def get(self, **kwargs: Any) -> dict[str, Any]:
+    def get(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get", kwargs)
         return {"id": kwargs.get("bounty_id", "")}
 
-    def update_status(self, **kwargs: Any) -> dict[str, Any]:
+    def update_status(self, **kwargs: object) -> JsonObject:
         self.last_call = ("update_status", kwargs)
         return {"id": kwargs.get("bounty_id", "")}
 
-    def update_funding(self, **kwargs: Any) -> dict[str, Any]:
+    def update_funding(self, **kwargs: object) -> JsonObject:
         self.last_call = ("update_funding", kwargs)
         return {"id": kwargs.get("bounty_id", "")}
 
-    def delete(self, **kwargs: Any) -> dict[str, Any]:
+    def delete(self, **kwargs: object) -> JsonObject:
         self.last_call = ("delete", kwargs)
         return {"id": kwargs.get("bounty_id", "")}
 
-    def create_payout(self, **kwargs: Any) -> dict[str, Any]:
+    def create_payout(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_payout", kwargs)
         return {"id": kwargs.get("bounty_id", "")}
 
-    def create_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def create_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_submission", kwargs)
         return {"id": "sub-1"}
 
-    def list_submissions(self, **kwargs: Any) -> list[dict[str, Any]]:
+    def list_submissions(self, **kwargs: object) -> list[JsonObject]:
         self.last_call = ("list_submissions", kwargs)
         return []
 
-    def get_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def get_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_submission", kwargs)
         return {"id": kwargs.get("submission_id", "")}
 
-    def accept_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def accept_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("accept_submission", kwargs)
         return {"id": kwargs.get("submission_id", ""), "status": "accepted"}
 
-    def reject_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def reject_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("reject_submission", kwargs)
         return {"id": kwargs.get("submission_id", ""), "status": "rejected"}
 
-    def delete_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def delete_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("delete_submission", kwargs)
         return {"id": kwargs.get("submission_id", ""), "status": "withdrawn"}
 
-    def open_pr(self, **kwargs: Any) -> dict[str, Any]:
+    def open_pr(self, **kwargs: object) -> JsonObject:
         self.last_call = ("open_submission_pr", kwargs)
         return self.open_pr_response
 

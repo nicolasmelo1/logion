@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import Any
 
 from cli._harness.base import (
     AUTOPOST_COMMAND,
@@ -41,6 +40,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
+from cli._json import JsonArray, JsonObject, child
 from cli._local_state import _atomic_write_text
 
 
@@ -177,7 +177,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
 
     # -- config read/write -------------------------------------------------
 
-    def _read_settings(self, path: Path) -> dict[str, Any]:
+    def _read_settings(self, path: Path) -> JsonObject:
         if not path.is_file():
             return {}
         try:
@@ -192,7 +192,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
             )
         return raw
 
-    def _allow_list(self, settings: dict[str, Any], path: Path) -> list[Any]:
+    def _allow_list(self, settings: JsonObject, path: Path) -> JsonArray:
         perms = settings.setdefault("permissions", {})
         if not isinstance(perms, dict):
             raise HarnessConfigError(
@@ -205,7 +205,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
             )
         return allow
 
-    def _write_settings(self, path: Path, settings: dict[str, Any]) -> None:
+    def _write_settings(self, path: Path, settings: JsonObject) -> None:
         _atomic_write_text(
             path,
             json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
@@ -268,7 +268,9 @@ class ClaudeCodeAdapter(HarnessAdapter):
                 changed=False,
                 already=True,
             )
-        settings["permissions"]["allow"] = [m for m in allow if m != matcher]
+        permissions = child(settings, "permissions")
+        permissions["allow"] = [m for m in allow if m != matcher]
+        settings["permissions"] = permissions
         self._write_settings(path, settings)
         return GrantResult(
             self.name,

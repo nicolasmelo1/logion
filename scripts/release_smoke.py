@@ -153,7 +153,9 @@ def parse_smoke_report(path: str) -> SmokeReport:
     )
 
 
-def _parse_findings(  # noqa: C901
+def _parse_findings(  # noqa: C901 - a line-oriented state machine
+    # over the findings file; its branches are one parser, and each
+    # extracted piece would need the same cursor passed through.
     lines: Sequence[str],
 ) -> list[SmokeFinding]:
     """Parse finding blocks from the body of the findings file."""

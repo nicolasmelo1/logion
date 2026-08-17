@@ -10,10 +10,10 @@ import hashlib
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
 
 import yaml
 
+from cli._json import JsonObject, elements, opt_str
 from cli._local_state import ensure_layout, read_manifest
 
 # Subset of ``source_dir`` that ``copy_skill_files`` actually installs.
@@ -92,8 +92,8 @@ def compute_content_hash(files: list[Path], root: Path | None = None) -> str:
 
 def read_capabilities(
     cap_yaml: Path,
-    manifest_data: dict[str, Any],
-) -> dict[str, Any]:
+    manifest_data: JsonObject,
+) -> JsonObject:
     """Update *manifest_data* with capabilities.yaml data if present.
 
     Treats unreadable / malformed manifests the same way as a missing
@@ -115,8 +115,8 @@ def read_capabilities(
     if not isinstance(cap_data, dict):
         return manifest_data
     manifest_data["capabilities"] = [
-        c.get("id", "")
-        for c in cap_data.get("capabilities", [])
+        opt_str(c, "id", "")
+        for c in elements(cap_data, "capabilities")
         if isinstance(c, dict) and "id" in c
     ]
     manifest_data["required_tools"] = cap_data.get(
@@ -135,7 +135,7 @@ def check_existing_install(
     existing = read_manifest(course_id, version_id, home)
     if existing is None:
         return 0
-    existing_hash = existing.get("content_sha256", "")
+    existing_hash = opt_str(existing, "content_sha256", "")
     new_hash = compute_content_hash(
         collect_installable_files(source_dir), root=source_dir
     )

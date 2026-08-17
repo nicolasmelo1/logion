@@ -11,8 +11,8 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject
 from cli._local_state import read_manifest
 from cli._update_policy import evaluate_update
 
@@ -24,7 +24,7 @@ def _build_remote_manifest(
     course_id: str,
     version_id: str,
     title: str | None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Synthesize a candidate manifest from a local source bundle.
 
     The marketplace API is not in the loop for this flow — the
@@ -32,7 +32,7 @@ def _build_remote_manifest(
     proceeded.  ``evaluate_update`` diffs it against the installed
     manifest to decide whether the change requires approval.
     """
-    manifest: dict[str, Any] = {
+    manifest: JsonObject = {
         "course_id": course_id,
         "version_id": version_id,
         "title": title or "",

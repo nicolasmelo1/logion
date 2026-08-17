@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 
 class Timeline:
@@ -12,7 +11,7 @@ class Timeline:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._file = self._path.open("a", encoding="utf-8")
 
-    def event(self, type_: str, **fields: Any) -> None:
+    def event(self, type_: str, **fields: object) -> None:
         line = json.dumps(
             {
                 "type": type_,
@@ -32,7 +31,7 @@ class Timeline:
 
 
 class NullTimeline:
-    def event(self, type_: str, **fields: Any) -> None:
+    def event(self, type_: str, **fields: object) -> None:
         pass
 
     def close(self) -> None:
@@ -46,7 +45,7 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _json_default(value: Any) -> Any:
+def _json_default(value: object) -> str:
     if isinstance(value, Path):
         return str(value)
     raise TypeError(

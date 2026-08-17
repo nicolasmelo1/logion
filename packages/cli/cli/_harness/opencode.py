@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import Any
 
 from cli._harness.base import (
     AUTOPOST_COMMAND,
@@ -38,6 +37,7 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
+from cli._json import JsonObject
 from cli._local_state import _atomic_write_text
 
 
@@ -161,7 +161,7 @@ class OpenCodeAdapter(HarnessAdapter):
 
     # -- config read/write -------------------------------------------------
 
-    def _read_config(self, path: Path) -> dict[str, Any]:
+    def _read_config(self, path: Path) -> JsonObject:
         if not path.is_file():
             return {}
         try:
@@ -183,15 +183,13 @@ class OpenCodeAdapter(HarnessAdapter):
             )
         return data
 
-    def _write_config(self, path: Path, data: dict[str, Any]) -> None:
+    def _write_config(self, path: Path, data: JsonObject) -> None:
         _atomic_write_text(
             path,
             json.dumps(data, indent=2, ensure_ascii=False) + "\n",
         )
 
-    def _bash_perms(
-        self, config: dict[str, Any], path: Path
-    ) -> dict[str, str]:
+    def _bash_perms(self, config: JsonObject, path: Path) -> dict[str, str]:
         perms = config.setdefault("permission", {})
         if not isinstance(perms, dict):
             raise HarnessConfigError(

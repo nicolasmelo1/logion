@@ -9,10 +9,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli._taxonomy import (
     CATEGORY_SLUGS,
     DEFAULT_CATEGORY,
@@ -105,11 +105,11 @@ def test_tag_search_tokens_single_segment() -> None:
 
 
 class FakeListingsResource:
-    def __init__(self, items: list[dict[str, Any]] | None = None) -> None:
+    def __init__(self, items: list[JsonObject] | None = None) -> None:
         self.items = items or []
-        self.calls: list[dict[str, Any]] = []
+        self.calls: list[JsonObject] = []
 
-    def search(self, **kwargs: Any) -> dict[str, Any]:
+    def search(self, **kwargs: object) -> JsonObject:
         self.calls.append(kwargs)
         return {"items": self.items, "next_cursor": None}
 
@@ -221,13 +221,13 @@ def test_listings_search_tags_legacy_still_works(
 
 class FakeCoursesResource:
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def create(self, **kwargs: Any) -> dict[str, Any]:
+    def create(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create", kwargs)
         return {"id": "c1", "title": kwargs.get("title", "")}
 
-    def update(self, **kwargs: Any) -> dict[str, Any]:
+    def update(self, **kwargs: object) -> JsonObject:
         self.last_call = ("update", kwargs)
         return {"id": kwargs.get("course_id", ""), "updated": True}
 

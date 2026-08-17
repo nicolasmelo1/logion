@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agent_proving_ground._json import opt_str
 from agent_proving_ground.assertions.base import (
     Assertion,
     AssertionContext,
@@ -35,8 +36,10 @@ class _ApiQueryAssertion(Assertion):
             return AssertionOutcome(
                 type=self.type,
                 status="unsupported",
-                message=result.get(
-                    "reason", f"adapter does not support {self.query_type}"
+                message=opt_str(
+                    result,
+                    "reason",
+                    f"adapter does not support {self.query_type}",
                 ),
                 evidence={},
             )

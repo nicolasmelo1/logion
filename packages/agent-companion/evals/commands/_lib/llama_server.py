@@ -15,11 +15,11 @@ import signal
 import subprocess
 import sys
 import time
+import types
 import urllib.error
 import urllib.request
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
-from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from evals.harness.providers.llama_cpp import (
@@ -147,12 +147,15 @@ def llama_server_running(
             with contextlib.suppress(ProcessLookupError, OSError):
                 proc.kill()
 
-    def _on_signal(*_args: Any) -> None:
+    def _on_signal(*_args: object) -> None:
         _terminate()
         sys.exit(130)
 
     atexit.register(_terminate)
-    prev_handlers: dict[signal.Signals, Any] = {}
+    prev_handlers: dict[
+        signal.Signals,
+        Callable[[int, types.FrameType | None], object] | int | None,
+    ] = {}
     for sig in (signal.SIGINT, signal.SIGTERM):
         prev_handlers[sig] = signal.signal(sig, _on_signal)
 

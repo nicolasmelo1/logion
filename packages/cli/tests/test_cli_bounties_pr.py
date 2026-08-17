@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 BID = "550e8400-e29b-41d4-a716-446655440000"
@@ -17,15 +16,15 @@ class FakeBountiesResource:
     """Fake bounties resource for PR materialization tests."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
-        self.github_pr_response: dict[str, Any] = {
+        self.last_call: tuple[str, JsonObject] = ("", {})
+        self.github_pr_response: JsonObject = {
             "status": "opened",
             "pr_url": "https://github.com/owner/repo/pull/7",
             "head_branch": "logion/submission-xyz",
             "pr_body": None,
             "reason": None,
         }
-        self.open_pr_response: dict[str, Any] = {
+        self.open_pr_response: JsonObject = {
             "pr_number": 1,
             "pr_url": "https://github.com/owner/repo/pull/1",
             "fork_required": False,
@@ -33,15 +32,15 @@ class FakeBountiesResource:
             "pr_body": None,
         }
 
-    def create(self, **kwargs: Any) -> dict[str, Any]:
+    def create(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create", kwargs)
         return {"id": "bounty-1", "title": kwargs.get("title", "")}
 
-    def list(self, **kwargs: Any) -> list[dict[str, Any]]:
+    def list(self, **kwargs: object) -> list[JsonObject]:
         self.last_call = ("list", kwargs)
         return []
 
-    def create_submission(self, **kwargs: Any) -> dict[str, Any]:
+    def create_submission(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_submission", kwargs)
         return {
             "id": "sub-1",
@@ -50,7 +49,7 @@ class FakeBountiesResource:
             "github_pr": dict(self.github_pr_response),
         }
 
-    def open_pr(self, **kwargs: Any) -> dict[str, Any]:
+    def open_pr(self, **kwargs: object) -> JsonObject:
         self.last_call = ("open_submission_pr", kwargs)
         return dict(self.open_pr_response)
 
@@ -246,7 +245,7 @@ def test_bounty_get_renders_github_pr_enabled(
     """bounties get prints the computed github_pr_enabled line."""
     bounties = FakeBountiesResource()
 
-    def get(**kwargs: Any) -> dict[str, Any]:
+    def get(**kwargs: object) -> JsonObject:
         bounties.last_call = ("get", kwargs)
         return {"id": kwargs.get("bounty_id", ""), "github_pr_enabled": True}
 

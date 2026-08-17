@@ -44,6 +44,7 @@ preview = true
 select = ["E", "F", "I", "UP", "B"]
 extend-select = [
     "A",
+    "ANN401",
     "ARG",
     "ASYNC",
     "C4",
@@ -65,6 +66,7 @@ extend-select = [
     "RUF",
     "SIM",
     "T20",
+    "TID251",
     "TRY",
     "W292",
 ]
@@ -77,18 +79,25 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/release_manifest.py" = ["T201"]
-# Release automation scripts: console output is the primary UI.
-"scripts/release_orchestrator.py" = ["T201"]
-"scripts/release_store.py" = ["T201"]
-"scripts/release_smoke.py" = ["T201"]
-# Guardrail: prints its findings to the console.
-"scripts/check_cli_http.py" = ["T201"]
+# Repo tooling: the console *is* the interface for a guardrail that
+# reports findings and for release automation that narrates its steps.
+"scripts/*.py" = ["T201"]
+# Mirrored byte-for-byte from the canonical planning repo and verified
+# by check_roadmap_mirror; reformatting it here breaks that check. Any
+# style fix has to land upstream first.
+"scripts/check_protocol_specs.py" = ["E501", "RUF100"]
 # Build utility: console output (T201) and long checksum/URL literals (E501).
 "packages/landing/scripts/subset_brand_fonts.py" = ["T201", "E501"]
 # OG-image generator: console output (T201) and the Greek matrix-rain glyph
 # string (RUF001 ambiguous letters are intentional brand motif).
 "packages/landing/scripts/gen_og_image.py" = ["T201", "RUF001"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Repo-wide ban on `typing.Any`. Banning the *import* is what makes it
+# stick: it kills `dict[str, Any]`, `list[Any]`, `-> Any` and bare
+# `x: Any` in one rule, instead of only the top-level annotations
+# ANN401 can see.
+"typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape, JsonValue/JsonObject from the package's _json module at a JSON boundary, or a TypeVar for generic passthrough. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners", "social_management", "logion_indexer"]

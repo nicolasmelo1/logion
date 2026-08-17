@@ -6,14 +6,15 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from cli._config import CliConfig, resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._json import JsonObject, opt_str
 from cli._lazy_import import LazyModule
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_data, to_items, to_object
 
 from ._helpers import (
     TERMINAL_STATUSES,
@@ -56,7 +57,7 @@ def _run(
 
 
 def _render_balance(result: object) -> None:
-    data = to_data(result)
+    data = to_object(result)
     lines = [
         f"balance_cents: {data.get('balance_cents')}",
         f"currency_code: {data.get('currency_code', 'USD_CREDIT')}",
@@ -109,14 +110,16 @@ def _poll_top_up(
     args: argparse.Namespace,
     config: CliConfig,
     client: logion.LogionClient,
-    initial_payload: dict[str, Any],
+    initial_payload: JsonObject,
 ) -> int:
     """Poll a top-up until terminal state or timeout."""
     timeout = min(max(args.wait_timeout, 1), 600)
     interval = max(getattr(args, "interval", 5), 1)
     top_up_id = str(initial_payload.get("top_up_id"))
-    last_status: str | None = str(initial_payload.get("status", "unknown"))
-    last_payload: dict[str, Any] = initial_payload
+    last_status: str | None = str(
+        opt_str(initial_payload, "status", "unknown")
+    )
+    last_payload: JsonObject = initial_payload
     start = time.monotonic()
     try:
         while True:
@@ -171,7 +174,7 @@ def handle_credits_top_ups_wait(args: argparse.Namespace) -> int:
     interval = max(args.interval, 1)
     try:
         last_status: str | None = None
-        last_payload: dict[str, Any] | None = None
+        last_payload: JsonObject | None = None
         start = time.monotonic()
         while True:
             result = client.v1.credits.get_top_up(top_up_id=args.top_up_id)
@@ -193,7 +196,7 @@ def handle_credits_top_ups_wait(args: argparse.Namespace) -> int:
 
 
 def _render_ledger(result: object) -> None:
-    items = to_data(result)
+    items = to_items(result)
     if not items:
         sys.stdout.write("No ledger entries.\n")
     else:

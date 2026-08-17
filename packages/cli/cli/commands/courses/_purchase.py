@@ -10,7 +10,8 @@ from cli._config import resolve_config_from_args
 from cli._confirm import require_yes
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit, emit_json, to_data
+from cli._json import JsonObject
+from cli._output import emit, emit_json, to_object
 
 
 def handle_purchase(args: argparse.Namespace) -> int:
@@ -29,7 +30,7 @@ def handle_purchase(args: argparse.Namespace) -> int:
             expected_price_cents=args.expected_price_cents,
             idempotency_key=args.idempotency_key,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json("logion.courses.purchase", data)
         else:
@@ -54,7 +55,7 @@ def _is_insufficient_credit_error(exc: Exception) -> bool:
     return "insufficient" in text and "credit" in text
 
 
-def _emit_purchase_human(data: dict[str, object]) -> None:
+def _emit_purchase_human(data: JsonObject) -> None:
     """Render course purchase result with explicit credit spend lines."""
     lines: list[str] = []
     amount = data.get("amount_cents")

@@ -11,7 +11,13 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+
+from logion._json import (
+    JsonObject,
+    as_object,
+    child,
+    children,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONTRACT_PATH = ROOT / "contracts" / "openapi" / "v1.json"
@@ -90,17 +96,20 @@ def main() -> int:
 
 def generate_operations() -> str:
     """Generate the operations module content."""
-    spec = json.loads(CONTRACT_PATH.read_text())
+    spec = as_object(json.loads(CONTRACT_PATH.read_text()), where="contract")
     operations = collect_operations(spec)
     return render_module(operations)
 
 
-def collect_operations(spec: dict[str, Any]) -> list[Operation]:
+def collect_operations(spec: JsonObject) -> list[Operation]:
     """Extract supported OpenAPI operations in stable order."""
     operations: list[Operation] = []
-    for path, path_item in sorted(spec.get("paths", {}).items()):
+    paths = child(spec, "paths")
+    for path, path_item in sorted(paths.items()):
+        if not isinstance(path_item, dict):
+            continue
         for method, operation in sorted(path_item.items()):
-            if method not in HTTP_METHODS:
+            if method not in HTTP_METHODS or not isinstance(operation, dict):
                 continue
             operations.append(parse_operation(path, method, operation))
     return operations
@@ -109,23 +118,22 @@ def collect_operations(spec: dict[str, Any]) -> list[Operation]:
 def parse_operation(
     path: str,
     method: str,
-    operation: dict[str, Any],
+    operation: JsonObject,
 ) -> Operation:
     """Parse the parts of an OpenAPI operation used by the generator."""
     parameters = [
         parse_parameter(param)
-        for param in operation.get("parameters", [])
+        for param in children(operation, "parameters")
         if param.get("in") in {"path", "query"}
     ]
     request_model = parse_ref(
-        operation
-        .get("requestBody", {})
-        .get("content", {})
-        .get("application/json", {})
-        .get("schema", {})
+        child(
+            child(child(operation, "requestBody"), "content"),
+            "application/json",
+        )
     )
     return Operation(
-        operation_id=operation["operationId"],
+        operation_id=str(operation["operationId"]),
         method=method.upper(),
         path=path,
         path_params=tuple(
@@ -139,85 +147,86 @@ def parse_operation(
     )
 
 
-def parse_parameter(parameter: dict[str, Any]) -> Parameter:
+def parse_parameter(parameter: JsonObject) -> Parameter:
     """Parse a path or query parameter."""
-    wire_name = parameter["name"]
-    schema = parameter.get("schema", {})
+    wire_name = str(parameter["name"])
     annotation = schema_to_annotation(
-        schema,
-        is_path=parameter["in"] == "path",
+        child(parameter, "schema"),
+        is_path=parameter.get("in") == "path",
     )
     required = bool(parameter.get("required"))
-    if not required and annotation != "Any" and "None" not in annotation:
+    if not required and annotation != "JsonValue" and "None" not in annotation:
         annotation = f"{annotation} | None"
     return Parameter(
         wire_name=wire_name,
         python_name=to_python_name(wire_name),
-        location=parameter["in"],
+        location=str(parameter.get("in", "")),
         annotation=annotation,
         required=required,
     )
 
 
-def parse_response(operation: dict[str, Any]) -> Response:
+def parse_response(operation: JsonObject) -> Response:
     """Parse the preferred JSON success response."""
-    responses = operation.get("responses", {})
-    response = (
-        responses.get("200")
-        or responses.get("201")
-        or responses.get("202")
-        or responses.get("204")
-        or {}
+    responses = child(operation, "responses")
+    response: JsonObject = {}
+    for status in ("200", "201", "202", "204"):
+        response = child(responses, status)
+        if response:
+            break
+    schema = child(
+        child(child(response, "content"), "application/json"), "schema"
     )
-    schema = (
-        response
-        .get("content", {})
-        .get("application/json", {})
-        .get("schema", {})
-    )
-    model_name = parse_ref(schema)
+    model_name = parse_ref_schema(schema)
     if model_name is not None:
         return Response("model", model_name, model_name)
     if schema.get("type") == "array":
-        item_model = parse_ref(schema.get("items", {}))
+        item_model = parse_ref_schema(child(schema, "items"))
         if item_model is not None:
             return Response("list_model", f"list[{item_model}]", item_model)
-        return Response("list_dict", "list[dict[str, Any]]")
+        return Response("list_dict", "list[JsonObject]")
     if schema.get("type") == "object":
         value_type = schema_to_annotation(
-            schema.get("additionalProperties", {})
+            child(schema, "additionalProperties")
         )
         return Response("dict", f"dict[str, {value_type}]")
-    return Response("dict", "dict[str, Any]")
+    return Response("dict", "JsonObject")
 
 
-def parse_ref(schema: dict[str, Any]) -> str | None:
+def parse_ref(content: JsonObject) -> str | None:
+    """Return the component name referenced by a request-body content."""
+    return parse_ref_schema(child(content, "schema"))
+
+
+def parse_ref_schema(schema: JsonObject) -> str | None:
     """Return the schema component name for a JSON schema $ref."""
     ref = schema.get("$ref")
     if isinstance(ref, str):
         return ref.rsplit("/", maxsplit=1)[-1]
     # Handle anyOf: [{$ref}, {type: null}] — nullable request bodies.
-    for item in schema.get("anyOf", []):
-        name = parse_ref(item)
+    for item in children(schema, "anyOf"):
+        name = parse_ref_schema(item)
         if name is not None:
             return name
     return None
 
 
 def schema_to_annotation(
-    schema: dict[str, Any],
+    schema: JsonObject,
     *,
     is_path: bool = False,
 ) -> str:
     """Map a small OpenAPI schema subset to Python annotations."""
     if "anyOf" in schema:
         non_null = [
-            item for item in schema["anyOf"] if item.get("type") != "null"
+            item
+            for item in children(schema, "anyOf")
+            if item.get("type") != "null"
         ]
         if len(non_null) == 1:
             annotation = schema_to_annotation(non_null[0], is_path=is_path)
             return f"{annotation} | None"
-        return "Any"
+        return "JsonValue"
     schema_type = schema.get("type")
     schema_format = schema.get("format")
     if schema_type == "string" and schema_format == "uuid":
@@ -231,11 +240,11 @@ def schema_to_annotation(
     if schema_type == "boolean":
         return "bool"
     if schema_type == "array":
-        item_type = schema_to_annotation(schema.get("items", {}))
+        item_type = schema_to_annotation(child(schema, "items"))
         return f"list[{item_type}]"
     if schema_type == "object":
-        return "dict[str, Any]"
-    return "Any"
+        return "JsonObject"
+    return "JsonValue"
 
 
 def to_python_name(name: str) -> str:
@@ -260,27 +269,53 @@ def render_module(operations: list[Operation]) -> str:
         },
         key=str.casefold,
     )
+    body: list[str] = []
+    for index, operation in enumerate(operations):
+        if index:
+            body.append("")
+            body.append("")
+        body.extend(render_operation(operation))
+
     lines = [
         '"""Generated internal operation functions for the v1 API."""',
         "",
         "from __future__ import annotations",
         "",
-        "from typing import Any, cast",
+        "from typing import cast",
         "from uuid import UUID",
         "",
-        "from logion._http import HttpClient",
+        *render_support_imports(body),
     ]
     if model_imports:
         lines.extend(render_model_imports(model_imports))
     lines.append("")
     lines.append("")
-    for index, operation in enumerate(operations):
-        if index:
-            lines.append("")
-            lines.append("")
-        lines.extend(render_operation(operation))
+    lines.extend(body)
     lines.append("")
     return "\n".join(lines)
+
+
+def render_support_imports(body: list[str]) -> list[str]:
+    """Render the transport/JSON imports the rendered body actually uses.
+
+    Which of these appear depends on the contract: an API with no
+    query parameters needs no ``QueryValue``, and one whose every
+    response maps to a model needs neither JSON alias. Emitting them
+    unconditionally would leave an unused import for ruff to strip,
+    and `--check` would then always report the file as out of date.
+    """
+    rendered = "\n".join(body)
+    http_names = ["HttpClient"]
+    if "QueryValue" in rendered:
+        http_names.append("QueryValue")
+    lines = [f"from logion._http import {', '.join(http_names)}"]
+
+    json_names = [
+        name for name in ("JsonObject", "JsonValue") if name in rendered
+    ]
+    if json_names:
+        lines.append(f"from logion._json import {', '.join(json_names)}")
+    return lines
 
 
 def render_model_imports(model_imports: list[str]) -> list[str]:
@@ -325,7 +360,7 @@ def render_query_params(operation: Operation) -> list[str]:
     """Render query-parameter collection code."""
     if not operation.query_params:
         return []
-    lines = ["    params: dict[str, Any] = {}"]
+    lines = ["    params: dict[str, QueryValue] = {}"]
     for param in operation.query_params:
         lines.extend([
             f"    if {param.python_name} is not None:",

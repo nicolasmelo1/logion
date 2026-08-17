@@ -12,7 +12,8 @@ from pathlib import Path
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit, emit_json, to_data
+from cli._json import JsonObject
+from cli._output import emit, emit_json, to_data, to_object
 from cli.commands.courses._capability_render import (
     append_capability_summary_lines,
 )
@@ -76,7 +77,7 @@ def handle_uploads_create(args: argparse.Namespace) -> int:
     config = resolve_config_from_args(args)
     client = make_client(config)
     try:
-        files = [
+        files: list[JsonObject] = [
             {
                 "filename": upload_path,
                 "size_bytes": path.stat().st_size,
@@ -119,7 +120,7 @@ def handle_uploads_complete(args: argparse.Namespace) -> int:
         if config.json_output:
             emit_json("logion.courses.uploads.complete", to_data(result))
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines: list[str] = [
                 f"version_id: {data['version_id']}",
                 f"version_number: {data['version_number']}",

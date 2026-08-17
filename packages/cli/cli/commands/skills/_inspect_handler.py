@@ -9,19 +9,20 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
+from pathlib import Path
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json
 from cli._first_party import get_first_party_course
+from cli._json import JsonObject, JsonValue, opt_str
 from cli._local_state import (
     UnsafeIdentifierError,
     _safe_segment,
     list_installed,
     read_manifest,
 )
-from cli._output import emit_json
+from cli._output import emit_json, to_data
 
 from ._install_helpers import resolve_target
 
@@ -51,22 +52,19 @@ def _error(
     return exit_code
 
 
-def _to_plain_dict(value: Any) -> dict[str, Any] | None:
-    """Convert SDK values to plain dicts when possible."""
+def _to_plain_dict(value: object) -> JsonObject | None:
+    """Convert an SDK response to a plain dict, or None."""
     if value is None:
         return None
-    if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")  # type: ignore[union-attr]
-    if isinstance(value, dict):
-        return dict(value)
-    return None
+    data = to_data(value)
+    return dict(data) if isinstance(data, dict) else None
 
 
 def _fetch_remote_payloads(
     args: argparse.Namespace,
     course_id: str,
     version_id: str | None,
-) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+) -> tuple[JsonObject | None, JsonObject | None]:
     """Fetch remote course and version payloads when SDK support exists."""
     try:
         config = resolve_config_from_args(args)
@@ -102,8 +100,8 @@ def _fetch_remote_payloads(
 
 
 def _local_manifest_for_course(
-    home: Any, course_id: str
-) -> dict[str, Any] | None:
+    home: Path, course_id: str
+) -> JsonObject | None:
     """Return the newest available local manifest for *course_id*."""
     candidates = [
         m for m in list_installed(home) if m.get("course_id") == course_id
@@ -121,8 +119,8 @@ def _canonical_course_id(course_id: str) -> str:
 def _synthesized_remote_manifest(
     course_id: str,
     version_id: str | None,
-    remote_course: dict[str, Any],
-) -> dict[str, Any]:
+    remote_course: JsonObject,
+) -> JsonObject:
     """Build a provenance-compatible inspect payload
     for remote-only courses.
     """
@@ -130,7 +128,7 @@ def _synthesized_remote_manifest(
     return {
         "course_id": course_id,
         "version_id": version_id or latest_version,
-        "title": remote_course.get("title", ""),
+        "title": opt_str(remote_course, "title", ""),
         "source": "logion-marketplace",
         "entitlement_status": "missing",
         "license_scope": "unknown",
@@ -139,6 +137,11 @@ def _synthesized_remote_manifest(
         "manifest_path": None,
         "entrypoint": "SKILL.md",
     }
+
+
+def _render_flag(value: JsonValue) -> str:
+    """Render a boolean field the way an untyped read would print it."""
+    return "" if value is None else str(value)
 
 
 def handle_skills_inspect(args: argparse.Namespace) -> int:
@@ -170,7 +173,7 @@ def handle_skills_inspect(args: argparse.Namespace) -> int:
             args, "not_found", f"No skill metadata found for {target}", 1
         )
 
-    merged: dict[str, Any] = (
+    merged: JsonObject = (
         dict(manifest)
         if manifest is not None
         else _synthesized_remote_manifest(
@@ -198,21 +201,24 @@ def handle_skills_inspect(args: argparse.Namespace) -> int:
         emit_json("logion.skills.inspect", merged)
     else:
         fields = [
-            ("course_id", merged.get("course_id", "")),
-            ("version_id", merged.get("version_id", "")),
-            ("title", merged.get("title", "")),
-            ("source", merged.get("source", "")),
-            ("entitlement_status", merged.get("entitlement_status", "")),
-            ("license_scope", merged.get("license_scope", "")),
+            ("course_id", opt_str(merged, "course_id", "")),
+            ("version_id", opt_str(merged, "version_id", "")),
+            ("title", opt_str(merged, "title", "")),
+            ("source", opt_str(merged, "source", "")),
+            ("entitlement_status", opt_str(merged, "entitlement_status", "")),
+            ("license_scope", opt_str(merged, "license_scope", "")),
             (
+                # A flag, not a name: the merged record sets it to True
+                # for marketplace-tracked skills. Rendered the way the
+                # untyped read used to render it.
                 "official_update_channel",
-                merged.get("official_update_channel", ""),
+                _render_flag(merged.get("official_update_channel")),
             ),
             (
                 "last_verified_at",
-                merged.get("last_verified_at", "") or "never",
+                opt_str(merged, "last_verified_at", "") or "never",
             ),
-            ("manifest_path", merged.get("manifest_path", "") or "n/a"),
+            ("manifest_path", opt_str(merged, "manifest_path", "") or "n/a"),
         ]
         for label, value in fields:
             print(f"  {label}: {value}")

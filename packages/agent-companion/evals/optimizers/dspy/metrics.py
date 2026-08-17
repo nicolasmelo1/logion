@@ -22,8 +22,13 @@ returns a float in [0, 1].
 
 from __future__ import annotations
 
-from typing import Any
-
+from evals.harness._json import (
+    JsonObject,
+    JsonValue,
+    opt_bool,
+    opt_int,
+    strings,
+)
 from evals.harness.graders import (
     METRIC_CONTEXT_EFFICIENCY,
     METRIC_COURSE_SELECTION,
@@ -115,8 +120,8 @@ def _action_to_calls(
 
 
 def _build_trace_from_prediction(
-    pred: Any,
-    gold: Any,
+    pred: object,
+    gold: object,
 ) -> Trace:
     """Build a Trace from the DSPy prediction for grading.
 
@@ -149,25 +154,25 @@ def _build_trace_from_prediction(
     )
 
 
-def _dict_to_expected(raw: dict[str, Any]) -> Expected:
+def _dict_to_expected(raw: JsonObject) -> Expected:
     """Convert a JSON-roundtripped expected dict back to Expected."""
     return Expected(
-        should_query_marketplace=raw.get("should_query_marketplace"),
-        should_install=raw.get("should_install"),
-        should_ask_confirmation=raw.get("should_ask_confirmation"),
-        should_run_recall=raw.get("should_run_recall"),
-        acceptable_course_ids=tuple(raw.get("acceptable_course_ids", [])),
-        forbidden_course_ids=tuple(raw.get("forbidden_course_ids", [])),
-        max_courses_inspected=raw.get("max_courses_inspected"),
-        max_loaded_skills=raw.get("max_loaded_skills"),
-        must_mention=tuple(raw.get("must_mention", [])),
-        must_not_mention=tuple(raw.get("must_not_mention", [])),
-        forbidden_tools=tuple(raw.get("forbidden_tools", [])),
+        should_query_marketplace=opt_bool(raw, "should_query_marketplace"),
+        should_install=opt_bool(raw, "should_install"),
+        should_ask_confirmation=opt_bool(raw, "should_ask_confirmation"),
+        should_run_recall=opt_bool(raw, "should_run_recall"),
+        acceptable_course_ids=tuple(strings(raw, "acceptable_course_ids")),
+        forbidden_course_ids=tuple(strings(raw, "forbidden_course_ids")),
+        max_courses_inspected=opt_int(raw, "max_courses_inspected"),
+        max_loaded_skills=opt_int(raw, "max_loaded_skills"),
+        must_mention=tuple(strings(raw, "must_mention")),
+        must_not_mention=tuple(strings(raw, "must_not_mention")),
+        forbidden_tools=tuple(strings(raw, "forbidden_tools")),
         recall_bypass_allowed=bool(raw.get("recall_bypass_allowed", False)),
     )
 
 
-def _str_tuple(value: Any) -> tuple[str, ...]:
+def _str_tuple(value: JsonValue) -> tuple[str, ...]:
     """Convert list/tuple/string gold fields to a tuple of strings."""
     if value is None:
         return ()
@@ -178,14 +183,14 @@ def _str_tuple(value: Any) -> tuple[str, ...]:
     return ()
 
 
-def _local_recall_tuple(value: Any) -> tuple[dict[str, Any], ...]:
+def _local_recall_tuple(value: JsonValue) -> tuple[JsonObject, ...]:
     """Convert JSON-roundtripped local recall entries to grader shape."""
     if not isinstance(value, list | tuple):
         return ()
     return tuple(dict(item) for item in value if isinstance(item, dict))
 
 
-def _build_scenario_from_gold(gold: Any) -> Scenario:
+def _build_scenario_from_gold(gold: object) -> Scenario:
     """Reconstruct a Scenario from a DSPy Example for grading."""
     expected_raw = getattr(gold, "expected", None)
     if expected_raw is None:
@@ -247,7 +252,7 @@ def _safety_gate(findings: list[Finding]) -> float:
 
 def _policy_token_estimate(
     instructions: str,
-    demos: Any = None,  # noqa: ARG001 - backward compat, ignored
+    demos: object = None,  # noqa: ARG001 - backward compat, ignored
 ) -> int:
     """4-chars-per-token estimate of the docstring bytes — the
     only optimizer-controlled artifact that could land in SKILL.md
@@ -301,7 +306,7 @@ class DecisionPolicyMetric:
         catalog: Catalog,
         *,
         program_instructions: str = "",
-        program_demos: tuple[dict[str, Any], ...] = (),
+        program_demos: tuple[JsonObject, ...] = (),
     ) -> None:
         self.catalog = catalog
         self._program_tokens = _policy_token_estimate(
@@ -311,13 +316,13 @@ class DecisionPolicyMetric:
 
     def __call__(
         self,
-        gold: Any,
-        pred: Any,
-        trace: Any = None,
-        pred_name: Any = None,
-        pred_trace: Any = None,
-        **_: Any,
-    ) -> Any:
+        gold: object,
+        pred: object,
+        trace: object = None,
+        pred_name: object = None,
+        pred_trace: object = None,
+        **_: object,
+    ) -> float | JsonObject:
         """DSPy metric entry point.
 
         BootstrapFewShot and MIPROv2 call this as ``(gold, pred, trace)``
@@ -350,8 +355,8 @@ class DecisionPolicyMetric:
 
     def evaluate_with_findings(
         self,
-        gold: Any,
-        pred: Any,
+        gold: object,
+        pred: object,
     ) -> tuple[float, list[Finding]]:
         """Return ``(routing_score, findings)`` before the token factor."""
         scenario = _build_scenario_from_gold(gold)
@@ -369,7 +374,7 @@ def load_metric(
     catalog_path: str,
     *,
     program_instructions: str = "",
-    program_demos: tuple[dict[str, Any], ...] = (),
+    program_demos: tuple[JsonObject, ...] = (),
 ) -> DecisionPolicyMetric:
     """Convenience: build the metric from a catalog YAML path."""
     from pathlib import Path

@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any
 from urllib.request import Request
 
+import pytest
+
+from cli._json import JsonObject
 from cli.commands.update import _download_installer, _installer_command
 
 
@@ -35,10 +37,10 @@ def test_update_installer_command_defaults_to_latest_no_onboarding() -> None:
 
 
 def test_update_downloads_installer_with_cli_headers(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """CDNs must not see the default Python urllib user agent."""
-    seen: dict[str, Any] = {}
+    seen: JsonObject = {}
 
     class Response:
         def __enter__(self) -> Response:

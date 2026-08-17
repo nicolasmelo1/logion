@@ -7,8 +7,9 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
 
+from evals.harness._json import JsonObject
 from evals.harness.graders import Finding, grade
 from evals.harness.providers.fake import FakeProvider
 from evals.harness.schema import (
@@ -90,14 +91,14 @@ def run_scenarios(
     return results
 
 
-def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
+def summarize(results: list[ScenarioResult]) -> JsonObject:
     by_suite: dict[str, dict[str, int]] = defaultdict(
         lambda: {"total": 0, "passed": 0, "failed": 0}
     )
     by_metric: dict[str, dict[str, int]] = defaultdict(
         lambda: {"total": 0, "passed": 0, "failed": 0}
     )
-    failures: list[dict[str, Any]] = []
+    failures: list[JsonObject] = []
     for result in results:
         bucket = by_suite[result.suite]
         bucket["total"] += 1
@@ -121,7 +122,7 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
             metric_bucket["total"] += 1
             metric_bucket["passed" if passed else "failed"] += 1
         if scenario_failures:
-            entry: dict[str, Any] = {
+            entry: JsonObject = {
                 "scenario_id": result.scenario_id,
                 "suite": result.suite,
                 "failures": scenario_failures,
@@ -142,7 +143,7 @@ def summarize(results: list[ScenarioResult]) -> dict[str, Any]:
     }
 
 
-def _trace_dump(trace: Trace) -> dict[str, Any]:
+def _trace_dump(trace: Trace) -> JsonObject:
     return {
         "final_answer": trace.final_answer,
         "selected_course_ids": list(trace.selected_course_ids),
@@ -155,7 +156,7 @@ def _trace_dump(trace: Trace) -> dict[str, Any]:
     }
 
 
-def write_report(summary: dict[str, Any], report_path: Path) -> None:
+def write_report(summary: JsonObject, report_path: Path) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n",

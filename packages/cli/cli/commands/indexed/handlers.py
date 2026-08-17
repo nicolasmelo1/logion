@@ -8,10 +8,11 @@ import argparse
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
-from cli._output import emit_json, to_data
+from cli._json import JsonObject
+from cli._output import emit_json, to_object
 
 
-def _print_human(payload: dict[str, object]) -> None:
+def _print_human(payload: JsonObject) -> None:
     """Render an indexed listing in compact human-readable form."""
     from sys import stdout
 
@@ -34,7 +35,7 @@ def handle_indexed_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.indexed_listings.get(listing_id=args.listing_id)
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             emit_json("logion.indexed.get", payload)
         else:

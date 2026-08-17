@@ -22,6 +22,7 @@ generate-models:
 		--use-annotated \
 		--enum-field-as-literal all \
 		--allow-extra-fields
+	uv run python scripts/postprocess_models.py $(GEN_FILE)
 	uv run ruff format $(GEN_FILE)
 
 check-models:
@@ -40,6 +41,7 @@ check-models:
 		--use-annotated \
 		--enum-field-as-literal all \
 		--allow-extra-fields; \
+	uv run python scripts/postprocess_models.py "$$tmpfile"; \
 	uv run ruff format "$$tmpfile"; \
 	sed '1,3d' "$$tmpfile" > "$$tmpfile.clean"; \
 	diff "$$tmpfile.clean" <(sed '1,3d' $(GEN_FILE))

@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Any
 from unittest.mock import patch
 
 import pytest
 
+from cli._json import JsonObject
 from cli.commands.courses._review_helpers import (
     compact_review,
     compute_summary,
@@ -23,13 +23,13 @@ class _FakeListReviewsResult:
 
     def __init__(
         self,
-        reviews: list[dict[str, Any]],
+        reviews: list[JsonObject],
         next_cursor: str | None = None,
     ) -> None:
         self.reviews = reviews
         self.next_cursor = next_cursor
 
-    def model_dump(self, **_kwargs: Any) -> dict[str, Any]:
+    def model_dump(self, **_kwargs: object) -> JsonObject:
         return {
             "reviews": self.reviews,
             "next_cursor": self.next_cursor,
@@ -37,11 +37,11 @@ class _FakeListReviewsResult:
 
 
 class _FakeCourses:
-    def __init__(self, reviews: list[dict[str, Any]] | None = None) -> None:
+    def __init__(self, reviews: list[JsonObject] | None = None) -> None:
         self._reviews = reviews or []
-        self.calls: list[dict[str, Any]] = []
+        self.calls: list[JsonObject] = []
 
-    def list_reviews(self, **kwargs: Any) -> _FakeListReviewsResult:
+    def list_reviews(self, **kwargs: object) -> _FakeListReviewsResult:
         self.calls.append(kwargs)
         return _FakeListReviewsResult(self._reviews, next_cursor=None)
 
@@ -59,7 +59,7 @@ class _FakeClient:
         pass
 
 
-def _make_review(body: str, **overrides: Any) -> dict[str, Any]:
+def _make_review(body: str, **overrides: object) -> JsonObject:
     review = {
         "id": "r1",
         "rating": 5,
@@ -74,8 +74,8 @@ def _make_review(body: str, **overrides: Any) -> dict[str, Any]:
     return review
 
 
-def _make_args(**overrides: Any) -> argparse.Namespace:
-    defaults: dict[str, Any] = {
+def _make_args(**overrides: object) -> argparse.Namespace:
+    defaults: JsonObject = {
         "course_id": "550e8400-e29b-41d4-a716-446655440000",
         "version": None,
         "limit": 5,
@@ -101,7 +101,7 @@ def test_reviews_list_v1_envelope(
     }
 
     class FakeCoursesResource:
-        def list_reviews(self, **_kw: Any) -> dict[str, Any]:
+        def list_reviews(self, **_kw: object) -> JsonObject:
             return reviews_data
 
     class FakeV1:
@@ -160,7 +160,7 @@ def test_reviews_list_truncates_body(
     body = "x" * 140
 
     class FakeCoursesResource:
-        def list_reviews(self, **_kw: Any) -> dict[str, Any]:
+        def list_reviews(self, **_kw: object) -> JsonObject:
             return {"reviews": [_make_review(body)], "next_cursor": None}
 
     class FakeV1:

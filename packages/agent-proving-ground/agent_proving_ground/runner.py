@@ -4,8 +4,15 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal, overload
 
+from agent_proving_ground._json import (
+    JsonObject,
+    JsonValue,
+    child,
+    children,
+    opt_str,
+)
 from agent_proving_ground.api_adapters.base import ApiAdapter
 from agent_proving_ground.artifacts import ArtifactStore
 from agent_proving_ground.assertions.base import (
@@ -28,7 +35,10 @@ from agent_proving_ground.drivers.hermes import HermesDriver
 from agent_proving_ground.drivers.local_process import (
     LocalProcessDriver,
 )
-from agent_proving_ground.drivers.scripted import ScriptedDriver
+from agent_proving_ground.drivers.scripted import (
+    ApplyOperation,
+    ScriptedDriver,
+)
 from agent_proving_ground.models import (
     ScenarioResult,
     World,
@@ -57,7 +67,7 @@ _SENSITIVE_BINDING_RE = re.compile(
 )
 
 
-def _extract_last_json(stdout: str) -> dict[str, Any] | None:
+def _extract_last_json(stdout: str) -> JsonObject | None:
     """Find the last JSON object printed by a local hook."""
     finder = _JsonFinder()
     return finder.last_object(stdout)
@@ -69,7 +79,7 @@ class _JsonFinder:
     Used to capture non-secret output from local phase hooks."""
 
     @staticmethod
-    def last_object(text: str) -> dict[str, Any] | None:
+    def last_object(text: str) -> JsonObject | None:
         depth = 0
         end: int | None = None
         for idx in range(len(text) - 1, -1, -1):
@@ -134,7 +144,37 @@ def _scenario_bindings(world: World) -> dict[str, str]:
     return bindings
 
 
-def _resolve_scenario_value(value: Any, bindings: dict[str, str]) -> Any:
+@overload
+def _resolve_scenario_value(value: str, bindings: dict[str, str]) -> str: ...
+
+
+@overload
+def _resolve_scenario_value(
+    value: JsonObject, bindings: dict[str, str]
+) -> JsonObject: ...
+
+
+@overload
+def _resolve_scenario_value(
+    value: list[JsonObject], bindings: dict[str, str]
+) -> list[JsonObject]: ...
+
+
+@overload
+def _resolve_scenario_value(
+    value: JsonValue, bindings: dict[str, str]
+) -> JsonValue: ...
+
+
+def _resolve_scenario_value(
+    value: JsonValue, bindings: dict[str, str]
+) -> JsonValue:
+    """Substitute ``${param}`` bindings throughout a scenario value.
+
+    Overloaded because the substitution is shape-preserving: a mapping
+    stays a mapping, a string stays a string. Without that, every
+    caller would have to re-narrow a value whose shape it already knew.
+    """
     if isinstance(value, dict):
         return {
             key: _resolve_scenario_value(item, bindings)
@@ -155,10 +195,10 @@ def _resolve_scenario_value(value: Any, bindings: dict[str, str]) -> Any:
 class AgentDriverFactory:
     def __init__(
         self,
-        driver_config: dict[str, Any],
+        driver_config: JsonObject,
         *,
         scripted_operations: dict[str, list] | None = None,
-        scripted_apply: Any = None,
+        scripted_apply: ApplyOperation | None = None,
         default_driver: str | None = None,
     ) -> None:
         self._driver_config = driver_config
@@ -167,9 +207,8 @@ class AgentDriverFactory:
         self._default_driver = default_driver
 
     def configured_model(self, driver_name: str) -> str | None:
-        provider_cfg = self._driver_config.get(driver_name, {})
-        model = provider_cfg.get("model")
-        return str(model) if model else None
+        provider_cfg = child(self._driver_config, driver_name)
+        return opt_str(provider_cfg, "model") or None
 
     def get(self, agent_id: str, spec: AgentSpec) -> AgentDriver:
         name = self._default_driver or spec.driver or "scripted"
@@ -258,11 +297,10 @@ class ScenarioRunner:
                         "message": str(exc),
                     }
                 phase_results.append(phase_result)
-                phase_assertions = phase_result.get("assertion_results", [])
-                all_assertion_results.extend([
-                    AssertionOutcome(**a) if isinstance(a, dict) else a
-                    for a in phase_assertions
-                ])
+                all_assertion_results.extend(
+                    AssertionOutcome.model_validate(entry)
+                    for entry in children(phase_result, "assertion_results")
+                )
                 if phase_result["status"] != "completed":
                     run_status_for_phase: Literal[
                         "passed", "failed", "inconclusive"
@@ -455,7 +493,7 @@ class ScenarioRunner:
                 })
             # Re-bind now that the hook may have populated scenario_vars.
             bindings = _scenario_bindings(world)
-            captured_vars = hook_result.get("captured_vars", {})
+            captured_vars = child(hook_result, "captured_vars")
             if captured_vars:
                 scenario_vars = world.data.setdefault("scenario_vars", {})
                 if not isinstance(scenario_vars, dict):
@@ -504,8 +542,10 @@ class ScenarioRunner:
                 ],
             })
         goal = _resolve_scenario_value(phase.goal, available_bindings)
-        success_hint = _resolve_scenario_value(
-            phase.success_hint, available_bindings
+        success_hint = (
+            _resolve_scenario_value(phase.success_hint, available_bindings)
+            if phase.success_hint is not None
+            else None
         )
         self.timeline.event(
             "agent.goal.sent",
@@ -662,7 +702,7 @@ class ScenarioRunner:
 
     async def _run_local_hook(
         self, phase: PhaseSpec, world: World
-    ) -> dict[str, Any]:
+    ) -> JsonObject:
         """Execute a local, non-agent phase hook and capture public JSON.
 
         The hook command runs inside the public repo root so workspace

@@ -9,56 +9,48 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error
+from cli._json import JsonObject, opt_str
 from cli._local_state import VALID_ENTITLEMENT_STATUSES, list_installed
-from cli._output import emit_json, truncate_summary
+from cli._output import emit_json, to_data, truncate_summary
 
 from ._install_helpers import resolve_target
 
 
-def _normalize_items(result: Any) -> list[dict[str, Any]]:
-    """Convert SDK response items to plain dicts."""
-    # Prefer dict key 'items' over the dict method
-    if isinstance(result, dict):
-        raw = result.get("items", [])
-    elif hasattr(result, "items") and not isinstance(result, dict):
-        raw = getattr(result, "items", result)
-        if callable(raw):
-            raw = result
-    else:
-        raw = result
+def _normalize_items(result: object) -> list[JsonObject]:
+    """Convert an SDK collection response to plain dicts.
 
-    items: list[dict[str, Any]] = []
-    if isinstance(raw, list):
-        inner = raw
-    elif isinstance(raw, dict):
-        inner = raw.get("items", [raw])
-    else:
-        return items
+    ``to_data`` unwraps the model and handles both collection
+    encodings, replacing a hand-rolled getattr/callable probe that
+    existed only to avoid mistaking a mapping's ``.items`` method for
+    an ``items`` field.
 
-    for item in inner:
-        if hasattr(item, "model_dump"):
-            items.append(item.model_dump(mode="json"))
-        elif isinstance(item, dict):
-            items.append(dict(item))
-        else:
-            items.append({"value": item})
-    return items
+    A non-object entry is still wrapped as ``{"value": ...}`` rather
+    than dropped, so a malformed row stays visible in the listing.
+    """
+    data = to_data(result)
+    if isinstance(data, dict):
+        data = data.get("items", [data])
+    if not isinstance(data, list):
+        return []
+    return [
+        dict(item) if isinstance(item, dict) else {"value": item}
+        for item in data
+    ]
 
 
 def _annotate_entitlement(
-    items: list[dict[str, Any]],
-    installed_manifests: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    items: list[JsonObject],
+    installed_manifests: list[JsonObject],
+) -> list[JsonObject]:
     """Add ``entitlement_status`` to each item based on installed data."""
     entitlement_map: dict[str, str] = {}
     for m in installed_manifests:
-        cid = m.get("course_id", "")
-        entitlement_map[cid] = m.get("entitlement_status", "unknown")
+        cid = opt_str(m, "course_id", "")
+        entitlement_map[cid] = opt_str(m, "entitlement_status", "unknown")
 
     for item in items:
         course_id = item.get("course_id")
@@ -76,19 +68,19 @@ def _annotate_entitlement(
     return items
 
 
-def _print_human(items: list[dict[str, Any]], verbose: bool) -> None:
+def _print_human(items: list[JsonObject], verbose: bool) -> None:
     """Print compact human-readable results."""
     if not items:
         print("No results found.")
         return
     print(f"Search results ({len(items)}):")
     for item in items:
-        course_id = item.get("course_id", item.get("id", "?"))
-        title = item.get("title", "")
+        course_id = opt_str(item, "course_id") or opt_str(item, "id", "?")
+        title = opt_str(item, "title", "")
         summary = truncate_summary(
-            item.get("short_summary") or item.get("summary") or ""
+            opt_str(item, "short_summary") or opt_str(item, "summary")
         )
-        status = item.get("entitlement_status", "unknown")
+        status = opt_str(item, "entitlement_status", "unknown")
         line = f"  {course_id}"
         if title:
             line += f" — {title}"

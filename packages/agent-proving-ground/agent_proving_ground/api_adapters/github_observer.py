@@ -19,7 +19,13 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any
+
+from agent_proving_ground._json import (
+    JsonArray,
+    JsonObject,
+    JsonValue,
+    opt_str,
+)
 
 GITHUB_API_BASE = "https://api.github.com"
 _TIMEOUT_S = 10
@@ -59,7 +65,7 @@ class GithubObserver:
             return None
         return cls(token=token, repo=repo_value)
 
-    def _get(self, path: str) -> dict[str, Any] | None:
+    def _get(self, path: str) -> JsonObject | None:
         url = f"{GITHUB_API_BASE}/repos/{self._repo}/{path}"
         req = urllib.request.Request(
             url,
@@ -84,7 +90,7 @@ class GithubObserver:
         except Exception:
             return None
 
-    def _get_raw(self, url: str) -> dict[str, Any] | list[Any] | None:
+    def _get_raw(self, url: str) -> JsonValue | None:
         req = urllib.request.Request(
             url,
             headers={
@@ -104,9 +110,9 @@ class GithubObserver:
         except Exception:
             return None
 
-    def _get_all_pages(self, url: str) -> list[Any] | None:
+    def _get_all_pages(self, url: str) -> JsonArray | None:
         """Fetch every page from a GitHub list endpoint."""
-        items: list[Any] = []
+        items: JsonArray = []
         separator = "&" if "?" in url else "?"
         page = 1
         while True:
@@ -124,7 +130,7 @@ class GithubObserver:
         *,
         head_branch: str | None = None,
         marker: str | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> JsonObject | None:
         """Find a PR matching head_branch or body marker in any state."""
         query = {"state": "all"}
         if head_branch:
@@ -163,9 +169,9 @@ class GithubObserver:
         pr = self._get(f"pulls/{pr_number}")
         if pr is None:
             return False
-        return needle in (pr.get("body") or "")
+        return needle in opt_str(pr, "body", "")
 
-    def issue_comments(self, issue_number: int) -> list[dict[str, Any]]:
+    def issue_comments(self, issue_number: int) -> list[JsonObject]:
         url = (
             f"{GITHUB_API_BASE}/repos/{self._repo}"
             f"/issues/{issue_number}/comments"

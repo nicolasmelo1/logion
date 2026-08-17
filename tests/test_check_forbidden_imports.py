@@ -9,9 +9,7 @@ import subprocess
 import sys
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SCRIPT = os.path.join(
-    REPO_ROOT, "scripts", "check_forbidden_imports.py"
-)
+SCRIPT = os.path.join(REPO_ROOT, "scripts", "check_forbidden_imports.py")
 
 
 def test_real_repo_is_clean() -> None:

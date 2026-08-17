@@ -9,7 +9,8 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, print_err, validate_uuid_id
-from cli._output import emit, emit_json, to_data
+from cli._json import JsonObject, strings
+from cli._output import emit, emit_json, to_data, to_object
 from cli._utils import only_not_none
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
@@ -30,7 +31,7 @@ MUTABLE_UPDATE_FIELDS = [
 
 def _append_course_capability_lines(
     lines: list[str],
-    data: dict[str, object],
+    data: JsonObject,
 ) -> None:
     """Append latest-version capability summary lines for course detail."""
     status = data.get("latest_version_capabilities_status")
@@ -58,7 +59,7 @@ def _check_clear_price_conflict(args: argparse.Namespace) -> int | None:
 
 def _apply_update_overrides(
     args: argparse.Namespace,
-    kwargs: dict[str, object],
+    kwargs: JsonObject,
 ) -> None:
     if args.clear_tags:
         kwargs["tags"] = []
@@ -137,7 +138,7 @@ def handle_get(args: argparse.Namespace) -> int:
         if config.json_output:
             emit(result, json_output=True)
         else:
-            data = to_data(result)
+            data = to_object(result)
             lines: list[str] = [
                 f"id: {data['id']}",
                 f"owner_agent_id: {data['owner_agent_id']}",
@@ -155,7 +156,7 @@ def handle_get(args: argparse.Namespace) -> int:
             if data.get("language"):
                 lines.append(f"language: {data['language']}")
             if data.get("tags"):
-                lines.append(f"tags: {', '.join(data['tags'])}")
+                lines.append(f"tags: {', '.join(strings(data, 'tags'))}")
             lines.append(f"current_version: {data.get('current_version')}")
             latest_version_id = data.get("latest_version_id")
             if latest_version_id:

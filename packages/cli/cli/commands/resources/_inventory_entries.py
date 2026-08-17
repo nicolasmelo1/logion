@@ -11,9 +11,9 @@ snapshots visible next to skills.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from cli._harness.scopes import ScopeTarget
+from cli._json import JsonObject, opt_str
 
 from ._reconciliation import reconciliation_status
 
@@ -21,8 +21,8 @@ from ._reconciliation import reconciliation_status
 def _scan_dir(
     target: ScopeTarget,
     precedence: int,
-    receipts_by_path: dict[Path, dict[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
+    receipts_by_path: dict[Path, JsonObject] | None = None,
+) -> list[JsonObject]:
     """List installed resources under *target* with reconciliation status.
 
     A directory is an installed resource when it carries a ``SKILL.md`` or
@@ -33,7 +33,7 @@ def _scan_dir(
     if not target.target_path.is_dir():
         return []
     by_path = receipts_by_path or {}
-    found: list[dict[str, Any]] = []
+    found: list[JsonObject] = []
     try:
         children = sorted(target.target_path.iterdir())
     except OSError:
@@ -59,9 +59,9 @@ def _entry(
     path: Path,
     target: ScopeTarget,
     precedence: int,
-    receipt: dict[str, Any] | None,
-) -> dict[str, Any]:
-    entry: dict[str, Any] = {
+    receipt: JsonObject | None,
+) -> JsonObject:
+    entry: JsonObject = {
         "name": path.name,
         "path": str(path),
         "scope_kind": target.scope_kind,
@@ -86,11 +86,11 @@ def _entry(
     return entry
 
 
-def _receipts_by_path() -> dict[Path, dict[str, Any]]:
+def _receipts_by_path() -> dict[Path, JsonObject]:
     """Index local acquisition receipts by their resolved install path."""
     from cli import _receipts
 
-    indexed: dict[Path, dict[str, Any]] = {}
+    indexed: dict[Path, JsonObject] = {}
     for receipt in _receipts.load_receipts():
         raw = receipt.get("target_path")
         if isinstance(raw, str) and raw:
@@ -100,9 +100,9 @@ def _receipts_by_path() -> dict[Path, dict[str, Any]]:
 
 def _unscanned_receipt_entries(
     targets: list[ScopeTarget],
-    scanned: list[dict[str, Any]],
-    receipts_by_path: dict[Path, dict[str, Any]],
-) -> list[dict[str, Any]]:
+    scanned: list[JsonObject],
+    receipts_by_path: dict[Path, JsonObject],
+) -> list[JsonObject]:
     """Report receipt-backed installs the directory scan cannot see.
 
     An ``hf`` snapshot or a plugin installed by its native manager does not
@@ -112,12 +112,12 @@ def _unscanned_receipt_entries(
     """
     seen = {_resolve(Path(str(item["path"]))) for item in scanned}
     scope_roots = {_resolve(target.scope_root): target for target in targets}
-    extra: list[dict[str, Any]] = []
+    extra: list[JsonObject] = []
     for path, receipt in sorted(receipts_by_path.items()):
         if path in seen:
             continue
         target = scope_roots.get(
-            _resolve(Path(str(receipt.get("target_path", ""))).parent)
+            _resolve(Path(str(opt_str(receipt, "target_path", ""))).parent)
         )
         for root, candidate in scope_roots.items():
             if target is not None:

@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import sys
 
-from cli._output import to_data
+from cli._output import to_items, to_object
 
 
 def emit_code_human(result: object) -> None:
     """Render a referral code result as human-readable key: value."""
-    data = to_data(result)
+    data = to_object(result)
     lines = [
         f"code: {data.get('code')}",
         f"is_default: {data.get('is_default')}",
@@ -22,7 +22,7 @@ def emit_code_human(result: object) -> None:
 
 def emit_link_human(result: object) -> None:
     """Render a referral link result as human-readable key: value."""
-    data = to_data(result)
+    data = to_object(result)
     lines = [
         f"referral_code: {data.get('referral_code')}",
         f"link: {data.get('link')}",
@@ -34,7 +34,7 @@ def emit_link_human(result: object) -> None:
 
 def emit_stats_human(result: object) -> None:
     """Render referral statistics as human-readable key: value."""
-    data = to_data(result)
+    data = to_object(result)
     lines = [
         f"total_attributions: {data.get('total_attributions')}",
         f"active_attributions: {data.get('active_attributions')}",
@@ -47,7 +47,7 @@ def emit_stats_human(result: object) -> None:
 
 def emit_attributions_human(result: object) -> None:
     """Render referral attributions as human-readable entries."""
-    items = to_data(result)
+    items = to_items(result)
     if not items:
         sys.stdout.write("No referral attributions.\n")
     else:

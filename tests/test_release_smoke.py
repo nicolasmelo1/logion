@@ -201,9 +201,7 @@ def test_workflow_input_accepts_leading_v_when_creating_template(
     args = type("Args", (), {"path": str(path), "version": f"v{VERSION}"})()
     result = cmd_workflow_input(args)
     assert result == 0
-    assert f'release_version: "{VERSION}"' in path.read_text(
-        encoding="utf-8"
-    )
+    assert f'release_version: "{VERSION}"' in path.read_text(encoding="utf-8")
 
 
 def test_workflow_input_prints_valid_base64(

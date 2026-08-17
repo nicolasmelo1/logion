@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -15,14 +15,14 @@ class FakeCreditsResource:
     """Fake credits resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
-        self.top_up_sequence: list[dict[str, Any]] = []
+        self.last_call: tuple[str, JsonObject] = ("", {})
+        self.top_up_sequence: list[JsonObject] = []
 
-    def get_balance(self) -> dict[str, Any]:
+    def get_balance(self) -> JsonObject:
         self.last_call = ("get_balance", {})
         return {"balance_cents": 700, "currency_code": "USD_CREDIT"}
 
-    def create_top_up(self, **kwargs: Any) -> dict[str, Any]:
+    def create_top_up(self, **kwargs: object) -> JsonObject:
         self.last_call = ("create_top_up", kwargs)
         return {
             "top_up_id": "11111111-1111-1111-1111-111111111111",
@@ -33,7 +33,7 @@ class FakeCreditsResource:
             "stripe_checkout_session_id": "cs_test_123",
         }
 
-    def get_top_up(self, **kwargs: Any) -> dict[str, Any]:
+    def get_top_up(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_top_up", kwargs)
         if self.top_up_sequence:
             payload = self.top_up_sequence.pop(0)
@@ -48,7 +48,7 @@ class FakeCreditsResource:
             **payload,
         }
 
-    def list_ledger(self) -> list[dict[str, Any]]:
+    def list_ledger(self) -> list[JsonObject]:
         self.last_call = ("list_ledger", {})
         return [
             {
@@ -85,10 +85,10 @@ def _patch_client(
     return fake
 
 
-def _decode_json_stream(text: str) -> list[dict[str, Any]]:
+def _decode_json_stream(text: str) -> list[JsonObject]:
     decoder = json.JSONDecoder()
     index = 0
-    items: list[dict[str, Any]] = []
+    items: list[JsonObject] = []
     while index < len(text):
         while index < len(text) and text[index].isspace():
             index += 1

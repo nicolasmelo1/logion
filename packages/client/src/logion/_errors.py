@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from logion._json import JsonObject
+
 
 class LogionError(Exception):
     """Base exception for all SDK errors."""
@@ -14,7 +16,7 @@ class APIError(LogionError):
     def __init__(
         self,
         status_code: int,
-        detail: str | list[dict[str, object]],
+        detail: str | list[JsonObject],
         request_id: str | None = None,
     ) -> None:
         self.status_code = status_code

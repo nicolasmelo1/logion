@@ -15,6 +15,7 @@ from cli._first_party import (
     LOGION_MARKETPLACE_COMPANION_NAME,
 )
 from cli._harness.base import HarnessAdapter
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home
 
 from ._companion_source import locate_bundle_source, materialize_bundle
@@ -30,7 +31,7 @@ class CompanionResult:
     version_id: str | None
     already: bool
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonObject:
         return {
             "installed": self.installed,
             "skill_dir": self.skill_dir,
@@ -161,7 +162,7 @@ def _install_from_dir(
         manifest = read_manifest(course_id, version_id, get_home())
         existing_hash = ""
         if isinstance(manifest, dict):
-            existing_hash = manifest.get("content_sha256", "")
+            existing_hash = opt_str(manifest, "content_sha256", "")
         new_hash = compute_content_hash(
             collect_installable_files(bundle_dir), root=bundle_dir
         )

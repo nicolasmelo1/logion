@@ -24,9 +24,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ALLOWLIST_PATH = os.path.join(
-    ROOT, "scripts", "check_doc_links.allowlist"
-)
+ALLOWLIST_PATH = os.path.join(ROOT, "scripts", "check_doc_links.allowlist")
 
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 
@@ -96,9 +94,7 @@ def check_file(path: str) -> list[tuple[str, str]]:
             continue
         # Strip in-page anchor.
         target, _ = (
-            raw_target.split("#", 1)
-            if "#" in raw_target
-            else (raw_target, "")
+            raw_target.split("#", 1) if "#" in raw_target else (raw_target, "")
         )
         if not target:
             continue

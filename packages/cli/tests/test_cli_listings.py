@@ -5,20 +5,20 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.commands.listings.parser import register
 from cli.main import main
 
 
 class FakeListingsResource:
-    def __init__(self, items: list[dict[str, Any]]) -> None:
+    def __init__(self, items: list[JsonObject]) -> None:
         self.items = items
-        self.calls: list[dict[str, Any]] = []
+        self.calls: list[JsonObject] = []
 
-    def search(self, **kwargs: Any) -> dict[str, Any]:
+    def search(self, **kwargs: object) -> JsonObject:
         self.calls.append(kwargs)
         return {"items": self.items, "next_cursor": None}
 
@@ -40,7 +40,7 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: FakeClient) -> None:
     monkeypatch.setattr("cli._context.LogionClient", lambda **_: fake)
 
 
-def _make_item(summary: str, *, item_id: str = "listing-1") -> dict[str, Any]:
+def _make_item(summary: str, *, item_id: str = "listing-1") -> JsonObject:
     return {
         "id": item_id,
         "title": "Video Cuts",

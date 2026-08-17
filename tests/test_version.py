@@ -34,7 +34,8 @@ PACKAGES = {
     ids=list(PACKAGES.keys()),
 )
 def test_version_matches_pyproject(
-    package_name: str, info: tuple[str, Path],
+    package_name: str,
+    info: tuple[str, Path],
 ) -> None:
     # The companion _version.py lives at package root (not under a
     # namespace package), so importlib cannot find it without

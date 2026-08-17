@@ -15,6 +15,7 @@ from cli._credentials import (
 )
 from cli._errors import print_err
 from cli._harness import adapter_names
+from cli._json import JsonObject
 from cli._output import emit_json
 
 from . import _autopost
@@ -36,7 +37,7 @@ def _repair_missing_api_key(
     args: argparse.Namespace,
     config: object,
     user_id: str,
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     """Persist an API key for legacy onboarding runs that
     saved only ids."""
     agent_id = stored_agent_id()
@@ -57,7 +58,7 @@ def _repair_missing_api_key(
 def _handle_standard_path(
     args: argparse.Namespace,
     config: object,
-    summary: dict[str, object],
+    summary: JsonObject,
 ) -> int | None:
     """Run the interactive email/password onboarding path.
 
@@ -91,7 +92,7 @@ def _handle_standard_path(
 def handle_onboarding(args: argparse.Namespace) -> int:
     """Execute the identity onboarding command."""
     config = resolve_config_from_args(args)
-    summary: dict[str, object] = {}
+    summary: JsonObject = {}
 
     # --- Setup-token path: non-interactive, no email/password ---
     setup_token = resolve_setup_token(args)

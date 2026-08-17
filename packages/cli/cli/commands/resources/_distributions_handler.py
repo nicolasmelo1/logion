@@ -9,7 +9,8 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
-from cli._output import emit_json, to_data
+from cli._json import child, children, opt_str
+from cli._output import emit_json, to_data, to_object
 
 from ._acquire_plan import normalize_versions
 from ._distribution_entries import _distribution_entries
@@ -33,7 +34,7 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
         version_id = getattr(args, "version", None) or str(
             versions[0].get("id") or versions[0].get("version_id")
         )
-        plan = to_data(
+        plan = to_object(
             client.v1.resources.acquisition_plan(
                 resource_id=args.resource_id,
                 version_id=version_id,
@@ -43,7 +44,7 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
         payload = {
             "resource_id": args.resource_id,
             "version_id": version_id,
-            "selected_channel": plan.get("selected_channel"),
+            "selected_channel": opt_str(plan, "selected_channel"),
             "distributions": _distribution_entries(
                 client, args.resource_id, version_id, plan
             ),
@@ -54,13 +55,13 @@ def handle_resources_distributions(args: argparse.Namespace) -> int:
             out = sys.stdout
             out.write(f"Resource: {payload['resource_id']}\n")
             out.write(f"Version:  {payload['version_id']}\n")
-            for dist in payload["distributions"]:
+            for dist in children(payload, "distributions"):
                 marker = " (selected)" if dist["selected"] else ""
                 out.write(f"  - {dist['channel']}{marker}\n")
                 if not dist["available"]:
                     out.write(f"      unavailable: {dist['reason']}\n")
                     continue
-                native = dist.get("native") or {}
+                native = child(dist, "native")
                 if native.get("tool"):
                     out.write(
                         f"      native: {native['tool']} "

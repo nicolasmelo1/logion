@@ -18,7 +18,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject, JsonValue
 
 #: The profile manifest shape this reader was recorded against. A profile
 #: that declares a different one is quarantined, never interpreted.
@@ -44,7 +45,7 @@ class DshBundle:
     version: str = ""
     spec: str = ""
     unsupported: str = ""
-    declared: dict[str, Any] = field(default_factory=dict)
+    declared: JsonObject = field(default_factory=dict)
 
 
 def profiles_root(dsh_home: Path) -> Path:
@@ -57,7 +58,7 @@ def valid_profile_name(name: str) -> bool:
     return bool(_PROFILE_NAME_RE.fullmatch(name))
 
 
-def _read_json(path: Path) -> Any:
+def _read_json(path: Path) -> JsonValue:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -81,7 +82,7 @@ def _revision_from_spec(spec: str) -> str:
     return fragment if _REVISION_RE.fullmatch(fragment) else ""
 
 
-def _declared_bundles(manifest: dict[str, Any]) -> list[str]:
+def _declared_bundles(manifest: JsonObject) -> list[str]:
     """Return ``dsh.profile.bundles`` or fail closed on any other shape."""
     dsh = manifest.get("dsh")
     if not isinstance(dsh, dict):
@@ -97,14 +98,14 @@ def _declared_bundles(manifest: dict[str, Any]) -> list[str]:
     return list(bundles)
 
 
-def _declared_capabilities(manifest: dict[str, Any]) -> dict[str, Any]:
+def _declared_capabilities(manifest: JsonObject) -> JsonObject:
     """Collect what the publisher declares — never what Logion verified."""
     dependencies = manifest.get("dependencies")
     peer = manifest.get("peerDependencies")
     raw_dsh = manifest.get("dsh")
-    dsh: dict[str, Any] = raw_dsh if isinstance(raw_dsh, dict) else {}
+    dsh: JsonObject = raw_dsh if isinstance(raw_dsh, dict) else {}
     raw_bundle = dsh.get("bundle")
-    bundle: dict[str, Any] = raw_bundle if isinstance(raw_bundle, dict) else {}
+    bundle: JsonObject = raw_bundle if isinstance(raw_bundle, dict) else {}
     return {
         "dependencies": sorted(dependencies)
         if isinstance(dependencies, dict)
@@ -124,9 +125,7 @@ def read_profile(dsh_home: Path, profile: str) -> list[DshBundle]:
         raise UnsupportedDshStateError("profile manifest is not an object")
 
     raw_deps = manifest.get("dependencies")
-    dependencies: dict[str, Any] = (
-        raw_deps if isinstance(raw_deps, dict) else {}
-    )
+    dependencies: JsonObject = raw_deps if isinstance(raw_deps, dict) else {}
 
     results: list[DshBundle] = []
     for name in _declared_bundles(manifest):
@@ -199,7 +198,7 @@ def read_all_profiles(dsh_home: Path) -> list[DshBundle]:
     return results
 
 
-def _repository_uri(repository: Any) -> str:
+def _repository_uri(repository: JsonValue) -> str:
     """Normalise npm's two `repository` shapes into one string."""
     if isinstance(repository, str):
         return repository

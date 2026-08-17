@@ -4,20 +4,20 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
 class FakeHealthResource:
     """Fake health resource returning canned data."""
 
-    def __init__(self, response: dict[str, Any] | None = None) -> None:
+    def __init__(self, response: JsonObject | None = None) -> None:
         self._response = response or {"status": "ok"}
 
-    def check(self) -> dict[str, Any]:
+    def check(self) -> JsonObject:
         return self._response
 
 

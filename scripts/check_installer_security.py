@@ -40,7 +40,9 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         "unreviewed curl pipe shell",
-        re.compile(r"\b(curl|wget)\b[^\n|;&]*\|\s*(sh|bash|zsh|pwsh|powershell)\b"),
+        re.compile(
+            r"\b(curl|wget)\b[^\n|;&]*\|\s*(sh|bash|zsh|pwsh|powershell)\b"
+        ),
         "Pipe-to-shell is only allowed for explicitly allowlisted domains.",
     ),
     Rule(
@@ -50,7 +52,9 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         "unsafe recursive delete",
-        re.compile(r"\brm\s+-[A-Za-z]*r[A-Za-z]*f?[A-Za-z]*\s+(/|\$HOME|~)(\s|$)"),
+        re.compile(
+            r"\brm\s+-[A-Za-z]*r[A-Za-z]*f?[A-Za-z]*\s+(/|\$HOME|~)(\s|$)"
+        ),
         "Never recursively delete root or the user's home directory.",
     ),
     Rule(
@@ -60,7 +64,10 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         "privilege escalation",
-        re.compile(r"\b(sudo|su\s+-|Start-Process\s+.*-Verb\s+RunAs)\b", re.IGNORECASE),
+        re.compile(
+            r"\b(sudo|su\s+-|Start-Process\s+.*-Verb\s+RunAs)\b",
+            re.IGNORECASE,
+        ),
         "Installers must not escalate privileges automatically.",
     ),
     Rule(
@@ -74,7 +81,9 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         "profile command injection",
-        re.compile(r">>\s*(\$HOME|~)/\.(bashrc|zshrc|profile|config/fish/config\.fish)"),
+        re.compile(
+            r">>\s*(\$HOME|~)/\.(bashrc|zshrc|profile|config/fish/config\.fish)"
+        ),
         "Profile writes must go through the reviewed update_path helper.",
     ),
     Rule(
@@ -112,7 +121,8 @@ def is_allowed(rule_name: str, line: str) -> bool:
     if rule_name == "non-TLS download":
         urls = re.findall(r"\bhttps?://[^\s\"']+", line, re.IGNORECASE)
         return all(
-            url.startswith(ALLOWED_DOWNLOAD_ORIGINS) and url.startswith("https://")
+            url.startswith(ALLOWED_DOWNLOAD_ORIGINS)
+            and url.startswith("https://")
             for url in urls
         )
     if rule_name == "profile command injection":
@@ -130,7 +140,9 @@ def scan_file(rel_path: str) -> list[tuple[str, int, str, str]]:
             if line.lstrip().startswith("#"):
                 continue
             for rule in RULES:
-                if rule.pattern.search(line) and not is_allowed(rule.name, line):
+                if rule.pattern.search(line) and not is_allowed(
+                    rule.name, line
+                ):
                     hits.append((rel_path, lineno, rule.name, rule.message))
     return hits
 
@@ -149,7 +161,8 @@ def main() -> None:
         print(f"  {rel_path}:{lineno}  [{rule_name}] {message}")
     print(
         "\nIf a pattern is truly required, make it narrow and add an explicit "
-        "allowlist entry in scripts/check_installer_security.py with a comment."
+        "allowlist entry in scripts/check_installer_security.py "
+        "with a comment."
     )
     sys.exit(1)
 

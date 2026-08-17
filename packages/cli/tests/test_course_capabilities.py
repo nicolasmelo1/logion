@@ -8,8 +8,6 @@ output.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from cli._course_capabilities import (
@@ -18,11 +16,12 @@ from cli._course_capabilities import (
     runtime_requirement_warnings,
     summarize_capability_manifest,
 )
+from cli._json import JsonObject
 
 
-def _manifest(**overrides: Any) -> dict[str, Any]:
+def _manifest(**overrides: object) -> JsonObject:
     """Return a minimal valid manifest with optional overrides."""
-    base: dict[str, Any] = {"version": 1}
+    base: JsonObject = {"version": 1}
     base.update(overrides)
     return base
 

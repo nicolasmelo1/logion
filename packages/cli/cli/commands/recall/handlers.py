@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from cli._json import strings
 from cli._local_state import (
     ensure_layout,
     record_workflow_success,
@@ -59,7 +60,7 @@ def handle_recall_search(args: argparse.Namespace) -> int:
             f"band={entry.get('band', 'NONE')})"
         )
         if entry.get("danger_flags"):
-            line += f" flags={','.join(entry['danger_flags'])}"
+            line += f" flags={','.join(strings(entry, 'danger_flags'))}"
         print(line)
         title = entry.get("title")
         if title:

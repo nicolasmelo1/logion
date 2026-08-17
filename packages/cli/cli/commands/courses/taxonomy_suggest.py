@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 import yaml
 
+from cli._json import JsonObject
 from cli._taxonomy import (
     RESERVED_TAG_SLUGS,
     TaxonomyValidationError,
@@ -29,7 +29,7 @@ _SKILL_BODY_READ_BYTES = 4096
 _MIN_TOKEN_LENGTH = 3
 
 
-def _read_skill_frontmatter(skill_path: Path) -> dict[str, Any] | None:
+def _read_skill_frontmatter(skill_path: Path) -> JsonObject | None:
     """Parse YAML frontmatter from SKILL.md, returning None if absent."""
     if not skill_path.is_file():
         return None
@@ -152,7 +152,7 @@ def _suggest_tags(tokens: list[str]) -> tuple[list[str], list[str]]:
 
 def suggest_taxonomy(
     bundle_dir: Path,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Produce deterministic category and tag suggestions for a bundle.
 
     Reads ``SKILL.md`` frontmatter (name, description) and body, plus

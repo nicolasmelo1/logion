@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
+from agent_proving_ground._json import (
+    JsonObject,
+    opt_str,
+)
 from agent_proving_ground.api_adapters._http import (
     HealthCheckError,
     health_check_endpoint,
@@ -31,7 +34,7 @@ class RemoteApiAdapter(ApiAdapter):
         *,
         base_url: str | None = None,
         admin_key: str | None = None,
-        api_config: dict[str, Any] | None = None,
+        api_config: JsonObject | None = None,
     ) -> None:
         self._base_url = _resolve_base_url(base_url, api_config)
         self._admin_key = admin_key or _resolve_admin_key(api_config)
@@ -78,14 +81,14 @@ class RemoteApiAdapter(ApiAdapter):
             },
         )
 
-    async def snapshot(self, world: World) -> dict[str, Any]:  # noqa: ARG002
+    async def snapshot(self, world: World) -> JsonObject:  # noqa: ARG002
         return {"base_url": self._base_url}
 
     async def query(
         self,
         world: World,
-        query: dict[str, Any],
-    ) -> dict[str, Any]:
+        query: JsonObject,
+    ) -> JsonObject:
         query_type = query.get("type")
         if query_type == "health_ok":
             try:
@@ -118,11 +121,11 @@ class RemoteApiAdapter(ApiAdapter):
 
 
 def _resolve_base_url(
-    explicit: str | None, api_config: dict[str, Any] | None
+    explicit: str | None, api_config: JsonObject | None
 ) -> str:
     if explicit:
         return explicit.rstrip("/")
-    env_name = (api_config or {}).get("base_url_env")
+    env_name = opt_str(api_config or {}, "base_url_env")
     if env_name:
         env_value = os.environ.get(env_name)
         if env_value:
@@ -137,8 +140,8 @@ def _resolve_base_url(
     )
 
 
-def _resolve_admin_key(api_config: dict[str, Any] | None) -> str | None:
-    env_name = (api_config or {}).get("admin_key_env")
+def _resolve_admin_key(api_config: JsonObject | None) -> str | None:
+    env_name = opt_str(api_config or {}, "admin_key_env")
     if env_name:
         return os.environ.get(env_name)
     return os.environ.get("LOGION_PROVING_GROUND_ADMIN_KEY")

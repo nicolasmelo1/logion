@@ -3,18 +3,24 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from cli._errors import emit_error_json, handle_error
+from cli._json import JsonObject
+
+if TYPE_CHECKING:
+    # Annotation only. Importing the SDK at module scope would load
+    # it during parser setup, which test_cli_startup forbids.
+    from logion import APIError
 
 
-def _detail_text(detail: str | list[dict[str, object]]) -> str:
+def _detail_text(detail: str | list[JsonObject]) -> str:
     if isinstance(detail, list):
         return "; ".join(str(item) for item in detail)
     return str(detail)
 
 
-def _api_error_code(exc: Any) -> str:
+def _api_error_code(exc: APIError) -> str:
     detail_text = _detail_text(exc.detail).lower()
     if exc.status_code == 401:
         return "auth_missing"
@@ -29,7 +35,7 @@ def _api_error_code(exc: Any) -> str:
     return "server_error"
 
 
-def _handle_api_error(exc: Any, json_output: bool) -> int:
+def _handle_api_error(exc: APIError, json_output: bool) -> int:
     if json_output:
         emit_error_json(_api_error_code(exc), _detail_text(exc.detail), 1)
         return 1

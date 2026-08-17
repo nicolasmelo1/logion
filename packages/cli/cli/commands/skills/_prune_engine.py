@@ -12,8 +12,8 @@ import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject, opt_str
 from cli._local_state import (
     _safe_segment,
     build_index,
@@ -62,7 +62,7 @@ def _parse_iso(value: str | None) -> datetime:
 
 
 def _workflow_version_ids(
-    workflows: list[dict[str, Any]],
+    workflows: list[JsonObject],
     course_id: str,
 ) -> frozenset[str]:
     """Return version_ids referenced by workflows for *course_id*."""
@@ -76,7 +76,7 @@ def _workflow_version_ids(
 
 
 def _active_version_id(
-    index: list[dict[str, Any]],
+    index: list[JsonObject],
     course_id: str,
 ) -> str | None:
     """Return the active version_id for *course_id* from index.json."""
@@ -98,7 +98,7 @@ class LocalState:
 class InstalledVersionRetention:
     """Plan and apply bounded retention on installed versions."""
 
-    def __init__(self, state: Any) -> None:
+    def __init__(self, state: LocalState) -> None:
         """Initialize with a state holder carrying ``home``."""
         self._state = state
 
@@ -133,11 +133,9 @@ class InstalledVersionRetention:
 
         refs: list[InstalledVersionRef] = []
         for m in course_versions:
-            vid = str(m.get("version_id", ""))
-            installed_at = _parse_iso(m.get("installed_at"))
-            version_label = m.get("version")
-            if not isinstance(version_label, str):
-                version_label = None
+            vid = str(opt_str(m, "version_id", ""))
+            installed_at = _parse_iso(opt_str(m, "installed_at"))
+            version_label = opt_str(m, "version")
             version_dir = home / "installed" / course_id / vid
             protected = False
             if vid == active_vid or vid in workflow_vids:

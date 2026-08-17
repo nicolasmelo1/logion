@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
+from typing import TextIO
+
+from cli._json import JsonObject, child, children, elements, strings
 
 
-def print_plan(plan: dict[str, Any]) -> None:
+def print_plan(plan: JsonObject) -> None:
     """Print an acquisition plan for interactive CLI users."""
     out = sys.stdout
     out.write(f"Resource: {plan['resource_id']}\n")
@@ -17,20 +19,20 @@ def print_plan(plan: dict[str, Any]) -> None:
     if plan.get("default_scope_for_cwd"):
         out.write(f"Default scope for CWD: {plan['default_scope_for_cwd']}\n")
     out.write("\nTargets:\n")
-    for target in plan["targets"]:
+    for target in children(plan, "targets"):
         out.write(
             f"  [{target['scope_kind']}] {target['installation_path']} "
             f"({target['state']})\n"
         )
         if target.get("native_manager"):
             out.write(f"    native manager: {target['native_manager']}\n")
-        operation = target["operation"]
+        operation = child(target, "operation")
         out.write(
             f"    operation: {operation['kind']} "
             f"(ready={operation['ready']})\n"
         )
     if plan.get("resource"):
-        resource = plan["resource"]
+        resource = child(plan, "resource")
         canonical = resource.get("canonical_uri", plan["resource_id"])
         out.write(
             f"\nResource: {canonical} "
@@ -39,12 +41,12 @@ def print_plan(plan: dict[str, Any]) -> None:
         )
     if plan.get("versions"):
         out.write("\nVersions:\n")
-        for version in plan["versions"]:
+        for version in children(plan, "versions"):
             out.write(
                 f"  {version.get('id', version.get('version_id', '?'))}\n"
             )
     _print_distribution(out, plan)
-    observation = plan.get("observation_integration", {})
+    observation = child(plan, "observation_integration")
     out.write(
         f"\nObservation: {observation.get('integration_version', '?')} "
         f"(consent={observation.get('consent', '?')}, "
@@ -55,25 +57,25 @@ def print_plan(plan: dict[str, Any]) -> None:
         f"Confirmation required: {plan.get('confirmation_required')}\n"
         f"Executable: {plan.get('executable')}\n"
     )
-    for reason in plan.get("blocked_reasons") or []:
+    for reason in elements(plan, "blocked_reasons"):
         out.write(f"  blocked: {reason}\n")
 
 
-def _print_distribution(out: Any, plan: dict[str, Any]) -> None:
+def _print_distribution(out: TextIO, plan: JsonObject) -> None:
     """Render the server-owned distribution the execution path would use."""
-    distribution = plan.get("distribution") or {}
+    distribution = child(plan, "distribution")
     if not distribution.get("resolved"):
         out.write(
             "\nDistribution: unresolved "
             f"({distribution.get('reason', 'unknown')})\n"
         )
         return
-    native = distribution.get("native") or {}
-    license_info = distribution.get("license") or {}
-    entitlement = distribution.get("entitlement") or {}
+    native = child(distribution, "native")
+    license_info = child(distribution, "license")
+    entitlement = child(distribution, "entitlement")
     out.write("\nDistribution:\n")
     out.write(f"  channel:     {distribution.get('channel')}\n")
-    alternatives = distribution.get("alternatives") or []
+    alternatives = strings(distribution, "alternatives")
     if alternatives:
         out.write(f"  alternatives: {', '.join(alternatives)}\n")
     out.write(f"  digest:      {distribution.get('content_digest')}\n")
@@ -100,16 +102,16 @@ def _print_distribution(out: Any, plan: dict[str, Any]) -> None:
         out.write(f"  upstream:    {native['upstream_locator']}\n")
     if native.get("revision"):
         out.write(f"  revision:    {native['revision']}\n")
-    permissions = distribution.get("permissions") or {}
+    permissions = child(distribution, "permissions")
     out.write(
         f"  permissions: network={permissions.get('network')} "
         f"tools={permissions.get('tools')} "
         f"secrets={permissions.get('secrets')}\n"
     )
-    verification = plan.get("verification") or {}
+    verification = child(plan, "verification")
     out.write(
         f"  verification expectation: "
         f"{verification.get('expected_level', 'unknown')}\n"
     )
-    for warning in distribution.get("warnings") or []:
+    for warning in elements(distribution, "warnings"):
         out.write(f"  warning:     {warning}\n")

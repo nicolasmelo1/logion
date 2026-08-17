@@ -7,9 +7,9 @@ import argparse
 import json
 import re
 import sys
-from typing import Any
 
 from cli._errors import handle_error, print_err
+from cli._json import JsonObject, opt_str, require_str
 from cli._output import emit_json, to_data
 from cli._receipts import load_receipts
 from cli.integrations_state import get_mode
@@ -17,6 +17,8 @@ from cli.usage.observations import (
     dismiss_observations,
     list_pending_observations,
     make_observation,
+    observation_event,
+    observation_scope_kind,
     spool_observation,
 )
 
@@ -64,7 +66,7 @@ def handle_usage_pending(args: argparse.Namespace) -> int:
     return 0
 
 
-def _read_stdin_json() -> dict[str, Any]:
+def _read_stdin_json() -> JsonObject:
     """Read one bounded JSON object from stdin."""
     max_bytes = 64 * 1024
     try:
@@ -90,7 +92,7 @@ def _read_stdin_json() -> dict[str, Any]:
 
 def _receipt_for_observation(
     harness: str, installation_id: object
-) -> dict[str, Any]:
+) -> JsonObject:
     if not isinstance(installation_id, str) or not installation_id:
         raise ValueError("installation_id is required")
     matches = [
@@ -126,15 +128,17 @@ def handle_usage_observe(args: argparse.Namespace) -> int:
         )
         obs = make_observation(
             harness=args.harness,
-            event=data.get("event", "resource_invoked"),
-            resource_id=receipt["resource_id"],
-            version_id=receipt["version_id"],
-            resource_type=receipt["resource_type"],
-            acquisition_channel=receipt["channel"],
-            installation_id=receipt["installation_id"],
-            scope_kind=receipt["scope_kind"],
-            scope_id=receipt["scope_id"],
-            session_hash=data.get("session_hash"),
+            event=observation_event(opt_str(data, "event")),
+            resource_id=require_str(receipt, "resource_id"),
+            version_id=require_str(receipt, "version_id"),
+            resource_type=require_str(receipt, "resource_type"),
+            acquisition_channel=require_str(receipt, "channel"),
+            installation_id=require_str(receipt, "installation_id"),
+            scope_kind=observation_scope_kind(
+                require_str(receipt, "scope_kind")
+            ),
+            scope_id=require_str(receipt, "scope_id"),
+            session_hash=opt_str(data, "session_hash"),
         )
         spool_observation(obs)
         if json_output:

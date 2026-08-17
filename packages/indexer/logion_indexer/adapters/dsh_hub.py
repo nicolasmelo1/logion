@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from typing import Any
+
+from logion_indexer._json import JsonObject
 
 from ..canonical import CanonicalResourceId
 from ..models import DiscoveredResource, DiscoveryChannel
@@ -99,7 +100,7 @@ class DshHubAdapter:
 
     def _read_manifest(
         self, owner: str, repo: str, revision: str, path: str
-    ) -> dict[str, Any] | None:
+    ) -> JsonObject | None:
         response = self.transport.get(
             f"https://raw.githubusercontent.com/{owner}/{repo}"
             f"/{revision}/{path}"
@@ -118,7 +119,7 @@ class DshHubAdapter:
         repo: str,
         revision: str,
         path: str,
-        manifest: dict[str, Any],
+        manifest: JsonObject,
     ) -> DiscoveredResource | None:
         dsh_metadata = manifest.get("dsh")
         bundle = (
@@ -155,9 +156,7 @@ class DshHubAdapter:
             ),
         )
 
-    def _npm_distribution(
-        self, manifest: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _npm_distribution(self, manifest: JsonObject) -> JsonObject | None:
         """Record an npm distribution only if that version really exists.
 
         dsh installs registry-hosted bundles too — its own base bundle is
@@ -183,8 +182,8 @@ class DshHubAdapter:
 
 
 def _declared_capabilities(
-    manifest: dict[str, Any], bundle: dict[str, Any]
-) -> dict[str, Any]:
+    manifest: JsonObject, bundle: JsonObject
+) -> JsonObject:
     """Carry what the publisher declares, labelled as a claim.
 
     Cordis bundles declare their dependencies statically, which is what

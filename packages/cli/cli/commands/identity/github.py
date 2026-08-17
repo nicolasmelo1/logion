@@ -10,7 +10,7 @@ import time
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import emit_error_json, print_err
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_object
 from cli.commands.identity._browser import device_prompt_line
 from cli.commands.identity._github_errors import handle_github_exception
 
@@ -86,7 +86,7 @@ def handle_connect(args: argparse.Namespace) -> int:
             if status == "pending":
                 interval = max(getattr(result, "interval", interval), 1)
                 continue
-            data = to_data(result)
+            data = to_object(result)
             if config.json_output:
                 emit_json(_CONNECT_KIND, data)
             else:
@@ -116,7 +116,7 @@ def handle_status(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.identity.get_github_identity()
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json(_STATUS_KIND, data)
         else:
@@ -147,7 +147,7 @@ def handle_disconnect(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.identity.revoke_github_identity()
-        data = to_data(result) if not isinstance(result, dict) else result
+        data = to_object(result) if not isinstance(result, dict) else result
         if config.json_output:
             emit_json(_DISCONNECT_KIND, data)
         else:

@@ -6,7 +6,8 @@ from __future__ import annotations
 import hashlib
 import shutil
 from pathlib import Path
-from typing import Any
+
+from cli._json import JsonObject, child, require_str_array
 
 from .base import AcquisitionOutcome, ChannelAdapter, run_argv
 
@@ -15,10 +16,13 @@ class HfAdapter(ChannelAdapter):
     channel = "hf"
 
     def acquire(
-        self, *, plan: dict[str, Any], destination: Path, scope_root: Path
+        self, *, plan: JsonObject, destination: Path, scope_root: Path
     ) -> AcquisitionOutcome:
-        native = plan.get("native") or {}
-        argv = list(native.get("argv") or [])
+        native = child(plan, "native")
+        # require_ rather than the permissive reader: this argv is
+        # executed, so a non-string entry must fail loudly instead
+        # of being coerced into one.
+        argv = require_str_array(native, "argv")
         if not argv or argv[:2] != ["hf", "download"]:
             raise RuntimeError(
                 "native_tool_unsupported: expected hf download argv"
@@ -50,7 +54,7 @@ class HfAdapter(ChannelAdapter):
                     "path": str(path.relative_to(destination)),
                     "digest": digest.hexdigest(),
                 })
-        evidence = {
+        evidence: JsonObject = {
             "schema_version": 1,
             "manager_name": "hf",
             "manager_version": "unknown",

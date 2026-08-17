@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 
 from cli._config import resolve_config_from_args
+from cli._json import strings
 from cli._options import COMMON_PARSER
 from cli._output import emit_json
 
@@ -22,14 +23,14 @@ def handle_taxonomy_suggest(args: argparse.Namespace) -> int:
         emit_json("logion.courses.taxonomy.suggest", result)
     else:
         lines: list[str] = []
-        cats = result["category_suggestions"]
+        cats = strings(result, "category_suggestions")
         lines.append(f"category_suggestions: {', '.join(cats)}")
-        tags = result["tag_suggestions"]
+        tags = strings(result, "tag_suggestions")
         lines.append(f"tag_suggestions: {', '.join(tags)}")
-        rejected = result["rejected_reserved"]
+        rejected = strings(result, "rejected_reserved")
         if rejected:
             lines.append(f"rejected_reserved: {', '.join(rejected)}")
-        lines.append(f"source: {', '.join(result['source'])}")
+        lines.append(f"source: {', '.join(strings(result, 'source'))}")
         print("\n".join(lines))
     return 0
 

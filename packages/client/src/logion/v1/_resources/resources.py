@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from logion._http import HttpClient
+from logion._http import HttpClient, QueryValue
+from logion._json import JsonObject
 
 
 class ResourcesResource:
@@ -30,7 +31,7 @@ class ResourcesResource:
         lifecycle_status: str | None = None,
         limit: int | None = None,
         cursor: str | None = None,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """List generic resources using filters supported by ``/resources``.
 
         ``query`` and ``tags`` remain accepted for source compatibility, but
@@ -66,7 +67,7 @@ class ResourcesResource:
             )
         self._validate_limit(limit)
 
-        params: dict[str, object] = {}
+        params: dict[str, QueryValue] = {}
         if resource_type is not None:
             params["resource_type"] = resource_type
         if lifecycle_status is not None:
@@ -75,38 +76,23 @@ class ResourcesResource:
             params["limit"] = limit
         if cursor is not None:
             params["cursor"] = cursor
-        result = self._http.request(
+        return self._http.request_object(
             "GET",
             "/v1/resources",
             params=params,
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from GET /v1/resources, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
     def get(
         self,
         *,
         resource_id: str,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """Get detail for a resource UUID returned by the list endpoint."""
         encoded_id = quote(resource_id, safe="")
-        result = self._http.request(
+        return self._http.request_object(
             "GET",
             f"/v1/resources/{encoded_id}",
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from "
-                f"GET /v1/resources/{resource_id}, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
     def versions(
         self,
@@ -114,7 +100,7 @@ class ResourcesResource:
         resource_id: str,
         limit: int | None = None,
         cursor: str | None = None,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """List available versions of a resource UUID.
 
         ``cursor`` remains accepted for source compatibility, but the current
@@ -127,23 +113,15 @@ class ResourcesResource:
                 "support cursor"
             )
         self._validate_limit(limit)
-        params: dict[str, object] = {}
+        params: dict[str, QueryValue] = {}
         if limit is not None:
             params["limit"] = limit
         encoded_id = quote(resource_id, safe="")
-        result = self._http.request(
+        return self._http.request_object(
             "GET",
             f"/v1/resources/{encoded_id}/versions",
             params=params,
         )
-        if not isinstance(result, dict):
-            msg = (
-                f"Expected a JSON object from "
-                f"GET /v1/resources/{resource_id}/versions, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
     def acquisition_plan(
         self,
@@ -151,7 +129,7 @@ class ResourcesResource:
         resource_id: str,
         version_id: str,
         channel: str | None = None,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """Build a server-owned acquisition plan for a resource version.
 
         The plan describes the selected distribution, alternatives,
@@ -161,30 +139,22 @@ class ResourcesResource:
         """
         encoded_id = quote(resource_id, safe="")
         encoded_version = quote(version_id, safe="")
-        params: dict[str, object] = {}
+        params: dict[str, QueryValue] = {}
         if channel is not None:
             params["channel"] = channel
-        result = self._http.request(
+        return self._http.request_object(
             "GET",
             f"/v1/resources/{encoded_id}/versions/{encoded_version}"
             "/acquisition-plan",
             params=params,
         )
-        if not isinstance(result, dict):
-            msg = (
-                "Expected a JSON object from GET /v1/resources/"
-                f"{resource_id}/versions/{version_id}/acquisition-plan, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result
 
     def create_download(
         self,
         *,
         resource_id: str,
         version_id: str,
-    ) -> dict[str, object]:
+    ) -> JsonObject:
         """Mint a short-lived download manifest for a Logion-hosted bundle.
 
         Requires an authenticated agent; paid course-backed resources require
@@ -193,15 +163,7 @@ class ResourcesResource:
         """
         encoded_id = quote(resource_id, safe="")
         encoded_version = quote(version_id, safe="")
-        result = self._http.request(
+        return self._http.request_object(
             "POST",
             f"/v1/resources/{encoded_id}/versions/{encoded_version}/download",
         )
-        if not isinstance(result, dict):
-            msg = (
-                "Expected a JSON object from POST /v1/resources/"
-                f"{resource_id}/versions/{version_id}/download, "
-                f"got {type(result).__name__}"
-            )
-            raise TypeError(msg)
-        return result

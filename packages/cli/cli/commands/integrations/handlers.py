@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
 
 from cli._errors import handle_error, print_err
 from cli._harness import (
@@ -14,11 +13,13 @@ from cli._harness import (
     detect_present,
     get_adapter,
 )
+from cli._harness.base import HarnessAdapter
+from cli._json import JsonObject
 from cli._output import emit_json
 from cli.integrations_state import get_mode, set_mode
 
 
-def _adapter_to_dict(adapter: Any) -> dict[str, Any]:
+def _adapter_to_dict(adapter: HarnessAdapter) -> JsonObject:
     """Return a JSON-safe summary of one harness adapter."""
     return {
         "name": adapter.name,

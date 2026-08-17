@@ -18,7 +18,7 @@ import urllib.request
 from datetime import UTC
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 import yaml
 from fastapi import FastAPI, HTTPException, Request
@@ -34,6 +34,8 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
 from markupsafe import escape as markup_escape
+
+from landing._json import JsonObject, child, children
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -54,7 +56,16 @@ RELEASE_MANIFEST_URL = (
 # In-process cache so render does not fetch GitHub on every request. One fetch
 # per cold start and at most one per TTL window on a warm instance.
 _READOUT_TTL_SECONDS = 3600.0
-_readout_cache: dict[str, Any] = {"value": None, "at": 0.0}
+
+
+class _ReadoutCache(TypedDict):
+    """The memoised release readout and when it was fetched."""
+
+    value: str | None
+    at: float
+
+
+_readout_cache: _ReadoutCache = {"value": None, "at": 0.0}
 
 PUBLIC_PATHS = (
     "/",
@@ -87,7 +98,7 @@ SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 REFERRAL_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
-def load_content(path: Path = CONTENT_PATH) -> dict[str, Any]:
+def load_content(path: Path = CONTENT_PATH) -> JsonObject:
     with path.open("r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh)
     if not isinstance(data, dict):
@@ -143,7 +154,7 @@ def render_markdown(markdown: str) -> str:
 
 
 def canonical_url(path: str) -> str:
-    base = str(content.get("seo", {}).get("canonical_base", "")).rstrip("/")
+    base = str(child(content, "seo").get("canonical_base", "")).rstrip("/")
     normalized_path = "/" if path == "/" else f"/{path.strip('/')}"
     return f"{base}{normalized_path}"
 
@@ -181,7 +192,7 @@ def sitemap_xml() -> str:
     )
 
 
-def _format_llms_link(entry: dict[str, Any]) -> str:
+def _format_llms_link(entry: JsonObject) -> str:
     title = str(entry.get("title", "Untitled"))
     href = str(entry.get("href", "/"))
     description = str(entry.get("description", "")).strip()
@@ -191,10 +202,10 @@ def _format_llms_link(entry: dict[str, Any]) -> str:
 
 
 def llms_txt() -> str:
-    ai = content.get("ai", {})
-    site = content.get("site", {})
-    pages = ai.get("llms_txt_pages", []) or []
-    sections = ai.get("llms_txt_sections", []) or []
+    ai = child(content, "ai")
+    site = child(content, "site")
+    pages = children(ai, "llms_txt_pages")
+    sections = children(ai, "llms_txt_sections")
     lines = [
         f"# {site.get('name', 'Logion')}",
         "",
@@ -204,23 +215,20 @@ def llms_txt() -> str:
         "",
     ]
     for page in pages:
-        if isinstance(page, dict):
-            lines.append(_format_llms_link(page))
+        lines.append(_format_llms_link(page))
     for section in sections:
-        if not isinstance(section, dict):
-            continue
         heading = str(section.get("heading", "")).strip()
         if not heading:
             continue
         lines.extend(["", f"## {heading}", ""])
-        for link in section.get("links", []) or []:
+        for link in children(section, "links"):
             if isinstance(link, dict):
                 lines.append(_format_llms_link(link))
     return "\n".join(lines).rstrip() + "\n"
 
 
 def legal_page(slug: str) -> dict[str, str]:
-    page = content.get("legal", {}).get(slug, {})
+    page = child(child(content, "legal"), slug)
     markdown_name = page.get("markdown")
     if not isinstance(markdown_name, str):
         raise TypeError(f"legal page {slug!r} must define a markdown file")
@@ -305,7 +313,7 @@ def release_manifest(channel: str) -> RedirectResponse:
 
 def _fallback_readout() -> str:
     """Static hero readout from site.yaml, used when GitHub is unreachable."""
-    readouts = content.get("hero", {}).get("readouts", {})
+    readouts = child(child(content, "hero"), "readouts")
     return str(readouts.get("bottom", ""))
 
 
@@ -348,16 +356,18 @@ def release_readout(*, now: float | None = None) -> str:
     if cached is not None and current - _readout_cache["at"] < (
         _READOUT_TTL_SECONDS
     ):
-        return str(cached)
+        return cached
     value = _fetch_release_readout() or _fallback_readout()
     _readout_cache["value"] = value
     _readout_cache["at"] = current
     return value
 
 
-def _ctx(**extra: Any) -> dict[str, Any]:
-    ctx: dict[str, Any] = dict(content)
-    ctx.setdefault("breadcrumbs", content.get("breadcrumbs", {}))
+def _ctx(**extra: object) -> dict[str, object]:
+    # A Jinja render context, not a JSON payload: values are
+    # arbitrary Python objects the templates consume directly.
+    ctx: dict[str, object] = dict(content)
+    ctx.setdefault("breadcrumbs", child(content, "breadcrumbs"))
     ctx.setdefault("page_date_modified", None)
     ctx.setdefault("release_readout", _fallback_readout())
     ctx.setdefault("setup_mode", False)
@@ -371,7 +381,7 @@ def _ctx(**extra: Any) -> dict[str, Any]:
 
 
 def _legal_date_modified(slug: str) -> str | None:
-    page = content.get("legal", {}).get(slug, {})
+    page = child(child(content, "legal"), slug)
     markdown_name = page.get("markdown")
     if not isinstance(markdown_name, str):
         return None
@@ -401,9 +411,9 @@ def _legal_markdown_response(slug: str) -> PlainTextResponse:
 
 def llms_full_txt() -> str:
     """Concatenated full-site content for AI ingestion (one fetch)."""
-    site = content.get("site", {})
+    site = child(content, "site")
     sections: list[str] = [f"# {site.get('name', 'Logion')} — full content\n"]
-    summary = site.get("one_liner") or content.get("ai", {}).get(
+    summary = site.get("one_liner") or child(content, "ai").get(
         "llms_txt_summary", ""
     )
     if summary:
@@ -418,10 +428,10 @@ def llms_full_txt() -> str:
             continue
         sections.append(f"## {path}\n")
         sections.append(page["markdown"].strip() + "\n")
-    faq_block = content.get("faq", {})
-    if faq_block.get("items"):
+    faq_items = children(child(content, "faq"), "items")
+    if faq_items:
         sections.append("## FAQ\n")
-        for item in faq_block["items"]:
+        for item in faq_items:
             q = str(item.get("q", "")).strip()
             a = str(item.get("a", "")).strip()
             if q and a:
@@ -442,13 +452,13 @@ def design_txt() -> str:
     the page. Mirrors docs/branding-guide.md in a compact, parseable form
     (one ``key: value`` or ``key:`` + indented list per stanza).
     """
-    design = content.get("design", {})
-    site = content.get("site", {})
-    palette = design.get("palette", {})
-    type_cfg = design.get("type", {})
-    logos = design.get("logos", {})
-    links = design.get("links", {})
-    base = str(content.get("seo", {}).get("canonical_base", "")).rstrip("/")
+    design = child(content, "design")
+    site = child(content, "site")
+    palette = child(design, "palette")
+    type_cfg = child(design, "type")
+    logos = child(design, "logos")
+    links = child(design, "links")
+    base = str(child(content, "seo").get("canonical_base", "")).rstrip("/")
 
     def _abs(href: str) -> str:
         return href if href.startswith("https://") else f"{base}{href}"
@@ -466,7 +476,7 @@ def design_txt() -> str:
             lines.append(f"- {key}: {_abs(str(logos[key]))}")
     lines += ["", "## palette"]
     for theme in ("dark", "light"):
-        block = palette.get(theme, {})
+        block = child(palette, theme)
         if block:
             tokens = "  ".join(f"{k}={v}" for k, v in block.items())
             lines.append(f"- {theme}: {tokens}")
@@ -481,7 +491,7 @@ def design_txt() -> str:
         "",
         "## motif",
     ]
-    for item in design.get("motif", []) or []:
+    for item in children(design, "motif"):
         lines.append(f"- {item}")
     lines += ["", "## links"]
     for key, href in links.items():
@@ -537,13 +547,13 @@ def aktp(request: Request) -> Response:
 @app.get("/pricing", response_class=HTMLResponse)
 def pricing(request: Request) -> Response:
     if _wants_markdown(request):
-        pricing_cfg = content.get("pricing", {})
+        pricing_cfg = child(content, "pricing")
         lines = [
             f"# {pricing_cfg.get('heading', 'Pricing')}",
             "",
             str(pricing_cfg.get("intro", "")),
         ]
-        for row in pricing_cfg.get("rows", []):
+        for row in children(pricing_cfg, "rows"):
             lines.append(f"- **{row.get('label')}**: {row.get('value')}")
         return PlainTextResponse(
             "\n".join(lines).rstrip() + "\n",
@@ -624,7 +634,7 @@ def referral_landing(
                 detail="invalid referral code",
             )
         referral_code = ref
-    referral_cfg = content.get("referral", {})
+    referral_cfg = child(content, "referral")
     template = str(
         referral_cfg.get(
             "command_template",

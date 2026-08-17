@@ -10,5 +10,5 @@
 packages/client/README.md:36
 
 # Cross-repository contract gate; these paths are coordination inputs only.
-Makefile:55
-Makefile:56
+Makefile:57
+Makefile:58

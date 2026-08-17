@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 from logion._errors import ForbiddenError, NotFoundError
 
@@ -16,14 +16,14 @@ CID = "550e8400-e29b-41d4-a716-446655440000"
 
 class FakeCoursesResource:
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
-        self._source_link: dict[str, Any] | None = None
+        self.last_call: tuple[str, JsonObject] = ("", {})
+        self._source_link: JsonObject | None = None
         self.set_error: Exception | None = None
         self.get_error: Exception | None = None
         self.delete_error: Exception | None = None
         self.deleted = False
 
-    def set_source_link(self, **kw: Any) -> dict[str, Any]:
+    def set_source_link(self, **kw: object) -> JsonObject:
         self.last_call = ("set_source_link", kw)
         if self.set_error is not None:
             raise self.set_error
@@ -39,7 +39,7 @@ class FakeCoursesResource:
         }
         return dict(self._source_link)
 
-    def get_source_link(self, **kw: Any) -> dict[str, Any]:
+    def get_source_link(self, **kw: object) -> JsonObject:
         self.last_call = ("get_source_link", kw)
         if self.get_error is not None:
             raise self.get_error
@@ -47,7 +47,7 @@ class FakeCoursesResource:
             raise NotFoundError(404, "Source link not found for this course")
         return dict(self._source_link)
 
-    def delete_source_link(self, **kw: Any) -> None:
+    def delete_source_link(self, **kw: object) -> None:
         self.last_call = ("delete_source_link", kw)
         if self.delete_error is not None:
             raise self.delete_error

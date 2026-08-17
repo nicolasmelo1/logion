@@ -9,7 +9,8 @@ import sys
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import handle_error, handle_validation_error
-from cli._output import emit_json, to_data
+from cli._json import JsonObject, elements, opt_str
+from cli._output import emit_json, to_object
 
 from ._acquire_handler import handle_resources_acquire
 from ._distributions_handler import handle_resources_distributions
@@ -27,7 +28,7 @@ __all__ = [
 ]
 
 
-def _print_resource(payload: dict[str, object]) -> None:
+def _print_resource(payload: JsonObject) -> None:
     """Render a resource-detail envelope in human-readable form."""
     nested = payload.get("resource")
     resource = nested if isinstance(nested, dict) else payload
@@ -77,7 +78,7 @@ def handle_resources_search(args: argparse.Namespace) -> int:
             limit=getattr(args, "limit", None),
             cursor=getattr(args, "cursor", None),
         )
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             command = getattr(args, "resources_command", "list")
             emit_json(f"logion.resources.{command}", payload)
@@ -85,18 +86,16 @@ def handle_resources_search(args: argparse.Namespace) -> int:
             items = (
                 payload
                 if isinstance(payload, list)
-                else payload.get("items", [])
+                else elements(payload, "items")
             )
             if not items:
                 sys.stdout.write("No resources found.\n")
             else:
                 for item in items:
-                    idata = (
-                        to_data(item) if not isinstance(item, dict) else item
-                    )
-                    rid = idata.get("id", "?")
-                    rtype = idata.get("resource_type", "?")
-                    title = idata.get("title", "")
+                    idata = to_object(item)
+                    rid = opt_str(idata, "id", "?")
+                    rtype = opt_str(idata, "resource_type", "?")
+                    title = opt_str(idata, "title", "")
                     line = f"  {rid} [{rtype}]"
                     if title:
                         line += f" — {title}"
@@ -124,7 +123,7 @@ def handle_resources_get(args: argparse.Namespace) -> int:
     client = make_client(config)
     try:
         result = client.v1.resources.get(resource_id=args.resource_id)
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             emit_json("logion.resources.get", payload)
         else:
@@ -148,24 +147,22 @@ def handle_resources_versions(args: argparse.Namespace) -> int:
             resource_id=args.resource_id,
             limit=getattr(args, "limit", None),
         )
-        payload = to_data(result)
+        payload = to_object(result)
         if config.json_output:
             emit_json("logion.resources.versions", payload)
         else:
             items = (
                 payload
                 if isinstance(payload, list)
-                else payload.get("items", [])
+                else elements(payload, "items")
             )
             if not items:
                 sys.stdout.write("No versions found.\n")
             else:
                 for item in items:
-                    idata = (
-                        to_data(item) if not isinstance(item, dict) else item
-                    )
-                    vid = idata.get("id", "?")
-                    discovered = idata.get("discovered_at", "")
+                    idata = to_object(item)
+                    vid = opt_str(idata, "id", "?")
+                    discovered = opt_str(idata, "discovered_at", "")
                     line = f"  {vid}"
                     if discovered:
                         line += f" ({discovered})"

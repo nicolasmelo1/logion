@@ -24,8 +24,9 @@ import stat
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home
 
 SCOPE_KINDS = Literal[
@@ -44,7 +45,48 @@ EVENTS = Literal[
     "resource_tool_used",
 ]
 
+#: The runtime tuples behind the Literal aliases. Kept beside them so
+#: the narrowing helpers below can check membership without repeating
+#: the values; a mismatch is caught by test_usage_commands.
+SCOPE_KIND_VALUES: tuple[SCOPE_KINDS, ...] = (
+    "repo-current",
+    "repo-parent",
+    "repo-root",
+    "user",
+    "admin",
+    "system",
+    "custom",
+)
+
+EVENT_VALUES: tuple[EVENTS, ...] = (
+    "resource_invoked",
+    "resource_file_read",
+    "resource_tool_used",
+)
+
 DEDUP_WINDOW_SECONDS = 300  # 5 minutes
+
+
+def observation_event(value: str | None) -> EVENTS:
+    """Narrow a wire value to a known observation event.
+
+    Defaults to ``resource_invoked`` rather than raising: an unknown
+    event name from a harness hook should still record *that the
+    resource was used*, which is the point of the observation.
+    """
+    for event in EVENT_VALUES:
+        if value == event:
+            return event
+    return "resource_invoked"
+
+
+def observation_scope_kind(value: str) -> SCOPE_KINDS:
+    """Narrow a receipt's scope kind, or raise if it is not one."""
+    for kind in SCOPE_KIND_VALUES:
+        if value == kind:
+            return kind
+    msg = f"unknown scope kind: {value!r}"
+    raise ValueError(msg)
 
 
 @dataclass(frozen=True)
@@ -114,7 +156,7 @@ class UsageObservation:
         if any(not value for value in required):
             raise ValueError("observation identifiers must be non-empty")
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonObject:
         """Return a JSON-safe dict for spool emission."""
         return {k: v for k, v in asdict(self).items() if v is not None}
 
@@ -189,12 +231,12 @@ def _ensure_spool(path: Path) -> None:
 
 def _read_all_observations(
     logion_home: Path | None = None,
-) -> list[dict[str, Any]]:
+) -> list[JsonObject]:
     """Read all observations from the spool file."""
     path = _spool_path(logion_home)
     if not path.is_file():
         return []
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -211,7 +253,7 @@ def _read_all_observations(
 
 
 def _is_duplicate(
-    existing: list[dict[str, Any]],
+    existing: list[JsonObject],
     obs: UsageObservation,
 ) -> bool:
     """Check if *obs* duplicates an existing entry within the window."""
@@ -275,7 +317,7 @@ def list_pending_observations(
     *,
     since_seconds: int | None = None,
     logion_home: Path | None = None,
-) -> list[dict[str, Any]]:
+) -> list[JsonObject]:
     """List pending observations, optionally filtered by recency.
 
     Parameters
@@ -290,7 +332,7 @@ def list_pending_observations(
     cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
         seconds=since_seconds
     )
-    pending: list[dict[str, Any]] = []
+    pending: list[JsonObject] = []
     for obs in observations:
         observed_at = obs.get("observed_at")
         if not observed_at:
@@ -323,7 +365,7 @@ def dismiss_observations(
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
         observations = _read_all_observations(logion_home)
-        kept: list[dict[str, Any]] = []
+        kept: list[JsonObject] = []
         removed = 0
         for obs in observations:
             obs_obj = _dict_to_observation(obs)
@@ -342,7 +384,7 @@ def dismiss_observations(
         os.close(lock_fd)
 
 
-def _rewrite_spool(path: Path, entries: list[dict[str, Any]]) -> None:
+def _rewrite_spool(path: Path, entries: list[JsonObject]) -> None:
     """Atomically rewrite the spool file with *entries*."""
     spool_dir = path.parent
     spool_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -366,24 +408,24 @@ def _rewrite_spool(path: Path, entries: list[dict[str, Any]]) -> None:
 
 
 def _dict_to_observation(
-    data: dict[str, Any],
+    data: JsonObject,
 ) -> UsageObservation | None:
     """Reconstruct a UsageObservation from a dict, or None if invalid."""
     try:
         return UsageObservation(
-            schema_version=data.get("schema_version", 1),
-            observation_id=data.get("observation_id", ""),
-            observed_at=data.get("observed_at", ""),
-            harness=data.get("harness", ""),
-            event=data.get("event", ""),  # type: ignore[arg-type]
-            resource_id=data.get("resource_id", ""),
-            version_id=data.get("version_id", ""),
-            resource_type=data.get("resource_type", ""),
-            acquisition_channel=data.get("acquisition_channel", ""),
-            installation_id=data.get("installation_id", ""),
-            scope_kind=data.get("scope_kind", ""),  # type: ignore[arg-type]
-            scope_id=data.get("scope_id", ""),
-            session_hash=data.get("session_hash"),
+            schema_version=1,
+            observation_id=opt_str(data, "observation_id", ""),
+            observed_at=opt_str(data, "observed_at", ""),
+            harness=opt_str(data, "harness", ""),
+            event=observation_event(opt_str(data, "event")),
+            resource_id=opt_str(data, "resource_id", ""),
+            version_id=opt_str(data, "version_id", ""),
+            resource_type=opt_str(data, "resource_type", ""),
+            acquisition_channel=opt_str(data, "acquisition_channel", ""),
+            installation_id=opt_str(data, "installation_id", ""),
+            scope_kind=observation_scope_kind(opt_str(data, "scope_kind", "")),
+            scope_id=opt_str(data, "scope_id", ""),
+            session_hash=opt_str(data, "session_hash"),
         )
     except (TypeError, ValueError):
         return None

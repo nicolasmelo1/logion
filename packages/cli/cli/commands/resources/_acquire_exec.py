@@ -11,10 +11,16 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 from cli import _receipts
+from cli._json import JsonObject, child, opt_str, strings
+from cli._lazy_import import LazyModule
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 from ._channels.base import ChannelAdapter
 from ._channels.dsh import DshChannelAdapter
 from ._channels.hf import HfAdapter
@@ -25,8 +31,8 @@ from ._channels.npx_skills import NpxSkillsAdapter
 
 def run_acquisition(
     *,
-    client: Any,
-    plan: dict[str, Any],
+    client: logion.LogionClient,
+    plan: JsonObject,
     scope: str,
     harness: str,
     destination: Path,
@@ -35,7 +41,7 @@ def run_acquisition(
     resource_type: str,
     assume_yes: bool,
     json_output: bool = False,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Execute the validated plan and return the persisted receipt."""
     _display_plan(plan, destination, json_output=json_output)
     if not assume_yes:
@@ -48,7 +54,9 @@ def run_acquisition(
         if answer not in {"y", "yes"}:
             raise RuntimeError("acquisition declined")
 
-    adapter = _adapter_for(plan["selected_channel"], client=client)
+    adapter = _adapter_for(
+        opt_str(plan, "selected_channel", ""), client=client
+    )
     outcome = adapter.acquire(
         plan=plan, destination=destination, scope_root=scope_root
     )
@@ -60,7 +68,7 @@ def run_acquisition(
         first_path = Path(outcome.installed_paths[0])
         effective_relative_target_path = first_path.as_posix()
         effective_target_path = scope_root / first_path
-    receipt: dict[str, Any] = {
+    receipt: JsonObject = {
         "schema_version": _receipts.RECEIPT_SCHEMA_VERSION,
         "resource_id": plan["resource_id"],
         "version_id": plan["version_id"],
@@ -68,7 +76,7 @@ def run_acquisition(
         "resource_type": resource_type,
         "content_digest": plan["content_digest"],
         "channel": plan["selected_channel"],
-        "upstream_locator": (plan.get("native") or {}).get(
+        "upstream_locator": (child(plan, "native")).get(
             "upstream_locator", ""
         ),
         "harness": harness,
@@ -95,7 +103,9 @@ def run_acquisition(
     return receipt
 
 
-def _adapter_for(channel: str, *, client: Any) -> ChannelAdapter:
+def _adapter_for(
+    channel: str, *, client: logion.LogionClient
+) -> ChannelAdapter:
     if channel == "logion_bundle":
         return LogionBundleAdapter(client=client)
     if channel == "npx_skills":
@@ -112,27 +122,27 @@ def _adapter_for(channel: str, *, client: Any) -> ChannelAdapter:
 
 
 def _display_plan(
-    plan: dict[str, Any], destination: Path, *, json_output: bool
+    plan: JsonObject, destination: Path, *, json_output: bool
 ) -> None:
     out = sys.stderr if json_output else sys.stdout
     out.write("\nAcquisition plan:\n")
     out.write(f"  channel:    {plan['selected_channel']}\n")
     out.write(f"  digest:     {plan['content_digest']}\n")
-    license_info = plan.get("license") or {}
+    license_info = child(plan, "license")
     out.write(
         f"  license:    {license_info.get('spdx') or 'unknown'}"
         f" (redistributable={license_info.get('redistribution_allowed')})\n"
     )
-    entitlement = plan.get("entitlement") or {}
+    entitlement = child(plan, "entitlement")
     if entitlement.get("required"):
         out.write(f"  entitlement: {entitlement.get('status')}\n")
-    expected = plan.get("expected") or {}
+    expected = child(plan, "expected")
     if expected.get("bytes") is not None:
         out.write(f"  bytes:      {expected['bytes']}\n")
-    native = plan.get("native") or {}
+    native = child(plan, "native")
     if native.get("argv"):
-        out.write(f"  argv:       {' '.join(native['argv'])}\n")
-    permissions = plan.get("permissions") or {}
+        out.write(f"  argv:       {' '.join(strings(native, 'argv'))}\n")
+    permissions = child(plan, "permissions")
     out.write(
         f"  permissions: network={permissions.get('network')}"
         f" tools={permissions.get('tools')}"

@@ -28,8 +28,8 @@ import os
 import stat
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject
 from cli._observation_validation import (
     assert_allowed_payload_keys,
     validate_envelope_fields,
@@ -92,7 +92,7 @@ class ObservationEnvelope:
             expected_version=INTEGRATION_VERSION,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonObject:
         """Return a JSON-safe dict for spool emission."""
         return {k: v for k, v in asdict(self).items() if v is not None}
 
@@ -143,7 +143,7 @@ def should_spool(consent: str) -> bool:
     return consent in (LOCAL_ONLY, PROMPT, AUTO)
 
 
-def assert_no_secrets(payload: dict[str, Any]) -> None:
+def assert_no_secrets(payload: JsonObject) -> None:
     """Defensive check: reject envelopes carrying forbidden fields.
 
     Raises :class:`ValueError` if any key is outside the allowed

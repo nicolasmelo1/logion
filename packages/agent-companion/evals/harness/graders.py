@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from evals.harness._json import JsonValue
 from evals.harness.schema import Catalog, Scenario, Trace
 
 METRIC_LOCAL_RECALL = "local_recall"
@@ -58,6 +59,13 @@ class Finding:
     @classmethod
     def ok(cls, metric: str) -> Finding:
         return cls(metric=metric, passed=True, message="ok")
+
+
+def _as_int(value: JsonValue) -> int:
+    """Read a numeric tool argument, or raise for the caller."""
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise TypeError("not an integer")
+    return int(value)
 
 
 def _tools(trace: Trace) -> list[str]:
@@ -437,7 +445,7 @@ def grade_context_efficiency(
             if raw_limit is None:
                 continue
             try:
-                parsed_limit = int(raw_limit)
+                parsed_limit = _as_int(raw_limit)
             except (TypeError, ValueError):
                 findings.append(
                     Finding.fail(

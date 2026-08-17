@@ -7,7 +7,12 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+
+from agent_proving_ground._json import (
+    JsonObject,
+    collection,
+    require_str,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,7 +25,7 @@ NPM_VERSION = "1.0.0"
 ENDPOINT = "http://127.0.0.1:18765/mcp"
 
 
-def _item() -> dict[str, Any]:
+def _item() -> JsonObject:
     return {
         "npm_distribution": {"name": NPM_NAME, "version": NPM_VERSION},
         "canonical": CANONICAL,
@@ -58,8 +63,8 @@ def main() -> int:
         body={"items": [item]},
     )
     listing_id = next(
-        str(entry["indexed_listing_id"])
-        for entry in payload.get("results", [])
+        require_str(entry, "indexed_listing_id")
+        for entry in collection(payload, "results")
         if entry.get("indexed_listing_id")
     )
     digest = base._upload_bundle(api, listing_id)

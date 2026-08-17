@@ -6,10 +6,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import cast
 
 import pytest
 
+from evals.harness._json import JsonObject
 from evals.harness.graders import (
     METRIC_CONTEXT_EFFICIENCY,
     METRIC_ROUTING,
@@ -186,7 +187,7 @@ def test_optimizer_factory_binds_metric(
         optimize_policy.dspy, "BootstrapFewShot", FakeBootstrapFewShot
     )
 
-    metric: Any = SimpleNamespace()
+    metric = cast("optimize_policy.Metric", SimpleNamespace())
     optimizer = optimize_policy.OPTIMIZERS["bootstrap_few_shot"](metric)
 
     assert isinstance(optimizer, FakeBootstrapFewShot)
@@ -274,14 +275,14 @@ def test_gepa_factory_wires_reflection_lm(
     pytest.importorskip("dspy")
     import evals.optimizers.dspy.optimize_policy as optimize_policy
 
-    captured: dict[str, Any] = {}
+    captured: JsonObject = {}
 
     class FakeGEPA:
-        def __init__(self, **kwargs: Any) -> None:
+        def __init__(self, **kwargs: object) -> None:
             captured.update(kwargs)
 
     class FakeLM:
-        def __init__(self, model: str, **kwargs: Any) -> None:
+        def __init__(self, model: str, **kwargs: object) -> None:
             captured["lm_model"] = model
             captured["lm_kwargs"] = kwargs
 
@@ -292,7 +293,7 @@ def test_gepa_factory_wires_reflection_lm(
     monkeypatch.setenv("DSPY_API_KEY", "sk-test")
     monkeypatch.delenv("DSPY_REFLECTION_LM", raising=False)
 
-    metric: Any = SimpleNamespace()
+    metric = cast("optimize_policy.Metric", SimpleNamespace())
     optimizer = optimize_policy.OPTIMIZERS["gepa"](metric)
 
     assert isinstance(optimizer, FakeGEPA)
@@ -581,7 +582,7 @@ def test_run_optimization_end_to_end_with_dummy_lm(
 
     import evals.optimizers.dspy.optimize_policy as optimize_policy
 
-    def _make_entry(idx: int) -> dict[str, Any]:
+    def _make_entry(idx: int) -> JsonObject:
         return {
             "id": f"dummy-{idx:03d}",
             "user_prompt": f"prompt {idx}",

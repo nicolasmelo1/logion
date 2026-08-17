@@ -5,10 +5,10 @@ from __future__ import annotations
 import time
 from collections import deque
 from datetime import datetime
-from typing import Any
 
 import httpx
 
+from social_management._json import JsonObject
 from social_management.core.config import SocialConfig
 from social_management.core.errors import MissingCredentialsError
 from social_management.core.models import PostResult
@@ -125,7 +125,7 @@ class DiscordClient:
         )
         ch_resp.raise_for_status()
         ch_type = ch_resp.json().get("type", 0)
-        messages: list[dict[str, Any]] = []
+        messages: list[JsonObject] = []
         if ch_type == 15:
             # Forum: enumerate active threads, then read each.
             threads_resp = self._http.get(
@@ -158,13 +158,23 @@ class DiscordClient:
         # Map to RecentMessage, cap at limit.
         results: list[RecentMessage] = []
         for msg in messages[:limit]:
-            author: dict[str, Any] = msg.get("author", {})
-            ts: str = msg.get("timestamp", "")
+            author = msg.get("author")
+            username = (
+                author.get("username") if isinstance(author, dict) else None
+            )
+            # A message with no usable timestamp is skipped rather than
+            # crashing the triage read: Discord only ever omits it on
+            # payload shapes we do not consume.
+            ts = msg.get("timestamp")
+            if not isinstance(ts, str):
+                continue
             created = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             results.append(
                 RecentMessage(
-                    id=str(msg["id"]),
-                    author=str(author.get("username", "unknown")),
+                    id=str(msg.get("id", "")),
+                    author=(
+                        username if isinstance(username, str) else "unknown"
+                    ),
                     content=str(msg.get("content", "")),
                     created_at=created,
                 )

@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
+from cli._json import JsonObject
 from cli.main import main
 
 
@@ -14,57 +13,57 @@ class FakeAdminResource:
     """Fake admin resource."""
 
     def __init__(self) -> None:
-        self.last_call: tuple[str, dict[str, Any]] = ("", {})
+        self.last_call: tuple[str, JsonObject] = ("", {})
 
-    def list_courses(self, **kwargs: Any) -> dict[str, Any]:
+    def list_courses(self, **kwargs: object) -> JsonObject:
         self.last_call = ("list_courses", kwargs)
         return {"items": [], "next_cursor": None}
 
-    def get_course(self, **kwargs: Any) -> dict[str, Any]:
+    def get_course(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_course", kwargs)
         return {"id": kwargs["course_id"], "status": "active"}
 
-    def update_course_status(self, **kwargs: Any) -> dict[str, Any]:
+    def update_course_status(self, **kwargs: object) -> JsonObject:
         self.last_call = ("update_course_status", kwargs)
         return {"id": kwargs["course_id"], "status": "blocked"}
 
-    def get_user(self, **kwargs: Any) -> dict[str, Any]:
+    def get_user(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_user", kwargs)
         return {"id": kwargs["user_id"], "email": "test@example.com"}
 
-    def suspend_user(self, **kwargs: Any) -> dict[str, Any]:
+    def suspend_user(self, **kwargs: object) -> JsonObject:
         self.last_call = ("suspend_user", kwargs)
         return {"id": kwargs["user_id"], "status": "suspended"}
 
-    def unsuspend_user(self, **kwargs: Any) -> dict[str, Any]:
+    def unsuspend_user(self, **kwargs: object) -> JsonObject:
         self.last_call = ("unsuspend_user", kwargs)
         return {"id": kwargs["user_id"], "status": "active"}
 
-    def get_agent(self, **kwargs: Any) -> dict[str, Any]:
+    def get_agent(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_agent", kwargs)
         return {"id": kwargs["agent_id"], "status": "active"}
 
-    def suspend_agent(self, **kwargs: Any) -> dict[str, Any]:
+    def suspend_agent(self, **kwargs: object) -> JsonObject:
         self.last_call = ("suspend_agent", kwargs)
         return {"id": kwargs["agent_id"], "status": "suspended"}
 
-    def unsuspend_agent(self, **kwargs: Any) -> dict[str, Any]:
+    def unsuspend_agent(self, **kwargs: object) -> JsonObject:
         self.last_call = ("unsuspend_agent", kwargs)
         return {"id": kwargs["agent_id"], "status": "active"}
 
-    def list_reports(self, **kwargs: Any) -> dict[str, Any]:
+    def list_reports(self, **kwargs: object) -> JsonObject:
         self.last_call = ("list_reports", kwargs)
         return {"items": [], "next_cursor": None}
 
-    def get_report(self, **kwargs: Any) -> dict[str, Any]:
+    def get_report(self, **kwargs: object) -> JsonObject:
         self.last_call = ("get_report", kwargs)
         return {"id": kwargs["report_id"], "status": "open"}
 
-    def resolve_report(self, **kwargs: Any) -> dict[str, Any]:
+    def resolve_report(self, **kwargs: object) -> JsonObject:
         self.last_call = ("resolve_report", kwargs)
         return {"id": kwargs["report_id"], "status": "resolved"}
 
-    def dismiss_report(self, **kwargs: Any) -> dict[str, Any]:
+    def dismiss_report(self, **kwargs: object) -> JsonObject:
         self.last_call = ("dismiss_report", kwargs)
         return {"id": kwargs["report_id"], "status": "dismissed"}
 

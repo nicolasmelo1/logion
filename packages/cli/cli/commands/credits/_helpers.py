@@ -6,12 +6,12 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from typing import Any
 from uuid import UUID
 
 from cli._config import CliConfig
 from cli._errors import emit_error_json
-from cli._output import emit_json
+from cli._json import JsonObject, opt_str
+from cli._output import emit_json, to_object
 
 TERMINAL_STATUSES = frozenset({
     "paid",
@@ -51,14 +51,10 @@ def validate_uuid_arg(
     return None
 
 
-def top_up_to_payload(result: Any) -> dict[str, Any]:
+def top_up_to_payload(result: object) -> JsonObject:
     """Normalize a CreateCreditTopUpResponse to the CLI shape."""
-    raw = (
-        result.model_dump(mode="json")
-        if hasattr(result, "model_dump")
-        else dict(result)
-    )
-    payload: dict[str, Any] = {
+    raw = to_object(result)
+    payload: JsonObject = {
         "top_up_id": raw.get("top_up_id"),
         "status": raw.get("status"),
         "amount_cents": raw.get("amount_cents"),
@@ -71,7 +67,7 @@ def top_up_to_payload(result: Any) -> dict[str, Any]:
     return payload
 
 
-def emit_top_up_human(payload: dict[str, Any]) -> None:
+def emit_top_up_human(payload: JsonObject) -> None:
     """Render a top-up payload as human-readable key: value lines."""
     lines = [
         f"top_up_id: {payload.get('top_up_id')}",
@@ -79,7 +75,7 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
         f"amount_cents: {payload.get('amount_cents')}",
         f"credit_cents_granted: {payload.get('credit_cents_granted')}",
     ]
-    charge_ccy = payload.get("charge_currency")
+    charge_ccy = opt_str(payload, "charge_currency")
     charge_amt = payload.get("charge_amount_minor")
     if (
         charge_ccy is not None
@@ -99,13 +95,13 @@ def emit_top_up_human(payload: dict[str, Any]) -> None:
 
 def emit_wait_result(
     config: CliConfig,
-    payload: dict[str, Any],
+    payload: JsonObject,
     elapsed: float,
     *,
     final: bool,
 ) -> None:
     """Emit the current wait-state payload for a top-up."""
-    wait_payload: dict[str, Any] = {
+    wait_payload: JsonObject = {
         **payload,
         "elapsed_seconds": round(elapsed, 2),
         "terminal": payload.get("status") in TERMINAL_STATUSES,
@@ -123,7 +119,7 @@ def emit_wait_result(
     sys.stdout.write("\n")
 
 
-def timeout_payload(top_up_id: str) -> dict[str, Any]:
+def timeout_payload(top_up_id: str) -> JsonObject:
     """Return the fallback payload for an unfinished wait call."""
     return {
         "top_up_id": top_up_id,
@@ -137,7 +133,7 @@ def timeout_payload(top_up_id: str) -> dict[str, Any]:
 
 def resolve_wait(
     config: CliConfig,
-    last_payload: dict[str, Any] | None,
+    last_payload: JsonObject | None,
     start: float,
     top_up_id: str,
     timeout: int,

@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from cli._harness.scopes import ADMIN, USER, ScopeTarget
+from cli._json import JsonObject, JsonValue, child, elements, opt_str
 
 from ._acquire_distribution import (
     _distribution_plan,
@@ -15,20 +15,20 @@ from ._acquire_distribution import (
 )
 
 
-def normalize_resource(payload: Any) -> dict[str, Any]:
+def normalize_resource(payload: JsonValue) -> JsonObject:
     """Accept both the API detail envelope and the legacy flat response."""
     if not isinstance(payload, dict):
         raise TypeError("resource detail response is not an object")
     nested = payload.get("resource")
     if isinstance(nested, dict):
         resource = dict(nested)
-        resource["sources"] = payload.get("sources") or []
-        resource["projections"] = payload.get("projections") or []
+        resource["sources"] = elements(payload, "sources")
+        resource["projections"] = elements(payload, "projections")
         return resource
     return payload
 
 
-def normalize_versions(payload: Any) -> list[dict[str, Any]]:
+def normalize_versions(payload: JsonValue) -> list[JsonObject]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
     if isinstance(payload, dict):
@@ -45,15 +45,15 @@ def build_plan(
     resource_id: str,
     scope: str,
     harness: str,
-    resource: dict[str, Any],
-    versions: list[dict[str, Any]],
+    resource: JsonObject,
+    versions: list[JsonObject],
     targets: list[ScopeTarget],
     default_scope: str,
     scope_was_explicit: bool,
     visible_targets: list[ScopeTarget] | None = None,
-    distribution: dict[str, Any] | None = None,
+    distribution: JsonObject | None = None,
     distribution_error: str | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Build the local acquisition plan.
 
     ``distribution`` is the validated server-owned acquisition plan. It is
@@ -93,11 +93,11 @@ def build_plan(
         blocked_reasons.append("no installable target resolved")
     if not versions:
         blocked_reasons.append("no resource version available")
-    if any(not item["operation"]["ready"] for item in target_plans):
+    if any(not child(item, "operation").get("ready") for item in target_plans):
         blocked_reasons.append(
             "selected version has no installable distribution"
         )
-    if any(item["state"] == "conflict" for item in target_plans):
+    if any(opt_str(item, "state") == "conflict" for item in target_plans):
         blocked_reasons.append(
             "target path conflicts with non-resource content"
         )
@@ -140,7 +140,7 @@ def build_plan(
             "spool_enabled": False,
         },
         "permissions_required": (
-            distribution.get("permissions") or {}
+            child(distribution, "permissions")
             if distribution is not None
             else "unknown-until-distribution-is-resolved"
         ),
@@ -151,7 +151,7 @@ def build_plan(
     }
 
 
-def _resource_name(resource: dict[str, Any], resource_id: str) -> str:
+def _resource_name(resource: JsonObject, resource_id: str) -> str:
     raw = resource.get("title") or resource.get("canonical_uri") or resource_id
     normalized = re.sub(r"[^a-z0-9._-]+", "-", str(raw).lower()).strip("-.")
     if not normalized:

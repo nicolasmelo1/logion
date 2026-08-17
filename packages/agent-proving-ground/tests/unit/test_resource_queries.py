@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import Mock
 
 import pytest
 
+from agent_proving_ground._json import JsonObject, JsonValue
 from agent_proving_ground.api_adapters._queries import (
     LogionApiQueries,
     RoleKeyStore,
 )
 from agent_proving_ground.api_adapters.mock import MockApiAdapter
 
-GetResponse = tuple[int, Any]
+GetResponse = tuple[int, JsonValue]
 
 
 def _queries() -> LogionApiQueries:
@@ -48,7 +48,7 @@ async def test_paged_get_collects_all_supported_pages(monkeypatch) -> None:
     ],
 )
 async def test_paged_get_rejects_collection_contract_drift(
-    monkeypatch, payload: Any
+    monkeypatch, payload: JsonValue
 ) -> None:
     queries = _queries()
 
@@ -101,7 +101,7 @@ async def test_paged_get_rejects_page_cap_instead_of_truncating(
 async def test_resource_projection_exists_pass_fail_and_contract_drift(
     monkeypatch,
     projection_kind: str,
-    detail: dict[str, Any],
+    detail: JsonObject,
     expected: bool,
     unsupported: bool,
 ) -> None:
@@ -109,7 +109,7 @@ async def test_resource_projection_exists_pass_fail_and_contract_drift(
 
     async def fake_paged_get(
         _path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         return 200, [{"id": "resource-1"}]
 
     async def fake_get(_path: str, _role: str | None) -> GetResponse:
@@ -137,7 +137,7 @@ async def test_resource_backfill_complete_passes_and_stops_detail_reads(
 
     async def fake_paged_get(
         path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         assert _limit == 50
         if path.startswith("/v1/listings"):
             return 200, [{"id": "listing-1"}]
@@ -170,7 +170,7 @@ async def test_resource_backfill_complete_fails_when_projection_is_missing(
 
     async def fake_paged_get(
         path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         if path.startswith("/v1/listings"):
             return 200, [{"id": "listing-1"}, {"id": "listing-2"}]
         return 200, [{"id": "resource-1"}]
@@ -200,7 +200,7 @@ async def test_resource_backfill_complete_rejects_invalid_detail_shape(
 
     async def fake_paged_get(
         path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         if path.startswith("/v1/listings"):
             return 200, [{"id": "listing-1"}]
         return 200, [{"id": "resource-1"}]
@@ -240,7 +240,7 @@ async def test_resource_backfill_complete_rejects_invalid_detail_shape(
 )
 async def test_resource_identity_unique_pass_fail_and_contract_drift(
     monkeypatch,
-    items: list[dict[str, Any]],
+    items: list[JsonObject],
     expected: bool,
     unsupported: bool,
 ) -> None:
@@ -248,7 +248,7 @@ async def test_resource_identity_unique_pass_fail_and_contract_drift(
 
     async def fake_paged_get(
         _path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         return 200, items
 
     monkeypatch.setattr(queries, "_paged_get", fake_paged_get)
@@ -276,10 +276,10 @@ async def test_resource_identity_unique_pass_fail_and_contract_drift(
     ],
 )
 async def test_resource_backfill_idempotent_passes_and_fails_strictly(
-    overrides: dict[str, Any], expected: bool, unsupported: bool
+    overrides: JsonObject, expected: bool, unsupported: bool
 ) -> None:
     queries = _queries()
-    params: dict[str, Any] = {
+    params: JsonObject = {
         "type": "resource_backfill_idempotent",
         "rerun_created": 0,
         "rerun_linked": 0,
@@ -323,10 +323,10 @@ async def test_resource_backfill_idempotent_rejects_missing_capture() -> None:
     ],
 )
 async def test_resource_backfill_applied_requires_clean_transition(
-    overrides: dict[str, Any], expected: bool, unsupported: bool
+    overrides: JsonObject, expected: bool, unsupported: bool
 ) -> None:
     queries = _queries()
-    params: dict[str, Any] = {
+    params: JsonObject = {
         "type": "resource_backfill_applied",
         "resources_created": 2,
         "projections_linked": 2,
@@ -379,7 +379,7 @@ async def test_resource_search_matches_fixture_canonical_and_both_projections(
 
     async def fake_paged_get(
         _path: str, role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         observed_roles.append(role)
         return 200, [
             {"id": "skill"},
@@ -438,7 +438,7 @@ async def test_resource_search_fails_when_fixture_projection_is_missing(
 
     async def fake_paged_get(
         _path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         return 200, [{"id": "skill"}]
 
     async def fake_get(_path: str, _role: str | None) -> GetResponse:
@@ -472,7 +472,7 @@ async def test_resource_search_does_not_mix_unrelated_projection_kinds(
 
     async def fake_paged_get(
         _path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         return 200, [
             {"id": "skill"},
             {"id": "expected-course"},
@@ -533,7 +533,7 @@ async def test_resource_search_does_not_mix_unrelated_projection_kinds(
     ],
 )
 async def test_resource_search_rejects_invalid_expectation_shapes(
-    params: dict[str, Any],
+    params: JsonObject,
 ) -> None:
     result = await _queries().query(
         {"type": "resource_search_returns_kinds", **params}, {}
@@ -550,7 +550,7 @@ async def test_resource_search_rejects_invalid_projection_shape(
 
     async def fake_paged_get(
         _path: str, _role: str | None, *, _limit: int = 50
-    ) -> tuple[int, list[dict[str, Any]]]:
+    ) -> tuple[int, list[JsonObject]]:
         return 200, [{"id": "skill"}]
 
     async def fake_get(_path: str, _role: str | None) -> GetResponse:

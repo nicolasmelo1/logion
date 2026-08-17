@@ -22,8 +22,9 @@ from cli._errors import (
     print_err,
     validate_uuid_id,
 )
+from cli._json import JsonObject
 from cli._options import COMMON_PARSER
-from cli._output import emit_json, to_data
+from cli._output import emit_json, to_object
 
 _SET_KIND = "logion.courses.source-link.set"
 _SHOW_KIND = "logion.courses.source-link.show"
@@ -68,7 +69,7 @@ def handle_set(args: argparse.Namespace) -> int:
             ref=args.ref,
             package_map_path=args.map,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json(_SET_KIND, data)
         else:
@@ -91,7 +92,7 @@ def handle_show(args: argparse.Namespace) -> int:
         result = client.v1.courses.get_source_link(
             course_id=args.course_id,
         )
-        data = to_data(result)
+        data = to_object(result)
         if config.json_output:
             emit_json(_SHOW_KIND, data)
         else:
@@ -141,7 +142,7 @@ def handle_remove(args: argparse.Namespace) -> int:
         client.close()
 
 
-def _emit_set_human(data: dict[str, object]) -> None:
+def _emit_set_human(data: JsonObject) -> None:
     lines: list[str] = []
     repo = data.get("repository")
     if repo is not None:
@@ -156,7 +157,7 @@ def _emit_set_human(data: dict[str, object]) -> None:
         sys.stdout.write("\n".join(lines) + "\n")
 
 
-def _emit_show_human(data: dict[str, object]) -> None:
+def _emit_show_human(data: JsonObject) -> None:
     lines: list[str] = []
     repo = data.get("repository")
     if repo is not None:

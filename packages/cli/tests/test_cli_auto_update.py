@@ -8,14 +8,16 @@ import json
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+
+import pytest
 
 from cli import _auto_update
+from cli._json import JsonObject
 from cli.main import main
 
 
 def test_auto_update_counts_commands_persistently(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -31,7 +33,7 @@ def test_auto_update_counts_commands_persistently(
 
 
 def test_auto_update_runs_when_command_threshold_is_reached(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -55,7 +57,7 @@ def test_auto_update_runs_when_command_threshold_is_reached(
 
 
 def test_auto_update_runs_when_last_check_is_stale(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -84,7 +86,7 @@ def test_auto_update_runs_when_last_check_is_stale(
 
 
 def test_auto_update_skips_npm_managed_venv(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
@@ -112,14 +114,14 @@ def test_auto_update_skips_npm_managed_venv(
 
 
 def test_auto_update_skips_when_state_is_not_writable(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("LOGION_AUTO_UPDATE", raising=False)
     monkeypatch.setattr(_auto_update, "DEFAULT_COMMAND_THRESHOLD", 1)
     calls: list[argparse.Namespace] = []
 
     def fail_write(
-        _data: dict[str, Any],
+        _data: JsonObject,
         _home: Path | None = None,
     ) -> None:
         raise PermissionError("state directory is not writable")
@@ -137,12 +139,12 @@ def test_auto_update_skips_when_state_is_not_writable(
 
 
 def test_auto_update_env_disable_does_not_write_state(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LOGION_AUTO_UPDATE", "0")
 
     def fail_write(
-        _data: dict[str, Any],
+        _data: JsonObject,
         _home: Path | None = None,
     ) -> None:
         raise AssertionError("disabled auto-update should not write state")
@@ -153,9 +155,9 @@ def test_auto_update_env_disable_does_not_write_state(
 
 
 def test_update_can_disable_auto_update(
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    capsys: Any,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
 

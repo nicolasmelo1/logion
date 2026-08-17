@@ -14,13 +14,19 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import httpx
 
 from cli import _receipts
+from cli._json import JsonObject, children, opt_int, require_str
+from cli._lazy_import import LazyModule
 from cli._local_state import UnsafeIdentifierError
 
+if TYPE_CHECKING:
+    import logion
+else:
+    logion = LazyModule("logion")
 from .base import AcquisitionOutcome, ChannelAdapter
 
 _MAX_FILES = 10_000
@@ -32,13 +38,13 @@ _MAX_RATIO = 100.0
 class LogionBundleAdapter(ChannelAdapter):
     channel = "logion_bundle"
 
-    def __init__(self, *, client: Any) -> None:
+    def __init__(self, *, client: logion.LogionClient) -> None:
         self._client = client
 
     def acquire(
         self,
         *,
-        plan: dict[str, Any],
+        plan: JsonObject,
         destination: Path,
         scope_root: Path,
     ) -> AcquisitionOutcome:
@@ -46,7 +52,7 @@ class LogionBundleAdapter(ChannelAdapter):
             resource_id=str(plan["resource_id"]),
             version_id=str(plan["version_id"]),
         )
-        files = manifest.get("files") or []
+        files = children(manifest, "files")
         if not files:
             raise RuntimeError("download manifest has no files")
 
@@ -57,11 +63,11 @@ class LogionBundleAdapter(ChannelAdapter):
             stage_dir.mkdir(parents=True, exist_ok=True)
             any_unpinned = False
             file_digests: dict[str, str] = {}
-            aggregate_components: list[dict[str, Any]] = []
+            aggregate_components: list[JsonObject] = []
             for entry in files:
-                rel = self._safe_relative(entry["path"])
-                url = entry["url"]
-                expected_size = entry.get("size_bytes")
+                rel = self._safe_relative(require_str(entry, "path"))
+                url = require_str(entry, "url")
+                expected_size = opt_int(entry, "size_bytes")
                 expected_digest = entry.get("digest")
                 aggregate_key = entry.get("aggregate_key")
                 if not isinstance(aggregate_key, str) or not aggregate_key:
@@ -73,7 +79,7 @@ class LogionBundleAdapter(ChannelAdapter):
                 total += size
                 if total > _MAX_TOTAL_BYTES:
                     raise RuntimeError("bundle exceeds size cap")
-                if expected_size is not None and size != int(expected_size):
+                if expected_size is not None and size != expected_size:
                     raise RuntimeError(
                         f"download size mismatch for {rel.as_posix()}"
                     )

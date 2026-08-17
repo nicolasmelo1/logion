@@ -7,8 +7,8 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
 
+from cli._json import JsonObject, opt_str
 from cli._local_state import get_home
 
 VALID_MODES = frozenset({"prompt", "auto", "local-only"})
@@ -18,7 +18,7 @@ def _path() -> Path:
     return get_home() / "integrations.json"
 
 
-def load_states() -> dict[str, dict[str, Any]]:
+def load_states() -> dict[str, JsonObject]:
     path = _path()
     if not path.is_file() or path.is_symlink():
         return {}
@@ -30,8 +30,8 @@ def load_states() -> dict[str, dict[str, Any]]:
 
 
 def get_mode(harness: str) -> str | None:
-    state = load_states().get(harness)
-    mode = state.get("mode") if isinstance(state, dict) else None
+    state = load_states().get(harness) or {}
+    mode = opt_str(state, "mode")
     return mode if mode in VALID_MODES else None
 
 

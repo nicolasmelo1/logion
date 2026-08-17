@@ -6,16 +6,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
-from typing import Any
 
 from cli._config import resolve_config_from_args
 from cli._context import make_client
 from cli._errors import print_err, validate_uuid_id
+from cli._json import JsonObject, opt_int, opt_str
 from cli._output import emit_json
 
 from ._upload_bundle_validation import validate_bundle_files_for_upload
+from ._uploads_transfer import put_one
 from .uploads import _resolve_upload_files
 
 # Exit codes used by ``handle_uploads_push``.
@@ -29,7 +29,7 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT_S = 60.0
 
 
-def _read_session(path: str) -> dict[str, Any] | None:
+def _read_session(path: str) -> JsonObject | None:
     """Load the upload-session JSON from *path* (``-`` for stdin)."""
     try:
         raw = (
@@ -57,53 +57,6 @@ def _read_session(path: str) -> dict[str, Any] | None:
     return data
 
 
-def _put_one(
-    upload: dict[str, Any],
-    local_path: Path,
-    max_retries: int,
-    timeout: float,
-) -> tuple[bool, str]:
-    """PUT *local_path* to ``upload['put_url']`` with retries.
-
-    Returns ``(success, message)``.  Retries on transient httpx
-    errors and HTTP 5xx; aborts immediately on 4xx (presigned URL
-    rejected — usually a content-length / header mismatch).
-    """
-    import httpx
-
-    url = upload.get("put_url")
-    headers = upload.get("required_headers") or {}
-    if not isinstance(url, str) or not url:
-        return False, "missing put_url"
-
-    last_err = ""
-    for attempt in range(max_retries + 1):
-        try:
-            with local_path.open("rb") as fh:
-                response = httpx.request(
-                    upload.get("method", "PUT"),
-                    url,
-                    content=fh,
-                    headers=headers,
-                    timeout=timeout,
-                )
-        except httpx.RequestError as exc:
-            last_err = f"network error: {exc}"
-        else:
-            if 200 <= response.status_code < 300:
-                return True, f"HTTP {response.status_code}"
-            if 400 <= response.status_code < 500:
-                # Client errors won't recover on retry.
-                return False, (
-                    f"HTTP {response.status_code}: {response.text[:200]}"
-                )
-            last_err = f"HTTP {response.status_code}"
-        if attempt < max_retries:
-            # Linear backoff is enough — presigned URLs are short-lived.
-            time.sleep(0.5 * (attempt + 1))
-    return False, last_err or "exhausted retries"
-
-
 def _build_filename_map(
     file_specs: list[str],
 ) -> dict[str, Path] | None:
@@ -115,13 +68,13 @@ def _build_filename_map(
 
 
 def _validate_session_ids(
-    session: dict[str, Any],
+    session: JsonObject,
     course_id: str,
     version_id: str,
 ) -> bool:
     """Refuse to push if the session is for a different course/version."""
-    s_course = str(session.get("course_id", ""))
-    s_version = str(session.get("version_id", ""))
+    s_course = str(opt_str(session, "course_id", ""))
+    s_version = str(opt_str(session, "version_id", ""))
     if s_course and s_course != course_id:
         print_err(
             f"session is for course {s_course}, "
@@ -139,7 +92,7 @@ def _validate_session_ids(
 
 def _prepare_push(
     args: argparse.Namespace,
-) -> tuple[int, list[dict[str, Any]] | None, dict[str, Path] | None]:
+) -> tuple[int, list[JsonObject] | None, dict[str, Path] | None]:
     """Validate args + session and return ``(rc, uploads, file_map)``.
 
     On any validation failure the returned ``rc`` is non-zero and the
@@ -182,7 +135,7 @@ def _prepare_push(
 
 
 def _emit_results(
-    results: list[dict[str, Any]],
+    results: list[JsonObject],
     failures: int,
     json_output: bool,
 ) -> None:
@@ -196,10 +149,10 @@ def _emit_results(
     print(f"Pushed {len(results) - failures}/{len(results)} files.")
 
 
-def _course_price_cents(course: Any) -> int:
+def _course_price_cents(course: object) -> int:
     """Read ``price_cents`` from a SDK response object or plain dict."""
     if isinstance(course, dict):
-        return int(course.get("price_cents", 0) or 0)
+        return int(opt_int(course, "price_cents", 0) or 0)
     return int(getattr(course, "price_cents", 0) or 0)
 
 
@@ -227,7 +180,7 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
         print_err(f"invalid course bundle for upload: {error}")
         return EXIT_BAD_ARGS
 
-    results: list[dict[str, Any]] = []
+    results: list[JsonObject] = []
     failures = 0
     # COMMON_PARSER leaves --max-retries / --timeout as None when the
     # caller omits them; fall back to push-specific defaults.
@@ -238,9 +191,9 @@ def handle_uploads_push(args: argparse.Namespace) -> int:
     )
     timeout = args.timeout if args.timeout is not None else DEFAULT_TIMEOUT_S
     for upload in uploads:
-        filename = upload.get("filename", "")
+        filename = opt_str(upload, "filename", "")
         local = file_map[filename]
-        ok, msg = _put_one(upload, local, max_retries, timeout)
+        ok, msg = put_one(upload, local, max_retries, timeout)
         results.append({"filename": filename, "ok": ok, "detail": msg})
         if not ok:
             failures += 1

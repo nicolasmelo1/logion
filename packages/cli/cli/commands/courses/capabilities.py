@@ -8,7 +8,6 @@ import json
 import sys
 from importlib import resources
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -20,6 +19,7 @@ from cli._course_capabilities import (
     load_and_validate_capability_manifest,
     summarize_capability_manifest,
 )
+from cli._json import JsonObject
 from cli._output import emit_json
 from cli.commands.courses._capability_render import (
     _append_summary_fields,
@@ -109,7 +109,7 @@ def _default_license_template(license_template: str | None) -> str:
     return license_template or "mit"
 
 
-def _serialize_manifest_yaml(manifest: dict[str, Any]) -> str:
+def _serialize_manifest_yaml(manifest: JsonObject) -> str:
     """Serialise a normalised manifest dict to YAML with a header."""
     body = yaml.safe_dump(
         manifest,

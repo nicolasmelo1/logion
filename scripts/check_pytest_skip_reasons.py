@@ -93,16 +93,15 @@ def scan(path: str) -> list[tuple[int, str]]:
 
     for node in ast.walk(tree):
         # 1. Direct calls: pytest.skip(...)
-        if isinstance(node, ast.Call) and _is_pytest_attr(
-            node.func, "skip"
+        if (
+            isinstance(node, ast.Call)
+            and _is_pytest_attr(node.func, "skip")
+            and not _has_reason(node)
         ):
-            if not _has_reason(node):
-                hits.append(
-                    (
-                        node.lineno,
-                        "pytest.skip() without a reason",
-                    )
-                )
+            hits.append((
+                node.lineno,
+                "pytest.skip() without a reason",
+            ))
 
         # 2. Decorators that need a reason: skip / skipif / xfail
         decorator_lists = []
@@ -116,12 +115,10 @@ def scan(path: str) -> list[tuple[int, str]]:
                 # Bare attribute, no call: @pytest.mark.skip
                 mark = _is_pytest_mark(dec)
                 if mark in MARK_NAMES_REQUIRING_REASON:
-                    hits.append(
-                        (
-                            dec.lineno,
-                            f"@pytest.mark.{mark} without a reason",
-                        )
-                    )
+                    hits.append((
+                        dec.lineno,
+                        f"@pytest.mark.{mark} without a reason",
+                    ))
                     continue
                 # Call form: @pytest.mark.skip(...) etc.
                 if isinstance(dec, ast.Call):
@@ -130,13 +127,10 @@ def scan(path: str) -> list[tuple[int, str]]:
                         inner_mark in MARK_NAMES_REQUIRING_REASON
                         and not _has_reason(dec)
                     ):
-                        hits.append(
-                            (
-                                dec.lineno,
-                                f"@pytest.mark.{inner_mark}() "
-                                f"without a reason",
-                            )
-                        )
+                        hits.append((
+                            dec.lineno,
+                            f"@pytest.mark.{inner_mark}() without a reason",
+                        ))
     return hits
 
 

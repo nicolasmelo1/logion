@@ -16,6 +16,8 @@ import json
 import sys
 from pathlib import Path
 
+from agent_proving_ground._json import elements
+
 
 def _receipt(path: Path) -> dict:
     envelope = json.loads(path.read_text(encoding="utf-8"))
@@ -34,7 +36,7 @@ def main() -> int:
         )
     receipt = _receipt(Path(sys.argv[1]))
     scope_root = Path(sys.argv[2]).resolve()
-    installed = [str(p) for p in receipt.get("installed_paths") or []]
+    installed = [str(p) for p in elements(receipt, "installed_paths")]
     if not installed:
         raise SystemExit("receipt lists no installed paths to tamper with")
 
