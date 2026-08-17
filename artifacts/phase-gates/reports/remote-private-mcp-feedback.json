@@ -1,29 +1,29 @@
 {
-  "run_id": "20260816T143615-remote_private_mcp_feedback",
+  "run_id": "20260817T173856-remote_private_mcp_feedback",
   "scenario": "remote_private_mcp_feedback",
   "status": "passed",
   "api_adapter": "local-devrig",
   "agent_drivers": {
-    "operator": "codex"
+    "operator": "claude-code"
   },
-  "started_at": "2026-08-16T14:36:15.708051Z",
-  "finished_at": "2026-08-16T14:42:58.435275Z",
+  "started_at": "2026-08-17T17:38:56.679939Z",
+  "finished_at": "2026-08-17T17:40:58.000708Z",
   "phase_results": [
     {
       "phase_id": "setup",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-16T14:36:15.826499Z",
-      "finished_at": "2026-08-16T14:36:15.889618Z",
-      "duration_seconds": 0.063
+      "started_at": "2026-08-17T17:38:56.755924Z",
+      "finished_at": "2026-08-17T17:38:56.815590Z",
+      "duration_seconds": 0.06
     },
     {
       "phase_id": "seed",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-16T14:36:15.889637Z",
-      "finished_at": "2026-08-16T14:36:16.190205Z",
-      "duration_seconds": 0.301
+      "started_at": "2026-08-17T17:38:56.815608Z",
+      "finished_at": "2026-08-17T17:38:57.072248Z",
+      "duration_seconds": 0.257
     },
     {
       "phase_id": "reconcile_and_use_vendor_connector",
@@ -56,9 +56,9 @@
           }
         }
       ],
-      "started_at": "2026-08-16T14:36:16.190266Z",
-      "finished_at": "2026-08-16T14:38:50.125427Z",
-      "duration_seconds": 153.949
+      "started_at": "2026-08-17T17:38:57.072273Z",
+      "finished_at": "2026-08-17T17:40:18.762634Z",
+      "duration_seconds": 81.69
     },
     {
       "phase_id": "inspect_remote_usage",
@@ -69,15 +69,15 @@
           "status": "passed",
           "message": "remote MCP use was attributed to the vendor resource",
           "evidence": {
-            "resource_id": "50c1d225-997c-4d9d-a050-c41a96102c3b",
-            "version_id": "aec36dae-e9ba-47c6-84d3-8ae5ae8cf574",
+            "resource_id": "f10b870b-219f-46ba-813c-48ed9edaef63",
+            "version_id": "451ff474-2705-439e-816f-4ffb9c326f79",
             "channel": "dsh"
           }
         }
       ],
-      "started_at": "2026-08-16T14:38:50.125506Z",
-      "finished_at": "2026-08-16T14:39:46.480257Z",
-      "duration_seconds": 56.355
+      "started_at": "2026-08-17T17:40:18.762664Z",
+      "finished_at": "2026-08-17T17:40:34.443418Z",
+      "duration_seconds": 15.681
     },
     {
       "phase_id": "submit_private_connector_feedback",
@@ -88,7 +88,7 @@
           "status": "passed",
           "message": "remote MCP feedback is linked to native acquisition",
           "evidence": {
-            "feedback_id": "224fd621-73cc-42e5-b1c3-33e79e8633bb",
+            "feedback_id": "968733c8-c695-402e-87e3-707c8088601c",
             "acquisition_channel": "dsh"
           }
         },
@@ -113,9 +113,9 @@
           }
         }
       ],
-      "started_at": "2026-08-16T14:39:46.480300Z",
-      "finished_at": "2026-08-16T14:42:58.396265Z",
-      "duration_seconds": 191.918
+      "started_at": "2026-08-17T17:40:34.443447Z",
+      "finished_at": "2026-08-17T17:40:57.963244Z",
+      "duration_seconds": 23.52
     },
     {
       "phase_id": "snapshot_vendor_install",
@@ -139,8 +139,8 @@
           }
         }
       ],
-      "started_at": "2026-08-16T14:42:58.396293Z",
-      "finished_at": "2026-08-16T14:42:58.430116Z",
+      "started_at": "2026-08-17T17:40:57.963286Z",
+      "finished_at": "2026-08-17T17:40:57.996877Z",
       "duration_seconds": 0.034
     }
   ],
@@ -176,8 +176,8 @@
       "status": "passed",
       "message": "remote MCP use was attributed to the vendor resource",
       "evidence": {
-        "resource_id": "50c1d225-997c-4d9d-a050-c41a96102c3b",
-        "version_id": "aec36dae-e9ba-47c6-84d3-8ae5ae8cf574",
+        "resource_id": "f10b870b-219f-46ba-813c-48ed9edaef63",
+        "version_id": "451ff474-2705-439e-816f-4ffb9c326f79",
         "channel": "dsh"
       }
     },
@@ -186,7 +186,7 @@
       "status": "passed",
       "message": "remote MCP feedback is linked to native acquisition",
       "evidence": {
-        "feedback_id": "224fd621-73cc-42e5-b1c3-33e79e8633bb",
+        "feedback_id": "968733c8-c695-402e-87e3-707c8088601c",
         "acquisition_channel": "dsh"
       }
     },
@@ -232,7 +232,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": ".devrig/api.log"
+        "log_path": "<public-repo>-workspace/.devrig/api.log"
       }
     },
     {

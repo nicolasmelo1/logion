@@ -204,13 +204,21 @@ class ClaudeCodeDriver(ProviderDriver):
     provider_name = "claude-code"
     default_command = "claude"
     # Haiku keeps full e2e runs cheap; override via driver_config for
-    # scenarios that need a stronger model. Non-interactive runs cannot
-    # answer permission prompts, so the tools the e2e needs (logion CLI
-    # plus workspace file ops) are pre-approved via a scoped allowlist.
+    # scenarios that need a stronger model.
+    #
+    # Bash is allowed unscoped rather than as `Bash(logion:*)`. The
+    # scenarios drive the CLI out of the checkout with a per-command
+    # environment — `HOME=... LOGION_HOME=... uv run --project <repo>
+    # logion ...` — and a prefix rule cannot match a command that starts
+    # with an assignment. With the narrower rule the agent could only ask
+    # for an approval that `--print` can never deliver, so every phase
+    # failed with a transcript full of questions. The tool set stays
+    # closed; this is the same posture as the codex driver's
+    # `approval_policy="never"`, in a child process with an isolated env.
     default_args: ClassVar[list[str]] = [
         "--print",
         "--allowedTools",
-        "Bash(logion:*),Read,Write,Edit,Glob,Grep",
+        "Bash,Read,Write,Edit,Glob,Grep",
         "--model",
         "claude-haiku-4-5",
     ]

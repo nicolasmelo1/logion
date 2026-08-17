@@ -1,30 +1,27 @@
 {
-  "note": "The recorded runs no longer prove this phase. They passed against a scenario that let the agent hand-assemble the observation payload, and against an api.course_review_projection_exists assertion that passed on the not_a_course disposition. Both were tightened, so the gate must be re-run with a real driver before 15.11 may be called complete. The superseded reports are kept for history and are not evidence.",
+  "note": "Re-run on 2026-08-17 after the scenario and the api.course_review_projection_exists assertion were tightened. The earlier codex runs are not evidence for this phase: they passed against a scenario that let the agent hand-assemble the observation payload, and against a projection assertion that passed on the not_a_course disposition. Driver is claude-code because the codex account was over quota; both drivers are permitted by phase-integrity.yaml. The observation is produced by piping the harness's recorded PostToolUse payload into the hook the integration installed - the documented fallback for a harness that cannot deliver its own payload to a differently-driven session.",
   "phase_id": "15.11",
-  "runs": [],
-  "schema_version": 1,
-  "superseded_runs": [
+  "runs": [
     {
       "api_adapter": "local-devrig",
-      "driver": "codex",
-      "model": "gpt-5.4-mini",
+      "driver": "claude-code",
+      "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/native-use-observation-and-feedback.json",
-      "report_sha256": "6566e62f19ed0b34460a11ca57ea4eb15cf2e96e800525232e66f512ab4ad0c5",
+      "report_sha256": "0140b59f80cc945debc8637934294e862505884b9a087ad4f85de58a55ad25cb",
       "scenario": "native_use_observation_and_feedback",
       "status": "passed",
-      "superseded_reason": "observation was agent-assembled; the projection assertion passed on not_a_course",
       "unsupported_assertions": []
     },
     {
       "api_adapter": "local-devrig",
-      "driver": "codex",
-      "model": "gpt-5.4-mini",
+      "driver": "claude-code",
+      "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/remote-private-mcp-feedback.json",
-      "report_sha256": "fbb797f01765c5fd924e8847364dd20a49099984bbee94ce0864e05327dd028d",
+      "report_sha256": "0db0f4d2b83f300395b6c7f60d2b45f4250f67b147ecad156f8f67e16fe38a52",
       "scenario": "remote_private_mcp_feedback",
       "status": "passed",
-      "superseded_reason": "shares the strengthened projection assertion",
       "unsupported_assertions": []
     }
-  ]
+  ],
+  "schema_version": 1
 }

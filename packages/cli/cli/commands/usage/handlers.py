@@ -170,8 +170,14 @@ def handle_usage_observe(args: argparse.Namespace) -> int:
                 scope_id=require_str(receipt, "scope_id"),
                 session_hash=session_hash,
             )
-            spool_observation(obs)
-            recorded.append(obs.to_dict())
+            result = spool_observation(obs)
+            # Report the record the spool holds, not the one just built:
+            # a deduplicated call must not hand back an observation id
+            # that `usage pending` will never show.
+            recorded.append({
+                **result.record,
+                "deduplicated": result.deduplicated,
+            })
         if json_output:
             emit_json(
                 "logion.usage.observe",

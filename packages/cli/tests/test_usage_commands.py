@@ -535,3 +535,46 @@ class _FakeStdin:
 
     def read(self) -> str:
         return self._data
+
+
+def test_deduplicated_observe_reports_the_record_the_spool_holds(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """A deduplicated call must not invent an id `pending` will never show.
+
+    The proving-ground gate caught this: the agent observed twice, the
+    second call was deduplicated, and `observe` still answered
+    `disposition: recorded` with a fresh observation_id that was nowhere
+    in the spool.
+    """
+    set_mode("codex", "prompt")
+    install = _install(tmp_path / "repo")
+    receipt = _receipt(target_path=install)
+    payload = {
+        "event": "resource_invoked",
+        "installation_id": receipt["installation_id"],
+        "session_hash": "sess-dup",
+    }
+
+    assert _observe(monkeypatch, payload, receipts=[receipt]) == 0
+    first = json.loads(capsys.readouterr().out)["data"]
+    assert first["observation"]["deduplicated"] is False
+
+    assert _observe(monkeypatch, payload, receipts=[receipt]) == 0
+    second = json.loads(capsys.readouterr().out)["data"]
+
+    assert second["disposition"] == "recorded"
+    assert second["observation"]["deduplicated"] is True
+    assert (
+        second["observation"]["observation_id"]
+        == first["observation"]["observation_id"]
+    )
+
+    spooled = list_pending_observations()
+    assert len(spooled) == 1
+    assert (
+        spooled[0]["observation_id"]
+        == (second["observation"]["observation_id"])
+    )

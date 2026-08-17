@@ -279,11 +279,25 @@ def _read_all_observations(
     return results
 
 
-def _is_duplicate(
+@dataclass(frozen=True)
+class SpoolResult:
+    """What the spool actually holds after a write attempt.
+
+    ``record`` is always the line that is in the spool — the newly
+    written one, or the earlier one this call deduplicated against.
+    Reporting the id of a record that was discarded would make
+    ``usage observe`` claim something the spool cannot show.
+    """
+
+    record: JsonObject
+    deduplicated: bool
+
+
+def _duplicate_of(
     existing: list[JsonObject],
     obs: UsageObservation,
-) -> bool:
-    """Check if *obs* duplicates an existing entry within the window."""
+) -> JsonObject | None:
+    """The entry *obs* duplicates within the window, if there is one."""
     now = datetime.datetime.now(datetime.UTC)
     for entry in existing:
         if (
@@ -303,19 +317,19 @@ def _is_duplicate(
                 continue
             elapsed = (now - prev_time).total_seconds()
             if elapsed < DEDUP_WINDOW_SECONDS:
-                return True
-    return False
+                return entry
+    return None
 
 
 def spool_observation(
     obs: UsageObservation,
     *,
     logion_home: Path | None = None,
-) -> Path | None:
+) -> SpoolResult:
     """Append *obs* to the local JSONL spool if not a duplicate.
 
-    Returns the spool file path if written (or already present as a
-    duplicate), ``None`` if writing failed.
+    Returns the record the spool holds for this observation, which is the
+    pre-existing one when the write was deduplicated.
     """
     path = _spool_path(logion_home)
     _ensure_spool(path)
@@ -330,14 +344,15 @@ def spool_observation(
             raise ValueError("usage spool must be a regular file")
         with os.fdopen(os.dup(fd), encoding="utf-8") as handle:
             existing = [json.loads(line) for line in handle if line.strip()]
-        if _is_duplicate(existing, obs):
-            return path
+        duplicate = _duplicate_of(existing, obs)
+        if duplicate is not None:
+            return SpoolResult(record=duplicate, deduplicated=True)
         os.write(fd, (obs.to_jsonl() + "\n").encode())
     finally:
         os.close(fd)
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
-    return path
+    return SpoolResult(record=obs.to_dict(), deduplicated=False)
 
 
 def list_pending_observations(
@@ -511,6 +526,7 @@ def make_observation(
 __all__ = [
     "DEDUP_WINDOW_SECONDS",
     "OBSERVATION_FIELDS",
+    "SpoolResult",
     "UsageObservation",
     "dismiss_observations",
     "list_pending_observations",

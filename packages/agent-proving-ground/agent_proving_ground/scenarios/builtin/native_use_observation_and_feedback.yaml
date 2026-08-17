@@ -7,8 +7,8 @@ driver_config:
   claude-code: {model: claude-haiku-4-5}
 execution_requirements:
   api_adapters: [local-devrig]
-  agent_drivers: [codex]
-  driver_models: {codex: [gpt-5.4-mini]}
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
 agents:
   - id: user_a
     role: Developer using a native skill in xpto
@@ -98,11 +98,17 @@ phases:
       and it must come back as ${ACQUISITION_CHANNEL}. Save the untouched JSON
       response to ${EVIDENCE_DIR}/feedback-first.json.
 
-      Then submit the identical report again. The second attempt must be
-      refused by the local tombstone; re-run it with --force and save that
-      untouched JSON to ${EVIDENCE_DIR}/feedback-second.json. The two feedback
-      IDs must match — one resource version and task class is one report,
-      however many times a hook fires.
+      Submitting the same report again must be refused by the local
+      tombstone. Run it once more without --force and save that untouched
+      JSON to ${EVIDENCE_DIR}/feedback-refused.json; an error envelope is
+      the expected content of that one file.
+
+      Then submit the identical report again with --force and save the
+      untouched JSON to ${EVIDENCE_DIR}/feedback-second.json.
+      feedback-first.json and feedback-second.json must both hold a
+      successful response, and their feedback IDs must match — one resource
+      version and task class is one report, however many times a hook
+      fires. Never save an error envelope into either of those two files.
     assertions:
       - type: api.resource_feedback_exists
         params: {reporter_agent: user_a, resource_id: "${RESOURCE_ID}"}
