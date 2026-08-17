@@ -10,12 +10,18 @@
 > are unbuilt. The existing CLI inventory scan is not proof of use and must
 > not be described as observation telemetry.
 >
+> **Gate:** both mandatory scenarios passed with a real agent driver on
+> 2026-08-17 (`claude-code`/`claude-haiku-4-5`, local-devrig) against the
+> tightened scenario and projection assertion; the cross-repo audit reports
+> no critical findings. The observation in that evidence comes from piping
+> the harness's recorded `PostToolUse` payload into the installed hook, not
+> from that hook firing live — a live hook needs a `logion` on PATH that
+> carries `usage observe`.
+>
 > **Still open before this phase may be called complete:**
-> 1. Re-run both mandatory scenarios with a real driver and record the
->    evidence — `artifacts/phase-gates/phase-15.11.json` currently carries no
->    valid run, and the cross-repo audit reports the phase as unproven. The
->    superseded runs passed against a scenario that let the agent
->    hand-assemble its own observation.
+> 1. Prove a live hook end to end, with the harness itself delivering the
+>    payload to an installed CLI, rather than the documented replay
+>    fallback.
 > 2. Pseudonymous participation: `identity_tier` is always `account` and
 >    there is no local pseudonymous subject, so free discovery/feedback still
 >    requires an account.

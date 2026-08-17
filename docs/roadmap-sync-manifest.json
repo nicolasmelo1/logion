@@ -102,7 +102,7 @@
     },
     {
       "path": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md",
-      "sha256": "9b5476fa-b391e874-f704d793-f374a766-77150b74-c401667c-99a794b5-e406a19d"
+      "sha256": "20593856-b5adce57-223580f9-4712d8af-d2f5bcf0-15546f96-3cc92c6e-f20bf853"
     },
     {
       "path": "plans/phase-15.11.1-publisher-integrated-consented-observation.md",
@@ -294,5 +294,5 @@
     }
   ],
   "schema_version": 1,
-  "source_revision": "e60eddce-a094e7ee-c862585d-4978cc42-0eb2da33"
+  "source_revision": "35913986-9a9536c0-540389dc-981f3e6c-1fd90049"
 }
