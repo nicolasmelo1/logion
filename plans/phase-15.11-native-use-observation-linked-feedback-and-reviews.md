@@ -2,11 +2,38 @@
 
 # Phase 15.11 — Native-use observation, linked feedback, and reviews
 
-> **Implementation status (2026-07-30): not shipped.** This document is the
-> normative future contract and acceptance gate. Observation hooks, the usage
-> spool and receipt API, linked generic feedback, integrations commands, and
-> consent-driven upload remain unimplemented. The existing CLI inventory scan
-> is not proof of use and must not be described as observation telemetry.
+> **Implementation status (2026-08-17): built, not yet proven.** The usage
+> spool, receipt and feedback APIs, integrations commands, harness observation
+> hooks (Claude Code, Codex), consent enforcement, and consent-driven upload
+> are implemented. The phase is **not complete**: the real-agent gate was
+> tightened and has not been re-run, and the items under "Still open" below
+> are unbuilt. The existing CLI inventory scan is not proof of use and must
+> not be described as observation telemetry.
+>
+> **Still open before this phase may be called complete:**
+> 1. Re-run both mandatory scenarios with a real driver and record the
+>    evidence — `artifacts/phase-gates/phase-15.11.json` currently carries no
+>    valid run, and the cross-repo audit reports the phase as unproven. The
+>    superseded runs passed against a scenario that let the agent
+>    hand-assemble its own observation.
+> 2. Pseudonymous participation: `identity_tier` is always `account` and
+>    there is no local pseudonymous subject, so free discovery/feedback still
+>    requires an account.
+> 3. Published first-party artifacts: no official `npx skills add` companion
+>    or `npx plugins add` observer package exists, so the clean-machine
+>    onboarding contract is unbuilt.
+> 4. Hermes and Pi have native scope discovery but no observation adapter;
+>    they report `inventory_only_observation_unsupported`, which is honest
+>    but not the declared observation path.
+> 5. `artifacts/dogfood/phase-15.11.md` has never been recorded.
+> 6. Generic self-review is only detectable for resources that project to a
+>    Course, because `resources` has no owner column.
+> 7. Two envelopes still exist. The live spool is the `UsageObservation`
+>    schema below; `cli/_observation.py` implements the richer envelope
+>    described in `next-steps.md` (task class, outcome, ordered timestamps,
+>    integration version) and has no production caller. Either 15.11.1
+>    adopts it or it should be deleted — both documents cannot stay
+>    normative for the same record.
 >
 > **Dogfood — Level 2 (real use and feedback):** the implementing agent acquires a resource through any supported channel, uses it in its ordinary harness, and submits feedback through Logion linked to the exact original `ResourceVersion`.
 > **After this phase:** Logion can learn from resources installed by `npx skills`, `npx plugins`, `hf`, or Logion itself without forcing a new acquisition workflow.
@@ -474,7 +501,7 @@ Metrics: integration enabled/disabled, attribution exact/ambiguous/dropped, pend
 ## Mandatory proving-ground scenario
 
 Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
-`builtin:phase_15_11_native_feedback`.
+`builtin:native_use_observation_and_feedback`.
 
 - **Actors/fixture:** two fresh agent processes have isolated homes and work in
   repositories `xpto` and `acme`; an `operator` observes API state. The seed creates a real
@@ -497,7 +524,7 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
   raw events. Retain integration version, observation/pending receipt IDs,
   consent mode, feedback ID, source link, redacted payload, and no-500 proof.
 
-Add `builtin:phase_15_11_remote_private_mcp_feedback`:
+Add `builtin:remote_private_mcp_feedback`:
 
 - **Fixture:** a public vendor plugin manifest points to an OAuth-protected
   remote MCP fixture whose implementation and data are unavailable to Logion.

@@ -86,7 +86,7 @@
     },
     {
       "path": "plans/next-steps.md",
-      "sha256": "a8cc18a5-1fcf192c-86b17a44-e9dbd073-088e4066-daf3d9bf-aefd5f05-8807019e"
+      "sha256": "5354584f-0b53b586-d7ebf192-b2d7c618-e9cc5363-e5995854-73399414-69eebe2f"
     },
     {
       "path": "plans/phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md",
@@ -97,8 +97,12 @@
       "sha256": "79fcaf3e-09cbcad4-161eb37e-b14bd71b-b7878bba-aceb7bdb-0f30ca09-9c3af138"
     },
     {
+      "path": "plans/phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md",
+      "sha256": "dcfb04e8-758b829f-37c292ff-dbcd18a2-bb31ca12-7d5b0f1c-02d5d57c-85d103b7"
+    },
+    {
       "path": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md",
-      "sha256": "2b3b0c81-ebf72c04-a98c6ae8-b07df78d-328ff2c8-b1a1d11e-cc9f5ad3-bddd6096"
+      "sha256": "9b5476fa-b391e874-f704d793-f374a766-77150b74-c401667c-99a794b5-e406a19d"
     },
     {
       "path": "plans/phase-15.11.1-publisher-integrated-consented-observation.md",
@@ -290,5 +294,5 @@
     }
   ],
   "schema_version": 1,
-  "source_revision": "dfbc468d-e8ba79de-3cc1861f-6e653956-543928df"
+  "source_revision": "e60eddce-a094e7ee-c862585d-4978cc42-0eb2da33"
 }
