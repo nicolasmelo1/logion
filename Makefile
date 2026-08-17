@@ -93,6 +93,14 @@ check-deps-lock:
 check-doc-links:
 	uv run python scripts/check_doc_links.py
 
+# The command reference is derived from the argparse tree, so a new
+# command or flag cannot ship undocumented.
+docs-reference:
+	uv run python packages/cli/scripts/generate_reference.py
+
+check-cli-reference:
+	uv run python packages/cli/scripts/generate_reference.py --check
+
 check-roadmap-mirror:
 	uv run python scripts/check_roadmap_mirror.py
 
@@ -124,7 +132,7 @@ check-installer-security:
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
 ci-checks: public-audit check-generated-lock check-root-files check-deps-lock check-roadmap-mirror check-protocol-specs \
-	check-doc-links check-logion-sh-urls check-skip-reasons \
+	check-doc-links check-cli-reference check-logion-sh-urls check-skip-reasons \
 	check-forbidden-imports check-cli-http check-installer-security check-json-module \
 	check-noqa-reasons
 

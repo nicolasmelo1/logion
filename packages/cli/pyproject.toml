@@ -132,6 +132,7 @@ ignore = [
 "cli/commands/courses/package_map.py" = ["T201"]
 "scripts/record_workflow.py" = ["T201"]
 "scripts/sync_docs.py" = ["T201"]
+"scripts/generate_reference.py" = ["T201"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 # Repo-wide ban on `typing.Any`. Banning the *import* is what makes it

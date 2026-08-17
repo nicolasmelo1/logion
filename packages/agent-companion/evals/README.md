@@ -54,12 +54,41 @@ evals/
 │   ├── download_models.py        ← `make download-models`
 │   ├── run_llama_cpp_eval.py     ← `make eval-llama-cpp`
 │   ├── optimize_dspy.py          ← `make optimize-{policy,references}-llama-cpp`
+│   ├── check_skill_baseline.py   ← `make check-skill-baseline`
 │   └── _lib/                     ← Shared lifecycle: env loader,
 │                                   path resolver, llama-server
 │                                   context manager.
 └── optimizers/dspy/         ← DSPy offline optimization (optional)
     └── README.md            ← Setup, signatures, metric, promotion
 ```
+
+## What `make eval` does not cover
+
+`make eval` runs the **fake** provider, which replays the trace embedded
+in each scenario. It never reads `SKILL.md` or `references/`. It proves
+the graders, the catalog, and the scenario set are consistent — not that
+the prose steering the model is any good. Two kilobytes of confusing
+instruction in `SKILL.md` pass it without a murmur.
+
+`evals/skill_baseline.py` closes that specific hole. It fingerprints
+`SKILL.md` plus every reference and stores that fingerprint next to the
+scores from a real model run:
+
+```bash
+make check-skill-baseline    # part of `make verify`; free, no model
+make eval-llama-cpp          # score against a real model
+make record-skill-baseline REPORT=evals/reports/last-run.json
+make compare-skill-baseline REPORT=evals/reports/last-run.json
+```
+
+`check-skill-baseline` fails when the text changed since the baseline
+was recorded. A baseline carries `measured: false` until someone scores
+it against a real model — that state means "we know when this text
+changed", not "this text is good". Recording from the fake provider is
+refused outright.
+
+Baselines live in `evals/reports/baseline.json`, which is the one file
+in that directory git tracks.
 
 ## Running
 

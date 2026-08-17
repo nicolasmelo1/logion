@@ -2,7 +2,7 @@
 """Reference-routing DSPy signature.
 
 Decides whether the agent needs to load an on-demand reference
-file (one of the 8 canonical files under ``references/``) or stay
+file (one per file under ``references/``) or stay
 on the primary SKILL.md path.  This is *adjacent* to the
 decision-policy signature, not part of it — two independent
 optimisation targets sharing the renderer machinery.
@@ -18,24 +18,34 @@ from evals.optimizers.dspy.reference_routing_inventory import (
     REFERENCE_NAMES,
 )
 
+# Spelled out rather than built from REFERENCE_NAMES. ``Literal[tuple]``
+# is valid at runtime but mypy rejects it, and dspy needs a real static
+# type here. So this list is a *mirror* of the directory, not a second
+# source of truth: REFERENCE_NAMES is derived from ``references/`` and
+# the assert below fails immediately, with the exact edit to make, if
+# the two ever disagree.
 ReferenceName = Literal[
     "none",
-    "creator-course-management",
     "account-and-identity",
-    "notifications-and-reports",
-    "credits-and-payments",
+    "admin-operations",
     "bounties",
     "course-review-queue",
-    "admin-operations",
-    "troubleshooting",
+    "creator-course-management",
+    "credits-and-payments",
+    "notifications-and-reports",
     "referrals",
+    "troubleshooting",
     "use-observation-and-feedback",
 ]
 
-
-# The Literal above MUST stay in lock-step with REFERENCE_NAMES;
-# the test suite asserts the parity.
-assert set(REFERENCE_NAMES) == set(get_args(ReferenceName))
+_declared = set(get_args(ReferenceName))
+_shipped = set(REFERENCE_NAMES)
+if _declared != _shipped:  # pragma: no cover - fails at import time
+    raise AssertionError(
+        "ReferenceName has drifted from references/. "
+        f"Add to the Literal: {sorted(_shipped - _declared)}. "
+        f"Remove from the Literal: {sorted(_declared - _shipped)}."
+    )
 
 
 class ReferenceRoutingSignature(dspy.Signature):

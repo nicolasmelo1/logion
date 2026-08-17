@@ -38,21 +38,29 @@ REQUIRED_DIRS = [
     "tests",
 ]
 
+# Fixed entries only. The reference files are discovered from the
+# directory below rather than listed here, because a hand-written list
+# has to be edited for every new reference and silently goes stale when
+# one is renamed. What must not go stale — the SKILL.md index and the
+# bundle layout table — is asserted against the same directory by
+# ``tests/test_reference_routing.py``.
 REQUIRED_FILES = [
     "SKILL.md",
     "LICENSE",
     "course/capabilities.yaml",
-    "references/creator-course-management.md",
-    "references/account-and-identity.md",
-    "references/notifications-and-reports.md",
-    "references/credits-and-payments.md",
-    "references/bounties.md",
-    "references/course-review-queue.md",
-    "references/admin-operations.md",
-    "references/troubleshooting.md",
-    "references/referrals.md",
-    "references/use-observation-and-feedback.md",
 ]
+
+
+def required_files() -> list[str]:
+    """Fixed required files plus every shipped reference."""
+    references = sorted(
+        f"references/{path.name}"
+        for path in (ROOT / "references").glob("*.md")
+    )
+    if not references:
+        raise SystemExit("no reference files found under references/")
+    return [*REQUIRED_FILES, *references]
+
 
 # High-confidence secret patterns: always FAIL the check.
 SECRET_PATTERNS_CRITICAL = [
@@ -120,7 +128,7 @@ def _check_structure(report: list[str]) -> bool:
         else:
             report.append(f"OK directory: {d}/")
 
-    for f in REQUIRED_FILES:
+    for f in required_files():
         if not (ROOT / f).is_file():
             report.append(f"MISSING file: {f}")
             ok = False

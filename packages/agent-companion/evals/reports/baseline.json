@@ -1,0 +1,11 @@
+{
+  "by_suite": {},
+  "git_commit": null,
+  "measured": false,
+  "model_id": null,
+  "provider": null,
+  "schema_version": 1,
+  "skill_digest": "2bac56cfcffcd0621050deda1c76fafb145abd3a48d1433a4a58d407d8f7d99e",
+  "tolerance": 0.02,
+  "totals": {}
+}

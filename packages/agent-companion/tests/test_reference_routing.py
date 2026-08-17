@@ -4,6 +4,7 @@ scenarios, and renderer gates."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -39,9 +40,16 @@ SCENARIOS_PATH = (
 
 
 class TestSignatureInventory:
-    def test_enum_has_every_reference_class(self) -> None:
-        assert len(REFERENCE_NAMES) == 11
+    def test_enum_is_none_plus_one_class_per_reference(self) -> None:
+        """No magic count: the enum size follows the directory.
+
+        A hardcoded number here means every new reference file fails a
+        test for the wrong reason, which trains people to bump the
+        number instead of asking whether the class belongs.
+        """
+        refs = list((PACKAGE_ROOT / "references").glob("*.md"))
         assert REFERENCE_NAMES[0] == "none"
+        assert len(REFERENCE_NAMES) == len(refs) + 1
 
     def test_signature_docstring_under_250_chars(self) -> None:
         """The ReferenceRoutingSignature docstring is a thin pointer to
@@ -63,6 +71,34 @@ class TestSignatureInventory:
             f"references/ inventory drifted from REFERENCE_NAMES; "
             f"only in references/: {actual - canonical}, "
             f"only in REFERENCE_NAMES: {canonical - actual}"
+        )
+
+    def test_skill_index_lists_every_reference(self) -> None:
+        """SKILL.md's index is how the agent learns a reference exists.
+
+        A file nobody routes to is dead weight in the bundle; an index
+        entry with no file sends the agent after something that is not
+        there.
+        """
+        skill = (PACKAGE_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        indexed = set(re.findall(r"`references/([\w-]+)\.md`", skill))
+        shipped = {p.stem for p in (PACKAGE_ROOT / "references").glob("*.md")}
+        assert indexed == shipped, (
+            f"SKILL.md reference index drifted; "
+            f"missing from index: {shipped - indexed}, "
+            f"indexed but absent: {indexed - shipped}"
+        )
+
+    def test_bundle_layout_lists_every_reference(self) -> None:
+        """RELEASE_BUNDLE_LAYOUT describes what ships; it must be complete."""
+        layout = (PACKAGE_ROOT / "RELEASE_BUNDLE_LAYOUT.md").read_text(
+            encoding="utf-8"
+        )
+        listed = set(re.findall(r"`references/([\w-]+)\.md`", layout))
+        shipped = {p.stem for p in (PACKAGE_ROOT / "references").glob("*.md")}
+        assert listed == shipped, (
+            f"bundle layout drifted; missing: {shipped - listed}, "
+            f"stale: {listed - shipped}"
         )
 
 

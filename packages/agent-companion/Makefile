@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: test lint format-check typecheck package-check eval eval-llama-cpp download-models split-scenarios optimize-policy optimize-policy-llama-cpp optimize-references optimize-references-llama-cpp verify
+.PHONY: test lint format-check typecheck package-check check-skill-baseline record-skill-baseline eval eval-llama-cpp download-models split-scenarios optimize-policy optimize-policy-llama-cpp optimize-references optimize-references-llama-cpp verify
 
 # Override defaults via env, e.g.:
 #   make eval-llama-cpp MODEL=qwen3-8b-q5km LLAMA_EXTRA_ARGS="-m .models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf"
@@ -22,6 +22,20 @@ typecheck:
 
 package-check:
 	uv run python scripts/package_skill.py validate
+
+# `eval` runs the fake provider, which replays canned traces and never
+# reads SKILL.md. This gate is what notices that the text steering the
+# model changed since anyone last scored it.
+check-skill-baseline:
+	uv run python -m evals.commands.check_skill_baseline
+
+REPORT ?= evals/reports/last-run.json
+
+record-skill-baseline:
+	uv run python -m evals.commands.check_skill_baseline --record $(REPORT)
+
+compare-skill-baseline:
+	uv run python -m evals.commands.check_skill_baseline --compare $(REPORT)
 
 eval:
 	uv run python evals/run_eval.py \
@@ -109,4 +123,4 @@ optimize-references-llama-cpp:
 		--output "$(REF_ROUTING_OUTPUT)" \
 		--llama-extra-args "$(LLAMA_EXTRA_ARGS)"
 
-verify: lint format-check typecheck test package-check eval
+verify: lint format-check typecheck test package-check check-skill-baseline eval
