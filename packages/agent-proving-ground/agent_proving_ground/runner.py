@@ -237,6 +237,44 @@ class AgentDriverFactory:
         return cls()
 
 
+#: ``logion`` stand-in placed on an agent's PATH. A harness hook inherits
+#: the harness environment, so the bare command the integration installed
+#: has to resolve there. Observe invocations are teed to ``RECORDS`` before
+#: reaching the real CLI so their provenance can be asserted afterwards.
+_CLI_SHIM = """#!/bin/sh
+# Written by agent-proving-ground. Not a packaging artifact.
+set -eu
+REPO="{repo}"
+RECORDS="{records}"
+if [ "${{1:-}}" = "usage" ] && [ "${{2:-}}" = "observe" ]; then
+    mkdir -p "$RECORDS"
+    stem="$RECORDS/$$-$(od -An -N4 -tx1 /dev/urandom | tr -d ' ')"
+    cat > "$stem.stdin.json"
+    printf '%s\n' "$*" > "$stem.argv"
+    set +e
+    # ``--json`` is appended for capture only. The hook the integration
+    # installs does not pass it, and without it observe renders human
+    # lines that no assertion can check. Same code path, same spool
+    # write: only this stdout rendering differs from production.
+    uv run --project "$REPO" logion "$@" --json \\
+        < "$stem.stdin.json" > "$stem.stdout.json"
+    status=$?
+    set -e
+    # A harness fires the hook on every matching tool call, so most
+    # responses are `ignored`. Name the one that actually recorded an
+    # observation: that is the response the assertions are about.
+    if grep -q '"disposition"[[:space:]]*:[[:space:]]*"recorded"' \\
+        "$stem.stdout.json" 2>/dev/null; then
+        cp "$stem.stdin.json" "$RECORDS/recorded.stdin.json"
+        cp "$stem.stdout.json" "$RECORDS/recorded.stdout.json"
+    fi
+    cat "$stem.stdout.json"
+    exit "$status"
+fi
+exec uv run --project "$REPO" logion "$@"
+"""
+
+
 class ScenarioRunner:
     def __init__(
         self,
@@ -396,6 +434,31 @@ class ScenarioRunner:
                         f"[{allowed}], got {model or 'unset'}"
                     )
 
+    def _write_cli_shim(
+        self, agent_id: str, *, repo: Path, invocations: Path
+    ) -> Path:
+        """Install a ``logion`` executable for *agent_id* and return its dir.
+
+        ``integrations enable`` writes the hook command as a bare
+        ``logion usage observe`` — correct for a user who installed the
+        CLI, unresolvable for a run driven out of a checkout. Rather than
+        weaken the product command, the run supplies the executable the
+        hook expects.
+
+        The shim also records every observe invocation. That record is what
+        separates an observation the harness delivered from one an agent
+        typed, which is the difference between proving the loop and
+        asserting it.
+        """
+        bin_dir = self.artifacts.mkdir(f"agents/{agent_id}/bin")
+        shim_path = bin_dir / "logion"
+        shim_path.write_text(
+            _CLI_SHIM.format(repo=repo, records=invocations),
+            encoding="utf-8",
+        )
+        shim_path.chmod(0o755)
+        return bin_dir
+
     async def _start_agents(self, world: World) -> None:
         env_by_agent: dict[str, dict[str, str]] = {}
         for agent_spec in self.scenario.agents:
@@ -407,16 +470,41 @@ class ScenarioRunner:
             scenario_vars = world.data.setdefault("scenario_vars", {})
             if not isinstance(scenario_vars, dict):
                 raise InconclusiveRun("world scenario_vars is not a mapping")
-            binding_name = (
-                "AGENT_"
-                + re.sub(r"[^A-Za-z0-9]", "_", agent_spec.id).upper()
-                + "_WORKSPACE"
+            prefix = (
+                "AGENT_" + re.sub(r"[^A-Za-z0-9]", "_", agent_spec.id).upper()
             )
-            scenario_vars[binding_name] = str(workspace)
+            logion_home = self.artifacts.mkdir(
+                f"agents/{agent_spec.id}/logion-home"
+            )
+            invocations = self.artifacts.mkdir(
+                f"agents/{agent_spec.id}/hook-invocations"
+            )
+            bin_dir = self._write_cli_shim(
+                agent_spec.id, repo=world.root_dir, invocations=invocations
+            )
+            scenario_vars[f"{prefix}_WORKSPACE"] = str(workspace)
+            scenario_vars[f"{prefix}_LOGION_HOME"] = str(logion_home)
+            scenario_vars[f"{prefix}_HOOK_INVOCATIONS"] = str(invocations)
+            # The goal text needs the harness that is actually driving the
+            # run, not the one the scenario declared: ``--agent-driver``
+            # replaces every agent's driver, and a hook installed for the
+            # wrong harness can never fire.
+            scenario_vars[f"{prefix}_HARNESS"] = driver.name
             scenario_vars["LOGION_PUBLIC_REPO_PATH"] = str(world.root_dir)
             env = {**agent_spec.env, **world.agent_env.get(agent_spec.id, {})}
             env["LOGION_PUBLIC_REPO_PATH"] = str(world.root_dir)
             env["LOGION_AGENT_WORKSPACE"] = str(workspace)
+            # A harness hook is a subprocess of the harness, so it inherits
+            # this environment and nothing else. Both entries have to be
+            # here rather than in a per-command prefix the agent types:
+            # PATH so the bare ``logion`` that ``integrations enable``
+            # writes resolves without a published package, and LOGION_HOME
+            # so the hook spools into this agent's isolated state.
+            env["LOGION_HOME"] = str(logion_home)
+            env["PATH"] = os.pathsep.join((
+                str(bin_dir),
+                os.environ.get("PATH", ""),
+            ))
             env_by_agent[agent_spec.id] = env
             launch = AgentLaunch(
                 run_id=self.run_id,

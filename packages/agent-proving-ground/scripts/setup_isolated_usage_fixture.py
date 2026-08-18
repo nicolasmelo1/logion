@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Create local state for an isolated pending-usage check."""
+"""Create local state for an isolated pending-usage check.
+
+``LOGION_HOME`` comes from the runner, which allocates one per agent. Using
+it here rather than minting a second home is what makes this phase a proof:
+the state it finds empty is the state the harness environment points at.
+"""
 
 from __future__ import annotations
 
@@ -11,10 +16,12 @@ from pathlib import Path
 def main() -> int:
     workspace = Path(sys.argv[1]).resolve()
     repository = workspace / "acme"
-    home = workspace / "home-acme"
-    logion_home = home / ".logion"
+    if len(sys.argv) > 2 and sys.argv[2]:
+        logion_home = Path(sys.argv[2]).resolve()
+    else:
+        logion_home = workspace / ".logion"
     evidence = workspace / "evidence"
-    for directory in (repository, home, logion_home, evidence):
+    for directory in (repository, logion_home, evidence):
         directory.mkdir(parents=True, exist_ok=True)
     if not (repository / ".git").is_dir():
         import subprocess
@@ -31,7 +38,6 @@ def main() -> int:
         )
     sys.stdout.write(
         json.dumps({
-            "isolated_home": str(home),
             "logion_home": str(logion_home),
             "evidence_dir": str(evidence),
             "repository": str(repository),
