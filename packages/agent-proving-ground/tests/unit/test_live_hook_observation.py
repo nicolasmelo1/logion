@@ -110,10 +110,10 @@ async def test_passes_on_a_live_harness_payload(tmp_path) -> None:
 def test_shim_records_only_the_recorded_response(tmp_path) -> None:
     """The shim must name the firing that recorded, not the last one."""
     records = tmp_path / "rec"
+    stub = tmp_path / "real-logion"
     shim = tmp_path / "logion"
-    shim.write_text(_CLI_SHIM.format(repo=tmp_path, records=records))
+    shim.write_text(_CLI_SHIM.format(cli=stub, records=records))
     shim.chmod(0o755)
-    stub = tmp_path / "uv"
 
     def run(response: str, session: str) -> subprocess.CompletedProcess:
         stub.write_text(f"#!/bin/sh\ncat > /dev/null\necho '{response}'\n")
@@ -140,11 +140,12 @@ def test_shim_records_only_the_recorded_response(tmp_path) -> None:
 
 def test_shim_passes_the_cli_exit_status_through(tmp_path) -> None:
     records = tmp_path / "rec"
+    stub = tmp_path / "real-logion"
+    stub.write_text("#!/bin/sh\ncat > /dev/null\nexit 3\n")
+    stub.chmod(0o755)
     shim = tmp_path / "logion"
-    shim.write_text(_CLI_SHIM.format(repo=tmp_path, records=records))
+    shim.write_text(_CLI_SHIM.format(cli=stub, records=records))
     shim.chmod(0o755)
-    (tmp_path / "uv").write_text("#!/bin/sh\ncat > /dev/null\nexit 3\n")
-    (tmp_path / "uv").chmod(0o755)
     result = subprocess.run(
         [str(shim), "usage", "observe", "--stdin"],
         input="{}",
@@ -158,7 +159,7 @@ def test_shim_passes_the_cli_exit_status_through(tmp_path) -> None:
 
 def test_shim_is_valid_posix_shell(tmp_path) -> None:
     shim = tmp_path / "logion"
-    shim.write_text(_CLI_SHIM.format(repo="/repo", records="/records"))
+    shim.write_text(_CLI_SHIM.format(cli="/usr/bin/true", records="/records"))
     check = subprocess.run(
         ["sh", "-n", str(shim)], capture_output=True, text=True, check=False
     )
@@ -182,3 +183,55 @@ def test_scenario_never_hardcodes_a_harness_in_its_goals() -> None:
     for goal in goals:
         for harness in ("codex", "claude-code", "opencode", "hermes"):
             assert harness not in goal, f"{harness} hardcoded in a goal"
+
+
+def test_role_tree_path_prefers_the_installed_cli(tmp_path) -> None:
+    """The rig installs the CLI twice; both belong ahead of the host PATH."""
+    from agent_proving_ground.api_adapters.local_devrig import _role_tree_path
+
+    (tmp_path / "pipx-bin").mkdir()
+    (tmp_path / "npm-prefix" / "bin").mkdir(parents=True)
+    result = _role_tree_path(tmp_path).split(":")
+    assert result[0] == str(tmp_path / "pipx-bin")
+    assert result[1] == str(tmp_path / "npm-prefix" / "bin")
+
+
+def test_role_tree_path_skips_directories_that_do_not_exist(tmp_path) -> None:
+    from agent_proving_ground.api_adapters.local_devrig import _role_tree_path
+
+    (tmp_path / "pipx-bin").mkdir()
+    result = _role_tree_path(tmp_path).split(":")
+    assert result[0] == str(tmp_path / "pipx-bin")
+    assert str(tmp_path / "npm-prefix" / "bin") not in result
+
+
+def test_stale_cli_is_named_rather_than_looking_like_a_dead_hook(
+    tmp_path,
+) -> None:
+    """A 0.1.x wheel has no `usage` group; say so instead of failing mute."""
+    from agent_proving_ground.runner import _cli_cannot_observe
+
+    stale = tmp_path / "logion"
+    stale.write_text(
+        "#!/bin/sh\necho \"invalid choice: 'usage'\" >&2\nexit 2\n"
+    )
+    stale.chmod(0o755)
+    reason = _cli_cannot_observe(str(stale))
+    assert reason is not None
+    assert "usage observe" in reason
+    assert "dev-rebuild-cli" in reason
+
+
+def test_current_cli_passes_the_preflight(tmp_path) -> None:
+    from agent_proving_ground.runner import _cli_cannot_observe
+
+    ok = tmp_path / "logion"
+    ok.write_text("#!/bin/sh\nexit 0\n")
+    ok.chmod(0o755)
+    assert _cli_cannot_observe(str(ok)) is None
+
+
+def test_preflight_is_silent_when_there_is_no_cli() -> None:
+    from agent_proving_ground.runner import _cli_cannot_observe
+
+    assert _cli_cannot_observe(None) is None

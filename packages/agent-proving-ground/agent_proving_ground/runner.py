@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Literal, overload
 
@@ -242,9 +244,11 @@ class AgentDriverFactory:
 #: has to resolve there. Observe invocations are teed to ``RECORDS`` before
 #: reaching the real CLI so their provenance can be asserted afterwards.
 _CLI_SHIM = """#!/bin/sh
-# Written by agent-proving-ground. Not a packaging artifact.
+# Written by agent-proving-ground. Not a packaging artifact: it wraps the
+# CLI the rig already installed so the payload a harness delivers can be
+# recorded, and execs that same binary for everything else.
 set -eu
-REPO="{repo}"
+CLI="{cli}"
 RECORDS="{records}"
 if [ "${{1:-}}" = "usage" ] && [ "${{2:-}}" = "observe" ]; then
     mkdir -p "$RECORDS"
@@ -252,12 +256,10 @@ if [ "${{1:-}}" = "usage" ] && [ "${{2:-}}" = "observe" ]; then
     cat > "$stem.stdin.json"
     printf '%s\n' "$*" > "$stem.argv"
     set +e
-    # ``--json`` is appended for capture only. The hook the integration
-    # installs does not pass it, and without it observe renders human
-    # lines that no assertion can check. Same code path, same spool
-    # write: only this stdout rendering differs from production.
-    uv run --project "$REPO" logion "$@" --json \\
-        < "$stem.stdin.json" > "$stem.stdout.json"
+    # `--json` is appended for capture only. The installed hook does not
+    # pass it, and without it observe renders human lines no assertion can
+    # check. Same code path, same spool write.
+    "$CLI" "$@" --json < "$stem.stdin.json" > "$stem.stdout.json"
     status=$?
     set -e
     # A harness fires the hook on every matching tool call, so most
@@ -271,8 +273,32 @@ if [ "${{1:-}}" = "usage" ] && [ "${{2:-}}" = "observe" ]; then
     cat "$stem.stdout.json"
     exit "$status"
 fi
-exec uv run --project "$REPO" logion "$@"
+exec "$CLI" "$@"
 """
+
+
+def _cli_cannot_observe(cli: str | None) -> str | None:
+    """Reason *cli* cannot record an observation, or ``None`` if it can.
+
+    The rig installs a built wheel, so the CLI on an agent's PATH can
+    predate the command a harness hook calls. That failure is worth naming:
+    without it the run looks like a harness that never fired its hook,
+    which is the same symptom as a genuinely broken integration.
+    """
+    if not cli:
+        return None
+    probe = subprocess.run(
+        [cli, "usage", "observe", "--help"],
+        capture_output=True,
+        check=False,
+    )
+    if probe.returncode == 0:
+        return None
+    return (
+        f"{cli} does not support `usage observe` — the installed artifact "
+        "predates it; rebuild it (make dev-rebuild-cli) before a run that "
+        "has to observe"
+    )
 
 
 class ScenarioRunner:
@@ -435,25 +461,25 @@ class ScenarioRunner:
                     )
 
     def _write_cli_shim(
-        self, agent_id: str, *, repo: Path, invocations: Path
+        self, agent_id: str, *, cli: str, invocations: Path
     ) -> Path:
-        """Install a ``logion`` executable for *agent_id* and return its dir.
+        """Wrap *cli* as ``logion`` for *agent_id*; return the wrapper dir.
 
         ``integrations enable`` writes the hook command as a bare
-        ``logion usage observe`` — correct for a user who installed the
-        CLI, unresolvable for a run driven out of a checkout. Rather than
-        weaken the product command, the run supplies the executable the
-        hook expects.
+        ``logion usage observe``, so the harness needs that name on PATH.
+        The api adapter already puts the rig's installed CLI there; this
+        wrapper shadows it only to keep a copy of the payload, and execs
+        the same binary. Wrapping the installed artifact rather than the
+        source checkout keeps the run honest about what a user has.
 
-        The shim also records every observe invocation. That record is what
-        separates an observation the harness delivered from one an agent
-        typed, which is the difference between proving the loop and
-        asserting it.
+        The recorded payload is what separates an observation the harness
+        delivered from one an agent typed, which is the difference between
+        proving the loop and asserting it.
         """
         bin_dir = self.artifacts.mkdir(f"agents/{agent_id}/bin")
         shim_path = bin_dir / "logion"
         shim_path.write_text(
-            _CLI_SHIM.format(repo=repo, records=invocations),
+            _CLI_SHIM.format(cli=cli, records=invocations),
             encoding="utf-8",
         )
         shim_path.chmod(0o755)
@@ -479,9 +505,6 @@ class ScenarioRunner:
             invocations = self.artifacts.mkdir(
                 f"agents/{agent_spec.id}/hook-invocations"
             )
-            bin_dir = self._write_cli_shim(
-                agent_spec.id, repo=world.root_dir, invocations=invocations
-            )
             scenario_vars[f"{prefix}_WORKSPACE"] = str(workspace)
             scenario_vars[f"{prefix}_LOGION_HOME"] = str(logion_home)
             scenario_vars[f"{prefix}_HOOK_INVOCATIONS"] = str(invocations)
@@ -494,17 +517,40 @@ class ScenarioRunner:
             env = {**agent_spec.env, **world.agent_env.get(agent_spec.id, {})}
             env["LOGION_PUBLIC_REPO_PATH"] = str(world.root_dir)
             env["LOGION_AGENT_WORKSPACE"] = str(workspace)
-            # A harness hook is a subprocess of the harness, so it inherits
-            # this environment and nothing else. Both entries have to be
-            # here rather than in a per-command prefix the agent types:
-            # PATH so the bare ``logion`` that ``integrations enable``
-            # writes resolves without a published package, and LOGION_HOME
-            # so the hook spools into this agent's isolated state.
+            # A harness hook is a subprocess of the harness, so the bare
+            # ``logion`` that ``integrations enable`` writes has to resolve
+            # in this environment. The api adapter is what knows where the
+            # installed CLI lives; all this does is shadow it with a
+            # recording wrapper so the delivered payload can be asserted on.
+            # LOGION_HOME is per agent on purpose. Two agents can share one
+            # devrig role — that is how the isolation phase is written — so
+            # the role home cannot also be the state under test. Server auth
+            # travels in LOGION_API_KEY, not in this directory, so a fresh
+            # one costs nothing and keeps the two agents genuinely separate.
             env["LOGION_HOME"] = str(logion_home)
-            env["PATH"] = os.pathsep.join((
-                str(bin_dir),
-                os.environ.get("PATH", ""),
-            ))
+            installed_cli = shutil.which("logion", path=env.get("PATH"))
+            reason = _cli_cannot_observe(installed_cli)
+            if installed_cli and reason is None:
+                bin_dir = self._write_cli_shim(
+                    agent_spec.id,
+                    cli=installed_cli,
+                    invocations=invocations,
+                )
+                env["PATH"] = os.pathsep.join((
+                    str(bin_dir),
+                    env.get("PATH", os.environ.get("PATH", "")),
+                ))
+            else:
+                # Not fatal here: most scenarios never observe, and the
+                # observation assertions fail on their own. But say why in
+                # the timeline, because a silent skip is exactly how a
+                # replay becomes the only path a gate can take.
+                self.timeline.event(
+                    "agent.cli_wrapper_skipped",
+                    agent_id=agent_spec.id,
+                    cli=installed_cli or "",
+                    reason=reason or "no logion on the agent PATH",
+                )
             env_by_agent[agent_spec.id] = env
             launch = AgentLaunch(
                 run_id=self.run_id,

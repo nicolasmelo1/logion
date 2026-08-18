@@ -46,8 +46,9 @@ phases:
     actor: user_a
     goal: |
       Work as a customer in ${FIXTURE_ROOT}, which is the repository this
-      session is already rooted in. Use the public CLI via
-      uv run --project ${LOGION_PUBLIC_REPO_PATH} logion and base URL
+      session is already rooted in. Call the CLI as plain `logion`: the one
+      on your PATH is the artifact the rig installed, which is what a user
+      has. Never invoke it out of the source checkout. The base URL is
       http://localhost:8000. LOGION_HOME is already set for you; never
       override it, and never set HOME. Inspect resource ${RESOURCE_ID} and
       install its pinned npx_skills distribution with the exact npx skills
@@ -142,8 +143,8 @@ phases:
     goal: |
       Work in ${ACME_ROOT}. LOGION_HOME is already set for you and points
       at ${ACME_LOGION_HOME}; never override it and never set HOME. Save
-      `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion usage pending
-      --json` to ${ACME_EVIDENCE_DIR}/pending-acme.json. It must be empty.
+      `logion usage pending --json` to
+      ${ACME_EVIDENCE_DIR}/pending-acme.json. It must be empty.
       Do not inspect another agent's files and do not fabricate an observation.
     assertions:
       - type: files.usage_pending_empty

@@ -107,6 +107,13 @@ class LocalDevrigAdapter(ApiAdapter):
             home = _resolve_role_home(resolved_role, self._base_env)
             if home is not None:
                 env["LOGION_HOME"] = str(home)
+                # The rig installs the built wheel and the npm wrapper into
+                # the role tree; `activate.sh` puts both on PATH for an
+                # interactive shell. An agent gets no such shell, so a hook
+                # firing `logion` would find nothing. Wire the same two
+                # directories here so the run exercises the installed
+                # artifact rather than the source checkout.
+                env["PATH"] = _role_tree_path(home.parent)
             api_key = role_keys.api_key(resolved_role)
             if api_key:
                 env["LOGION_API_KEY"] = api_key
@@ -224,6 +231,13 @@ def _role_key_store_from_devrig(
             roles[role] = entry
 
     return RoleKeyStore(roles)
+
+
+def _role_tree_path(role_tree: Path) -> str:
+    """Prepend a role tree's installed CLI directories to the host PATH."""
+    dirs = [role_tree / "pipx-bin", role_tree / "npm-prefix" / "bin"]
+    present = [str(path) for path in dirs if path.is_dir()]
+    return os.pathsep.join([*present, os.environ.get("PATH", "")])
 
 
 def _resolve_role_home(
