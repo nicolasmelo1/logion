@@ -42,7 +42,7 @@ phases:
       VERSION_ID: indexed_version_id
       ACQUISITION_CHANNEL: indexed_channel
     goal: ""
-  - id: native_install_and_use
+  - id: native_install_and_enable
     actor: user_a
     goal: |
       Work as a customer in ${FIXTURE_ROOT}, which is the repository this
@@ -50,33 +50,63 @@ phases:
       on your PATH is the artifact the rig installed, which is what a user
       has. Never invoke it out of the source checkout. The base URL is
       http://localhost:8000. LOGION_HOME is already set for you; never
-      override it, and never set HOME. Inspect resource ${RESOURCE_ID} and
-      install its pinned npx_skills distribution with the exact npx skills
-      command shown by Logion. Never use resources acquire. Reconcile from
-      skills for ${AGENT_USER_A_HARNESS}, repo-root scope, and save the
-      untouched JSON to ${EVIDENCE_DIR}/reconcile-xpto.json.
-      The reconcile command itself must create the inventory receipt. Never
-      create, edit, or reconstruct an inventory receipt manually.
+      override it, and never set HOME.
+
+      Run logion resources distributions ${RESOURCE_ID} --json and save it
+      untouched to ${EVIDENCE_DIR}/distributions.json. Find the entry whose
+      channel is npx_skills and read its native.argv: that array is the
+      install command, already resolved for you. Run exactly that argv, in
+      that order. Bare `npx skills` is an interactive picker and installs
+      nothing; checking that the package exists installs nothing either.
+
+      Then confirm the install landed before going on: the skill directory
+      native.argv created must exist on disk under ${FIXTURE_ROOT} with a
+      SKILL.md in it. If it does not, stop and report RESULT: failed — a
+      reconcile that matches nothing fails this phase anyway.
+
+      Never use resources acquire. Reconcile from skills for
+      ${AGENT_USER_A_HARNESS}, repo-root scope, and save the untouched JSON
+      to ${EVIDENCE_DIR}/reconcile-xpto.json. The reconcile command itself
+      must create the inventory receipt. Never create, edit, or reconstruct
+      an inventory receipt manually.
 
       Run integrations enable ${AGENT_USER_A_HARNESS} --scope repo-current
       --dry-run --json first, save it untouched to
       ${EVIDENCE_DIR}/integration-plan.json, then enable it for real in
       prompt mode at that same scope and verify its status. Save the
       resulting hooks config to ${EVIDENCE_DIR}/hooks-xpto.json. The scope
-      is repo-current because that is the configuration this live session
-      reads. Never use --scope user: that writes outside this run.
+      is repo-current because that is the configuration a session rooted
+      here reads. Never use --scope user: that writes outside this run.
 
-      Then use the resource: read the installed SKILL.md and apply it to
-      review ${FIXTURE_ROOT}/buggy.py. Do not run usage observe yourself
-      and do not hand-assemble or replay a payload. The hook you just
-      installed fires on your own tool calls and delivers the harness's
-      payload; an agent asserting that it used something is not an
-      observation. If no observation appears, report that as the failure
-      instead of manufacturing one.
+      Stop there. Do not use the resource yet, and do not run usage observe
+      — not with a real payload, not with a test one. Your harness read its
+      hook configuration when this session started, so the hook you just
+      installed cannot fire for you. It fires in the next session.
+    assertions:
+      # Not files.exists: a reconcile report can exist and match nothing.
+      # An agent that "verified availability" instead of installing gets
+      # caught here rather than three phases later.
+      - type: api.native_install_reconciled
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile-xpto.json"
+          scope_root: "${FIXTURE_ROOT}"
+          expected_channel: npx_skills
+  - id: native_use
+    actor: user_a
+    goal: |
+      This is a new session, so the hook installed in the previous one is
+      now live. Work in ${FIXTURE_ROOT} and use the resource: read the
+      installed SKILL.md and apply it to review ${FIXTURE_ROOT}/buggy.py.
 
-      Save usage pending --json to ${EVIDENCE_DIR}/pending-xpto.json and
-      confirm it carries an observation_group_id. Do not put task data or
-      paths in that payload.
+      Do not run usage observe yourself and do not hand-assemble or replay a
+      payload. The installed hook fires on your own tool calls and delivers
+      the harness's payload; an agent asserting that it used something is
+      not an observation. If no observation appears, report that as the
+      failure instead of manufacturing one.
+
+      Then save logion usage pending --json to
+      ${EVIDENCE_DIR}/pending-xpto.json and confirm it carries an
+      observation_group_id. Do not put task data or paths in that payload.
     assertions:
       - type: files.observation_from_live_hook
         params:

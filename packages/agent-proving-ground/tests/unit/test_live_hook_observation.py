@@ -235,3 +235,52 @@ def test_preflight_is_silent_when_there_is_no_cli() -> None:
     from agent_proving_ground.runner import _cli_cannot_observe
 
     assert _cli_cannot_observe(None) is None
+
+
+SCENARIO_PATH = Path(
+    "packages/agent-proving-ground/agent_proving_ground/scenarios"
+    "/builtin/native_use_observation_and_feedback.yaml"
+)
+
+
+def test_every_scenario_parameter_has_a_binding() -> None:
+    """Catch an orphaned ``${...}`` before a run spends an agent on it.
+
+    The runner raises ``InconclusiveRun`` on an unresolved parameter, which
+    is the right behaviour and a slow way to find out. Renaming a binding
+    without renaming its uses is the cheap mistake this catches.
+    """
+    import yaml
+
+    from agent_proving_ground.runner import _PARAMETER_RE
+
+    scenario = yaml.safe_load(SCENARIO_PATH.read_text(encoding="utf-8"))
+    provided = {"LOGION_PUBLIC_REPO_PATH"}
+    for agent in scenario["agents"]:
+        prefix = "AGENT_" + re.sub(r"[^A-Za-z0-9]", "_", agent["id"]).upper()
+        provided.update({
+            f"{prefix}_WORKSPACE",
+            f"{prefix}_LOGION_HOME",
+            f"{prefix}_HOOK_INVOCATIONS",
+            f"{prefix}_HARNESS",
+        })
+    for phase in scenario["phases"]:
+        provided.update(phase.get("local_hook_capture_json") or {})
+
+    used: set[str] = set()
+    for phase in scenario["phases"]:
+        for value in (phase.get("goal"), phase.get("success_hint")):
+            used.update(_PARAMETER_RE.findall(value or ""))
+        used.update(
+            _PARAMETER_RE.findall(json.dumps(phase.get("local_hook_args", [])))
+        )
+        used.update(
+            _PARAMETER_RE.findall(json.dumps(phase.get("assertions", [])))
+        )
+    used.update(
+        _PARAMETER_RE.findall(json.dumps(scenario.get("final_assertions", [])))
+    )
+
+    assert not (used - provided), (
+        f"unbound parameters: {sorted(used - provided)}"
+    )
