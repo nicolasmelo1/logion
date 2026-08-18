@@ -29,10 +29,15 @@
 When an agent hits a wall, instead of improvising it acquires a capability
 published by someone else — and trusts it not because it's popular, but because
 the exact version carries evidence: it was scanned, its declared powers were
-reconciled against what it actually does, and, increasingly, it was **proven**
-against a benchmark. When a capability isn't good enough, a funded bounty pays
-someone to improve it, and the money flows to the people who create and improve
-— not to whoever hosts the list.
+reconciled against what it actually does, and — where an eval contract exists —
+it was **proven** against a reproducible benchmark. When a capability isn't good enough, a funded bounty
+pays someone to improve it, and the money flows to the people who create and
+improve — not to whoever hosts the list.
+
+It does not matter where the capability came from. `npx skills`, a plugin
+manager, Hugging Face, a bare `git clone`, or Logion itself — Logion's job is to
+resolve *which exact version* that was and attach the evidence to it. **It
+attributes; it does not replace your installer.**
 
 This repository is the **open-source developer tooling** for that network: the
 SDK, CLI, and agent companion you build and integrate against. It is the client
@@ -59,6 +64,10 @@ store:
   whose agents depend on it, a lab — work flows in from anyone's agents, and
   Logion clears it: the majority to the people who create and improve, a rail
   fee for running the network.
+- **An evidence layer, not another store.** A capability you already installed
+  with your own package manager is in scope. Requiring you to reacquire it
+  through Logion is the difference between an evidence layer and a competing
+  store, and we would rather be the former.
 - **Skills are the wedge, not the ceiling.** The same backbone — a versioned
   artifact that accumulates attestations — extends to tools, MCP servers,
   agents, and the evals/environments that judge them.
@@ -100,35 +109,57 @@ accumulates is an **attestation** — a signal with a producer and a trust level
 shown openly. No single blessed score.
 
 ```
-        ┌──────────────────────────────────────────────────┐
-        │                                                    │
-   use ─┤  A capability is acquired and run on a real        │
-        │  task, in your own harness. Honest usage           │
-        │  telemetry becomes evidence.                       │
-        │                                                    │
-  test ─┤  It is scanned, and — increasingly — scored        │
-        │  against a benchmark: reproducible, held-out,      │
-        │  reconciled against real-world usage.              │
-        │                                                    │
-   pay ─┤  A funded bounty pays someone to improve it.       │
-        │  The improvement is proven, not argued.            │
-        │                                                    │
- prove ─┤  The new, attested version passes the same         │
-        │  review — and the money reaches the people who     │
-        │  created and improved it.                          │
-        │                                                    │
-        └────────────────────────────────────────────────────┘
-            ↺ a better, attested version → back to use
+        ┌──────────────────────────────────────────────────────┐
+        │                                                      │
+ get   ─┤  A capability is acquired — from Logion, or from     │
+        │  wherever you already get them. Logion resolves      │
+        │  which exact version that was.                       │
+        │                                                      │
+ use   ─┤  It runs on a real task in your own harness, and     │
+        │  leaves two separate signals: a machine receipt      │
+        │  that it ran, and the agent's own judgement of       │
+        │  whether it helped. An observation is not a rating.  │
+        │                                                      │
+ test  ─┤  It is scanned, and — where a contract exists —      │
+        │  scored against a reproducible benchmark.            │
+        │                                                      │
+ pay   ─┤  A funded bounty pays someone to improve it.         │
+        │  The improvement is proven, not argued.              │
+        │                                                      │
+ prove ─┤  The new, attested version passes the same review    │
+        │  — and the money reaches the people who created      │
+        │  and improved it.                                    │
+        │                                                      │
+        └──────────────────────────────────────────────────────┘
+            ↺ a better, attested version → back to get
 ```
 
 > Spend, install, and permission **always** require human confirmation.
 > Money never moves faster than trust — and the network only produces
 > proof where someone actually uses it.
 
+### The question it answers
+
+*"Does this capability actually work, and what do other agents say?"* Today
+nobody can answer that. Logion answers it in **labelled layers**, never blended
+into one opaque score:
+
+1. **Controlled evaluation** — our own measurement, reproducible from a pinned
+   contract.
+2. **Static evidence** — scanner results, capability manifest, permissions,
+   license, provenance.
+3. **Field evidence** — what real agents reported, shown only above a minimum
+   cohort and always with `n`, version coverage, and known blind spots. It is
+   sampled, never a census.
+4. **Nothing yet** — said plainly. *"No measurement yet"* is an honest answer,
+   and it is also a signal about what deserves measuring next.
+
+You should always be able to see which layer an answer came from.
+
 ## What's live today
 
-Logion is a working marketplace, not a whitepaper. Shipped and running against
-the live API:
+Running code, not a whitepaper. Everything below is shipped and exercised
+against the live API by a real autonomous agent:
 
 - **Marketplace loop** — publish → automated review → human gate → acquire →
   use → review → bounty → accept, exercised end-to-end by a real autonomous
@@ -159,6 +190,15 @@ the live API:
 The proof layer — the part that makes Logion more than a paid index — is what
 we are building next. Honestly labeled as *not yet shipped*:
 
+- **Acquire anywhere, attributed here** — resolve and reconcile capabilities you
+  installed with `npx skills`, `npx plugins`, `hf`, or a plain `git clone`, down
+  to the exact version, without reinstalling anything through us.
+- **Consented observation, off by default** — a harness hook emits a
+  deterministic receipt that a version ran; the agent files its own judgement
+  separately. Default consent is **local-only**, `DO_NOT_TRACK` forces it off,
+  and you can read, export, and delete what was recorded. Install is never
+  counted as use, and a harness without a trustworthy hook says so instead of
+  inferring anything.
 - **Evals as attestations** — a portable `eval.yml` contract and scorecards, so
   "this version got 20% better" is a reproduced fact, not a claim.
 - **Network-executed evaluation** — deterministic evals run by independent
@@ -269,12 +309,21 @@ With `--sort relevance` results are ranked by how closely they match the query.
 The vocabulary you work with every day. Full reference in
 [`docs/marketplace/concepts.md`](docs/marketplace/concepts.md).
 
+- **Resource** — the source-agnostic identity of anything Logion can catalog:
+  an agent skill, a plugin, an MCP server, a model. Resource versions are keyed
+  by content digest. A **Course** and an indexed listing are *projections* of a
+  resource, not competing objects.
 - **Course** — the capability bundle: lessons, workflows, code, tests,
   metadata, price, visibility, and publication status.
 - **Course version** — an immutable release of a course. The durable unit of
   trust; it never changes after publication.
-- **Attestation** — a signal attached to a version (scan, eval score, usage
-  telemetry, improvement history), each carrying its producer and trust level.
+- **Usage receipt** — a deterministic machine fact: this exact version was
+  invoked, in this harness, and completed or failed. It never carries a rating.
+- **Feedback report** — the agent's deliberate judgement after the task:
+  usefulness, reliability, tool-safety, token-efficiency, and prose. Filed once,
+  on purpose. **An observation is not a rating**, and the two are never merged.
+- **Attestation** — a signal attached to a version (scan, eval score, field
+  evidence, improvement history), each carrying its producer and trust level.
   Attestations are displayed and weighed; they are evidence, not a single
   blessed number.
 - **Entitlement** — the right to access a version. Always a separate concept
