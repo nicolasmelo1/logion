@@ -78,14 +78,12 @@
           "candidate_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Candidate Capabilities"
+            ]
           },
           "decision_reason": {
             "maxLength": 4000,
@@ -96,14 +94,12 @@
           "eval_evidence": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Eval Evidence"
+            ]
           },
           "improved_bundle_key": {
             "anyOf": [
@@ -151,9 +147,7 @@
             "type": "string"
           },
           "evidence": {
-            "additionalProperties": true,
-            "title": "Evidence",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "id": {
             "format": "uuid",
@@ -599,14 +593,12 @@
           "bundle": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Bundle"
+            ]
           },
           "canonical": {
             "maxLength": 512,
@@ -636,26 +628,22 @@
           "declared_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Declared Capabilities"
+            ]
           },
           "inferred_map": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Inferred Map"
+            ]
           },
           "license_spdx": {
             "anyOf": [
@@ -679,14 +667,12 @@
           "npm_distribution": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Npm Distribution"
+            ]
           },
           "original_author": {
             "maxLength": 255,
@@ -1084,8 +1070,7 @@
           },
           "runtime_install": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/JsonObject-Output"
             },
             "title": "Runtime Install",
             "type": "array"
@@ -1130,8 +1115,7 @@
           },
           "runtime_requires_software": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/JsonObject-Output"
             },
             "title": "Runtime Requires Software",
             "type": "array"
@@ -1145,8 +1129,7 @@
           },
           "runtime_warnings": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/JsonObject-Output"
             },
             "title": "Runtime Warnings",
             "type": "array"
@@ -1296,14 +1279,12 @@
           "declared_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Declared Capabilities"
+            ]
           },
           "manifest_s3_key": {
             "title": "Manifest S3 Key",
@@ -1387,14 +1368,12 @@
           "stats": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Stats"
+            ]
           }
         },
         "title": "CompleteIndexingRunRequest",
@@ -1410,14 +1389,12 @@
           "stats": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Stats"
+            ]
           },
           "status": {
             "title": "Status",
@@ -2849,8 +2826,7 @@
               },
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/JsonObject-Output"
                 },
                 "type": "array"
               }
@@ -3320,34 +3296,22 @@
             "type": "string"
           },
           "entitlement": {
-            "additionalProperties": true,
-            "title": "Entitlement",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "expected": {
-            "additionalProperties": true,
-            "title": "Expected",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "integrity": {
-            "additionalProperties": true,
-            "title": "Integrity",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "license": {
-            "additionalProperties": true,
-            "title": "License",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "native": {
-            "additionalProperties": true,
-            "title": "Native",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "permissions": {
-            "additionalProperties": true,
-            "title": "Permissions",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "resource_id": {
             "format": "uuid",
@@ -4186,14 +4150,12 @@
           "declared_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Declared Capabilities"
+            ]
           },
           "human_approval_required": {
             "anyOf": [
@@ -4418,6 +4380,34 @@
             ],
             "title": "By Acquisition Channel"
           },
+          "by_identity_tier": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Identity Tier"
+          },
+          "by_projection_disposition": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Projection Disposition"
+          },
           "by_task_class": {
             "anyOf": [
               {
@@ -4473,6 +4463,17 @@
             "title": "Resource Id",
             "type": "string"
           },
+          "self_review_excluded": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Review Excluded"
+          },
           "suppressed": {
             "title": "Suppressed",
             "type": "boolean"
@@ -4509,6 +4510,17 @@
               }
             ],
             "title": "Usefulness Avg"
+          },
+          "versions_covered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions Covered"
           }
         },
         "required": [
@@ -4536,8 +4548,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/JsonObject-Output"
                 },
                 "type": "array"
               },
@@ -4596,14 +4607,12 @@
           "declared_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Declared Capabilities"
+            ]
           },
           "findings_by_layer": {
             "additionalProperties": {
@@ -4622,14 +4631,12 @@
           "observed_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Observed Capabilities"
+            ]
           },
           "owner_agent_id": {
             "title": "Owner Agent Id",
@@ -5332,8 +5339,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/JsonObject-Output"
                 },
                 "type": "array"
               },
@@ -5379,14 +5385,12 @@
           "declared_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Declared Capabilities"
+            ]
           },
           "findings": {
             "items": {
@@ -5408,14 +5412,12 @@
           "observed_capabilities": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Observed Capabilities"
+            ]
           },
           "started_at": {
             "anyOf": [
@@ -5699,6 +5701,80 @@
         ],
         "title": "IndexingRunProgressStats",
         "type": "object"
+      },
+      "JsonObject-Input": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Input"
+        },
+        "type": "object"
+      },
+      "JsonObject-Output": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Output"
+        },
+        "type": "object"
+      },
+      "JsonValue-Input": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "JsonValue-Output": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "KnownSourceEntry": {
         "properties": {
@@ -7669,9 +7745,7 @@
             "type": "string"
           },
           "evidence": {
-            "additionalProperties": true,
-            "title": "Evidence",
-            "type": "object"
+            "$ref": "#/components/schemas/JsonObject-Output"
           },
           "id": {
             "format": "uuid",
@@ -8742,6 +8816,10 @@
       },
       "SubmitFeedbackResponse": {
         "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
           "course_review_id": {
             "anyOf": [
               {
@@ -8768,6 +8846,10 @@
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "identity_tier": {
+            "title": "Identity Tier",
             "type": "string"
           },
           "projection_disposition": {
@@ -8799,6 +8881,8 @@
           "resource_version_id",
           "rating",
           "task_class",
+          "acquisition_channel",
+          "identity_tier",
           "projection_disposition"
         ],
         "title": "SubmitFeedbackResponse",
