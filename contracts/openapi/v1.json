@@ -4418,6 +4418,34 @@
             ],
             "title": "By Acquisition Channel"
           },
+          "by_identity_tier": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Identity Tier"
+          },
+          "by_projection_disposition": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Projection Disposition"
+          },
           "by_task_class": {
             "anyOf": [
               {
@@ -4473,6 +4501,17 @@
             "title": "Resource Id",
             "type": "string"
           },
+          "self_review_excluded": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Review Excluded"
+          },
           "suppressed": {
             "title": "Suppressed",
             "type": "boolean"
@@ -4509,6 +4548,17 @@
               }
             ],
             "title": "Usefulness Avg"
+          },
+          "versions_covered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions Covered"
           }
         },
         "required": [
@@ -8742,6 +8792,10 @@
       },
       "SubmitFeedbackResponse": {
         "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
           "course_review_id": {
             "anyOf": [
               {
@@ -8768,6 +8822,10 @@
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "identity_tier": {
+            "title": "Identity Tier",
             "type": "string"
           },
           "projection_disposition": {
@@ -8799,6 +8857,8 @@
           "resource_version_id",
           "rating",
           "task_class",
+          "acquisition_channel",
+          "identity_tier",
           "projection_disposition"
         ],
         "title": "SubmitFeedbackResponse",
