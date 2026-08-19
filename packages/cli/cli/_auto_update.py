@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import sysconfig
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -120,6 +121,51 @@ def _is_npm_managed_python() -> bool:
     return managed in executable.parents
 
 
+def _is_editable_install() -> bool:
+    """Return True when this CLI is imported from a source checkout.
+
+    An editable install points at a working tree, so replacing it with a
+    published release does not *update* it — it destroys it, silently. The
+    next invocation is simply a different, older CLI, and the failure looks
+    like the missing commands were never there.
+
+    This is not hypothetical. A dev install of this package was reverted to
+    the published release mid-session, which removed exactly the commands
+    the install existed to exercise (``usage``, ``integrations``,
+    ``feedback``, ``resources``). Observation cannot be dogfooded from a
+    published build that predates it, and a live harness hook resolves
+    ``logion`` from PATH — so the one install that matters is the one this
+    function protects.
+
+    Detected from where the package is imported from rather than from the
+    install method, so it holds for ``pip -e``, ``pipx --editable`` and
+    ``uv tool --editable`` alike.
+    """
+    try:
+        purelib = Path(sysconfig.get_paths()["purelib"]).resolve()
+        package_dir = Path(__file__).resolve().parent
+    except (OSError, KeyError):  # pragma: no cover - defensive
+        return False
+    return purelib not in package_dir.parents
+
+
+def _install_skip_reason() -> str | None:
+    """Why this install must not be auto-updated, or ``None`` if it may be.
+
+    Both cases are the same shape: something other than the generic
+    installer owns this environment, so running the installer would leave
+    the shim pointing at a build nobody asked for.
+    """
+    if _is_npm_managed_python():
+        return "npm-managed install is updated by npm postinstall"
+    if _is_editable_install():
+        return (
+            "editable install tracks a source checkout; updating would "
+            "replace it"
+        )
+    return None
+
+
 def maybe_auto_update(args: argparse.Namespace) -> None:
     """Increment usage counters and run auto-update when policy is due."""
     command = getattr(args, "command", "")
@@ -144,12 +190,11 @@ def maybe_auto_update(args: argparse.Namespace) -> None:
         _try_write_state(data)
         return
 
-    if _is_npm_managed_python():
-        # A skip is not a failure: record it under its own field so JSON
-        # consumers can keep treating last_error as "the last real failure".
-        data["last_skip_reason"] = (
-            "npm-managed install is updated by npm postinstall"
-        )
+    install_skip = _install_skip_reason()
+    if install_skip is not None:
+        # A skip is not a failure: recorded under its own field so JSON
+        # consumers keep reading last_error as "the last real failure".
+        data["last_skip_reason"] = install_skip
         _try_write_state(data)
         return
 

@@ -37,6 +37,9 @@ def test_auto_update_runs_when_command_threshold_is_reached(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
+    # This suite runs from a checkout; opt out of the editable skip
+    # so the update path under test is reachable.
+    monkeypatch.setattr(_auto_update, "_is_editable_install", lambda: False)
     monkeypatch.setattr(_auto_update, "DEFAULT_COMMAND_THRESHOLD", 2)
     calls: list[argparse.Namespace] = []
 
@@ -61,6 +64,9 @@ def test_auto_update_runs_when_last_check_is_stale(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LOGION_HOME", str(tmp_path))
+    # This suite runs from a checkout; opt out of the editable skip
+    # so the update path under test is reachable.
+    monkeypatch.setattr(_auto_update, "_is_editable_install", lambda: False)
     stale = datetime.now(UTC) - timedelta(
         hours=_auto_update.DEFAULT_INTERVAL_HOURS + 1
     )
@@ -83,6 +89,58 @@ def test_auto_update_runs_when_last_check_is_stale(
     _auto_update.maybe_auto_update(argparse.Namespace(command="docs"))
 
     assert len(calls) == 1
+
+
+def test_auto_update_skips_an_editable_install(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """An editable install must never be replaced by a published release.
+
+    Replacing it is not an update, it is a silent downgrade to a different
+    CLI — and it removes the very commands a dev install exists to exercise.
+    """
+    monkeypatch.setenv("LOGION_HOME", str(tmp_path))
+    monkeypatch.setattr(_auto_update, "DEFAULT_COMMAND_THRESHOLD", 1)
+    monkeypatch.setattr(_auto_update, "_is_editable_install", lambda: True)
+    calls: list[argparse.Namespace] = []
+
+    def fake_run(args: argparse.Namespace) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(["sh"], 0, "", "")
+
+    monkeypatch.setattr(_auto_update, "_run_update", fake_run)
+
+    _auto_update.maybe_auto_update(argparse.Namespace(command="docs"))
+
+    assert calls == []
+    state = json.loads((tmp_path / "auto_update.json").read_text())
+    assert "editable install" in state["last_skip_reason"]
+
+
+def test_editable_install_detected_from_outside_site_packages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Detection is by import location, not by install method.
+
+    A checkout path is outside the interpreter's ``purelib``; a normal
+    install is inside it. That distinction holds for pip -e, pipx
+    --editable and uv tool --editable alike.
+    """
+    monkeypatch.setattr(
+        _auto_update.sysconfig,
+        "get_paths",
+        lambda: {"purelib": "/nowhere/site-packages"},
+    )
+    assert _auto_update._is_editable_install() is True
+
+    real_parent = Path(_auto_update.__file__).resolve().parent.parent
+    monkeypatch.setattr(
+        _auto_update.sysconfig,
+        "get_paths",
+        lambda: {"purelib": str(real_parent)},
+    )
+    assert _auto_update._is_editable_install() is False
 
 
 def test_auto_update_skips_npm_managed_venv(
