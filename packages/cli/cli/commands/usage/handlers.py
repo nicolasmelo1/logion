@@ -11,6 +11,10 @@ import sys
 from cli._errors import handle_error, print_err
 from cli._json import JsonObject, opt_str, require_str
 from cli._output import emit_json, to_data
+from cli.commands.usage._payload import (
+    payload_duration_bucket,
+    payload_outcome,
+)
 from cli.integrations_state import effective_mode, may_spool
 from cli.usage.attribution import (
     receipt_by_installation_id,
@@ -154,6 +158,11 @@ def handle_usage_observe(args: argparse.Namespace) -> int:
             return 0
         session_hash = _session_hash(payload)
         event = observation_event(opt_str(payload, "event"))
+        outcome = payload_outcome(payload)
+        task_class = opt_str(payload, "task_class")
+        duration_bucket = payload_duration_bucket(payload)
+        started_at = opt_str(payload, "started_at")
+        finished_at = opt_str(payload, "finished_at")
         recorded: list[JsonObject] = []
         for receipt in receipts:
             obs = make_observation(
@@ -169,6 +178,11 @@ def handle_usage_observe(args: argparse.Namespace) -> int:
                 ),
                 scope_id=require_str(receipt, "scope_id"),
                 session_hash=session_hash,
+                outcome=outcome,  # type: ignore[arg-type]
+                task_class=task_class,
+                duration_bucket=duration_bucket,
+                started_at=started_at,
+                finished_at=finished_at,
             )
             result = spool_observation(obs)
             # Report the record the spool holds, not the one just built:

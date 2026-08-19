@@ -19,7 +19,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cli._harness.base import GrantResult, HarnessAdapter
+from cli._harness.base import (
+    GrantResult,
+    HarnessAdapter,
+    ObservationPlan,
+)
 from cli._harness.scopes import (
     REPO_CURRENT,
     REPO_PARENT,
@@ -178,3 +182,14 @@ class PiAdapter(HarnessAdapter):
             changed=False,
             already=True,
         )
+
+    # -- use observation (explicit report fallback) ------------------------
+
+    def plan_observation(self, scope: str) -> ObservationPlan:
+        return self._explicit_report(scope)
+
+    def enable_observation(self, scope: str) -> ObservationPlan:
+        return self._explicit_report(scope)
+
+    def disable_observation(self, scope: str) -> ObservationPlan:
+        return self._explicit_report(scope)

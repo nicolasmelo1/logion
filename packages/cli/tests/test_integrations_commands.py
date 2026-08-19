@@ -200,15 +200,46 @@ def test_codex_hook_goes_to_hooks_json_not_the_toml_config(
 
 
 @pytest.mark.usefixtures("fake_home")
-def test_unhookable_harness_reports_inventory_only(
+def test_hermes_reports_a_documented_hook_that_is_not_pinned_yet(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """No fabricated support for a harness with no trustworthy hook."""
+    """Hermes documents lifecycle hooks, so it must not claim otherwise.
+
+    Its plugin system exposes ``on_skill_lifecycle`` and ``post_tool_call``
+    among other observer hooks. Reporting Hermes as an explicit-report
+    harness would set ``supported=True, already=True`` and tell a user
+    their harness is covered while nothing observes — the most expensive
+    wrong answer for anyone whose daily driver it is.
+
+    ``supported`` is False because nothing can be enabled until the hook
+    payloads are pinned against a recorded fixture, and the path still
+    resolves so the user can see where the work lands.
+    """
     assert main(["integrations", "enable", "hermes", "--json"]) == 0
 
     plan = json.loads(capsys.readouterr().out)["data"]["plan"]
     assert plan["supported"] is False
-    assert plan["reason"] == "inventory_only_observation_unsupported"
+    assert plan["already"] is False
+    assert plan["reason"] == "hook_documented_fixture_not_recorded"
+    assert plan["path"] is not None
+    assert plan["path"].endswith("plugins/logion-observer")
+
+
+@pytest.mark.usefixtures("fake_home")
+def test_pi_reports_explicit_report_fallback(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Pi documents no hook, so explicit companion report is the ceiling.
+
+    Distinct from ``inventory_only``: the companion can still produce
+    observation records from the agent's own workflow, just not from an
+    event the harness fired.
+    """
+    assert main(["integrations", "enable", "pi", "--json"]) == 0
+
+    plan = json.loads(capsys.readouterr().out)["data"]["plan"]
+    assert plan["supported"] is True
+    assert plan["reason"] == "explicit_report_observation"
     assert plan["path"] is None
 
 
