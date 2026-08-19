@@ -200,15 +200,20 @@ def test_codex_hook_goes_to_hooks_json_not_the_toml_config(
 
 
 @pytest.mark.usefixtures("fake_home")
-def test_unhookable_harness_reports_inventory_only(
+def test_hermes_reports_explicit_report_fallback(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """No fabricated support for a harness with no trustworthy hook."""
+    """Hermes has no lifecycle hook but supports explicit companion report.
+
+    This is distinct from ``inventory_only``: the companion can produce
+    observation records from the agent's own workflow, just not
+    automatically via a harness-fired hook.
+    """
     assert main(["integrations", "enable", "hermes", "--json"]) == 0
 
     plan = json.loads(capsys.readouterr().out)["data"]["plan"]
-    assert plan["supported"] is False
-    assert plan["reason"] == "inventory_only_observation_unsupported"
+    assert plan["supported"] is True
+    assert plan["reason"] == "explicit_report_observation"
     assert plan["path"] is None
 
 

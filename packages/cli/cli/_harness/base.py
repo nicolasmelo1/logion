@@ -56,6 +56,14 @@ OBSERVATION_COMMAND: tuple[str, ...] = ("logion", "usage", "observe")
 # event. Reported as-is rather than inferring use from installation.
 INVENTORY_ONLY = "inventory_only_observation_unsupported"
 
+# Typed result for a harness that has no automatic lifecycle hook but
+# whose companion can record explicit use from the agent's own workflow.
+# This is honest: the companion reports a use event the agent chose to
+# surface, not a hook the harness fired. It is distinct from
+# INVENTORY_ONLY because the companion path can produce observation
+# records, just not automatically.
+EXPLICIT_REPORT = "explicit_report_observation"
+
 # Permission scopes an adapter must understand. Kept as the canonical
 # semantic vocabulary from :mod:`cli._harness.scopes`; aliases
 # (``project``, ``global``) are accepted on input via
@@ -227,6 +235,23 @@ class HarnessAdapter(ABC):
             reason=INVENTORY_ONLY,
         )
 
+    def _explicit_report(self, scope: str) -> ObservationPlan:
+        """Plan for harnesses that support explicit companion reporting.
+
+        Distinct from ``_unsupported``: the companion can produce
+        observation records from the agent's own workflow, just not
+        automatically via a harness lifecycle hook.
+        """
+        return ObservationPlan(
+            harness=self.name,
+            scope=canonical_scope(scope),
+            supported=True,
+            path=None,
+            already=True,
+            changed=False,
+            reason=EXPLICIT_REPORT,
+        )
+
     def skill_dir(self) -> Path:
         """Absolute dir this harness loads user skills from.
 
@@ -249,6 +274,7 @@ def _canonical(scope: str) -> str:
 
 __all__ = [
     "AUTOPOST_COMMAND",
+    "EXPLICIT_REPORT",
     "INVENTORY_ONLY",
     "OBSERVATION_COMMAND",
     "VALID_SCOPES",
