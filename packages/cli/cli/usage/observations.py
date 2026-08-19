@@ -90,12 +90,49 @@ def observation_scope_kind(value: str) -> SCOPE_KINDS:
     raise ValueError(msg)
 
 
+OUTCOMES = Literal[
+    "completed",
+    "failed",
+    "abandoned",
+    "unknown",
+]
+
+OUTCOME_VALUES: tuple[OUTCOMES, ...] = (
+    "completed",
+    "failed",
+    "abandoned",
+    "unknown",
+)
+
+#: Coarse duration buckets aligned with the 15.11.1 instrumentation profile.
+#: A bucket label is a short opaque slug, not a free-text description.
+DURATION_BUCKETS = frozenset({
+    "instant",
+    "seconds",
+    "minutes",
+    "hours",
+    "unknown",
+})
+
+#: The integration version of this observation envelope.  Bumped when the
+#: field set or semantics change; the spool rejects records with a
+#: mismatched version so a stale hook cannot silently write the old shape.
+INTEGRATION_VERSION = "logion.observation.v1"
+
+
 @dataclass(frozen=True)
 class UsageObservation:
-    """One resource-use observation record.
+    """One resource-use observation record — the single normative envelope.
 
     No free-text or path field is stored.  All identifiers are
     opaque-local unless explicitly noted.
+
+    The fields ``outcome``, ``task_class``, ``duration_bucket``,
+    ``integration_version``, ``started_at``, and ``finished_at`` come from
+    the 15.11.1 instrumentation profile.  They replace the richer
+    ``ObservationEnvelope`` that lived in ``cli/_observation.py`` with no
+    production caller; that file is deleted and this dataclass is the one
+    envelope for a usage record.
     """
 
     schema_version: Literal[1]
@@ -123,8 +160,19 @@ class UsageObservation:
     ]
     scope_id: str
     session_hash: str | None
+    outcome: OUTCOMES = "unknown"
+    task_class: str | None = None
+    duration_bucket: str | None = None
+    integration_version: str = INTEGRATION_VERSION
+    started_at: str | None = None
+    finished_at: str | None = None
 
     def __post_init__(self) -> None:
+        self._validate_schema()
+        self._validate_required_identifiers()
+        self._validate_optional_fields()
+
+    def _validate_schema(self) -> None:
         if self.schema_version != 1:
             raise ValueError("unsupported observation schema version")
         if self.event not in {
@@ -143,6 +191,17 @@ class UsageObservation:
             "custom",
         }:
             raise ValueError("unsupported observation scope")
+        if self.outcome not in set(OUTCOME_VALUES):
+            raise ValueError(
+                f"unsupported observation outcome: {self.outcome!r}"
+            )
+        if self.integration_version != INTEGRATION_VERSION:
+            raise ValueError(
+                f"unsupported integration version:"
+                f" {self.integration_version!r}"
+            )
+
+    def _validate_required_identifiers(self) -> None:
         required = (
             self.observation_id,
             self.observed_at,
@@ -156,8 +215,6 @@ class UsageObservation:
         )
         if any(not value for value in required):
             raise ValueError("observation identifiers must be non-empty")
-        # Field *names* carry no free text by construction; these checks
-        # are what stop a caller from smuggling one through a value.
         if not SLUG_RE.fullmatch(self.harness):
             raise ValueError("harness must be a lowercase slug")
         for name, value in (
@@ -179,6 +236,28 @@ class UsageObservation:
                 " without paths or whitespace"
             )
 
+    def _validate_optional_fields(self) -> None:
+        if self.task_class is not None and not SLUG_RE.fullmatch(
+            self.task_class
+        ):
+            raise ValueError("task_class must be a lowercase slug")
+        if (
+            self.duration_bucket is not None
+            and self.duration_bucket not in DURATION_BUCKETS
+        ):
+            raise ValueError(
+                f"duration_bucket must be one of {sorted(DURATION_BUCKETS)}"
+            )
+        if self.started_at is not None:
+            _validate_rfc3339("started_at", self.started_at)
+        if self.finished_at is not None:
+            _validate_rfc3339("finished_at", self.finished_at)
+            if self.started_at is not None:
+                started = _parse_rfc3339("started_at", self.started_at)
+                finished = _parse_rfc3339("finished_at", self.finished_at)
+                if finished < started:
+                    raise ValueError("finished_at must not precede started_at")
+
     def to_dict(self) -> JsonObject:
         """Return a JSON-safe dict for spool emission."""
         return {k: v for k, v in asdict(self).items() if v is not None}
@@ -188,6 +267,22 @@ class UsageObservation:
         return json.dumps(
             self.to_dict(), sort_keys=True, separators=(",", ":")
         )
+
+
+def _validate_rfc3339(field_name: str, value: str) -> None:
+    """Assert *value* is a timezone-aware RFC3339 timestamp."""
+    _parse_rfc3339(field_name, value)
+
+
+def _parse_rfc3339(field_name: str, value: str) -> datetime.datetime:
+    """Parse and return a timezone-aware datetime from an RFC3339 string."""
+    try:
+        parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{field_name} must be RFC3339") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field_name} must include a timezone")
+    return parsed.astimezone(datetime.UTC)
 
 
 # Fields pinned by contract — a test asserts this exact set.
@@ -205,6 +300,12 @@ OBSERVATION_FIELDS: tuple[str, ...] = (
     "scope_kind",
     "scope_id",
     "session_hash",
+    "outcome",
+    "task_class",
+    "duration_bucket",
+    "integration_version",
+    "started_at",
+    "finished_at",
 )
 
 
@@ -487,6 +588,14 @@ def _dict_to_observation(
             scope_kind=observation_scope_kind(opt_str(data, "scope_kind", "")),
             scope_id=opt_str(data, "scope_id", ""),
             session_hash=opt_str(data, "session_hash"),
+            outcome=opt_str(data, "outcome", "unknown"),  # type: ignore[arg-type]
+            task_class=opt_str(data, "task_class"),
+            duration_bucket=opt_str(data, "duration_bucket"),
+            integration_version=opt_str(
+                data, "integration_version", INTEGRATION_VERSION
+            ),
+            started_at=opt_str(data, "started_at"),
+            finished_at=opt_str(data, "finished_at"),
         )
     except (TypeError, ValueError):
         return None
@@ -504,6 +613,11 @@ def make_observation(
     scope_kind: SCOPE_KINDS,
     scope_id: str,
     session_hash: str | None = None,
+    outcome: OUTCOMES = "unknown",
+    task_class: str | None = None,
+    duration_bucket: str | None = None,
+    started_at: str | None = None,
+    finished_at: str | None = None,
 ) -> UsageObservation:
     """Build a new UsageObservation with generated id and timestamp."""
     return UsageObservation(
@@ -520,12 +634,21 @@ def make_observation(
         scope_kind=scope_kind,
         scope_id=scope_id,
         session_hash=session_hash,
+        outcome=outcome,
+        task_class=task_class,
+        duration_bucket=duration_bucket,
+        started_at=started_at,
+        finished_at=finished_at,
     )
 
 
 __all__ = [
     "DEDUP_WINDOW_SECONDS",
+    "DURATION_BUCKETS",
+    "INTEGRATION_VERSION",
     "OBSERVATION_FIELDS",
+    "OUTCOMES",
+    "OUTCOME_VALUES",
     "SpoolResult",
     "UsageObservation",
     "dismiss_observations",

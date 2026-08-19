@@ -52,12 +52,14 @@ def _submit_one(
         opt_str(obs, "resource_id", ""),
         opt_str(obs, "version_id", ""),
         observation_id=opt_str(obs, "observation_id", ""),
-        task_class=args.task_class,
+        task_class=opt_str(obs, "task_class") or args.task_class,
         acquisition_channel=opt_str(obs, "acquisition_channel", ""),
         consent_policy_digest=CONSENT_POLICY_VERSION,
         harness=opt_str(obs, "harness") or None,
-        outcome=args.outcome,
+        outcome=opt_str(obs, "outcome") or args.outcome,
         observed_at=opt_str(obs, "observed_at") or None,
+        duration_bucket=opt_str(obs, "duration_bucket"),
+        integration_version=opt_str(obs, "integration_version"),
     )
     return opt_str(to_object(result), "id", "")
 

@@ -35,6 +35,8 @@ class FakeUsageReceipts:
         outcome: str | None = None,
         observed_at: str | None = None,
         coarse_counters: dict[str, int] | None = None,
+        duration_bucket: str | None = None,
+        integration_version: str | None = None,
     ) -> JsonObject:
         self.calls.append({
             "resource_id": resource_id,
@@ -47,6 +49,8 @@ class FakeUsageReceipts:
             "outcome": outcome,
             "observed_at": observed_at,
             "coarse_counters": coarse_counters,
+            "duration_bucket": duration_bucket,
+            "integration_version": integration_version,
         })
         return {"id": f"receipt-{len(self.calls)}"}
 

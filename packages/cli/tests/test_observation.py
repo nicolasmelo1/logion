@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""Tests for the observation envelope and consent contract ."""
+"""Tests for the consolidated observation envelope and consent contract.
+
+The ``ObservationEnvelope`` that used to live in ``cli._observation`` was
+merged into ``UsageObservation`` so there is exactly one normative envelope
+for a usage record.  These tests cover the fields inherited from the
+15.11.1 instrumentation profile: outcome, task_class, duration_bucket,
+integration_version, started_at, finished_at.
+"""
 
 from __future__ import annotations
 
@@ -8,177 +15,126 @@ from pathlib import Path
 
 import pytest
 
-from cli._observation import (
-    AUTO,
-    CONSENT_LEVELS,
+from cli.usage.observations import (
+    DURATION_BUCKETS,
     INTEGRATION_VERSION,
-    LOCAL_ONLY,
-    OFF,
-    PROMPT,
-    ConsentConfig,
-    ObservationEnvelope,
-    assert_no_secrets,
-    observations_dir,
-    should_spool,
-    spool_envelope,
+    OUTCOME_VALUES,
+    UsageObservation,
+    make_observation,
+    spool_observation,
 )
 
 
-def _envelope() -> ObservationEnvelope:
-    return ObservationEnvelope(
-        event="resource.use.completed",
-        harness="codex",
-        harness_session_id="sess-opaque-1",
-        installation_id="inst-local-1",
-        resource_version_id="rv-abc",
-        scope_kind="repo-root",
-        scope_id="scope-opaque-1",
-        task_class="software-development",
-        outcome="completed",
-        started_at="2025-01-01T00:00:00Z",
-        finished_at="2025-01-01T00:05:00Z",
-        integration_version=INTEGRATION_VERSION,
-    )
+def _observation(**overrides: object) -> UsageObservation:
+    defaults: dict[str, object] = {
+        "harness": "codex",
+        "event": "resource_invoked",
+        "resource_id": "res-abc",
+        "version_id": "ver-xyz",
+        "resource_type": "agent_skill",
+        "acquisition_channel": "npx_skills",
+        "installation_id": "inst-local-1",
+        "scope_kind": "repo-root",
+        "scope_id": "scope-opaque-1",
+        "session_hash": "sess-opaque-1",
+    }
+    defaults.update(overrides)
+    return make_observation(**defaults)  # type: ignore[arg-type]
 
 
-class TestObservationEnvelope:
-    def test_construction(self) -> None:
-        e = _envelope()
-        assert e.event == "resource.use.completed"
-        assert e.harness == "codex"
-        assert e.outcome == "completed"
-        assert e.integration_version == INTEGRATION_VERSION
+class TestConsolidatedEnvelope:
+    def test_default_outcome_is_unknown(self) -> None:
+        obs = _observation()
+        assert obs.outcome == "unknown"
 
-    def test_to_dict_omits_none(self) -> None:
-        e = ObservationEnvelope(
-            event="resource.use.completed",
-            harness="hermes",
-            harness_session_id="s",
-            installation_id="i",
-            resource_version_id=None,
-            scope_kind="user",
-            scope_id="sc",
-            task_class=None,
-            outcome="unknown",
-            started_at="2025-01-01T00:00:00Z",
-            finished_at="2025-01-01T00:00:00Z",
-            integration_version=INTEGRATION_VERSION,
-        )
-        d = e.to_dict()
-        assert "resource_version_id" not in d
-        assert "task_class" not in d
-        assert d["outcome"] == "unknown"
+    def test_default_integration_version(self) -> None:
+        obs = _observation()
+        assert obs.integration_version == INTEGRATION_VERSION
 
-    def test_to_jsonl_is_single_line(self) -> None:
-        e = _envelope()
-        line = e.to_jsonl()
-        assert "\n" not in line
-        parsed = json.loads(line)
-        assert parsed["event"] == "resource.use.completed"
+    def test_outcome_accepted(self) -> None:
+        for outcome in OUTCOME_VALUES:
+            obs = _observation(outcome=outcome)  # type: ignore[arg-type]
+            assert obs.outcome == outcome
 
-    def test_is_frozen(self) -> None:
-        e = _envelope()
-        with pytest.raises(AttributeError):
-            e.event = "other"  # type: ignore[misc]
+    def test_invalid_outcome_rejected(self) -> None:
+        with pytest.raises(
+            ValueError, match="unsupported observation outcome"
+        ):
+            _observation(outcome="bogus")  # type: ignore[arg-type]
 
+    def test_task_class_accepted(self) -> None:
+        obs = _observation(task_class="software-development")
+        assert obs.task_class == "software-development"
 
-class TestConsent:
-    @pytest.mark.parametrize(
-        ("level", "expected"),
-        [
-            (OFF, False),
-            (LOCAL_ONLY, True),
-            (PROMPT, True),
-            (AUTO, True),
-        ],
-    )
-    def test_should_spool(self, level: str, expected: bool) -> None:
-        assert should_spool(level) is expected
-
-    def test_consent_levels_set(self) -> None:
-        assert frozenset({OFF, LOCAL_ONLY, PROMPT, AUTO}) == CONSENT_LEVELS
-
-    def test_consent_config_rejects_unknown(self) -> None:
-        with pytest.raises(ValueError, match="unknown consent level"):
-            ConsentConfig(level="bogus")
-
-    def test_consent_config_defaults_to_off(self) -> None:
-        assert ConsentConfig().level == OFF
-
-
-class TestNoSecretsInvariant:
-    def test_clean_envelope_passes(self) -> None:
-        assert_no_secrets(_envelope().to_dict())
-
-    @pytest.mark.parametrize(
-        "bad_key",
-        [
-            "prompt",
-            "source_code",
-            "tool_arg",
-            "secret",
-            "token",
-            "password",
-            "model_context",
-            "terminal_output",
-            "raw_task_data",
-        ],
-    )
-    def test_forbidden_keys_rejected(self, bad_key: str) -> None:
-        payload = _envelope().to_dict()
-        payload[bad_key] = "leak"
-        with pytest.raises(ValueError, match="forbidden"):
-            assert_no_secrets(payload)
-
-    def test_unknown_field_rejected(self) -> None:
-        payload = _envelope().to_dict()
-        payload["random_extra"] = "x"
-        with pytest.raises(ValueError, match="not permitted"):
-            assert_no_secrets(payload)
-
-    def test_invalid_structured_values_are_rejected(self) -> None:
-        payload = _envelope().to_dict()
-        payload["task_class"] = "raw prompt with spaces"
+    def test_task_class_must_be_slug(self) -> None:
         with pytest.raises(ValueError, match="lowercase slug"):
-            ObservationEnvelope(**payload)
+            _observation(task_class="not a slug")
 
-        payload = _envelope().to_dict()
-        payload["scope_id"] = "/Users/nico/private/repo"
-        with pytest.raises(ValueError, match="opaque identifier"):
-            ObservationEnvelope(**payload)
+    def test_duration_bucket_accepted(self) -> None:
+        for bucket in DURATION_BUCKETS:
+            obs = _observation(duration_bucket=bucket)
+            assert obs.duration_bucket == bucket
 
-        payload = _envelope().to_dict()
-        payload["finished_at"] = "2024-01-01T09:59:00Z"
-        with pytest.raises(ValueError, match="must not precede"):
-            ObservationEnvelope(**payload)
+    def test_invalid_duration_bucket_rejected(self) -> None:
+        with pytest.raises(ValueError, match="duration_bucket"):
+            _observation(duration_bucket="way-too-long")
 
-
-class TestSpool:
-    def test_off_does_not_spool(self, tmp_path: Path) -> None:
-        path = spool_envelope(_envelope(), consent=OFF, logion_home=tmp_path)
-        assert path is None
-        assert not (tmp_path / "observations").exists()
-
-    def test_local_only_spools_jsonl(self, tmp_path: Path) -> None:
-        path = spool_envelope(
-            _envelope(), consent=LOCAL_ONLY, logion_home=tmp_path
+    def test_started_at_and_finished_at_accepted(self) -> None:
+        obs = _observation(
+            started_at="2025-01-01T00:00:00Z",
+            finished_at="2025-01-01T00:05:00Z",
         )
-        assert path is not None
-        assert path == tmp_path / "observations" / "observations.jsonl"
-        line = path.read_text().strip()
-        parsed = json.loads(line)
-        assert parsed["event"] == "resource.use.completed"
-        assert "prompt" not in parsed
-        assert path.stat().st_mode & 0o777 == 0o600
-        assert path.parent.stat().st_mode & 0o777 == 0o700
+        assert obs.started_at == "2025-01-01T00:00:00Z"
+        assert obs.finished_at == "2025-01-01T00:05:00Z"
 
-    def test_unknown_consent_is_rejected(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="unknown consent level"):
-            spool_envelope(
-                _envelope(), consent="invalid", logion_home=tmp_path
+    def test_finished_before_started_rejected(self) -> None:
+        with pytest.raises(ValueError, match="must not precede"):
+            _observation(
+                started_at="2025-01-01T00:05:00Z",
+                finished_at="2025-01-01T00:00:00Z",
             )
 
-    def test_observations_dir_respects_logion_home(
-        self, tmp_path: Path
-    ) -> None:
-        assert observations_dir(tmp_path) == tmp_path / "observations"
+    def test_invalid_timestamp_rejected(self) -> None:
+        with pytest.raises(ValueError, match="RFC3339"):
+            _observation(started_at="not-a-date")
+
+    def test_to_dict_omits_none_optionals(self) -> None:
+        obs = _observation()
+        d = obs.to_dict()
+        assert "task_class" not in d
+        assert "duration_bucket" not in d
+        assert "started_at" not in d
+        assert "finished_at" not in d
+        # outcome and integration_version always present (non-None defaults)
+        assert d["outcome"] == "unknown"
+        assert d["integration_version"] == INTEGRATION_VERSION
+
+    def test_to_jsonl_is_single_line(self) -> None:
+        obs = _observation()
+        line = obs.to_jsonl()
+        assert "\n" not in line
+        parsed = json.loads(line)
+        assert parsed["integration_version"] == INTEGRATION_VERSION
+
+    def test_is_frozen(self) -> None:
+        obs = _observation()
+        with pytest.raises(AttributeError):
+            obs.outcome = "completed"  # type: ignore[misc]
+
+
+class TestSpoolWithConsolidatedFields:
+    def test_local_only_spools_with_outcome(self, tmp_path: Path) -> None:
+        """The spool record carries the new fields."""
+        obs = _observation(
+            outcome="completed",  # type: ignore[arg-type]
+            task_class="software-development",
+            duration_bucket="minutes",
+            started_at="2025-01-01T00:00:00Z",
+            finished_at="2025-01-01T00:05:00Z",
+        )
+        result = spool_observation(obs, logion_home=tmp_path)
+        assert result.deduplicated is False
+        assert result.record["outcome"] == "completed"
+        assert result.record["task_class"] == "software-development"
+        assert result.record["duration_bucket"] == "minutes"
+        assert result.record["integration_version"] == INTEGRATION_VERSION
