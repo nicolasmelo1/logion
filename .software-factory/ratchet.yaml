@@ -1,0 +1,173 @@
+# Frozen violations, one key per line, per rule.
+# These are debt with a due date, not permission. Adding a key by hand
+# to silence a new violation is the one move this file exists to make
+# visible in review.
+version: 1
+rules:
+  L1.COMPLEXITY_CEILING:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - packages/agent-companion/evals/harness/graders.py:grade_context_efficiency
+    - packages/agent-companion/evals/harness/graders.py:grade_course_selection
+    - packages/agent-companion/evals/harness/graders.py:grade_local_recall
+    - packages/agent-companion/evals/harness/graders.py:grade_safety
+    - packages/agent-companion/evals/harness/providers/llama_cpp.py:load_llama_cpp_provider
+    - packages/agent-companion/evals/harness/schema.py:load_catalog
+    - packages/agent-companion/evals/harness/schema.py:load_scenarios_from_file
+    - packages/agent-companion/evals/optimizers/dspy/optimize_policy.py:run_optimization
+    - packages/agent-companion/evals/optimizers/dspy/optimize_references.py:_load_scenarios
+    - packages/agent-companion/evals/optimizers/dspy/optimize_references.py:run_optimization
+    - packages/agent-companion/evals/optimizers/dspy/render_candidate.py:_verdict
+    - packages/agent-companion/evals/optimizers/dspy/render_candidate.py:render_candidate
+    - packages/agent-companion/scripts/verify_bundle.py:_check_manifest_references
+    - packages/agent-companion/scripts/verify_bundle.py:_check_manifest_top_level
+    - packages/agent-companion/scripts/verify_bundle.py:verify_directory
+    - packages/agent-companion/scripts/verify_bundle.py:verify_tarball
+    - packages/agent-companion/tests/test_dspy_optimizers.py:test_render_candidate_produces_review_packet
+    - packages/agent-companion/tests/test_dspy_optimizers.py:test_run_optimization_end_to_end_with_dummy_lm
+    - packages/agent-companion/tests/test_eval_harness.py:test_build_payload_uses_openai_shape
+    - packages/agent-companion/tests/test_eval_harness.py:test_creator_scenarios_only_use_known_tools
+    - packages/agent-companion/tests/test_eval_harness.py:test_run_executes_openai_tool_loop
+    - packages/agent-companion/tests/test_references_cli_parity.py:test_references_cli_parity_each_file
+    - packages/agent-companion/tests/test_release_bundle.py:test_release_bundle_deterministic
+    - packages/agent-companion/tests/test_release_bundle.py:test_release_bundle_internal_manifest_validates
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_paged_get
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_bounty_exists
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_bounty_submission_exists
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_harness_inventory_distinct_scopes
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_installed_artifact_digest_matches
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_native_install_reconciled
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_resource_backfill_complete
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_resource_projection_exists
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/_queries.py:_q_resource_search_returns_kinds
+    - packages/agent-proving-ground/agent_proving_ground/api_adapters/mock.py:_q_resource_search_returns_kinds
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:_run_local_hook
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:_run_phase
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:run
+    - packages/agent-proving-ground/tests/integration/test_resource_projection_backfill.py:test_resource_projection_backfill_is_deterministic
+    - packages/cli/cli/_course_capabilities.py:_normalize_software
+    - packages/cli/cli/_harness/opencode.py:_strip_jsonc_comments
+    - packages/cli/cli/_local_state.py:validate_manifest
+    - packages/cli/cli/commands/courses/_capability_render.py:_append_runtime_fields
+    - packages/cli/cli/commands/courses/_uploads_push.py:_prepare_push
+    - packages/cli/cli/commands/identity/_companion_source.py:locate_bundle_source
+    - packages/cli/cli/commands/identity/_provisioning.py:provision_identity
+    - packages/cli/cli/commands/integrations/handlers.py:handle_integrations_enable
+    - packages/cli/cli/commands/listings/handlers.py:_print_human
+    - packages/cli/cli/commands/resources/_acquire_handler.py:handle_resources_acquire
+    - packages/cli/cli/commands/resources/_acquire_plan.py:build_plan
+    - packages/cli/cli/commands/resources/_catalog_reconciliation.py:_resource_version_matches
+    - packages/cli/cli/commands/resources/_catalog_reconciliation.py:catalog_matches
+    - packages/cli/cli/commands/resources/_channels/_skills_lock.py:parse_skills_lock
+    - packages/cli/cli/commands/resources/_channels/hf.py:acquire
+    - packages/cli/cli/commands/resources/_channels/logion_bundle.py:acquire
+    - packages/cli/cli/commands/resources/_channels/npx_plugins.py:_read_state
+    - packages/cli/cli/commands/resources/_inventory_handler.py:_all_scan_targets
+    - packages/cli/cli/commands/resources/_inventory_handler.py:handle_resources_inventory
+    - packages/cli/cli/commands/resources/_reconcile_handler.py:handle_resources_reconcile
+    - packages/cli/cli/commands/resources/_reconcile_receipt.py:_save_reconciled_receipt
+    - packages/cli/cli/commands/resources/_reconciliation.py:discover_native_state
+    - packages/cli/cli/commands/resources/_reconciliation.py:reconciliation_status
+    - packages/cli/cli/commands/skills/_inspect_handler.py:handle_skills_inspect
+    - packages/cli/cli/commands/skills/handlers.py:handle_skills_install
+    - packages/cli/cli/commands/skills/prune.py:handle_skills_prune
+    - packages/cli/tests/test_cli_identity_github.py:test_github_connect_help
+    - packages/cli/tests/test_cli_identity_github.py:test_github_subcommands_appear_in_help
+    - packages/cli/tests/test_docs.py:test_docs_marketplace_loop_article_exists
+    - packages/cli/tests/test_handler_manifest.py:_imports_sdk
+    - packages/client/src/logion/_http.py:request
+    - packages/indexer/logion_indexer/adapters/clawhub.py:_parse_entry
+    - packages/indexer/logion_indexer/adapters/skills_lock.py:discover
+    - packages/indexer/logion_indexer/adapters/skills_sh.py:discover
+    - packages/indexer/logion_indexer/adapters/skillsmp.py:discover
+    - packages/indexer/logion_indexer/cli.py:cmd_run
+    - packages/indexer/logion_indexer/crawl.py:_parse_robots_txt
+    - packages/indexer/logion_indexer/transport.py:get
+    - packages/indexer/tests/test_adapters_skills_sh.py:test_reads_skill_sitemaps_and_emits_each_repo_once
+    - packages/landing/tests/test_landing_assets.py:test_all_terminal_animations_are_viewport_triggered
+    - packages/landing/tests/test_landing_assets.py:test_terminal_roles_use_distinct_accent_and_muted_colors
+    - packages/landing/tests/test_landing_routes.py:test_design_txt_contains_canonical_brand_anchors
+    - packages/landing/tests/test_landing_routes.py:test_llms_txt_groups_public_source_and_agent_surfaces
+    - packages/landing/tests/test_landing_routes.py:test_setup_complete_route_renders_setup_mode
+    - packages/scanners/logion_scanners/checks/env_harvesting.py:run
+    - packages/skillmap/logion_skillmap/spec.py:validate_skill_frontmatter
+    - packages/social-management/social_management/cli.py:_handle_discord
+    - scripts/check_cli_http.py:_collect_httpx_handles
+    - scripts/check_cli_http.py:main
+    - scripts/check_protocol_specs.py:main
+    - scripts/check_pytest_skip_reasons.py:scan
+    - scripts/release_manifest.py:cmd_check
+    - scripts/release_orchestrator.py:_format_changelog_entry
+    - scripts/release_smoke.py:_parse_findings
+    - scripts/release_smoke.py:parse_smoke_report
+    - tests/test_release_orchestrator.py:test_collect_merged_prs_parses_squash_commits
+  L1.NO_UNTYPED_ESCAPE_HATCH:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - packages/cli/cli/_utils.py:063e3d97fbe5
+  L4.PLAN_DECLARES_EXIT_CONDITION:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - no-exit:plans/agent-proving-ground-phase-gate.md
+    - no-exit:plans/asm-logion-collaboration-and-protocol-convergence-gate.md
+    - no-exit:plans/cli-api-compatibility-matrix.md
+    - no-exit:plans/consumption-adoption-ladder.md
+    - no-exit:plans/course-capability-manifest-policy.md
+    - no-exit:plans/cycle-0-contract-e2e-hardening.md
+    - no-exit:plans/indexer-run-progress-observability.md
+    - no-exit:plans/phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md
+    - no-exit:plans/phase-15.10-native-acquisition-artifact-delivery-and-inventory.md
+    - no-exit:plans/phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md
+    - no-exit:plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md
+    - no-exit:plans/phase-15.11.1-publisher-integrated-consented-observation.md
+    - no-exit:plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md
+    - no-exit:plans/phase-15.13-portable-scan-evidence.md
+    - no-exit:plans/phase-15.14-feedback-driven-platform-bounties.md
+    - no-exit:plans/phase-15.14.1-local-multi-agent-first-node-foundation.md
+    - no-exit:plans/phase-15.15-isolated-first-runner-node.md
+    - no-exit:plans/phase-15.16-first-party-resource-dogfood-loop.md
+    - no-exit:plans/phase-15.17-aktp-evidence-and-improvement-feed-v0.md
+    - no-exit:plans/phase-16-distributed-evaluation-and-independent-verification.md
+    - no-exit:plans/phase-16.1-eval-contract-and-reference-runner.md
+    - no-exit:plans/phase-16.10-external-runner-onboarding-and-conformance.md
+    - no-exit:plans/phase-16.11-mcp-registry-adapter-and-safe-probes.md
+    - no-exit:plans/phase-16.12-hugging-face-metadata-and-constrained-model-evaluation.md
+    - no-exit:plans/phase-16.2-typed-evaluators-and-skill-reference-evaluator.md
+    - no-exit:plans/phase-16.3-runner-registry-and-network-jobs.md
+    - no-exit:plans/phase-16.4-deterministic-replication-and-agreement.md
+    - no-exit:plans/phase-16.5-eval-attestations-and-cross-node-authority.md
+    - no-exit:plans/phase-16.6-benchmark-backed-bounties.md
+    - no-exit:plans/phase-16.7-evidence-search-and-issuer-aware-ranking.md
+    - no-exit:plans/phase-16.8-portable-field-evidence-and-aggregation.md
+    - no-exit:plans/phase-16.9-benchmark-field-reconciliation.md
+    - no-exit:plans/phase-17-open-ecosystem-and-production-hardening.md
+    - no-exit:plans/phase-17.1-ai-catalog-ard-aktp-conformance-and-upstream-proposals.md
+    - no-exit:plans/phase-17.2-independent-node-federation.md
+    - no-exit:plans/phase-17.3-resource-claims-and-commercial-rails.md
+    - no-exit:plans/phase-17.4-private-and-enterprise-nodes.md
+    - no-exit:plans/phase-17.5-trust-boundary-invariant-tests.md
+    - no-exit:plans/phase-17.6-public-narrative-and-landing-truth-pass.md
+    - no-exit:plans/phase-18-network-liquidity-and-independent-operation.md
+    - no-exit:plans/roadmap-block-1-core-marketplace-flows-and-capability-foundations.md
+    - no-exit:plans/roadmap-block-2-review-visibility-and-deployable-backend.md
+    - no-exit:plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md
+    - unordered:plans/consumption-adoption-ladder.md
+    - unordered:plans/course-capability-manifest-policy.md
+    - unordered:plans/roadmap-block-1-core-marketplace-flows-and-capability-foundations.md
+    - unordered:plans/roadmap-block-2-review-visibility-and-deployable-backend.md
+    - unordered:plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md
+  L6.ONE_LOCK_AT_A_TIME:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - packages/cli/tests/test_local_state.py:68a86fc3e72b
+    - tests/test_check_deps_lock.py:5d5509243ec4
+  L6.PERFORMANCE_REGRESSION_IS_GUARDED:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - python
+    - typescript

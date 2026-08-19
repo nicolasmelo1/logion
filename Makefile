@@ -7,8 +7,8 @@ ROLE ?= seller
 LOGION_DEVRIG_API_BASE_URL ?=
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
-	ci-checks check-generated-lock check-root-files check-deps-lock check-doc-links check-roadmap-mirror check-protocol-specs \
-	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module check-noqa-reasons \
+	ci-checks check-generated-lock check-deps-lock check-roadmap-mirror check-protocol-specs \
+	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module 
 	check-installer-security \
 	update-generated-lock update-deps-lock update-json-module \
 	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-dead-code agent-proving-ground-test agent-proving-ground-verify \
@@ -84,14 +84,10 @@ public-audit:
 check-generated-lock:
 	uv run python scripts/check_generated_lock.py
 
-check-root-files:
-	uv run python scripts/check_root_files.py
 
 check-deps-lock:
 	uv run python scripts/check_deps_lock.py
 
-check-doc-links:
-	uv run python scripts/check_doc_links.py
 
 check-roadmap-mirror:
 	uv run python scripts/check_roadmap_mirror.py
@@ -114,8 +110,6 @@ check-cli-http:
 check-json-module:
 	uv run python scripts/check_json_module_sync.py
 
-check-noqa-reasons:
-	uv run python scripts/check_noqa_reasons.py
 
 check-installer-security:
 	python3 scripts/check_installer_security.py
@@ -123,10 +117,18 @@ check-installer-security:
 # Umbrella target: every static guardrail. Fast (<1s total). Runs in
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
-ci-checks: public-audit check-generated-lock check-root-files check-deps-lock check-roadmap-mirror check-protocol-specs \
-	check-doc-links check-logion-sh-urls check-skip-reasons \
+# check-root-files, and were removed: the
+# software-factory rules L4.ROOT_FILES_ARE_DECLARED, L4.DOC_LINKS_RESOLVE and
+# L1.NO_BLANKET_SUPPRESSION cover them, each proven equivalent on this
+# repository and each with a mutation fixture the scripts never had.
+ci-checks: public-audit check-generated-lock check-deps-lock check-roadmap-mirror check-protocol-specs \
+	check-logion-sh-urls check-skip-reasons \
 	check-forbidden-imports check-cli-http check-installer-security check-json-module \
-	check-noqa-reasons
+	factory-check
+
+factory-check:
+	sf verify
+	sf check
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update

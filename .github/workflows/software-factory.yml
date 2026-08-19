@@ -1,0 +1,51 @@
+name: software factory
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install sf
+        run: cargo install --git https://github.com/nicolasmelo1/software-factory --locked
+      # verify first: a check that stopped firing makes the run below
+      # meaningless, and it is the cheaper failure to discover.
+      - name: Prove the checks still fire
+        run: sf verify
+      - name: Check the repository
+        run: sf check --changed origin/${{ github.base_ref || 'main' }}
+
+  hazards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Committed secrets
+        uses: gitleaks/gitleaks-action@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pip-audit bandit vulture
+      - name: Dependency vulnerabilities
+        run: pip-audit
+      - name: Insecure patterns
+        run: bandit -r . -c pyproject.toml
+      - name: Dead code
+        run: vulture .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependency vulnerabilities
+        run: npm audit --audit-level=high
+      - name: Insecure patterns
+        run: npx --yes semgrep --config auto --error
+      - name: Dead code
+        run: npx --yes knip
