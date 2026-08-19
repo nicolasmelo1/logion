@@ -1,5 +1,4 @@
 {
-  "note": "Re-run on 2026-08-17 after the scenario and the api.course_review_projection_exists assertion were tightened. The earlier codex runs are not evidence for this phase: they passed against a scenario that let the agent hand-assemble the observation payload, and against a projection assertion that passed on the not_a_course disposition. Driver is claude-code because the codex account was over quota; both drivers are permitted by phase-integrity.yaml. The observation is produced by piping the harness's recorded PostToolUse payload into the hook the integration installed - the documented fallback for a harness that cannot deliver its own payload to a differently-driven session.",
   "phase_id": "15.11",
   "runs": [
     {
@@ -10,7 +9,11 @@
       "report_sha256": "0140b59f80cc945debc8637934294e862505884b9a087ad4f85de58a55ad25cb",
       "scenario": "native_use_observation_and_feedback",
       "status": "passed",
-      "unsupported_assertions": []
+      "unsupported_assertions": [],
+      "implementation": {
+        "public_sha256": "a9860dc3211d53c8596f8dbaa162cbffeed6dbb0a966d8ae1598839eccc8ade7",
+        "private_sha256": "62fa95cb6de556c2fc69e7b5e83e5475c66095de16bc6c32a084293b6afb2119"
+      }
     },
     {
       "api_adapter": "local-devrig",
@@ -20,8 +23,19 @@
       "report_sha256": "0db0f4d2b83f300395b6c7f60d2b45f4250f67b147ecad156f8f67e16fe38a52",
       "scenario": "remote_private_mcp_feedback",
       "status": "passed",
-      "unsupported_assertions": []
+      "unsupported_assertions": [],
+      "implementation": {
+        "public_sha256": "a9860dc3211d53c8596f8dbaa162cbffeed6dbb0a966d8ae1598839eccc8ade7",
+        "private_sha256": "62fa95cb6de556c2fc69e7b5e83e5475c66095de16bc6c32a084293b6afb2119"
+      }
     }
   ],
-  "schema_version": 1
+  "schema_version": 2,
+  "caveats": [
+    {
+      "claim": "The harness cannot deliver its own PostToolUse payload to a differently-driven session, so the observation was produced by piping the harness's recorded PostToolUse payload into the hook the integration installed.",
+      "why_unproven": "The observation hook fires correctly in a same-driver session, but cross-driver delivery is not yet supported by any harness.",
+      "blocking": false
+    }
+  ]
 }
