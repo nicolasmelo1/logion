@@ -99,3 +99,93 @@ class UsagePendingEmptyAssertion(Assertion):
                 ),
             },
         )
+
+
+class ObservationFromLiveHookAssertion(Assertion):
+    """Prove the recorded observation came from the harness, not a replay.
+
+    Every other observation assertion is satisfied by piping a recorded
+    payload into the hook command by hand, which proves the CLI parses a
+    payload and nothing about whether a harness ever delivered one. The
+    shim on the agent's PATH keeps the stdin of the invocation that
+    actually recorded an observation; a payload the harness produced names
+    a transcript that exists on this machine, while a checked-in fixture
+    carries placeholder paths that resolve nowhere.
+    """
+
+    type = "files.observation_from_live_hook"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        raw_dir = params.get("invocations_dir")
+        if not raw_dir:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="missing invocations_dir parameter",
+                evidence=params,
+            )
+        try:
+            records_dir = _resolve_pending_artifact(
+                ctx.artifacts_dir, str(raw_dir)
+            )
+        except ValueError as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=str(exc),
+                evidence={"invocations_dir": str(raw_dir)},
+            )
+        attempts = sorted(records_dir.glob("*.stdin.json"))
+        recorded = records_dir / "recorded.stdin.json"
+        if not recorded.is_file():
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=(
+                    "no hook invocation recorded an observation"
+                    if attempts
+                    else "the harness never ran the installed hook"
+                ),
+                evidence={
+                    "invocations_dir": str(records_dir),
+                    "invocations": len(attempts),
+                },
+            )
+        reason = _live_hook_verdict(recorded)
+        return AssertionOutcome(
+            type=self.type,
+            status="failed" if reason else "passed",
+            message=(
+                f"recorded observation is not from a live hook: {reason}"
+                if reason
+                else "the harness delivered the payload that was recorded"
+            ),
+            evidence={
+                "payload": str(recorded),
+                "invocations": len(attempts),
+            },
+        )
+
+
+def _live_hook_verdict(path: Path) -> str | None:
+    """``None`` if *path* holds a live harness payload, else the reason."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return f"unreadable payload: {exc}"
+    if not isinstance(payload, dict):
+        return "payload is not an object"
+    raw = path.read_text(encoding="utf-8")
+    if "PLACEHOLDER" in raw:
+        return "carries fixture placeholders"
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return "no session_id"
+    transcript = payload.get("transcript_path")
+    if not isinstance(transcript, str) or not transcript:
+        return "no transcript_path"
+    if not Path(transcript).exists():
+        return f"transcript_path does not exist: {transcript}"
+    return None

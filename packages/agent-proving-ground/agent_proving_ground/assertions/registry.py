@@ -69,6 +69,7 @@ from agent_proving_ground.assertions.db import (
 )
 from agent_proving_ground.assertions.files import (
     FileExistsAssertion,
+    ObservationFromLiveHookAssertion,
     UsagePendingEmptyAssertion,
 )
 from agent_proving_ground.assertions.github import (
@@ -112,6 +113,7 @@ class AssertionRegistry:
             TimelineNoUnredactedSecretAssertion,
             FileExistsAssertion,
             UsagePendingEmptyAssertion,
+            ObservationFromLiveHookAssertion,
             LogsNo500sAssertion,
             LogsContainsRequestAssertion,
             DbRowExistsAssertion,

@@ -26,10 +26,11 @@ phases:
   - id: setup
     actor: user_a
     local_hook: packages/agent-proving-ground/scripts/setup_native_feedback_fixture.py
-    local_hook_args: ["${AGENT_USER_A_WORKSPACE}"]
+    local_hook_args:
+      - "${AGENT_USER_A_WORKSPACE}"
+      - "${AGENT_USER_A_LOGION_HOME}"
     local_hook_capture_json:
       FIXTURE_ROOT: fixture_root
-      ISOLATED_HOME: isolated_home
       LOGION_HOME_NATIVE: logion_home
       EVIDENCE_DIR: evidence_dir
     goal: ""
@@ -41,48 +42,79 @@ phases:
       VERSION_ID: indexed_version_id
       ACQUISITION_CHANNEL: indexed_channel
     goal: ""
-  - id: native_install_and_use
+  - id: native_install_and_enable
     actor: user_a
     goal: |
-      Work as a customer in ${FIXTURE_ROOT}. Set HOME=${ISOLATED_HOME} and
-      LOGION_HOME=${LOGION_HOME_NATIVE}. Use the public CLI via
-      uv run --project ${LOGION_PUBLIC_REPO_PATH} logion and base URL
-      http://localhost:8000. Inspect resource ${RESOURCE_ID} and install its
-      pinned npx_skills distribution with the exact npx skills command shown
-      by Logion. Never use resources acquire. Reconcile from skills for Codex,
-      repo-root scope, and save the untouched JSON to
-      ${EVIDENCE_DIR}/reconcile-xpto.json.
-      The reconcile command itself must create the inventory receipt. Never
-      create, edit, or reconstruct an inventory receipt manually.
+      Work as a customer in ${FIXTURE_ROOT}, which is the repository this
+      session is already rooted in. Call the CLI as plain `logion`: the one
+      on your PATH is the artifact the rig installed, which is what a user
+      has. Never invoke it out of the source checkout. The base URL is
+      http://localhost:8000. LOGION_HOME is already set for you; never
+      override it, and never set HOME.
 
-      For every integration and usage command, set HOME=${ISOLATED_HOME} and
-      LOGION_HOME=${LOGION_HOME_NATIVE}. Run
-      integrations enable codex --dry-run --json first, save it untouched to
-      ${EVIDENCE_DIR}/integration-plan.json, then enable the Codex integration
-      in prompt mode and verify its status from that same home. Save the
-      resulting hooks config to ${EVIDENCE_DIR}/hooks-xpto.json.
+      Run logion resources distributions ${RESOURCE_ID} --json and save it
+      untouched to ${EVIDENCE_DIR}/distributions.json. Find the entry whose
+      channel is npx_skills and read its native.argv: that array is the
+      install command, already resolved for you. Run exactly that argv, in
+      that order. Bare `npx skills` is an interactive picker and installs
+      nothing; checking that the package exists installs nothing either.
 
-      Then use the resource: read the installed SKILL.md and apply it to review
-      ${FIXTURE_ROOT}/buggy.py. The observation must come from the hook the
-      integration installed, fed the harness's own PostToolUse payload. Do not
-      read installation_id out of the receipt and do not hand-assemble an
-      observation payload: an agent asserting that it used something is not an
-      observation. If your harness cannot deliver the payload, replay the exact
-      recorded payload for this harness from
-      ${LOGION_PUBLIC_REPO_PATH}/packages/cli/tests/fixtures/hook_payloads/,
-      rewriting only its placeholder paths, and pipe that to
-      usage observe --harness codex --stdin.
+      Then confirm the install landed before going on: the skill directory
+      native.argv created must exist on disk under ${FIXTURE_ROOT} with a
+      SKILL.md in it. If it does not, stop and report RESULT: failed — a
+      reconcile that matches nothing fails this phase anyway.
 
-      Save the observe response untouched to ${EVIDENCE_DIR}/observe-xpto.json
-      and require disposition recorded; an empty, ignored, or failed response is
-      failure, even though the command exits zero. Save usage pending --json to
-      ${EVIDENCE_DIR}/pending-xpto.json and confirm it carries an
-      observation_group_id. Do not put task data or paths in either payload.
+      Never use resources acquire. Reconcile from skills for
+      ${AGENT_USER_A_HARNESS}, repo-root scope, and save the untouched JSON
+      to ${EVIDENCE_DIR}/reconcile-xpto.json. The reconcile command itself
+      must create the inventory receipt. Never create, edit, or reconstruct
+      an inventory receipt manually.
+
+      Run integrations enable ${AGENT_USER_A_HARNESS} --scope repo-current
+      --dry-run --json first, save it untouched to
+      ${EVIDENCE_DIR}/integration-plan.json, then enable it for real in
+      prompt mode at that same scope and verify its status. Save the
+      resulting hooks config to ${EVIDENCE_DIR}/hooks-xpto.json. The scope
+      is repo-current because that is the configuration a session rooted
+      here reads. Never use --scope user: that writes outside this run.
+
+      Stop there. Do not use the resource yet, and do not run usage observe
+      — not with a real payload, not with a test one. Your harness read its
+      hook configuration when this session started, so the hook you just
+      installed cannot fire for you. It fires in the next session.
     assertions:
+      # Not files.exists: a reconcile report can exist and match nothing.
+      # An agent that "verified availability" instead of installing gets
+      # caught here rather than three phases later.
+      - type: api.native_install_reconciled
+        params:
+          artifact: "${EVIDENCE_DIR}/reconcile-xpto.json"
+          scope_root: "${FIXTURE_ROOT}"
+          expected_channel: npx_skills
+  - id: native_use
+    actor: user_a
+    goal: |
+      This is a new session, so the hook installed in the previous one is
+      now live. Work in ${FIXTURE_ROOT} and use the resource: read the
+      installed SKILL.md and apply it to review ${FIXTURE_ROOT}/buggy.py.
+
+      Do not run usage observe yourself and do not hand-assemble or replay a
+      payload. The installed hook fires on your own tool calls and delivers
+      the harness's payload; an agent asserting that it used something is
+      not an observation. If no observation appears, report that as the
+      failure instead of manufacturing one.
+
+      Then save logion usage pending --json to
+      ${EVIDENCE_DIR}/pending-xpto.json and confirm it carries an
+      observation_group_id. Do not put task data or paths in that payload.
+    assertions:
+      - type: files.observation_from_live_hook
+        params:
+          invocations_dir: "${AGENT_USER_A_HOOK_INVOCATIONS}"
       - type: files.native_use_observed
         params:
           pending_artifact: "${EVIDENCE_DIR}/pending-xpto.json"
-          observe_artifact: "${EVIDENCE_DIR}/observe-xpto.json"
+          observe_artifact: "${AGENT_USER_A_HOOK_INVOCATIONS}/recorded.stdout.json"
           inventory_dir: "${LOGION_HOME_NATIVE}/inventory"
           resource_id: "${RESOURCE_ID}"
       - type: files.feedback_pending
@@ -128,9 +160,10 @@ phases:
   - id: setup_isolated_user
     actor: user_b
     local_hook: packages/agent-proving-ground/scripts/setup_isolated_usage_fixture.py
-    local_hook_args: ["${AGENT_USER_B_WORKSPACE}"]
+    local_hook_args:
+      - "${AGENT_USER_B_WORKSPACE}"
+      - "${AGENT_USER_B_LOGION_HOME}"
     local_hook_capture_json:
-      ACME_HOME: isolated_home
       ACME_LOGION_HOME: logion_home
       ACME_EVIDENCE_DIR: evidence_dir
       ACME_ROOT: repository
@@ -138,10 +171,10 @@ phases:
   - id: acme_isolation
     actor: user_b
     goal: |
-      Work in ${ACME_ROOT}. With HOME=${ACME_HOME} and
-      LOGION_HOME=${ACME_LOGION_HOME}, save
-      `uv run --project ${LOGION_PUBLIC_REPO_PATH} logion usage pending
-      --json` to ${ACME_EVIDENCE_DIR}/pending-acme.json. It must be empty.
+      Work in ${ACME_ROOT}. LOGION_HOME is already set for you and points
+      at ${ACME_LOGION_HOME}; never override it and never set HOME. Save
+      `logion usage pending --json` to
+      ${ACME_EVIDENCE_DIR}/pending-acme.json. It must be empty.
       Do not inspect another agent's files and do not fabricate an observation.
     assertions:
       - type: files.usage_pending_empty
