@@ -46,3 +46,6 @@ scripts
 tests
 future-roadmap
 artifacts
+
+# The software-factory policy, ratchet, locks and mutation fixtures.
+.software-factory

@@ -1,0 +1,15 @@
+# Generated mutation fixture for L5.NO_INERT_RULE. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L5.NO_INERT_RULE
+  languages: [python, typescript, go, rust]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L2.GENERATED_FILES_ARE_LOCKED:
+    enabled: true
+    options:
+      scope: []
+  L5.NO_INERT_RULE:
+    enabled: true

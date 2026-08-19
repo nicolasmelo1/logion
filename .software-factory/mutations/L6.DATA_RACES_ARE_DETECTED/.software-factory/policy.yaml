@@ -1,0 +1,11 @@
+# Generated mutation fixture for L6.DATA_RACES_ARE_DETECTED. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.DATA_RACES_ARE_DETECTED
+  languages: [python, typescript, go, rust]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.DATA_RACES_ARE_DETECTED:
+    enabled: true

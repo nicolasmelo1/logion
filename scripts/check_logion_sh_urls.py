@@ -24,6 +24,11 @@ SKIP_DIRS = {
     ".venv",
     "node_modules",
     "__pycache__",
+    # Proving-ground run output. Gitignored, not ours to audit, and its
+    # agent workspaces contain dangling symlinks that crash the walk.
+    ".runs",
+    # Mutation fixtures: deliberately broken repositories.
+    ".software-factory",
 }
 
 SKIP_SUFFIXES = {

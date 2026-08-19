@@ -133,6 +133,8 @@ exclude = [
 
 [tool.bandit]
 exclude_dirs = [
+    # Mutation fixtures: deliberately insecure, one violation each.
+    ".software-factory",
     "tests",
     ".venv",
     "packages/client/src/logion/v1/_types/generated",

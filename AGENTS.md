@@ -80,9 +80,11 @@ Every rule below is enforced by a script in `scripts/` and by the
    Both files must change in the same commit (`make update-deps-lock`).
    Reviewers treat the diff as a permission gate against supply-chain
    drift.
-5. **Documentation links must resolve.** `scripts/check_doc_links.py`
-   walks every `.md` file and asserts that referenced repo-relative
-   paths exist. Fabricated module paths fail CI.
+5. **Documentation links must resolve.** `L4.DOC_LINKS_RESOLVE` walks every
+   `.md` file and asserts that referenced repo-relative paths exist.
+   Fabricated module paths fail CI. Run `sf check`; `sf explain <RULE>` gives
+   the reasoning behind any rule, and `docs/factory-rules.md` lists what is
+   enforced here.
 6. **No imports of package internals from outside the package.**
    `logion.v1._internal`, `logion.v1._generated`, and
    `logion.v1._types.generated` are private. Consumers go through

@@ -127,3 +127,8 @@ if [ -n "${social_staged}" ]; then
 fi
 
 echo "All checks passed."
+
+# software-factory: the rules in .software-factory/policy.yaml. `verify`
+# first, because a check that stopped firing makes the run below meaningless.
+sf verify
+sf check

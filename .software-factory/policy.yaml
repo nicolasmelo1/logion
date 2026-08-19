@@ -1,0 +1,85 @@
+# Which rules this repository enforces, and how its paths map onto the
+# catalog's neutral vocabulary. `sf explain <RULE>` prints the reasoning
+# behind any rule below.
+version: 1
+project:
+  name: logion
+  languages: [python, typescript]
+  exclude: []
+
+docs:
+  scan:
+    - "docs/**/*.md"
+    - "*.md"
+  rules_document: "docs/factory-rules.md"
+
+# A gate activates from the paths a change touches, never from a label
+# or a sentence in a pull request. See L3.GATE_HAS_FRESH_EVIDENCE.
+gates: {}
+
+rules:
+  # L1 — No function exceeds the cyclomatic ceiling
+  L1.COMPLEXITY_CEILING:
+    enabled: true
+  # L1 — Every suppression names a code and a reason
+  L1.NO_BLANKET_SUPPRESSION:
+    enabled: true
+    options:
+      # The scripts that implement these checks, and their tests, contain the
+      # patterns as string literals on purpose. A line-based rule cannot tell
+      # a suppression from a string quoting one, and excluding the handful of
+      # files that are deliberately full of them is narrower than weakening
+      # the rule for the whole repository.
+      exclude: ["scripts/check_*.py", "tests/test_check_*.py", "tests/test_audit_*.py"]
+  # L1 — The untyped escape hatch is banned, and the message names the alternative
+  L1.NO_UNTYPED_ESCAPE_HATCH:
+    enabled: true
+    options:
+      # The scripts that implement these checks, and their tests, contain the
+      # patterns as string literals on purpose. A line-based rule cannot tell
+      # a suppression from a string quoting one, and excluding the handful of
+      # files that are deliberately full of them is narrower than weakening
+      # the rule for the whole repository.
+      exclude: ["scripts/check_*.py", "tests/test_check_*.py", "tests/test_audit_*.py"]
+  # L4 — Repo-relative documentation links resolve
+  L4.DOC_LINKS_RESOLVE:
+    enabled: true
+  # L4 — Every enabled rule is cited in prose, and every citation resolves
+  L4.EVERY_RULE_HAS_A_WHY:
+    enabled: true
+  # L4 — Every plan declares its exit condition and sits in the execution order
+  L4.PLAN_DECLARES_EXIT_CONDITION:
+    enabled: true
+  # L4 — New top-level files are declared before they appear
+  L4.ROOT_FILES_ARE_DECLARED:
+    enabled: true
+  # L5 — Every enabled rule has a mutation that proves it fires
+  L5.EVERY_CHECK_HAS_A_MUTATION_TEST:
+    enabled: true
+  # L5 — An enabled rule must be capable of producing a finding
+  L5.NO_INERT_RULE:
+    enabled: true
+  # L6 — Concurrent code is exercised under a race detector
+  L6.DATA_RACES_ARE_DETECTED:
+    enabled: true
+  # L6 — Something detects code nothing reaches
+  L6.DEAD_CODE_IS_DETECTED:
+    enabled: true
+  # L6 — Something audits dependencies for known vulnerabilities
+  L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED:
+    enabled: true
+  # L6 — Something scans the code for known-insecure patterns
+  L6.INSECURE_PATTERNS_ARE_SCANNED:
+    enabled: true
+  # L6 — Nothing blocks while a lock is held
+  L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK:
+    enabled: true
+  # L6 — A function does not acquire a second lock while holding the first
+  L6.ONE_LOCK_AT_A_TIME:
+    enabled: true
+  # L6 — Something would notice the code getting slower
+  L6.PERFORMANCE_REGRESSION_IS_GUARDED:
+    enabled: true
+  # L6 — Something scans for committed secrets
+  L6.SECRETS_ARE_SCANNED:
+    enabled: true

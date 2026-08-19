@@ -1,3 +1,0 @@
-# Allowlist for scripts/check_doc_links.py
-# Format: <markdown-file-rel-path>:<link-target>
-# Lines starting with # are comments.
