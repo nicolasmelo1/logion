@@ -43,8 +43,10 @@ phases:
       The vendor connector is already installed under ${DSH_HOME}. Never
       install, move, proxy, or edit it. Set HOME=${ISOLATED_HOME},
       LOGION_HOME=${LOGION_HOME_REMOTE}, DSH_HOME=${DSH_HOME}, and work in
-      ${FIXTURE_ROOT}. Use uv run --project ${LOGION_PUBLIC_REPO_PATH}
-      logion with base URL http://localhost:8000.
+      ${FIXTURE_ROOT}. Call the CLI as plain `logion`: the one on your PATH
+      is the artifact the rig installed, which is what a user has. Never
+      invoke it out of the source checkout. The base URL is
+      http://localhost:8000.
 
       Save resources get ${RESOURCE_ID} --json untouched to
       ${EVIDENCE_DIR}/resource.json. Reconcile from dsh for harness dsh and
