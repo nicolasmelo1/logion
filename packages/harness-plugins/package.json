@@ -1,0 +1,22 @@
+{
+  "name": "@logion/observer",
+  "version": "0.1.0",
+  "description": "Logion observer plugin — thin harness hooks for use observation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolasmelo1/logion.git",
+    "directory": "packages/harness-plugins"
+  },
+  "keywords": [
+    "logion",
+    "observation",
+    "harness",
+    "plugin",
+    "telemetry"
+  ],
+  "files": [
+    "logion_harness_plugins/",
+    "README.md"
+  ]
+}
