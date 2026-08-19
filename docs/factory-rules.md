@@ -36,6 +36,18 @@ fixed upstream rather than worked around here: the suppression rule rejected a
 positional `pytest.skip("why")`, the root allowlist ignored directories, and it
 flagged gitignored files.
 
+## Where the hazard rules point
+
+`L6` owns no scanner. It asserts that one still runs, and this repository
+already runs `pip-audit`, `bandit` and `detect-secrets` in `pr-safety.yml` —
+so the Python hazards are satisfied by the CI that was already there. Adding a
+second job to run them again would have been duplication with a worse scope;
+the first attempt did exactly that and scanned the virtualenv.
+
+The **TypeScript** hazards are frozen with a review date, and that is real
+debt rather than noise: `packages/landing` and `packages/npm-wrapper` have no
+dependency audit, no static security scan and no dead-code detection.
+
 ## What is new here
 
 Coverage this repository did not have:

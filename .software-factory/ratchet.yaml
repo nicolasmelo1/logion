@@ -159,6 +159,21 @@ rules:
     - unordered:plans/roadmap-block-1-core-marketplace-flows-and-capability-foundations.md
     - unordered:plans/roadmap-block-2-review-visibility-and-deployable-backend.md
     - unordered:plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md
+  L6.DEAD_CODE_IS_DETECTED:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - typescript
+  L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - typescript
+  L6.INSECURE_PATTERNS_ARE_SCANNED:
+    review_by: 2027-02-19
+    note: null
+    allow:
+    - typescript
   L6.ONE_LOCK_AT_A_TIME:
     review_by: 2027-02-19
     note: null
