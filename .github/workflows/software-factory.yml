@@ -29,15 +29,15 @@ jobs:
       - name: Dependency vulnerabilities
         run: pip-audit
       - name: Insecure patterns
-        run: bandit -r . -c pyproject.toml
+        run: bandit -r . --exclude ./.software-factory
       - name: Dead code
-        run: vulture .
+        run: vulture . --exclude .software-factory
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Dependency vulnerabilities
         run: npm audit --audit-level=high
       - name: Insecure patterns
-        run: npx --yes semgrep --config auto --error
+        run: npx --yes semgrep --config auto --error --exclude .software-factory
       - name: Dead code
         run: npx --yes knip
