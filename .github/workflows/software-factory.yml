@@ -1,4 +1,4 @@
-name: software factory
+name: software factory hazards
 
 on:
   pull_request:
@@ -8,28 +8,18 @@ on:
 permissions:
   contents: read
 
+# The rules themselves run in pr-safety.yml, alongside the checks they
+# replaced. This workflow carries only the hazard tooling, which needs a
+# different toolchain and has nothing to do with the rest of that job.
 jobs:
-  factory:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install sf
-        run: cargo install --git https://github.com/nicolasmelo1/software-factory --locked
-      # verify first: a check that stopped firing makes the run below
-      # meaningless, and it is the cheaper failure to discover.
-      - name: Prove the checks still fire
-        run: sf verify
-      - name: Check the repository
-        run: sf check --changed origin/${{ github.base_ref || 'main' }}
-
   hazards:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Committed secrets
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
