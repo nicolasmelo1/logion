@@ -10,6 +10,41 @@ grant cannot be expressed without over-granting all ``logion`` commands.
 
 Therefore the autopost grant is a **no-op** for Hermes.
 
+Use observation is a different story, and an earlier revision of this
+adapter got it wrong.  Hermes documents a Python plugin system with
+lifecycle hooks — see
+<https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins>.
+Plugins expose ``register(ctx)`` in ``__init__.py``, are discovered from
+``~/.hermes/plugins/``, ``./.hermes/plugins/``, bundled sources and pip
+entry-points, and are gated by the ``plugins.enabled`` allow-list in
+``~/.hermes/config.yaml``.  Hooks are attached with
+``ctx.register_hook(name, callback)``.
+
+Two of the documented observer hooks are exactly what use observation
+needs, and one of them is better than anything Claude Code offers:
+
+- ``on_skill_lifecycle`` — a *named* skill lifecycle event.  Claude Code
+  has no equivalent; there, skill use has to be inferred from
+  ``PostToolUse``.
+- ``post_tool_call`` — tool-use observation.
+
+``on_session_start`` / ``on_session_end`` are also available and are what
+the session-scoped dedup window and the end-of-session pending prompt
+would bind to.
+
+What is *not* yet known is the payload shape each hook delivers.  Phase
+15.11 is explicit that an adapter counts as supported only after a
+recorded real-harness fixture, and that the implementer must verify the
+hook schema against official documentation rather than trust the plan.
+The hook names above come from that documentation; the field mapping does
+not exist yet, and guessing it would violate the standing rule that
+ambiguous attribution is dropped rather than inferred.
+
+So this adapter reports :data:`~cli._harness.base.HOOK_NOT_PINNED`: the
+surface exists, the fixture does not.  It deliberately does **not** report
+``EXPLICIT_REPORT``, which would set ``supported=True, already=True`` and
+tell a Hermes user that their harness is already covered.
+
 Scope targets :
 
 - ``user`` → ``$HOME/.hermes/skills`` (active profile home).
@@ -37,6 +72,11 @@ from cli._harness.scopes import (
     ScopeTarget,
     canonical_scope,
 )
+
+#: Package name a Logion observer plugin would take inside
+#: ``~/.hermes/plugins/``.  Fixed so that detection, install and uninstall
+#: all match on the same directory.
+OBSERVER_PLUGIN_NAME = "logion-observer"
 
 
 def _git_root(cwd: Path) -> Path | None:
@@ -187,13 +227,57 @@ class HermesAdapter(HarnessAdapter):
             already=True,
         )
 
-    # -- use observation (explicit report fallback) ------------------------
+    # -- use observation ---------------------------------------------------
+
+    #: Observer hooks this adapter will bind once their payloads are pinned.
+    #: ``on_skill_lifecycle`` is the one worth the wait: it names skill
+    #: activation directly instead of leaving it to be inferred.
+    OBSERVER_HOOKS: tuple[str, ...] = (
+        "on_skill_lifecycle",
+        "post_tool_call",
+    )
+
+    #: Allow-list key in ``config.yaml`` that gates a general plugin.
+    PLUGIN_ENABLE_KEY: tuple[str, ...] = ("plugins", "enabled")
+
+    def plugin_dir(self, scope: str) -> Path | None:
+        """Where a Logion observer plugin would be installed for *scope*.
+
+        Mirrors :meth:`scope_targets`: the user scope lives under the
+        Hermes home, repository scopes under a project-local ``.hermes``.
+        ``None`` for scopes Hermes does not express, so a caller never
+        renders a path that could not exist.
+        """
+        cscope = canonical_scope(scope)
+        if cscope == USER:
+            return self._hermes_home() / "plugins" / OBSERVER_PLUGIN_NAME
+        targets = self.scope_targets(cscope)
+        if not targets:
+            return None
+        return (
+            targets[0].scope_root
+            / ".hermes"
+            / "plugins"
+            / OBSERVER_PLUGIN_NAME
+        )
+
+    def observation_config_path(self, scope: str) -> Path | None:  # noqa: ARG002
+        """``None``: there is nothing Logion can write here yet.
+
+        ``integrations detect`` derives ``observation_supported`` from this
+        method, so returning :meth:`plugin_dir` would advertise Hermes as
+        supported — the same overclaim this adapter exists to remove, moved
+        into a different field. The path is not lost: :meth:`plugin_dir`
+        keeps it, and the observation plan carries it so a user can see
+        where the work lands.
+        """
+        return None
 
     def plan_observation(self, scope: str) -> ObservationPlan:
-        return self._explicit_report(scope)
+        return self._hook_not_pinned(scope, path=self.plugin_dir(scope))
 
     def enable_observation(self, scope: str) -> ObservationPlan:
-        return self._explicit_report(scope)
+        return self._hook_not_pinned(scope, path=self.plugin_dir(scope))
 
     def disable_observation(self, scope: str) -> ObservationPlan:
-        return self._explicit_report(scope)
+        return self._hook_not_pinned(scope, path=self.plugin_dir(scope))

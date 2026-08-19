@@ -64,6 +64,23 @@ INVENTORY_ONLY = "inventory_only_observation_unsupported"
 # records, just not automatically.
 EXPLICIT_REPORT = "explicit_report_observation"
 
+# Typed result for a harness that *does* document a hook or plugin surface
+# capable of carrying observation, but whose payload schema Logion has not
+# yet pinned against a recorded fixture.
+#
+# This exists because the alternative was worse in a specific way. Reporting
+# such a harness as EXPLICIT_REPORT sets ``supported=True, already=True``,
+# so ``integrations status`` tells the user their harness is covered and
+# nothing further is needed — while nothing is observing and the agent has
+# to remember to self-report. For someone whose daily driver is that
+# harness, that is the most expensive possible wrong answer.
+#
+# It is also not INVENTORY_ONLY, which asserts the harness exposes no
+# trustworthy local event. Saying that about a harness that documents one
+# is a factual claim, and a wrong one closes the question: an item marked
+# "no path exists" stops being looked at.
+HOOK_NOT_PINNED = "hook_documented_fixture_not_recorded"
+
 # Permission scopes an adapter must understand. Kept as the canonical
 # semantic vocabulary from :mod:`cli._harness.scopes`; aliases
 # (``project``, ``global``) are accepted on input via
@@ -252,6 +269,26 @@ class HarnessAdapter(ABC):
             reason=EXPLICIT_REPORT,
         )
 
+    def _hook_not_pinned(
+        self, scope: str, *, path: Path | None = None
+    ) -> ObservationPlan:
+        """Plan for a documented hook surface Logion has not pinned yet.
+
+        ``supported`` is False because the adapter cannot enable anything
+        today, and ``already`` is False because nothing is installed. The
+        reason carries the distinction the user needs: the work is
+        unfinished, not impossible.
+        """
+        return ObservationPlan(
+            harness=self.name,
+            scope=canonical_scope(scope),
+            supported=False,
+            path=path,
+            already=False,
+            changed=False,
+            reason=HOOK_NOT_PINNED,
+        )
+
     def skill_dir(self) -> Path:
         """Absolute dir this harness loads user skills from.
 
@@ -275,6 +312,7 @@ def _canonical(scope: str) -> str:
 __all__ = [
     "AUTOPOST_COMMAND",
     "EXPLICIT_REPORT",
+    "HOOK_NOT_PINNED",
     "INVENTORY_ONLY",
     "OBSERVATION_COMMAND",
     "VALID_SCOPES",
