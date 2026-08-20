@@ -53,4 +53,3 @@ def test_hook_strips_internal_keys() -> None:
     assert "claude-code" in captured["cmd"]
     assert "_logion_harness" not in captured["input"]
     assert captured["input"]["event"] == "resource_invoked"
-
