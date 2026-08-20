@@ -130,6 +130,10 @@ phases:
       and it must come back as ${ACQUISITION_CHANNEL}. Save the untouched JSON
       response to ${EVIDENCE_DIR}/feedback-first.json.
 
+      Untouched means the entire document the command printed, starting with
+      its "version" and "kind" fields. Do not unwrap it. Do not save only the
+      "data" object. Do not reformat it. Redirect stdout to the file.
+
       Submitting the same report again must be refused by the local
       tombstone. Run it once more without --force and save that untouched
       JSON to ${EVIDENCE_DIR}/feedback-refused.json; an error envelope is
