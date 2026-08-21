@@ -8,7 +8,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 
 .PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-deps-lock check-roadmap-mirror check-protocol-specs \
-	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module 
+	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module check-canonical-host
 	check-installer-security \
 	update-generated-lock update-deps-lock update-json-module \
 	agent-proving-ground-lint agent-proving-ground-typecheck agent-proving-ground-dead-code agent-proving-ground-test agent-proving-ground-verify \
@@ -113,6 +113,15 @@ check-json-module:
 
 check-installer-security:
 	python3 scripts/check_installer_security.py
+
+# Live network check, deliberately NOT in ci-checks: CI must not go red on a
+# DNS blip. Every offline checker follows redirects and sees 200, so a
+# canonical host that redirects away from itself is invisible to all of them —
+# which is how the apex answering `308 -> www` went unnoticed while every page
+# kept declaring the apex as canonical. Run after any DNS, domain or proxy
+# change.
+check-canonical-host:
+	uv run python scripts/check_canonical_host.py
 
 # Umbrella target: every static guardrail. Fast (<1s total). Runs in
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,

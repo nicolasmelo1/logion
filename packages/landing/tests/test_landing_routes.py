@@ -70,7 +70,7 @@ def test_robots_txt_allows_indexing_and_points_to_sitemap() -> None:
     assert "Allow: /" in response.text
     assert "User-agent: GPTBot" in response.text
     assert "User-agent: ClaudeBot" in response.text
-    assert "Sitemap: https://logion.sh/sitemap.xml" in response.text
+    assert "Sitemap: https://www.logion.sh/sitemap.xml" in response.text
 
 
 def test_sitemap_xml_lists_public_routes() -> None:
@@ -80,14 +80,14 @@ def test_sitemap_xml_lists_public_routes() -> None:
     root = ET.fromstring(response.text)
     namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [loc.text for loc in root.findall("s:url/s:loc", namespace)]
-    assert "https://logion.sh/" in locs
-    assert "https://logion.sh/pricing" in locs
-    assert "https://logion.sh/terms" in locs
-    assert "https://logion.sh/privacy" in locs
-    assert "https://logion.sh/credits-terms" in locs
-    assert "https://logion.sh/referrals-terms" in locs
-    assert "https://logion.sh/llms.txt" in locs
-    assert "https://logion.sh/design.txt" in locs
+    assert "https://www.logion.sh/" in locs
+    assert "https://www.logion.sh/pricing" in locs
+    assert "https://www.logion.sh/terms" in locs
+    assert "https://www.logion.sh/privacy" in locs
+    assert "https://www.logion.sh/credits-terms" in locs
+    assert "https://www.logion.sh/referrals-terms" in locs
+    assert "https://www.logion.sh/llms.txt" in locs
+    assert "https://www.logion.sh/design.txt" in locs
 
 
 def test_design_txt_returns_plaintext() -> None:
@@ -121,7 +121,7 @@ def test_design_txt_contains_canonical_brand_anchors() -> None:
 
 def test_design_txt_listed_in_sitemap() -> None:
     text = client.get("/sitemap.xml").text
-    assert "https://logion.sh/design.txt" in text
+    assert "https://www.logion.sh/design.txt" in text
 
 
 def test_design_txt_indexed_in_llms_txt() -> None:
@@ -160,8 +160,8 @@ def test_design_txt_logo_urls_serve_raw_svg_not_html() -> None:
     ]
     assert len(logo_urls) == 4  # mark, wordmark, wordmark_light, favicon
     for url in logo_urls:
-        assert url.startswith("https://logion.sh/static/"), url
-        resp = client.get(url[len("https://logion.sh") :])
+        assert url.startswith("https://www.logion.sh/static/"), url
+        resp = client.get(url[len("https://www.logion.sh") :])
         assert resp.status_code == 200, url
         assert resp.headers["content-type"].startswith("image/svg"), url
         assert "<svg" in resp.text, url
@@ -187,12 +187,14 @@ def test_llms_txt_lists_agent_readable_entrypoints() -> None:
     assert response.headers["content-type"].startswith("text/plain")
     assert response.text.startswith("# logion.sh")
     assert "agent-native marketplace" in response.text
-    assert "[Landing (markdown)](https://logion.sh/)" in response.text
-    assert "[Terms of Service](https://logion.sh/terms)" in response.text
-    assert "[Privacy Policy](https://logion.sh/privacy)" in response.text
-    assert "[Credits Terms](https://logion.sh/credits-terms)" in response.text
+    assert "[Landing (markdown)](https://www.logion.sh/)" in response.text
+    assert "[Terms of Service](https://www.logion.sh/terms)" in response.text
+    assert "[Privacy Policy](https://www.logion.sh/privacy)" in response.text
     assert (
-        "[Referral Program Terms](https://logion.sh/referrals-terms)"
+        "[Credits Terms](https://www.logion.sh/credits-terms)" in response.text
+    )
+    assert (
+        "[Referral Program Terms](https://www.logion.sh/referrals-terms)"
         in response.text
     )
     assert (
@@ -344,7 +346,7 @@ def test_og_image_asset_is_served() -> None:
 
 def test_og_image_metadata_points_at_served_card() -> None:
     html = client.get("/").text
-    expected = "https://logion.sh/static/og-image.png"
+    expected = "https://www.logion.sh/static/og-image.png"
     assert f'<meta property="og:image" content="{expected}">' in html
     assert f'<meta name="twitter:image" content="{expected}">' in html
     assert '<meta name="twitter:card" content="summary_large_image">' in html
@@ -356,7 +358,7 @@ def test_llms_txt_exposes_install_story_surface() -> None:
     # /llms.txt is the agent index; it links the landing markdown, which must
     # carry the install/onboarding story so agents can reach the curl path.
     llms = client.get("/llms.txt").text
-    assert "https://logion.sh/" in llms
+    assert "https://www.logion.sh/" in llms
     md = client.get("/", headers={"Accept": "text/markdown"}).text.lower()
     assert "curl -fssl https://logion.sh/install.sh | sh" in md
     assert "companion" in md
@@ -749,7 +751,7 @@ def test_pages_link_to_their_markdown_alternate() -> None:
     for path in ("/", "/pricing", "/terms", "/privacy"):
         text = client.get(path).text
         assert 'rel="alternate" type="text/markdown"' in text, path
-        assert 'href="https://logion.sh/llms-full.txt"' in text, path
+        assert 'href="https://www.logion.sh/llms-full.txt"' in text, path
 
 
 def test_markdown_content_negotiation_on_every_documented_route() -> None:
@@ -789,7 +791,7 @@ def test_llms_full_txt_concatenates_every_public_surface() -> None:
 
 def test_llms_full_txt_is_listed_in_sitemap() -> None:
     text = client.get("/sitemap.xml").text
-    assert "https://logion.sh/llms-full.txt" in text
+    assert "https://www.logion.sh/llms-full.txt" in text
 
 
 def test_llms_txt_indexes_llms_full_txt() -> None:

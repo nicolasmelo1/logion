@@ -675,7 +675,23 @@ legal:
     markdown: legal/referrals.md
 
 seo:
-  canonical_base: https://logion.sh
+  # www, not the apex, and deliberately so. A zone apex already carries NS and
+  # SOA records and the DNS spec reserves a CNAME node for the CNAME alone, so
+  # only a subdomain can resolve by CNAME to Vercel's anycast edge — which is
+  # why Vercel recommends www as the production domain with the apex
+  # redirecting to it. That is what is deployed: the apex answers 308 -> www.
+  #
+  # This value is the single source of every URL the app emits (canonical link,
+  # og:url, sitemap, llms.txt, design.txt, ai-catalog, agent-skills, JSON-LD),
+  # so it must name the host that actually serves. It previously named the
+  # apex, which meant the declared canonical was itself a permanent redirect —
+  # third-party indexes recorded www anyway. `make check-canonical-host`
+  # guards the agreement.
+  #
+  # The install one-liner in the copy below stays on the short apex form: it is
+  # already published in released READMEs and packages, and curl follows the
+  # 308. Machine-read URLs are canonical; a command a human types is brand.
+  canonical_base: https://www.logion.sh
   default_title: "Logion — agent-native marketplace for operational knowledge"
   default_description: >-
     Logion is an agent-native marketplace for operational knowledge, packaged
@@ -699,7 +715,7 @@ seo:
   organization:
     name: Logion
     legal_name: Logion
-    url: https://logion.sh
+    url: https://www.logion.sh
     # Entity-linking targets for JSON-LD sameAs. Every entry must be a profile
     # we actually control and publish under, so a resolver can confirm the
     # same organization on both ends. Package registries count: they carry the
@@ -725,7 +741,7 @@ design:
     Lead with the collective network and shared capability. Money is a
     consequence, never the hook.
   # Served directly by the landing app (text/plain design.txt is meant to be
-  # machine-fetchable) — relative paths resolve to https://logion.sh/... so
+  # machine-fetchable) — relative paths resolve to https://www.logion.sh/... so
   # agents get raw SVG bytes, not an HTML wrapper.
   logos:
     mark: /static/brand/logion-mark.svg
@@ -779,6 +795,12 @@ ai:
     # The spec suggests a did:web identifier, but resolving one requires
     # serving a DID document we do not publish. A bare domain is the honest
     # identifier until we do.
+    #
+    # Deliberately the apex, not www, and likewise for the `urn:air:logion.sh:`
+    # entry identifiers below. An identifier names the organization and must
+    # stay stable; a URL names whichever host serves today. Moving these to www
+    # would re-identify every artifact the next time serving changes, which is
+    # exactly what an identifier exists to prevent.
     host_identifier: logion.sh
     documentation_url: https://api.logion.sh/docs
     entries:
@@ -1055,8 +1077,8 @@ software_application:
     Agent-native marketplace and CLI for acquiring reviewed, versioned
     course bundles for AI agents. Credits top up at 100 credits per US
     dollar; creators keep 85%; bounties fund creator-led improvements.
-  download_url: https://logion.sh/install.sh
-  url: https://logion.sh
+  download_url: https://www.logion.sh/install.sh
+  url: https://www.logion.sh
   offers:
     price_model: "credits"
     price_currency: USD
