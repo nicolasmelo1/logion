@@ -52,6 +52,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - name: Sync Python workspace dependencies
+        run: uv sync --all-packages --locked
       - name: Install npm wrapper dependencies
         working-directory: packages/npm-wrapper
         run: npm ci --ignore-scripts
