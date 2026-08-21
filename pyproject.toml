@@ -107,7 +107,7 @@ known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners"
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "packages/bot", "packages/indexer", "."]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "packages/bot", "packages/indexer", "packages/harness-plugins", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [

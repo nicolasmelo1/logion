@@ -61,14 +61,12 @@ phases:
 
       Then confirm the install landed before going on: the skill directory
       native.argv created must exist on disk under ${FIXTURE_ROOT} with a
-      SKILL.md in it. If it does not, stop and report RESULT: failed — a
-      reconcile that matches nothing fails this phase anyway.
+      SKILL.md in it. If it does not, stop and report RESULT: failed — the
+      rig reconciles this installation right after your turn, and a
+      reconcile that matches nothing fails the phase anyway.
 
-      Never use resources acquire. Reconcile from skills for
-      ${AGENT_USER_A_HARNESS}, repo-root scope, and save the untouched JSON
-      to ${EVIDENCE_DIR}/reconcile-xpto.json. The reconcile command itself
-      must create the inventory receipt. Never create, edit, or reconstruct
-      an inventory receipt manually.
+      Never use resources acquire, and do not reconcile: the rig runs that
+      itself. Never create, edit, or reconstruct an inventory receipt.
 
       Run integrations enable ${AGENT_USER_A_HARNESS} --scope repo-current
       --dry-run --json first, save it untouched to
@@ -82,13 +80,46 @@ phases:
       — not with a real payload, not with a test one. Your harness read its
       hook configuration when this session started, so the hook you just
       installed cannot fire for you. It fires in the next session.
+  # Bookkeeping the rig owns. The agent's job in the phase above is to
+  # install through the upstream manager; whether it did is decided by
+  # reading this report, and the report is the same document whoever types
+  # the command. Asking the agent for it made a deterministic check depend
+  # on a second, unrelated instruction — observed failing about one run in
+  # four with the installation sitting on disk the whole time.
+  - id: reconcile_native_inventory
+    actor: user_a
+    local_hook: packages/agent-proving-ground/scripts/reconcile_native_inventory.py
+    local_hook_args:
+      - "--cli"
+      - "${AGENT_USER_A_LOGION_CLI}"
+      - "--cwd"
+      - "${FIXTURE_ROOT}"
+      - "--evidence-dir"
+      - "${EVIDENCE_DIR}"
+      - "--logion-home"
+      - "${LOGION_HOME_NATIVE}"
+      - "--harness"
+      - "${AGENT_USER_A_HARNESS}"
+      - "--role"
+      - "${AGENT_USER_A_DEVRIG_ROLE}"
+      - "--scope"
+      - repo-root
+      - "--from"
+      - skills
+      - "--base-url"
+      - "${LOGION_API_BASE_URL}"
+    local_hook_capture_json:
+      RECONCILE_ARTIFACT: reconcile_artifact
+    goal: ""
     assertions:
       # Not files.exists: a reconcile report can exist and match nothing.
       # An agent that "verified availability" instead of installing gets
-      # caught here rather than three phases later.
+      # caught here rather than three phases later. The rig running the
+      # command cannot invent a match — every matched entry is re-checked
+      # against the filesystem under this scope root.
       - type: api.native_install_reconciled
         params:
-          artifact: "${EVIDENCE_DIR}/reconcile-xpto.json"
+          artifact: "${RECONCILE_ARTIFACT}"
           scope_root: "${FIXTURE_ROOT}"
           expected_channel: npx_skills
   - id: native_use

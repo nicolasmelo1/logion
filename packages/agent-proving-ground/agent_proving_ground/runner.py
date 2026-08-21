@@ -529,6 +529,25 @@ class ScenarioRunner:
             # one costs nothing and keeps the two agents genuinely separate.
             env["LOGION_HOME"] = str(logion_home)
             installed_cli = shutil.which("logion", path=env.get("PATH"))
+            # A local hook that has to run the CLI needs the same artifact
+            # the agent has, and it cannot find it: the role-tree PATH lives
+            # in the adapter's per-agent env, not in the runner's own. The
+            # unshimmed path is deliberate — the shim exists to record
+            # observations, and a hook doing bookkeeping is not observing.
+            # Bound even when empty: an unresolved ``${...}`` fails the run
+            # as "unresolved scenario parameters", which says nothing about
+            # a missing CLI. The hook that reads it explains that instead.
+            scenario_vars[f"{prefix}_LOGION_CLI"] = installed_cli or ""
+            # Hooks get non-secret bindings only, so the base URL has to
+            # travel as one; it comes from the devrig env file, which a hook
+            # would otherwise have to parse (and which holds secrets).
+            scenario_vars["LOGION_API_BASE_URL"] = world.base_url
+            # The resolved role, not the declared one: ``--devrig-role``
+            # can replace it, and a hook authenticating as the wrong role
+            # would reconcile against a catalog the agent never saw.
+            scenario_vars[f"{prefix}_DEVRIG_ROLE"] = env.get(
+                "LOGION_DEVRIG_ROLE", agent_spec.devrig_role or ""
+            )
             reason = _cli_cannot_observe(installed_cli)
             if installed_cli and reason is None:
                 bin_dir = self._write_cli_shim(
