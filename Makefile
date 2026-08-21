@@ -303,7 +303,7 @@ dev-rebuild-npm: npm-build
 
 # ── release orchestration targets ───────────────────────────────
 release-plan:
-	uv run python scripts/release_orchestrator.py plan --version $(VERSION)
+	uv run python scripts/release_orchestrator.py plan --version $(VERSION) $(if $(PUBLISH_STORE),--publish-store,)
 
 release:
 	uv run python scripts/release_orchestrator.py release --version $(VERSION) $(if $(PUBLISH_STORE),--publish-store,)

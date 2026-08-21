@@ -84,6 +84,12 @@ jobs:
           uv run python scripts/release_smoke.py check
           "$SMOKE_FINDINGS"
           --version "$VERSION"
+      - name: Reject store publication for development releases
+        run: |
+          if [[ "$VERSION" =~ \.dev[0-9]+$ && -n "$PUBLISH_STORE" ]]; then
+            echo "Development releases publish only to TestPyPI and GitHub assets; set publish_store=false." >&2
+            exit 1
+          fi
       - name: Run coordinated release
         run: make release VERSION="$VERSION"
       - name: Summarize tag-triggered publishers

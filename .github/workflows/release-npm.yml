@@ -20,6 +20,9 @@ concurrency:
 
 jobs:
   publish:
+    if: >-
+      !contains(github.ref_name, '.dev') &&
+      (github.event_name != 'workflow_dispatch' || !contains(inputs.version, '.dev'))
     runs-on: ubuntu-latest
     environment:
       name: npm

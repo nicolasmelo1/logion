@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.parse.outputs.version }}
+      channel: ${{ steps.parse.outputs.channel }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,6 +31,11 @@ jobs:
           py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/client/pyproject.toml').read_text())['project']['version'])")
           test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
           echo "version=$tag" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" =~ \.dev[0-9]+$ ]]; then
+            echo "channel=testpypi" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=pypi" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     needs: verify
@@ -62,8 +68,8 @@ jobs:
     needs: [verify, build]
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://pypi.org/p/logion-client
+      name: ${{ needs.verify.outputs.channel }}
+      url: ${{ needs.verify.outputs.channel == 'testpypi' && 'https://test.pypi.org/project/logion-client/' || 'https://pypi.org/p/logion-client' }}
     permissions:
       id-token: write
     steps:
@@ -73,10 +79,11 @@ jobs:
           path: dist/
       - name: Remove non-distribution artifacts
         run: rm -f dist/SHA256SUMS.txt
-      - name: Publish to PyPI
+      - name: Publish to selected Python index
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          repository-url: ${{ needs.verify.outputs.channel == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
           skip-existing: true
 
   attach-assets:

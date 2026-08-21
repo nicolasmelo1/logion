@@ -74,23 +74,27 @@ Verify from a real harness afterwards:
 DSH_HOME="$PWD/.dsh" dsh plugin --profile default add @logionsh/dsh-plugin
 ```
 
-## 4. Cutting a release candidate
+## 4. Cutting a development release
 
-Pre-release versions use the `-rc.N` suffix (e.g. `0.2.0-rc.1`).
+Development builds use the PEP 440 `.devN` suffix (for example,
+`0.2.0.dev1`). They are canary builds, not release candidates.
 
-```bash
-# Manually bump the version in the package's pyproject.toml to the RC version
-# then:
-make release-manifest
-make release-manifest-check
-git add -A
-git commit -m "release(cli): logion-cli v0.2.0-rc.1"
-git tag logion-cli-v0.2.0-rc.1
-git push origin main --follow-tags
-```
+Use **Release all Logion packages** with `version: 0.2.0.dev1` and
+`publish_store: false`. The tag-triggered Python publishers route `.devN`
+versions to the `testpypi` GitHub environment and
+`https://test.pypi.org/legacy/`. The npm wrapper is deliberately skipped:
+npm's prerelease version syntax is not the same as PEP 440, so it must receive
+a separately planned release rather than a misleading shared version.
 
-RC releases are published to TestPyPI only. Promote to stable by removing the
-suffix and following the normal release flow.
+The companion bundle is still attached to the GitHub Release. A development
+build does not modify `manifest-stable.json` or `manifest-latest.json`, and is
+not published to the Logion store, so it cannot be used as a
+marketplace-attributed companion version. Install it explicitly from TestPyPI
+or the GitHub Release assets during dogfood.
+
+Promote only after a separate stable release with a version such as `0.2.0`.
+That release follows the normal release flow and publishes to the production
+package indexes and, when requested, the Logion store.
 
 ## 5. Emergency rollback
 
@@ -186,7 +190,8 @@ Package publishing is GitHub Actions-owned:
 3. Run the **Release all Logion packages** workflow with:
    - `version`: `X.Y.Z`
    - `smoke_findings_base64`: the output from `make release-smoke-input`
-   - `publish_store`: enabled for first-party companion publication
+   - `publish_store`: enabled only for a stable first-party companion publication;
+     set it to `false` for `.devN` releases
 
 The workflow is the single release entrypoint. It coordinates the repo
 mutation and tag push; the pushed tags trigger the package-specific publisher
