@@ -3,14 +3,16 @@
 """Check that the canonical host serves itself instead of redirecting away.
 
 Every offline check in this repo reads ``canonical_base`` from site.yaml and
-trusts it. Nothing ever asked the host whether it agrees. It did not: the apex
-answered ``308 -> https://www.logion.sh`` on every path while the pages kept
-declaring ``https://logion.sh/`` as canonical, and third-party indexes built
-for agents recorded the redirect target rather than the declared canonical.
+trusts it. Nothing ever asked the host whether it agrees, and for a long time
+it did not: ``canonical_base`` named the apex while the apex answered
+``308 -> www`` on every path, so third-party indexes recorded ``www`` no matter
+what the pages declared. ``canonical_base`` now names ``www``, matching the
+deployment; this check is what keeps the two from drifting apart again, in
+either direction.
 
-A redirecting canonical is invisible to a unit test, a link checker, and a
-sitemap validator — all of them follow the redirect and see 200. Only an
-unfollowed request shows it, which is what this does.
+The drift is invisible to every other checker by construction: a unit test, a
+link checker and a sitemap validator all follow the redirect and see 200. Only
+an unfollowed request shows it, which is what this does.
 
 Network-dependent, so it is deliberately outside ``make ci-checks``: CI must
 not go red on a DNS blip. Run it after any DNS, domain, or proxy change.

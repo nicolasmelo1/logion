@@ -71,8 +71,8 @@ def test_ai_catalog_declares_no_artifact_it_cannot_serve() -> None:
     # on our own host must resolve here; off-host ones are asserted by URL.
     for entry in client.get(AI_CATALOG_PATH).json()["entries"]:
         url = entry["url"]
-        if url.startswith("https://logion.sh/"):
-            path = url[len("https://logion.sh") :]
+        if url.startswith("https://www.logion.sh/"):
+            path = url[len("https://www.logion.sh") :]
             assert client.get(path).status_code == 200, url
         else:
             assert url == f"{API_BASE}/openapi.json", url
@@ -90,7 +90,7 @@ def test_ai_catalog_is_advertised_by_link_relation() -> None:
     # fetched a page should find the catalog without guessing the path.
     html = client.get("/").text
     assert 'rel="ai-catalog"' in html
-    assert f'href="https://logion.sh{AI_CATALOG_PATH}"' in html
+    assert f'href="https://www.logion.sh{AI_CATALOG_PATH}"' in html
     assert f'type="{AI_CATALOG_MEDIA_TYPE}"' in html
 
 
@@ -108,7 +108,7 @@ def test_agent_skills_entries_carry_the_required_fields() -> None:
         assert skill["name"]
         assert skill["type"] in {"skill-md", "archive"}
         assert skill["description"]
-        assert skill["url"].startswith("https://logion.sh/")
+        assert skill["url"].startswith("https://www.logion.sh/")
         assert skill["digest"].startswith("sha256:")
 
 
@@ -118,7 +118,7 @@ def test_agent_skills_digest_matches_the_bytes_we_serve() -> None:
     # that only surfaces at the consumer.
     index = client.get(AGENT_SKILLS_PATH).json()
     for skill in index["skills"]:
-        served = client.get(skill["url"][len("https://logion.sh") :])
+        served = client.get(skill["url"][len("https://www.logion.sh") :])
         assert served.status_code == 200
         digest = hashlib.sha256(served.content).hexdigest()
         assert skill["digest"] == f"sha256:{digest}", skill["name"]
@@ -181,7 +181,7 @@ def test_markdown_alternate_points_at_the_md_url_not_the_page() -> None:
     html = client.get("/pricing").text
     assert (
         '<link rel="alternate" type="text/markdown" '
-        'href="https://logion.sh/pricing.md"' in html
+        'href="https://www.logion.sh/pricing.md"' in html
     )
 
 
@@ -285,7 +285,7 @@ def test_robots_allows_every_ai_crawler_we_name() -> None:
 def test_llms_txt_indexes_the_new_discovery_surfaces() -> None:
     text = client.get("/llms.txt").text
     for path in (AI_CATALOG_PATH, AGENT_SKILLS_PATH, SKILL_PATH, "/index.md"):
-        assert f"https://logion.sh{path}" in text, path
+        assert f"https://www.logion.sh{path}" in text, path
 
 
 def test_llms_txt_links_resolve() -> None:
@@ -298,8 +298,8 @@ def test_llms_txt_links_resolve() -> None:
         if line.startswith("- [") and "](" in line
     }
     for href in sorted(hrefs):
-        if not href.startswith("https://logion.sh"):
+        if not href.startswith("https://www.logion.sh"):
             continue
-        path = href[len("https://logion.sh") :] or "/"
+        path = href[len("https://www.logion.sh") :] or "/"
         status = client.get(path, follow_redirects=False).status_code
         assert status in {200, 302}, f"{href} -> {status}"

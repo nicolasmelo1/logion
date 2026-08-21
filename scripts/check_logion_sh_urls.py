@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Validate committed https://logion.sh URLs against known public paths."""
+"""Validate committed logion.sh URLs against known public paths.
+
+Both hosts are in scope. ``www`` is the canonical production host and the apex
+redirects to it, so the same paths are reachable through either — and a typo
+behind ``www.`` is exactly as broken as one behind the apex. Matching only the
+apex would have left every URL the app now emits unchecked.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_PATHS_FILE = ROOT / "scripts" / "logion_sh_public_paths.txt"
 
 URL_RE = re.compile(
-    r"https://logion\.sh(?P<path>/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?"
+    r"https://(?:www\.)?logion\.sh"
+    r"(?P<path>/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?"
 )
 
 SKIP_DIRS = {

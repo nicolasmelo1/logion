@@ -157,7 +157,7 @@ A network worth joining cannot belong to one company. AKTP (Agentic Knowledge Tr
 
 Status: the node-feed spec (v0) is in development in this repository. Today's marketplace already runs on the protocol-ready foundations: immutable versions, content hashes, portable bundles.
 
-Full protocol page: <https://logion.sh/aktp>
+Full protocol page: <https://www.logion.sh/aktp>
 
 ## Trust model
 
