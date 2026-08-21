@@ -27,6 +27,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (home / ".claude").mkdir(parents=True)
     (home / ".codex").mkdir(parents=True)
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("HERMES_HOME", raising=False)
     return home
 
 
@@ -65,7 +66,7 @@ def test_detect_reports_which_harnesses_can_observe(
 
     assert by_name["claude-code"]["observation_supported"] is True
     assert by_name["codex"]["observation_supported"] is True
-    assert by_name["hermes"]["observation_supported"] is False
+    assert by_name["hermes"]["observation_supported"] is True
 
 
 def test_enable_dry_run_shows_the_diff_and_writes_nothing(
@@ -230,30 +231,28 @@ def test_codex_enable_migrates_legacy_async_hook(fake_home: Path) -> None:
     assert "async" not in entry
 
 
-@pytest.mark.usefixtures("fake_home")
-def test_hermes_reports_a_documented_hook_that_is_not_pinned_yet(
+def test_hermes_enable_installs_a_pinned_lifecycle_observer(
+    fake_home: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Hermes documents lifecycle hooks, so it must not claim otherwise.
+    """Hermes gets a real, opt-in named-skill observer plugin."""
+    assert (
+        main(["integrations", "enable", "hermes", "--mode", "auto", "--json"])
+        == 0
+    )
 
-    Its plugin system exposes ``on_skill_lifecycle`` and ``post_tool_call``
-    among other observer hooks. Reporting Hermes as an explicit-report
-    harness would set ``supported=True, already=True`` and tell a user
-    their harness is covered while nothing observes — the most expensive
-    wrong answer for anyone whose daily driver it is.
-
-    ``supported`` is False because nothing can be enabled until the hook
-    payloads are pinned against a recorded fixture, and the path still
-    resolves so the user can see where the work lands.
-    """
-    assert main(["integrations", "enable", "hermes", "--json"]) == 0
-
-    plan = json.loads(capsys.readouterr().out)["data"]["plan"]
-    assert plan["supported"] is False
-    assert plan["already"] is False
-    assert plan["reason"] == "hook_documented_fixture_not_recorded"
-    assert plan["path"] is not None
-    assert plan["path"].endswith("plugins/logion-observer")
+    data = json.loads(capsys.readouterr().out)["data"]
+    plan = data["plan"]
+    config = fake_home / ".hermes" / "config.yaml"
+    plugin = fake_home / ".hermes" / "plugins" / "logion-observer"
+    assert data["effective_mode"] == "auto"
+    assert plan["supported"] is True
+    assert plan["path"] == str(config)
+    assert "logion-observer" in config.read_text(encoding="utf-8")
+    assert (plugin / "plugin.yaml").is_file()
+    assert "on_skill_lifecycle" in (plugin / "__init__.py").read_text(
+        encoding="utf-8"
+    )
 
 
 @pytest.mark.usefixtures("fake_home")
@@ -313,6 +312,7 @@ def test_status_reports_effective_mode(
     assert statuses["claude-code"]["enabled"] is True
     assert statuses["hermes"]["effective_mode"] == "off"
     assert statuses["hermes"]["enabled"] is False
+    assert statuses["hermes"]["observation_supported"] is True
 
 
 @pytest.mark.usefixtures("fake_home")
