@@ -34,6 +34,7 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
 from markupsafe import escape as markup_escape
+from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from landing._json import JsonObject, child, children, strings
@@ -245,6 +246,31 @@ def _format_llms_link(entry: JsonObject) -> str:
     return f"- [{title}]({url}){suffix}"
 
 
+def when_to_use_lines() -> list[str]:
+    """Routing guidance for an agent choosing whether to reach for Logion.
+
+    Rendered high in llms.txt, above the link index: an agent deciding
+    *whether* to use Logion needs this before it needs a list of URLs.
+    """
+    block = child(child(content, "ai"), "when_to_use")
+    if not block:
+        return []
+    lines = ["", f"## {block.get('heading', 'When to use Logion')}", ""]
+    use_when = strings(block, "use_when")
+    if use_when:
+        lines.append("Use Logion when:")
+        lines.append("")
+        lines.extend(f"- {item.strip()}" for item in use_when)
+    not_for = strings(block, "not_for")
+    if not_for:
+        lines += ["", "Do not reach for Logion for:", ""]
+        lines.extend(f"- {item.strip()}" for item in not_for)
+    how = str(block.get("how_to_call", "")).strip()
+    if how:
+        lines += ["", "How to call it:", "", how]
+    return lines
+
+
 def llms_txt() -> str:
     ai = child(content, "ai")
     site = child(content, "site")
@@ -254,6 +280,9 @@ def llms_txt() -> str:
         f"# {site.get('name', 'Logion')}",
         "",
         str(ai.get("llms_txt_summary", site.get("description", ""))),
+    ]
+    lines.extend(when_to_use_lines())
+    lines += [
         "",
         "## Pages",
         "",
@@ -341,6 +370,56 @@ class HeadRequestMiddleware:
         await self.app({**scope, "method": "GET"}, receive, send_headers_only)
 
 
+def _merge_vary(existing: str | None) -> str:
+    """Add Accept and Accept-Encoding to a Vary header without duplicating."""
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for token in [*(existing or "").split(","), "Accept", "Accept-Encoding"]:
+        name = token.strip()
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            tokens.append(name)
+    return ", ".join(tokens)
+
+
+class VaryOnAcceptMiddleware:
+    """Tell shared caches that these responses depend on the Accept header.
+
+    The negotiating routes return HTML or markdown from the same URL depending
+    on Accept, and the 404 handler picks between HTML, JSON and markdown the
+    same way. Without ``Vary: Accept`` a shared cache — and there are two in
+    front of this app, Vercel's and Cloudflare's — may store one
+    representation and serve it to every later caller: an agent asking for
+    markdown gets the cached HTML, or a browser gets raw markdown, depending
+    only on who arrived first.
+
+    Scoped to the routes that actually negotiate. Stamping every response
+    would split the cache key for assets whose body never varies by Accept.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        negotiating_path = scope.get("path", "") in MARKDOWN_PAGES
+
+        async def send_with_vary(message: Message) -> None:
+            # 404 is negotiated on every path, not just the known ones.
+            if message["type"] == "http.response.start" and (
+                negotiating_path or message["status"] == 404
+            ):
+                headers = MutableHeaders(scope=message)
+                headers["vary"] = _merge_vary(headers.get("vary"))
+            await send(message)
+
+        await self.app(scope, receive, send_with_vary)
+
+
 app = FastAPI(
     title="Logion",
     # The landing app is not the product API. FastAPI's generated schema for
@@ -352,6 +431,7 @@ app = FastAPI(
     redoc_url=None,
 )
 app.add_middleware(HeadRequestMiddleware)
+app.add_middleware(VaryOnAcceptMiddleware)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.filters["transcript_html"] = transcript_html
