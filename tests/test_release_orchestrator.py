@@ -89,15 +89,11 @@ def test_plan_normalizes_leading_v_for_tags() -> None:
     assert "logion-companion-v0.1.99" in tags
 
 
-def test_plan_requires_semver() -> None:
-    """Non-semver version raises ValueError."""
+def test_plan_requires_a_valid_pep_440_version() -> None:
+    """Invalid version errors name the PEP 440 scheme used by the planner."""
     planner = ReleasePlanner(repo_root=REPO_ROOT)
-    try:
+    with pytest.raises(ValueError, match="PEP 440"):
         planner.load("not-a-version", publish_store=False)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for bad version")
 
 
 def test_preflight_rejects_dirty_worktree() -> None:

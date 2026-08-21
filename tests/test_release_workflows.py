@@ -31,6 +31,7 @@ RELEASE_ALL = _load("release-all.yml")
 
 PYPI_WORKFLOWS = [CLI, CLIENT, SKILLMAP]
 ALL_WORKFLOWS = [CLI, CLIENT, SKILLMAP, COMPANION, NPM]
+SKILLMAP_WAIT_STEP = "Wait for matching skillmap version on selected index"
 
 
 def _trigger_tags(wf: Mapping) -> list[str]:
@@ -64,9 +65,7 @@ def test_release_cli_waits_for_matching_skillmap_version():
     """CLI publication waits until its skillmap dependency is available."""
     steps = CLI["jobs"]["publish-pypi"]["steps"]
     wait_steps = [
-        step
-        for step in steps
-        if step.get("name") == "Wait for matching skillmap version on PyPI"
+        step for step in steps if step.get("name") == SKILLMAP_WAIT_STEP
     ]
     assert len(wait_steps) == 1
     assert "logion-skillmap/json" in wait_steps[0]["run"]
@@ -213,9 +212,7 @@ def test_cli_uses_the_same_index_for_skillmap_dependency_wait():
     """
     steps = CLI["jobs"]["publish-pypi"]["steps"]
     wait = next(
-        step
-        for step in steps
-        if step.get("name") == "Wait for matching skillmap version on PyPI"
+        step for step in steps if step.get("name") == SKILLMAP_WAIT_STEP
     )
     assert "PYPI_INDEX_URL" in wait["env"]
     assert "test.pypi.org/pypi" in wait["env"]["PYPI_INDEX_URL"]
