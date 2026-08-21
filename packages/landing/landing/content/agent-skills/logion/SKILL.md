@@ -1,0 +1,383 @@
+---
+name: logion
+version: 0.1.0
+description: >-
+  Compact bootstrap skill for recall-first Logion discovery, inspection,
+  install, update, and creator-course-management routing without loading
+  the whole marketplace.
+license: MIT
+required_tools:
+  - terminal
+  - file
+required_env: []
+safety:
+  requires_confirmation:
+    - spend_credits
+    - top_up_credits
+    - fund_bounty
+    - share_referral_link
+    - creator_cash_out
+    - install_new_capability
+    - update_paid_capability
+    - permission_expansion
+    - publish_or_unpublish_course
+    - upload_new_course_version
+    - change_course_price
+---
+
+# Logion Marketplace Companion
+
+Use Logion only as a fallback or explicit browse/acquire path. Keep bootstrap
+context small; load only the selected skill artifact.
+
+## First run (one-time setup)
+
+Before any identity-backed command or auto-review works, the user must run
+onboarding once. It provisions their user + first agent and, with an
+explicit opt-in, lets agents post usage reviews automatically:
+
+```bash
+logion identity onboarding
+```
+
+It is interactive (email, password, and a y/N auto-review consent), so do
+not run it unattended. If a command fails with `auth_missing`, prompt the
+user to run it. Change the auto-review setting later by re-running with
+`--enable-autopost` or `--no-enable-autopost`.
+
+## CLI updates
+
+The Logion CLI manages its own periodic auto-update checks using persisted
+local state. Do not run `logion update` before every Logion use. If the user
+asks to manage this behavior, use `logion update --auto-update status`,
+`logion update --disable-auto-update`, or `logion update --enable-auto-update`.
+
+## When to use Logion
+
+Use Logion when local recall is insufficient and the task needs a missing,
+specialized capability, or when the user explicitly asks to browse, search,
+acquire, install, or update from Logion.
+
+## When not to use Logion
+
+Do not use Logion when an existing local tool, installed skill, prior proven
+workflow, or project-local command already covers the task well enough.
+
+## Decision tree
+
+**Priority order (cheapest to most expensive context cost):**
+respond directly with an installed capability → recall → marketplace.
+Never invert this. Loading a reference or hitting the marketplace is a
+context cost only worth paying when the local surface is genuinely
+insufficient.
+
+0. Run the Local Recall Guardrail before marketplace search.
+1. Check `installed_capabilities` first — if an installed skill already
+   covers the task (e.g. `email.summarize` for "summarise my inbox",
+   `video.clips.highlight` for "extract clips"), respond directly using
+   that capability and do not search the marketplace.
+2. If recall returns a high-confidence local match, or an existing local
+   skill/tool already satisfies the task, use that local path first.
+3. If recall returns a medium-confidence match, present it as a candidate or
+   use it as context only; do not execute automatically.
+4. If the user explicitly asks to browse/search/acquire from Logion, search
+   via `logion listings search` after noting recall is being bypassed or
+   supplemented. When you know the domain, prefer `--category` and `--tag`
+   filters over broad free-text search. Use free-text `--query` only for
+   the remaining intent words.
+5. Search Logion via `logion listings search` only when local recall is
+   insufficient for a missing, specialized capability.
+6. Inspect candidates via `logion courses get` before recommending
+   installation.
+7. Prefer free or local equivalents when quality is comparable.
+8. **Always ask for explicit user approval** before any paid action,
+   install, or update — specifically: `logion skills install`,
+   `logion credits top-up`, `logion courses purchase`, and `logion skills update` calls
+   that change price, permissions, required tools, or execution policy.
+9. Load only the selected skill artifact, never the whole catalog.
+10. Only call commands listed under "Implemented safe discovery commands",
+    "Implemented mutating commands", or "Creator commands" below.
+
+## Step-by-step course usage flow
+
+When you use an installed course to complete a task, follow this
+sequence:
+
+1. **Identify the course or indexed listing.** Use recall or `logion courses get`
+   to confirm a published course; use `logion indexed get` for an indexed
+   external listing. Indexed listings are read-only discovery items and cannot
+   be installed directly — they must be claimed and published as a course first.
+2. **Execute the task.** Run the course's commands or follow its
+   guidance to accomplish the user's goal.
+3. **Review the course.** After the task is done, file a usage review
+   via `logion courses report-usage` (see "After using a Logion course"
+   below). Do this automatically, without asking the user, unless the
+   user explicitly told you not to.
+
+## Bounty routing: when a course almost fits
+
+If an installed or inspected course is close but missing a bounded
+improvement, route to `references/bounties.md` and propose a bounty
+instead of searching indefinitely. A bounded improvement is one a
+contributor can complete in a finite scope — missing environment
+support, outdated dependency instructions, a needed eval/test, or
+safer runtime requirements. If the gap is open-ended or requires
+rethinking the course, a bounty is not the right tool.
+
+Bounty confirmation gates remain explicit:
+- creating a draft bounty: explicit approval recommended, but no
+  credit debit
+- funding a bounty: required approval (credits are debited)
+- accepting a bounty submission: required approval (payable balance
+  accrues, but publication review still applies)
+
+## Local Recall Guardrail
+
+Recall is read-only fuzzy lookup over installed capabilities, prior successful
+workflows or commands, local companion references, and project-local known
+commands when available. If no recall command exists yet, manually inspect
+those same local sources only. Recall never implies automatic execution.
+Routing is band-based: HIGH suppresses marketplace; MEDIUM presents a
+candidate; LOW allows marketplace fallback; NONE proceeds to marketplace.
+
+## Safe discovery commands
+
+Start with CLI help so the agent can discover what exists before guessing:
+```bash
+logion --help
+logion docs
+logion docs search "credits, reviews, permissions, or another question"
+logion health --help
+logion identity --help
+logion listings --help
+logion notifications --help
+logion courses --help
+logion courses versions --help
+logion credits --help
+logion payments --help
+logion reports --help
+logion course-reviews --help
+logion bounties --help
+LOGION_ENABLE_ADMIN=1 logion admin --help  # gated
+```
+
+For questions about Logion concepts, safety rules, purchases, credits,
+reviews, creation, bounties, referrals, privacy, or terms, consult
+`logion docs` before answering from memory. Prefer `logion docs ARTICLE
+--json` when structured output is useful. The bundled articles match the
+installed CLI version and do not require network access.
+
+Implemented safe discovery commands:
+```bash
+logion listings search --query "video cuts" --limit 5
+logion listings search --category devops --tag terraform --limit 5
+logion listings search --category security --tag pentest --tag audit --json
+logion listings search --include-indexed --query "video cuts" --limit 5
+logion listings search --include-indexed --tier indexed --query "video cuts" --limit 5
+logion indexed get INDEXED_LISTING_ID
+logion courses get COURSE_ID
+logion courses versions get COURSE_ID VERSION_ID
+logion notifications unread-count
+logion notifications list --unread-only --limit 20
+logion recall search "video cuts" --limit 5  # read-only
+logion skills installed
+logion skills inspect COURSE_ID
+logion skills updates
+logion skills search "video cuts" --limit 5
+logion courses reviews list COURSE_ID --limit 5
+logion courses reviews summary COURSE_ID
+logion courses publication latest COURSE_ID --json
+logion courses feedback COURSE_ID --json
+logion courses taxonomy suggest --bundle-dir ./course --json
+logion payments seller-readiness --json
+logion payments creator-earnings --json
+logion credits balance --json
+```
+
+### Search by tags and category
+
+Prefer structured filters over free-text queries when the intent is
+discoverable by category or tag. `--tag` is repeatable (AND semantics)
+and `--category` narrows by the canonical category slug:
+
+```bash
+logion listings search --category security --tag pentest --tag cve
+```
+
+A `--tag pr` filter matches courses tagged `pr-review` (prefix match:
+the stored tag equals the filter or begins with `<filter>-`), so a
+leading partial still discovers hyphenated tags. It does not match on
+inner or trailing segments — `--tag review` will not find `pr-review`.
+Use `--tag` over the legacy `--tags video,editing` comma form.
+
+Implemented mutating commands (require explicit approval):
+```bash
+logion identity onboarding  # one-time setup; interactive, optional auto-review opt-in
+logion skills install --source ./BUNDLE --course-id COURSE_ID --version-id VERSION_ID
+logion skills update COURSE_ID --version-id VERSION_ID --source ./BUNDLE
+logion recall record --id WORKFLOW_ID --title TITLE --command CMD
+logion courses capabilities scaffold --bundle-dir ./new-course
+logion courses capabilities validate --bundle-dir ./new-course --json
+logion courses create --title ... --slug ... --json
+logion courses update COURSE_ID --json
+logion courses uploads create COURSE_ID --file ... --json
+logion courses uploads push COURSE_ID VERSION_ID --session-file session.json --file ... --json
+logion courses uploads complete COURSE_ID VERSION_ID --json
+logion courses publication request COURSE_ID --json
+logion courses purchase COURSE_ID --expected-price-cents 500 --yes --json
+logion courses source-link set COURSE_ID --repository owner/repo --ref main --json
+logion courses source-link remove COURSE_ID --yes --json
+logion courses report-usage COURSE_ID VERSION_ID --rating N
+logion credits top-up --amount 1000 --yes --json
+logion payments cash-out --dry-run --json
+logion payments cash-out --expected-gross-payout-cents N --yes --json
+logion bounties submissions open-pr BOUNTY_ID SUBMISSION_ID --yes --json
+logion bounties submissions register-pr BOUNTY_ID SUBMISSION_ID --pr-number N --yes --json
+```
+
+Creator commands (require explicit approval for destructive actions):
+```bash
+logion courses capabilities print --bundle-dir ./new-course --json
+logion payments onboarding-link --json
+```
+
+## Credit denomination
+
+Credits are denominated in US cents: **1 credit = 1 cent** (US$1 = 100
+credits). `--amount` and every `*_cents` flag take credit units directly —
+"top up 500 credits" means `--amount 500` (US$5.00). Never convert as if
+1 credit were US$1.
+
+## Paid course acquisition path
+
+The CLI does not auto-download a paid course after purchase. The concrete
+two-step flow, in order, is:
+
+```bash
+logion courses purchase COURSE_ID --expected-price-cents N --yes --json
+logion skills install --source ./BUNDLE --course-id COURSE_ID \
+  --version-id VERSION_ID --install-source logion-marketplace
+```
+
+Step 1 spends credits and grants entitlement on the server. Step 2 installs
+a local bundle the user has already acquired and marks
+`entitlement_status=active` because `--install-source` is
+`logion-marketplace`. Do not promise an automated search → purchase →
+download → install pipeline; one does not exist in this phase.
+
+## Course inspection checklist
+
+Check course fit, version, price, permissions, required tools, execution
+policy, and reviews; prefer a comparable free or local option when quality
+is similar.
+
+## Install/update approval rules
+
+Never install, purchase, or update on your own. Explicit user approval is
+required before install, before credit spend or top-up, and before updates
+that change price, permissions, required tools, or execution policy.
+
+## After using a Logion course
+
+When you have finished using an installed course to complete a task,
+file a review. Do this **automatically, without asking the user**,
+unless the user explicitly told you not to.
+
+Use:
+
+```bash
+logion courses report-usage COURSE_ID VERSION_ID \
+  --rating N \
+  [--usefulness N --reliability N --tool-safety N --token-efficiency N] \
+  [--completed-task / --not-completed-task] \
+  [--body "one or two sentences on what worked or didn't"]
+```
+
+For fuller control (same guardrails, same upsert behavior):
+
+```bash
+logion courses reviews upsert COURSE_ID VERSION_ID \
+  --rating N \
+  [--usefulness N --reliability N --tool-safety N --token-efficiency N] \
+  [--completed-task / --not-completed-task] \
+  [--body "one or two sentences on what worked or didn't"]
+```
+
+Fields you fill from your own judgment (be honest, including when the
+course did not help):
+
+- `--rating 1..5`            overall
+- `--usefulness 0.0..5.0`    did the course content help with the task
+- `--reliability 0.0..5.0`   did it work without surprises
+- `--tool-safety 0.0..5.0`   did it stay within declared capabilities
+- `--token-efficiency 0.0..5.0`  did the course feel cheap or expensive to run
+- `--completed-task`         boolean — did the task actually finish
+- `--body`                   short narrative — what worked, what didn't
+  (never include user-private or proprietary content)
+
+Be honest about `token_efficiency`, it is your subjective impression,
+not a measured count. This field reflects your sense of how much work
+it took to use this course.
+
+### Do not auto-review when
+
+- the task was not about that course
+- you did not actually use the course content
+- the user told you not to review
+- you have already filed a review for this (course, version) within the
+  current session (upsert is cheap to re-run, but only re-run if your
+  assessment has changed)
+
+### One-shot, not per-tool-call
+
+File the review once at the end of a meaningful course-driven task.
+Do not file a review for every CLI subcommand you invoked.
+
+### Privacy
+
+Never include user-private data, proprietary code, or personal
+information in `--body`. Keep the narrative course-focused: what worked,
+what broke, what was unclear.
+
+## Context budget rules
+
+Keep this file compact. Do not load the marketplace catalog. Load references
+only on demand, never at bootstrap.
+
+## Reference index
+
+Load each file only when the named condition is met. Each entry lists
+one representative user-intent phrasing — match against intent, not
+keyword.
+
+- `references/creator-course-management.md` — guiding a creator through
+  metadata, capability validation, upload, or publication.
+  *Example intent:* "Upload v3 of my course bundle."
+- `references/account-and-identity.md` — user wants to provision a user or
+  agent, or rotate an agent API key (`logion identity`).
+  *Example intent:* "Add a new agent for the QA bot."
+- `references/notifications-and-reports.md` — inspecting inbox or filing a
+  user-directed moderation report.
+  *Example intent:* "Anything new in my Logion inbox?"
+- `references/credits-and-payments.md` — credit balance, top-ups, ledger,
+  and creator-side seller onboarding.
+  *Example intent:* "How many credits do I have?"
+- `references/bounties.md` — any bounty surface (discovery, create, fund,
+  submissions, payout, local workspace).
+  *Example intent:* "Fund bounty BNT-42 with 25 USDC."
+- `references/referrals.md` — referral codes, links, and attribution
+  (placeholder until program launch).
+  *Example intent:* "Show me my referral code."
+- `references/use-observation-and-feedback.md` — observing use of a natively
+  installed resource, harness consent modes, or feedback for anything that is
+  not a Course.
+  *Example intent:* "Let Logion learn from the skill I installed with npx."
+- `references/course-review-queue.md` — reviewer-side approve/reject on the
+  publication queue (`logion course-reviews`).
+  *Example intent:* "Show me courses waiting for my review."
+- `references/admin-operations.md` — gated admin commands
+  (`LOGION_ENABLE_ADMIN=1 logion admin …`).
+  *Example intent:* "Suspend user USR-99 for ToS violation."
+- `references/troubleshooting.md` — a CLI command returned an error envelope
+  and the agent needs to diagnose the `code` value.
+  *Example intent:* "Logion says `auth_missing` — why?"

@@ -34,8 +34,9 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
 from markupsafe import escape as markup_escape
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from landing._json import JsonObject, child, children
+from landing._json import JsonObject, child, children, strings
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -45,6 +46,12 @@ CONTENT_PATH = CONTENT_DIR / "site.yaml"
 MARKDOWN_PATH = CONTENT_DIR / "landing.md"
 FAVICON_PATH = STATIC_DIR / "favicon.svg"
 GITHUB_REPO = "nicolasmelo1/logion"
+# The product API. Its own OpenAPI contract is the one agents should read, so
+# /openapi.json and /docs on the landing host point here instead of describing
+# these marketing routes.
+API_BASE = os.environ.get(
+    "LOGION_API_BASE_URL", "https://api.logion.sh"
+).rstrip("/")
 _MANIFEST_CHANNELS = ("stable", "latest")
 # Channel whose published version drives the hero readout. Sourced from the
 # release manifest on main so the page reflects actual GitHub Releases.
@@ -85,6 +92,30 @@ LEGAL_ROUTES = {
     "/credits-terms": "credits",
     "/referrals-terms": "referrals",
 }
+# Every page that content-negotiates markdown also answers at a stable ``.md``
+# URL, mapped here as route path -> slug. The rel="alternate" markdown hint in
+# the page head points at the ``.md`` URL: advertising the HTML URL made the
+# hint a dead end for any client that cannot set an Accept header, which is
+# most crawlers.
+MARKDOWN_PAGES = {
+    "/": "index",
+    "/aktp": "aktp",
+    "/pricing": "pricing",
+    "/terms": "terms",
+    "/privacy": "privacy",
+    "/credits-terms": "credits-terms",
+    "/referrals-terms": "referrals-terms",
+}
+#: ``.md`` slug -> legal page key, for the four routes backed by a legal doc.
+MARKDOWN_SLUGS = {
+    path.lstrip("/"): slug for path, slug in LEGAL_ROUTES.items()
+}
+#: Schema URI declared by the Agent Skills discovery index (Cloudflare RFC).
+AGENT_SKILLS_SCHEMA = (
+    "https://schemas.agentskills.io/discovery/0.2.0/schema.json"
+)
+#: Media type registered by the AI Catalog spec for an ai-catalog document.
+AI_CATALOG_MEDIA_TYPE = "application/ai-catalog+json"
 AI_CRAWLERS = (
     "GPTBot",
     "ChatGPT-User",
@@ -94,6 +125,11 @@ AI_CRAWLERS = (
     "Google-Extended",
     "CCBot",
 )
+# Cloudflare's Content Signals policy, declared per user-agent group so a
+# parser reading only one crawler's block still sees it. Everything is open:
+# the public copy exists to be indexed, grounded on, and trained on — an agent
+# that can quote Logion correctly is the whole point of the landing page.
+CONTENT_SIGNAL = "search=yes,ai-input=yes,ai-train=yes"
 SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 REFERRAL_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -159,9 +195,16 @@ def canonical_url(path: str) -> str:
     return f"{base}{normalized_path}"
 
 
+def markdown_alternate(path: str) -> str | None:
+    """The ``.md`` URL advertised as *path*'s markdown alternate."""
+    slug = MARKDOWN_PAGES.get(path)
+    return canonical_url(f"/{slug}.md") if slug else None
+
+
 def robots_txt() -> str:
     lines = [
         "User-agent: *",
+        f"Content-Signal: {CONTENT_SIGNAL}",
         "Allow: /",
         "Disallow: /setup/",
         "",
@@ -169,6 +212,7 @@ def robots_txt() -> str:
     for crawler in AI_CRAWLERS:
         lines.extend([
             f"User-agent: {crawler}",
+            f"Content-Signal: {CONTENT_SIGNAL}",
             "Allow: /",
             "Disallow: /setup/",
             "",
@@ -261,10 +305,58 @@ def _static_fingerprint() -> str:
 
 ASSET_VERSION = _static_fingerprint()
 
-app = FastAPI(title="Logion")
+
+class HeadRequestMiddleware:
+    """Answer HEAD the way GET is answered, with the body suppressed.
+
+    FastAPI's ``APIRoute`` — unlike Starlette's ``Route`` — does not add HEAD
+    alongside GET, so every URL on this app answered 405 to the HEAD probe
+    crawlers and link checkers send before committing to a GET. Rewriting the
+    method for routing and dropping the body keeps the status and headers
+    (Content-Length included) identical to the GET, as RFC 9110 requires.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        if scope["type"] != "http" or scope["method"] != "HEAD":
+            await self.app(scope, receive, send)
+            return
+        body_sent = False
+
+        async def send_headers_only(message: Message) -> None:
+            nonlocal body_sent
+            if message["type"] == "http.response.body":
+                # One empty terminal body message; further chunks the GET
+                # handler streams are dropped rather than re-sent.
+                if body_sent:
+                    return
+                body_sent = True
+                message = {"type": "http.response.body", "body": b""}
+            await send(message)
+
+        await self.app({**scope, "method": "GET"}, receive, send_headers_only)
+
+
+app = FastAPI(
+    title="Logion",
+    # The landing app is not the product API. FastAPI's generated schema for
+    # these marketing routes was being discovered as "the Logion API" by agent
+    # crawlers, which read 15 HTML routes as the whole contract. The
+    # /openapi.json and /docs routes below point at the real one instead.
+    openapi_url=None,
+    docs_url=None,
+    redoc_url=None,
+)
+app.add_middleware(HeadRequestMiddleware)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.filters["transcript_html"] = transcript_html
+templates.env.globals["markdown_alternate"] = markdown_alternate
+templates.env.globals["github_repo"] = GITHUB_REPO
 content = load_content()
 markdown_content = load_markdown()
 aktp_markdown_content = load_markdown(CONTENT_DIR / "aktp.md")
@@ -499,6 +591,146 @@ def design_txt() -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def ai_catalog() -> JsonObject:
+    """The Agentic Resource Discovery catalog for /.well-known/ai-catalog.json.
+
+    A Level 2 (Discoverable) catalog: ``specVersion`` and ``entries`` plus a
+    ``host`` block identifying the operator. Entries are read from site.yaml
+    rather than assembled here, so the catalog can only ever advertise an
+    artifact the content file actually declares — a catalog entry pointing at
+    nothing is worse for an agent than no catalog at all.
+    """
+    catalog = child(child(content, "ai"), "catalog")
+    organization = child(child(content, "seo"), "organization")
+    entries: list[JsonObject] = []
+    for raw in children(catalog, "entries"):
+        url = str(raw.get("url", ""))
+        entry: JsonObject = {
+            "identifier": str(raw.get("identifier", "")),
+            "type": str(raw.get("type", "")),
+            "url": url if url.startswith("https://") else canonical_url(url),
+        }
+        for source_key, field in (
+            ("display_name", "displayName"),
+            ("description", "description"),
+        ):
+            value = str(raw.get(source_key, "")).strip()
+            if value:
+                entry[field] = value
+        tags = strings(raw, "tags")
+        if tags:
+            entry["tags"] = tags
+        entries.append(entry)
+    host: JsonObject = {
+        "displayName": str(organization.get("name", "Logion")),
+        "identifier": str(catalog.get("host_identifier", "")),
+        "logoUrl": canonical_url("/static/favicon.svg"),
+    }
+    documentation_url = str(catalog.get("documentation_url", "")).strip()
+    if documentation_url:
+        host["documentationUrl"] = documentation_url
+    return {
+        "specVersion": str(catalog.get("spec_version", "1.0")),
+        "host": host,
+        "entries": entries,
+    }
+
+
+def _skill_artifact_path(entry: JsonObject) -> Path:
+    """Resolve a declared skill artifact to a path inside ``content/``."""
+    artifact = entry.get("artifact")
+    if not isinstance(artifact, str):
+        raise TypeError("agent skill entry must define an artifact path")
+    resolved = (CONTENT_DIR / artifact).resolve()
+    if not resolved.is_relative_to(CONTENT_DIR.resolve()):
+        raise ValueError(f"skill artifact {artifact!r} escapes content dir")
+    return resolved
+
+
+def agent_skills_index() -> JsonObject:
+    """The Agent Skills discovery index for /.well-known/agent-skills.
+
+    Each digest is a SHA-256 over the bytes this app actually serves, read at
+    request time rather than written into site.yaml: a hand-maintained digest
+    is a digest that silently stops matching the artifact.
+    """
+    skills: list[JsonObject] = []
+    for entry in children(child(content, "ai"), "agent_skills"):
+        name = str(entry.get("name", ""))
+        digest = hashlib.sha256(
+            _skill_artifact_path(entry).read_bytes()
+        ).hexdigest()
+        skills.append({
+            "name": name,
+            "type": str(entry.get("type", "skill-md")),
+            "description": str(entry.get("description", "")).strip(),
+            "url": canonical_url(f"/.well-known/agent-skills/{name}/SKILL.md"),
+            "digest": f"sha256:{digest}",
+        })
+    return {
+        "$schema": AGENT_SKILLS_SCHEMA,
+        "skills": skills,
+    }
+
+
+def pricing_markdown() -> str:
+    """The pricing table as markdown, for both /pricing and /pricing.md."""
+    pricing_cfg = child(content, "pricing")
+    lines = [
+        f"# {pricing_cfg.get('heading', 'Pricing')}",
+        "",
+        str(pricing_cfg.get("intro", "")),
+    ]
+    for row in children(pricing_cfg, "rows"):
+        lines.append(f"- **{row.get('label')}**: {row.get('value')}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def markdown_for_slug(slug: str) -> str | None:
+    """Markdown for a ``.md`` slug, or None when the slug is not a page."""
+    if slug == "index":
+        return markdown_content
+    if slug == "aktp":
+        return aktp_markdown_content
+    if slug == "pricing":
+        return pricing_markdown()
+    legal_slug = MARKDOWN_SLUGS.get(slug)
+    if legal_slug is not None:
+        return legal_page(legal_slug)["markdown"]
+    return None
+
+
+def not_found_markdown() -> str:
+    """A recovery note for an agent that landed on a path we do not serve.
+
+    A bare 404 leaves a crawler with nowhere to go. Naming the machine-readable
+    entrypoints costs one small body and turns a dead end into a redirect the
+    agent performs itself.
+    """
+    site = child(content, "site")
+    lines = [
+        "# 404 — not found",
+        "",
+        f"{site.get('name', 'Logion')} does not serve this path. "
+        "Start from one of these:",
+        "",
+    ]
+    for path in ("/", "/pricing", "/llms.txt", "/llms-full.txt"):
+        lines.append(f"- {canonical_url(path)}")
+    lines += [
+        "",
+        "## Machine-readable entrypoints",
+        "",
+        f"- {canonical_url('/.well-known/ai-catalog.json')}"
+        " — every Logion artifact an agent can use",
+        f"- {canonical_url('/.well-known/agent-skills/index.json')}"
+        " — installable skills",
+        f"- {canonical_url('/sitemap.xml')} — every public page",
+        f"- {API_BASE}/openapi.json — the marketplace API contract",
+    ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> Response:
     if "text/markdown" in request.headers.get("accept", ""):
@@ -547,16 +779,8 @@ def aktp(request: Request) -> Response:
 @app.get("/pricing", response_class=HTMLResponse)
 def pricing(request: Request) -> Response:
     if _wants_markdown(request):
-        pricing_cfg = child(content, "pricing")
-        lines = [
-            f"# {pricing_cfg.get('heading', 'Pricing')}",
-            "",
-            str(pricing_cfg.get("intro", "")),
-        ]
-        for row in children(pricing_cfg, "rows"):
-            lines.append(f"- **{row.get('label')}**: {row.get('value')}")
         return PlainTextResponse(
-            "\n".join(lines).rstrip() + "\n",
+            pricing_markdown(),
             media_type="text/markdown; charset=utf-8",
         )
     return templates.TemplateResponse(request, "pricing.html", _ctx())
@@ -714,6 +938,87 @@ def design() -> PlainTextResponse:
     return PlainTextResponse(
         design_txt(),
         media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/.well-known/ai-catalog.json")
+def well_known_ai_catalog() -> Response:
+    """Serve the Agentic Resource Discovery catalog."""
+    return Response(
+        json.dumps(ai_catalog(), indent=2) + "\n",
+        media_type=AI_CATALOG_MEDIA_TYPE,
+    )
+
+
+@app.get("/.well-known/agent-skills/index.json")
+def well_known_agent_skills() -> Response:
+    """Serve the Agent Skills discovery index."""
+    return Response(
+        json.dumps(agent_skills_index(), indent=2) + "\n",
+        media_type="application/json",
+    )
+
+
+@app.get("/.well-known/agent-skills/{name}/SKILL.md")
+def well_known_skill(name: str) -> PlainTextResponse:
+    """Serve a declared skill artifact as markdown.
+
+    Only names declared in site.yaml resolve, so the path parameter cannot
+    be used to read an arbitrary file out of ``content/``.
+    """
+    for entry in children(child(content, "ai"), "agent_skills"):
+        if entry.get("name") == name:
+            return PlainTextResponse(
+                _skill_artifact_path(entry).read_text(encoding="utf-8"),
+                media_type="text/markdown; charset=utf-8",
+            )
+    raise HTTPException(status_code=404, detail="skill not found")
+
+
+@app.get("/{slug}.md", response_class=PlainTextResponse)
+def page_markdown(slug: str) -> PlainTextResponse:
+    """Serve a page's markdown at a stable URL, without content negotiation."""
+    markdown = markdown_for_slug(slug)
+    if markdown is None:
+        raise HTTPException(status_code=404, detail="page not found")
+    return PlainTextResponse(
+        markdown,
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@app.get("/openapi.json", include_in_schema=False)
+def openapi_contract() -> RedirectResponse:
+    """Point agents at the marketplace contract, not at this app's routes."""
+    return RedirectResponse(f"{API_BASE}/openapi.json", status_code=302)
+
+
+@app.get("/docs", include_in_schema=False)
+def api_docs() -> RedirectResponse:
+    """Point /docs at the API reference rather than this app's Swagger UI."""
+    return RedirectResponse(f"{API_BASE}/docs", status_code=302)
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, _exc: Exception) -> Response:
+    """Answer a 404 with a body the caller can actually act on.
+
+    Content-negotiated three ways because the three kinds of caller want
+    different things from a miss: a browser wants the page, an API client
+    wants the JSON error shape it already parses, and a crawler sending
+    ``*/*`` wants somewhere to go next — so markdown is the default.
+    """
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return templates.TemplateResponse(
+            request, "not_found.html", _ctx(), status_code=404
+        )
+    if "application/json" in accept:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return PlainTextResponse(
+        not_found_markdown(),
+        status_code=404,
+        media_type="text/markdown; charset=utf-8",
     )
 
 

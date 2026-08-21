@@ -700,8 +700,16 @@ seo:
     name: Logion
     legal_name: Logion
     url: https://logion.sh
+    # Entity-linking targets for JSON-LD sameAs. Every entry must be a profile
+    # we actually control and publish under, so a resolver can confirm the
+    # same organization on both ends. Package registries count: they carry the
+    # published artifacts the landing page points agents at.
     same_as:
       - https://github.com/nicolasmelo1/logion
+      - https://pypi.org/project/logion-cli/
+      - https://www.npmjs.com/package/@logion/node-api
+      - https://x.com/logionsh
+      - https://discord.gg/j4C6nf3kwP
 
 social:
   twitter: "@logionsh"
@@ -759,6 +767,53 @@ ai:
     them. Contributors improve bundles through creator-funded bounties.
     Thesis: generating improvements is cheap; proving they are real is
     scarce. Logion sells the proof, not the writing.
+
+  # Agentic Resource Discovery catalog, served at
+  # /.well-known/ai-catalog.json. This is the index an agent probes *before*
+  # reading any page, so every entry must resolve to a real artifact — the
+  # published API contract and the companion skill we actually ship. Logion
+  # deliberately has no MCP server (see the FAQ), so none is declared here;
+  # an entry for one would be a discoverable dead end.
+  catalog:
+    spec_version: "1.0"
+    # The spec suggests a did:web identifier, but resolving one requires
+    # serving a DID document we do not publish. A bare domain is the honest
+    # identifier until we do.
+    host_identifier: logion.sh
+    documentation_url: https://api.logion.sh/docs
+    entries:
+      - identifier: urn:air:logion.sh:openapi:marketplace-v1
+        type: application/openapi+json
+        url: https://api.logion.sh/openapi.json
+        display_name: Logion Marketplace API v1
+        description: >-
+          Versioned REST contract for listings, entitlements, credits,
+          bounties, and reviews. Bearer-token authenticated.
+        tags: [marketplace, rest, openapi]
+      - identifier: urn:air:logion.sh:skill:logion
+        type: application/agent-skills+md
+        url: /.well-known/agent-skills/logion/SKILL.md
+        display_name: Logion Marketplace Companion
+        description: >-
+          Bootstrap skill that teaches an agent when and how to discover,
+          inspect, install, and update Logion course bundles.
+        tags: [skill, marketplace, cli]
+
+  # Agent Skills discovery index, served at
+  # /.well-known/agent-skills/index.json. The artifact is vendored into
+  # content/ because Vercel deploys this package alone — a drift test keeps the
+  # copy byte-identical to packages/agent-companion/SKILL.md, and the sha256
+  # digest in the index is computed from the bytes we actually serve.
+  agent_skills:
+    - name: logion
+      type: skill-md
+      artifact: agent-skills/logion/SKILL.md
+      description: >-
+        Discover, inspect, install, and update Logion course bundles, and
+        route creator course management. Use when an agent needs a capability
+        it does not have and should look for a reviewed bundle before
+        improvising, or when managing a course you publish on Logion.
+
   llms_txt_pages:
     - title: Landing (markdown)
       href: /
@@ -810,9 +865,24 @@ ai:
           description: Release manifests for published packages.
     - heading: Agent Surfaces
       links:
+        - title: /.well-known/ai-catalog.json
+          href: /.well-known/ai-catalog.json
+          description: Agentic Resource Discovery catalog of every machine-readable Logion artifact.
+        - title: /.well-known/agent-skills/index.json
+          href: /.well-known/agent-skills/index.json
+          description: Agent Skills discovery index; lists the Logion companion skill and its digest.
+        - title: Logion companion SKILL.md
+          href: /.well-known/agent-skills/logion/SKILL.md
+          description: When-to-use guidance and commands for driving Logion from an agent.
+        - title: OpenAPI contract
+          href: /openapi.json
+          description: Redirects to the published Logion Marketplace API v1 contract.
         - title: "Accept: text/markdown on /"
           href: /
           description: The landing root returns plain markdown when requested.
+        - title: /index.md
+          href: /index.md
+          description: The landing copy as markdown without content negotiation.
         - title: /llms.txt
           href: /llms.txt
           description: Curated agent-readable index of the public surface.

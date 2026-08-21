@@ -21,15 +21,22 @@
     <meta name="author" content="{{ seo.organization.name }}">
     <meta name="application-name" content="{{ seo.organization.name }}">
     <meta name="apple-mobile-web-app-title" content="{{ seo.organization.name }}">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large, max-snippet:-1{% endblock %}">
     <meta name="theme-color" content="{{ seo.theme_color }}">
     <meta name="color-scheme" content="dark light">
 
     <link rel="canonical" href="{{ canonical_url }}">
-    <link rel="alternate" type="text/markdown" href="{{ canonical_url }}" title="This page as markdown">
+    {#- The markdown alternate points at the .md URL, not at this page: a
+        client that cannot set Accept: text/markdown gets HTML back from the
+        HTML URL, which makes the hint a dead end. #}
+    {%- set markdown_url = markdown_alternate(request.url.path) if request is defined else None %}
+    {%- if markdown_url %}
+    <link rel="alternate" type="text/markdown" href="{{ markdown_url }}" title="This page as markdown">
+    {%- endif %}
     <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms.txt" title="llms.txt index">
     <link rel="alternate" type="text/plain" href="{{ seo.canonical_base }}/llms-full.txt" title="llms-full.txt (full content)">
     <link rel="sitemap" type="application/xml" href="{{ seo.canonical_base }}/sitemap.xml">
+    <link rel="ai-catalog" type="application/ai-catalog+json" href="{{ seo.canonical_base }}/.well-known/ai-catalog.json">
     <link rel="me" href="https://github.com/nicolasmelo1/logion">
     <link rel="icon" href="/static/favicon.svg?v={{ asset_v }}" type="image/svg+xml">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -71,6 +78,29 @@
           "url": "{{ seo.organization.url }}",
           "logo": "{{ seo.canonical_base }}/static/favicon.svg",
           "email": "{{ contact.general }}",
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "email": "{{ contact.general }}",
+              "url": "{{ seo.canonical_base }}/",
+              "availableLanguage": "en"
+            },
+            {
+              "@type": "ContactPoint",
+              "contactType": "security",
+              "email": "{{ contact.security }}",
+              "url": "https://github.com/{{ github_repo }}/blob/main/SECURITY.md",
+              "availableLanguage": "en"
+            },
+            {
+              "@type": "ContactPoint",
+              "contactType": "legal",
+              "email": "{{ contact.takedown }}",
+              "url": "{{ seo.canonical_base }}/terms",
+              "availableLanguage": "en"
+            }
+          ],
           "sameAs": [
             {%- for url in seo.organization.same_as %}
             "{{ url }}"{% if not loop.last %},{% endif %}
