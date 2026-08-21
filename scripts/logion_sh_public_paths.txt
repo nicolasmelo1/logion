@@ -29,3 +29,15 @@
 /static
 /static/*
 /setup/complete
+/.well-known/ai-catalog.json
+/.well-known/agent-skills/index.json
+/.well-known/agent-skills/*
+/aktp.md
+/credits-terms.md
+/docs
+/index.md
+/openapi.json
+/pricing.md
+/privacy.md
+/referrals-terms.md
+/terms.md

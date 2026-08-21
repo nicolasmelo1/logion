@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Not found — {{ site.name }}{% endblock %}
+{% block meta_description %}{{ site.name }} does not serve this path.{% endblock %}
+{% block robots %}noindex, follow{% endblock %}
+
+{% block main %}
+  <article class="legal">
+    <h1>404 — not found</h1>
+    <p>{{ site.name }} does not serve this path.</p>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/pricing">Pricing</a></li>
+      <li><a href="/aktp">AKTP</a></li>
+      <li><a href="/llms.txt">llms.txt</a></li>
+    </ul>
+    <p>
+      Agents: the same recovery list is served as markdown when this URL is
+      requested with any Accept header other than <code>text/html</code>.
+      Start from
+      <a href="/.well-known/ai-catalog.json">/.well-known/ai-catalog.json</a>.
+    </p>
+  </article>
+{% endblock %}
