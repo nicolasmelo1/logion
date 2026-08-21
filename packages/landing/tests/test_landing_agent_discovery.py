@@ -26,6 +26,7 @@ from landing.main import (  # noqa: E402
     API_BASE,
     CONTENT_DIR,
     MARKDOWN_PAGES,
+    _merge_vary,
     app,
 )
 
@@ -187,6 +188,85 @@ def test_markdown_alternate_points_at_the_md_url_not_the_page() -> None:
 
 def test_unknown_md_slug_is_404_not_a_page() -> None:
     assert client.get("/nope.md").status_code == 404
+
+
+# ── Vary: Accept ──────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("path", sorted(MARKDOWN_PAGES))
+@pytest.mark.parametrize("accept", ["text/html", "text/markdown"])
+def test_negotiating_routes_advertise_vary_accept(
+    path: str, accept: str
+) -> None:
+    # Two representations from one URL. Without Vary: Accept the caches in
+    # front of this app (Vercel's and Cloudflare's) may store one and serve
+    # it to every later caller — an agent asking for markdown gets the
+    # cached HTML, purely by arrival order.
+    response = client.get(path, headers={"accept": accept})
+    vary = {
+        token.strip().lower() for token in response.headers["vary"].split(",")
+    }
+    assert "accept" in vary, path
+    assert "accept-encoding" in vary, path
+
+
+@pytest.mark.parametrize(
+    "accept", ["text/html", "application/json", "*/*", "text/markdown"]
+)
+def test_negotiated_404_advertises_vary_accept(accept: str) -> None:
+    response = client.get("/nope", headers={"accept": accept})
+    assert response.status_code == 404
+    assert "accept" in response.headers["vary"].lower()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/llms.txt",
+        "/sitemap.xml",
+        "/design.txt",
+        "/index.md",
+        AI_CATALOG_PATH,
+        AGENT_SKILLS_PATH,
+    ],
+)
+def test_single_representation_routes_do_not_split_the_cache(
+    path: str,
+) -> None:
+    # These bodies never vary by Accept. Stamping Vary: Accept anyway would
+    # split the cache key for no reason.
+    assert "accept" not in client.get(path).headers.get("vary", "").lower()
+
+
+def test_merge_vary_does_not_duplicate_existing_tokens() -> None:
+    assert _merge_vary(None) == "Accept, Accept-Encoding"
+    assert _merge_vary("Accept-Encoding") == "Accept-Encoding, Accept"
+    assert _merge_vary("accept") == "accept, Accept-Encoding"
+    # Whatever a proxy already set is preserved, not overwritten.
+    assert _merge_vary("Cookie") == "Cookie, Accept, Accept-Encoding"
+
+
+# ── when-to-use guidance ──────────────────────────────────────────
+
+
+def test_llms_txt_tells_an_agent_when_to_use_logion() -> None:
+    # Readiness scanners and agents look for routing guidance in llms.txt,
+    # not only in a skill file. It sits above the link index because an
+    # agent deciding *whether* to use Logion needs it before the URLs.
+    text = client.get("/llms.txt").text
+    assert "## When to use Logion" in text
+    assert text.index("When to use Logion") < text.index("## Pages")
+    assert "Use Logion when:" in text
+    assert "Do not reach for Logion for:" in text
+    assert "How to call it:" in text
+
+
+def test_when_to_use_names_what_logion_is_not_for() -> None:
+    # The half that makes the rest credible: an entry claiming every job
+    # reads as marketing and gets discounted.
+    text = client.get("/llms.txt").text
+    negative = text.split("Do not reach for Logion for:")[1]
+    assert negative.count("\n- ") >= 3
 
 
 # ── HEAD ──────────────────────────────────────────────────────────

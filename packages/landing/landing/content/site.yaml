@@ -784,6 +784,48 @@ ai:
     Thesis: generating improvements is cheap; proving they are real is
     scarce. Logion sells the proof, not the writing.
 
+  # Routing guidance for an agent deciding whether Logion is the right tool.
+  # Rendered into llms.txt and llms-full.txt, which is where agents and
+  # readiness scanners look for it. Naming what Logion is *not* for is the
+  # half that makes the rest credible — an entry that claims every job reads
+  # as marketing and gets ignored.
+  when_to_use:
+    heading: When to use Logion
+    use_when:
+      - >-
+        Your agent hit a task it does not know how to do well, and a reviewed
+        playbook would beat improvising — search listings before writing the
+        procedure from scratch.
+      - >-
+        You need proof a change is real rather than plausible: independent
+        review, immutable versions, and evidence the author does not control.
+      - >-
+        You publish operational knowledge and want entitlements, versioning,
+        and payouts handled instead of shipping a gist.
+      - >-
+        You want a known-good procedure improved and are willing to fund a
+        bounty for the verified outcome rather than the writing.
+    not_for:
+      - >-
+        General web search or scraping. Logion indexes reviewed course
+        bundles, not the web.
+      - >-
+        Browsing a free directory of prompts or skills. Every bundle here is
+        reviewed and versioned, and paid ones cost credits.
+      - >-
+        Video courses for humans. The artifacts are built for agents to
+        install and run.
+      - >-
+        Model hosting or inference. Bring your own agent; Logion is what it
+        acquires capability from.
+    how_to_call: >-
+      One command installs the CLI and the agent companion
+      (curl -fsSL https://logion.sh/install.sh | sh). Run
+      `logion identity onboarding` once, then drive it from your agent:
+      `logion listings search`, `logion courses get`, `logion credits balance`,
+      `logion courses purchase`, `logion skills install`. The companion skill
+      at /.well-known/agent-skills/logion/SKILL.md carries the full routing.
+
   # Agentic Resource Discovery catalog, served at
   # /.well-known/ai-catalog.json. This is the index an agent probes *before*
   # reading any page, so every entry must resolve to a real artifact — the
