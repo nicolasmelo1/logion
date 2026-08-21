@@ -57,7 +57,7 @@ jobs:
       - name: Hash artifacts
         run: |
           cd dist/
-          sha256sum * > SHA256SUMS.txt
+          sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -77,7 +77,7 @@ jobs:
         with:
           name: cli-dist
           path: dist/
-      - name: Wait for matching skillmap version on PyPI
+      - name: Wait for matching skillmap version on selected index
         env:
           VERSION: ${{ needs.verify.outputs.version }}
           PYPI_INDEX_URL: ${{ needs.verify.outputs.channel == 'testpypi' && 'https://test.pypi.org/pypi' || 'https://pypi.org/pypi' }}
@@ -93,6 +93,7 @@ jobs:
             then
               exit 0
             fi
+            echo "Waiting for skillmap version (attempt ${i}/30)..."
             sleep 10
           done
           exit 1

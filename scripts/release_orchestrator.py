@@ -428,7 +428,7 @@ class ReleasePlanner:
             next_version = Version(version)
         except InvalidVersion as exc:
             raise ValueError(
-                f"Not a valid SemVer version: {version!r}",
+                f"Not a valid PEP 440 version: {version!r}",
             ) from exc
 
         if next_version.is_devrelease and publish_store:
