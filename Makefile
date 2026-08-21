@@ -114,6 +114,15 @@ check-json-module:
 check-installer-security:
 	python3 scripts/check_installer_security.py
 
+# Live network check, deliberately NOT in ci-checks: CI must not go red on a
+# DNS blip. Every offline checker follows redirects and sees 200, so a
+# canonical host that redirects away from itself is invisible to all of them —
+# which is how the apex answering `308 -> www` went unnoticed while every page
+# kept declaring the apex as canonical. Run after any DNS, domain or proxy
+# change.
+check-canonical-host:
+	uv run python scripts/check_canonical_host.py
+
 # Umbrella target: every static guardrail. Fast (<1s total). Runs in
 # CI and as part of the pre-commit hook. Slower checks (test, mypy,
 # ruff, security audit) stay separate so this stays cheap.
