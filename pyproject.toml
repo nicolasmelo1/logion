@@ -17,6 +17,7 @@ members = [
     "packages/skillmap",
     "packages/bot",
     "packages/indexer",
+    "packages/harness-plugins",
 ]
 
 [dependency-groups]

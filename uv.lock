@@ -27,6 +27,7 @@ members = [
     "logion-bot",
     "logion-cli",
     "logion-client",
+    "logion-harness-plugins",
     "logion-indexer",
     "logion-landing",
     "logion-scanners",
@@ -1749,6 +1750,11 @@ dev = [
     { name = "python-semantic-release", specifier = ">=10.6.1,<10.7.0" },
     { name = "ruff", specifier = ">=0.15.12,<0.16.0" },
 ]
+
+[[package]]
+name = "logion-harness-plugins"
+version = "0.1.0"
+source = { editable = "packages/harness-plugins" }
 
 [[package]]
 name = "logion-indexer"
