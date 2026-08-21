@@ -261,10 +261,21 @@ def test_llms_txt_tells_an_agent_when_to_use_logion() -> None:
     assert "How to call it:" in text
 
 
-def test_when_to_use_names_what_logion_is_not_for() -> None:
+def test_when_to_use_leads_llms_full_txt_too() -> None:
+    # llms-full.txt is the single fetch an agent makes to ingest everything,
+    # so "should I use this" has to be in it, and ahead of the page copy.
+    # The first cut of this change rendered the guidance into llms.txt only.
+    text = client.get("/llms-full.txt").text
+    assert "## When to use Logion" in text
+    assert "Do not reach for Logion for:" in text
+    assert text.index("When to use Logion") < text.index("## /\n")
+
+
+@pytest.mark.parametrize("path", ["/llms.txt", "/llms-full.txt"])
+def test_when_to_use_names_what_logion_is_not_for(path: str) -> None:
     # The half that makes the rest credible: an entry claiming every job
     # reads as marketing and gets discounted.
-    text = client.get("/llms.txt").text
+    text = client.get(path).text
     negative = text.split("Do not reach for Logion for:")[1]
     assert negative.count("\n- ") >= 3
 

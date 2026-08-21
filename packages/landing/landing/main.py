@@ -590,6 +590,12 @@ def llms_full_txt() -> str:
     )
     if summary:
         sections.append(str(summary).strip() + "\n")
+    # Routing guidance before the page dump, for the same reason it leads
+    # llms.txt: this is the one fetch an agent makes to decide whether Logion
+    # is the right tool, so "should I use this" has to come before the copy.
+    when_to_use = when_to_use_lines()
+    if when_to_use:
+        sections.append("\n".join(when_to_use).strip() + "\n")
     sections.append("## /\n")
     sections.append(markdown_content.strip() + "\n")
     for path, slug in LEGAL_ROUTES.items():
