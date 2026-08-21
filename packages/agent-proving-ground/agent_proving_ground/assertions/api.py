@@ -59,10 +59,23 @@ class _ApiQueryAssertion(Assertion):
                 message=self.pass_message,
                 evidence=evidence,
             )
+        # A query that knows *why* it failed says so. The class-level
+        # fail_message is a single sentence for every possible cause, and
+        # when the cause is "the agent never wrote the artifact" it accuses
+        # the product instead: a missing reconcile file was reported as
+        # "reconciliation left unresolved, ambiguous, or drifted entries",
+        # which sends the reader into the product to look for a defect that
+        # is not there.
+        reason = result.get("reason") or result.get("error")
+        message = (
+            f"{self.fail_message} ({reason})"
+            if isinstance(reason, str) and reason
+            else self.fail_message
+        )
         return AssertionOutcome(
             type=self.type,
             status="failed",
-            message=self.fail_message,
+            message=message,
             evidence={**params, **evidence},
         )
 

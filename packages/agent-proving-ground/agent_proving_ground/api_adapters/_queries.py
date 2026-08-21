@@ -2041,10 +2041,10 @@ class LogionApiQueries:
         self, query: JsonObject, agent_roles: dict[str, str]
     ) -> JsonObject:
         try:
-            first = _load_cli_object(
+            first, first_shape = _load_cli_payload(
                 query.get("first_artifact"), "logion.feedback.submit"
             )
-            second = _load_cli_object(
+            second, second_shape = _load_cli_payload(
                 query.get("second_artifact"), "logion.feedback.submit"
             )
         except (OSError, TypeError, ValueError) as exc:
@@ -2061,6 +2061,8 @@ class LogionApiQueries:
             ),
             "first_feedback_id": first_id,
             "second_feedback_id": second_id,
+            "persisted_feedback_id": persisted_id,
+            "artifact_shapes": [first_shape, second_shape],
         }
 
     async def _q_remote_mcp_reconciled(
@@ -2308,6 +2310,41 @@ def _load_cli_data(raw_path: JsonValue, expected_kind: str) -> JsonValue:
     ):
         raise ValueError(f"unexpected CLI envelope in {raw_path}")
     return envelope.get("data")
+
+
+def _load_cli_payload(
+    raw_path: JsonValue, expected_kind: str
+) -> tuple[JsonObject, str]:
+    """Read a CLI artifact as the v1 envelope *or* its bare data object.
+
+    Returns the payload and which shape it was found in, so evidence still
+    records whether the agent preserved the envelope.
+
+    The envelope is preferred and not required. This reader backs checks
+    whose subject is a **server-side** property, and making a server
+    invariant depend on an agent preserving a wire format turns a
+    deterministic check into a coin flip. Observed directly: same prompt,
+    same model, two consecutive runs, envelope in the first and the bare
+    data object in the second — with the API storing one row and one id
+    both times.
+
+    Nothing is lost against reward hacking. The identity check that matters
+    compares both artifacts to the id the API actually persisted, and an
+    agent willing to invent an id could invent an envelope around it just
+    as easily.
+    """
+    envelope = _load_json_object(raw_path)
+    if (
+        envelope.get("version") == "v1"
+        and envelope.get("kind") == expected_kind
+    ):
+        data = envelope.get("data")
+        if not isinstance(data, dict):
+            raise TypeError(f"CLI data is not an object: {raw_path}")
+        return data, "envelope"
+    if "version" in envelope or "kind" in envelope:
+        raise ValueError(f"unexpected CLI envelope in {raw_path}")
+    return envelope, "bare"
 
 
 def _load_cli_object(raw_path: JsonValue, expected_kind: str) -> JsonObject:
