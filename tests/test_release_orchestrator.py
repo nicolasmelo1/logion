@@ -6,6 +6,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from scripts import release_orchestrator as release_orchestrator_module
 from scripts.release_orchestrator import (
     _PACKAGE_CONFIG,
@@ -217,6 +219,34 @@ def test_release_creates_expected_tag_commands() -> None:
         assert tag.endswith("-v0.2.0"), tag
     # Confirm every public package has a tag.
     assert len(plan.tags_to_create) == len(_PACKAGE_CONFIG)
+
+
+def test_development_plan_does_not_mutate_install_manifests() -> None:
+    """A `.devN` release is installed explicitly, never through a manifest."""
+    plan = ReleasePlanner(repo_root=REPO_ROOT).load(
+        "0.2.0.dev1",
+        publish_store=False,
+    )
+    assert plan.manifest_outputs == ()
+
+
+def test_development_plan_rejects_store_publication() -> None:
+    """Development companion bundles cannot claim a store publication."""
+    planner = ReleasePlanner(repo_root=REPO_ROOT)
+    with pytest.raises(ValueError, match="cannot publish"):
+        planner.load("0.2.0.dev1", publish_store=True)
+
+
+def test_development_release_skips_manifest_commands() -> None:
+    """The executor leaves stable/latest installer manifests untouched."""
+    plan = ReleasePlanner(repo_root=REPO_ROOT).load(
+        "0.2.0.dev1",
+        publish_store=False,
+    )
+    runner = _FakeRunner()
+    ReleaseExecutor(plan, runner=runner).run_checks()
+    assert ["make", "release-manifest"] not in runner.calls
+    assert ["make", "release-manifest-check"] not in runner.calls
 
 
 def test_release_regenerates_stable_and_latest_manifests() -> None:

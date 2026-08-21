@@ -431,6 +431,12 @@ class ReleasePlanner:
                 f"Not a valid SemVer version: {version!r}",
             ) from exc
 
+        if next_version.is_devrelease and publish_store:
+            raise ValueError(
+                "Development releases cannot publish the companion "
+                "to the store",
+            )
+
         packages: list[ReleasePackage] = []
         tags: list[str] = []
         normalized_version = str(next_version)
@@ -451,10 +457,12 @@ class ReleasePlanner:
 
         changed = self.detect_changed_packages()
 
-        manifest_outputs = (
-            self._root / "releases" / "manifest-stable.json",
-            self._root / "releases" / "manifest-latest.json",
-        )
+        manifest_outputs = ()
+        if not next_version.is_devrelease:
+            manifest_outputs = (
+                self._root / "releases" / "manifest-stable.json",
+                self._root / "releases" / "manifest-latest.json",
+            )
 
         # Map package short-names to their paths for changed_paths.
         name_to_path = {
@@ -625,9 +633,12 @@ class ReleaseExecutor:
             ["make", "npm-test"],
             ["make", "companion-bundle"],
             ["make", "companion-bundle-verify"],
-            ["make", "release-manifest"],
-            ["make", "release-manifest-check"],
         ]
+        if not self._plan.version.is_devrelease:
+            steps.extend([
+                ["make", "release-manifest"],
+                ["make", "release-manifest-check"],
+            ])
         for step in steps:
             result = self._runner.run(step, cwd=self._root())
             if result.returncode != 0:
@@ -650,7 +661,7 @@ class ReleaseExecutor:
     # -- manifests ----------------------------------------------
 
     def regenerate_manifests(self) -> None:
-        """Regenerate stable and latest manifests."""
+        """Regenerate stable/latest manifests for non-development releases."""
         for manifest_path in self._plan.manifest_outputs:
             channel = "stable" if "stable" in manifest_path.name else "latest"
             cmd = [

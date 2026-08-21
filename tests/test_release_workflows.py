@@ -27,6 +27,7 @@ CLIENT = _load("release-client.yml")
 SKILLMAP = _load("release-skillmap.yml")
 COMPANION = _load("release-companion.yml")
 NPM = _load("release-npm.yml")
+RELEASE_ALL = _load("release-all.yml")
 
 PYPI_WORKFLOWS = [CLI, CLIENT, SKILLMAP]
 ALL_WORKFLOWS = [CLI, CLIENT, SKILLMAP, COMPANION, NPM]
@@ -82,18 +83,22 @@ def test_release_companion_tag_filter():
 # ---------------------------------------------------------------------------
 
 
-def test_release_publish_jobs_have_environment():
-    """PyPI publish jobs use environment: pypi; npm uses environment: npm."""
+def test_release_publish_jobs_select_a_python_index_environment():
+    """Python publishers choose PyPI or TestPyPI from the verified tag."""
     for wf in PYPI_WORKFLOWS:
+        verify = wf["jobs"]["verify"]
+        expected_channel = "${{ steps.parse.outputs.channel }}"
+        assert verify["outputs"]["channel"] == expected_channel
+        parse = next(
+            step for step in verify["steps"] if step.get("id") == "parse"
+        )
+        assert "channel=testpypi" in parse["run"]
+        assert "channel=pypi" in parse["run"]
+
         pub = wf["jobs"]["publish-pypi"]
         env = pub.get("environment", {})
-        if isinstance(env, dict):
-            name = env.get("name", "")
-        else:
-            name = env if isinstance(env, str) else ""
-        assert name == "pypi" or "pypi" in str(env), (
-            f"Expected environment pypi in {wf['name']}, got {env}"
-        )
+        assert env.get("name") == "${{ needs.verify.outputs.channel }}"
+        assert "test.pypi.org" in env.get("url", "")
 
     npm_pub = NPM["jobs"]["publish"]
     env = npm_pub.get("environment", {})
@@ -175,3 +180,42 @@ def test_release_workflows_do_not_publish_on_branch_push():
             f"{wf['name']} must not trigger on branch pushes, "
             f"but found branches: {branches}"
         )
+
+
+def test_development_release_publishes_to_testpypi_and_skips_npm():
+    """`.devN` tags use TestPyPI and never publish an npm package."""
+    for wf in PYPI_WORKFLOWS:
+        pub = wf["jobs"]["publish-pypi"]
+        publish = next(
+            step
+            for step in pub["steps"]
+            if step.get("name") == "Publish to selected Python index"
+        )
+        assert "test.pypi.org/legacy" in publish["with"]["repository-url"]
+
+    assert "!contains(github.ref_name, '.dev')" in NPM["jobs"]["publish"]["if"]
+
+
+def test_release_all_rejects_store_publication_for_development_versions():
+    """A `.devN` release never writes a development companion to the store."""
+    steps = RELEASE_ALL["jobs"]["release"]["steps"]
+    guard_name = "Reject store publication for development releases"
+    guard = next(step for step in steps if step.get("name") == guard_name)
+    assert ".dev[0-9]+$" in guard["run"]
+    assert "set publish_store=false" in guard["run"]
+
+
+def test_cli_uses_the_same_index_for_skillmap_dependency_wait():
+    """A development CLI waits for skillmap at TestPyPI, not production.
+
+    This avoids resolving a same-named stable package while publishing
+    a canary.
+    """
+    steps = CLI["jobs"]["publish-pypi"]["steps"]
+    wait = next(
+        step
+        for step in steps
+        if step.get("name") == "Wait for matching skillmap version on PyPI"
+    )
+    assert "PYPI_INDEX_URL" in wait["env"]
+    assert "test.pypi.org/pypi" in wait["env"]["PYPI_INDEX_URL"]
