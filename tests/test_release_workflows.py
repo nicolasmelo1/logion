@@ -204,6 +204,23 @@ def test_release_all_rejects_store_publication_for_development_versions():
     assert "set publish_store=false" in guard["run"]
 
 
+def test_release_all_syncs_python_workspace_before_orchestrating_release():
+    """The orchestrator imports workspace packages, so CI must install them."""
+    steps = RELEASE_ALL["jobs"]["release"]["steps"]
+    sync_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Sync Python workspace dependencies"
+    )
+    release_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Run coordinated release"
+    )
+    assert "uv sync --all-packages --locked" in steps[sync_index]["run"]
+    assert sync_index < release_index
+
+
 def test_cli_uses_the_same_index_for_skillmap_dependency_wait():
     """A development CLI waits for skillmap at TestPyPI, not production.
 
