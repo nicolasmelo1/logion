@@ -19153,7 +19153,7 @@
     },
     "/v1/resources/{resource_id}/versions/{version_id}/feedback": {
       "post": {
-        "description": "Submit native-use feedback for a resource version.",
+        "description": "Submit native-use feedback for a resource version.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path.  The pseudonymous subject is derived\nserver-side, never client-supplied.",
         "operationId": "submit_feedback",
         "parameters": [
           {
@@ -19263,7 +19263,7 @@
     },
     "/v1/resources/{resource_id}/versions/{version_id}/usage-receipts": {
       "post": {
-        "description": "Submit a native-use observation receipt.",
+        "description": "Submit a native-use observation receipt.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path where the reporter has no Logion\naccount.  The pseudonymous subject is derived server-side from the\nconsent policy digest and acquisition channel, never client-supplied.",
         "operationId": "submit_usage_receipt",
         "parameters": [
           {

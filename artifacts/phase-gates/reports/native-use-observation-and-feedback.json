@@ -1,44 +1,87 @@
 {
-  "run_id": "20260817T173226-native_use_observation_and_feedback",
+  "run_id": "20260821T020930-native_use_observation_and_feedback",
   "scenario": "native_use_observation_and_feedback",
   "status": "passed",
   "api_adapter": "local-devrig",
   "agent_drivers": {
-    "user_a": "claude-code",
-    "user_b": "claude-code"
+    "user_a": "codex",
+    "user_b": "codex"
   },
-  "started_at": "2026-08-17T17:32:26.535792Z",
-  "finished_at": "2026-08-17T17:38:11.099572Z",
+  "started_at": "2026-08-21T02:09:30.799196Z",
+  "finished_at": "2026-08-21T02:20:07.752936Z",
   "phase_results": [
     {
       "phase_id": "setup",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-17T17:32:26.614280Z",
-      "finished_at": "2026-08-17T17:32:26.669678Z",
-      "duration_seconds": 0.055
+      "started_at": "2026-08-21T02:09:31.063309Z",
+      "finished_at": "2026-08-21T02:09:31.122100Z",
+      "duration_seconds": 0.059
     },
     {
       "phase_id": "seed",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-17T17:32:26.669702Z",
-      "finished_at": "2026-08-17T17:32:26.941758Z",
-      "duration_seconds": 0.272
+      "started_at": "2026-08-21T02:09:31.122122Z",
+      "finished_at": "2026-08-21T02:09:31.379961Z",
+      "duration_seconds": 0.258
     },
     {
-      "phase_id": "native_install_and_use",
+      "phase_id": "native_install_and_enable",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-21T02:09:31.379990Z",
+      "finished_at": "2026-08-21T02:14:32.927992Z",
+      "duration_seconds": 301.548
+    },
+    {
+      "phase_id": "reconcile_native_inventory",
       "status": "completed",
       "assertion_results": [
+        {
+          "type": "api.native_install_reconciled",
+          "status": "passed",
+          "message": "local inventory reconciled to on-disk installations with no unresolved, ambiguous, or drifted entries",
+          "evidence": {
+            "matched_count": 1,
+            "unresolved_count": 0,
+            "ambiguous_count": 0,
+            "drifted_count": 0,
+            "channels": [
+              "npx_skills"
+            ],
+            "query_evidence": {
+              "source": "<local-run-artifact>"
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-21T02:14:32.928027Z",
+      "finished_at": "2026-08-21T02:14:33.391357Z",
+      "duration_seconds": 0.463
+    },
+    {
+      "phase_id": "native_use",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.observation_from_live_hook",
+          "status": "passed",
+          "message": "the harness delivered the payload that was recorded",
+          "evidence": {
+            "payload": "<local-run-artifact>",
+            "invocations": 35
+          }
+        },
         {
           "type": "files.native_use_observed",
           "status": "passed",
           "message": "native use was observed for the installed resource",
           "evidence": {
-            "resource_id": "ec865ad6-6ead-43f9-b065-ed3dd14f5926",
-            "version_id": "87a6d7b8-6cea-4f99-b9b4-10b4f6f59b65",
+            "resource_id": "5bc6c611-9d41-4193-b2d4-39ca1ab451ab",
+            "version_id": "4c18388f-df1d-482b-89d1-38ffa85ea470",
             "channel": "npx_skills",
-            "scope_id": "4fcd8519028eb81a8b9e74cdc82a002dad70b198a16655c7068a37dbf1313c5e"
+            "scope_id": "3308026da78d7c5849d006780f8b60333667190edb35fbcff04ab3175d97b6c9"
           }
         },
         {
@@ -48,14 +91,14 @@
           "evidence": {
             "pending_count": 1,
             "resource_ids": [
-              "ec865ad6-6ead-43f9-b065-ed3dd14f5926"
+              "5bc6c611-9d41-4193-b2d4-39ca1ab451ab"
             ]
           }
         }
       ],
-      "started_at": "2026-08-17T17:32:26.941778Z",
-      "finished_at": "2026-08-17T17:36:46.471874Z",
-      "duration_seconds": 259.53
+      "started_at": "2026-08-21T02:14:33.391382Z",
+      "finished_at": "2026-08-21T02:17:27.845524Z",
+      "duration_seconds": 174.454
     },
     {
       "phase_id": "inspect_and_submit_feedback",
@@ -66,9 +109,9 @@
           "status": "passed",
           "message": "resource feedback exists",
           "evidence": {
-            "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
-            "resource_id": "ec865ad6-6ead-43f9-b065-ed3dd14f5926",
-            "version_id": "87a6d7b8-6cea-4f99-b9b4-10b4f6f59b65"
+            "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
+            "resource_id": "5bc6c611-9d41-4193-b2d4-39ca1ab451ab",
+            "version_id": "4c18388f-df1d-482b-89d1-38ffa85ea470"
           }
         },
         {
@@ -76,9 +119,9 @@
           "status": "passed",
           "message": "feedback is linked to an acquisition record",
           "evidence": {
-            "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
+            "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
             "acquisition_channel": "npx_skills",
-            "installation_id": "295a171603b3106ff5ba0c2ff57474bd7e40b616881df60a0d4374468726e707"
+            "installation_id": "eedea1de677586373e8e74279f333adfb870cb793014d6fbe26870939017bce2"
           }
         },
         {
@@ -86,7 +129,7 @@
           "status": "passed",
           "message": "course review projection exists for the feedback",
           "evidence": {
-            "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
+            "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
             "projection_disposition": "not_a_course"
           }
         },
@@ -95,22 +138,22 @@
           "status": "passed",
           "message": "feedback submission is idempotent",
           "evidence": {
-            "first_feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
-            "second_feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11"
+            "first_feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
+            "second_feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30"
           }
         }
       ],
-      "started_at": "2026-08-17T17:36:46.471917Z",
-      "finished_at": "2026-08-17T17:37:58.624756Z",
-      "duration_seconds": 72.153
+      "started_at": "2026-08-21T02:17:27.845594Z",
+      "finished_at": "2026-08-21T02:19:37.585617Z",
+      "duration_seconds": 129.74
     },
     {
       "phase_id": "setup_isolated_user",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-17T17:37:58.624788Z",
-      "finished_at": "2026-08-17T17:37:58.857243Z",
-      "duration_seconds": 0.232
+      "started_at": "2026-08-21T02:19:37.585691Z",
+      "finished_at": "2026-08-21T02:19:37.664636Z",
+      "duration_seconds": 0.079
     },
     {
       "phase_id": "acme_isolation",
@@ -121,26 +164,52 @@
           "status": "passed",
           "message": "isolated usage spool is empty",
           "evidence": {
-            "path": "artifacts/phase-gates/runs/native-use-observation-and-feedback/agents/user_b/user_b/evidence/pending-acme.json",
+            "path": "<local-run-artifact>",
             "pending_count": 0
           }
         }
       ],
-      "started_at": "2026-08-17T17:37:58.857260Z",
-      "finished_at": "2026-08-17T17:38:11.074691Z",
-      "duration_seconds": 12.217
+      "started_at": "2026-08-21T02:19:37.664662Z",
+      "finished_at": "2026-08-21T02:20:07.705310Z",
+      "duration_seconds": 30.041
     }
   ],
   "assertion_results": [
+    {
+      "type": "api.native_install_reconciled",
+      "status": "passed",
+      "message": "local inventory reconciled to on-disk installations with no unresolved, ambiguous, or drifted entries",
+      "evidence": {
+        "matched_count": 1,
+        "unresolved_count": 0,
+        "ambiguous_count": 0,
+        "drifted_count": 0,
+        "channels": [
+          "npx_skills"
+        ],
+        "query_evidence": {
+          "source": "<local-run-artifact>"
+        }
+      }
+    },
+    {
+      "type": "files.observation_from_live_hook",
+      "status": "passed",
+      "message": "the harness delivered the payload that was recorded",
+      "evidence": {
+        "payload": "<local-run-artifact>",
+        "invocations": 35
+      }
+    },
     {
       "type": "files.native_use_observed",
       "status": "passed",
       "message": "native use was observed for the installed resource",
       "evidence": {
-        "resource_id": "ec865ad6-6ead-43f9-b065-ed3dd14f5926",
-        "version_id": "87a6d7b8-6cea-4f99-b9b4-10b4f6f59b65",
+        "resource_id": "5bc6c611-9d41-4193-b2d4-39ca1ab451ab",
+        "version_id": "4c18388f-df1d-482b-89d1-38ffa85ea470",
         "channel": "npx_skills",
-        "scope_id": "4fcd8519028eb81a8b9e74cdc82a002dad70b198a16655c7068a37dbf1313c5e"
+        "scope_id": "3308026da78d7c5849d006780f8b60333667190edb35fbcff04ab3175d97b6c9"
       }
     },
     {
@@ -150,7 +219,7 @@
       "evidence": {
         "pending_count": 1,
         "resource_ids": [
-          "ec865ad6-6ead-43f9-b065-ed3dd14f5926"
+          "5bc6c611-9d41-4193-b2d4-39ca1ab451ab"
         ]
       }
     },
@@ -159,9 +228,9 @@
       "status": "passed",
       "message": "resource feedback exists",
       "evidence": {
-        "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
-        "resource_id": "ec865ad6-6ead-43f9-b065-ed3dd14f5926",
-        "version_id": "87a6d7b8-6cea-4f99-b9b4-10b4f6f59b65"
+        "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
+        "resource_id": "5bc6c611-9d41-4193-b2d4-39ca1ab451ab",
+        "version_id": "4c18388f-df1d-482b-89d1-38ffa85ea470"
       }
     },
     {
@@ -169,9 +238,9 @@
       "status": "passed",
       "message": "feedback is linked to an acquisition record",
       "evidence": {
-        "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
+        "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
         "acquisition_channel": "npx_skills",
-        "installation_id": "295a171603b3106ff5ba0c2ff57474bd7e40b616881df60a0d4374468726e707"
+        "installation_id": "eedea1de677586373e8e74279f333adfb870cb793014d6fbe26870939017bce2"
       }
     },
     {
@@ -179,7 +248,7 @@
       "status": "passed",
       "message": "course review projection exists for the feedback",
       "evidence": {
-        "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
+        "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
         "projection_disposition": "not_a_course"
       }
     },
@@ -188,8 +257,8 @@
       "status": "passed",
       "message": "feedback submission is idempotent",
       "evidence": {
-        "first_feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
-        "second_feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11"
+        "first_feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
+        "second_feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30"
       }
     },
     {
@@ -197,7 +266,7 @@
       "status": "passed",
       "message": "isolated usage spool is empty",
       "evidence": {
-        "path": "artifacts/phase-gates/runs/native-use-observation-and-feedback/agents/user_b/user_b/evidence/pending-acme.json",
+        "path": "<local-run-artifact>",
         "pending_count": 0
       }
     },
@@ -206,7 +275,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": "<public-repo>-workspace/.devrig/api.log"
+        "log_path": "<local-devrig-api-log>"
       }
     },
     {
@@ -220,9 +289,9 @@
       "status": "passed",
       "message": "resource feedback exists",
       "evidence": {
-        "feedback_id": "c0e26e83-0bdb-4e34-8acb-5a246e0eda11",
-        "resource_id": "ec865ad6-6ead-43f9-b065-ed3dd14f5926",
-        "version_id": "87a6d7b8-6cea-4f99-b9b4-10b4f6f59b65"
+        "feedback_id": "b7bdfa47-f3e7-411f-a3d4-aff48bc16d30",
+        "resource_id": "5bc6c611-9d41-4193-b2d4-39ca1ab451ab",
+        "version_id": "4c18388f-df1d-482b-89d1-38ffa85ea470"
       }
     },
     {
@@ -248,5 +317,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "artifacts/phase-gates/runs/native-use-observation-and-feedback"
+  "artifact_root": "<local-run-artifact>"
 }

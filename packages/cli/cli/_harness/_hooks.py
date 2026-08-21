@@ -85,21 +85,57 @@ def has_observation_hook(settings: JsonObject) -> bool:
     return False
 
 
+def _set_logion_hook_async(
+    settings: JsonObject, *, asynchronous: bool
+) -> bool:
+    """Migrate existing Logion hooks to the requested execution mode."""
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return False
+    groups = hooks.get(POST_TOOL_USE)
+    if not isinstance(groups, list):
+        return False
+    changed = False
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        entries = group.get("hooks")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict) or not is_logion_hook(entry):
+                continue
+            if asynchronous:
+                if entry.get("async") is not True:
+                    entry["async"] = True
+                    changed = True
+            elif "async" in entry:
+                entry.pop("async")
+                changed = True
+    return changed
+
+
 def add_observation_hook(
-    settings: JsonObject, *, path: str, matcher: str, command: str
+    settings: JsonObject,
+    *,
+    path: str,
+    matcher: str,
+    command: str,
+    asynchronous: bool = True,
 ) -> bool:
     """Add the hook if absent.  Returns True when the config changed."""
     if has_observation_hook(settings):
-        return False
+        return _set_logion_hook_async(settings, asynchronous=asynchronous)
     groups = _event_groups(settings, path)
     entry: JsonObject = {
         "type": "command",
         "command": command,
         "timeout": HOOK_TIMEOUT_SECONDS,
-        # The harness must never wait on Logion, and a use observation is
-        # not part of the tool's result.
-        "async": True,
     }
+    # Codex v0.147 treats the presence of `async`, even when false, as an
+    # async hook and skips it. Omit the field for synchronous hooks.
+    if asynchronous:
+        entry["async"] = True
     groups.append({"matcher": matcher, "hooks": [entry]})
     return True
 
@@ -178,6 +214,7 @@ def apply_observation_hook(
     path: Path,
     matcher: str,
     command: str,
+    asynchronous: bool = True,
     remove: bool = False,
     dry_run: bool = False,
 ) -> ObservationPlan:
@@ -191,7 +228,11 @@ def apply_observation_hook(
         changed = remove_observation_hook(settings)
     else:
         changed = add_observation_hook(
-            settings, path=str(path), matcher=matcher, command=command
+            settings,
+            path=str(path),
+            matcher=matcher,
+            command=command,
+            asynchronous=asynchronous,
         )
     after = _render(settings) if changed else before
     if changed and not dry_run:

@@ -236,6 +236,9 @@ class CodexAdapter(HarnessAdapter):
             # attribution drop the ones that carry no installed path.
             matcher=".*",
             command=self.observation_command(),
+            # Codex v0.147 ignores async hook entries, so a synchronous hook
+            # is required to capture actual tool-use observations.
+            asynchronous=False,
             remove=remove,
             dry_run=dry_run,
         )

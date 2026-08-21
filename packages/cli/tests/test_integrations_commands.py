@@ -193,10 +193,41 @@ def test_codex_hook_goes_to_hooks_json_not_the_toml_config(
     payload = json.loads(hooks_path.read_text(encoding="utf-8"))
     entry = payload["hooks"]["PostToolUse"][0]["hooks"][0]
     assert entry["command"].startswith(OBSERVE_COMMAND)
-    assert entry["async"] is True
+    assert "async" not in entry
     assert (fake_home / ".codex" / "config.toml").read_text() == (
         'model = "gpt-5.4"\n'
     )
+
+
+def test_codex_enable_migrates_legacy_async_hook(fake_home: Path) -> None:
+    """Enable migrates the pre-fix hook format instead of leaving it inert."""
+    hooks_path = fake_home / ".codex" / "hooks.json"
+    legacy_command = f"{OBSERVE_COMMAND} --hook codex"
+    hooks_path.write_text(
+        json.dumps({
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": ".*",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": legacy_command,
+                                "async": True,
+                            }
+                        ],
+                    }
+                ]
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    assert main(["integrations", "enable", "codex"]) == 0
+
+    payload = json.loads(hooks_path.read_text(encoding="utf-8"))
+    entry = payload["hooks"]["PostToolUse"][0]["hooks"][0]
+    assert "async" not in entry
 
 
 @pytest.mark.usefixtures("fake_home")

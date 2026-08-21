@@ -209,7 +209,9 @@ phases:
       Work in ${ACME_ROOT}. LOGION_HOME is already set for you and points
       at ${ACME_LOGION_HOME}; never override it and never set HOME. Save
       `logion usage pending --json` to
-      ${ACME_EVIDENCE_DIR}/pending-acme.json. It must be empty.
+      ${ACME_EVIDENCE_DIR}/pending-acme.json. The destination is an absolute
+      path outside the acme working directory: redirect stdout to that exact
+      path, never to a relative `evidence/pending-acme.json`. It must be empty.
       Do not inspect another agent's files and do not fabricate an observation.
     assertions:
       - type: files.usage_pending_empty
