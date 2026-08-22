@@ -77,6 +77,43 @@ def test_release_companion_tag_filter():
     assert "logion-companion-v*" in _trigger_tags(COMPANION)
 
 
+def test_publishers_support_coordinated_and_recovery_dispatches():
+    """Publishers run in the coordinator and can recover an existing tag."""
+    for workflow in ALL_WORKFLOWS:
+        trigger = workflow.get("on") or workflow.get(True)
+        assert isinstance(trigger, Mapping)
+        workflow_call = trigger.get("workflow_call")
+        workflow_dispatch = trigger.get("workflow_dispatch")
+        assert isinstance(workflow_call, Mapping)
+        assert isinstance(workflow_dispatch, Mapping)
+        assert workflow_call["inputs"]["tag"]["required"] is True
+        assert workflow_dispatch["inputs"]["tag"]["required"] is True
+        assert workflow["env"]["RELEASE_TAG"].startswith("${{")
+        concurrency = workflow["concurrency"]["group"]
+        assert "github.ref_name" in concurrency
+        assert "github.ref ||" not in concurrency
+
+
+def test_release_all_calls_each_publisher_after_tags_exist():
+    """Tag creation alone cannot be relied on to trigger another workflow."""
+    jobs = RELEASE_ALL["jobs"]
+    expected = {
+        "publish-skillmap": "release-skillmap.yml",
+        "publish-client": "release-client.yml",
+        "publish-cli": "release-cli.yml",
+        "publish-npm": "release-npm.yml",
+        "publish-companion": "release-companion.yml",
+    }
+    for job_name, workflow_name in expected.items():
+        job = jobs[job_name]
+        assert job["uses"] == f"./.github/workflows/{workflow_name}"
+        assert "tag" in job["with"]
+        assert "inherit" in job.values()
+
+    assert "publish-skillmap" in jobs["publish-cli"]["needs"]
+    assert "publish-cli" in jobs["publish-npm"]["needs"]
+
+
 # ---------------------------------------------------------------------------
 # 4. Publish jobs use environment
 # ---------------------------------------------------------------------------
@@ -192,7 +229,9 @@ def test_development_release_publishes_to_testpypi_and_skips_npm():
         )
         assert "test.pypi.org/legacy" in publish["with"]["repository-url"]
 
-    assert "!contains(github.ref_name, '.dev')" in NPM["jobs"]["publish"]["if"]
+    assert "github.event_name == 'push'" in NPM["jobs"]["publish"]["if"]
+    assert "inputs.tag" in NPM["jobs"]["publish"]["if"]
+    assert "'.dev'" in NPM["jobs"]["publish"]["if"]
 
 
 def test_release_all_rejects_store_publication_for_development_versions():

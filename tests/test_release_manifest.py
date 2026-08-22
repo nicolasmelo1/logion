@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,14 @@ def _run(
 def _load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _workspace_is_development_release() -> bool:
+    """Return whether the source package version is a PEP 440 dev release."""
+    cli_pyproject = REPO_ROOT / "packages" / "cli" / "pyproject.toml"
+    with cli_pyproject.open("rb") as f:
+        version = tomllib.load(f)["project"]["version"]
+    return isinstance(version, str) and ".dev" in version
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +178,16 @@ def test_manifest_build_deterministic() -> None:
 
 
 def test_manifest_check_passes_on_committed_manifest() -> None:
-    """Running check on the committed manifest should exit 0."""
+    """The committed stable manifest remains valid during a dev release."""
     result = _run(["check", "--in", str(STABLE_MANIFEST)])
-    assert result.returncode == 0, (
-        f"check failed (exit {result.returncode}): {result.stderr}"
-    )
-    # Also verify the manifest validates against the schema.
+    if _workspace_is_development_release():
+        assert result.returncode == 0, result.stderr
+        assert "intentionally unchanged for development release" in result.stdout
+    else:
+        assert result.returncode == 0, (
+            f"check failed (exit {result.returncode}): {result.stderr}"
+        )
+
     manifest = _load_json(STABLE_MANIFEST)
     schema = _load_json(SCHEMA_PATH)
     errors = _validate_manifest_against_schema(manifest, schema)
@@ -187,7 +200,9 @@ def test_manifest_check_fails_on_version_drift() -> None:
     import tomllib
 
     cli_pyproject = REPO_ROOT / "packages" / "cli" / "pyproject.toml"
+    lockfile = REPO_ROOT / "uv.lock"
     original = cli_pyproject.read_bytes()
+    original_lock = lockfile.read_bytes()
 
     try:
         data = tomllib.loads(original.decode("utf-8"))
@@ -239,6 +254,7 @@ def test_manifest_check_fails_on_version_drift() -> None:
             os.unlink(tmp_path)
     finally:
         cli_pyproject.write_bytes(original)
+        lockfile.write_bytes(original_lock)
 
 
 def test_manifest_includes_minimum_python() -> None:

@@ -427,8 +427,10 @@ class TestReleaseBundleMinimumCliVersion:
         # Parse version components for pin-compatibility check
         # The CLI version from the workspace
         cli_version = _read_cli_version()
-        cli_parts = [int(p) for p in cli_version.split(".")]
-        min_parts = [int(p) for p in min_cli.split(".")]
+        cli_release = cli_version.split(".dev", maxsplit=1)[0]
+        min_release = min_cli.split(".dev", maxsplit=1)[0]
+        cli_parts = [int(p) for p in cli_release.split(".")]
+        min_parts = [int(p) for p in min_release.split(".")]
 
         # minimum_cli_version should be pin-compatible:
         # at minimum the major.minor should match

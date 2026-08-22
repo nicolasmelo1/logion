@@ -3,32 +3,41 @@ name: Release @logionsh/cli to npm
 on:
   push:
     tags: ["logion-cli-v*"]
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      version:
-        description: "CLI/npm version to publish, without leading v"
+      tag:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing logion-cli-v* tag to publish"
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: release-npm-${{ github.ref }}
+  group: release-npm-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   publish:
     if: >-
-      !contains(github.ref_name, '.dev') &&
-      (github.event_name != 'workflow_dispatch' || !contains(inputs.version, '.dev'))
+      !contains(github.event_name == 'push' && github.ref_name || inputs.tag, '.dev')
     runs-on: ubuntu-latest
     environment:
       name: npm
       url: https://www.npmjs.com/package/@logionsh/cli
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version-file: packages/npm-wrapper/.nvmrc
@@ -37,12 +46,8 @@ jobs:
           cache-dependency-path: "packages/npm-wrapper/package-lock.json"
       - name: Wait for PyPI CLI version to appear
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="${{ inputs.version }}"
-          else
-            version="${GITHUB_REF_NAME#logion-cli-v}"
-          fi
-          for i in $(seq 1 30); do
+          version="${RELEASE_TAG#logion-cli-v}"
+          for _ in $(seq 1 30); do
             if python3 - <<PY
           import json, urllib.request, sys
           version = "$version"

@@ -3,13 +3,27 @@ name: Release logion-cli to PyPI
 on:
   push:
     tags: ["logion-cli-v*"]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing logion-cli-v* tag to publish"
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: release-cli-${{ github.ref }}
+  group: release-cli-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -21,13 +35,15 @@ jobs:
       channel: ${{ steps.parse.outputs.channel }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v5
       - id: parse
         run: |
-          tag="${GITHUB_REF_NAME#logion-cli-v}"
+          tag="${RELEASE_TAG#logion-cli-v}"
           py=$(uv run python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/cli/pyproject.toml').read_text())['project']['version'])")
           test "$tag" = "$py" || { echo "Tag $tag != pyproject $py"; exit 1; }
           echo "version=$tag" >> "$GITHUB_OUTPUT"
@@ -42,6 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -119,7 +137,7 @@ jobs:
       - name: Attach wheel + sdist + SHA256SUMS to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             dist/*.whl
             dist/*.tar.gz

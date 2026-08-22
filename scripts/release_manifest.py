@@ -282,6 +282,29 @@ def cmd_check(args: argparse.Namespace) -> None:
         channel=channel,
         release_assets_dir=args.release_assets_dir,
     )
+    source_versions = [
+        package.get("version")
+        for package in manifest.get("packages", {}).values()
+        if isinstance(package, dict)
+    ]
+    if source_versions and all(
+        isinstance(version, str) and ".dev" in version
+        for version in source_versions
+    ):
+        on_disk_versions = [
+            package.get("version")
+            for package in on_disk_manifest.get("packages", {}).values()
+            if isinstance(package, dict)
+        ]
+        if any(isinstance(version, str) and ".dev" in version for version in on_disk_versions):
+            print(
+                "FAIL: stable manifest must not point to a development release",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print("OK: stable manifest intentionally unchanged for development release")
+        return
+
     if not args.release_assets_dir:
         # Release manifests may commit asset URL/checksum fields generated
         # from dist/ artifacts that are not present in ordinary CI checkouts.
