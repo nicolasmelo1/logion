@@ -54,6 +54,12 @@ jobs:
           enable-cache: true
       - name: Sync Python workspace dependencies
         run: uv sync --all-packages --locked
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install sf
+        run: >
+          cargo install --git https://github.com/nicolasmelo1/software-factory
+          --rev 76ec836dd0264712844fa86abc3fc26b35ccac4f --locked
       - name: Install npm wrapper dependencies
         working-directory: packages/npm-wrapper
         run: npm ci --ignore-scripts
