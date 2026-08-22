@@ -114,6 +114,20 @@ def test_release_all_calls_each_publisher_after_tags_exist():
     assert "publish-cli" in jobs["publish-npm"]["needs"]
 
 
+def test_release_client_pins_a_twine_compatible_build_backend():
+    """Client distributions remain Core Metadata versions Twine can validate."""
+    build = CLIENT["jobs"]["build"]
+    build_step = next(
+        step
+        for step in build["steps"]
+        if step.get("name") == "Build sdist + wheel"
+    )
+    assert "hatchling==1.27.0" in build_step["run"]
+    assert "--build-constraints" in build_step["run"]
+    assert "<(" not in build_step["run"]
+    assert build_step["shell"] == "bash"
+
+
 # ---------------------------------------------------------------------------
 # 4. Publish jobs use environment
 # ---------------------------------------------------------------------------
