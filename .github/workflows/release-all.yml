@@ -100,12 +100,12 @@ jobs:
           fi
       - name: Run coordinated release
         run: make release VERSION="$VERSION"
-      - name: Summarize tag-triggered publishers
+      - name: Summarize coordinated publishers
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           Release ${VERSION} was committed and tagged.
 
-          The pushed tags trigger the package publisher workflows:
+          Reusable publisher workflows run after this job:
           - logion-skillmap-v${VERSION} -> release-skillmap.yml
           - logion-client-v${VERSION} -> release-client.yml
           - logion-cli-v${VERSION} -> release-cli.yml and release-npm.yml
@@ -113,3 +113,38 @@ jobs:
 
           Store publication requested: ${PUBLISH_STORE:-0}
           EOF
+
+  publish-skillmap:
+    needs: release
+    uses: ./.github/workflows/release-skillmap.yml
+    with:
+      tag: logion-skillmap-v${{ inputs.version }}
+    secrets: inherit # pragma: allowlist secret
+
+  publish-client:
+    needs: release
+    uses: ./.github/workflows/release-client.yml
+    with:
+      tag: logion-client-v${{ inputs.version }}
+    secrets: inherit # pragma: allowlist secret
+
+  publish-cli:
+    needs: [release, publish-skillmap]
+    uses: ./.github/workflows/release-cli.yml
+    with:
+      tag: logion-cli-v${{ inputs.version }}
+    secrets: inherit # pragma: allowlist secret
+
+  publish-npm:
+    needs: [release, publish-cli]
+    uses: ./.github/workflows/release-npm.yml
+    with:
+      tag: logion-cli-v${{ inputs.version }}
+    secrets: inherit # pragma: allowlist secret
+
+  publish-companion:
+    needs: release
+    uses: ./.github/workflows/release-companion.yml
+    with:
+      tag: logion-companion-v${{ inputs.version }}
+    secrets: inherit # pragma: allowlist secret
