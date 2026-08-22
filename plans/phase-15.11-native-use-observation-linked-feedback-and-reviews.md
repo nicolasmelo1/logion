@@ -2,13 +2,16 @@
 
 # Phase 15.11 — Native-use observation, linked feedback, and reviews
 
-> **Implementation status (2026-08-17): built, not yet proven.** The usage
+> **Implementation status (2026-08-22): built, partially proven.** The usage
 > spool, receipt and feedback APIs, integrations commands, harness observation
-> hooks (Claude Code, Codex), consent enforcement, and consent-driven upload
-> are implemented. The phase is **not complete**: the real-agent gate was
-> tightened and has not been re-run, and the items under "Still open" below
-> are unbuilt. The existing CLI inventory scan is not proof of use and must
-> not be described as observation telemetry.
+> hooks (Claude Code, Codex), Hermes lifecycle observation adapter,
+> Hermes/Pi explicit-report fallback, consent enforcement, and
+> consent-driven upload are implemented. The phase is **not complete**:
+> the proving-ground evidence still relies on replaying a recorded
+> `PostToolUse` payload into the installed hook rather than the harness
+> delivering that payload live, and the remaining "Still open" items below
+> are not yet closed. The existing CLI inventory scan is not proof of use and
+> must not be described as observation telemetry.
 >
 > **Gate:** both mandatory scenarios passed with a real agent driver on
 > 2026-08-17 (`claude-code`/`claude-haiku-4-5`, local-devrig) against the
@@ -21,25 +24,22 @@
 > **Still open before this phase may be called complete:**
 > 1. Prove a live hook end to end, with the harness itself delivering the
 >    payload to an installed CLI, rather than the documented replay
->    fallback.
-> 2. Pseudonymous participation: `identity_tier` is always `account` and
->    there is no local pseudonymous subject, so free discovery/feedback still
->    requires an account.
-> 3. Published first-party artifacts: no official `npx skills add` companion
->    or `npx plugins add` observer package exists, so the clean-machine
->    onboarding contract is unbuilt.
-> 4. Hermes and Pi have native scope discovery but no observation adapter;
->    they report `inventory_only_observation_unsupported`, which is honest
->    but not the declared observation path.
-> 5. `artifacts/dogfood/phase-15.11.md` has never been recorded.
-> 6. Generic self-review is only detectable for resources that project to a
+>    fallback. The current phase-gate evidence still uses replay because
+>    cross-driver delivery is not yet supported by any harness.
+> 2. Pseudonymous participation: server-side `shadow` identity tier support
+>    exists, but the contract was tightened to require a signer-capable local
+>    pseudonymous subject; the public CLI still has no local keypair-backed
+>    pseudonymous identity flow.
+> 3. Published first-party artifacts: `packages/harness-plugins/` now
+>    contains the observer scaffold, but no official `npx skills add`
+>    companion or `npx plugins add` observer package is published on the
+>    stable coordinates, so the clean-machine onboarding contract remains
+>    unbuilt.
+> 4. The machine-readable phase-gate evidence is recorded, but the
+>    human-readable `artifacts/dogfood/phase-15.11.md` write-up is still
+>    absent from this repository.
+> 5. Generic self-review is only detectable for resources that project to a
 >    Course, because `resources` has no owner column.
-> 7. Two envelopes still exist. The live spool is the `UsageObservation`
->    schema below; `cli/_observation.py` implements the richer envelope
->    described in `next-steps.md` (task class, outcome, ordered timestamps,
->    integration version) and has no production caller. Either 15.11.1
->    adopts it or it should be deleted — both documents cannot stay
->    normative for the same record.
 >
 > **Dogfood — Level 2 (real use and feedback):** the implementing agent acquires a resource through any supported channel, uses it in its ordinary harness, and submits feedback through Logion linked to the exact original `ResourceVersion`.
 > **After this phase:** Logion can learn from resources installed by `npx skills`, `npx plugins`, `hf`, or Logion itself without forcing a new acquisition workflow.

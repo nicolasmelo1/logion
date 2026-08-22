@@ -49,9 +49,12 @@ Known carry-overs from that range, tracked here rather than in a retired plan:
   `publish-from-repo` command — repo publishing stops at the source link;
 - the platform-bounty admin lane is API-only (no SDK resource, no
   `logion admin bounties` CLI subgroup);
-- `cli/_observation.py` ships the local observation envelope/spool writer as a
-  library with no production command wired to it; no harness hook/plugin,
-  automatic spool write, upload, or feedback submission is shipped;
+- production observation commands and consent-gated hook wiring are shipped,
+  but the 15.11 live-hook criterion is still unmet: the proving-ground
+  evidence replays a recorded `PostToolUse` payload into the installed hook
+  because no harness yet supports the required cross-driver delivery path.
+  Published first-party companion/observer artifacts and signer-capable
+  pseudonymous local subjects also remain open;
 - `resources acquire` is a blocked, zero-write plan only. Current resource
   versions expose no usable distribution URL, permissions remain unresolved,
   and `--no-dry-run` returns `logion.error`; real acquisition is owned by 15.10;
