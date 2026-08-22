@@ -212,13 +212,28 @@ def test_release_all_syncs_python_workspace_before_orchestrating_release():
         for index, step in enumerate(steps)
         if step.get("name") == "Sync Python workspace dependencies"
     )
+    factory_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Install sf"
+    )
     release_index = next(
         index
         for index, step in enumerate(steps)
         if step.get("name") == "Run coordinated release"
     )
     assert "uv sync --all-packages --locked" in steps[sync_index]["run"]
-    assert sync_index < release_index
+    factory_step = steps[factory_index]
+    factory_command = factory_step["run"]
+    assert factory_step["name"] == "Install sf"
+    assert (
+        "cargo install --git https://github.com/nicolasmelo1/software-factory"
+        in factory_command
+    )
+    assert "--rev 76ec836dd0264712844fa86abc3fc26b35ccac4f" in factory_command
+    assert "--locked" in factory_command
+    assert steps[factory_index - 1]["name"] == "Set up Rust toolchain"
+    assert sync_index < factory_index < release_index
 
 
 def test_cli_uses_the_same_index_for_skillmap_dependency_wait():

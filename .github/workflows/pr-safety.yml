@@ -271,8 +271,13 @@ jobs:
       # Root-file allowlist and doc-link liveness moved here: they are now
       # L4.ROOT_FILES_ARE_DECLARED and L4.DOC_LINKS_RESOLVE, each with a
       # mutation fixture proving it still fires, which the scripts never had.
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install sf
-        run: cargo install --git https://github.com/nicolasmelo1/software-factory --locked
+        run: >
+          cargo install --git https://github.com/nicolasmelo1/software-factory
+          --rev 76ec836dd0264712844fa86abc3fc26b35ccac4f --locked
 
       - name: Prove the factory rules still fire
         run: sf verify
