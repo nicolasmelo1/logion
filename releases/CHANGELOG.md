@@ -4,6 +4,96 @@ All notable changes to the Logion packages are documented in per-package
 CHANGELOG files below their respective directories. This top-level file
 aggregates the current released version of each package.
 
+## 0.2.0.dev1
+
+### Features
+- **landing**: serve the agent discovery surfaces (#281) — @Nicolas Leal
+- **cli**: add Hermes lifecycle observation adapter (#279) — @Nicolas Leal
+- scaffold packages/harness-plugins observer plugin (#273) — @Nicolas Leal
+- **cli**: add explicit-report fallback for Hermes and Pi (#272) — @Nicolas Leal
+- **agent-proving-ground,cli,client**: native-use observation and feedback (#260) — @Nicolas Leal
+- **dsh**: add native harness plugin acquisition (#259) — @Nicolas Leal
+- **cli**: execute resource acquisition with local inventory receipts (#255) — @Nicolas Leal
+- **cli**: harness scope contract, resource acquire/inventory, observation envelope (#246) — @Nicolas Leal
+- **resources**: add generic resource surfaces and proving ground (#239) — @Nicolas Leal
+- **proving-ground**: exercise real GitHub bounty flow (#238) — @Nicolas Leal
+- **proving-ground**: add identity oauth observed-effect scenario (#235) — @Nicolas Leal
+- **indexer**: record aggregate run progress (#221) — @Nicolas Leal
+- **landing**: tell the product through agent workflows (#220) — @Nicolas Leal
+- **landing**: AKTP protocol page + header link + colorized transcripts (#216) — @Nicolas Leal
+
+### Bug Fixes
+- **release**: install factory checks tool (#286) — @Nicolas Leal
+- **release**: sync workspace before orchestration (#285) — @Nicolas Leal
+- **landing**: make Accept negotiation cache-safe, and say when to use Logion (#284) — @Nicolas Leal
+- **release**: clarify development release operations (#283) — @Nicolas Leal
+- **landing**: declare www as the canonical host, and guard it (#282) — @Nicolas Leal
+- **release**: route development builds to testpypi (#280) — @Nicolas Leal
+- **cli**: run Codex usage hooks synchronously (#278) — @Nicolas Leal
+- **proving-ground**: let the rig own the reconcile bookkeeping (#277) — @Nicolas Leal
+- **proving-ground**: stop a server invariant depending on agent compliance (#276) — @Nicolas Leal
+- **harness-plugins**: apply ruff format (#275) — @Nicolas Leal
+- **cli**: consolidate observation envelope into UsageObservation (#271) — @Nicolas Leal
+- **cli**: auto-update must not replace an editable install (#274) — @Nicolas Leal
+- **phase-gates**: name the criterion this non-blocking caveat stands against (#270) — @Nicolas Leal
+- **proving-ground**: make the observation gate prove a live hook (#266) — @Nicolas Leal
+- **client**: sync OpenAPI contract with resource-feedback integrity changes (#264) — @Nicolas Leal
+- **cli,proving-ground**: make use observation real and consent enforceable (#263) — @Nicolas Leal
+- **cli**: make the acquisition preview, inventory, and reconcile honest (#257) — @Nicolas Leal
+- **cli**: close phase 15.10 acceptance gaps (#256) — @Nicolas Leal
+- **proving-ground**: name scenarios by behavior (#254) — @Nicolas Leal
+- **deps**: update vulnerable security dependencies (#253) — @Nicolas Leal
+- **cli**: align resources with public contract (#249) — @Nicolas Leal
+- **deps**: bump datamodel-code-generator for CVE fixes (#252) — @Nicolas Leal
+- **proving-ground**: correct artifact-backed queries, envelope privacy, and acquire plan executability (#248) — @Nicolas Leal
+- **cli**: harden harness scope contract, acquire plan, and observation envelope (#247) — @Nicolas Leal
+- **proving-ground**: enforce resource backfill integrity (#244) — @Nicolas Leal
+- **client**: classify platform bounty admin operations (#230) — @Nicolas Leal
+- **cli**: rank query results by relevance (#227) — @Nicolas Leal
+- **landing**: refine lightning and scrolling (#226) — @Nicolas Leal
+- **deps**: update gitpython security release (#222) — @Nicolas Leal
+- **indexer**: bound write request timeouts (#215) — @Nicolas Leal
+- **indexer**: encode github content paths (#214) — @Nicolas Leal
+- **indexer**: tolerate transient github disconnects (#212) — @Nicolas Leal
+- **indexer**: remove lobehub source (#211) — @Nicolas Leal
+
+### Performance
+- **indexer**: enrich repositories concurrently (#219) — @Nicolas Leal
+
+### Refactors
+- **proving-ground**: remove phase label (#245) — @Nicolas Leal
+
+### Documentation
+- state the attribution-and-evidence thesis in the README (#265) — @Nicolas Leal
+- **roadmap**: sync retired phase contracts (#250) — @Nicolas Leal
+- **roadmap**: ground ARD in AI Catalog connectors (#237) — @Nicolas Leal
+- **roadmap**: publish canonical planning (#236) — @Nicolas Leal
+- **landing**: native-use beat after install + v1 event-log line on /aktp (#217) — @Nicolas Leal
+- **readme,landing**: network continual learning — shown, not told (#213) — @Nicolas Leal
+
+### Tests
+- **proving-ground**: validate resource projection backfill e2e (#241) — @Nicolas Leal
+
+### CI
+- **contract**: record approved v1 main change (#232) — @Nicolas Leal
+- **contract**: allow approved v1 default change (#231) — @Nicolas Leal
+- **contract**: check public v1 compatibility (#228) — @Nicolas Leal
+- publish skillmap and sync OpenAPI contract (#224) — @Nicolas Leal
+
+### Chores
+- sync OpenAPI contract from the internal API repo (#269) — @Nicolas Leal
+- adopt software-factory, and retire the checks it now covers (#267) — @Nicolas Leal
+- **lint**: ban typing.Any, type the JSON boundaries, and split oversized commands (#261) — @Nicolas Leal
+- sync OpenAPI contract from the internal API repo (#251) — @Nicolas Leal
+- sync OpenAPI contract from the internal API repo (#243) — @Nicolas Leal
+- sync OpenAPI contract from the internal API repo (#242) — @Nicolas Leal
+- sync resource contract (#240) — @Nicolas Leal
+- sync OpenAPI contract from the internal API repo (#234) — @Nicolas Leal
+- **client**: classify capabilities operation (#233) — @Nicolas Leal
+- sync OpenAPI contract from the internal API repo (#229) — @Nicolas Leal
+
+**Contributors:** @Nicolas Leal
+
 ## 0.1.15
 
 ### Features
