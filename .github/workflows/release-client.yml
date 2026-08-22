@@ -69,7 +69,11 @@ jobs:
       - name: Clean previous build artifacts
         run: rm -rf dist/
       - name: Build sdist + wheel
-        run: uv build --package logion-client --wheel --sdist
+        # Hatchling 1.28+ emits Core Metadata 2.5, which current Twine cannot
+        # validate. Pin the builder to 1.27 until Twine accepts 2.5.
+        run: >-
+          uv build --package logion-client --wheel --sdist
+          --build-constraints <(printf '%s\n' 'hatchling==1.27.0')
       - name: Validate distributions
         run: uv run twine check dist/*
       - name: Hash artifacts
