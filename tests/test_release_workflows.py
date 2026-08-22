@@ -124,6 +124,8 @@ def test_release_client_pins_a_twine_compatible_build_backend():
     )
     assert "hatchling==1.27.0" in build_step["run"]
     assert "--build-constraints" in build_step["run"]
+    assert "<(" not in build_step["run"]
+    assert build_step["shell"] == "bash"
 
 
 # ---------------------------------------------------------------------------
