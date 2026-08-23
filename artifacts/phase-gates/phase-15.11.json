@@ -30,5 +30,13 @@
       }
     }
   ],
-  "schema_version": 2
+  "schema_version": 2,
+  "caveats": [
+    {
+      "claim": "The harness cannot deliver its own PostToolUse payload to a differently-driven session, so the observation was produced by piping the harness's recorded PostToolUse payload into the hook the integration installed.",
+      "why_unproven": "The observation hook fires correctly in a same-driver session, but cross-driver delivery is not yet supported by any harness.",
+      "blocking": false,
+      "criterion": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md:627"
+    }
+  ]
 }
