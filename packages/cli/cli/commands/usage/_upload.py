@@ -21,6 +21,7 @@ from cli._pseudonymous_subject import build_receipt_proof
 from cli.integrations_state import AUTO, effective_mode, may_upload
 from cli.usage.observations import (
     list_pending_observations,
+    normalize_observed_at,
     with_group_ids,
 )
 from cli.usage.tombstones import receipt_tombstone, record_receipt
@@ -53,6 +54,7 @@ def _submit_one(
     api_key: str | None,
 ) -> str:
     """Submit one receipt and return the id the API assigned it."""
+    observed_at = normalize_observed_at(opt_str(obs, "observed_at") or None)
     kwargs: JsonObject = {
         "observation_id": opt_str(obs, "observation_id", ""),
         "task_class": opt_str(obs, "task_class") or args.task_class,
@@ -60,7 +62,7 @@ def _submit_one(
         "consent_policy_digest": CONSENT_POLICY_VERSION,
         "harness": opt_str(obs, "harness") or None,
         "outcome": opt_str(obs, "outcome") or args.outcome,
-        "observed_at": opt_str(obs, "observed_at") or None,
+        "observed_at": observed_at,
     }
     if not api_key:
         kwargs.update(
@@ -73,7 +75,7 @@ def _submit_one(
                 "consent_policy_digest": CONSENT_POLICY_VERSION,
                 "harness": opt_str(obs, "harness") or None,
                 "outcome": opt_str(obs, "outcome") or args.outcome,
-                "observed_at": opt_str(obs, "observed_at") or None,
+                "observed_at": observed_at,
             })
         )
     result = client.v1.usage_receipts.submit(  # type: ignore[attr-defined]

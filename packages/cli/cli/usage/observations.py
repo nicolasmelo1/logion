@@ -314,6 +314,27 @@ def _utc_iso_now() -> str:
     return datetime.datetime.now(datetime.UTC).isoformat()
 
 
+def normalize_observed_at(value: str | None) -> str | None:
+    """Canonicalize an RFC3339 timestamp the way the API parses it.
+
+    The CLI signs ``observed_at`` as a string straight from the spool; the API
+    rebuilds it from the Pydantic-parsed ``datetime`` via ``.isoformat()``.
+    Those agree only while the CLI string happens to be ``Python isoformat``
+    shape. A trailing ``Z`` (valid RFC3339) would break the signature, so we
+    normalize it to the same ``+00:00`` form the API emits before signing.
+    """
+    if value is None:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(
+            value.replace("Z", "+00:00")
+        ).isoformat()
+    except ValueError:
+        # Not a parseable timestamp — leave it untouched so validation errors
+        # surface elsewhere rather than being silently mutated.
+        return value
+
+
 def observation_group_id(obs: UsageObservation) -> str:
     """Deterministic group id for deduplication and dismissal.
 

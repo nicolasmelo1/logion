@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from cli._json import JsonObject
 from cli._pseudonymous_subject import (
     build_feedback_proof,
@@ -59,3 +61,30 @@ def test_subject_file_is_private_json(tmp_path: Path) -> None:
     assert payload["algorithm"] == "ed25519"
     # The private key file must never be group/world readable.
     assert path.stat().st_mode & 0o077 == 0
+
+
+def test_temporary_file_is_created_private(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The tmp file used for the atomic rename must also be 0o600.
+
+    ``_persist`` opens the temporary file with ``os.open(..., 0o600)`` before
+    writing any bytes, so there is no window where the key is world-readable
+    even on the intermediate path.
+    """
+
+    import cli._pseudonymous_subject as module
+
+    open_modes: list[int] = []
+    real_open = module.os.open
+
+    def _spy_open(path, flags, mode=0o777, *args, **kwargs):
+        open_modes.append(mode)
+        return real_open(path, flags, mode, *args, **kwargs)
+
+    monkeypatch.setattr(module.os, "open", _spy_open)
+    ensure_subject(tmp_path)
+
+    assert open_modes, "os.open was never called"
+    # Every open used to persist the subject must be 0o600.
+    assert all(mode & 0o077 == 0 for mode in open_modes)
