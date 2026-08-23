@@ -61,8 +61,6 @@ def _submit_one(
         "harness": opt_str(obs, "harness") or None,
         "outcome": opt_str(obs, "outcome") or args.outcome,
         "observed_at": opt_str(obs, "observed_at") or None,
-        "duration_bucket": opt_str(obs, "duration_bucket"),
-        "integration_version": opt_str(obs, "integration_version"),
     }
     if not api_key:
         kwargs.update(
@@ -76,8 +74,6 @@ def _submit_one(
                 "harness": opt_str(obs, "harness") or None,
                 "outcome": opt_str(obs, "outcome") or args.outcome,
                 "observed_at": opt_str(obs, "observed_at") or None,
-                "duration_bucket": opt_str(obs, "duration_bucket"),
-                "integration_version": opt_str(obs, "integration_version"),
             })
         )
     result = client.v1.usage_receipts.submit(  # type: ignore[attr-defined]

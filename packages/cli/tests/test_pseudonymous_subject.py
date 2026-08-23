@@ -51,8 +51,11 @@ def test_feedback_and_receipt_use_separate_domains(tmp_path: Path) -> None:
 
 def test_subject_file_is_private_json(tmp_path: Path) -> None:
     subject = ensure_subject(tmp_path)
-    payload = json.loads(subject_path(tmp_path).read_text(encoding="utf-8"))
+    path = subject_path(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["subject_id"] == subject.subject_id
     assert payload["public_key"] == subject.public_key
     assert payload["algorithm"] == "ed25519"
+    # The private key file must never be group/world readable.
+    assert path.stat().st_mode & 0o077 == 0

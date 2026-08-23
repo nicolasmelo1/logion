@@ -13,6 +13,7 @@ import base64
 import contextlib
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -23,7 +24,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from cli._json import JsonObject, JsonValue
-from cli._local_state import _atomic_write_text, get_home
+from cli._local_state import get_home
 
 SCHEMA_VERSION = 1
 ALGORITHM = "ed25519"
@@ -175,12 +176,27 @@ def _persist(path: Path, subject: PseudonymousSubject) -> None:
         "public_key": subject.public_key,
         "private_key": subject._private_key,
     }
-    _atomic_write_text(
-        path,
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-    )
-    with contextlib.suppress(OSError):
-        path.chmod(0o600)
+    # Write through a private temporary file so the private key is never
+    # world-readable: the fd is created with mode 0o600 before any bytes are
+    # written, and the atomic rename keeps that mode on the final path.
+    # A post-hoc chmod() cannot be relied on (it leaves a window where the
+    # key is 0644 and swallows failures).
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp.{os.getpid()}")
+    try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+                )
+        finally:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+        tmp.replace(path)
+    finally:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
 
 
 def _private_key(value: str) -> Ed25519PrivateKey:
