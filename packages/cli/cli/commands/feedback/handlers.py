@@ -11,6 +11,7 @@ from cli._context import make_client
 from cli._errors import handle_error
 from cli._json import JsonObject, children, opt_str
 from cli._output import emit_json, to_data, to_items, to_object
+from cli._pseudonymous_subject import build_feedback_proof
 from cli._receipts import load_receipts
 from cli.usage.tombstones import feedback_tombstone, record_feedback
 
@@ -80,6 +81,25 @@ def handle_feedback_submit(args: argparse.Namespace) -> int:
         )
     client = make_client(config)
     try:
+        pseudonymous_public_key: str | None = None
+        pseudonymous_signature: str | None = None
+        if not config.api_key:
+            proof = build_feedback_proof({
+                "resource_id": args.resource_id,
+                "version_id": args.version_id,
+                "rating": args.rating,
+                "acquisition_channel": acquisition_channel,
+                "task_class": args.task_class,
+                "usefulness": getattr(args, "usefulness", None),
+                "reliability": getattr(args, "reliability", None),
+                "tool_safety": getattr(args, "tool_safety", None),
+                "token_efficiency": getattr(args, "token_efficiency", None),
+                "completed_task": getattr(args, "completed_task", None),
+                "body": getattr(args, "body", None),
+                "source_receipt_id": getattr(args, "source_receipt_id", None),
+            })
+            pseudonymous_public_key = opt_str(proof, "pseudonymous_public_key")
+            pseudonymous_signature = opt_str(proof, "pseudonymous_signature")
         result = client.v1.resource_feedback.submit(
             args.resource_id,
             args.version_id,
@@ -93,6 +113,8 @@ def handle_feedback_submit(args: argparse.Namespace) -> int:
             completed_task=getattr(args, "completed_task", None),
             body=getattr(args, "body", None),
             source_receipt_id=getattr(args, "source_receipt_id", None),
+            pseudonymous_public_key=pseudonymous_public_key,
+            pseudonymous_signature=pseudonymous_signature,
         )
         data = to_object(result)
         feedback_id = opt_str(data, "id") or opt_str(data, "feedback_id")

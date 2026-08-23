@@ -70,7 +70,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--completed-task",
         dest="completed_task",
         action="store_true",
-        default=None,
+        default=False,
     )
     submit.add_argument(
         "--not-completed-task",

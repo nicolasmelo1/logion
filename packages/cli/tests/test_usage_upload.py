@@ -35,8 +35,8 @@ class FakeUsageReceipts:
         outcome: str | None = None,
         observed_at: str | None = None,
         coarse_counters: dict[str, int] | None = None,
-        duration_bucket: str | None = None,
-        integration_version: str | None = None,
+        pseudonymous_public_key: str | None = None,
+        pseudonymous_signature: str | None = None,
     ) -> JsonObject:
         self.calls.append({
             "resource_id": resource_id,
@@ -49,8 +49,8 @@ class FakeUsageReceipts:
             "outcome": outcome,
             "observed_at": observed_at,
             "coarse_counters": coarse_counters,
-            "duration_bucket": duration_bucket,
-            "integration_version": integration_version,
+            "pseudonymous_public_key": pseudonymous_public_key,
+            "pseudonymous_signature": pseudonymous_signature,
         })
         return {"id": f"receipt-{len(self.calls)}"}
 
@@ -70,7 +70,6 @@ def receipts(monkeypatch: pytest.MonkeyPatch) -> FakeUsageReceipts:
     monkeypatch.setattr(
         "cli._context.LogionClient", lambda **_: FakeClient(fake)
     )
-    monkeypatch.setenv("LOGION_API_KEY", "test-key")
     return fake
 
 
@@ -190,3 +189,52 @@ def test_uploaded_payload_carries_only_opaque_metadata(
     forbidden = ("prompt", "path", "body", "content", "command", "session")
     for key in call:
         assert not any(word in key for word in forbidden), key
+
+
+def test_anonymous_receipt_upload_signs_with_a_stable_local_subject(
+    receipts: FakeUsageReceipts,
+) -> None:
+    set_mode("codex", "auto")
+    _spool_one()
+
+    assert _upload() == 0
+
+    call = receipts.calls[0]
+    assert isinstance(call["pseudonymous_public_key"], str)
+    assert call["pseudonymous_public_key"]
+    assert isinstance(call["pseudonymous_signature"], str)
+    assert call["pseudonymous_signature"]
+
+
+def test_fake_submit_matches_real_sdk_signature() -> None:
+    """The fake must accept exactly the parameters the real SDK accepts.
+
+    If the fake accepts kwargs the real ``UsageReceiptResource.submit`` does
+    not (and has no ``**kwargs``), a drift in the upload path goes uncaught:
+    ``logion usage upload`` would raise ``TypeError`` in ``main`` on every
+    observation, swallowed by the broad ``except Exception`` in
+    ``handle_usage_upload``. This asserts signature parity so that drift
+    fails the suite instead.
+    """
+    from inspect import Parameter, signature
+
+    from logion.v1 import UsageReceiptResource
+
+    def _params(fn: object) -> dict[str, Parameter]:
+        return {
+            name: param
+            for name, param in signature(fn).parameters.items()
+            if name != "self"
+        }
+
+    fake_params = _params(FakeUsageReceipts.submit)
+    real_params = _params(UsageReceiptResource.submit)
+
+    assert set(fake_params) == set(real_params), (
+        f"FakeUsageReceipts.submit diverges from UsageReceiptResource.submit: "
+        f"only-in-fake={sorted(set(fake_params) - set(real_params))}, "
+        f"only-in-real={sorted(set(real_params) - set(fake_params))}"
+    )
+    for name in fake_params:
+        assert fake_params[name].kind == real_params[name].kind
+        assert fake_params[name].default == real_params[name].default

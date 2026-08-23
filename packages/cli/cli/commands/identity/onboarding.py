@@ -21,8 +21,9 @@ from cli._output import emit_json
 from . import _autopost
 from ._api_keys import rotate_and_save_api_key
 from ._closing_copy import CLOSING_COPY, ONBOARDING_NEXT_STEPS
-from ._harness_select import select_harnesses
 from ._onboarding_helpers import (
+    record_autopost_disabled,
+    resolve_onboarding_adapters,
     run_companion_step,
     validate_explicit_harness,
 )
@@ -89,30 +90,39 @@ def _handle_standard_path(
     return None
 
 
+def _apply_setup_or_existing_path(
+    args: argparse.Namespace,
+    config: object,
+    summary: JsonObject,
+) -> int | None:
+    """Populate onboarding summary from setup-token or standard flow."""
+    setup_token = resolve_setup_token(args)
+    if not setup_token:
+        return _handle_standard_path(args, config, summary)
+
+    existing = stored_user_id()
+    if existing is not None:
+        print_err(
+            "Refusing to overwrite stored credentials with a setup token. "
+            "Remove existing Logion credentials first or use a fresh "
+            "machine."
+        )
+        return 2
+    result = redeem_setup_token(args, config, setup_token)
+    if result is None:
+        return 2
+    summary.update(result)
+    return None
+
+
 def handle_onboarding(args: argparse.Namespace) -> int:
     """Execute the identity onboarding command."""
     config = resolve_config_from_args(args)
     summary: JsonObject = {}
 
-    # --- Setup-token path: non-interactive, no email/password ---
-    setup_token = resolve_setup_token(args)
-    if setup_token:
-        existing = stored_user_id()
-        if existing is not None:
-            print_err(
-                "Refusing to overwrite stored credentials with a setup token. "
-                "Remove existing Logion credentials first or use a fresh "
-                "machine."
-            )
-            return 2
-        result = redeem_setup_token(args, config, setup_token)
-        if result is None:
-            return 2
-        summary.update(result)
-    else:
-        rc = _handle_standard_path(args, config, summary)
-        if rc is not None:
-            return rc
+    rc = _apply_setup_or_existing_path(args, config, summary)
+    if rc is not None:
+        return rc
 
     # Validate an explicitly-requested harness up-front so an unknown
     # name is a hard error before autopost or the companion step runs.
@@ -126,12 +136,7 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     # one — skip it entirely when auto-review is off and --no-companion
     # is set.
     autopost_enabled = _autopost.resolve_optin(args)
-    companion_will_run = not getattr(args, "no_companion", False)
-
-    if autopost_enabled or companion_will_run:
-        adapters = select_harnesses(args)
-    else:
-        adapters = []
+    adapters = resolve_onboarding_adapters(args, autopost_enabled)
 
     if autopost_enabled:
         autopost = _autopost.apply(args, adapters)
@@ -139,11 +144,7 @@ def handle_onboarding(args: argparse.Namespace) -> int:
             return 2
         summary["autopost"] = autopost
     else:
-        print_err(
-            "Auto-review not enabled. Enable later with "
-            "`logion identity onboarding --enable-autopost`."
-        )
-        summary["autopost"] = {"enabled": False}
+        summary["autopost"] = record_autopost_disabled(adapters)
 
     companion_summary, rc = run_companion_step(args, adapters)
     if rc is not None:
@@ -153,8 +154,7 @@ def handle_onboarding(args: argparse.Namespace) -> int:
     print_err(CLOSING_COPY)
 
     if config.json_output:  # type: ignore[attr-defined]
-        # Stable machine-readable next steps so agents can drive
-        # the marketplace loop without parsing human-readable copy.
+        # Stable machine-readable next steps so agents can drive the loop.
         summary["next_steps"] = ONBOARDING_NEXT_STEPS
         emit_json("logion.identity.onboarding", summary)
     return 0

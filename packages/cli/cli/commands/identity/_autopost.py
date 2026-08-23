@@ -69,6 +69,8 @@ def apply(
     ``select_harnesses`` and shared with the companion step. Returns a
     JSON-safe summary, or ``None`` on an unparseable harness config.
     """
+    from cli.integrations_state import AUTO, OFF, set_review_mode
+
     if not adapters:
         # No harness selected/detected — nothing to grant.
         print_err(
@@ -91,6 +93,7 @@ def apply(
             f"Auto-review {verb} for {g.harness} "
             f"({args.autopost_scope}: {g.path})."
         )
+        set_review_mode(g.harness, AUTO if args.enable_autopost else OFF)
     return {
         "enabled": True,
         "scope": args.autopost_scope,

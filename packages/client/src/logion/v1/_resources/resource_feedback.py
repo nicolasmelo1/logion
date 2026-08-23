@@ -28,6 +28,8 @@ class ResourceFeedbackResource:
         completed_task: bool | None = None,
         body: str | None = None,
         source_receipt_id: str | None = None,
+        pseudonymous_public_key: str | None = None,
+        pseudonymous_signature: str | None = None,
     ) -> JsonObject:
         """Submit feedback for a resource version.
 
@@ -67,6 +69,10 @@ class ResourceFeedbackResource:
             payload["body"] = body
         if source_receipt_id is not None:
             payload["source_receipt_id"] = source_receipt_id
+        if pseudonymous_public_key is not None:
+            payload["pseudonymous_public_key"] = pseudonymous_public_key
+        if pseudonymous_signature is not None:
+            payload["pseudonymous_signature"] = pseudonymous_signature
         return self._http.request_object(
             "POST",
             f"/v1/resources/{resource_id}/versions/{version_id}/feedback",

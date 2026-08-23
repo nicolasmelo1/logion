@@ -4,14 +4,18 @@
 The four modes are a privacy contract, not a label:
 
 ``off``
-    no observation spool, no upload, no feedback prompt, no network call.
+    no observation spool and no receipt upload.
 ``local-only``
     spool and pending list stay on this machine; nothing is uploaded.
 ``prompt``
-    spool locally; every upload or feedback submission asks first.
+    spool locally; every receipt upload asks first.
 ``auto``
-    spool locally; the companion may upload one receipt or one feedback
-    report per completed task without asking again.
+    spool locally; the companion may upload one receipt per completed
+    task without asking again.
+
+Receipt-upload consent and review consent are distinct scopes. A harness may
+be allowed to collect/upload deterministic receipts while automatic usage
+reviews remain off, and vice versa.
 
 ``off`` is stored explicitly rather than inferred from a missing entry so
 that ``integrations status`` can distinguish "the user declined" from
@@ -47,6 +51,7 @@ SPOOLING_MODES = frozenset({LOCAL_ONLY, PROMPT, AUTO})
 #: Modes that permit a network write. ``prompt`` additionally requires an
 #: explicit per-call confirmation at the call site.
 UPLOADING_MODES = frozenset({PROMPT, AUTO})
+REVIEW_MODES = frozenset({OFF, AUTO})
 
 _DNT_DISABLED_VALUES = frozenset({"", "0", "false", "no", "off"})
 
@@ -88,6 +93,13 @@ def get_mode(harness: str) -> str | None:
     return mode if mode in VALID_MODES else None
 
 
+def get_review_mode(harness: str) -> str | None:
+    """The stored review scope, or ``None`` when never configured."""
+    state = load_states().get(harness) or {}
+    mode = opt_str(state, "review_mode")
+    return mode if mode in REVIEW_MODES else None
+
+
 def effective_mode(harness: str) -> str:
     """The mode actually in force, after external opt-out and defaults.
 
@@ -98,14 +110,26 @@ def effective_mode(harness: str) -> str:
     return get_mode(harness) or OFF
 
 
+def effective_review_mode(harness: str) -> str:
+    """The review scope actually in force after external opt-out."""
+    if do_not_track():
+        return OFF
+    return get_review_mode(harness) or OFF
+
+
 def may_spool(harness: str) -> bool:
     """True if this harness may append to the local observation spool."""
     return effective_mode(harness) in SPOOLING_MODES
 
 
 def may_upload(harness: str) -> bool:
-    """True if this harness may perform a network write at all."""
+    """True if this harness may upload deterministic receipts."""
     return effective_mode(harness) in UPLOADING_MODES
+
+
+def may_auto_review(harness: str) -> bool:
+    """True if this harness may auto-submit usage reviews."""
+    return effective_review_mode(harness) == AUTO
 
 
 def set_mode(harness: str, mode: str | None) -> None:
@@ -117,6 +141,26 @@ def set_mode(harness: str, mode: str | None) -> None:
     else:
         existing = states.get(harness) or {}
         existing["mode"] = mode
+        states[harness] = existing
+    _write_states(states)
+
+
+def set_review_mode(harness: str, mode: str | None) -> None:
+    if mode is not None and mode not in REVIEW_MODES:
+        raise ValueError(f"unsupported review mode: {mode}")
+    states = load_states()
+    if mode is None:
+        state = states.get(harness)
+        if state is None:
+            return
+        state.pop("review_mode", None)
+        if state:
+            states[harness] = state
+        else:
+            states.pop(harness, None)
+    else:
+        existing = states.get(harness) or {}
+        existing["review_mode"] = mode
         states[harness] = existing
     _write_states(states)
 

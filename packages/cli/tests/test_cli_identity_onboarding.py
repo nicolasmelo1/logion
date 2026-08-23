@@ -809,7 +809,11 @@ def test_onboarding_persists_autoreview_consent_true(
     ])
     assert code == 0
     creds = json.loads((env.logion_home / "credentials.json").read_text())
+    integrations = json.loads(
+        (env.logion_home / "integrations.json").read_text()
+    )
     assert creds["autoreview_consent"] is True
+    assert integrations["claude-code"]["review_mode"] == "auto"
 
 
 def test_onboarding_persists_autoreview_consent_false(
@@ -822,11 +826,17 @@ def test_onboarding_persists_autoreview_consent_false(
         "identity",
         "onboarding",
         "--no-enable-autopost",
+        "--harness",
+        "claude-code",
         "--no-companion",
     ])
     assert code == 0
     creds = json.loads((env.logion_home / "credentials.json").read_text())
+    integrations = json.loads(
+        (env.logion_home / "integrations.json").read_text()
+    )
     assert creds["autoreview_consent"] is False
+    assert integrations["claude-code"]["review_mode"] == "off"
 
 
 def test_onboarding_closing_copy_mentions_agent(

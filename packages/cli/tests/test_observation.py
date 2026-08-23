@@ -21,6 +21,7 @@ from cli.usage.observations import (
     OUTCOME_VALUES,
     UsageObservation,
     make_observation,
+    normalize_observed_at,
     spool_observation,
 )
 
@@ -138,3 +139,29 @@ class TestSpoolWithConsolidatedFields:
         assert result.record["task_class"] == "software-development"
         assert result.record["duration_bucket"] == "minutes"
         assert result.record["integration_version"] == INTEGRATION_VERSION
+
+
+class TestNormalizeObservedAt:
+    def test_none_stays_none(self) -> None:
+        assert normalize_observed_at(None) is None
+
+    def test_isoformat_plus_zero_is_unchanged(self) -> None:
+        assert (
+            normalize_observed_at("2026-08-23T04:00:00+00:00")
+            == "2026-08-23T04:00:00+00:00"
+        )
+
+    def test_trailing_z_normalizes_to_plus_zero(self) -> None:
+        assert (
+            normalize_observed_at("2026-08-23T04:00:00Z")
+            == "2026-08-23T04:00:00+00:00"
+        )
+
+    def test_zone_offset_is_preserved(self) -> None:
+        assert (
+            normalize_observed_at("2026-08-23T01:00:00-03:00")
+            == "2026-08-23T01:00:00-03:00"
+        )
+
+    def test_unparseable_is_left_untouched(self) -> None:
+        assert normalize_observed_at("not-a-timestamp") == "not-a-timestamp"

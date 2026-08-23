@@ -8699,6 +8699,28 @@
             "title": "Completed Task",
             "type": "boolean"
           },
+          "pseudonymous_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Public Key"
+          },
+          "pseudonymous_signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Signature"
+          },
           "rating": {
             "maximum": 5.0,
             "minimum": 1.0,
@@ -8865,6 +8887,7 @@
         "type": "object"
       },
       "SubmitUsageReceiptRequest": {
+        "additionalProperties": false,
         "properties": {
           "acquisition_channel": {
             "title": "Acquisition Channel",
@@ -8911,6 +8934,28 @@
             "default": "unknown",
             "title": "Outcome",
             "type": "string"
+          },
+          "pseudonymous_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Public Key"
+          },
+          "pseudonymous_signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Signature"
           },
           "task_class": {
             "title": "Task Class",
@@ -19153,7 +19198,7 @@
     },
     "/v1/resources/{resource_id}/versions/{version_id}/feedback": {
       "post": {
-        "description": "Submit native-use feedback for a resource version.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path.  The pseudonymous subject is derived\nserver-side, never client-supplied.",
+        "description": "Submit native-use feedback for a resource version.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path. Anonymous callers instead prove a\nstable local subject by signing the feedback claims with a locally\nheld Ed25519 keypair.",
         "operationId": "submit_feedback",
         "parameters": [
           {
@@ -19263,7 +19308,7 @@
     },
     "/v1/resources/{resource_id}/versions/{version_id}/usage-receipts": {
       "post": {
-        "description": "Submit a native-use observation receipt.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path where the reporter has no Logion\naccount.  The pseudonymous subject is derived server-side from the\nconsent policy digest and acquisition channel, never client-supplied.",
+        "description": "Submit a native-use observation receipt.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as ``shadow``\n\u2014 the publisher-integrated path where the reporter has no Logion\naccount. Anonymous callers instead prove a stable local subject by\nsigning the receipt claims with a locally held Ed25519 keypair.",
         "operationId": "submit_usage_receipt",
         "parameters": [
           {

@@ -51,6 +51,8 @@ class FakeFeedbackResource:
         task_class: str,
         body: str | None = None,
         source_receipt_id: str | None = None,
+        pseudonymous_public_key: str | None = None,
+        pseudonymous_signature: str | None = None,
     ) -> JsonObject:
         self.last_submit = {
             "resource_id": resource_id,
@@ -65,6 +67,8 @@ class FakeFeedbackResource:
             "task_class": task_class,
             "body": body,
             "source_receipt_id": source_receipt_id,
+            "pseudonymous_public_key": pseudonymous_public_key,
+            "pseudonymous_signature": pseudonymous_signature,
         }
         return self.submit_result
 
@@ -105,6 +109,40 @@ RESOURCE_ID = "123e4567-e89b-12d3-a456-426614174000"
 VERSION_ID = "123e4567-e89b-12d3-a456-426614174001"
 
 
+def _feedback_submit_json_args(*extra: str) -> list[str]:
+    return [
+        "feedback",
+        "submit",
+        RESOURCE_ID,
+        VERSION_ID,
+        "--rating",
+        "4",
+        "--usefulness",
+        "5",
+        "--completed-task",
+        "--task-class",
+        "software-development",
+        "--acquisition-channel",
+        "logion-marketplace",
+        "--body",
+        "Great resource",
+        *extra,
+        "--json",
+    ]
+
+
+def _assert_submit_payload(feedback: FakeFeedbackResource) -> None:
+    assert feedback.last_submit["resource_id"] == RESOURCE_ID
+    assert feedback.last_submit["version_id"] == VERSION_ID
+    assert feedback.last_submit["rating"] == 4
+    assert feedback.last_submit["usefulness"] == 5
+    assert feedback.last_submit["completed_task"] is True
+    assert feedback.last_submit["task_class"] == "software-development"
+    assert feedback.last_submit["body"] == "Great resource"
+    assert isinstance(feedback.last_submit["pseudonymous_public_key"], str)
+    assert isinstance(feedback.last_submit["pseudonymous_signature"], str)
+
+
 def test_feedback_submit_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -113,35 +151,8 @@ def test_feedback_submit_json(
     feedback = FakeFeedbackResource()
     _patch_client(monkeypatch, feedback)
 
-    assert (
-        main([
-            "feedback",
-            "submit",
-            RESOURCE_ID,
-            VERSION_ID,
-            "--rating",
-            "4",
-            "--usefulness",
-            "5",
-            "--completed-task",
-            "--task-class",
-            "software-development",
-            "--acquisition-channel",
-            "logion-marketplace",
-            "--body",
-            "Great resource",
-            "--json",
-        ])
-        == 0
-    )
-
-    assert feedback.last_submit["resource_id"] == RESOURCE_ID
-    assert feedback.last_submit["version_id"] == VERSION_ID
-    assert feedback.last_submit["rating"] == 4
-    assert feedback.last_submit["usefulness"] == 5
-    assert feedback.last_submit["completed_task"] is True
-    assert feedback.last_submit["task_class"] == "software-development"
-    assert feedback.last_submit["body"] == "Great resource"
+    assert main(_feedback_submit_json_args()) == 0
+    _assert_submit_payload(feedback)
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["version"] == "v1"
