@@ -614,6 +614,11 @@ class TestExactLocatorMatching:
         assert normalize_locator("owner/repo") != normalize_locator(
             "owner/repo-extra"
         )
+        # A commit-pinned GitHub tree URL normalizes to the same
+        # owner/repo identity as the bare locator.
+        assert normalize_locator(
+            "https://github.com/owner/repo/tree/abc123"
+        ) == "owner/repo"
 
 
 class TestDriftDetection:

@@ -77,7 +77,15 @@ def normalize_locator(value: str) -> str:
             break
     text = text.removesuffix(".git")
     # A `#skill` fragment is catalog identity, not part of the repository.
-    return text.partition("#")[0].strip("/")
+    text = text.partition("#")[0].strip("/")
+    # A `/tree/<ref>` or `/blob/<ref>` path is a GitHub-specific ref selector,
+    # not part of the repository identity. Strip it so a commit-pinned URL
+    # matches the bare ``owner/repo`` the catalog stores.
+    for sep in ("/tree/", "/blob/", "/commit/"):
+        idx = text.find(sep)
+        if idx > 0:
+            text = text[:idx].strip("/")
+    return text
 
 
 def _resource_version_matches(

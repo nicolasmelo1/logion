@@ -162,7 +162,12 @@ def parse_skills_lock(path: Path) -> list[SkillsLockEntry]:
             raise UnsupportedLockfileError(
                 f"skills-lock.json entry {name!r} has no source"
             )
-        revision = str(info.get("revision") or info.get("commit") or "")
+        revision = str(
+            info.get("revision")
+            or info.get("commit")
+            or info.get("ref")
+            or ""
+        )
         entries.append(
             SkillsLockEntry(
                 name=name,
