@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Literal, overload
 
@@ -67,6 +68,7 @@ _PARAMETER_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 _SENSITIVE_BINDING_RE = re.compile(
     r"(?:TOKEN|SECRET|PASSWORD|AUTH|API_KEY|PRIVATE_KEY)", re.IGNORECASE
 )
+_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _extract_last_json(stdout: str) -> JsonObject | None:
@@ -881,11 +883,24 @@ class ScenarioRunner:
             for a in phase.local_hook_args
         ]
         args = [os.path.expandvars(str(a)) for a in args]
+        hook_path = Path(hook)
         cmd = [hook, *args]
+        if hook_path.suffix == ".py":
+            cmd = [sys.executable, hook, *args]
+        pythonpath_entries: list[str] = []
+        env_pythonpath = os.environ.get("PYTHONPATH", "")
+        if env_pythonpath:
+            pythonpath_entries.extend(
+                entry for entry in env_pythonpath.split(os.pathsep) if entry
+            )
+        package_root_str = str(_PACKAGE_ROOT)
+        if package_root_str not in pythonpath_entries:
+            pythonpath_entries.insert(0, package_root_str)
         env = {
             **os.environ,
             **bindings,
             "LOGION_PUBLIC_REPO_PATH": str(world.root_dir),
+            "PYTHONPATH": os.pathsep.join(pythonpath_entries),
         }
         env.pop("LOGION_API_KEY", None)
         env.pop("LOGION_PROVING_GROUND_API_KEY", None)

@@ -25,6 +25,32 @@ from ._companion import (
     CompanionResult,
     install_companion,
 )
+from ._harness_select import select_harnesses
+
+
+def resolve_onboarding_adapters(
+    args: argparse.Namespace,
+    autopost_enabled: bool,
+) -> list[HarnessAdapter]:
+    """Resolve harnesses only when some onboarding step needs them."""
+    companion_will_run = not getattr(args, "no_companion", False)
+    wants_harness = getattr(args, "harness", None)
+    if autopost_enabled or companion_will_run or wants_harness:
+        return select_harnesses(args)
+    return []
+
+
+def record_autopost_disabled(adapters: list[HarnessAdapter]) -> JsonObject:
+    """Persist review consent as disabled for explicitly-targeted harnesses."""
+    from cli.integrations_state import OFF, set_review_mode
+
+    for adapter in adapters:
+        set_review_mode(adapter.name, OFF)
+    print_err(
+        "Auto-review not enabled. Enable later with "
+        "`logion identity onboarding --enable-autopost`."
+    )
+    return {"enabled": False}
 
 
 def empty_companion_summary() -> JsonObject:

@@ -37,6 +37,8 @@ class FakeUsageReceipts:
         coarse_counters: dict[str, int] | None = None,
         duration_bucket: str | None = None,
         integration_version: str | None = None,
+        pseudonymous_public_key: str | None = None,
+        pseudonymous_signature: str | None = None,
     ) -> JsonObject:
         self.calls.append({
             "resource_id": resource_id,
@@ -51,6 +53,8 @@ class FakeUsageReceipts:
             "coarse_counters": coarse_counters,
             "duration_bucket": duration_bucket,
             "integration_version": integration_version,
+            "pseudonymous_public_key": pseudonymous_public_key,
+            "pseudonymous_signature": pseudonymous_signature,
         })
         return {"id": f"receipt-{len(self.calls)}"}
 
@@ -70,7 +74,6 @@ def receipts(monkeypatch: pytest.MonkeyPatch) -> FakeUsageReceipts:
     monkeypatch.setattr(
         "cli._context.LogionClient", lambda **_: FakeClient(fake)
     )
-    monkeypatch.setenv("LOGION_API_KEY", "test-key")
     return fake
 
 
@@ -190,3 +193,18 @@ def test_uploaded_payload_carries_only_opaque_metadata(
     forbidden = ("prompt", "path", "body", "content", "command", "session")
     for key in call:
         assert not any(word in key for word in forbidden), key
+
+
+def test_anonymous_receipt_upload_signs_with_a_stable_local_subject(
+    receipts: FakeUsageReceipts,
+) -> None:
+    set_mode("codex", "auto")
+    _spool_one()
+
+    assert _upload() == 0
+
+    call = receipts.calls[0]
+    assert isinstance(call["pseudonymous_public_key"], str)
+    assert call["pseudonymous_public_key"]
+    assert isinstance(call["pseudonymous_signature"], str)
+    assert call["pseudonymous_signature"]

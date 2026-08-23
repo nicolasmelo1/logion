@@ -17,6 +17,7 @@ from cli._context import make_client
 from cli._errors import handle_error
 from cli._json import JsonObject, opt_str
 from cli._output import emit_json, to_data, to_object
+from cli._pseudonymous_subject import build_receipt_proof
 from cli.integrations_state import AUTO, effective_mode, may_upload
 from cli.usage.observations import (
     list_pending_observations,
@@ -45,21 +46,44 @@ def _upload_blocked(harness: str, *, assume_yes: bool) -> str | None:
 
 
 def _submit_one(
-    client: object, obs: JsonObject, args: argparse.Namespace
+    client: object,
+    obs: JsonObject,
+    args: argparse.Namespace,
+    *,
+    api_key: str | None,
 ) -> str:
     """Submit one receipt and return the id the API assigned it."""
+    kwargs: JsonObject = {
+        "observation_id": opt_str(obs, "observation_id", ""),
+        "task_class": opt_str(obs, "task_class") or args.task_class,
+        "acquisition_channel": opt_str(obs, "acquisition_channel", ""),
+        "consent_policy_digest": CONSENT_POLICY_VERSION,
+        "harness": opt_str(obs, "harness") or None,
+        "outcome": opt_str(obs, "outcome") or args.outcome,
+        "observed_at": opt_str(obs, "observed_at") or None,
+        "duration_bucket": opt_str(obs, "duration_bucket"),
+        "integration_version": opt_str(obs, "integration_version"),
+    }
+    if not api_key:
+        kwargs.update(
+            build_receipt_proof({
+                "resource_id": opt_str(obs, "resource_id", ""),
+                "version_id": opt_str(obs, "version_id", ""),
+                "observation_id": opt_str(obs, "observation_id", ""),
+                "task_class": opt_str(obs, "task_class") or args.task_class,
+                "acquisition_channel": opt_str(obs, "acquisition_channel", ""),
+                "consent_policy_digest": CONSENT_POLICY_VERSION,
+                "harness": opt_str(obs, "harness") or None,
+                "outcome": opt_str(obs, "outcome") or args.outcome,
+                "observed_at": opt_str(obs, "observed_at") or None,
+                "duration_bucket": opt_str(obs, "duration_bucket"),
+                "integration_version": opt_str(obs, "integration_version"),
+            })
+        )
     result = client.v1.usage_receipts.submit(  # type: ignore[attr-defined]
         opt_str(obs, "resource_id", ""),
         opt_str(obs, "version_id", ""),
-        observation_id=opt_str(obs, "observation_id", ""),
-        task_class=opt_str(obs, "task_class") or args.task_class,
-        acquisition_channel=opt_str(obs, "acquisition_channel", ""),
-        consent_policy_digest=CONSENT_POLICY_VERSION,
-        harness=opt_str(obs, "harness") or None,
-        outcome=opt_str(obs, "outcome") or args.outcome,
-        observed_at=opt_str(obs, "observed_at") or None,
-        duration_bucket=opt_str(obs, "duration_bucket"),
-        integration_version=opt_str(obs, "integration_version"),
+        **kwargs,
     )
     return opt_str(to_object(result), "id", "")
 
@@ -99,7 +123,9 @@ def handle_usage_upload(args: argparse.Namespace) -> int:
                         "receipt_id": already,
                     })
                     continue
-                receipt_id = _submit_one(client, obs, args)
+                receipt_id = _submit_one(
+                    client, obs, args, api_key=config.api_key
+                )
                 if receipt_id:
                     record_receipt(observation_id, receipt_id)
                 uploaded.append({

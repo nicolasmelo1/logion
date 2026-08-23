@@ -26,6 +26,10 @@ class UsageReceiptResource:
         outcome: str | None = None,
         observed_at: str | None = None,
         coarse_counters: dict[str, int] | None = None,
+        duration_bucket: str | None = None,
+        integration_version: str | None = None,
+        pseudonymous_public_key: str | None = None,
+        pseudonymous_signature: str | None = None,
     ) -> JsonObject:
         """Submit a narrow usage receipt for a resource observation.
 
@@ -61,6 +65,14 @@ class UsageReceiptResource:
             payload["observed_at"] = observed_at
         if coarse_counters is not None:
             payload["coarse_counters"] = coarse_counters
+        if duration_bucket is not None:
+            payload["duration_bucket"] = duration_bucket
+        if integration_version is not None:
+            payload["integration_version"] = integration_version
+        if pseudonymous_public_key is not None:
+            payload["pseudonymous_public_key"] = pseudonymous_public_key
+        if pseudonymous_signature is not None:
+            payload["pseudonymous_signature"] = pseudonymous_signature
         return self._http.request_object(
             "POST",
             f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",

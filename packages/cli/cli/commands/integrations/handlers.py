@@ -24,9 +24,12 @@ from cli.integrations_state import (
     OFF,
     do_not_track,
     effective_mode,
+    effective_review_mode,
     forget_managed_hook,
     get_mode,
+    get_review_mode,
     managed_hooks,
+    may_auto_review,
     may_spool,
     record_managed_hook,
     set_mode,
@@ -42,6 +45,9 @@ def _adapter_to_dict(adapter: HarnessAdapter) -> JsonObject:
         "enabled": may_spool(adapter.name),
         "mode": get_mode(adapter.name),
         "effective_mode": effective_mode(adapter.name),
+        "review_mode": get_review_mode(adapter.name),
+        "effective_review_mode": effective_review_mode(adapter.name),
+        "review_enabled": may_auto_review(adapter.name),
         "observation_supported": (
             adapter.observation_config_path("user") is not None
         ),

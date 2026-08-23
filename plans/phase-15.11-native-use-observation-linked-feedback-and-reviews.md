@@ -24,22 +24,17 @@
 > **Still open before this phase may be called complete:**
 > 1. Prove a live hook end to end, with the harness itself delivering the
 >    payload to an installed CLI, rather than the documented replay
->    fallback. The current phase-gate evidence still uses replay because
->    cross-driver delivery is not yet supported by any harness.
-> 2. Pseudonymous participation: server-side `shadow` identity tier support
->    exists, but the contract was tightened to require a signer-capable local
->    pseudonymous subject; the public CLI still has no local keypair-backed
->    pseudonymous identity flow.
-> 3. Published first-party artifacts: `packages/harness-plugins/` now
+>    fallback.
+> 2. Published first-party artifacts: `packages/harness-plugins/` now
 >    contains the observer scaffold, but no official `npx skills add`
 >    companion or `npx plugins add` observer package is published on the
 >    stable coordinates, so the clean-machine onboarding contract remains
 >    unbuilt.
-> 4. The machine-readable phase-gate evidence is recorded, but the
->    human-readable `artifacts/dogfood/phase-15.11.md` write-up is still
->    absent from this repository.
-> 5. Generic self-review is only detectable for resources that project to a
+> 3. Generic self-review is only detectable for resources that project to a
 >    Course, because `resources` has no owner column.
+> 4. Pseudonymous signing and receipt-vs-review consent are now implemented in
+>    code and covered by focused tests, but the real-agent phase evidence and
+>    gate artifacts have not yet been re-recorded on top of those changes.
 >
 > **Dogfood — Level 2 (real use and feedback):** the implementing agent acquires a resource through any supported channel, uses it in its ordinary harness, and submits feedback through Logion linked to the exact original `ResourceVersion`.
 > **After this phase:** Logion can learn from resources installed by `npx skills`, `npx plugins`, `hf`, or Logion itself without forcing a new acquisition workflow.

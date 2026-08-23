@@ -36,6 +36,7 @@
   },
   "packages/cli/pyproject.toml": {
     "dependencies": [
+      "cryptography>=50.0.0,<51.0.0",
       "logion-client",
       "logion-skillmap",
       "pydantic>=2.7,<3.0.0",

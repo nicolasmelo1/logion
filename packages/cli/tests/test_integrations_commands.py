@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from cli._harness import get_adapter
-from cli.integrations_state import get_mode, managed_hooks
+from cli.integrations_state import get_mode, managed_hooks, set_review_mode
 from cli.main import main
 
 OBSERVE_COMMAND = "logion usage observe"
@@ -336,6 +336,27 @@ def test_status_flags_do_not_track(
     assert statuses["claude-code"]["mode"] == "auto"
     assert statuses["claude-code"]["effective_mode"] == "off"
     assert statuses["claude-code"]["enabled"] is False
+
+
+@pytest.mark.usefixtures("fake_home")
+def test_status_keeps_receipt_and_review_scopes_separate(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        main(["integrations", "enable", "claude-code", "--mode", "auto"]) == 0
+    )
+    set_review_mode("claude-code", "off")
+    capsys.readouterr()
+
+    assert main(["integrations", "status", "--json"]) == 0
+    statuses = {
+        entry["name"]: entry
+        for entry in json.loads(capsys.readouterr().out)["data"]
+    }
+
+    assert statuses["claude-code"]["effective_mode"] == "auto"
+    assert statuses["claude-code"]["effective_review_mode"] == "off"
+    assert statuses["claude-code"]["review_enabled"] is False
 
 
 def test_observation_command_names_its_harness() -> None:
