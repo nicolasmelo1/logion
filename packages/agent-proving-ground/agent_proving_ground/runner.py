@@ -303,6 +303,37 @@ def _cli_cannot_observe(cli: str | None) -> str | None:
     )
 
 
+def _strip_shadowed_logion_dirs(
+    path_value: str, preferred_cli: str | None
+) -> str:
+    """Remove PATH entries that expose the wrong `logion` binary.
+
+    The proving ground chooses one installed CLI artifact per agent. If a
+    later PATH segment also contains a `logion` binary (for example an old
+    global pipx install), some provider shell tools may still resolve that
+    stale binary. Keep the preferred entry and drop conflicting later ones
+    only.
+    """
+    if not path_value or not preferred_cli:
+        return path_value
+    try:
+        preferred = Path(preferred_cli).resolve()
+    except OSError:
+        return path_value
+    kept: list[str] = []
+    for entry in path_value.split(os.pathsep):
+        if not entry:
+            continue
+        candidate = Path(entry) / "logion"
+        try:
+            if candidate.exists() and candidate.resolve() != preferred:
+                continue
+        except OSError:
+            pass
+        kept.append(entry)
+    return os.pathsep.join(kept)
+
+
 class ScenarioRunner:
     def __init__(
         self,
@@ -510,6 +541,11 @@ class ScenarioRunner:
             scenario_vars[f"{prefix}_WORKSPACE"] = str(workspace)
             scenario_vars[f"{prefix}_LOGION_HOME"] = str(logion_home)
             scenario_vars[f"{prefix}_HOOK_INVOCATIONS"] = str(invocations)
+            if driver.name == "codex":
+                (workspace / ".agents" / "skills").mkdir(
+                    parents=True, exist_ok=True
+                )
+                (workspace / ".codex").mkdir(parents=True, exist_ok=True)
             # The goal text needs the harness that is actually driving the
             # run, not the one the scenario declared: ``--agent-driver``
             # replaces every agent's driver, and a hook installed for the
@@ -552,6 +588,10 @@ class ScenarioRunner:
             )
             reason = _cli_cannot_observe(installed_cli)
             if installed_cli and reason is None:
+                env["PATH"] = _strip_shadowed_logion_dirs(
+                    env.get("PATH", os.environ.get("PATH", "")),
+                    installed_cli,
+                )
                 bin_dir = self._write_cli_shim(
                     agent_spec.id,
                     cli=installed_cli,

@@ -166,6 +166,7 @@ def discover_native_state(  # noqa: C901 - manager schemas differ
                     "revision": entry.revision,
                     "content_digest": entry.content_digest,
                     "resource_version_id": None,
+                    "installed_paths": list(entry.installed_paths),
                     "path": entry.installed_paths[0]
                     if entry.installed_paths
                     else None,

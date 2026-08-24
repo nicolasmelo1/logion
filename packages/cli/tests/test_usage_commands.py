@@ -96,6 +96,7 @@ def _receipt(
     resource_id: str = "res-002",
     version_id: str = "ver-002",
     harness: str = "codex",
+    installed_paths: list[str] | None = None,
 ) -> JsonObject:
     """A receipt with the opaque ids 15.9.1 defines, not a hand-made hash."""
     root = scope_root or target_path.parent
@@ -113,6 +114,7 @@ def _receipt(
         "installation_id": installation_id_for(scope_id, relative),
         "target_path": str(target_path),
         "relative_target_path": relative,
+        "installed_paths": installed_paths or [relative],
     }
 
 
@@ -259,6 +261,51 @@ def test_native_hook_payload_resolves_to_the_installation(
     data = json.loads(capsys.readouterr().out)["data"]
     assert data["disposition"] == "recorded"
     assert data["observation"]["installation_id"] == receipt["installation_id"]
+
+
+def test_native_hook_payload_matches_any_receipt_installed_path(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """Attribution should accept explicit installed_paths.
+
+    The observed path may differ from the single receipt target_path.
+    """
+    set_mode("claude-code", "prompt")
+    repo = tmp_path / "repo"
+    install = _install(repo, name="find-skills")
+    mirrored = tmp_path / "logion-home" / "installed" / "find-skills" / "v1"
+    mirrored.mkdir(parents=True)
+    mirrored_skill = mirrored / "SKILL.md"
+    mirrored_skill.write_text("# mirrored\n", encoding="utf-8")
+    receipt = _receipt(
+        target_path=install,
+        scope_root=repo,
+        harness="claude-code",
+        installed_paths=[
+            install.relative_to(repo).as_posix(),
+            str(mirrored_skill),
+        ],
+    )
+
+    assert (
+        _observe(
+            monkeypatch,
+            {
+                "session_id": "s1",
+                "tool_name": "Read",
+                "tool_input": {"file_path": str(mirrored_skill)},
+            },
+            harness="claude-code",
+            receipts=[receipt],
+        )
+        == 0
+    )
+
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert data["disposition"] == "recorded"
+    assert data["observation"]["resource_id"] == "res-002"
 
 
 def test_hook_payload_secrets_never_reach_the_spool(

@@ -106,6 +106,40 @@ def _target_path(receipt: JsonObject) -> Path | None:
     return _normalize(raw)
 
 
+def _receipt_paths(receipt: JsonObject) -> list[Path]:
+    """Concrete filesystem paths a receipt says belong to one installation.
+
+    ``target_path`` is the historical primary location, but delegated native
+    managers can also report a fuller ``installed_paths`` list. Attribution
+    should accept any of those explicit paths rather than assuming the first
+    one is the only path a harness may reference.
+    """
+    paths: list[Path] = []
+    target = _target_path(receipt)
+    if target is not None:
+        paths.append(target)
+    base = target.parent if target is not None else None
+    installed = receipt.get("installed_paths")
+    if isinstance(installed, list):
+        for item in installed:
+            if not isinstance(item, str):
+                continue
+            candidate = _normalize(item)
+            if candidate is None and base is not None:
+                candidate = _normalize(str(base / item))
+            if candidate is not None:
+                paths.append(candidate)
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(path)
+    return deduped
+
+
 def _covers(target: Path, candidate: Path) -> bool:
     if candidate == target:
         return True
@@ -128,7 +162,7 @@ def resolve_installations(
     targets = [
         (target, receipt)
         for receipt in inventory
-        if (target := _target_path(receipt)) is not None
+        for target in _receipt_paths(receipt)
     ]
     matched: dict[str, JsonObject] = {}
     for candidate in candidate_paths(payload):

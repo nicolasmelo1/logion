@@ -226,6 +226,10 @@ class TestReconcileCommand:
                 "manager": "dsh",
                 "name": "@vendor/tool",
                 "path": str(target),
+                "installed_paths": [
+                    ".dsh/profiles/vendor/node_modules/@vendor/tool",
+                    ".dsh/profiles/vendor/node_modules/@vendor/tool/README.md",
+                ],
                 "source": "https://github.com/vendor/tool",
                 "revision": "b" * 40,
                 "version": "1.0.0",
@@ -243,6 +247,10 @@ class TestReconcileCommand:
 
         assert receipt is not None
         assert receipt["receipt_origin"] == "resources_reconcile"
+        assert receipt["installed_paths"] == [
+            ".dsh/profiles/vendor/node_modules/@vendor/tool",
+            ".dsh/profiles/vendor/node_modules/@vendor/tool/README.md",
+        ]
         assert _receipts.load_receipts() == [receipt]
 
     def test_reconcile_refuses_a_different_native_pin(
@@ -613,6 +621,12 @@ class TestExactLocatorMatching:
         assert normalize_locator("gh:owner/repo") == "owner/repo"
         assert normalize_locator("owner/repo") != normalize_locator(
             "owner/repo-extra"
+        )
+        # A commit-pinned GitHub tree URL normalizes to the same
+        # owner/repo identity as the bare locator.
+        assert (
+            normalize_locator("https://github.com/owner/repo/tree/abc123")
+            == "owner/repo"
         )
 
 

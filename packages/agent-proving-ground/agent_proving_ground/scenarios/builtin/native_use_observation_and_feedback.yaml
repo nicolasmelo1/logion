@@ -161,6 +161,14 @@ phases:
       and it must come back as ${ACQUISITION_CHANNEL}. Save the untouched JSON
       response to ${EVIDENCE_DIR}/feedback-first.json.
 
+      Use the `logion feedback submit` command family for all three writes.
+      Do not use `logion courses report-usage`, `logion usage upload`, or any
+      other command family here. The exact shape you need is:
+      `logion feedback submit ${RESOURCE_ID} ${VERSION_ID} --rating 4
+      --usefulness 4 --reliability 4 --tool-safety 5 --token-efficiency 4
+      --completed-task --task-class software-development --body "..." --json`
+      and the third submission repeats that same command with `--force`.
+
       Untouched means the entire document the command printed, starting with
       its "version" and "kind" fields. Do not unwrap it. Do not save only the
       "data" object. Do not reformat it. Redirect stdout to the file.
@@ -211,7 +219,10 @@ phases:
       `logion usage pending --json` to
       ${ACME_EVIDENCE_DIR}/pending-acme.json. The destination is an absolute
       path outside the acme working directory: redirect stdout to that exact
-      path, never to a relative `evidence/pending-acme.json`. It must be empty.
+      path, never to a relative `evidence/pending-acme.json`. Keep the
+      command's untouched JSON envelope in that file: it must parse as JSON
+      and its top-level `data` field must be an empty list. Never truncate,
+      rewrite, or replace the file contents by hand.
       Do not inspect another agent's files and do not fabricate an observation.
     assertions:
       - type: files.usage_pending_empty
