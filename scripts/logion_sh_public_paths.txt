@@ -26,6 +26,8 @@
 /releases/manifest-stable.json
 /releases/manifest-*
 /schemas/release-manifest/v1.json
+/schemas/logion.instrumentation/v1
+/schemas
 /static
 /static/*
 /setup/complete

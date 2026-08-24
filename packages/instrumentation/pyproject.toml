@@ -1,0 +1,104 @@
+[project]
+name = "logion-instrumentation"
+version = "0.1.0"
+description = "Instrumentation profile schema and validator for Logion publisher-reporter."
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Logion contributors" }]
+keywords = ["logion", "instrumentation", "schema", "observation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "jsonschema>=4.23,<5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/nicolasmelo1/logion"
+Repository = "https://github.com/nicolasmelo1/logion"
+Issues = "https://github.com/nicolasmelo1/logion/issues"
+Documentation = "https://github.com/nicolasmelo1/logion#readme"
+
+[project.scripts]
+logion-instrumentation = "logion_instrumentation.validator:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15,<2.0.0",
+    "pytest>=9.0.3,<9.1.0",
+    "ruff>=0.15.12,<0.16.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/logion_instrumentation"]
+artifacts = ["src/logion_instrumentation/py.typed"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ANN401",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PGH",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TID251",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/logion_instrumentation/validator.py" = ["T201"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
+
+[tool.ruff.lint.isort]
+known-first-party = ["logion_instrumentation"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+exclude = ["tests/"]

@@ -18,6 +18,7 @@ members = [
     "packages/bot",
     "packages/indexer",
     "packages/harness-plugins",
+    "packages/instrumentation",
 ]
 
 [dependency-groups]
@@ -101,13 +102,13 @@ ignore = [
 "typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape, JsonValue/JsonObject from the package's _json module at a JSON boundary, or a TypeVar for generic passthrough. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
 
 [tool.ruff.lint.isort]
-known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners", "social_management", "logion_indexer"]
+known-first-party = ["cli", "landing", "logion", "logion_bot", "logion_scanners", "social_management", "logion_indexer", "logion_instrumentation"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
 
 [tool.pytest.ini_options]
-pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "packages/bot", "packages/indexer", "packages/harness-plugins", "."]
+pythonpath = ["packages/client/src", "packages/cli", "packages/scanners", "packages/social-management", "packages/bot", "packages/indexer", "packages/harness-plugins", "packages/instrumentation/src", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [

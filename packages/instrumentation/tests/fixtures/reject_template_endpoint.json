@@ -1,0 +1,21 @@
+{
+  "schema": "logion.instrumentation/v1",
+  "subject": {
+    "resource_id": "urn:air:example.com:skill:review-helper",
+    "resource_version": "1.4.2",
+    "distribution_digest": "sha256:abcdef0123456789"
+  },
+  "publisher": {
+    "identity": "did:web:example.com"
+  },
+  "delivery": {
+    "endpoint": "https://api.logion.sh/v1/resources/RESOURCE_UUID/versions/VERSION_UUID/publisher-receipts",
+    "mode": "asynchronous-batch",
+    "max_batch": 20,
+    "max_spool_bytes": 262144
+  },
+  "events": ["resource_invoked"],
+  "fields": ["resource_id", "event"],
+  "excluded": ["prompt", "secrets"],
+  "integration_version": "logion.publisher-reporter.v1"
+}

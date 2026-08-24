@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logion.sh/schemas/logion.instrumentation/v1",
+  "title": "Logion Instrumentation Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "subject",
+    "publisher",
+    "delivery",
+    "events",
+    "fields",
+    "excluded",
+    "integration_version"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "logion.instrumentation/v1"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "resource_version"],
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "resource_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "distribution_digest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity"],
+      "properties": {
+        "identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "mode", "max_batch"],
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["asynchronous-batch"]
+        },
+        "max_batch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "max_spool_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 1048576
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "enum": ["resource_invoked", "resource_file_read", "resource_tool_used"]
+      }
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "enum": [
+          "distribution_digest",
+          "duration_bucket",
+          "event",
+          "harness",
+          "integration_version",
+          "outcome",
+          "resource_id",
+          "resource_version"
+        ]
+      }
+    },
+    "excluded": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "enum": [
+          "file_content",
+          "local_path",
+          "model_context",
+          "prompt",
+          "secrets",
+          "tool_arguments",
+          "tool_results",
+          "user_identity"
+        ]
+      }
+    },
+    "integration_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    }
+  }
+}
