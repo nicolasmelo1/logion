@@ -181,6 +181,7 @@ class CodexDriver(ProviderDriver):
         "--sandbox",
         "workspace-write",
         "--skip-git-repo-check",
+        "--dangerously-bypass-hook-trust",
         "--config",
         'approval_policy="never"',
         "--config",
@@ -193,6 +194,13 @@ class CodexDriver(ProviderDriver):
         args = super()._effective_args()
         if self._launch is None:
             return args
+        workspace_hidden_dirs = [
+            self._launch.workspace / ".agents",
+            self._launch.workspace / ".codex",
+        ]
+        for path in workspace_hidden_dirs:
+            if path.exists():
+                args.extend(["--add-dir", str(path)])
         logion_home = self._launch.env.get("LOGION_HOME")
         if not logion_home:
             return args

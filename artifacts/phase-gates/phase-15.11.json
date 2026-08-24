@@ -6,12 +6,12 @@
       "driver": "codex",
       "model": "gpt-5.4-mini",
       "report": "artifacts/phase-gates/reports/native-use-observation-and-feedback.json",
-      "report_sha256": "b4d5988630f9e9cc5c6cdd55e2267e8e779c8275f28268e260f8a481ec2dd0fe",
+      "report_sha256": "ba9953548d41b4bbae7df227c7b4ef1b581bba938c5857b01113575363c2b87b",
       "scenario": "native_use_observation_and_feedback",
       "status": "passed",
       "unsupported_assertions": [],
       "implementation": {
-        "public_sha256": "b26d20f2d7098dd48896501b87900bc86f21586e4b6ddc55fc4e6273bd787291",
+        "public_sha256": "5373ebb38f8ab72fa77e746820ddec4db74151d710fb1c2ac6773fd0f34ed6df",
         "private_sha256": "a3e6a8570b78ef11cb173bd377f2765f2d871d1a994917ee2cc913bc6f382d0b"
       }
     },
@@ -20,12 +20,12 @@
       "driver": "codex",
       "model": "gpt-5.4-mini",
       "report": "artifacts/phase-gates/reports/remote-private-mcp-feedback.json",
-      "report_sha256": "7f1723096bf47ca6cc1a079ed813b172c3228df01cb8a31e0f2d067a7874dd8f",
+      "report_sha256": "d8f3ab261480d4eed3081e1aa0c79ed9ffb047a8bbaae4cc4593abdfd9998148",
       "scenario": "remote_private_mcp_feedback",
       "status": "passed",
       "unsupported_assertions": [],
       "implementation": {
-        "public_sha256": "b26d20f2d7098dd48896501b87900bc86f21586e4b6ddc55fc4e6273bd787291",
+        "public_sha256": "5373ebb38f8ab72fa77e746820ddec4db74151d710fb1c2ac6773fd0f34ed6df",
         "private_sha256": "a3e6a8570b78ef11cb173bd377f2765f2d871d1a994917ee2cc913bc6f382d0b"
       }
     }

@@ -41,6 +41,14 @@ def _save_reconciled_receipt(
         raw_target if raw_target.is_absolute() else root / raw_target
     ).resolve()
     relative = target.relative_to(root).as_posix()
+    installed_raw = item.get("installed_paths")
+    installed_paths = (
+        [str(path) for path in installed_raw if isinstance(path, str) and path]
+        if isinstance(installed_raw, list)
+        else []
+    )
+    if not installed_paths:
+        installed_paths = [relative]
     plan = to_data(
         client.v1.resources.acquisition_plan(
             resource_id=str(candidate["resource_id"]),
@@ -93,7 +101,7 @@ def _save_reconciled_receipt(
         "installation_id": _receipts.installation_id_for(scope_id, relative),
         "target_path": str(target),
         "relative_target_path": relative,
-        "installed_paths": [relative],
+        "installed_paths": installed_paths,
         "projection_paths": [],
         "acquired_at": reconciled_at,
         "verified_at": reconciled_at,

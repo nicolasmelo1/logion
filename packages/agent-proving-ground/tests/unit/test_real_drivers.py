@@ -256,10 +256,18 @@ async def test_codex_driver_allows_role_logion_home(tmp_path) -> None:
     driver = CodexDriver(driver_config={})
     launch = _launch(tmp_path)
     launch.env["LOGION_HOME"] = str(tmp_path / "role-home")
+    (tmp_path / ".agents").mkdir()
+    (tmp_path / ".codex").mkdir()
 
     await driver.start(launch)
 
     args = driver._effective_args()
+    assert ["--add-dir", str(tmp_path / ".agents")] in [
+        args[i : i + 2] for i in range(len(args) - 1)
+    ]
+    assert ["--add-dir", str(tmp_path / ".codex")] in [
+        args[i : i + 2] for i in range(len(args) - 1)
+    ]
     assert args[-2:] == ["--add-dir", str(tmp_path / "role-home")]
 
 

@@ -237,6 +237,63 @@ def test_preflight_is_silent_when_there_is_no_cli() -> None:
     assert _cli_cannot_observe(None) is None
 
 
+def test_shadowed_global_logion_is_removed_from_path(tmp_path) -> None:
+    from agent_proving_ground.runner import _strip_shadowed_logion_dirs
+
+    preferred_dir = tmp_path / "role" / "pipx-bin"
+    preferred_dir.mkdir(parents=True)
+    preferred = preferred_dir / "logion"
+    preferred.write_text("#!/bin/sh\nexit 0\n")
+    preferred.chmod(0o755)
+
+    stale_dir = tmp_path / "global" / "bin"
+    stale_dir.mkdir(parents=True)
+    stale = stale_dir / "logion"
+    stale.write_text("#!/bin/sh\nexit 0\n")
+    stale.chmod(0o755)
+
+    untouched = tmp_path / "other"
+    untouched.mkdir()
+    path = ":".join((str(preferred_dir), str(untouched), str(stale_dir)))
+
+    result = _strip_shadowed_logion_dirs(path, str(preferred))
+    parts = result.split(":")
+    assert str(preferred_dir) in parts
+    assert str(untouched) in parts
+    assert str(stale_dir) not in parts
+
+
+def test_codex_hidden_dirs_are_precreated_for_workspace_runs(tmp_path) -> None:
+    workspace = tmp_path / "agent"
+    workspace.mkdir()
+
+    (workspace / ".agents" / "skills").mkdir(parents=True, exist_ok=True)
+    (workspace / ".codex").mkdir(parents=True, exist_ok=True)
+
+    assert (workspace / ".agents" / "skills").is_dir()
+    assert (workspace / ".codex").is_dir()
+
+
+def test_acme_isolation_goal_requires_untouched_json_not_truncation() -> None:
+    scenario = SCENARIO_PATH.read_text(encoding="utf-8")
+    assert "its top-level `data` field must be an empty list" in scenario
+    assert "Never truncate," in scenario
+    assert "replace the file contents by hand." in scenario
+
+
+def test_feedback_phase_names_the_exact_feedback_submit_command() -> None:
+    scenario = SCENARIO_PATH.read_text(encoding="utf-8")
+    assert "Use the `logion feedback submit` command family" in scenario
+    assert (
+        "Do not use `logion courses report-usage`, `logion usage upload`"
+        in scenario
+    )
+    assert (
+        "and the third submission repeats that same command with `--force`."
+        in scenario
+    )
+
+
 SCENARIO_PATH = Path(
     "packages/agent-proving-ground/agent_proving_ground/scenarios"
     "/builtin/native_use_observation_and_feedback.yaml"
