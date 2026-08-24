@@ -1,0 +1,8 @@
+{
+  "_logion_fixture": true,
+  "_logion_fixture_note": "Synthetic fixture — not recorded from a live session. Built from the on_skill_lifecycle hook shape in packages/cli/cli/_harness/_hermes_observer.py (action=loaded, skill_name, session_id). Replace with a real recording when a Hermes session is available.",
+  "action": "loaded",
+  "skill_name": "logion-development",
+  "session_id": "ses_01JHERMESSKILLLOAD000",
+  "scope": "user"
+}

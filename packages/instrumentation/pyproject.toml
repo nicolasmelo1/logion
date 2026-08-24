@@ -90,6 +90,12 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/logion_instrumentation/validator.py" = ["T201"]
+"src/logion_instrumentation/reporter/report.py" = ["T201", "S310"]
+"tests/conformance/suite.py" = ["S101"]
+"tests/conformance/test_report_py.py" = ["S101", "T201"]
+"tests/conformance/test_report_mjs.py" = ["S101", "T201"]
+"tests/test_runtime_absent.py" = ["S101", "T201", "S603", "S607"]
+"tests/test_fixtures.py" = ["S101"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
