@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""Rewrite ``Any`` out of the datamodel-codegen output.
+"""Reconcile the datamodel-codegen output with the contract.
 
-An OpenAPI property declared as a free-form ``{"type": "object"}``
+Two jobs. The first rewrites ``Any`` out of the generated models. The
+second restores ``additionalProperties: false`` on request bodies, which
+``--allow-extra-fields`` erases.
+
+On ``Any``: an OpenAPI property declared as a free-form ``{"type": "object"}``
 becomes ``dict[str, Any]`` in the generated models. That is the right
 *shape* — the contract really does say "some JSON object here" — but
 ``Any`` is banned repo-wide, and it is also less precise than what we
@@ -15,6 +19,7 @@ stay byte-identical.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -46,6 +51,55 @@ JSON_NAME_MAP = {
     "JsonObjectInput": "JsonObject",
     "JsonObjectOutput": "JsonObject",
 }
+
+
+def _closed_request_models(spec_path: Path) -> set[str]:
+    """Names of request-body schemas the contract declares closed.
+
+    Only request bodies. A generated *response* model stays permissive on
+    purpose: the server may add a field, and a client that refuses one is a
+    client that breaks on a compatible change. A request model is the
+    opposite case. The server rejects the unknown field either way, so
+    mirroring the contract turns a remote 422 into a local error, and stops
+    the generated client from reading as a second, softer statement of the
+    contract.
+    """
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    schemas = spec.get("components", {}).get("schemas", {})
+    closed: set[str] = set()
+    for operations in spec.get("paths", {}).values():
+        for operation in operations.values():
+            if not isinstance(operation, dict):
+                continue
+            body = operation.get("requestBody") or {}
+            for media in (body.get("content") or {}).values():
+                ref = (media.get("schema") or {}).get("$ref", "")
+                if not ref.startswith("#/components/schemas/"):
+                    continue
+                name = ref.rsplit("/", 1)[1]
+                if schemas.get(name, {}).get("additionalProperties") is False:
+                    closed.add(name)
+    return closed
+
+
+def forbid_extra(source: str, models: set[str]) -> str:
+    """Set ``extra="forbid"`` on each class in *models*."""
+    text = source
+    for name in sorted(models):
+        # Runs before ``ruff format``, so the generator's quote style is
+        # whatever datamodel-codegen emitted. Match either.
+        pattern = re.compile(
+            rf"(class {re.escape(name)}\(BaseModel\):\n"
+            rf"    model_config = ConfigDict\(\n        extra=(['\"]))"
+            rf"allow(\2,)"
+        )
+        text, count = pattern.subn(r"\1forbid\3", text)
+        if count != 1:
+            raise SystemExit(
+                f"postprocess_models: expected one extra='allow' block for "
+                f"{name}, found {count}. The generator output changed shape."
+            )
+    return text
 
 
 def rewrite(source: str) -> str:
@@ -123,10 +177,17 @@ def main() -> int:
     """Rewrite the file named on the command line, in place."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", type=Path)
+    parser.add_argument(
+        "--spec",
+        type=Path,
+        required=True,
+        help="OpenAPI contract the models were generated from.",
+    )
     args = parser.parse_args()
 
     original = args.path.read_text()
-    updated = rewrite(original)
+    closed = _closed_request_models(args.spec)
+    updated = forbid_extra(rewrite(original), closed)
     if updated != original:
         args.path.write_text(updated)
     return 0
