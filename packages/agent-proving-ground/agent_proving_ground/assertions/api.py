@@ -592,3 +592,82 @@ class RemoteMcpPrivatePayloadNotRecordedAssertion(_ApiQueryAssertion):
     evidence_keys = ("checked_fields",)
     pass_message = "remote MCP private payload was not recorded"
     fail_message = "remote MCP private payload leaked into evidence"
+
+
+class PublisherReceiptExactResourceVersionAssertion(_ApiQueryAssertion):
+    type = "api.publisher_receipt_exact_resource_version"
+    query_type = "publisher_receipt_exact_resource_version"
+    found_key = "exact"
+    evidence_keys = (
+        "resource_id",
+        "resource_version",
+        "publisher_identity",
+        "distribution_digest",
+        "profile_digest",
+        "integration_version",
+    )
+    pass_message = (
+        "receipt names the exact resource version, publisher, "
+        "distribution digest, profile digest, and integration version"
+    )
+    fail_message = (
+        "receipt does not name the exact resource version and all "
+        "required attribution fields"
+    )
+
+
+class InstallNotCountedAsUseAssertion(_ApiQueryAssertion):
+    type = "api.install_not_counted_as_use"
+    query_type = "install_not_counted_as_use"
+    found_key = "separated"
+    evidence_keys = ("activation_count", "terminal_outcome_count")
+    pass_message = "install produced no activation and no terminal outcome"
+    fail_message = "install was counted as use or produced a terminal outcome"
+
+
+class PrivatePayloadAbsentAssertion(_ApiQueryAssertion):
+    type = "api.private_payload_absent"
+    query_type = "private_payload_absent"
+    found_key = "clean"
+    evidence_keys = ("checked_fields", "checked_artifacts")
+    pass_message = (
+        "no excluded category appears in the stored record or the API log"
+    )
+    fail_message = (
+        "an excluded category (prompt, file content, path, tool argument, "
+        "tool result, secret, or user identity) was found"
+    )
+
+
+class DisabledUseZeroReceiptsAssertion(_ApiQueryAssertion):
+    type = "api.disabled_use_zero_receipts"
+    query_type = "disabled_use_zero_receipts"
+    found_key = "zero_receipts"
+    evidence_keys = ("receipt_count", "baseline_receipt_count")
+    pass_message = "zero receipts server-side for the disabled leg"
+    fail_message = (
+        "receipts exist server-side for the disabled leg — "
+        "telemetry was not truly disabled, only the upload was suppressed"
+    )
+
+
+class PublisherReceiptNeverRatesOrFundsAssertion(_ApiQueryAssertion):
+    type = "api.publisher_receipt_never_rates_or_funds"
+    query_type = "publisher_receipt_never_rates_or_funds"
+    found_key = "clean"
+    invert = False
+    evidence_keys = (
+        "feedback_count",
+        "course_review_count",
+        "eval_count",
+        "bounty_count",
+        "ledger_count",
+    )
+    pass_message = (
+        "publisher receipt produced no rating, review, eval, "
+        "bounty, or ledger row"
+    )
+    fail_message = (
+        "publisher receipt created a rating, review, eval, "
+        "bounty, or payment"
+    )

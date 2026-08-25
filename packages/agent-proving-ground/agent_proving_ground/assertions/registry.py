@@ -13,6 +13,7 @@ from agent_proving_ground.assertions.api import (
     CourseRemainsPurchasableAssertion,
     CourseReviewProjectionExistsAssertion,
     CreditBalanceChangedAssertion,
+    DisabledUseZeroReceiptsAssertion,
     FeedbackLinkedToAcquisitionAssertion,
     FeedbackPendingAssertion,
     FeedbackSubmissionIdempotentAssertion,
@@ -23,6 +24,7 @@ from agent_proving_ground.assertions.api import (
     IndexedListingExistsAssertion,
     IndexedListingTierAssertion,
     InstallDriftReportedAssertion,
+    InstallNotCountedAsUseAssertion,
     InstalledArtifactDigestMatchesAssertion,
     InventoryReceiptMatchesAssertion,
     LegacyCoursePurchaseExistsAssertion,
@@ -34,6 +36,9 @@ from agent_proving_ground.assertions.api import (
     ObservationEnvelopeNoRawDataAssertion,
     OriginalPublisherPreservedAssertion,
     PlatformBountyAcceptedAssertion,
+    PrivatePayloadAbsentAssertion,
+    PublisherReceiptExactResourceVersionAssertion,
+    PublisherReceiptNeverRatesOrFundsAssertion,
     PurchaseExistsAssertion,
     RawObservationNotUploadedAssertion,
     RemoteMcpFeedbackLinkedAssertion,
@@ -68,8 +73,16 @@ from agent_proving_ground.assertions.db import (
     EventsOutboxContainsAssertion,
 )
 from agent_proving_ground.assertions.files import (
+    CapabilityClaimsFailClosedOnDriftAssertion,
+    ConsentRecordedBeforeObservationAssertion,
     FileExistsAssertion,
+    HermesHookProjectionObservedAssertion,
+    InstrumentationProfileValidAssertion,
+    NativeProjectionDigestMatchesAssertion,
+    NoFullCliInstalledAssertion,
     ObservationFromLiveHookAssertion,
+    PublisherObservationUnsupportedDeclaredAssertion,
+    ResourceWorksWhenDisabledAssertion,
     UsagePendingEmptyAssertion,
 )
 from agent_proving_ground.assertions.github import (
@@ -169,6 +182,19 @@ class AssertionRegistry:
             OriginalPublisherPreservedAssertion,
             RemoteMcpFeedbackLinkedAssertion,
             RemoteMcpPrivatePayloadNotRecordedAssertion,
+            PublisherReceiptExactResourceVersionAssertion,
+            InstallNotCountedAsUseAssertion,
+            PrivatePayloadAbsentAssertion,
+            DisabledUseZeroReceiptsAssertion,
+            PublisherReceiptNeverRatesOrFundsAssertion,
+            InstrumentationProfileValidAssertion,
+            NativeProjectionDigestMatchesAssertion,
+            ConsentRecordedBeforeObservationAssertion,
+            NoFullCliInstalledAssertion,
+            ResourceWorksWhenDisabledAssertion,
+            PublisherObservationUnsupportedDeclaredAssertion,
+            CapabilityClaimsFailClosedOnDriftAssertion,
+            HermesHookProjectionObservedAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

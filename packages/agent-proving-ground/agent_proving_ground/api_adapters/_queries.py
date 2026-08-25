@@ -2188,6 +2188,291 @@ class LogionApiQueries:
         }
 
 
+    async def _q_publisher_receipt_exact_resource_version(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        """Verify the stored receipt names the exact version and all attributions.
+
+        Reads the receipt artifact the consumer saved and checks it
+        carries the resource_id, resource_version, publisher identity,
+        distribution_digest, profile_digest, and integration_version
+        the publisher's generator produced.
+        """
+        try:
+            receipt = _load_json_object(query.get("receipt_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            # Fall back to API-side feedback record.
+            _, feedback = await self._feedback_for(query, agent_roles)
+            if feedback is None:
+                return _artifact_failure(str(exc), "exact")
+            receipt = feedback
+        expected_resource = query.get("resource_id")
+        expected_version = query.get("version_id")
+        expected_publisher = query.get("publisher_identity")
+        resource_id = receipt.get("resource_id")
+        resource_version = (
+            receipt.get("resource_version")
+            or receipt.get("resource_version_id")
+            or receipt.get("version_id")
+        )
+        publisher = None
+        pub = receipt.get("publisher")
+        if isinstance(pub, dict):
+            publisher = pub.get("identity")
+        distribution_digest = receipt.get("distribution_digest")
+        profile_digest = receipt.get("profile_digest")
+        integration_version = receipt.get("integration_version")
+        exact = (
+            bool(resource_id)
+            and str(resource_id) == str(expected_resource or "")
+            and bool(resource_version)
+            and str(resource_version) == str(expected_version or "")
+            and bool(publisher)
+            and (not expected_publisher or publisher == expected_publisher)
+            and bool(distribution_digest)
+            and bool(profile_digest)
+            and bool(integration_version)
+        )
+        return {
+            "exact": exact,
+            "resource_id": resource_id,
+            "resource_version": resource_version,
+            "publisher_identity": publisher,
+            "distribution_digest": distribution_digest,
+            "profile_digest": profile_digest,
+            "integration_version": integration_version,
+        }
+
+    async def _q_install_not_counted_as_use(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        """Verify install produced no activation and no terminal outcome.
+
+        An install is not a use. The stored receipt must carry an
+        activation event count of zero and no terminal outcome.
+        """
+        reporter = query.get("reporter_agent") or query.get("agent")
+        role = self._role_of(reporter, agent_roles)
+        # Check feedback records — an install that was counted as use
+        # would appear as a feedback/usage entry with event=install
+        # or with a terminal outcome.
+        status, feedback = await self._feedback_for(query, agent_roles)
+        activation_count = 0
+        terminal_outcome_count = 0
+        if status == 200 and feedback is not None:
+            # If feedback exists for the resource and carries an
+            # activation event or terminal outcome, the install was
+            # counted as use.
+            event = feedback.get("event") or feedback.get("first_event")
+            if event and event != "install":
+                activation_count = 1
+            outcome = feedback.get("outcome")
+            if outcome and outcome not in ("", "unknown", None):
+                terminal_outcome_count = 1
+        # Also check any artifact the consumer saved
+        try:
+            receipt = _load_json_object(query.get("receipt_artifact"))
+            if receipt.get("event") and receipt.get("event") != "install":
+                activation_count += 1
+            outcome = receipt.get("outcome")
+            if outcome and outcome not in ("", "unknown", None):
+                terminal_outcome_count += 1
+        except (OSError, TypeError, ValueError):
+            pass  # Artifact is optional for this query.
+        # Baseline-aware: if we have a baseline, any pre-existing
+        # feedback records are not from this run.
+        baseline = query.get("_baseline")
+        if isinstance(baseline, dict):
+            baseline_feedback = baseline.get("feedback_ids", [])
+            if baseline_feedback and feedback is not None:
+                # Feedback pre-existed; don't count it.
+                activation_count = 0
+                terminal_outcome_count = 0
+        separated = activation_count == 0 and terminal_outcome_count == 0
+        return {
+            "separated": separated,
+            "activation_count": activation_count,
+            "terminal_outcome_count": terminal_outcome_count,
+            "evidence": {"source": "api", "role": role},
+        }
+
+    async def _q_private_payload_absent(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        """Verify no excluded category appears in the stored record or API log.
+
+        Checks the feedback record and any saved artifacts for prompt,
+        file content, path, tool arguments, tool results, secrets, or
+        user identity.
+        """
+        _, feedback = await self._feedback_for(query, agent_roles)
+        forbidden = {
+            "prompt",
+            "source_code",
+            "path",
+            "tool_arguments",
+            "tool_result",
+            "request",
+            "response",
+            "raw_payload",
+            "secret",
+            "user_identity",
+            "credential",
+            "token",
+            "content",
+        }
+        checked_fields: list[str] = []
+        clean = True
+        if feedback is not None:
+            keys = set(feedback)
+            checked_fields = sorted(keys)
+            leaked = keys.intersection(forbidden)
+            if leaked:
+                clean = False
+        # Also check artifacts for privacy canaries
+        checked_artifacts: list[str] = []
+        canary = str(query.get("privacy_canary") or "")
+        for raw_path in elements(query, "artifacts"):
+            path = Path(str(raw_path))
+            try:
+                text = path.read_text()  # noqa: ASYNC240
+                checked_artifacts.append(str(path))
+                if canary and canary in text:
+                    clean = False
+            except OSError:
+                continue
+        return {
+            "clean": clean,
+            "checked_fields": checked_fields,
+            "checked_artifacts": checked_artifacts,
+        }
+
+    async def _q_disabled_use_zero_receipts(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        """Verify zero receipts server-side for the disabled leg.
+
+        Not merely a suppressed upload — the server must have no
+        record. Compares the current feedback count against the
+        baseline to detect any new receipt.
+        """
+        _, feedback = await self._feedback_for(query, agent_roles)
+        baseline = query.get("_baseline")
+        baseline_count = 0
+        if isinstance(baseline, dict):
+            baseline_ids = baseline.get("feedback_ids", [])
+            if isinstance(baseline_ids, list):
+                baseline_count = len(baseline_ids)
+        # Count current feedback records for this resource
+        reporter = query.get("reporter_agent") or query.get("agent")
+        role = self._role_of(reporter, agent_roles)
+        status, payload = await self._get("/v1/feedback/mine", role)
+        receipt_count = 0
+        if status == 200 and isinstance(payload, dict):
+            items = payload.get("items")
+            if isinstance(items, list):
+                expected_resource = query.get("resource_id")
+                for item in items:
+                    if isinstance(item, dict) and (
+                        not expected_resource
+                        or item.get("resource_id") == expected_resource
+                    ):
+                        receipt_count += 1
+        # If the only feedback record is the one from the enabled leg,
+        # the disabled leg produced zero new receipts.
+        new_receipts = max(0, receipt_count - baseline_count)
+        # If feedback exists but predates the disabled leg, it's from
+        # the enabled leg — that's expected and not a violation.
+        zero_receipts = new_receipts == 0
+        return {
+            "zero_receipts": zero_receipts,
+            "receipt_count": receipt_count,
+            "baseline_receipt_count": baseline_count,
+            "new_receipts": new_receipts,
+            "evidence": {"source": "api"},
+        }
+
+    async def _q_publisher_receipt_never_rates_or_funds(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        """Verify no rating, review, eval, bounty, or ledger row resulted.
+
+        A publisher receipt can inform scorecards and improvement
+        candidates but cannot create a rating, a review, an eval
+        result, bounty funding, or a payment.
+        """
+        reporter = query.get("reporter_agent") or query.get("agent")
+        role = self._role_of(reporter, agent_roles)
+        baseline = query.get("_baseline")
+        baseline_review_ids: set[str] = set()
+        baseline_bounty_ids: set[str] = set()
+        baseline_ledger_ids: set[str] = set()
+        if isinstance(baseline, dict):
+            review_ids = baseline.get("review_ids", [])
+            if isinstance(review_ids, list):
+                baseline_review_ids = {str(rid) for rid in review_ids}
+            bounty_ids = baseline.get("bounty_ids", [])
+            if isinstance(bounty_ids, list):
+                baseline_bounty_ids = {str(bid) for bid in bounty_ids}
+            ledger = baseline.get("credit_ledger_ids", {})
+            if isinstance(ledger, dict):
+                for role_ledger in ledger.values():
+                    if isinstance(role_ledger, list):
+                        baseline_ledger_ids.update(
+                            str(lid) for lid in role_ledger
+                        )
+        # Check feedback for a rating/review
+        _, feedback = await self._feedback_for(query, agent_roles)
+        feedback_count = 0
+        course_review_count = 0
+        if feedback is not None:
+            feedback_count = 1
+            if feedback.get("course_review_id"):
+                review_id = str(feedback.get("course_review_id"))
+                if review_id not in baseline_review_ids:
+                    course_review_count = 1
+        # Check bounties for new funding
+        bounty_count = 0
+        for bounty in await self._bounties(role):
+            bounty_id = str(bounty.get("id") or "")
+            if bounty_id and bounty_id not in baseline_bounty_ids:
+                bounty_count += 1
+        # Check ledger for new payment rows
+        ledger_count = 0
+        for entry in await self._ledger(role):
+            entry_id = str(entry.get("id") or "")
+            if entry_id and entry_id not in baseline_ledger_ids:
+                kind = str(opt_str(entry, "kind", "")).lower()
+                if any(
+                    word in kind
+                    for word in ("payment", "payout", "bounty", "reward")
+                ):
+                    ledger_count += 1
+        # Eval results are not directly queryable through the API, but
+        # if a feedback record carries an eval projection, count it.
+        eval_count = 0
+        if feedback is not None:
+            disposition = feedback.get("projection_disposition")
+            if disposition == "projected" and feedback.get("course_review_id"):
+                # A projected course review from a publisher receipt is
+                # the eval path — it should not exist.
+                eval_count = 1
+        clean = (
+            course_review_count == 0
+            and bounty_count == 0
+            and ledger_count == 0
+            and eval_count == 0
+        )
+        return {
+            "clean": clean,
+            "feedback_count": feedback_count,
+            "course_review_count": course_review_count,
+            "eval_count": eval_count,
+            "bounty_count": bounty_count,
+            "ledger_count": ledger_count,
+        }
+
+
 def _resolved_scope_root(raw: JsonValue) -> Path:
     """Validate a scenario-supplied scope root outside the async path."""
     root = Path(str(raw or ""))

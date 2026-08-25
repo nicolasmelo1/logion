@@ -1,0 +1,274 @@
+schema_version: "1"
+name: phase_15_11_1_publisher_integrated_observation
+description: >
+  Publisher instruments a resource version, consumers install projections
+  through native managers with no Logion CLI, consent-gated observation
+  produces exact receipts, disabled use produces zero receipts, the Hermes
+  hook fires from a live process, the fallback declares unsupported, and
+  drift fails closed.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+  hermes: {model: glm-5.1, provider: ollama-cloud}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code, hermes]
+  driver_models:
+    codex: [gpt-5.4-mini]
+    claude-code: [claude-haiku-4-5]
+    hermes: [glm-5.1]
+agents:
+  - id: publisher
+    role: Publisher who instruments a resource version for supported clients
+    driver: codex
+    workspace: publisher
+    devrig_role: seller
+    timeout_seconds: 1800
+  - id: consumer
+    role: Consumer with no Logion CLI who installs and uses the projection
+    driver: codex
+    workspace: consumer
+    devrig_role: buyer
+    timeout_seconds: 1800
+  - id: hermes_consumer
+    role: Hermes-driven consumer with no Logion CLI who uses the hermes-plugin
+    driver: hermes
+    workspace: hermes_consumer
+    devrig_role: buyer
+    timeout_seconds: 1800
+  - id: operator
+    role: Operator who observes API state only
+    driver: codex
+    workspace: operator
+    devrig_role: admin
+    timeout_seconds: 600
+phases:
+  - id: setup_publisher
+    actor: publisher
+    local_hook: packages/agent-proving-ground/scripts/setup_instrument_publisher_fixture.py
+    local_hook_args:
+      - "${AGENT_PUBLISHER_WORKSPACE}"
+      - "${AGENT_PUBLISHER_LOGION_HOME}"
+    local_hook_capture_json:
+      PUBLISHER_ROOT: fixture_root
+      PUBLISHER_LOGION_HOME: logion_home
+      PUBLISHER_EVIDENCE_DIR: evidence_dir
+    goal: ""
+  - id: seed_resource
+    actor: publisher
+    local_hook: packages/agent-proving-ground/scripts/seed_instrument_resource_fixture.py
+    local_hook_args:
+      - "--cli"
+      - "${AGENT_PUBLISHER_LOGION_CLI}"
+      - "--logion-home"
+      - "${PUBLISHER_LOGION_HOME}"
+      - "--evidence-dir"
+      - "${PUBLISHER_EVIDENCE_DIR}"
+      - "--base-url"
+      - "${LOGION_API_BASE_URL}"
+    local_hook_capture_json:
+      RESOURCE_ID: resource_id
+      VERSION_ID: version_id
+      RESOURCE_TITLE: resource_title
+      PUBLISHER_IDENTITY: publisher_identity
+    goal: ""
+  - id: publisher_instrument
+    actor: publisher
+    goal: |
+      Work in ${PUBLISHER_ROOT}. LOGION_HOME is already set for you at
+      ${PUBLISHER_LOGION_HOME}; never override it and never set HOME.
+
+      Instrument this exact review skill version for the clients Logion
+      supports. Generate only supported projections. The end user must not
+      need the Logion CLI. Show me the exact disclosure and the outbound
+      fields before publishing.
+
+      Run:
+        logion instrument ${VERSION_ID} \
+          --target agent-plugin \
+          --target hermes-plugin \
+          --target static-skill \
+          --dry-run --json
+      Save the untouched JSON to ${PUBLISHER_EVIDENCE_DIR}/instrument-plan.json.
+
+      Then run it again without --dry-run to write the projection trees:
+        logion instrument ${VERSION_ID} \
+          --target agent-plugin \
+          --target hermes-plugin \
+          --target static-skill \
+          --json
+      Save the untouched JSON to ${PUBLISHER_EVIDENCE_DIR}/instrument-result.json.
+
+      The output directory is ${PUBLISHER_ROOT}/projections. Confirm each
+      target produced a projection tree with a plugin.json, a
+      .logion/instrumentation.json, a .logion/capability.json, and a
+      skills/<slug>/SKILL.md.
+
+      Save the exact disclosure text (the outbound fields the profile
+      declares) to ${PUBLISHER_EVIDENCE_DIR}/disclosure.json.
+    assertions:
+      - type: files.instrumentation_profile_valid
+        params:
+          projection_root: "${PUBLISHER_ROOT}/projections"
+          evidence_dir: "${PUBLISHER_EVIDENCE_DIR}"
+  - id: setup_consumer
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/setup_instrument_consumer_fixture.py
+    local_hook_args:
+      - "${AGENT_CONSUMER_WORKSPACE}"
+      - "${AGENT_CONSUMER_LOGION_HOME}"
+    local_hook_capture_json:
+      CONSUMER_ROOT: fixture_root
+      CONSUMER_LOGION_HOME: logion_home
+      CONSUMER_EVIDENCE_DIR: evidence_dir
+    goal: ""
+  - id: consumer_install_and_use
+    actor: consumer
+    goal: |
+      Work in ${CONSUMER_ROOT}. You have NO Logion CLI on your PATH, in
+      your home, or in your workspace. Never install it. The publisher's
+      projection trees are at ${PUBLISHER_ROOT}/projections.
+
+      Install the publisher's agent-plugin projection through the native
+      manager: copy the projection tree into your workspace's plugin
+      directory and accept the disclosed minimum usage metadata. The
+      consent prompt must appear before any observation state or network
+      request exists.
+
+      After accepting, use the skill once: read the installed SKILL.md
+      and apply it to review ${CONSUMER_ROOT}/buggy.py. Save the skill's
+      output to ${CONSUMER_EVIDENCE_DIR}/skill-output.txt.
+
+      Save the consent record to ${CONSUMER_EVIDENCE_DIR}/consent.json
+      and any spool entries to ${CONSUMER_EVIDENCE_DIR}/spool-entries.json.
+
+      Show me what Logion received: save any receipt to
+      ${CONSUMER_EVIDENCE_DIR}/receipt.json.
+    assertions:
+      - type: files.no_full_cli_installed
+        params:
+          workspace: "${CONSUMER_ROOT}"
+          home: "${CONSUMER_LOGION_HOME}"
+      - type: files.consent_recorded_before_observation
+        params:
+          consent_path: "${CONSUMER_ROOT}/.logion/consent.json"
+          spool_dir: "${CONSUMER_LOGION_HOME}/spool"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+      - type: files.native_projection_digest_matches
+        params:
+          publisher_projection: "${PUBLISHER_ROOT}/projections/agent-plugin"
+          installed_projection: "${CONSUMER_ROOT}/.logion/plugins/agent-plugin"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+      - type: api.publisher_receipt_exact_resource_version
+        params:
+          reporter_agent: consumer
+          resource_id: "${RESOURCE_ID}"
+          version_id: "${VERSION_ID}"
+          publisher_identity: "${PUBLISHER_IDENTITY}"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+      - type: api.install_not_counted_as_use
+        params:
+          reporter_agent: consumer
+          resource_id: "${RESOURCE_ID}"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+      - type: api.private_payload_absent
+        params:
+          reporter_agent: consumer
+          resource_id: "${RESOURCE_ID}"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+  - id: consumer_negative_leg
+    actor: consumer
+    goal: |
+      Turn the telemetry off and use the skill again. The skill must still
+      work: its own output artifact must exist. Save the output to
+      ${CONSUMER_EVIDENCE_DIR}/skill-output-disabled.txt.
+
+      Save logion usage pending --json (or the equivalent local spool
+      listing) to ${CONSUMER_EVIDENCE_DIR}/pending-disabled.json. Confirm
+      it carries no new observation for this leg.
+    assertions:
+      - type: files.resource_works_when_disabled
+        params:
+          output_artifact: "${CONSUMER_EVIDENCE_DIR}/skill-output-disabled.txt"
+      - type: api.disabled_use_zero_receipts
+        params:
+          reporter_agent: consumer
+          resource_id: "${RESOURCE_ID}"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+  - id: setup_hermes_consumer
+    actor: hermes_consumer
+    local_hook: packages/agent-proving-ground/scripts/setup_instrument_hermes_fixture.py
+    local_hook_args:
+      - "${AGENT_HERMES_CONSUMER_WORKSPACE}"
+      - "${AGENT_HERMES_CONSUMER_LOGION_HOME}"
+    local_hook_capture_json:
+      HERMES_ROOT: fixture_root
+      HERMES_LOGION_HOME: logion_home
+      HERMES_EVIDENCE_DIR: evidence_dir
+    goal: ""
+  - id: hermes_leg
+    actor: hermes_consumer
+    goal: |
+      Work in ${HERMES_ROOT}. You have NO Logion CLI. Install the
+      publisher's hermes-plugin projection: copy the projection tree
+      from ${PUBLISHER_ROOT}/projections/hermes-plugin into your Hermes
+      skills directory. Accept the disclosure.
+
+      Use the skill once inside Hermes: load the skill and apply it to
+      review ${HERMES_ROOT}/buggy.py. The live Hermes plugin must fire
+      its activation hook. Save the activation receipt to
+      ${HERMES_EVIDENCE_DIR}/hermes-activation.json.
+
+      Assert a real activation receipt from the live plugin, and assert
+      that no terminal outcome was recorded — Hermes cannot report one,
+      and inventing one is the failure this leg exists to catch.
+    assertions:
+      - type: files.hermes_hook_projection_observed
+        params:
+          projection_root: "${HERMES_ROOT}/.logion/plugins/hermes-plugin"
+          activation_artifact: "${HERMES_EVIDENCE_DIR}/hermes-activation.json"
+          resource_id: "${RESOURCE_ID}"
+          version_id: "${VERSION_ID}"
+          evidence_dir: "${HERMES_EVIDENCE_DIR}"
+      - type: api.publisher_receipt_never_rates_or_funds
+        params:
+          reporter_agent: hermes_consumer
+          resource_id: "${RESOURCE_ID}"
+          evidence_dir: "${HERMES_EVIDENCE_DIR}"
+  - id: fallback_leg
+    actor: consumer
+    goal: |
+      Install the static-skill projection from
+      ${PUBLISHER_ROOT}/projections/static-skill into a client with no
+      pinned hook. Use the skill normally. The capability must declare
+      publisher_observation_unsupported with a reason, and zero events
+      must be emitted.
+
+      Save the capability.json to
+      ${CONSUMER_EVIDENCE_DIR}/capability-fallback.json and confirm the
+      spool is absent (no events).
+    assertions:
+      - type: files.publisher_observation_unsupported_declared
+        params:
+          capability_path: "${CONSUMER_EVIDENCE_DIR}/capability-fallback.json"
+          spool_dir: "${CONSUMER_LOGION_HOME}/spool"
+  - id: drift_leg
+    actor: consumer
+    goal: |
+      Move the installed client's pinned marker out of range: edit the
+      capability.json in the installed agent-plugin projection to set an
+      out-of-range client version, then activate the skill again.
+
+      The capability must downgrade to unsupported with a reason, and no
+      new event must be emitted. Save the downgraded capability to
+      ${CONSUMER_EVIDENCE_DIR}/capability-drift.json.
+    assertions:
+      - type: files.capability_claims_fail_closed_on_drift
+        params:
+          capability_path: "${CONSUMER_EVIDENCE_DIR}/capability-drift.json"
+          spool_dir: "${CONSUMER_LOGION_HOME}/spool"
+          evidence_dir: "${CONSUMER_EVIDENCE_DIR}"
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
