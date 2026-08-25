@@ -88,8 +88,16 @@ def forbid_extra(source: str, models: set[str]) -> str:
     for name in sorted(models):
         # Runs before ``ruff format``, so the generator's quote style is
         # whatever datamodel-codegen emitted. Match either.
+        #
+        # ``--use-schema-description`` puts the schema's description in a
+        # class docstring, so ``model_config`` is not always the first line
+        # of the body. Skip intervening lines, but never past the start of
+        # the next class: without that guard a model whose ``model_config``
+        # is missing would quietly match the *following* class and report a
+        # successful rewrite of the wrong model.
         pattern = re.compile(
             rf"(class {re.escape(name)}\(BaseModel\):\n"
+            rf"(?:(?!class )[^\n]*\n)*?"
             rf"    model_config = ConfigDict\(\n        extra=(['\"]))"
             rf"allow(\2,)"
         )
