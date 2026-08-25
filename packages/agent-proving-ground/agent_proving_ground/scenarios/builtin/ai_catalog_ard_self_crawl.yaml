@@ -1,0 +1,159 @@
+schema_version: "1"
+name: ai_catalog_ard_self_crawl
+description: >
+  Publish a conformant AI Catalog, expose it through ARD, consume both
+  paths with production adapters, and verify zero duplicate resources
+  after acquisition/feedback already work. Discovery proves
+  addressability, not quality, safety, or performance.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
+agents:
+  - id: node_operator
+    role: Operator publishing the AI Catalog and syncing Agent Finders
+    driver: codex
+    workspace: node_operator
+    devrig_role: admin
+    timeout_seconds: 1200
+  - id: consumer
+    role: Consumer discovering a resource through ARD
+    driver: codex
+    workspace: consumer
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: seed
+    actor: node_operator
+    local_hook: packages/agent-proving-ground/scripts/seed_ai_catalog_fixture.py
+    local_hook_args:
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}"
+      - "${AGENT_NODE_OPERATOR_LOGION_HOME}"
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      LOGION_HOME: logion_home
+      EVIDENCE_DIR: evidence_dir
+      RESOURCE_ID: resource_id
+      VERSION_ID: version_id
+    goal: ""
+  - id: publish_and_crawl
+    actor: node_operator
+    goal: |
+      Work as the node operator in ${FIXTURE_ROOT}. Call the CLI as plain
+      `logion`: the one on your PATH is the artifact the rig installed.
+      The base URL is http://localhost:8000. LOGION_HOME is already set
+      for you; never override it, and never set HOME.
+
+      Publish this node's AI Catalog at /.well-known/ai-catalog.json by
+      enabling the ai_catalog_public feature flag and verifying the
+      endpoint serves a conformant document. Save the untouched JSON
+      response to ${EVIDENCE_DIR}/ai-catalog.json.
+
+      Add the local catalog as a catalog source. Synchronize the official
+      Agent Finder directory from the pinned ard-connectors snapshot.
+      Approve the fixture endpoints. Query all enabled finders with
+      `logion-indexer agent-finders run --finder all --query-family
+      default --dry-run` and save the output to
+      ${EVIDENCE_DIR}/finder-run.json.
+
+      Crawl the local AI Catalog twice using
+      `logion-indexer crawl --adapter ai-catalog --entrypoint
+      http://localhost:8000/.well-known/ai-catalog.json` and save each
+      run's import report. Then expose/search the same entries through
+      ARD with `logion-indexer search --adapter ard --registry
+      http://localhost:8000/v1/ard/search --query "fixture linter"
+      --json` and save to ${EVIDENCE_DIR}/ard-search.json.
+
+      Report accepted/rejected entries without touching the database
+      directly or installing connectors in the client.
+    assertions:
+      - type: api.ai_catalog_document_valid
+        params:
+          catalog_artifact: "${EVIDENCE_DIR}/ai-catalog.json"
+      - type: api.ai_catalog_conformance_level_valid
+        params:
+          catalog_artifact: "${EVIDENCE_DIR}/ai-catalog.json"
+      - type: api.ard_search_response_valid
+        params:
+          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      - type: api.ard_connectors_snapshot_pinned
+        params:
+          evidence_dir: "${EVIDENCE_DIR}"
+      - type: api.agent_finders_queried
+        params:
+          finder_run_artifact: "${EVIDENCE_DIR}/finder-run.json"
+      - type: api.agent_finder_result_provenance_visible
+        params:
+          finder_run_artifact: "${EVIDENCE_DIR}/finder-run.json"
+      - type: files.client_has_no_ard_connector_install
+        params:
+          workspace_root: "${FIXTURE_ROOT}"
+      - type: api.catalog_crawl_completed
+        params:
+          evidence_dir: "${EVIDENCE_DIR}"
+      - type: api.ard_resource_ingested
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: api.ard_record_rejected
+        params:
+          evidence_dir: "${EVIDENCE_DIR}"
+      - type: api.self_crawl_no_duplicate
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: api.resource_source_provenance_visible
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: api.search_filters_by_type_and_source
+        params:
+          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      - type: api.discovery_succeeds_without_aktp
+        params:
+          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      - type: api.ingested_model_requires_no_asm_schema
+        params:
+          resource_id: "${RESOURCE_ID}"
+  - id: discover_through_ard
+    actor: consumer
+    goal: |
+      Work as a consumer in your workspace. Call the CLI as plain
+      `logion`. The base URL is http://localhost:8000. LOGION_HOME is
+      already set for you; never override it, and never set HOME.
+
+      Find "Fixture Linter" through ARD by searching the local registry:
+      `logion resources search --query "fixture linter" --json`. Save
+      the untouched JSON to ${EVIDENCE_DIR}/consumer-search.json.
+
+      Identify the registry and original AI Catalog publisher/entry from
+      the search results. Inspect the canonical source of the
+      discovered resource with `logion resources get ${RESOURCE_ID}
+      --json` and save to ${EVIDENCE_DIR}/consumer-resource.json.
+
+      Do not install any ARD connector package, do not write any
+      ~/.agentfinder state, and do not modify finder preferences. The
+      client must discover without installing anything.
+    assertions:
+      - type: api.ard_search_response_valid
+        params:
+          search_artifact: "${EVIDENCE_DIR}/consumer-search.json"
+      - type: api.resource_source_provenance_visible
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: files.client_has_no_ard_connector_install
+        params:
+          workspace_root: "${AGENT_CONSUMER_WORKSPACE}"
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
+  - type: api.self_crawl_no_duplicate
+    params:
+      resource_id: "${RESOURCE_ID}"
+  - type: api.discovery_succeeds_without_aktp
+    params:
+      search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+  - type: api.ingested_model_requires_no_asm_schema
+    params:
+      resource_id: "${RESOURCE_ID}"

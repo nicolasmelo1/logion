@@ -111,6 +111,14 @@ def _get_adapter(
         from .adapters.dsh_hub import DshHubAdapter
 
         return DshHubAdapter(transport=transport)
+    if adapter_name == "ai-catalog":
+        from .adapters.ai_catalog import AICatalogAdapter
+
+        return AICatalogAdapter(transport=transport)
+    if adapter_name == "ard":
+        from .adapters.ard import ARDAdapter
+
+        return ARDAdapter(transport=transport)
     raise ValueError(f"unknown adapter: {adapter_name}")
 
 
@@ -156,8 +164,41 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     verbatim) is written for a later ``push --plan``; ``--json`` prints the
     same payload to stdout.
     """
-    transport = _build_transport(config)
-    discovery = _discover_all(config, transport)
+    # --adapter is shorthand for --only.
+    if getattr(args, "adapter", None) and not config.only:
+        config = IndexerConfig(
+            github_token=config.github_token,
+            api_key=config.api_key,
+            base_url=config.base_url,
+            seed_file=config.seed_file,
+            cache_dir=config.cache_dir,
+            user_agent=config.user_agent,
+            rps=config.rps,
+            dry_run=config.dry_run,
+            limit=config.limit,
+            only=args.adapter,
+        )
+    # --entrypoint overrides the seed file target for the adapter.
+    if getattr(args, "entrypoint", None) and config.only:
+        transport = _build_transport(config)
+        adapter = _get_adapter(config.only, transport)
+        discoveries: list[DiscoveredSkill | DiscoveredResource] = []
+        failures: list[AdapterFailure] = []
+        try:
+            for item in adapter.discover(  # type: ignore[attr-defined]
+                args.entrypoint,
+                limit=config.limit,
+            ):
+                discoveries.append(item)
+        except Exception as e:
+            failures.append(
+                AdapterFailure(config.only, args.entrypoint, str(e))
+            )
+            print(f"adapter {config.only} error: {e}", file=sys.stderr)
+        discovery = DiscoveryResult(discoveries=discoveries, failures=failures)
+    else:
+        transport = _build_transport(config)
+        discovery = _discover_all(config, transport)
     skills, resources = partition_discoveries(discovery.discoveries)
     plan, _ = build_indexing_plan(
         skills,
@@ -477,6 +518,249 @@ def _print_stats(stats: RunStats) -> None:
     )
 
 
+def cmd_validate_ai_catalog(
+    config: IndexerConfig, args: argparse.Namespace
+) -> int:
+    """Validate an AI Catalog document for conformance."""
+    import json as json_mod
+
+    from .ai_catalog.v1_0.conformance import validate_document
+
+    source = args.file_or_url
+    if source.startswith(("http://", "https://")):
+        transport = _build_transport(config)
+        resp = transport.get(source)
+        if resp.status != 200:
+            print(f"fetch failed: HTTP {resp.status}", file=sys.stderr)
+            return 1
+        doc = json_mod.loads(resp.body.decode("utf-8"))
+    else:
+        with open(source) as fh:
+            doc = json_mod.load(fh)
+
+    result = validate_document(doc)
+    print(f"conformance: {result.result}")
+    print(f"level: {result.level}")
+    for warning in result.warnings:
+        print(f"  warning: {warning}")
+    for error in result.errors:
+        print(f"  error: {error}", file=sys.stderr)
+    return 0 if result.passed else 1
+
+
+def cmd_validate_ard(config: IndexerConfig, args: argparse.Namespace) -> int:
+    """Validate an ARD search response for conformance."""
+    import json as json_mod
+
+    from .ard.v0_9.conformance import validate_search_response
+
+    source = args.file_or_url
+    if source.startswith(("http://", "https://")):
+        transport = _build_transport(config)
+        resp = transport.get(source)
+        if resp.status != 200:
+            print(f"fetch failed: HTTP {resp.status}", file=sys.stderr)
+            return 1
+        doc = json_mod.loads(resp.body.decode("utf-8"))
+    else:
+        with open(source) as fh:
+            doc = json_mod.load(fh)
+
+    result = validate_search_response(doc)
+    print(f"conformance: {result.result}")
+    for warning in result.warnings:
+        print(f"  warning: {warning}")
+    for error in result.errors:
+        print(f"  error: {error}", file=sys.stderr)
+    return 0 if result.passed else 1
+
+
+def cmd_search(config: IndexerConfig, args: argparse.Namespace) -> int:
+    """Search an ARD registry and print results."""
+    from .adapters.ard import ARDAdapter
+
+    transport = _build_transport(config)
+    adapter = ARDAdapter(transport=transport)
+    result = adapter.search(
+        args.registry,
+        query_text=args.query or "",
+        page_size=args.page_size or 10,
+    )
+    if result.errors:
+        for error in result.errors:
+            print(f"error: {error}", file=sys.stderr)
+    if args.json:
+        import json as json_mod
+
+        output = {
+            "results": [
+                {
+                    "identifier": r.canonical_uri,
+                    "title": r.title,
+                    "resource_type": r.resource_type,
+                    "channels": [
+                        {"hub_slug": c.hub_slug, "hub_url": c.hub_url}
+                        for c in r.channels
+                    ],
+                }
+                for r in result.resources
+            ],
+            "referrals": result.referrals,
+            "page_token": result.page_token,
+        }
+        print(json_mod.dumps(output, indent=2))
+    else:
+        print(f"results: {len(result.resources)}")
+        for r in result.resources:
+            print(f"  {r.canonical_uri} — {r.title}")
+        if result.referrals:
+            print(f"referrals: {len(result.referrals)}")
+            for url in result.referrals:
+                print(f"  {url}")
+    return 1 if result.errors else 0
+
+
+def cmd_ard_connectors(config: IndexerConfig, args: argparse.Namespace) -> int:
+    """Manage pinned ard-connectors snapshots (operator command)."""
+    from .sources.ard_connectors import ARDConnectorsSource
+
+    transport = _build_transport(config)
+    source = ARDConnectorsSource(transport=transport)
+
+    subcommand = args.ard_connectors_command
+
+    if subcommand == "sync":
+        snapshot = source.fetch_snapshot(
+            commit_sha=getattr(args, "commit", None)
+        )
+        if not snapshot.is_valid:
+            print(f"sync: failed — {snapshot.validation_error}")
+            return 1
+        print("sync: ok")
+        print(f"  repo: {snapshot.repo}")
+        print(f"  commit: {snapshot.commit_sha}")
+        print(f"  digest: {snapshot.file_digest}")
+        print(f"  finders: {len(snapshot.finders)}")
+        for f in snapshot.finders:
+            print(f"    {f.id}: {f.name} — {f.search}")
+        return 0
+
+    if subcommand == "diff":
+        # Fetch two snapshots and diff them.
+        old_commit = args.old_commit
+        new_commit = args.new_commit
+        old_snap = source.fetch_snapshot(commit_sha=old_commit)
+        new_snap = source.fetch_snapshot(commit_sha=new_commit)
+        diff = source.diff_snapshots(old_snap, new_snap)
+        if not diff.has_changes:
+            print("diff: no changes")
+            return 0
+        print("diff:")
+        if diff.added:
+            print(f"  added: {', '.join(diff.added)}")
+        if diff.removed:
+            print(f"  removed: {', '.join(diff.removed)}")
+        if diff.changed:
+            print(f"  changed: {', '.join(diff.changed)}")
+        return 0
+
+    if subcommand == "approve":
+        # In a real deployment this writes an approval record.
+        # For the CLI, just print the action.
+        print(f"approve: {args.finder_id}")
+        return 0
+
+    if subcommand == "status":
+        snapshot = source.fetch_snapshot(
+            commit_sha=getattr(args, "commit", None)
+        )
+        print(f"status: {snapshot.status}")
+        print(f"  commit: {snapshot.commit_sha}")
+        print(f"  digest: {snapshot.file_digest}")
+        if snapshot.validation_error:
+            print(f"  error: {snapshot.validation_error}")
+        print(f"  finders: {len(snapshot.finders)}")
+        return 0
+
+    print(f"unknown ard-connectors subcommand: {subcommand}")
+    return 1
+
+
+def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
+    """Run Agent Finder queries (operator command)."""
+    import json as json_mod
+
+    from .sources.agent_finders import AgentFindersSource
+    from .sources.ard_connectors import ARDConnectorsSource
+
+    transport = _build_transport(config)
+    connectors = ARDConnectorsSource(transport=transport)
+    snapshot = connectors.fetch_snapshot(
+        commit_sha=getattr(args, "commit", None)
+    )
+    if not snapshot.is_valid:
+        print(f"snapshot invalid: {snapshot.validation_error}")
+        return 1
+
+    finders_source = AgentFindersSource(transport=transport)
+    approved: set[str] | None = None
+    if args.finder and args.finder != "all":
+        approved = {args.finder}
+
+    result = finders_source.run(
+        snapshot,
+        query_text=args.query or "",
+        approved_finder_ids=approved,
+        max_results=args.limit or 100,
+    )
+
+    if args.dry_run:
+        print(f"dry-run: {len(result.resources)} resources")
+        print(f"  finders queried: {len(result.records)}")
+        print(f"  referrals: {len(result.referrals)}")
+        return 0
+
+    if args.json:
+        output = {
+            "resources": [
+                {
+                    "identifier": r.canonical_uri,
+                    "title": r.title,
+                    "resource_type": r.resource_type,
+                }
+                for r in result.resources
+            ],
+            "records": [
+                {
+                    "finder_id": rec.finder_id,
+                    "endpoint": rec.endpoint,
+                    "snapshot_commit": rec.snapshot_commit,
+                    "query_text_digest": rec.query_text_digest,
+                    "result_identifiers": list(rec.result_identifiers),
+                    "relevance_scores": [
+                        list(s) for s in rec.relevance_scores
+                    ],
+                    "error": rec.error,
+                }
+                for rec in result.records
+            ],
+            "referrals": result.referrals,
+            "errors": result.errors,
+        }
+        print(json_mod.dumps(output, indent=2))
+    else:
+        print(f"resources: {len(result.resources)}")
+        for r in result.resources:
+            print(f"  {r.canonical_uri} — {r.title}")
+        print(f"records: {len(result.records)}")
+        for rec in result.records:
+            status = "ok" if not rec.error else f"error: {rec.error}"
+            print(f"  {rec.finder_id}: {status}")
+        if result.referrals:
+            print(f"referrals: {len(result.referrals)}")
+    return 1 if result.errors else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="logion-indexer",
@@ -530,6 +814,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="write the full plan to this JSON file (for push --plan)",
     )
+    crawl_parser.add_argument(
+        "--adapter",
+        default=None,
+        help=(
+            "run only this adapter (e.g. ai-catalog, ard, smithery). "
+            "Shorthand for --only."
+        ),
+    )
+    crawl_parser.add_argument(
+        "--entrypoint",
+        default=None,
+        help=(
+            "entrypoint URL for ai-catalog or ard adapter "
+            "(overrides seed file target)"
+        ),
+    )
     subparsers.add_parser("resolve", help="resolve hub pages to GitHub")
     run_parser = subparsers.add_parser(
         "run", help="full pipeline: crawl → push"
@@ -543,6 +843,108 @@ def build_parser() -> argparse.ArgumentParser:
 
     push_parser = subparsers.add_parser("push", help="push a plan file")
     push_parser.add_argument("--plan", required=True, help="plan JSON file")
+
+    # validate-ai-catalog
+    vac_parser = subparsers.add_parser(
+        "validate-ai-catalog",
+        help="validate an AI Catalog document for conformance",
+    )
+    vac_parser.add_argument(
+        "file_or_url",
+        help="path or URL to the AI Catalog JSON document",
+    )
+
+    # validate-ard
+    vard_parser = subparsers.add_parser(
+        "validate-ard",
+        help="validate an ARD search response for conformance",
+    )
+    vard_parser.add_argument(
+        "file_or_url",
+        help="path or URL to the ARD search response JSON",
+    )
+
+    # search --adapter ard
+    search_parser = subparsers.add_parser(
+        "search",
+        help="search an ARD registry",
+    )
+    search_parser.add_argument(
+        "--adapter",
+        default="ard",
+        help="search adapter (default: ard)",
+    )
+    search_parser.add_argument(
+        "--registry",
+        required=True,
+        help="ARD registry base URL",
+    )
+    search_parser.add_argument(
+        "--query",
+        default=None,
+        help="natural-language search query",
+    )
+    search_parser.add_argument(
+        "--page-size",
+        type=int,
+        default=10,
+        help="max results per page",
+    )
+
+    # ard-connectors sync|diff|approve|status
+    ac_parser = subparsers.add_parser(
+        "ard-connectors",
+        help="manage pinned ard-connectors snapshots (operator)",
+    )
+    ac_sub = ac_parser.add_subparsers(
+        dest="ard_connectors_command", required=True
+    )
+    ac_sync = ac_sub.add_parser("sync", help="fetch and pin latest snapshot")
+    ac_sync.add_argument("--commit", default=None, help="specific commit SHA")
+    ac_diff = ac_sub.add_parser("diff", help="diff two snapshots")
+    ac_diff.add_argument("old_commit", help="old commit SHA")
+    ac_diff.add_argument("new_commit", help="new commit SHA")
+    ac_approve = ac_sub.add_parser("approve", help="approve a finder")
+    ac_approve.add_argument("finder_id", help="finder ID to approve")
+    ac_status = ac_sub.add_parser("status", help="show snapshot status")
+    ac_status.add_argument(
+        "--commit", default=None, help="specific commit SHA"
+    )
+
+    # agent-finders run
+    af_parser = subparsers.add_parser(
+        "agent-finders",
+        help="run Agent Finder queries (operator)",
+    )
+    af_sub = af_parser.add_subparsers(
+        dest="agent_finders_command", required=True
+    )
+    af_run = af_sub.add_parser("run", help="query enabled finders")
+    af_run.add_argument(
+        "--finder",
+        default="all",
+        help="finder ID or 'all' (default: all)",
+    )
+    af_run.add_argument(
+        "--query-family",
+        default=None,
+        help="query family (unused, reserved for future)",
+    )
+    af_run.add_argument(
+        "--query",
+        default="",
+        help="discovery query text",
+    )
+    af_run.add_argument(
+        "--commit",
+        default=None,
+        help="specific snapshot commit SHA",
+    )
+    af_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="plan only, no side effects",
+    )
 
     return parser
 
@@ -572,6 +974,16 @@ def main() -> None:
         sys.exit(cmd_run(config, args))
     elif args.command == "doctor":
         sys.exit(cmd_doctor(config, args))
+    elif args.command == "validate-ai-catalog":
+        sys.exit(cmd_validate_ai_catalog(config, args))
+    elif args.command == "validate-ard":
+        sys.exit(cmd_validate_ard(config, args))
+    elif args.command == "search":
+        sys.exit(cmd_search(config, args))
+    elif args.command == "ard-connectors":
+        sys.exit(cmd_ard_connectors(config, args))
+    elif args.command == "agent-finders":
+        sys.exit(cmd_agent_finders(config, args))
     else:
         parser.print_help()
         sys.exit(1)
