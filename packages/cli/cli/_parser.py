@@ -18,6 +18,7 @@ from cli.commands import (
     health,
     identity,
     indexed,
+    instrument,
     integrations,
     listings,
     notifications,
@@ -79,6 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     feedback.register(subparsers)
     usage.register(subparsers)
     integrations.register(subparsers)
+    instrument.register(subparsers)
 
     # Top-level `logion onboarding` alias — same handler as
     # `logion identity onboarding`.

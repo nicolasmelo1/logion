@@ -306,6 +306,9 @@
     "indexed get": {
       "operations": []
     },
+    "instrument": {
+      "operations": []
+    },
     "listings search": {
       "operations": [
         "search_listings"

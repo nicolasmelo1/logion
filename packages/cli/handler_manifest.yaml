@@ -224,6 +224,9 @@ commands:
   usage upload:
     operations: [submit_usage_receipt]
 
+  instrument:
+    operations: []
+
   feedback submit:
     operations: []
   feedback list:
