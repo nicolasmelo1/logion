@@ -687,75 +687,55 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
 
     def _load_capability(
         self, ctx: AssertionContext, params: dict
-    ) -> tuple[AssertionOutcome | None, Path | None, dict | None]:
+    ) -> tuple[Path, dict] | AssertionOutcome:
         """Resolve and validate ``capability.json``.
 
-        Returns ``(outcome, cap_file, payload)``.  On success *outcome*
-        is ``None``; on failure it carries the failed ``AssertionOutcome``.
+        Returns ``(cap_file, payload)`` on success, or the failed
+        ``AssertionOutcome`` describing why it could not be loaded.
         """
         capability_path = params.get("capability_path")
         if not capability_path:
-            return (
-                AssertionOutcome(
-                    type=self.type,
-                    status="failed",
-                    message="missing capability_path parameter",
-                    evidence=params,
-                ),
-                None,
-                None,
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="missing capability_path parameter",
+                evidence=params,
             )
         try:
             cap_file = resolve_artifact_path(
                 ctx.artifacts_dir, capability_path
             )
         except ValueError as exc:
-            return (
-                AssertionOutcome(
-                    type=self.type,
-                    status="failed",
-                    message=str(exc),
-                    evidence={"capability_path": str(capability_path)},
-                ),
-                None,
-                None,
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=str(exc),
+                evidence={"capability_path": str(capability_path)},
             )
         if not cap_file.is_file():
-            return (
-                AssertionOutcome(
-                    type=self.type,
-                    status="failed",
-                    message=f"capability.json missing: {cap_file}",
-                    evidence={"capability_path": str(cap_file)},
-                ),
-                None,
-                None,
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"capability.json missing: {cap_file}",
+                evidence={"capability_path": str(cap_file)},
             )
         try:
             payload = json.loads(cap_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return (
-                AssertionOutcome(
-                    type=self.type,
-                    status="failed",
-                    message=f"invalid capability.json: {exc}",
-                    evidence={"capability_path": str(cap_file)},
-                ),
-                None,
-                None,
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"invalid capability.json: {exc}",
+                evidence={"capability_path": str(cap_file)},
             )
         if not isinstance(payload, dict):
-            return (
-                AssertionOutcome(
-                    type=self.type,
-                    status="failed",
-                    message="capability.json is not a JSON object",
-                    evidence={"capability_path": str(cap_file)},
-                ),
-                None,
-                None,
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="capability.json is not a JSON object",
+                evidence={"capability_path": str(cap_file)},
             )
-        return None, cap_file, payload
+        return cap_file, payload
 
     def _check_unsupported_tier(
         self, cap_file: Path, payload: dict
@@ -808,9 +788,10 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
     async def evaluate(
         self, ctx: AssertionContext, params: dict
     ) -> AssertionOutcome:
-        outcome, cap_file, payload = self._load_capability(ctx, params)
-        if outcome is not None:
-            return outcome
+        loaded = self._load_capability(ctx, params)
+        if isinstance(loaded, AssertionOutcome):
+            return loaded
+        cap_file, payload = loaded
         tier_outcome, tier, reason = self._check_unsupported_tier(
             cap_file, payload
         )
