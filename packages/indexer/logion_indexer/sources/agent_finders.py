@@ -25,7 +25,12 @@ from dataclasses import dataclass, field
 from typing import cast
 
 from logion_indexer._json import JsonObject, JsonValue
-from logion_indexer.ard.v0_9 import SearchFilter, SearchQuery, SearchResult
+from logion_indexer.ard.v0_9 import (
+    SearchFilter,
+    SearchQuery,
+    SearchResponse,
+    SearchResult,
+)
 from logion_indexer.ard.v0_9.codec import decode_search_response
 from logion_indexer.canonical import CanonicalResourceId
 from logion_indexer.models import DiscoveredResource, DiscoveryChannel
@@ -147,25 +152,13 @@ class AgentFindersSource:
         remaining: int,
     ) -> tuple[FinderQueryRecord, list[DiscoveredResource], list[str]]:
         """Query a single finder and return (record, resources, referrals)."""
-        filters: dict[str, list[str]] = {}
-        if resource_types:
-            filters["type"] = resource_types
-
-        filter_obj = SearchFilter(constraints=filters)
+        filters = self._build_filters(resource_types)
         query = SearchQuery(
             text=query_text if query_text else None,
-            filter=filter_obj,
+            filter=SearchFilter(constraints=filters),
         )
 
-        # Build the upstream canonical request body.
-        request_body: JsonObject = {"query": {}}
-        if query.text:
-            request_body["query"]["text"] = query.text  # type: ignore[index]
-        if filter_obj.constraints:
-            request_body["query"]["filter"] = (  # type: ignore[index]
-                filter_obj.to_json()
-            )
-
+        request_body = self._build_request_body(query)
         query_text_digest = hashlib.sha256(
             query_text.encode("utf-8")
         ).hexdigest()
@@ -180,20 +173,14 @@ class AgentFindersSource:
 
         if resp.status != 200:
             error = f"finder {finder.id!r}: search failed: HTTP {resp.status}"
-            record = FinderQueryRecord(
-                finder_id=finder.id,
-                endpoint=finder.search,
-                snapshot_commit=snapshot.commit_sha,
-                snapshot_digest=snapshot.file_digest,
-                query_text=query_text,
-                query_text_digest=query_text_digest,
-                filters=tuple(filters.items()),
-                retrieved_at=retrieved_at,
-                raw_result_digest="",
-                result_identifiers=(),
-                referral_urls=(),
-                relevance_scores=(),
-                error=error,
+            record = self._error_record(
+                finder,
+                snapshot,
+                query_text,
+                query_text_digest,
+                filters,
+                retrieved_at,
+                error,
             )
             return (record, [], [])
 
@@ -205,23 +192,105 @@ class AgentFindersSource:
             )
         except Exception as e:
             error = f"finder {finder.id!r}: decode error: {e}"
-            record = FinderQueryRecord(
-                finder_id=finder.id,
-                endpoint=finder.search,
-                snapshot_commit=snapshot.commit_sha,
-                snapshot_digest=snapshot.file_digest,
-                query_text=query_text,
-                query_text_digest=query_text_digest,
-                filters=tuple(filters.items()),
-                retrieved_at=retrieved_at,
-                raw_result_digest=raw_digest,
-                result_identifiers=(),
-                referral_urls=(),
-                relevance_scores=(),
-                error=error,
+            record = self._error_record(
+                finder,
+                snapshot,
+                query_text,
+                query_text_digest,
+                filters,
+                retrieved_at,
+                error,
+                raw_digest,
             )
             return (record, [], [])
 
+        resources, identifiers, scores, referrals = self._collect_results(
+            search_response,
+            finder,
+            snapshot,
+            remaining,
+        )
+
+        record = FinderQueryRecord(
+            finder_id=finder.id,
+            endpoint=finder.search,
+            snapshot_commit=snapshot.commit_sha,
+            snapshot_digest=snapshot.file_digest,
+            query_text=query_text,
+            query_text_digest=query_text_digest,
+            filters=tuple(filters.items()),
+            retrieved_at=retrieved_at,
+            raw_result_digest=raw_digest,
+            result_identifiers=tuple(identifiers),
+            referral_urls=tuple(referrals),
+            relevance_scores=tuple(scores),
+        )
+
+        return (record, resources, referrals)
+
+    @staticmethod
+    def _build_filters(
+        resource_types: list[str] | None,
+    ) -> dict[str, list[str]]:
+        """Build the ARD filter dict from optional resource types."""
+        filters: dict[str, list[str]] = {}
+        if resource_types:
+            filters["type"] = resource_types
+        return filters
+
+    @staticmethod
+    def _build_request_body(query: SearchQuery) -> JsonObject:
+        """Build the upstream canonical request body."""
+        request_body: JsonObject = {"query": {}}
+        if query.text:
+            request_body["query"]["text"] = query.text  # type: ignore[index]
+        if query.filter.constraints:
+            request_body["query"]["filter"] = (  # type: ignore[index]
+                query.filter.to_json()
+            )
+        return request_body
+
+    @staticmethod
+    def _error_record(
+        finder: FinderEntry,
+        snapshot: AgentFindersSnapshot,
+        query_text: str,
+        query_text_digest: str,
+        filters: dict[str, list[str]],
+        retrieved_at: float,
+        error: str,
+        raw_digest: str = "",
+    ) -> FinderQueryRecord:
+        """Construct a provenance record for a failed finder query."""
+        return FinderQueryRecord(
+            finder_id=finder.id,
+            endpoint=finder.search,
+            snapshot_commit=snapshot.commit_sha,
+            snapshot_digest=snapshot.file_digest,
+            query_text=query_text,
+            query_text_digest=query_text_digest,
+            filters=tuple(filters.items()),
+            retrieved_at=retrieved_at,
+            raw_result_digest=raw_digest,
+            result_identifiers=(),
+            referral_urls=(),
+            relevance_scores=(),
+            error=error,
+        )
+
+    def _collect_results(
+        self,
+        search_response: SearchResponse,
+        finder: FinderEntry,
+        snapshot: AgentFindersSnapshot,
+        remaining: int,
+    ) -> tuple[
+        list[DiscoveredResource],
+        list[str],
+        list[tuple[str, int]],
+        list[str],
+    ]:
+        """Collect resources, identifiers, scores, and referrals."""
         resources: list[DiscoveredResource] = []
         identifiers: list[str] = []
         scores: list[tuple[str, int]] = []
@@ -241,22 +310,7 @@ class AgentFindersSource:
                 if sr.score is not None:
                     scores.append((sr.identifier, sr.score))
 
-        record = FinderQueryRecord(
-            finder_id=finder.id,
-            endpoint=finder.search,
-            snapshot_commit=snapshot.commit_sha,
-            snapshot_digest=snapshot.file_digest,
-            query_text=query_text,
-            query_text_digest=query_text_digest,
-            filters=tuple(filters.items()),
-            retrieved_at=retrieved_at,
-            raw_result_digest=raw_digest,
-            result_identifiers=tuple(identifiers),
-            referral_urls=tuple(referrals),
-            relevance_scores=tuple(scores),
-        )
-
-        return (record, resources, referrals)
+        return (resources, identifiers, scores, referrals)
 
     @staticmethod
     def _result_to_resource(

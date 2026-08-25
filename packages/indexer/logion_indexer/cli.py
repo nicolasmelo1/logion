@@ -688,8 +688,6 @@ def cmd_ard_connectors(config: IndexerConfig, args: argparse.Namespace) -> int:
 
 def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
     """Run Agent Finder queries (operator command)."""
-    import json as json_mod
-
     from .sources.agent_finders import AgentFindersSource
     from .sources.ard_connectors import ARDConnectorsSource
 
@@ -715,50 +713,65 @@ def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
     )
 
     if args.dry_run:
-        print(f"dry-run: {len(result.resources)} resources")
-        print(f"  finders queried: {len(result.records)}")
-        print(f"  referrals: {len(result.referrals)}")
+        _print_agent_finders_dry_run(result)
         return 0
 
     if args.json:
-        output = {
-            "resources": [
-                {
-                    "identifier": r.canonical_uri,
-                    "title": r.title,
-                    "resource_type": r.resource_type,
-                }
-                for r in result.resources
-            ],
-            "records": [
-                {
-                    "finder_id": rec.finder_id,
-                    "endpoint": rec.endpoint,
-                    "snapshot_commit": rec.snapshot_commit,
-                    "query_text_digest": rec.query_text_digest,
-                    "result_identifiers": list(rec.result_identifiers),
-                    "relevance_scores": [
-                        list(s) for s in rec.relevance_scores
-                    ],
-                    "error": rec.error,
-                }
-                for rec in result.records
-            ],
-            "referrals": result.referrals,
-            "errors": result.errors,
-        }
-        print(json_mod.dumps(output, indent=2))
+        _print_agent_finders_json(result)
     else:
-        print(f"resources: {len(result.resources)}")
-        for r in result.resources:
-            print(f"  {r.canonical_uri} — {r.title}")
-        print(f"records: {len(result.records)}")
-        for rec in result.records:
-            status = "ok" if not rec.error else f"error: {rec.error}"
-            print(f"  {rec.finder_id}: {status}")
-        if result.referrals:
-            print(f"referrals: {len(result.referrals)}")
+        _print_agent_finders_text(result)
     return 1 if result.errors else 0
+
+
+def _print_agent_finders_dry_run(result: object) -> None:
+    """Print a dry-run summary of agent finder query results."""
+    print(f"dry-run: {len(result.resources)} resources")  # type: ignore[attr-defined]
+    print(f"  finders queried: {len(result.records)}")  # type: ignore[attr-defined]
+    print(f"  referrals: {len(result.referrals)}")  # type: ignore[attr-defined]
+
+
+def _print_agent_finders_json(result: object) -> None:
+    """Print agent finder results as JSON."""
+    import json as json_mod
+
+    output = {
+        "resources": [
+            {
+                "identifier": r.canonical_uri,
+                "title": r.title,
+                "resource_type": r.resource_type,
+            }
+            for r in result.resources  # type: ignore[attr-defined]
+        ],
+        "records": [
+            {
+                "finder_id": rec.finder_id,
+                "endpoint": rec.endpoint,
+                "snapshot_commit": rec.snapshot_commit,
+                "query_text_digest": rec.query_text_digest,
+                "result_identifiers": list(rec.result_identifiers),
+                "relevance_scores": [list(s) for s in rec.relevance_scores],
+                "error": rec.error,
+            }
+            for rec in result.records  # type: ignore[attr-defined]
+        ],
+        "referrals": result.referrals,  # type: ignore[attr-defined]
+        "errors": result.errors,  # type: ignore[attr-defined]
+    }
+    print(json_mod.dumps(output, indent=2))
+
+
+def _print_agent_finders_text(result: object) -> None:
+    """Print agent finder results as human-readable text."""
+    print(f"resources: {len(result.resources)}")  # type: ignore[attr-defined]
+    for r in result.resources:  # type: ignore[attr-defined]
+        print(f"  {r.canonical_uri} — {r.title}")
+    print(f"records: {len(result.records)}")  # type: ignore[attr-defined]
+    for rec in result.records:  # type: ignore[attr-defined]
+        status = "ok" if not rec.error else f"error: {rec.error}"
+        print(f"  {rec.finder_id}: {status}")
+    if result.referrals:  # type: ignore[attr-defined]
+        print(f"referrals: {len(result.referrals)}")  # type: ignore[attr-defined]
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -141,21 +141,43 @@ class AICatalogAdapter:
             )
             return result
 
+        catalog = self._decode_catalog_response(resp, result)
+        if catalog is None:
+            return result
+
+        self._collect_entries(catalog, entrypoint_url, limit, result)
+        return result
+
+    @staticmethod
+    def _decode_catalog_response(
+        resp: object,
+        result: CatalogCrawlResult,
+    ) -> Catalog | None:
+        """Parse and decode the fetched response body into a Catalog.
+
+        Appends any fetch/decode error to ``result.errors`` and returns
+        ``None`` so the caller can short-circuit.
+        """
         try:
-            doc = json.loads(resp.body.decode("utf-8"))
+            doc = json.loads(resp.body.decode("utf-8"))  # type: ignore[attr-defined]
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             result.errors.append(f"invalid JSON: {e}")
-            return result
+            return None
 
         try:
-            catalog = decode_catalog(doc)
-        except AICatalogVersionUnsupported as e:
+            return decode_catalog(doc)
+        except (AICatalogVersionUnsupported, AICatalogDecodeError) as e:
             result.errors.append(str(e))
-            return result
-        except AICatalogDecodeError as e:
-            result.errors.append(str(e))
-            return result
+            return None
 
+    def _collect_entries(
+        self,
+        catalog: Catalog,
+        entrypoint_url: str,
+        limit: int | None,
+        result: CatalogCrawlResult,
+    ) -> None:
+        """Walk catalog entries, populating ``result`` in place."""
         count = 0
         for entry in catalog.entries:
             if limit is not None and count >= limit:
@@ -170,21 +192,11 @@ class AICatalogAdapter:
 
             if entry.is_registry and entry.url:
                 result.registry_urls.append(entry.url)
-                # Registry entries are still discoverable as resources.
-                resource = self._entry_to_resource(
-                    entry, entrypoint_url, catalog
-                )
-                if resource is not None:
-                    result.resources.append(resource)
-                    count += 1
-                continue
 
             resource = self._entry_to_resource(entry, entrypoint_url, catalog)
             if resource is not None:
                 result.resources.append(resource)
                 count += 1
-
-        return result
 
     @staticmethod
     def _entry_to_resource(

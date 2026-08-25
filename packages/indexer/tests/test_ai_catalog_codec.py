@@ -94,19 +94,42 @@ def test_decode_minimal() -> None:
 
 
 def test_decode_full() -> None:
+    """Smoke test: the FULL catalog decodes without error."""
+    catalog = decode_catalog(FULL)
+    assert catalog.spec_version == "1.0"
+    assert len(catalog.entries) == 2
+
+
+def test_decode_full_host() -> None:
+    """Host block is decoded into the catalog's host field."""
     catalog = decode_catalog(FULL)
     assert catalog.host is not None
     assert catalog.host.display_name == "Acme Services"
     assert catalog.host.identifier == "did:web:acme.com"
 
+
+def test_decode_full_entry_fields() -> None:
+    """First entry's scalar fields are decoded."""
+    catalog = decode_catalog(FULL)
     entry = catalog.entries[0]
     assert entry.display_name == "Finance Agent"
     assert entry.version == "2.1.0"
     assert entry.tags == ("finance", "trading")
+
+
+def test_decode_full_publisher() -> None:
+    """Publisher block is decoded into the entry's publisher field."""
+    catalog = decode_catalog(FULL)
+    entry = catalog.entries[0]
     assert entry.publisher is not None
     assert entry.publisher.display_name == "Acme"
     assert entry.publisher.identity_type == "did"
 
+
+def test_decode_full_trust_manifest() -> None:
+    """Trust manifest, attestations, and provenance are decoded."""
+    catalog = decode_catalog(FULL)
+    entry = catalog.entries[0]
     tm = entry.trust_manifest
     assert tm is not None
     assert tm.identity == "did:web:acme.com:agent:finance"
@@ -117,15 +140,25 @@ def test_decode_full() -> None:
     assert len(tm.provenance) == 1
     assert tm.provenance[0].relation == "publishedFrom"
 
-    # Unknown fields preserved.
+
+def test_decode_full_entry_extra_fields() -> None:
+    """Unknown per-entry fields are preserved in ``entry.extra``."""
+    catalog = decode_catalog(FULL)
+    entry = catalog.entries[0]
     extra_keys = [k for k, _ in entry.extra]
     assert "x-custom-field" in extra_keys
 
-    # Nested catalog.
+
+def test_decode_full_nested_catalog() -> None:
+    """A nested-catalog entry is flagged as such."""
+    catalog = decode_catalog(FULL)
     nested = catalog.entries[1]
     assert nested.is_nested_catalog is True
 
-    # Top-level unknown fields.
+
+def test_decode_full_top_level_extra() -> None:
+    """Unknown top-level fields are preserved in ``catalog.extra``."""
+    catalog = decode_catalog(FULL)
     top_extra = [k for k, _ in catalog.extra]
     assert "x-top-level" in top_extra
 
