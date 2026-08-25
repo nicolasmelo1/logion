@@ -594,7 +594,7 @@ class RemoteMcpPrivatePayloadNotRecordedAssertion(_ApiQueryAssertion):
     fail_message = "remote MCP private payload leaked into evidence"
 
 
-# Phase 15.12 — AI Catalog and ARD discovery assertions.
+# AI Catalog and ARD discovery assertions.
 # These check that the AI Catalog document, ARD search responses,
 # connectors snapshot, agent finder queries, and related provenance
 # are valid and that discovery works without AKTP or ASM-specific schemas.
