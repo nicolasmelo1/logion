@@ -12,7 +12,7 @@
       "status": "passed",
       "unsupported_assertions": [],
       "implementation": {
-        "public_sha256": "765605682ce5c1df4899d7a2e807cbda728e8a5e8b5d463fd1c659901ecdeee3",
+        "public_sha256": "2b261800d83e5a27283d8aedcc4d4c031108c65b6d6eee9c53ee650b8eb6f3ac",
         "private_sha256": "279c30d54c9620dd22e07d0c203f2c9dcac37fe95a6b30bcab8eefb3e4748c13"
       }
     }
