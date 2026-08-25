@@ -370,19 +370,19 @@ class NativeProjectionDigestMatchesAssertion(Assertion):
 
         mismatches: list[str] = []
         checked = 0
-        for rel in core_files:
-            pub_digest = _file_digest(pub_root / rel)
-            inst_digest = _file_digest(inst_root / rel)
+        for core_rel in core_files:
+            pub_digest = _file_digest(pub_root / core_rel)
+            inst_digest = _file_digest(inst_root / core_rel)
             if pub_digest is None:
-                mismatches.append(f"{rel}: missing in publisher")
+                mismatches.append(f"{core_rel}: missing in publisher")
                 continue
             if inst_digest is None:
-                mismatches.append(f"{rel}: missing in installed")
+                mismatches.append(f"{core_rel}: missing in installed")
                 continue
             checked += 1
             if pub_digest != inst_digest:
                 mismatches.append(
-                    f"{rel}: digest mismatch "
+                    f"{core_rel}: digest mismatch "
                     f"{pub_digest[:12]} != {inst_digest[:12]}"
                 )
         return mismatches, checked

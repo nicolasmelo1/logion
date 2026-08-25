@@ -33,7 +33,7 @@ def main() -> int:
     }
 
     # Create a resource.
-    resource_title = "Phase 15.11.1 Review Skill"
+    resource_title = "Publisher Review Skill"
     result = subprocess.run(
         [
             cli,

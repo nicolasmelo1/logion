@@ -42,14 +42,14 @@ _NATIVE_FEEDBACK_REAL_QUERIES = frozenset({
     "remote_mcp_feedback_linked",
     "remote_mcp_private_payload_not_recorded",
     "no_500s",
-    # Phase 15.11.1 — publisher integrated consented observation.
+    # Publisher-integrated observation assertions.
     "publisher_receipt_exact_resource_version",
     "install_not_counted_as_use",
     "private_payload_absent",
     "disabled_use_zero_receipts",
     "publisher_receipt_never_rates_or_funds",
-    # Phase 15.11.1 — file assertion tokens (local-devrig support required by
-    # PHASE_ASSERTION_MOCK_ONLY check).
+    # File assertion tokens (local-devrig support required by
+    # the mock-only guardrail check).
     "instrumentation_profile_valid",
     "native_projection_digest_matches",
     "consent_recorded_before_observation",
