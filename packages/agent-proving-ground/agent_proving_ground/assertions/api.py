@@ -592,3 +592,143 @@ class RemoteMcpPrivatePayloadNotRecordedAssertion(_ApiQueryAssertion):
     evidence_keys = ("checked_fields",)
     pass_message = "remote MCP private payload was not recorded"
     fail_message = "remote MCP private payload leaked into evidence"
+
+
+# Phase 15.12 — AI Catalog and ARD discovery assertions.
+# These check that the AI Catalog document, ARD search responses,
+# connectors snapshot, agent finder queries, and related provenance
+# are valid and that discovery works without AKTP or ASM-specific schemas.
+
+
+class AICatalogDocumentValidAssertion(_ApiQueryAssertion):
+    type = "api.ai_catalog_document_valid"
+    query_type = "ai_catalog_document_valid"
+    found_key = "valid"
+    evidence_keys = ("spec_version", "entry_count", "conformance_level")
+    pass_message = "AI Catalog document is valid and conformant"
+    fail_message = "AI Catalog document is missing or invalid"
+
+
+class AICatalogConformanceLevelValidAssertion(_ApiQueryAssertion):
+    type = "api.ai_catalog_conformance_level_valid"
+    query_type = "ai_catalog_conformance_level_valid"
+    found_key = "valid"
+    evidence_keys = ("conformance_level",)
+    pass_message = "AI Catalog conformance level is valid"
+    fail_message = "AI Catalog conformance level is missing or invalid"
+
+
+class ARDSearchResponseValidAssertion(_ApiQueryAssertion):
+    type = "api.ard_search_response_valid"
+    query_type = "ard_search_response_valid"
+    found_key = "valid"
+    evidence_keys = ("result_count", "has_scores", "registry_origin")
+    pass_message = "ARD search response is valid"
+    fail_message = "ARD search response is missing or invalid"
+
+
+class ARDConnectorsSnapshotPinnedAssertion(_ApiQueryAssertion):
+    type = "api.ard_connectors_snapshot_pinned"
+    query_type = "ard_connectors_snapshot_pinned"
+    found_key = "pinned"
+    evidence_keys = ("commit_sha", "file_digest", "finder_count")
+    pass_message = "ARD connectors snapshot is pinned to an immutable commit"
+    fail_message = "ARD connectors snapshot is not pinned or stale"
+
+
+class AgentFindersQueriedAssertion(_ApiQueryAssertion):
+    type = "api.agent_finders_queried"
+    query_type = "agent_finders_queried"
+    found_key = "queried"
+    evidence_keys = ("finder_count", "query_family")
+    pass_message = "at least one enabled Agent Finder was queried"
+    fail_message = "no Agent Finders were queried"
+
+
+class AgentFinderResultProvenanceVisibleAssertion(_ApiQueryAssertion):
+    type = "api.agent_finder_result_provenance_visible"
+    query_type = "agent_finder_result_provenance_visible"
+    found_key = "visible"
+    evidence_keys = ("finder_id", "endpoint", "result_count")
+    pass_message = "Agent Finder result provenance is visible"
+    fail_message = "Agent Finder result provenance is missing"
+
+
+class CatalogCrawlCompletedAssertion(_ApiQueryAssertion):
+    type = "api.catalog_crawl_completed"
+    query_type = "catalog_crawl_completed"
+    found_key = "completed"
+    evidence_keys = (
+        "seen",
+        "created",
+        "matched",
+        "new_versions",
+        "quarantined",
+    )
+    pass_message = "catalog crawl completed with an auditable import report"
+    fail_message = "catalog crawl did not complete or has no import report"
+
+
+class ARDResourceIngestedAssertion(_ApiQueryAssertion):
+    type = "api.ard_resource_ingested"
+    query_type = "ard_resource_ingested"
+    found_key = "ingested"
+    evidence_keys = ("resource_id", "canonical_uri")
+    pass_message = "a resource was ingested through ARD discovery"
+    fail_message = "no resource was ingested through ARD discovery"
+
+
+class ARDRecordRejectedAssertion(_ApiQueryAssertion):
+    type = "api.ard_record_rejected"
+    query_type = "ard_record_rejected"
+    found_key = "rejected"
+    evidence_keys = ("reason", "error_code")
+    pass_message = "malformed ARD record was quarantined with a stable reason"
+    fail_message = "malformed ARD record was not rejected or quarantined"
+
+
+class SelfCrawlNoDuplicateAssertion(_ApiQueryAssertion):
+    type = "api.self_crawl_no_duplicate"
+    query_type = "self_crawl_no_duplicate"
+    found_key = "no_duplicates"
+    evidence_keys = ("crawl_count", "resource_count")
+    pass_message = "self-crawl produced zero duplicate resources"
+    fail_message = "self-crawl produced duplicate resources"
+
+
+class ResourceSourceProvenanceVisibleAssertion(_ApiQueryAssertion):
+    type = "api.resource_source_provenance_visible"
+    query_type = "resource_source_provenance_visible"
+    found_key = "visible"
+    evidence_keys = ("source_type", "source_uri", "upstream_repo")
+    pass_message = "resource source provenance is visible"
+    fail_message = "resource source provenance is missing"
+
+
+class SearchFiltersByTypeAndSourceAssertion(_ApiQueryAssertion):
+    type = "api.search_filters_by_type_and_source"
+    query_type = "search_filters_by_type_and_source"
+    found_key = "filtered"
+    evidence_keys = ("type_filter", "source_filter", "result_count")
+    pass_message = "search can filter by resource type and source"
+    fail_message = "search filtering by type and source is not working"
+
+
+class DiscoverySucceedsWithoutAKTPAssertion(_ApiQueryAssertion):
+    type = "api.discovery_succeeds_without_aktp"
+    query_type = "discovery_succeeds_without_aktp"
+    found_key = "succeeded"
+    evidence_keys = ("aktp_required", "ard_endpoint")
+    pass_message = "discovery succeeds without any AKTP endpoint"
+    fail_message = "discovery requires an AKTP endpoint"
+
+
+class IngestedModelRequiresNoASMSchemaAssertion(_ApiQueryAssertion):
+    type = "api.ingested_model_requires_no_asm_schema"
+    query_type = "ingested_model_requires_no_asm_schema"
+    found_key = "agnostic"
+    evidence_keys = ("has_asm_schema", "resource_id")
+    pass_message = (
+        "ingested model remains artifact-agnostic without ASM schema"
+    )
+    fail_message = "ingested model has ASM-specific schema or fields"
