@@ -84,24 +84,30 @@ phases:
       need the Logion CLI. Show me the exact disclosure and the outbound
       fields before publishing.
 
+      Hermes can only report activation, so ask for that one event: a
+      terminal ask would make the hermes projection fail closed to
+      unsupported and there would be no hermes leg to observe.
+
       Run:
-        logion instrument ${VERSION_ID} \
-          --target agent-plugin \
-          --target hermes-plugin \
-          --target static-skill \
+        logion instrument ${RESOURCE_ID}@${VERSION_ID} \
+          --targets agent-plugin,hermes-plugin,static-skill \
+          --events resource_invoked \
+          --delivery-endpoint ${LOGION_API_BASE_URL}/v1/resources/${RESOURCE_ID}/versions/${VERSION_ID}/publisher-receipts \
+          --output-dir ${PUBLISHER_ROOT}/projections \
           --dry-run --json
       Save the untouched JSON to ${PUBLISHER_EVIDENCE_DIR}/instrument-plan.json.
 
-      Then run it again without --dry-run to write the projection trees:
-        logion instrument ${VERSION_ID} \
-          --target agent-plugin \
-          --target hermes-plugin \
-          --target static-skill \
-          --json
+      Confirm blocked_reasons is empty before you write anything. Then run
+      it again to write the projection trees:
+        logion instrument ${RESOURCE_ID}@${VERSION_ID} \
+          --targets agent-plugin,hermes-plugin,static-skill \
+          --events resource_invoked \
+          --delivery-endpoint ${LOGION_API_BASE_URL}/v1/resources/${RESOURCE_ID}/versions/${VERSION_ID}/publisher-receipts \
+          --output-dir ${PUBLISHER_ROOT}/projections \
+          --no-dry-run --yes --json
       Save the untouched JSON to ${PUBLISHER_EVIDENCE_DIR}/instrument-result.json.
 
-      The output directory is ${PUBLISHER_ROOT}/projections. Confirm each
-      target produced a projection tree with a plugin.json, a
+      Confirm each target produced a projection tree with a plugin.json, a
       .logion/instrumentation.json, a .logion/capability.json, and a
       skills/<slug>/SKILL.md.
 

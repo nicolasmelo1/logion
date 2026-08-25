@@ -11,7 +11,15 @@ from agent_proving_ground.assertions.base import (
 )
 
 
-def _resolve_pending_artifact(artifacts_dir: Path, path: str) -> Path:
+def _resolve_within_artifacts(artifacts_dir: Path, path: str) -> Path:
+    """Resolve *path* against the run's artifact root.
+
+    Scenario params are substituted from fixture output, and fixtures emit
+    absolute paths, so rejecting every absolute path would make those
+    assertions unrunnable. Containment is still enforced: ``relative_to``
+    raises for anything outside the artifact root, which callers already
+    surface as a failed assertion.
+    """
     raw_target = Path(path)
     if not raw_target.is_absolute():
         return resolve_artifact_path(artifacts_dir, path)
@@ -73,7 +81,7 @@ class UsagePendingEmptyAssertion(Assertion):
                 evidence=params,
             )
         try:
-            target = _resolve_pending_artifact(ctx.artifacts_dir, path)
+            target = _resolve_within_artifacts(ctx.artifacts_dir, path)
             payload = json.loads(target.read_text(encoding="utf-8"))
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             return AssertionOutcome(
@@ -127,7 +135,7 @@ class ObservationFromLiveHookAssertion(Assertion):
                 evidence=params,
             )
         try:
-            records_dir = _resolve_pending_artifact(
+            records_dir = _resolve_within_artifacts(
                 ctx.artifacts_dir, str(raw_dir)
             )
         except ValueError as exc:
@@ -169,6 +177,33 @@ class ObservationFromLiveHookAssertion(Assertion):
         )
 
 
+#: Value of the ``schema`` field the instrumentation schema pins with
+#: ``const``; see packages/instrumentation/.../logion.instrumentation.v1.json.
+PROFILE_SCHEMA_ID = "logion.instrumentation/v1"
+
+
+def _projection_dir(root: Path) -> Path:
+    """Return the directory that actually holds the projection.
+
+    ``logion instrument --output-dir DIR`` writes ``DIR/<target>/<slug>/``,
+    so a scenario naming the target directory is one level above
+    ``plugin.json``. Accept either, and leave *root* untouched when the
+    layout is unrecognised so the caller reports the missing file rather
+    than a path this helper invented.
+    """
+    if (root / "plugin.json").is_file():
+        return root
+    if root.is_dir():
+        nested = [
+            child
+            for child in sorted(root.iterdir())
+            if child.is_dir() and (child / "plugin.json").is_file()
+        ]
+        if len(nested) == 1:
+            return nested[0]
+    return root
+
+
 class InstrumentationProfileValidAssertion(Assertion):
     """Assert the generated instrumentation profile validates.
 
@@ -193,7 +228,9 @@ class InstrumentationProfileValidAssertion(Assertion):
                 evidence=params,
             )
         try:
-            root = resolve_artifact_path(ctx.artifacts_dir, projection_root)
+            root = _resolve_within_artifacts(
+                ctx.artifacts_dir, projection_root
+            )
         except ValueError as exc:
             return AssertionOutcome(
                 type=self.type,
@@ -268,7 +305,11 @@ class InstrumentationProfileValidAssertion(Assertion):
                     mismatches.append(f"{profile_path.name}: not an object")
                     continue
                 schema = payload.get("schema")
-                if schema != "logion.instrumentation.v1":
+                # The identifier, not the schema file's name. The file is
+                # logion.instrumentation.v1.json but every profile the
+                # generator writes declares the slashed form, which is what
+                # the schema's own `const` pins.
+                if schema != PROFILE_SCHEMA_ID:
                     mismatches.append(
                         f"{profile_path.name}: schema is {schema!r}"
                     )
@@ -298,10 +339,10 @@ class NativeProjectionDigestMatchesAssertion(Assertion):
                 evidence=params,
             )
         try:
-            pub_root = resolve_artifact_path(
+            pub_root = _resolve_within_artifacts(
                 ctx.artifacts_dir, publisher_projection
             )
-            inst_root = resolve_artifact_path(
+            inst_root = _resolve_within_artifacts(
                 ctx.artifacts_dir, installed_projection
             )
         except ValueError as exc:
@@ -361,6 +402,8 @@ class NativeProjectionDigestMatchesAssertion(Assertion):
                 return None
             return hashlib.sha256(path.read_bytes()).hexdigest()
 
+        pub_root = _projection_dir(pub_root)
+        inst_root = _projection_dir(inst_root)
         core_files = ["plugin.json"]
         # Also compare SKILL.md under skills/*/SKILL.md
         pub_skills = list(pub_root.glob("skills/*/SKILL.md"))
@@ -493,8 +536,10 @@ class ConsentRecordedBeforeObservationAssertion(Assertion):
                 evidence=params,
             )
         try:
-            consent = resolve_artifact_path(ctx.artifacts_dir, consent_path)
-            spool = resolve_artifact_path(ctx.artifacts_dir, spool_dir)
+            consent = _resolve_within_artifacts(
+                ctx.artifacts_dir, consent_path
+            )
+            spool = _resolve_within_artifacts(ctx.artifacts_dir, spool_dir)
         except ValueError as exc:
             return AssertionOutcome(
                 type=self.type,
@@ -563,7 +608,7 @@ class NoFullCliInstalledAssertion(Assertion):
                 evidence=params,
             )
         try:
-            ws_root = resolve_artifact_path(ctx.artifacts_dir, workspace)
+            ws_root = _resolve_within_artifacts(ctx.artifacts_dir, workspace)
         except ValueError as exc:
             return AssertionOutcome(
                 type=self.type,
@@ -609,7 +654,7 @@ class NoFullCliInstalledAssertion(Assertion):
         # Check home directory
         if home:
             try:
-                home_root = resolve_artifact_path(artifacts_dir, home)
+                home_root = _resolve_within_artifacts(artifacts_dir, home)
             except ValueError:
                 home_root = Path(home)
             if home_root.is_dir():
@@ -641,7 +686,9 @@ class ResourceWorksWhenDisabledAssertion(Assertion):
                 evidence=params,
             )
         try:
-            output = resolve_artifact_path(ctx.artifacts_dir, output_artifact)
+            output = _resolve_within_artifacts(
+                ctx.artifacts_dir, output_artifact
+            )
         except ValueError as exc:
             return AssertionOutcome(
                 type=self.type,
@@ -702,7 +749,7 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
                 evidence=params,
             )
         try:
-            cap_file = resolve_artifact_path(
+            cap_file = _resolve_within_artifacts(
                 ctx.artifacts_dir, capability_path
             )
         except ValueError as exc:
@@ -778,7 +825,7 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
         if not spool_dir:
             return []
         try:
-            spool = resolve_artifact_path(ctx.artifacts_dir, spool_dir)
+            spool = _resolve_within_artifacts(ctx.artifacts_dir, spool_dir)
         except ValueError:
             spool = Path(str(spool_dir))
         if spool.is_dir():
@@ -903,7 +950,9 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
         artifacts_dir: Path, capability_path: str
     ) -> Path | str:
         try:
-            cap_file = resolve_artifact_path(artifacts_dir, capability_path)
+            cap_file = _resolve_within_artifacts(
+                artifacts_dir, capability_path
+            )
         except ValueError as exc:
             return str(exc)
         if not cap_file.is_file():
@@ -953,7 +1002,7 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
         spool_entries: list[Path] = []
         if spool_dir:
             try:
-                spool = resolve_artifact_path(artifacts_dir, spool_dir)
+                spool = _resolve_within_artifacts(artifacts_dir, spool_dir)
             except ValueError:
                 spool = Path(str(spool_dir))
             if spool.is_dir():
@@ -1058,7 +1107,7 @@ class HermesHookProjectionObservedAssertion(Assertion):
         artifacts_dir: Path, activation_artifact: str
     ) -> Path | str:
         try:
-            activation = resolve_artifact_path(
+            activation = _resolve_within_artifacts(
                 artifacts_dir, activation_artifact
             )
         except ValueError as exc:

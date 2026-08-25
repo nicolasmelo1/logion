@@ -60,6 +60,21 @@ def resolve_profile(
     )
 
 
+def profile_events(profile: JsonObject, fallback: list[str]) -> list[str]:
+    """Return the events *profile* declares, in canonical order.
+
+    Capability resolution has to answer "what did the publisher ask to
+    observe", and the profile is where that lives. Falls back to the
+    flag-derived list only when the profile names none, so a malformed
+    profile cannot silently widen the ask.
+    """
+    declared = profile.get("events")
+    if not isinstance(declared, list):
+        return fallback
+    events = [item for item in declared if isinstance(item, str)]
+    return events or fallback
+
+
 def validate_profile_if_available(profile: JsonObject) -> None:
     """Validate the profile if the instrumentation package is present."""
     try:

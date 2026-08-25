@@ -20,6 +20,7 @@ from cli.commands.instrument._digest import (
     profile_digest,
     verify_byte_identical,
 )
+from cli.commands.instrument._plan import profile_events
 from cli.commands.instrument._projection import (
     INTEGRATION_VERSION,
     build_projection,
@@ -692,3 +693,108 @@ class TestParser:
             "resource_file_read",
             "resource_tool_used",
         }
+
+
+# ── the profile governs the ask ───────────────────────────────────
+
+
+class TestProfileGovernsEvents:
+    """A supplied --profile decides what the publisher asked to observe.
+
+    Capability resolution used to read the flag default instead, so a
+    profile requesting activation only was rejected for claiming terminal
+    events it never named, and every capability.json advertised the
+    client's ceiling rather than the profile's ask.
+    """
+
+    def test_profile_events_prefers_the_profile(self) -> None:
+        profile: JsonObject = {"events": ["resource_invoked"]}
+        assert profile_events(profile, list(EVENT_CHOICES)) == [
+            "resource_invoked"
+        ]
+
+    def test_profile_events_falls_back_when_profile_names_none(self) -> None:
+        assert profile_events({}, ["resource_invoked"]) == ["resource_invoked"]
+        assert profile_events({"events": []}, ["resource_invoked"]) == [
+            "resource_invoked"
+        ]
+
+    def test_supplied_profile_does_not_block_hermes(
+        self, tmp_path: Path
+    ) -> None:
+        profile_path = tmp_path / "profile.json"
+        profile_path.write_text(
+            json.dumps({
+                "schema": "logion.instrumentation/v1",
+                "subject": {
+                    "resource_id": "res-uuid-001",
+                    "resource_version": "1.4.2",
+                },
+                "publisher": {"identity": "did:web:example.com"},
+                "delivery": {
+                    "endpoint": "https://example.com/receipts",
+                    "mode": "asynchronous-batch",
+                    "max_batch": 20,
+                    "max_spool_bytes": 262144,
+                },
+                "events": ["resource_invoked"],
+                "fields": ["resource_id", "event"],
+                "excluded": [
+                    "prompt",
+                    "file_content",
+                    "local_path",
+                    "tool_arguments",
+                    "tool_results",
+                    "model_context",
+                    "secrets",
+                    "user_identity",
+                ],
+                "integration_version": "logion.publisher-reporter.v1",
+            }),
+            encoding="utf-8",
+        )
+        captured: dict[str, object] = {}
+
+        def _capture(_json_output: bool, plan: JsonObject) -> None:
+            captured.update(plan)
+
+        with (
+            patch(
+                "cli.commands.instrument.handlers.make_client",
+                return_value=_mock_client(),
+            ),
+            patch(
+                "cli.commands.instrument.handlers.render_dry_run",
+                side_effect=_capture,
+            ),
+        ):
+            args = _build_args(
+                targets=["agent-plugin", "hermes-plugin"],
+                events=None,
+                profile=profile_path,
+                delivery_endpoint=None,
+                output_dir=tmp_path / "out",
+            )
+            rc = handle_instrument(args)
+
+        assert rc == 0
+        assert captured["blocked_reasons"] == []
+
+    def test_capability_declares_the_ask_not_the_ceiling(self) -> None:
+        capability = resolve_capability(
+            target="agent-plugin",
+            client="claude-code",
+            events=["resource_invoked"],
+            profile_digest="sha256:deadbeef",
+        )
+        assert capability["events"] == ["resource_invoked"]
+
+    def test_hermes_still_fails_closed_on_a_terminal_ask(self) -> None:
+        capability = resolve_capability(
+            target="hermes-plugin",
+            client="hermes",
+            events=["resource_invoked", "resource_tool_used"],
+            profile_digest="sha256:deadbeef",
+        )
+        assert capability["tier"] == "unsupported"
+        assert "resource_tool_used" in str(capability["reason"])

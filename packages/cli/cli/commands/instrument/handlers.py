@@ -26,6 +26,7 @@ from ._constants import EVENT_CHOICES
 from ._plan import (
     build_plan,
     execute_plan,
+    profile_events,
     render_dry_run,
     resolve_output_dir,
     resolve_profile,
@@ -45,7 +46,7 @@ def handle_instrument(args: argparse.Namespace) -> int:
                 "at least one --target is required",
                 json_output=config.json_output,
             )
-        events = getattr(args, "events", None) or list(EVENT_CHOICES)
+        requested_events = getattr(args, "events", None) or list(EVENT_CHOICES)
 
         resource, version = resolve_resource_version(
             client, args.resource_version
@@ -58,7 +59,7 @@ def handle_instrument(args: argparse.Namespace) -> int:
             args,
             resource,
             version,
-            events,
+            requested_events,
             publisher_identity,
             config.json_output,
         )
@@ -66,6 +67,12 @@ def handle_instrument(args: argparse.Namespace) -> int:
             return 2  # validation error already emitted
 
         validate_profile_if_available(profile)
+
+        # The profile — not the flag default — says what the publisher asked
+        # to observe. A supplied --profile would otherwise be resolved against
+        # every event in EVENT_CHOICES, so a profile requesting activation
+        # only was still rejected for claiming terminal events it never named.
+        events = profile_events(profile, requested_events)
 
         output_dir = resolve_output_dir(args, resource, version)
         plan = build_plan(

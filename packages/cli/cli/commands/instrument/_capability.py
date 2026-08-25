@@ -78,6 +78,11 @@ def resolve_capability(
     binding = _CLIENT_BINDINGS.get(resolved_client, "unknown")
     runtime_present = _check_runtime(binding)
     allowed_events = _CLIENT_EVENTS.get(resolved_client, [])
+    # What the projection will actually report: the publisher's ask capped by
+    # the client's ceiling. Declaring the bare ceiling advertises events the
+    # profile never requested, which is the disclosure drift this phase is
+    # supposed to make impossible.
+    granted_events = [item for item in events if item in allowed_events]
     base_tier = _TARGET_TIERS.get(target, "unsupported")
 
     # Hermes capability must not claim a terminal event.
@@ -117,7 +122,7 @@ def resolve_capability(
             "required": f"{binding}>=22" if binding == "node" else "python3",
             "present": runtime_present,
         },
-        "events": allowed_events,
+        "events": granted_events,
         "reason": None,
         "integration_version": INTEGRATION_VERSION,
         "profile_digest": profile_digest,
