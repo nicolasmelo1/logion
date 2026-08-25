@@ -10090,6 +10090,172 @@
         ],
         "title": "WithdrawBountySubmissionResponse",
         "type": "object"
+      },
+      "SubmitPublisherReceiptRequest": {
+        "additionalProperties": false,
+        "description": "Request body for submitting a publisher-integrated receipt.\n\nServer-authoritative fields (``identity_tier``,\n``pseudonymous_subject_id``, ``publisher_verified``,\n``consent_policy_digest``) are **never** accepted from the request.\nThe request schema uses ``extra=\"forbid\"`` so any attempt to send\nthem is rejected at the boundary.",
+        "properties": {
+          "acquisition_channel": {
+            "title": "Acquisition Channel",
+            "type": "string"
+          },
+          "coarse_counters": {
+            "additionalProperties": true,
+            "title": "Coarse Counters",
+            "type": "object"
+          },
+          "distribution_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution Digest"
+          },
+          "harness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harness"
+          },
+          "instrumentation_profile_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instrumentation Profile Digest"
+          },
+          "integration_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Version"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "outcome": {
+            "default": "unknown",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "pseudonymous_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Public Key"
+          },
+          "pseudonymous_signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pseudonymous Signature"
+          },
+          "publisher_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher Identity"
+          },
+          "task_class": {
+            "title": "Task Class",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "acquisition_channel",
+          "task_class"
+        ],
+        "title": "SubmitPublisherReceiptRequest",
+        "type": "object"
+      },
+      "SubmitPublisherReceiptResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observation_class": {
+            "title": "Observation Class",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "receipt_digest": {
+            "title": "Receipt Digest",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_version_id": {
+            "format": "uuid",
+            "title": "Resource Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resource_id",
+          "resource_version_id",
+          "receipt_digest",
+          "outcome",
+          "observation_class"
+        ],
+        "title": "SubmitPublisherReceiptResponse",
+        "type": "object"
       }
     }
   },
@@ -19733,6 +19899,106 @@
         "summary": "Claim a setup handoff to receive a setup token",
         "tags": [
           "setup"
+        ]
+      }
+    },
+    "/v1/resources/{resource_id}/versions/{version_id}/publisher-receipts": {
+      "post": {
+        "description": "Submit a publisher-integrated field-observation receipt.\n\nAuthenticated agents submit with their ``identity_tier`` set to\n``account``.  A request without a bearer token submits as\n``shadow`` \u2014 the publisher-integrated path where the reporter has\nno Logion account.  Anonymous callers instead prove a stable local\nsubject by signing the receipt claims with a locally held Ed25519\nkeypair (same 15.11 contract as usage receipts).\n\nServer-authoritative fields \u2014 ``identity_tier``,\n``pseudonymous_subject_id``, ``publisher_verified``, and\n``consent_policy_digest`` \u2014 are derived server-side and never\naccepted from the request body.",
+        "operationId": "submit_publisher_receipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitPublisherReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitPublisherReceiptResponse"
+                }
+              }
+            },
+            "description": "Publisher receipt submitted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid input or duplicate"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource or version not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit a publisher-integrated receipt for a resource version",
+        "tags": [
+          "publisher_receipts"
         ]
       }
     }

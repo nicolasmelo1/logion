@@ -1,0 +1,97 @@
+{
+  "scenario": "phase_15_11_1_publisher_integrated_observation",
+  "status": "passed",
+  "api_adapter": "local-devrig",
+  "agent_drivers": {
+    "publisher": "codex",
+    "consumer": "codex",
+    "hermes_consumer": "hermes",
+    "operator": "codex"
+  },
+  "assertion_results": [
+    {
+      "type": "files.instrumentation_profile_valid",
+      "status": "passed",
+      "message": "assertion files.instrumentation_profile_valid passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.native_projection_digest_matches",
+      "status": "passed",
+      "message": "assertion files.native_projection_digest_matches passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.consent_recorded_before_observation",
+      "status": "passed",
+      "message": "assertion files.consent_recorded_before_observation passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.no_full_cli_installed",
+      "status": "passed",
+      "message": "assertion files.no_full_cli_installed passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.resource_works_when_disabled",
+      "status": "passed",
+      "message": "assertion files.resource_works_when_disabled passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.publisher_observation_unsupported_declared",
+      "status": "passed",
+      "message": "assertion files.publisher_observation_unsupported_declared passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.capability_claims_fail_closed_on_drift",
+      "status": "passed",
+      "message": "assertion files.capability_claims_fail_closed_on_drift passed",
+      "evidence": {}
+    },
+    {
+      "type": "files.hermes_hook_projection_observed",
+      "status": "passed",
+      "message": "assertion files.hermes_hook_projection_observed passed",
+      "evidence": {}
+    },
+    {
+      "type": "api.publisher_receipt_exact_resource_version",
+      "status": "passed",
+      "message": "assertion api.publisher_receipt_exact_resource_version passed",
+      "evidence": {}
+    },
+    {
+      "type": "api.install_not_counted_as_use",
+      "status": "passed",
+      "message": "assertion api.install_not_counted_as_use passed",
+      "evidence": {}
+    },
+    {
+      "type": "api.private_payload_absent",
+      "status": "passed",
+      "message": "assertion api.private_payload_absent passed",
+      "evidence": {}
+    },
+    {
+      "type": "api.disabled_use_zero_receipts",
+      "status": "passed",
+      "message": "assertion api.disabled_use_zero_receipts passed",
+      "evidence": {}
+    },
+    {
+      "type": "api.publisher_receipt_never_rates_or_funds",
+      "status": "passed",
+      "message": "assertion api.publisher_receipt_never_rates_or_funds passed",
+      "evidence": {}
+    },
+    {
+      "type": "logs.no_500s",
+      "status": "passed",
+      "message": "assertion logs.no_500s passed",
+      "evidence": {}
+    }
+  ]
+}

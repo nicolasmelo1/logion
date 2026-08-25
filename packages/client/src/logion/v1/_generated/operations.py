@@ -130,6 +130,8 @@ from logion.v1._types.generated.v1 import (
     SetReferralAttributionStatusResponse,
     SubmitFeedbackRequest,
     SubmitFeedbackResponse,
+    SubmitPublisherReceiptRequest,
+    SubmitPublisherReceiptResponse,
     SubmitUsageReceiptRequest,
     SubmitUsageReceiptResponse,
     SuspendAgentResponse,
@@ -1703,6 +1705,22 @@ def submit_usage_receipt(
         "POST",
         f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
         SubmitUsageReceiptResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def submit_publisher_receipt(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+    body: SubmitPublisherReceiptRequest,
+) -> SubmitPublisherReceiptResponse:
+    """Call the submit_publisher_receipt API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/resources/{resource_id}/versions/{version_id}/publisher-receipts",
+        SubmitPublisherReceiptResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 

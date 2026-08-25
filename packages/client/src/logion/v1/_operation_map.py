@@ -34,6 +34,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "list_resource_feedback": "client.v1.resource_feedback.list_for_resource",
     "get_feedback_summary": "client.v1.resource_feedback.get_summary",
     "submit_usage_receipt": "client.v1.usage_receipts.submit",
+    "submit_publisher_receipt": "client.v1.publisher_receipts.submit",
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",

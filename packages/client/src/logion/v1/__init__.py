@@ -18,6 +18,7 @@ from logion.v1._resources.notifications import NotificationsResource
 from logion.v1._resources.payments import PaymentsResource
 from logion.v1._resources.referrals import ReferralsResource
 from logion.v1._resources.reports import ReportsResource
+from logion.v1._resources.publisher_receipts import PublisherReceiptResource
 from logion.v1._resources.resource_feedback import ResourceFeedbackResource
 from logion.v1._resources.resources import ResourcesResource
 from logion.v1._resources.usage_receipts import UsageReceiptResource
@@ -44,3 +45,4 @@ class V1Namespace:
         self.resources = ResourcesResource(http)
         self.resource_feedback = ResourceFeedbackResource(http)
         self.usage_receipts = UsageReceiptResource(http)
+        self.publisher_receipts = PublisherReceiptResource(http)

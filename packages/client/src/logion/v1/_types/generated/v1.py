@@ -2334,6 +2334,53 @@ class SubmitFeedbackResponse(BaseModel):
     task_class: Annotated[str, Field(title="Task Class")]
 
 
+class SubmitPublisherReceiptRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    acquisition_channel: Annotated[str, Field(title="Acquisition Channel")]
+    coarse_counters: Annotated[
+        JsonObject | None, Field(title="Coarse Counters")
+    ] = None
+    distribution_digest: Annotated[
+        str | None, Field(title="Distribution Digest")
+    ] = None
+    harness: Annotated[str | None, Field(title="Harness")] = None
+    instrumentation_profile_digest: Annotated[
+        str | None, Field(title="Instrumentation Profile Digest")
+    ] = None
+    integration_version: Annotated[
+        str | None, Field(title="Integration Version")
+    ] = None
+    observation_id: Annotated[UUID, Field(title="Observation Id")]
+    observed_at: Annotated[
+        AwareDatetime | None, Field(title="Observed At")
+    ] = None
+    outcome: Annotated[str | None, Field(title="Outcome")] = "unknown"
+    pseudonymous_public_key: Annotated[
+        str | None, Field(title="Pseudonymous Public Key")
+    ] = None
+    pseudonymous_signature: Annotated[
+        str | None, Field(title="Pseudonymous Signature")
+    ] = None
+    publisher_identity: Annotated[
+        str | None, Field(title="Publisher Identity")
+    ] = None
+    task_class: Annotated[str, Field(title="Task Class")]
+
+
+class SubmitPublisherReceiptResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    id: Annotated[UUID, Field(title="Id")]
+    observation_class: Annotated[str, Field(title="Observation Class")]
+    outcome: Annotated[str, Field(title="Outcome")]
+    receipt_digest: Annotated[str, Field(title="Receipt Digest")]
+    resource_id: Annotated[UUID, Field(title="Resource Id")]
+    resource_version_id: Annotated[UUID, Field(title="Resource Version Id")]
+
+
 class SubmitUsageReceiptRequest(BaseModel):
     model_config = ConfigDict(
         extra="allow",
