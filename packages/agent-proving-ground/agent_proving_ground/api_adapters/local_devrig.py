@@ -42,6 +42,21 @@ _NATIVE_FEEDBACK_REAL_QUERIES = frozenset({
     "remote_mcp_feedback_linked",
     "remote_mcp_private_payload_not_recorded",
     "no_500s",
+    # AI Catalog and ARD discovery queries
+    "ai_catalog_document_valid",
+    "ai_catalog_conformance_level_valid",
+    "ard_search_response_valid",
+    "ard_connectors_snapshot_pinned",
+    "agent_finders_queried",
+    "agent_finder_result_provenance_visible",
+    "catalog_crawl_completed",
+    "ard_resource_ingested",
+    "ard_record_rejected",
+    "self_crawl_no_duplicate",
+    "resource_source_provenance_visible",
+    "search_filters_by_type_and_source",
+    "discovery_succeeds_without_aktp",
+    "ingested_model_requires_no_asm_schema",
 })
 
 
