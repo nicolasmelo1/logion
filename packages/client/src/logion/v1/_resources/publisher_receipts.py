@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Publisher receipts resource — publisher-integrated observation submission."""
+"""Publisher receipts — publisher-integrated observation submission."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from logion._json import JsonObject
 
 
 class PublisherReceiptResource:
-    """Submit publisher-integrated observation receipts for resource versions."""
+    """Submit publisher-integrated observation receipts."""
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
@@ -71,7 +71,9 @@ class PublisherReceiptResource:
         if distribution_digest is not None:
             payload["distribution_digest"] = distribution_digest
         if instrumentation_profile_digest is not None:
-            payload["instrumentation_profile_digest"] = instrumentation_profile_digest
+            payload["instrumentation_profile_digest"] = (
+                instrumentation_profile_digest
+            )
         if integration_version is not None:
             payload["integration_version"] = integration_version
         if publisher_identity is not None:

@@ -16,9 +16,9 @@ from logion.v1._resources.indexed_listings import IndexedListingsResource
 from logion.v1._resources.listings import ListingsResource
 from logion.v1._resources.notifications import NotificationsResource
 from logion.v1._resources.payments import PaymentsResource
+from logion.v1._resources.publisher_receipts import PublisherReceiptResource
 from logion.v1._resources.referrals import ReferralsResource
 from logion.v1._resources.reports import ReportsResource
-from logion.v1._resources.publisher_receipts import PublisherReceiptResource
 from logion.v1._resources.resource_feedback import ResourceFeedbackResource
 from logion.v1._resources.resources import ResourcesResource
 from logion.v1._resources.usage_receipts import UsageReceiptResource
