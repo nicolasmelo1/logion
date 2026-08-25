@@ -285,12 +285,19 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps({"resource": resource, "version": version}, indent=2),
         encoding="utf-8",
     )
+    # Whatever the API actually reports, not a fiction: `logion instrument`
+    # reads the same field, so inventing one here would make the receipt
+    # assertion compare the scenario's guess against the generator's.
+    publisher = resource.get("publisher")
+    identity = "did:web:unknown"
+    if isinstance(publisher, dict) and publisher.get("identity"):
+        identity = str(publisher["identity"])
     sys.stdout.write(
         json.dumps({
             "resource_id": resource_id,
             "version_id": version_id,
             "resource_title": RESOURCE_TITLE,
-            "publisher_identity": "did:web:logion-fixtures",
+            "publisher_identity": identity,
         })
         + "\n"
     )

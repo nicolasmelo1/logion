@@ -30,12 +30,16 @@ agents:
     driver: codex
     workspace: consumer
     devrig_role: buyer
+    # Enforced by the rig, not asked for in the goal: the whole premise is
+    # an end user who never installed the Logion suite.
+    logion_cli: false
     timeout_seconds: 1800
   - id: hermes_consumer
     role: Hermes-driven consumer with no Logion CLI who uses the hermes-plugin
     driver: hermes
     workspace: hermes_consumer
     devrig_role: buyer
+    logion_cli: false
     timeout_seconds: 1800
   - id: operator
     role: Operator who observes API state only
@@ -154,6 +158,7 @@ phases:
     assertions:
       - type: files.no_full_cli_installed
         params:
+          agent: consumer
           workspace: "${CONSUMER_ROOT}"
           home: "${CONSUMER_LOGION_HOME}"
       - type: files.consent_recorded_before_observation

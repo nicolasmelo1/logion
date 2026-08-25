@@ -26,6 +26,11 @@ class AgentSpec(BaseModel):
     system_prompt: str | None = None
     timeout_seconds: int = Field(default=900, ge=1)
     command: list[str] | None = None
+    #: Whether the rig puts the Logion CLI on this agent's PATH. A
+    #: publisher-integrated consumer is defined by not having it, so that
+    #: premise has to be enforceable by the rig rather than asked for in
+    #: prose the agent can satisfy with a CLI it can still reach.
+    logion_cli: bool = True
 
     @field_validator("id", "workspace")
     @classmethod

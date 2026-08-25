@@ -616,7 +616,25 @@ class NoFullCliInstalledAssertion(Assertion):
                 message=str(exc),
                 evidence=params,
             )
-        findings = self._scan_for_logion_cli(ws_root, home, ctx.artifacts_dir)
+        agent = params.get("agent")
+        if not agent:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="missing agent parameter",
+                evidence=params,
+            )
+        agent_env = ctx.world.agent_env.get(str(agent))
+        if agent_env is None:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"no recorded environment for agent {agent!r}",
+                evidence={"agent": str(agent)},
+            )
+        findings = self._scan_for_logion_cli(
+            ws_root, home, ctx.artifacts_dir, agent_env.get("PATH", "")
+        )
         if findings:
             return AssertionOutcome(
                 type=self.type,
@@ -635,14 +653,22 @@ class NoFullCliInstalledAssertion(Assertion):
 
     @staticmethod
     def _scan_for_logion_cli(
-        ws_root: Path, home: str | None, artifacts_dir: Path
+        ws_root: Path,
+        home: str | None,
+        artifacts_dir: Path,
+        agent_path: str,
     ) -> list[str]:
-        """Search PATH, workspace, and home for a logion binary."""
+        """Search PATH, workspace, and home for a logion binary.
+
+        The PATH searched is the *agent's*, not this process's. The runner
+        is launched through ``uv run``, so its own PATH always carries the
+        repo venv's ``logion`` and every consumer would look non-compliant.
+        """
         import shutil
 
         findings: list[str] = []
         # Check PATH
-        path_logion = shutil.which("logion")
+        path_logion = shutil.which("logion", path=agent_path)
         if path_logion:
             findings.append(f"PATH: {path_logion}")
         # Check workspace for a logion binary or script
