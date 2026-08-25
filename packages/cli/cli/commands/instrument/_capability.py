@@ -70,7 +70,7 @@ def resolve_capability(
 ) -> JsonObject:
     """Resolve the capability tier for one target/client pair.
 
-    The tier is fail-closed: any condition that prevents hook-based
+    The tier is fail-closed: every condition that prevents hook-based
     observation forces ``unsupported`` with a populated ``reason``,
     never a silent fallback to inferred telemetry.
     """

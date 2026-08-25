@@ -1,5 +1,5 @@
 schema_version: "1"
-name: phase_15_11_1_publisher_integrated_observation
+name: publisher_integrated_observation
 description: >
   Publisher instruments a resource version, consumers install projections
   through native managers with no Logion CLI, consent-gated observation

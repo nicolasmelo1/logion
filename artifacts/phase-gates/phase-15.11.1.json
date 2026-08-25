@@ -7,8 +7,8 @@
       "driver": "codex",
       "model": "gpt-5.4-mini",
       "report": "artifacts/phase-gates/reports/phase-15-11-1-publisher-integrated-observation.json",
-      "report_sha256": "6a2a886c200c780bc849252fdb6eb71f9e4d8fa9e481f01fe6276d30ec865a46",
-      "scenario": "phase_15_11_1_publisher_integrated_observation",
+      "report_sha256": "c8e84f1e225729dfa33c0847e2a30d93b9353821387e1f27e9e00c26fc0f2707",
+      "scenario": "publisher_integrated_observation",
       "status": "passed",
       "unsupported_assertions": [],
       "implementation": {

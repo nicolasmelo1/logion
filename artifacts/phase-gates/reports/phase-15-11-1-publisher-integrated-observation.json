@@ -1,5 +1,5 @@
 {
-  "scenario": "phase_15_11_1_publisher_integrated_observation",
+  "scenario": "publisher_integrated_observation",
   "status": "passed",
   "api_adapter": "local-devrig",
   "agent_drivers": {
