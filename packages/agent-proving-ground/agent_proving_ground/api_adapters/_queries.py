@@ -2187,11 +2187,11 @@ class LogionApiQueries:
             "checked_fields": elements(result, "checked_fields"),
         }
 
-
     async def _q_publisher_receipt_exact_resource_version(
         self, query: JsonObject, agent_roles: dict[str, str]
     ) -> JsonObject:
-        """Verify the stored receipt names the exact version and all attributions.
+        """Verify the stored receipt names the exact version
+        and all attributions.
 
         Reads the receipt artifact the consumer saved and checks it
         carries the resource_id, resource_version, publisher identity,
@@ -2356,7 +2356,7 @@ class LogionApiQueries:
         record. Compares the current feedback count against the
         baseline to detect any new receipt.
         """
-        _, feedback = await self._feedback_for(query, agent_roles)
+        await self._feedback_for(query, agent_roles)
         baseline = query.get("_baseline")
         baseline_count = 0
         if isinstance(baseline, dict):
@@ -2404,59 +2404,19 @@ class LogionApiQueries:
         reporter = query.get("reporter_agent") or query.get("agent")
         role = self._role_of(reporter, agent_roles)
         baseline = query.get("_baseline")
-        baseline_review_ids: set[str] = set()
-        baseline_bounty_ids: set[str] = set()
-        baseline_ledger_ids: set[str] = set()
-        if isinstance(baseline, dict):
-            review_ids = baseline.get("review_ids", [])
-            if isinstance(review_ids, list):
-                baseline_review_ids = {str(rid) for rid in review_ids}
-            bounty_ids = baseline.get("bounty_ids", [])
-            if isinstance(bounty_ids, list):
-                baseline_bounty_ids = {str(bid) for bid in bounty_ids}
-            ledger = baseline.get("credit_ledger_ids", {})
-            if isinstance(ledger, dict):
-                for role_ledger in ledger.values():
-                    if isinstance(role_ledger, list):
-                        baseline_ledger_ids.update(
-                            str(lid) for lid in role_ledger
-                        )
+        baseline_ids = self._extract_baseline_ids(baseline)
         # Check feedback for a rating/review
         _, feedback = await self._feedback_for(query, agent_roles)
-        feedback_count = 0
-        course_review_count = 0
-        if feedback is not None:
-            feedback_count = 1
-            if feedback.get("course_review_id"):
-                review_id = str(feedback.get("course_review_id"))
-                if review_id not in baseline_review_ids:
-                    course_review_count = 1
-        # Check bounties for new funding
-        bounty_count = 0
-        for bounty in await self._bounties(role):
-            bounty_id = str(bounty.get("id") or "")
-            if bounty_id and bounty_id not in baseline_bounty_ids:
-                bounty_count += 1
-        # Check ledger for new payment rows
-        ledger_count = 0
-        for entry in await self._ledger(role):
-            entry_id = str(entry.get("id") or "")
-            if entry_id and entry_id not in baseline_ledger_ids:
-                kind = str(opt_str(entry, "kind", "")).lower()
-                if any(
-                    word in kind
-                    for word in ("payment", "payout", "bounty", "reward")
-                ):
-                    ledger_count += 1
-        # Eval results are not directly queryable through the API, but
-        # if a feedback record carries an eval projection, count it.
-        eval_count = 0
-        if feedback is not None:
-            disposition = feedback.get("projection_disposition")
-            if disposition == "projected" and feedback.get("course_review_id"):
-                # A projected course review from a publisher receipt is
-                # the eval path — it should not exist.
-                eval_count = 1
+        feedback_count, course_review_count = self._count_feedback_reviews(
+            feedback, baseline_ids["review"]
+        )
+        bounty_count = self._count_new_bounties(
+            await self._bounties(role), baseline_ids["bounty"]
+        )
+        ledger_count = self._count_new_ledger_payments(
+            await self._ledger(role), baseline_ids["ledger"]
+        )
+        eval_count = self._count_eval_projections(feedback)
         clean = (
             course_review_count == 0
             and bounty_count == 0
@@ -2471,6 +2431,89 @@ class LogionApiQueries:
             "bounty_count": bounty_count,
             "ledger_count": ledger_count,
         }
+
+    @staticmethod
+    def _extract_baseline_ids(
+        baseline: JsonValue,
+    ) -> dict[str, set[str]]:
+        """Extract review, bounty, and ledger id sets from the baseline."""
+        review_ids: set[str] = set()
+        bounty_ids: set[str] = set()
+        ledger_ids: set[str] = set()
+        if isinstance(baseline, dict):
+            review_raw = baseline.get("review_ids", [])
+            if isinstance(review_raw, list):
+                review_ids = {str(rid) for rid in review_raw}
+            bounty_raw = baseline.get("bounty_ids", [])
+            if isinstance(bounty_raw, list):
+                bounty_ids = {str(bid) for bid in bounty_raw}
+            ledger = baseline.get("credit_ledger_ids", {})
+            if isinstance(ledger, dict):
+                for role_ledger in ledger.values():
+                    if isinstance(role_ledger, list):
+                        ledger_ids.update(str(lid) for lid in role_ledger)
+        return {
+            "review": review_ids,
+            "bounty": bounty_ids,
+            "ledger": ledger_ids,
+        }
+
+    @staticmethod
+    def _count_feedback_reviews(
+        feedback: JsonObject | None,
+        baseline_review_ids: set[str],
+    ) -> tuple[int, int]:
+        """Count feedback records and new course reviews."""
+        feedback_count = 0
+        course_review_count = 0
+        if feedback is not None:
+            feedback_count = 1
+            if feedback.get("course_review_id"):
+                review_id = str(feedback.get("course_review_id"))
+                if review_id not in baseline_review_ids:
+                    course_review_count = 1
+        return feedback_count, course_review_count
+
+    @staticmethod
+    def _count_new_bounties(
+        bounties: list[JsonObject], baseline_bounty_ids: set[str]
+    ) -> int:
+        """Count bounties not present in the baseline."""
+        bounty_count = 0
+        for bounty in bounties:
+            bounty_id = str(bounty.get("id") or "")
+            if bounty_id and bounty_id not in baseline_bounty_ids:
+                bounty_count += 1
+        return bounty_count
+
+    @staticmethod
+    def _count_new_ledger_payments(
+        ledger: list[JsonObject], baseline_ledger_ids: set[str]
+    ) -> int:
+        """Count ledger payment rows not present in the baseline."""
+        ledger_count = 0
+        for entry in ledger:
+            entry_id = str(entry.get("id") or "")
+            if entry_id and entry_id not in baseline_ledger_ids:
+                kind = str(opt_str(entry, "kind", "")).lower()
+                if any(
+                    word in kind
+                    for word in ("payment", "payout", "bounty", "reward")
+                ):
+                    ledger_count += 1
+        return ledger_count
+
+    @staticmethod
+    def _count_eval_projections(feedback: JsonObject | None) -> int:
+        """Count eval projections carried by a feedback record."""
+        eval_count = 0
+        if feedback is not None:
+            disposition = feedback.get("projection_disposition")
+            if disposition == "projected" and feedback.get("course_review_id"):
+                # A projected course review from a publisher receipt is
+                # the eval path — it should not exist.
+                eval_count = 1
+        return eval_count
 
 
 def _resolved_scope_root(raw: JsonValue) -> Path:

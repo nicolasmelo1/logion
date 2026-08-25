@@ -170,7 +170,7 @@ class ObservationFromLiveHookAssertion(Assertion):
 
 
 class InstrumentationProfileValidAssertion(Assertion):
-    """Assert the generated instrumentation profile validates and digests match.
+    """Assert the generated instrumentation profile validates.
 
     Reads ``.logion/instrumentation.json`` from each projection under
     the given ``projection_root``, validates it is well-formed JSON with
@@ -208,6 +208,43 @@ class InstrumentationProfileValidAssertion(Assertion):
                 message=f"projection root does not exist: {root}",
                 evidence={"projection_root": str(root)},
             )
+        profiles_found, mismatches = self._scan_profiles(root)
+        if profiles_found == 0:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=(
+                    "no instrumentation profiles found under projection root"
+                ),
+                evidence={"projection_root": str(root)},
+            )
+        if mismatches:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"profile validation failed: {mismatches}",
+                evidence={
+                    "projection_root": str(root),
+                    "profiles_found": profiles_found,
+                    "mismatches": mismatches,
+                },
+            )
+        return AssertionOutcome(
+            type=self.type,
+            status="passed",
+            message=f"{profiles_found} instrumentation profiles validate",
+            evidence={
+                "projection_root": str(root),
+                "profiles_found": profiles_found,
+                "evidence_dir": str(evidence_dir) if evidence_dir else None,
+            },
+        )
+
+    @staticmethod
+    def _scan_profiles(
+        root: Path,
+    ) -> tuple[int, list[str]]:
+        """Scan projection directories for instrumentation profiles."""
         profiles_found = 0
         mismatches: list[str] = []
         for target_dir in sorted(root.iterdir()):
@@ -235,34 +272,7 @@ class InstrumentationProfileValidAssertion(Assertion):
                     mismatches.append(
                         f"{profile_path.name}: schema is {schema!r}"
                     )
-        if profiles_found == 0:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="no instrumentation profiles found under projection root",
-                evidence={"projection_root": str(root)},
-            )
-        if mismatches:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"profile validation failed: {mismatches}",
-                evidence={
-                    "projection_root": str(root),
-                    "profiles_found": profiles_found,
-                    "mismatches": mismatches,
-                },
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="passed",
-            message=f"{profiles_found} instrumentation profiles validate",
-            evidence={
-                "projection_root": str(root),
-                "profiles_found": profiles_found,
-                "evidence_dir": str(evidence_dir) if evidence_dir else None,
-            },
-        )
+        return profiles_found, mismatches
 
 
 class NativeProjectionDigestMatchesAssertion(Assertion):
@@ -315,6 +325,35 @@ class NativeProjectionDigestMatchesAssertion(Assertion):
                 message=f"installed projection missing: {inst_root}",
                 evidence=params,
             )
+        mismatches, checked = self._compare_core_files(pub_root, inst_root)
+        if mismatches:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"portable core is not byte-identical: {mismatches}",
+                evidence={
+                    "publisher_projection": str(pub_root),
+                    "installed_projection": str(inst_root),
+                    "mismatches": mismatches,
+                    "files_checked": checked,
+                },
+            )
+        return AssertionOutcome(
+            type=self.type,
+            status="passed",
+            message=f"portable core is byte-identical across {checked} files",
+            evidence={
+                "publisher_projection": str(pub_root),
+                "installed_projection": str(inst_root),
+                "files_checked": checked,
+            },
+        )
+
+    @staticmethod
+    def _compare_core_files(
+        pub_root: Path, inst_root: Path
+    ) -> tuple[list[str], int]:
+        """Compare portable core files by SHA-256 digest."""
         import hashlib
 
         def _file_digest(path: Path) -> str | None:
@@ -346,28 +385,7 @@ class NativeProjectionDigestMatchesAssertion(Assertion):
                     f"{rel}: digest mismatch "
                     f"{pub_digest[:12]} != {inst_digest[:12]}"
                 )
-        if mismatches:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"portable core is not byte-identical: {mismatches}",
-                evidence={
-                    "publisher_projection": str(pub_root),
-                    "installed_projection": str(inst_root),
-                    "mismatches": mismatches,
-                    "files_checked": checked,
-                },
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="passed",
-            message=f"portable core is byte-identical across {checked} files",
-            evidence={
-                "publisher_projection": str(pub_root),
-                "installed_projection": str(inst_root),
-                "files_checked": checked,
-            },
-        )
+        return mismatches, checked
 
 
 class ConsentRecordedBeforeObservationAssertion(Assertion):
@@ -431,15 +449,15 @@ class ConsentRecordedBeforeObservationAssertion(Assertion):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message=f"consent decision is {decision!r}, not accepted/allowed",
+                message=(
+                    f"consent decision is {decision!r}, not accepted/allowed"
+                ),
                 evidence={"consent_path": str(consent), "decision": decision},
             )
         consent_mtime = consent.stat().st_mtime
         spool_entries: list[Path] = []
         if spool.is_dir():
-            spool_entries = sorted(
-                p for p in spool.rglob("*") if p.is_file()
-            )
+            spool_entries = sorted(p for p in spool.rglob("*") if p.is_file())
         violations: list[str] = []
         for entry in spool_entries:
             if entry.stat().st_mtime < consent_mtime:
@@ -500,8 +518,6 @@ class NoFullCliInstalledAssertion(Assertion):
                 message="missing workspace parameter",
                 evidence=params,
             )
-        import shutil
-
         try:
             ws_root = resolve_artifact_path(ctx.artifacts_dir, workspace)
         except ValueError as exc:
@@ -511,6 +527,30 @@ class NoFullCliInstalledAssertion(Assertion):
                 message=str(exc),
                 evidence=params,
             )
+        findings = self._scan_for_logion_cli(ws_root, home, ctx.artifacts_dir)
+        if findings:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=(
+                    f"logion CLI found in consumer environment: {findings}"
+                ),
+                evidence={"findings": findings},
+            )
+        return AssertionOutcome(
+            type=self.type,
+            status="passed",
+            message="no logion CLI found on PATH, in home, or workspace",
+            evidence={"workspace": str(ws_root)},
+        )
+
+    @staticmethod
+    def _scan_for_logion_cli(
+        ws_root: Path, home: str | None, artifacts_dir: Path
+    ) -> list[str]:
+        """Search PATH, workspace, and home for a logion binary."""
+        import shutil
+
         findings: list[str] = []
         # Check PATH
         path_logion = shutil.which("logion")
@@ -525,7 +565,7 @@ class NoFullCliInstalledAssertion(Assertion):
         # Check home directory
         if home:
             try:
-                home_root = resolve_artifact_path(ctx.artifacts_dir, home)
+                home_root = resolve_artifact_path(artifacts_dir, home)
             except ValueError:
                 home_root = Path(home)
             if home_root.is_dir():
@@ -533,19 +573,7 @@ class NoFullCliInstalledAssertion(Assertion):
                     candidate = home_root / name
                     if candidate.exists():
                         findings.append(f"home: {candidate}")
-        if findings:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"logion CLI found in consumer environment: {findings}",
-                evidence={"findings": findings},
-            )
-        return AssertionOutcome(
-            type=self.type,
-            status="passed",
-            message="no logion CLI found on PATH, in home, or workspace",
-            evidence={"workspace": str(ws_root)},
-        )
+        return findings
 
 
 class ResourceWorksWhenDisabledAssertion(Assertion):
@@ -672,7 +700,9 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message="capability.json declares unsupported but gives no reason",
+                message=(
+                    "capability.json declares unsupported but gives no reason"
+                ),
                 evidence={"capability_path": str(cap_file), "tier": tier},
             )
         # Spool must be absent or empty
@@ -683,9 +713,7 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
             except ValueError:
                 spool = Path(str(spool_dir))
             if spool.is_dir():
-                spool_entries = [
-                    p for p in spool.rglob("*") if p.is_file()
-                ]
+                spool_entries = [p for p in spool.rglob("*") if p.is_file()]
         if spool_entries:
             return AssertionOutcome(
                 type=self.type,
@@ -799,9 +827,7 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
             except ValueError:
                 spool = Path(str(spool_dir))
             if spool.is_dir():
-                spool_entries = [
-                    p for p in spool.rglob("*") if p.is_file()
-                ]
+                spool_entries = [p for p in spool.rglob("*") if p.is_file()]
         if spool_entries:
             return AssertionOutcome(
                 type=self.type,
@@ -834,7 +860,7 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
 
 
 class HermesHookProjectionObservedAssertion(Assertion):
-    """Assert the live Hermes plugin produced an activation event, no terminal outcome.
+    """Assert the live Hermes plugin produced an activation event.
 
     The hermes-plugin projection must produce a real activation receipt
     from a live Hermes session. No terminal outcome may be attached —
@@ -847,7 +873,6 @@ class HermesHookProjectionObservedAssertion(Assertion):
     async def evaluate(
         self, ctx: AssertionContext, params: dict
     ) -> AssertionOutcome:
-        projection_root = params.get("projection_root")
         activation_artifact = params.get("activation_artifact")
         resource_id = params.get("resource_id")
         version_id = params.get("version_id")
@@ -902,9 +927,13 @@ class HermesHookProjectionObservedAssertion(Assertion):
                 type=self.type,
                 status="failed",
                 message=(
-                    f"activation event is {event!r}, expected 'resource_invoked'"
+                    f"activation event is {event!r},"
+                    " expected 'resource_invoked'"
                 ),
-                evidence={"activation_artifact": str(activation), "event": event},
+                evidence={
+                    "activation_artifact": str(activation),
+                    "event": event,
+                },
             )
         # Must name the exact resource version
         observed_rid = payload.get("resource_id")
