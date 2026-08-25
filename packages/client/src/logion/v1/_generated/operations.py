@@ -1693,22 +1693,6 @@ def submit_feedback(
     )
 
 
-def submit_usage_receipt(
-    http: HttpClient,
-    *,
-    resource_id: str | UUID,
-    version_id: str | UUID,
-    body: SubmitUsageReceiptRequest,
-) -> SubmitUsageReceiptResponse:
-    """Call the submit_usage_receipt API operation."""
-    return http.request_model(
-        "POST",
-        f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
-        SubmitUsageReceiptResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
-    )
-
-
 def submit_publisher_receipt(
     http: HttpClient,
     *,
@@ -1721,6 +1705,22 @@ def submit_publisher_receipt(
         "POST",
         f"/v1/resources/{resource_id}/versions/{version_id}/publisher-receipts",
         SubmitPublisherReceiptResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def submit_usage_receipt(
+    http: HttpClient,
+    *,
+    resource_id: str | UUID,
+    version_id: str | UUID,
+    body: SubmitUsageReceiptRequest,
+) -> SubmitUsageReceiptResponse:
+    """Call the submit_usage_receipt API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
+        SubmitUsageReceiptResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
