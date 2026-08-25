@@ -263,6 +263,44 @@ def test_shadowed_global_logion_is_removed_from_path(tmp_path) -> None:
     assert str(stale_dir) not in parts
 
 
+def test_no_cli_actor_loses_every_logion_dir_on_path(tmp_path) -> None:
+    """`logion_cli: false` has to be enforced, not requested.
+
+    A scenario whose premise is an actor that never installed Logion proves
+    nothing if the rig still leaves a CLI on that agent's PATH.
+    """
+    from agent_proving_ground.runner import _strip_all_logion_dirs
+
+    role_bin = tmp_path / "role" / "pipx-bin"
+    role_bin.mkdir(parents=True)
+    cli = role_bin / "logion"
+    cli.write_text("#!/bin/sh\nexit 0\n")
+    cli.chmod(0o755)
+
+    shim_bin = tmp_path / "agent" / "bin"
+    shim_bin.mkdir(parents=True)
+    shim = shim_bin / "logion"
+    shim.write_text("#!/bin/sh\nexit 0\n")
+    shim.chmod(0o755)
+
+    untouched = tmp_path / "other"
+    untouched.mkdir()
+    path = ":".join((str(shim_bin), str(role_bin), str(untouched)))
+
+    parts = _strip_all_logion_dirs(path).split(":")
+    assert str(shim_bin) not in parts
+    assert str(role_bin) not in parts
+    assert str(untouched) in parts
+
+
+def test_agent_spec_provisions_the_cli_unless_told_otherwise() -> None:
+    from agent_proving_ground.scenarios.schema import AgentSpec
+
+    default = AgentSpec(id="a", role="r")
+    assert default.logion_cli is True
+    assert AgentSpec(id="b", role="r", logion_cli=False).logion_cli is False
+
+
 def test_codex_hidden_dirs_are_precreated_for_workspace_runs(tmp_path) -> None:
     workspace = tmp_path / "agent"
     workspace.mkdir()

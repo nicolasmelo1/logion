@@ -26,6 +26,12 @@ class AgentSpec(BaseModel):
     system_prompt: str | None = None
     timeout_seconds: int = Field(default=900, ge=1)
     command: list[str] | None = None
+    #: Whether the rig puts the Logion CLI on this agent's PATH. The rig
+    #: provisions one for every agent with a devrig role, so a scenario whose
+    #: premise is "this actor never installed Logion" cannot state that in
+    #: prose alone — the agent can still reach the CLI and the run proves
+    #: something other than what it claims.
+    logion_cli: bool = True
 
     @field_validator("id", "workspace")
     @classmethod

@@ -303,6 +303,25 @@ def _cli_cannot_observe(cli: str | None) -> str | None:
     )
 
 
+def _strip_all_logion_dirs(path_value: str) -> str:
+    """Drop every PATH entry that exposes a ``logion`` binary.
+
+    An agent declared ``logion_cli: false`` must not be able to reach the CLI
+    at all. Asking it not to in the goal is a different guarantee: the agent
+    can comply with the prose and still resolve a CLI the rig left there.
+    """
+    if not path_value:
+        return path_value
+    kept: list[str] = []
+    for entry in path_value.split(os.pathsep):
+        if not entry:
+            continue
+        if (Path(entry) / "logion").exists():
+            continue
+        kept.append(entry)
+    return os.pathsep.join(kept)
+
+
 def _strip_shadowed_logion_dirs(
     path_value: str, preferred_cli: str | None
 ) -> str:
@@ -566,6 +585,10 @@ class ScenarioRunner:
             # travels in LOGION_API_KEY, not in this directory, so a fresh
             # one costs nothing and keeps the two agents genuinely separate.
             env["LOGION_HOME"] = str(logion_home)
+            if not agent_spec.logion_cli:
+                env["PATH"] = _strip_all_logion_dirs(
+                    env.get("PATH", os.environ.get("PATH", ""))
+                )
             installed_cli = shutil.which("logion", path=env.get("PATH"))
             # A local hook that has to run the CLI needs the same artifact
             # the agent has, and it cannot find it: the role-tree PATH lives
