@@ -10572,6 +10572,298 @@
         ],
         "title": "SourceSnapshotStatus",
         "description": "Public-safe source snapshot status (no secrets)."
+      },
+      "ExploreFacetBucket": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "ExploreFacetBucket",
+        "description": "A single bucket in a facet result."
+      },
+      "ExploreFacetResult": {
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/ExploreFacetBucket"
+            },
+            "type": "array",
+            "title": "Buckets"
+          },
+          "otherCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercount"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "ExploreFacetResult",
+        "description": "Result for a single facet field."
+      },
+      "ExploreRequestBody": {
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "resultType": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Resulttype"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resultType"
+        ],
+        "title": "ExploreRequestBody",
+        "description": "Flexible explore request body.\n\nThe ARD spec requires ``resultType`` with a ``facets`` array.  We\naccept the raw dict and validate structurally to preserve unknown\nfields per the spec's extensibility rules."
+      },
+      "ExploreResponse": {
+        "properties": {
+          "resultType": {
+            "type": "string",
+            "title": "Resulttype",
+            "default": "facets"
+          },
+          "facets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ExploreFacetResult"
+            },
+            "type": "object",
+            "title": "Facets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExploreResponse",
+        "description": "POST /v1/ard/explore response body."
+      },
+      "ListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ListResponseItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          }
+        },
+        "type": "object",
+        "title": "ListResponse",
+        "description": "GET /v1/ard/agents response body."
+      },
+      "ListResponseItem": {
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier",
+          "type"
+        ],
+        "title": "ListResponseItem",
+        "description": "A single item in the list response \u2014 a catalog entry."
+      },
+      "SearchRequest": {
+        "properties": {
+          "query": {
+            "$ref": "#/components/schemas/SearchQueryModel"
+          },
+          "federation": {
+            "type": "string",
+            "title": "Federation",
+            "default": "auto"
+          },
+          "pageSize": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Pagesize",
+            "default": 10
+          },
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest",
+        "description": "POST /v1/ard/search request body."
+      },
+      "SearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResultItem"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "referrals": {
+            "items": {
+              "$ref": "#/components/schemas/RegistryReferral"
+            },
+            "type": "array",
+            "title": "Referrals"
+          },
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SearchResponse",
+        "description": "POST /v1/ard/search response body."
       }
     }
   },

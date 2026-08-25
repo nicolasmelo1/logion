@@ -13,6 +13,7 @@ from logion.v1._types.generated.v1 import (
     AcceptPlatformBountySubmissionResponse,
     AddAgentToUserRequest,
     AddAgentToUserResponse,
+    AICatalogDocument,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
     AuthorizeRequest,
@@ -54,6 +55,8 @@ from logion.v1._types.generated.v1 import (
     DevicePollRequest,
     DismissReportRequest,
     DismissReportResponse,
+    ExploreRequestBody,
+    ExploreResponse,
     FundBountyResponse,
     FundPlatformBountyResponse,
     GetAcquisitionPlanResponse,
@@ -99,6 +102,7 @@ from logion.v1._types.generated.v1 import (
     ListResourceFeedbackResponse,
     ListResourcesResponse,
     ListResourceVersionsResponse,
+    ListResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
     OpenIndexingRunResponse,
@@ -123,11 +127,14 @@ from logion.v1._types.generated.v1 import (
     RotateAgentApiKeyRequest,
     RotateAgentApiKeyResponse,
     SearchListingsResponse,
+    SearchRequest,
+    SearchResponse,
     SellerReadinessResponse,
     SetCourseSourceLinkRequest,
     SetCourseSourceLinkResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
+    SourceSnapshotListResponse,
     SubmitFeedbackRequest,
     SubmitFeedbackResponse,
     SubmitUsageReceiptRequest,
@@ -144,6 +151,17 @@ from logion.v1._types.generated.v1 import (
     UpsertCourseReviewResponse,
     WithdrawBountySubmissionResponse,
 )
+
+
+def get_ai_catalog(
+    http: HttpClient,
+) -> AICatalogDocument:
+    """Call the get_ai_catalog API operation."""
+    return http.request_model(
+        "GET",
+        "/.well-known/ai-catalog.json",
+        AICatalogDocument,
+    )
 
 
 def health_health_get(
@@ -547,6 +565,80 @@ def suspend_user(
         "PATCH",
         f"/v1/admin/users/{user_id}/suspension",
         SuspendUserResponse,
+    )
+
+
+def ard_list_agents(
+    http: HttpClient,
+    *,
+    filter_: str | None = None,
+    orderBy: str | None = None,  # noqa: N803  # spec wire name
+    pageSize: int | None = None,  # noqa: N803  # spec wire name
+    pageToken: str | None = None,  # noqa: N803  # spec wire name
+) -> ListResponse:
+    """Call the ard_list_agents API operation."""
+    params: dict[str, QueryValue] = {}
+    if filter_ is not None:
+        params["filter"] = filter_
+    if orderBy is not None:
+        params["orderBy"] = orderBy
+    if pageSize is not None:
+        params["pageSize"] = pageSize
+    if pageToken is not None:
+        params["pageToken"] = pageToken
+    return http.request_model(
+        "GET",
+        "/v1/ard/agents",
+        ListResponse,
+        params=params,
+    )
+
+
+def ard_explore(
+    http: HttpClient,
+    *,
+    body: ExploreRequestBody,
+) -> ExploreResponse:
+    """Call the ard_explore API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/explore",
+        ExploreResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def ard_search(
+    http: HttpClient,
+    *,
+    body: SearchRequest,
+) -> SearchResponse:
+    """Call the ard_search API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/search",
+        SearchResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def ard_source_snapshot_status(
+    http: HttpClient,
+    *,
+    source_type: str | None = None,
+    limit: int | None = None,
+) -> SourceSnapshotListResponse:
+    """Call the ard_source_snapshot_status API operation."""
+    params: dict[str, QueryValue] = {}
+    if source_type is not None:
+        params["source_type"] = source_type
+    if limit is not None:
+        params["limit"] = limit
+    return http.request_model(
+        "GET",
+        "/v1/ard/sources/status",
+        SourceSnapshotListResponse,
+        params=params,
     )
 
 
