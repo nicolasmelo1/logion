@@ -25,7 +25,10 @@ from . import (
     SearchResult,
 )
 
-#: Known keys on a search result entry.
+#: Known keys on a search result entry — only the fields the codec
+#: explicitly decodes into typed attributes.  Fields like description,
+#: tags, version, updatedAt, metadata, and trustManifest are preserved
+#: as extra so namespaced metadata survives the round-trip.
 _RESULT_KNOWN_KEYS = frozenset({
     "identifier",
     "type",
@@ -35,12 +38,6 @@ _RESULT_KNOWN_KEYS = frozenset({
     "capabilities",
     "score",
     "source",
-    "description",
-    "tags",
-    "version",
-    "updatedAt",
-    "metadata",
-    "trustManifest",
     "representativeQueries",
 })
 

@@ -22,43 +22,6 @@ from agent_proving_ground.api_adapters._queries import (
 )
 from agent_proving_ground.api_adapters.base import ApiAdapter, World
 
-# Native feedback observed-effect queries are implemented by LogionApiQueries
-# and explicitly enumerated here so local-devrig support cannot silently
-# regress.
-_NATIVE_FEEDBACK_REAL_QUERIES = frozenset({
-    "native_use_observed",
-    "feedback_pending",
-    "usage_pending_empty",
-    "resource_feedback_exists",
-    "feedback_linked_to_acquisition",
-    "course_review_projection_exists",
-    "raw_observation_not_uploaded",
-    "feedback_submission_idempotent",
-    "remote_mcp_reconciled",
-    "vendor_install_unchanged",
-    "no_mcp_proxy_installed",
-    "remote_mcp_use_attributed",
-    "original_publisher_preserved",
-    "remote_mcp_feedback_linked",
-    "remote_mcp_private_payload_not_recorded",
-    "no_500s",
-    # AI Catalog and ARD discovery queries
-    "ai_catalog_document_valid",
-    "ai_catalog_conformance_level_valid",
-    "ard_search_response_valid",
-    "ard_connectors_snapshot_pinned",
-    "agent_finders_queried",
-    "agent_finder_result_provenance_visible",
-    "catalog_crawl_completed",
-    "ard_resource_ingested",
-    "ard_record_rejected",
-    "self_crawl_no_duplicate",
-    "resource_source_provenance_visible",
-    "search_filters_by_type_and_source",
-    "discovery_succeeds_without_aktp",
-    "ingested_model_requires_no_asm_schema",
-})
-
 
 class LocalDevrigAdapter(ApiAdapter):
     """Attach-only adapter for the existing public ``logion/`` dev rig.

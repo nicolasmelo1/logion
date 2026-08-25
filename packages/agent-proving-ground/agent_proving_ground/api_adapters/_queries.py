@@ -173,6 +173,24 @@ class LogionApiQueries:
         except Exception as exc:
             return 0, {"error": str(exc)}
 
+    async def _post(
+        self,
+        path: str,
+        role: str | None,
+        body: JsonObject,
+    ) -> tuple[int, JsonValue]:
+        key = self._keys.api_key(role)
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        try:
+            return await http_request_json(
+                "POST",
+                f"{self._base_url}{path}",
+                headers=headers,
+                body=body,
+            )
+        except Exception as exc:
+            return 0, {"error": str(exc)}
+
     async def _paged_get(
         self,
         path: str,
@@ -2185,6 +2203,498 @@ class LogionApiQueries:
         return {
             "clean": result.get("clean") is True and not leaked,
             "checked_fields": elements(result, "checked_fields"),
+        }
+
+    # ------------------------------------------------------------------
+    # AI Catalog & ARD query handlers (phase 15.12)
+    # ------------------------------------------------------------------
+
+    async def _q_ai_catalog_document_valid(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Validate the well-known AI catalog document structure."""
+        status, data = await self._get("/.well-known/ai-catalog.json", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ai-catalog document not available")
+        spec_version = data.get("specVersion")
+        host = data.get("host")
+        entries = data.get("entries")
+        if not isinstance(spec_version, str) or not spec_version:
+            return {
+                "found": False,
+                "evidence": {"reason": "missing specVersion"},
+            }
+        if not isinstance(host, dict):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing host object"},
+            }
+        if not isinstance(entries, list):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing entries array"},
+            }
+        conformance_level = data.get("conformanceLevel") or data.get(
+            "conformance_level"
+        )
+        return {
+            "found": True,
+            "evidence": {
+                "source": "api",
+                "spec_version": spec_version,
+                "entry_count": len(entries),
+                "conformance_level": conformance_level,
+            },
+        }
+
+    async def _q_ai_catalog_conformance_level_valid(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check specVersion is 1.0 and host has a displayName."""
+        status, data = await self._get("/.well-known/ai-catalog.json", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ai-catalog document not available")
+        spec_version = data.get("specVersion")
+        host = data.get("host")
+        if spec_version != "1.0":
+            return {
+                "found": False,
+                "evidence": {
+                    "reason": (
+                        f"specVersion is {spec_version!r}, expected '1.0'"
+                    )
+                },
+            }
+        if not isinstance(host, dict) or not host.get("displayName"):
+            return {
+                "found": False,
+                "evidence": {"reason": "host missing displayName"},
+            }
+        conformance_level = data.get("conformanceLevel") or data.get(
+            "conformance_level"
+        )
+        return {
+            "found": True,
+            "evidence": {
+                "source": "api",
+                "spec_version": spec_version,
+                "host_display_name": host.get("displayName"),
+                "conformance_level": conformance_level,
+            },
+        }
+
+    async def _q_ard_search_response_valid(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Validate ARD search endpoint returns results and registry."""
+        status, data = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {"query": {"query": "test"}, "pageSize": 1},
+        )
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD search endpoint not available")
+        results = data.get("results")
+        registry = data.get("registry")
+        if not isinstance(results, list):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing results array"},
+            }
+        if not isinstance(registry, dict):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing registry object"},
+            }
+        has_scores = any(
+            isinstance(row, dict) and "score" in row for row in results
+        )
+        registry_origin = (
+            registry.get("origin") if isinstance(registry, dict) else None
+        )
+        return {
+            "found": True,
+            "evidence": {
+                "source": "api",
+                "result_count": len(results),
+                "has_scores": has_scores,
+                "registry_origin": registry_origin,
+            },
+        }
+
+    async def _q_ard_connectors_snapshot_pinned(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check ARD connectors snapshot has commit_sha and file_digest."""
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD sources status endpoint not available")
+        commit_sha = data.get("commit_sha") or data.get("commitSha")
+        file_digest = data.get("file_digest") or data.get("fileDigest")
+        if not commit_sha or not file_digest:
+            return {
+                "found": False,
+                "evidence": {"reason": "missing commit_sha or file_digest"},
+            }
+        sources = data.get("sources") or data.get("finders") or []
+        finder_count = (
+            len(sources)
+            if isinstance(sources, list)
+            else _as_count(data.get("finder_count"))
+        )
+        return {
+            "found": True,
+            "evidence": {
+                "source": "api",
+                "commit_sha": commit_sha,
+                "file_digest": file_digest,
+                "finder_count": finder_count if finder_count >= 0 else 0,
+            },
+        }
+
+    async def _q_agent_finders_queried(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check that agent finders were queried (finder_count > 0)."""
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD sources status endpoint not available")
+        finder_count = _as_count(
+            data.get("finder_count") or data.get("finderCount")
+        )
+        if finder_count < 0:
+            sources = data.get("sources") or data.get("finders")
+            finder_count = len(sources) if isinstance(sources, list) else 0
+        return {
+            "found": finder_count > 0,
+            "evidence": {
+                "source": "api",
+                "finder_count": finder_count,
+            },
+        }
+
+    async def _q_agent_finder_result_provenance_visible(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check each source has finder_id and endpoint."""
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD sources status endpoint not available")
+        sources = data.get("sources") or data.get("finders")
+        if not isinstance(sources, list) or not sources:
+            return {
+                "found": False,
+                "evidence": {"reason": "no sources in status response"},
+            }
+        missing: list[str] = []
+        for idx, source in enumerate(sources):
+            if not isinstance(source, dict):
+                missing.append(f"source[{idx}] is not an object")
+                continue
+            finder_id = source.get("finder_id") or source.get("finderId")
+            endpoint = source.get("endpoint")
+            if not finder_id:
+                missing.append(f"source[{idx}] missing finder_id")
+            if not endpoint:
+                missing.append(f"source[{idx}] missing endpoint")
+        return {
+            "found": not missing,
+            "evidence": {
+                "source": "api",
+                "source_count": len(sources),
+                "missing": missing,
+            },
+        }
+
+    async def _q_catalog_crawl_completed(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check crawl status indicates completion with available counters."""
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD sources status endpoint not available")
+        crawl_status = data.get("status")
+        if not isinstance(crawl_status, str) or not crawl_status:
+            return {
+                "found": False,
+                "evidence": {"reason": "missing status field"},
+            }
+        completed = crawl_status in {
+            "completed",
+            "done",
+            "finished",
+            "success",
+        }
+        return {
+            "found": completed,
+            "evidence": {
+                "source": "api",
+                "status": crawl_status,
+                "seen": _as_count(data.get("seen")),
+                "created": _as_count(data.get("created")),
+                "matched": _as_count(data.get("matched")),
+                "new_versions": _as_count(
+                    data.get("new_versions") or data.get("newVersions")
+                ),
+                "quarantined": _as_count(
+                    data.get("quarantined") or data.get("quarantined_count")
+                ),
+            },
+        }
+
+    async def _q_ard_resource_ingested(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check that a resource with the given resource_id exists."""
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
+            return _unsupported("resource endpoint not available")
+        found_item: JsonObject | None = None
+        for item in items:
+            if (
+                item.get("id") == resource_id
+                or item.get("resource_id") == resource_id
+            ):
+                found_item = item
+                break
+        if found_item is None:
+            return {
+                "found": False,
+                "evidence": {"source": "api", "resource_id": resource_id},
+            }
+        canonical_uri = found_item.get("canonical_uri")
+        return {
+            "found": True,
+            "evidence": {
+                "source": "api",
+                "resource_id": resource_id,
+                "canonical_uri": canonical_uri,
+            },
+        }
+
+    async def _q_ard_record_rejected(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check for quarantined/rejected records in ARD sources status."""
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD sources status endpoint not available")
+        quarantined_count = _as_count(
+            data.get("quarantined_count")
+            or data.get("quarantinedCount")
+            or data.get("quarantined")
+        )
+        rejected = data.get("rejected")
+        if isinstance(rejected, list) and rejected:
+            return {
+                "found": True,
+                "evidence": {
+                    "source": "api",
+                    "quarantined_count": quarantined_count
+                    if quarantined_count >= 0
+                    else len(rejected),
+                    "rejected": rejected,
+                    "reason": (
+                        rejected[0].get("reason")
+                        if isinstance(rejected[0], dict)
+                        else None
+                    ),
+                    "error_code": (
+                        rejected[0].get("error_code")
+                        if isinstance(rejected[0], dict)
+                        else None
+                    ),
+                },
+            }
+        return {
+            "found": quarantined_count > 0,
+            "evidence": {
+                "source": "api",
+                "quarantined_count": quarantined_count,
+                "reason": data.get("rejection_reason") or data.get("reason"),
+                "error_code": data.get("error_code") or data.get("errorCode"),
+            },
+        }
+
+    async def _q_self_crawl_no_duplicate(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check no duplicate (resource_type, canonical_uri) pairs."""
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
+            return _unsupported("resource endpoint not available")
+        seen: set[tuple[str, str]] = set()
+        duplicates: list[tuple[str, str]] = []
+        for item in items:
+            rtype = item.get("resource_type")
+            curi = item.get("canonical_uri")
+            if not isinstance(rtype, str) or not rtype:
+                continue
+            if not isinstance(curi, str) or not curi:
+                continue
+            key = (rtype, curi)
+            if key in seen:
+                duplicates.append(key)
+            else:
+                seen.add(key)
+        return {
+            "found": not duplicates,
+            "evidence": {
+                "source": "api",
+                "crawl_count": len(items),
+                "resource_count": len(seen),
+                "duplicates": [list(d) for d in duplicates],
+            },
+        }
+
+    async def _q_resource_source_provenance_visible(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check resource detail has source_type, source_uri, upstream_repo."""
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, data = await self._get(f"/v1/resources/{resource_id}", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("resource detail endpoint not available")
+        source_type = data.get("source_type")
+        source_uri = data.get("source_uri")
+        upstream_repo = data.get("upstream_repo")
+        return {
+            "found": bool(source_type and source_uri and upstream_repo),
+            "evidence": {
+                "source": "api",
+                "resource_id": resource_id,
+                "source_type": source_type,
+                "source_uri": source_uri,
+                "upstream_repo": upstream_repo,
+            },
+        }
+
+    async def _q_search_filters_by_type_and_source(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check ARD search filters by resourceType and source."""
+        type_filter = query.get("resourceType") or query.get("resource_type")
+        source_filter = query.get("source")
+        if not type_filter or not source_filter:
+            return _unsupported(
+                "resourceType and source query params are required"
+            )
+        status, data = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {
+                "query": {"query": "*"},
+                "filters": {
+                    "resourceType": type_filter,
+                    "source": source_filter,
+                },
+                "pageSize": 50,
+            },
+        )
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD search endpoint not available")
+        results = data.get("results")
+        if not isinstance(results, list):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing results array"},
+            }
+        all_match = all(
+            isinstance(row, dict) and row.get("resource_type") == type_filter
+            for row in results
+        )
+        return {
+            "found": all_match,
+            "evidence": {
+                "source": "api",
+                "type_filter": type_filter,
+                "source_filter": source_filter,
+                "result_count": len(results),
+                "all_match_type": all_match,
+            },
+        }
+
+    async def _q_discovery_succeeds_without_aktp(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check ARD search returns results without AKTP endpoint."""
+        status, data = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {"query": {"query": "test"}, "pageSize": 5},
+        )
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD search endpoint not available")
+        results = data.get("results")
+        if not isinstance(results, list):
+            return {
+                "found": False,
+                "evidence": {"reason": "missing results array"},
+            }
+        aktp_required = bool(data.get("aktp_required"))
+        return {
+            "found": len(results) > 0 and not aktp_required,
+            "evidence": {
+                "source": "api",
+                "aktp_required": aktp_required,
+                "ard_endpoint": "/v1/ard/search",
+                "result_count": len(results),
+            },
+        }
+
+    async def _q_ingested_model_requires_no_asm_schema(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check ingested model resource has no asm_schema or asm_selector."""
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, data = await self._get(f"/v1/resources/{resource_id}", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("resource detail endpoint not available")
+        has_asm_schema = "asm_schema" in data or "asmSchema" in data
+        has_asm_selector = "asm_selector" in data or "asmSelector" in data
+        return {
+            "found": not has_asm_schema and not has_asm_selector,
+            "evidence": {
+                "source": "api",
+                "resource_id": resource_id,
+                "has_asm_schema": has_asm_schema,
+                "has_asm_selector": has_asm_selector,
+            },
         }
 
 

@@ -37,7 +37,6 @@ _ENTRY_KNOWN_KEYS = frozenset({
     "tags",
     "version",
     "updatedAt",
-    "metadata",
     "publisher",
     "trustManifest",
     # ARD extension fields (§4.2) — recognized but not part of the
@@ -47,7 +46,7 @@ _ENTRY_KNOWN_KEYS = frozenset({
 })
 
 #: Fields the codec knows about on the top-level catalog.
-_CATALOG_KNOWN_KEYS = frozenset({"specVersion", "entries", "host", "metadata"})
+_CATALOG_KNOWN_KEYS = frozenset({"specVersion", "entries", "host"})
 
 
 class AICatalogVersionUnsupported(ValueError):
