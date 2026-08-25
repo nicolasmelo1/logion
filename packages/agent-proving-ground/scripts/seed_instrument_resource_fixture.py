@@ -52,9 +52,7 @@ def main() -> int:
         env={**base_env, "PATH": __import__("os").environ.get("PATH", "")},
     )
     if result.returncode != 0:
-        sys.stderr.write(
-            f"resource create failed: {result.stderr}\n"
-        )
+        sys.stderr.write(f"resource create failed: {result.stderr}\n")
         return result.returncode
     (evidence / "resource-create.json").write_text(
         result.stdout, encoding="utf-8"
@@ -81,9 +79,7 @@ def main() -> int:
         env={**base_env, "PATH": __import__("os").environ.get("PATH", "")},
     )
     if result.returncode != 0:
-        sys.stderr.write(
-            f"version create failed: {result.stderr}\n"
-        )
+        sys.stderr.write(f"version create failed: {result.stderr}\n")
         return result.returncode
     (evidence / "version-create.json").write_text(
         result.stdout, encoding="utf-8"

@@ -668,6 +668,5 @@ class PublisherReceiptNeverRatesOrFundsAssertion(_ApiQueryAssertion):
         "bounty, or ledger row"
     )
     fail_message = (
-        "publisher receipt created a rating, review, eval, "
-        "bounty, or payment"
+        "publisher receipt created a rating, review, eval, bounty, or payment"
     )
