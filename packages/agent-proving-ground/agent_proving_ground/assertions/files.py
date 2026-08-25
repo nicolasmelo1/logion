@@ -399,6 +399,87 @@ class ConsentRecordedBeforeObservationAssertion(Assertion):
 
     type = "files.consent_recorded_before_observation"
 
+    def _load_consent_payload(
+        self, consent: Path
+    ) -> tuple[AssertionOutcome | None, dict | None, str | None]:
+        """Read and validate the consent JSON record.
+
+        Returns ``(outcome, payload, decision)``.  On success *outcome*
+        is ``None``; on failure it carries the failed ``AssertionOutcome``
+        and the remaining values are ``None``.
+        """
+        if not consent.is_file():
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=f"consent record missing: {consent}",
+                    evidence={"consent_path": str(consent)},
+                ),
+                None,
+                None,
+            )
+        try:
+            payload = json.loads(consent.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=f"invalid consent record: {exc}",
+                    evidence={"consent_path": str(consent)},
+                ),
+                None,
+                None,
+            )
+        if not isinstance(payload, dict):
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message="consent record is not a JSON object",
+                    evidence={"consent_path": str(consent)},
+                ),
+                None,
+                None,
+            )
+        decision = payload.get("decision") or payload.get("status")
+        if decision not in ("accepted", "allowed", "granted"):
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=(
+                        f"consent decision is {decision!r}, "
+                        "not accepted/allowed"
+                    ),
+                    evidence={
+                        "consent_path": str(consent),
+                        "decision": decision,
+                    },
+                ),
+                None,
+                None,
+            )
+        return None, payload, decision
+
+    @staticmethod
+    def _find_spool_violations(
+        spool: Path, consent_mtime: float
+    ) -> tuple[list[str], list[Path]]:
+        """Return ``(violations, spool_entries)`` for *spool*."""
+        spool_entries: list[Path] = []
+        if spool.is_dir():
+            spool_entries = sorted(p for p in spool.rglob("*") if p.is_file())
+        violations: list[str] = []
+        for entry in spool_entries:
+            if entry.stat().st_mtime < consent_mtime:
+                violations.append(
+                    f"{entry.name}: mtime precedes consent "
+                    f"({entry.stat().st_mtime} < {consent_mtime})"
+                )
+        return violations, spool_entries
+
     async def evaluate(
         self, ctx: AssertionContext, params: dict
     ) -> AssertionOutcome:
@@ -421,50 +502,13 @@ class ConsentRecordedBeforeObservationAssertion(Assertion):
                 message=str(exc),
                 evidence=params,
             )
-        if not consent.is_file():
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"consent record missing: {consent}",
-                evidence={"consent_path": str(consent)},
-            )
-        try:
-            payload = json.loads(consent.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"invalid consent record: {exc}",
-                evidence={"consent_path": str(consent)},
-            )
-        if not isinstance(payload, dict):
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="consent record is not a JSON object",
-                evidence={"consent_path": str(consent)},
-            )
-        decision = payload.get("decision") or payload.get("status")
-        if decision not in ("accepted", "allowed", "granted"):
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=(
-                    f"consent decision is {decision!r}, not accepted/allowed"
-                ),
-                evidence={"consent_path": str(consent), "decision": decision},
-            )
+        outcome, _payload, decision = self._load_consent_payload(consent)
+        if outcome is not None:
+            return outcome
         consent_mtime = consent.stat().st_mtime
-        spool_entries: list[Path] = []
-        if spool.is_dir():
-            spool_entries = sorted(p for p in spool.rglob("*") if p.is_file())
-        violations: list[str] = []
-        for entry in spool_entries:
-            if entry.stat().st_mtime < consent_mtime:
-                violations.append(
-                    f"{entry.name}: mtime precedes consent "
-                    f"({entry.stat().st_mtime} < {consent_mtime})"
-                )
+        violations, spool_entries = self._find_spool_violations(
+            spool, consent_mtime
+        )
         if violations:
             return AssertionOutcome(
                 type=self.type,
@@ -641,79 +685,141 @@ class PublisherObservationUnsupportedDeclaredAssertion(Assertion):
 
     type = "files.publisher_observation_unsupported_declared"
 
-    async def evaluate(
+    def _load_capability(
         self, ctx: AssertionContext, params: dict
-    ) -> AssertionOutcome:
+    ) -> tuple[AssertionOutcome | None, Path | None, dict | None]:
+        """Resolve and validate ``capability.json``.
+
+        Returns ``(outcome, cap_file, payload)``.  On success *outcome*
+        is ``None``; on failure it carries the failed ``AssertionOutcome``.
+        """
         capability_path = params.get("capability_path")
-        spool_dir = params.get("spool_dir")
         if not capability_path:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="missing capability_path parameter",
-                evidence=params,
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message="missing capability_path parameter",
+                    evidence=params,
+                ),
+                None,
+                None,
             )
         try:
             cap_file = resolve_artifact_path(
                 ctx.artifacts_dir, capability_path
             )
         except ValueError as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=str(exc),
-                evidence={"capability_path": str(capability_path)},
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=str(exc),
+                    evidence={"capability_path": str(capability_path)},
+                ),
+                None,
+                None,
             )
         if not cap_file.is_file():
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"capability.json missing: {cap_file}",
-                evidence={"capability_path": str(cap_file)},
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=f"capability.json missing: {cap_file}",
+                    evidence={"capability_path": str(cap_file)},
+                ),
+                None,
+                None,
             )
         try:
             payload = json.loads(cap_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"invalid capability.json: {exc}",
-                evidence={"capability_path": str(cap_file)},
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=f"invalid capability.json: {exc}",
+                    evidence={"capability_path": str(cap_file)},
+                ),
+                None,
+                None,
             )
         if not isinstance(payload, dict):
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="capability.json is not a JSON object",
-                evidence={"capability_path": str(cap_file)},
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message="capability.json is not a JSON object",
+                    evidence={"capability_path": str(cap_file)},
+                ),
+                None,
+                None,
             )
+        return None, cap_file, payload
+
+    def _check_unsupported_tier(
+        self, cap_file: Path, payload: dict
+    ) -> tuple[AssertionOutcome | None, str | None, str | None]:
+        """Validate unsupported tier with reason."""
         tier = payload.get("tier")
         reason = payload.get("reason")
         if tier != "unsupported":
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"capability tier is {tier!r}, not 'unsupported'",
-                evidence={"capability_path": str(cap_file), "tier": tier},
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=f"capability tier is {tier!r}, not 'unsupported'",
+                    evidence={"capability_path": str(cap_file), "tier": tier},
+                ),
+                tier,
+                reason,
             )
         if not reason:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=(
-                    "capability.json declares unsupported but gives no reason"
+            return (
+                AssertionOutcome(
+                    type=self.type,
+                    status="failed",
+                    message=(
+                        "capability.json declares unsupported "
+                        "but gives no reason"
+                    ),
+                    evidence={"capability_path": str(cap_file), "tier": tier},
                 ),
-                evidence={"capability_path": str(cap_file), "tier": tier},
+                tier,
+                reason,
             )
+        return None, tier, reason
+
+    @staticmethod
+    def _collect_spool_entries(
+        ctx: AssertionContext, spool_dir: str | None
+    ) -> list[Path]:
+        """Return the list of files inside *spool_dir*, or ``[]``."""
+        if not spool_dir:
+            return []
+        try:
+            spool = resolve_artifact_path(ctx.artifacts_dir, spool_dir)
+        except ValueError:
+            spool = Path(str(spool_dir))
+        if spool.is_dir():
+            return [p for p in spool.rglob("*") if p.is_file()]
+        return []
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        outcome, cap_file, payload = self._load_capability(ctx, params)
+        if outcome is not None:
+            return outcome
+        tier_outcome, tier, reason = self._check_unsupported_tier(
+            cap_file, payload
+        )
+        if tier_outcome is not None:
+            return tier_outcome
         # Spool must be absent or empty
-        spool_entries: list[Path] = []
-        if spool_dir:
-            try:
-                spool = resolve_artifact_path(ctx.artifacts_dir, spool_dir)
-            except ValueError:
-                spool = Path(str(spool_dir))
-            if spool.is_dir():
-                spool_entries = [p for p in spool.rglob("*") if p.is_file()]
+        spool_entries = self._collect_spool_entries(
+            ctx, params.get("spool_dir")
+        )
         if spool_entries:
             return AssertionOutcome(
                 type=self.type,

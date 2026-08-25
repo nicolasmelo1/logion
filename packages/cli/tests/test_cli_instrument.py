@@ -244,6 +244,32 @@ class TestProfileBuilding:
 
 
 class TestProjection:
+    @staticmethod
+    def _assert_projection_metadata(proj: dict) -> None:
+        assert proj["target"] == "agent-plugin"
+        assert proj["slug"]
+        assert "distribution_digest" in proj
+        assert proj["distribution_digest"].startswith("sha256:")
+        assert proj["integration_version"] == INTEGRATION_VERSION
+
+    @staticmethod
+    def _assert_receipt(proj: dict) -> None:
+        # Receipt names the original publisher and exact version.
+        receipt = proj["receipt"]
+        assert receipt["publisher"]["identity"] == "did:web:example.com"
+        assert receipt["resource_version"] == "1.4.2"
+        assert receipt["distribution_digest"] == proj["distribution_digest"]
+        assert receipt["integration_version"] == INTEGRATION_VERSION
+
+    @staticmethod
+    def _assert_agent_plugin_roles(proj: dict) -> None:
+        # Check file roles.
+        roles = {f["role"] for f in proj["files"]}
+        assert "portable-core" in roles
+        assert "publisher-artifact" in roles
+        assert "instrumentation-profile" in roles
+        assert "reporter-node" in roles
+
     def test_build_projection_agent_plugin(self, tmp_path: Path) -> None:
         profile = build_default_profile(
             resource=_mock_resource(),
@@ -263,25 +289,9 @@ class TestProjection:
             output_dir=tmp_path,
             publisher_identity="did:web:example.com",
         )
-        assert proj["target"] == "agent-plugin"
-        assert proj["slug"]
-        assert "distribution_digest" in proj
-        assert proj["distribution_digest"].startswith("sha256:")
-        assert proj["integration_version"] == INTEGRATION_VERSION
-
-        # Receipt names the original publisher and exact version.
-        receipt = proj["receipt"]
-        assert receipt["publisher"]["identity"] == "did:web:example.com"
-        assert receipt["resource_version"] == "1.4.2"
-        assert receipt["distribution_digest"] == proj["distribution_digest"]
-        assert receipt["integration_version"] == INTEGRATION_VERSION
-
-        # Check file roles.
-        roles = {f["role"] for f in proj["files"]}
-        assert "portable-core" in roles
-        assert "publisher-artifact" in roles
-        assert "instrumentation-profile" in roles
-        assert "reporter-node" in roles
+        self._assert_projection_metadata(proj)
+        self._assert_receipt(proj)
+        self._assert_agent_plugin_roles(proj)
 
     def test_build_projection_hermes_plugin_has_python_reporter(
         self, tmp_path: Path

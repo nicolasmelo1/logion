@@ -15,84 +15,83 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from tests.conformance.suite import (
+from conformance.suite import (
     ReporterResult,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_1_empty_stdin_exits_zero as _b1_empty,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_1_non_object_json_exits_zero as _b1_nonobj,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_1_parse_failure_exits_zero as _b1_parse,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_2_consent_off_exits_zero as _b2_off,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_2_dnt_env_exits_zero as _b2_dnt,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_2_dnt_false_allows as _b2_dnt_false,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_2_logion_dnt_env_exits_zero as _b2_ldnt,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_2_no_consent_exits_zero as _b2_no_consent,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_3_only_allowlisted_fields as _b3_allowlist,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_3_sensitive_keys_never_present as _b3_sensitive,
 )
-from tests.conformance.suite import test_behavior_4_spool_is_bounded as _b4
-from tests.conformance.suite import (
+from conformance.suite import test_behavior_4_spool_is_bounded as _b4
+from conformance.suite import (
     test_behavior_5_local_only_no_upload as _b5,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_6_allow_deduplicates as _b6,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_7_exit_zero_on_invalid_payload as _b7_bad_payload,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_7_exit_zero_on_missing_profile as _b7_no_profile,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_behavior_7_exit_zero_on_success as _b7_ok,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_prohibition_1_no_cli_exec as _p1,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_prohibition_2_no_credentials_in_event as _p2,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_prohibition_3_no_cross_resource_identifier as _p3,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_prohibition_4_no_inferred_use as _p4,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_prohibition_5_no_invented_outcome as _p5,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_subcommand_delete as _sub_delete,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_subcommand_disable as _sub_disable,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_subcommand_export as _sub_export,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_subcommand_pending as _sub_pending,
 )
-from tests.conformance.suite import (
+from conformance.suite import (
     test_subcommand_status as _sub_status,
 )
 
