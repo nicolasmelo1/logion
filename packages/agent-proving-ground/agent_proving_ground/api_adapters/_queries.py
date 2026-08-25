@@ -2206,6 +2206,11 @@ class LogionApiQueries:
             if feedback is None:
                 return _artifact_failure(str(exc), "exact")
             receipt = feedback
+        return self._evaluate_receipt_exact(receipt, query)
+
+    def _evaluate_receipt_exact(
+        self, receipt: JsonObject, query: JsonObject
+    ) -> JsonObject:
         expected_resource = query.get("resource_id")
         expected_version = query.get("version_id")
         expected_publisher = query.get("publisher_identity")
@@ -2222,16 +2227,17 @@ class LogionApiQueries:
         distribution_digest = receipt.get("distribution_digest")
         profile_digest = receipt.get("profile_digest")
         integration_version = receipt.get("integration_version")
-        exact = (
-            bool(resource_id)
-            and str(resource_id) == str(expected_resource or "")
-            and bool(resource_version)
-            and str(resource_version) == str(expected_version or "")
-            and bool(publisher)
-            and (not expected_publisher or publisher == expected_publisher)
-            and bool(distribution_digest)
-            and bool(profile_digest)
-            and bool(integration_version)
+        exact = self._receipt_version_matches(
+            resource_id,
+            resource_version,
+            expected_resource,
+            expected_version,
+        ) and self._receipt_publisher_and_digests_match(
+            publisher,
+            expected_publisher,
+            distribution_digest,
+            profile_digest,
+            integration_version,
         )
         return {
             "exact": exact,
@@ -2242,6 +2248,36 @@ class LogionApiQueries:
             "profile_digest": profile_digest,
             "integration_version": integration_version,
         }
+
+    @staticmethod
+    def _receipt_version_matches(
+        resource_id: object,
+        resource_version: object,
+        expected_resource: object,
+        expected_version: object,
+    ) -> bool:
+        return (
+            bool(resource_id)
+            and str(resource_id) == str(expected_resource or "")
+            and bool(resource_version)
+            and str(resource_version) == str(expected_version or "")
+        )
+
+    @staticmethod
+    def _receipt_publisher_and_digests_match(
+        publisher: object,
+        expected_publisher: object,
+        distribution_digest: object,
+        profile_digest: object,
+        integration_version: object,
+    ) -> bool:
+        return (
+            bool(publisher)
+            and (not expected_publisher or publisher == expected_publisher)
+            and bool(distribution_digest)
+            and bool(profile_digest)
+            and bool(integration_version)
+        )
 
     async def _q_install_not_counted_as_use(
         self, query: JsonObject, agent_roles: dict[str, str]
@@ -2260,23 +2296,15 @@ class LogionApiQueries:
         activation_count = 0
         terminal_outcome_count = 0
         if status == 200 and feedback is not None:
-            # If feedback exists for the resource and carries an
-            # activation event or terminal outcome, the install was
-            # counted as use.
-            event = feedback.get("event") or feedback.get("first_event")
-            if event and event != "install":
-                activation_count = 1
-            outcome = feedback.get("outcome")
-            if outcome and outcome not in ("", "unknown", None):
-                terminal_outcome_count = 1
+            activation_count, terminal_outcome_count = (
+                self._count_feedback_usage(feedback)
+            )
         # Also check any artifact the consumer saved
         try:
             receipt = _load_json_object(query.get("receipt_artifact"))
-            if receipt.get("event") and receipt.get("event") != "install":
-                activation_count += 1
-            outcome = receipt.get("outcome")
-            if outcome and outcome not in ("", "unknown", None):
-                terminal_outcome_count += 1
+            a, t = self._count_receipt_usage(receipt)
+            activation_count += a
+            terminal_outcome_count += t
         except (OSError, TypeError, ValueError):
             pass  # Artifact is optional for this query.
         # Baseline-aware: if we have a baseline, any pre-existing
@@ -2295,6 +2323,29 @@ class LogionApiQueries:
             "terminal_outcome_count": terminal_outcome_count,
             "evidence": {"source": "api", "role": role},
         }
+
+    @staticmethod
+    def _count_feedback_usage(feedback: JsonObject) -> tuple[int, int]:
+        activation_count = 0
+        terminal_outcome_count = 0
+        event = feedback.get("event") or feedback.get("first_event")
+        if event and event != "install":
+            activation_count = 1
+        outcome = feedback.get("outcome")
+        if outcome and outcome not in ("", "unknown", None):
+            terminal_outcome_count = 1
+        return activation_count, terminal_outcome_count
+
+    @staticmethod
+    def _count_receipt_usage(receipt: JsonObject) -> tuple[int, int]:
+        activation_count = 0
+        terminal_outcome_count = 0
+        if receipt.get("event") and receipt.get("event") != "install":
+            activation_count += 1
+        outcome = receipt.get("outcome")
+        if outcome and outcome not in ("", "unknown", None):
+            terminal_outcome_count += 1
+        return activation_count, terminal_outcome_count
 
     async def _q_private_payload_absent(
         self, query: JsonObject, agent_roles: dict[str, str]

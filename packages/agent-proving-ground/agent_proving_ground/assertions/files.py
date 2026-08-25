@@ -766,42 +766,76 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
                 message="missing capability_path parameter",
                 evidence=params,
             )
-        try:
-            cap_file = resolve_artifact_path(
-                ctx.artifacts_dir, capability_path
-            )
-        except ValueError as exc:
+        cap_err = self._resolve_capability_file(
+            ctx.artifacts_dir, capability_path
+        )
+        if isinstance(cap_err, str):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message=str(exc),
+                message=cap_err,
                 evidence={"capability_path": str(capability_path)},
             )
-        if not cap_file.is_file():
+        cap_file = cap_err
+        payload_err = self._load_capability_payload(cap_file)
+        if isinstance(payload_err, str):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message=f"drifted capability.json missing: {cap_file}",
+                message=payload_err,
                 evidence={"capability_path": str(cap_file)},
             )
+        payload = payload_err
+        tier = payload.get("tier")
+        reason = payload.get("reason")
+        tier_err = self._validate_tier_and_reason(cap_file, tier, reason)
+        if tier_err is not None:
+            return tier_err
+        spool_err = self._check_spool_for_new_events(
+            ctx.artifacts_dir, cap_file, spool_dir, tier, reason
+        )
+        if spool_err is not None:
+            return spool_err
+        return AssertionOutcome(
+            type=self.type,
+            status="passed",
+            message=(
+                "capability failed closed to unsupported after drift "
+                f"({reason!r}) with no new event"
+            ),
+            evidence={
+                "capability_path": str(cap_file),
+                "tier": tier,
+                "reason": reason,
+                "spool_entry_count": 0,
+            },
+        )
+
+    @staticmethod
+    def _resolve_capability_file(
+        artifacts_dir: Path, capability_path: str
+    ) -> Path | str:
+        try:
+            cap_file = resolve_artifact_path(artifacts_dir, capability_path)
+        except ValueError as exc:
+            return str(exc)
+        if not cap_file.is_file():
+            return f"drifted capability.json missing: {cap_file}"
+        return cap_file
+
+    @staticmethod
+    def _load_capability_payload(cap_file: Path) -> dict | str:
         try:
             payload = json.loads(cap_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"invalid capability.json: {exc}",
-                evidence={"capability_path": str(cap_file)},
-            )
+            return f"invalid capability.json: {exc}"
         if not isinstance(payload, dict):
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="capability.json is not a JSON object",
-                evidence={"capability_path": str(cap_file)},
-            )
-        tier = payload.get("tier")
-        reason = payload.get("reason")
+            return "capability.json is not a JSON object"
+        return payload
+
+    def _validate_tier_and_reason(
+        self, cap_file: Path, tier: object, reason: object
+    ) -> AssertionOutcome | None:
         if tier != "unsupported":
             return AssertionOutcome(
                 type=self.type,
@@ -819,11 +853,20 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
                 message="capability.json downgraded but gives no reason",
                 evidence={"capability_path": str(cap_file), "tier": tier},
             )
-        # No new event must exist in the spool
+        return None
+
+    def _check_spool_for_new_events(
+        self,
+        artifacts_dir: Path,
+        cap_file: Path,
+        spool_dir: str | None,
+        tier: object,
+        reason: object,
+    ) -> AssertionOutcome | None:
         spool_entries: list[Path] = []
         if spool_dir:
             try:
-                spool = resolve_artifact_path(ctx.artifacts_dir, spool_dir)
+                spool = resolve_artifact_path(artifacts_dir, spool_dir)
             except ValueError:
                 spool = Path(str(spool_dir))
             if spool.is_dir():
@@ -843,20 +886,7 @@ class CapabilityClaimsFailClosedOnDriftAssertion(Assertion):
                     "spool_entry_count": len(spool_entries),
                 },
             )
-        return AssertionOutcome(
-            type=self.type,
-            status="passed",
-            message=(
-                "capability failed closed to unsupported after drift "
-                f"({reason!r}) with no new event"
-            ),
-            evidence={
-                "capability_path": str(cap_file),
-                "tier": tier,
-                "reason": reason,
-                "spool_entry_count": 0,
-            },
-        )
+        return None
 
 
 class HermesHookProjectionObservedAssertion(Assertion):
@@ -883,45 +913,89 @@ class HermesHookProjectionObservedAssertion(Assertion):
                 message="missing activation_artifact parameter",
                 evidence=params,
             )
-        try:
-            activation = resolve_artifact_path(
-                ctx.artifacts_dir, activation_artifact
-            )
-        except ValueError as exc:
+        artifact_err = self._resolve_activation_artifact(
+            ctx.artifacts_dir, activation_artifact
+        )
+        if isinstance(artifact_err, str):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message=str(exc),
+                message=artifact_err,
                 evidence={"activation_artifact": str(activation_artifact)},
             )
-        if not activation.is_file():
+        activation = artifact_err
+        payload_err = self._load_activation_payload(activation)
+        if isinstance(payload_err, str):
             return AssertionOutcome(
                 type=self.type,
                 status="failed",
-                message=(
-                    "no activation receipt from the live Hermes plugin: "
-                    f"{activation} is missing"
-                ),
+                message=payload_err,
                 evidence={"activation_artifact": str(activation)},
             )
+        payload = payload_err
+        event = payload.get("event")
+        event_err = self._validate_event(activation, event)
+        if event_err is not None:
+            return event_err
+        version_err = self._validate_version(
+            activation, payload, resource_id, version_id
+        )
+        if version_err is not None:
+            return version_err
+        outcome = payload.get("outcome")
+        outcome_err = self._validate_outcome(activation, outcome)
+        if outcome_err is not None:
+            return outcome_err
+        observed_rid = payload.get("resource_id")
+        observed_vid = payload.get("resource_version_id") or payload.get(
+            "resource_version"
+        )
+        return AssertionOutcome(
+            type=self.type,
+            status="passed",
+            message=(
+                "live Hermes plugin produced an activation event for the "
+                "exact version with no terminal outcome"
+            ),
+            evidence={
+                "activation_artifact": str(activation),
+                "event": event,
+                "resource_id": observed_rid,
+                "resource_version_id": observed_vid,
+                "outcome": outcome,
+            },
+        )
+
+    @staticmethod
+    def _resolve_activation_artifact(
+        artifacts_dir: Path, activation_artifact: str
+    ) -> Path | str:
+        try:
+            activation = resolve_artifact_path(
+                artifacts_dir, activation_artifact
+            )
+        except ValueError as exc:
+            return str(exc)
+        if not activation.is_file():
+            return (
+                "no activation receipt from the live Hermes plugin: "
+                f"{activation} is missing"
+            )
+        return activation
+
+    @staticmethod
+    def _load_activation_payload(activation: Path) -> dict | str:
         try:
             payload = json.loads(activation.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"invalid activation receipt: {exc}",
-                evidence={"activation_artifact": str(activation)},
-            )
+            return f"invalid activation receipt: {exc}"
         if not isinstance(payload, dict):
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="activation receipt is not a JSON object",
-                evidence={"activation_artifact": str(activation)},
-            )
-        # Must carry an event for the exact version
-        event = payload.get("event")
+            return "activation receipt is not a JSON object"
+        return payload
+
+    def _validate_event(
+        self, activation: Path, event: object
+    ) -> AssertionOutcome | None:
         if event != "resource_invoked":
             return AssertionOutcome(
                 type=self.type,
@@ -935,7 +1009,15 @@ class HermesHookProjectionObservedAssertion(Assertion):
                     "event": event,
                 },
             )
-        # Must name the exact resource version
+        return None
+
+    def _validate_version(
+        self,
+        activation: Path,
+        payload: dict,
+        resource_id: object,
+        version_id: object,
+    ) -> AssertionOutcome | None:
         observed_rid = payload.get("resource_id")
         observed_vid = payload.get("resource_version_id") or payload.get(
             "resource_version"
@@ -968,8 +1050,11 @@ class HermesHookProjectionObservedAssertion(Assertion):
                     "observed_version_id": observed_vid,
                 },
             )
-        # No terminal outcome may be attached
-        outcome = payload.get("outcome")
+        return None
+
+    def _validate_outcome(
+        self, activation: Path, outcome: object
+    ) -> AssertionOutcome | None:
         if outcome is not None and outcome not in ("", "unknown"):
             return AssertionOutcome(
                 type=self.type,
@@ -983,21 +1068,7 @@ class HermesHookProjectionObservedAssertion(Assertion):
                     "outcome": outcome,
                 },
             )
-        return AssertionOutcome(
-            type=self.type,
-            status="passed",
-            message=(
-                "live Hermes plugin produced an activation event for the "
-                "exact version with no terminal outcome"
-            ),
-            evidence={
-                "activation_artifact": str(activation),
-                "event": event,
-                "resource_id": observed_rid,
-                "resource_version_id": observed_vid,
-                "outcome": outcome,
-            },
-        )
+        return None
 
 
 def _live_hook_verdict(path: Path) -> str | None:
