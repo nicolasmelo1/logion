@@ -124,3 +124,54 @@ def test_dry_run_still_reports_as_json(
     assert payload["finder_count"] == 1
     assert payload["records"][0]["finder_id"] == "finder-a"
     assert payload["records"][0]["endpoint"].startswith("https://")
+
+
+class _Snapshot:
+    repo = "example/ard-connectors"
+    commit_sha = "pinned-by-digest"
+    file_digest = "sha256:cafe"
+    finders = ()
+    is_valid = True
+    validation_error = None
+
+
+def test_sync_records_the_snapshot_it_validated(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Fetching and validating a directory the node then forgets is not
+    # a sync: nothing outside this process can answer what is pinned.
+    transport = FakeTransport()
+    transport.set_post_response(
+        "http://api.test/v1/ard/sources", HttpResponse(201, b"{}")
+    )
+    monkeypatch.setattr(cli, "_build_transport", lambda _config: transport)
+
+    exit_code = cli._record_snapshot(
+        IndexerConfig(base_url="http://api.test"),
+        transport,
+        _Snapshot(),
+        _Snapshot(),
+    )
+
+    assert exit_code == 0
+    assert "recorded" in capsys.readouterr().out
+
+
+def test_sync_fails_loudly_when_the_registry_refuses(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    transport = FakeTransport()
+    transport.set_post_response(
+        "http://api.test/v1/ard/sources", HttpResponse(403, b"{}")
+    )
+    monkeypatch.setattr(cli, "_build_transport", lambda _config: transport)
+
+    exit_code = cli._record_snapshot(
+        IndexerConfig(base_url="http://api.test"),
+        transport,
+        _Snapshot(),
+        _Snapshot(),
+    )
+
+    assert exit_code == 1
+    assert "refused" in capsys.readouterr().err

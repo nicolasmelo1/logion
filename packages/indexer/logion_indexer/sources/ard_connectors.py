@@ -38,6 +38,11 @@ GITHUB_RAW = "https://raw.githubusercontent.com"
 #: GitHub API commits endpoint.
 GITHUB_API = "https://api.github.com"
 
+#: Stands in for a commit when the directory came from a URL rather than
+#: a repository. Named rather than blank so a snapshot never claims a
+#: commit it does not have, and a reader can tell the two apart.
+_PINNED_BY_DIGEST = "pinned-by-digest"
+
 SnapshotStatus = Literal[
     "fresh", "stale", "rejected", "pending_operator_approval"
 ]
@@ -130,6 +135,11 @@ class ARDConnectorsSource:
     transport: Transport
     repo: str = UPSTREAM_REPO
     file_path: str = UPSTREAM_FILE
+    #: Fetch the directory from here instead of GitHub raw. The digest
+    #: still pins the content, so a snapshot taken this way is as
+    #: immutable as one taken from a commit -- but the caller has to
+    #: supply the commit it corresponds to, because a URL cannot say.
+    source_url: str | None = None
 
     def fetch_snapshot(
         self,
@@ -142,9 +152,17 @@ class ARDConnectorsSource:
                 latest commit on the default branch.
         """
         if commit_sha is None:
-            commit_sha = self._fetch_latest_commit()
+            commit_sha = (
+                _PINNED_BY_DIGEST
+                if self.source_url
+                else self._fetch_latest_commit()
+            )
 
-        url = f"{GITHUB_RAW}/{self.repo}/{commit_sha}/{self.file_path}"
+        url = (
+            self.source_url
+            if self.source_url
+            else f"{GITHUB_RAW}/{self.repo}/{commit_sha}/{self.file_path}"
+        )
         resp = self.transport.get(url)
 
         if resp.status != 200:

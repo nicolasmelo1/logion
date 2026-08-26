@@ -746,7 +746,10 @@ def cmd_ard_connectors(config: IndexerConfig, args: argparse.Namespace) -> int:
     from .sources.ard_connectors import ARDConnectorsSource
 
     transport = _build_transport(config)
-    source = ARDConnectorsSource(transport=transport)
+    source = ARDConnectorsSource(
+        transport=transport,
+        source_url=getattr(args, "source_url", None),
+    )
 
     subcommand = args.ard_connectors_command
 
@@ -764,7 +767,10 @@ def cmd_ard_connectors(config: IndexerConfig, args: argparse.Namespace) -> int:
         print(f"  finders: {len(snapshot.finders)}")
         for f in snapshot.finders:
             print(f"    {f.id}: {f.name} — {f.search}")
-        return 0
+        # Fetching and validating a directory the node then forgets is
+        # not a sync. Recording it is what makes the pinned set
+        # answerable later, by anyone other than this process.
+        return _record_snapshot(config, transport, source, snapshot)
 
     if subcommand == "diff":
         # Fetch two snapshots and diff them.
@@ -845,6 +851,37 @@ def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
     if args.dry_run:
         return 0
     return 1 if result.errors else 0
+
+
+def _record_snapshot(
+    config: IndexerConfig,
+    transport: Transport,
+    source: object,
+    snapshot: object,
+) -> int:
+    """Persist the fetched snapshot against the node's registry."""
+    url = f"{config.api_base_url.rstrip('/')}/v1/ard/sources"
+    body = {
+        "source_type": "ard-connectors",
+        "source_uri": getattr(source, "source_url", None)
+        or getattr(source, "file_path", "agent-finders.json"),
+        "upstream_repo": snapshot.repo,  # type: ignore[attr-defined]
+        "commit_sha": snapshot.commit_sha,  # type: ignore[attr-defined]
+        "file_digest": snapshot.file_digest,  # type: ignore[attr-defined]
+        "validation_result": "valid",
+        "last_good": True,
+    }
+    transport.set_api_base_url(config.api_base_url)
+    resp = transport.post(url, json_body=body)
+    if resp.status not in (200, 201):
+        print(
+            f"sync: fetched and validated, but the registry refused the "
+            f"record (HTTP {resp.status})",
+            file=sys.stderr,
+        )
+        return 1
+    print("  recorded: last-good snapshot")
+    return 0
 
 
 def _print_agent_finders_dry_run(result: object) -> None:
@@ -1055,6 +1092,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ac_sync = ac_sub.add_parser("sync", help="fetch and pin latest snapshot")
     ac_sync.add_argument("--commit", default=None, help="specific commit SHA")
+    ac_sync.add_argument(
+        "--source-url",
+        default=None,
+        help=(
+            "fetch the directory from this URL instead of the upstream "
+            "repository (the digest still pins the content)"
+        ),
+    )
     ac_diff = ac_sub.add_parser("diff", help="diff two snapshots")
     ac_diff.add_argument("old_commit", help="old commit SHA")
     ac_diff.add_argument("new_commit", help="new commit SHA")
@@ -1063,6 +1108,9 @@ def build_parser() -> argparse.ArgumentParser:
     ac_status = ac_sub.add_parser("status", help="show snapshot status")
     ac_status.add_argument(
         "--commit", default=None, help="specific commit SHA"
+    )
+    ac_status.add_argument(
+        "--source-url", default=None, help="read the directory from this URL"
     )
 
     # agent-finders run
