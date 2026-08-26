@@ -11324,8 +11324,21 @@
   "paths": {
     "/.well-known/ai-catalog.json": {
       "get": {
-        "description": "Serve the AI Catalog at the well-known URL.\n\nGated on the ``ai_catalog.public`` feature flag.  Returns the\ncatalog document with an ETag header for conditional caching.",
+        "description": "Serve the AI Catalog at the well-known URL.\n\nGated on the ``ai_catalog.public`` feature flag.  Returns the\ncatalog document with an ETag header for conditional caching.\n\n``offset`` continues a catalog too large for one page.  A page that\nhas more behind it ends with a nested catalog entry carrying the next\noffset, so a consumer walks the whole catalog by following entries\nrather than by guessing this parameter.",
         "operationId": "get_catalog",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -11346,6 +11359,16 @@
               }
             },
             "description": "AI Catalog publication is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "AI Catalog document",

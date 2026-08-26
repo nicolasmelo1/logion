@@ -5,7 +5,7 @@
     "courses.purchase",
     "listings.search"
   ],
-  "contract_digest": "sha256:67fef31366477346245d26f4d25d6f95f6acb7083e5299b4e001b9f287e903d5",
+  "contract_digest": "sha256:e6365e7a6f3da66e72cbdea19aded417b35707196bea3234a37eb64ddb2af403",
   "current_cli_version": "0.1.15",
   "minimum_cli_version": "0.1.15"
 }

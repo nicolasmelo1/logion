@@ -159,12 +159,18 @@ from logion.v1._types.generated.v1 import (
 
 def get_catalog(
     http: HttpClient,
+    *,
+    offset: int | None = None,
 ) -> AICatalogDocument:
     """Call the get_catalog API operation."""
+    params: dict[str, QueryValue] = {}
+    if offset is not None:
+        params["offset"] = offset
     return http.request_model(
         "GET",
         "/.well-known/ai-catalog.json",
         AICatalogDocument,
+        params=params,
     )
 
 
