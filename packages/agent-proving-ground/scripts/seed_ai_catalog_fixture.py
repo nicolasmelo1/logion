@@ -159,6 +159,7 @@ def _ingest_seed_entries(api: base.Api) -> list[dict]:
             "summary": entry.get("description"),
             "tags": list(entry.get("tags", [])),
             "publisher": (entry.get("publisher") or {}).get("displayName"),
+            "url": entry.get("url"),
         }
         for entry in catalog["entries"]
         if "data" not in entry

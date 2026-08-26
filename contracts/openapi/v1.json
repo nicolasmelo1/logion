@@ -1481,6 +1481,18 @@
             "maxLength": 255,
             "title": "Type",
             "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           }
         },
         "required": [
@@ -14385,11 +14397,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unknown validation_result"
           }
         },
         "summary": "Record a pinned source snapshot",
