@@ -31,7 +31,7 @@
             "entry_count": 2,
             "conformance_level": "minimal",
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
             }
           }
         },
@@ -42,7 +42,7 @@
           "evidence": {
             "conformance_level": "minimal",
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
               "host_display_name": "Logion"
             }
           }
@@ -56,7 +56,7 @@
             "has_scores": true,
             "registry_origin": "http://localhost:8000/v1/ard",
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ard-search.json",
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ard-search.json",
               "scored_count": 2
             }
           }
@@ -85,7 +85,7 @@
             "finder_count": 2,
             "query_family": "default",
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
               "dry_run": true
             }
           }
@@ -99,7 +99,7 @@
             "endpoint": "http://127.0.0.1:18770/finder-a/search",
             "result_count": 2,
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
               "record_count": 2
             }
           }
@@ -109,7 +109,7 @@
           "status": "passed",
           "message": "no ARD connector files or finder preferences in workspace",
           "evidence": {
-            "workspace_root": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture",
+            "workspace_root": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture",
             "found_paths": []
           }
         },
@@ -247,7 +247,7 @@
             "has_scores": true,
             "registry_origin": "https://logion.sh",
             "query_evidence": {
-              "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
+              "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
               "scored_count": 2
             }
           }
@@ -272,7 +272,7 @@
           "status": "passed",
           "message": "no ARD connector files or finder preferences in workspace",
           "evidence": {
-            "workspace_root": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/consumer/consumer",
+            "workspace_root": "${ARTIFACTS}/agents/consumer/consumer",
             "found_paths": []
           }
         }
@@ -292,7 +292,7 @@
         "entry_count": 2,
         "conformance_level": "minimal",
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
         }
       }
     },
@@ -303,7 +303,7 @@
       "evidence": {
         "conformance_level": "minimal",
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
           "host_display_name": "Logion"
         }
       }
@@ -317,7 +317,7 @@
         "has_scores": true,
         "registry_origin": "http://localhost:8000/v1/ard",
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ard-search.json",
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ard-search.json",
           "scored_count": 2
         }
       }
@@ -346,7 +346,7 @@
         "finder_count": 2,
         "query_family": "default",
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
           "dry_run": true
         }
       }
@@ -360,7 +360,7 @@
         "endpoint": "http://127.0.0.1:18770/finder-a/search",
         "result_count": 2,
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/finder-run.json",
           "record_count": 2
         }
       }
@@ -370,7 +370,7 @@
       "status": "passed",
       "message": "no ARD connector files or finder preferences in workspace",
       "evidence": {
-        "workspace_root": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture",
+        "workspace_root": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture",
         "found_paths": []
       }
     },
@@ -499,7 +499,7 @@
         "has_scores": true,
         "registry_origin": "https://logion.sh",
         "query_evidence": {
-          "source": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
+          "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
           "scored_count": 2
         }
       }
@@ -524,7 +524,7 @@
       "status": "passed",
       "message": "no ARD connector files or finder preferences in workspace",
       "evidence": {
-        "workspace_root": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2/agents/consumer/consumer",
+        "workspace_root": "${ARTIFACTS}/agents/consumer/consumer",
         "found_paths": []
       }
     },
@@ -533,7 +533,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": "/Users/nicolasmelo/workspaces/personal/logion/.devrig/prism.log"
+        "log_path": "${PUBLIC_REPO}/.devrig/prism.log"
       }
     },
     {
@@ -586,5 +586,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "/private/tmp/claude-501/-Users-nicolasmelo-workspaces-personal-logion-workspace/4bb8de69-21cf-47b2-bab1-5587c12fd51b/scratchpad/run-2"
+  "artifact_root": "${ARTIFACTS}"
 }
