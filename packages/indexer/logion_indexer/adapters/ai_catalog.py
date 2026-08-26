@@ -325,6 +325,12 @@ class AICatalogAdapter:
         # original is what lets a re-crawl of our own catalog recover the
         # type the entry started with instead of a normalized guess.
         metadata.append(("ai_catalog_type", entry.type))
+        # And where the entry says its artifact lives. A registry that
+        # re-publishes this resource has no other way to point at the
+        # real thing, and pointing at itself would put it in the middle
+        # of someone else's distribution.
+        if entry.url:
+            metadata.append(("ai_catalog_url", entry.url))
         for key, value in entry.extra:
             metadata.append((key, str(value)))
 

@@ -6,14 +6,15 @@
       "driver": "claude-code",
       "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/ai-catalog-ard-self-crawl.json",
-      "report_sha256": "3e7eda4540a8daa35b34a6b2fae13c0155f8cfb3f09ca44e0db9ab033b2aa491",
+      "report_sha256": "57bb2629ff931749a7fda075ab3da5ba66f901d02c75aff043fa3b5d017d5dcb",
       "scenario": "ai_catalog_ard_self_crawl",
       "status": "passed",
       "unsupported_assertions": [],
       "implementation": {
         "public_sha256": "25b85bf6baf22f5867a2cd44f2a0c308038aececea31debbb0570cf0af098995",
-        "private_sha256": "6be83cdf7a3c0dae1d3fe9b2b082990bb1d9171a0a02104f23f900a68797afbb"
-      }
+        "private_sha256": "abe276420df6832de848d9865fff622aa4f90d2d7fed5e0479742c3d3ca21d38"
+      },
+      "run_id": "20260826T225743-ai_catalog_ard_self_crawl"
     }
   ],
   "schema_version": 2,

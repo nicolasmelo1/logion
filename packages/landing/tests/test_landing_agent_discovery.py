@@ -66,6 +66,15 @@ def test_ai_catalog_entries_carry_the_required_members() -> None:
         assert "data" not in entry, entry
 
 
+#: Off-host URLs this catalog is allowed to advertise. Each one is a surface
+#: we operate and have deliberately chosen to name here; the list is explicit
+#: so adding an entry is a decision rather than a typo that ships.
+OFF_HOST_ENTRY_URLS = {
+    f"{API_BASE}/openapi.json",
+    f"{API_BASE}/.well-known/ai-catalog.json",
+}
+
+
 def test_ai_catalog_declares_no_artifact_it_cannot_serve() -> None:
     # A catalog entry pointing at nothing is worse for an agent than no
     # catalog: it burns a fetch and teaches it to distrust the index. Entries
@@ -76,7 +85,17 @@ def test_ai_catalog_declares_no_artifact_it_cannot_serve() -> None:
             path = url[len("https://www.logion.sh") :]
             assert client.get(path).status_code == 200, url
         else:
-            assert url == f"{API_BASE}/openapi.json", url
+            assert url in OFF_HOST_ENTRY_URLS, url
+
+
+def test_the_nested_node_catalog_is_declared_as_a_catalog() -> None:
+    # The apex is the single discovery entry point: an agent that fetches it
+    # must be able to reach the node's own catalog by following an entry,
+    # without knowing that a second host serves one.
+    entries = client.get(AI_CATALOG_PATH).json()["entries"]
+    nested = [e for e in entries if e["type"] == AI_CATALOG_MEDIA_TYPE]
+    assert len(nested) == 1, entries
+    assert nested[0]["url"] == f"{API_BASE}/.well-known/ai-catalog.json"
 
 
 def test_ai_catalog_does_not_claim_an_mcp_server() -> None:

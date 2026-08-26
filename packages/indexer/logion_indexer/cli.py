@@ -310,6 +310,7 @@ def _ingest_entries(
             "summary": item.summary or None,
             "tags": list(item.tags),
             "publisher": item.original_author or None,
+            "url": _catalog_entry_url(item),
         }
         for item in discoveries
         if isinstance(item, DiscoveredResource)
@@ -336,6 +337,21 @@ def _ingest_entries(
         print("ingest: registry returned invalid JSON", file=sys.stderr)
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _catalog_entry_url(item: DiscoveredResource) -> str | None:
+    """Recover the artifact URL the catalog entry declared.
+
+    Kept in channel metadata for the same reason the media type is: it
+    is the entry's own statement about itself, and a resource row has
+    nowhere else to put it. Without it the registry can only publish a
+    URL of its own for an artifact it does not serve.
+    """
+    for channel in item.channels:
+        for key, value in channel.metadata:
+            if key == "ai_catalog_url":
+                return str(value)
+    return None
 
 
 def _catalog_media_type(item: DiscoveredResource) -> str:

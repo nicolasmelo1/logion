@@ -862,6 +862,20 @@ ai:
           Bootstrap skill that teaches an agent when and how to discover,
           inspect, install, and update Logion course bundles.
         tags: [skill, marketplace, cli]
+      # The node's own catalog, nested rather than duplicated. This document
+      # is hand-curated and lists what the landing itself serves; the node
+      # catalog is generated from the resource layer and grows on its own.
+      # Two documents answering one well-known URI on two hosts would make
+      # the apex and the API disagree about what Logion offers, so the apex
+      # stays the single discovery entry point and points at the other.
+      - identifier: urn:air:logion.sh:catalog:node
+        type: application/ai-catalog+json
+        url: https://api.logion.sh/.well-known/ai-catalog.json
+        display_name: Logion node catalog
+        description: >-
+          Resources this node publishes, generated from the resource layer.
+          Entries Logion cannot attribute to their origin are withheld.
+        tags: [catalog, node, ard]
 
   # Agent Skills discovery index, served at
   # /.well-known/agent-skills/index.json. The artifact is vendored into

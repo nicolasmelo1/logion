@@ -1,5 +1,5 @@
 {
-  "run_id": "20260826T033121-ai_catalog_ard_self_crawl",
+  "run_id": "20260826T225743-ai_catalog_ard_self_crawl",
   "scenario": "ai_catalog_ard_self_crawl",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -7,16 +7,16 @@
     "node_operator": "claude-code",
     "consumer": "claude-code"
   },
-  "started_at": "2026-08-26T03:31:21.618496Z",
-  "finished_at": "2026-08-26T03:34:21.314551Z",
+  "started_at": "2026-08-26T22:57:43.631621Z",
+  "finished_at": "2026-08-26T23:00:25.475229Z",
   "phase_results": [
     {
       "phase_id": "seed",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-26T03:31:21.884326Z",
-      "finished_at": "2026-08-26T03:31:22.068608Z",
-      "duration_seconds": 0.184
+      "started_at": "2026-08-26T22:57:43.990789Z",
+      "finished_at": "2026-08-26T22:57:44.204137Z",
+      "duration_seconds": 0.213
     },
     {
       "phase_id": "publish_and_crawl",
@@ -29,7 +29,7 @@
           "evidence": {
             "spec_version": "1.0",
             "entry_count": 2,
-            "conformance_level": "minimal",
+            "conformance_level": "discoverable",
             "query_evidence": {
               "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
             }
@@ -40,7 +40,7 @@
           "status": "passed",
           "message": "AI Catalog conformance level is valid",
           "evidence": {
-            "conformance_level": "minimal",
+            "conformance_level": "discoverable",
             "query_evidence": {
               "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
               "host_display_name": "Logion"
@@ -230,9 +230,9 @@
           }
         }
       ],
-      "started_at": "2026-08-26T03:31:22.068625Z",
-      "finished_at": "2026-08-26T03:33:48.919557Z",
-      "duration_seconds": 146.851
+      "started_at": "2026-08-26T22:57:44.204162Z",
+      "finished_at": "2026-08-26T22:59:24.938660Z",
+      "duration_seconds": 100.735
     },
     {
       "phase_id": "discover_through_ard",
@@ -245,7 +245,7 @@
           "evidence": {
             "result_count": 2,
             "has_scores": true,
-            "registry_origin": "https://logion.sh",
+            "registry_origin": "https://api.logion.sh",
             "query_evidence": {
               "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
               "scored_count": 2
@@ -277,9 +277,9 @@
           }
         }
       ],
-      "started_at": "2026-08-26T03:33:48.919630Z",
-      "finished_at": "2026-08-26T03:34:21.290686Z",
-      "duration_seconds": 32.371
+      "started_at": "2026-08-26T22:59:24.938735Z",
+      "finished_at": "2026-08-26T23:00:25.441694Z",
+      "duration_seconds": 60.503
     }
   ],
   "assertion_results": [
@@ -290,7 +290,7 @@
       "evidence": {
         "spec_version": "1.0",
         "entry_count": 2,
-        "conformance_level": "minimal",
+        "conformance_level": "discoverable",
         "query_evidence": {
           "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json"
         }
@@ -301,7 +301,7 @@
       "status": "passed",
       "message": "AI Catalog conformance level is valid",
       "evidence": {
-        "conformance_level": "minimal",
+        "conformance_level": "discoverable",
         "query_evidence": {
           "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/ai-catalog.json",
           "host_display_name": "Logion"
@@ -497,7 +497,7 @@
       "evidence": {
         "result_count": 2,
         "has_scores": true,
-        "registry_origin": "https://logion.sh",
+        "registry_origin": "https://api.logion.sh",
         "query_evidence": {
           "source": "${ARTIFACTS}/agents/node_operator/node_operator/ai-catalog-fixture/evidence/consumer-search.json",
           "scored_count": 2
@@ -533,7 +533,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": "${PUBLIC_REPO}/.devrig/prism.log"
+        "log_path": "${WORKSPACE}/.devrig/api.log"
       }
     },
     {
