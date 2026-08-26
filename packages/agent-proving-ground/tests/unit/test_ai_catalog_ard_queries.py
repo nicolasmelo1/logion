@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -160,7 +161,7 @@ class TestARDSearchArtifact:
 
 
 class TestFinderRun:
-    RUN = {
+    RUN: ClassVar[dict] = {
         "dry_run": True,
         "records": [
             {
@@ -245,9 +246,7 @@ class TestCrawlReports:
 
         assert result["completed"] is False
 
-    async def test_rejection_needs_a_stable_code(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_rejection_needs_a_stable_code(self, tmp_path: Path) -> None:
         result = await _queries()._q_ard_record_rejected(
             {"crawl_reports": [_write(tmp_path, "c1.json", _report())]}, {}
         )
@@ -328,7 +327,7 @@ class TestSelfCrawl:
 
 
 class TestProvenanceAndASM:
-    DETAIL = {
+    DETAIL: ClassVar[dict] = {
         "resource": {
             "id": "r1",
             "resource_type": "skill",
@@ -386,9 +385,7 @@ class TestProvenanceAndASM:
 
         assert result["agnostic"] is True
 
-    async def test_asm_field_on_the_model_is_caught(
-        self, monkeypatch
-    ) -> None:
+    async def test_asm_field_on_the_model_is_caught(self, monkeypatch) -> None:
         # Checking the envelope instead of the model reports "clean"
         # for every resource that has ever existed.
         payload = json.loads(json.dumps(self.DETAIL))
@@ -401,9 +398,7 @@ class TestProvenanceAndASM:
         assert result["agnostic"] is False
         assert "asm_selector" in str(result["reason"])
 
-    async def test_asm_field_in_metadata_is_caught(
-        self, monkeypatch
-    ) -> None:
+    async def test_asm_field_in_metadata_is_caught(self, monkeypatch) -> None:
         payload = json.loads(json.dumps(self.DETAIL))
         payload["resource"]["metadata"]["asm_schema"] = {"v": 1}
         queries = await self._detail(monkeypatch, payload)
@@ -465,9 +460,7 @@ class TestSnapshotPinned:
 
         assert result["pinned"] is False
 
-    async def test_no_snapshot_at_all_is_not_pinned(
-        self, monkeypatch
-    ) -> None:
+    async def test_no_snapshot_at_all_is_not_pinned(self, monkeypatch) -> None:
         queries = await self._status(monkeypatch, {"items": [], "total": 0})
         result = await queries._q_ard_connectors_snapshot_pinned({}, {})
 
@@ -512,7 +505,10 @@ class TestFilterNarrows:
         unfiltered = {
             "results": [
                 {"identifier": "a", "type": "application/agent-skills+json"},
-                {"identifier": "b", "type": "application/mcp-server-card+json"},
+                {
+                    "identifier": "b",
+                    "type": "application/mcp-server-card+json",
+                },
             ]
         }
         filtered = {
@@ -539,7 +535,7 @@ class TestFilterNarrows:
         assert result["filtered"] is False
 
     async def test_missing_filter_params_are_unsupported_not_passing(
-        self, monkeypatch
+        self,
     ) -> None:
         queries = _queries()
         result = await queries._q_search_filters_by_type_and_source({}, {})

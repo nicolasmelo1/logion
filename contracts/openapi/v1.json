@@ -7995,6 +7995,139 @@
         "title": "ReactivateUserResponse",
         "type": "object"
       },
+      "RecordSourceSnapshotRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/sources request body.",
+        "properties": {
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "file_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Digest"
+          },
+          "last_good": {
+            "default": false,
+            "title": "Last Good",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "source_type": {
+            "maxLength": 32,
+            "title": "Source Type",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          },
+          "upstream_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream Repo"
+          },
+          "validation_result": {
+            "default": "pending",
+            "maxLength": 32,
+            "title": "Validation Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_type",
+          "source_uri"
+        ],
+        "title": "RecordSourceSnapshotRequest",
+        "type": "object"
+      },
+      "RecordSourceSnapshotResponse": {
+        "description": "POST /v1/ard/sources response body.",
+        "properties": {
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "file_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Digest"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_good": {
+            "title": "Last Good",
+            "type": "boolean"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          },
+          "validation_result": {
+            "title": "Validation Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_type",
+          "source_uri",
+          "validation_result",
+          "last_good"
+        ],
+        "title": "RecordSourceSnapshotResponse",
+        "type": "object"
+      },
       "RedeemSetupTokenRequest": {
         "properties": {
           "agent_description": {
@@ -13981,6 +14114,86 @@
           }
         },
         "summary": "ARD semantic search",
+        "tags": [
+          "ard"
+        ]
+      }
+    },
+    "/v1/ard/sources": {
+      "post": {
+        "description": "Pin one fetched snapshot of a connector source.\n\nGated on the ``ard.connectors_sync`` feature flag.",
+        "operationId": "record_source_snapshot",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordSourceSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordSourceSnapshotResponse"
+                }
+              }
+            },
+            "description": "Snapshot recorded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD connectors sync is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record a pinned source snapshot",
         "tags": [
           "ard"
         ]

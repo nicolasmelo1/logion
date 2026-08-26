@@ -177,4 +177,7 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "get_source_status": (
         "ARD source status endpoint; no stable SDK resource yet."
     ),
+    "record_source_snapshot": (
+        "ARD operator snapshot write; no stable SDK resource yet."
+    ),
 }

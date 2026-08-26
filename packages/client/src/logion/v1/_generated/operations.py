@@ -113,6 +113,8 @@ from logion.v1._types.generated.v1 import (
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    RecordSourceSnapshotRequest,
+    RecordSourceSnapshotResponse,
     RedeemSetupTokenRequest,
     RedeemSetupTokenResponse,
     RejectBountySubmissionResponse,
@@ -618,6 +620,20 @@ def search(
         "POST",
         "/v1/ard/search",
         SearchResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def record_source_snapshot(
+    http: HttpClient,
+    *,
+    body: RecordSourceSnapshotRequest,
+) -> RecordSourceSnapshotResponse:
+    """Call the record_source_snapshot API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/sources",
+        RecordSourceSnapshotResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
