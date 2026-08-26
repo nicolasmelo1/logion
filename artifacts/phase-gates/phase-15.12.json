@@ -1,0 +1,21 @@
+{
+  "phase_id": "15.12",
+  "runs": [
+    {
+      "api_adapter": "local-devrig",
+      "driver": "claude-code",
+      "model": "claude-haiku-4-5",
+      "report": "artifacts/phase-gates/reports/ai-catalog-ard-self-crawl.json",
+      "report_sha256": "3ef179e040178818b1793a1b9f6e26b6e50cf87dfe2b1cc18836bfbd030e9510",
+      "scenario": "ai_catalog_ard_self_crawl",
+      "status": "passed",
+      "unsupported_assertions": [],
+      "implementation": {
+        "public_sha256": "25b85bf6baf22f5867a2cd44f2a0c308038aececea31debbb0570cf0af098995",
+        "private_sha256": "6be83cdf7a3c0dae1d3fe9b2b082990bb1d9171a0a02104f23f900a68797afbb"
+      }
+    }
+  ],
+  "schema_version": 2,
+  "caveats": []
+}
