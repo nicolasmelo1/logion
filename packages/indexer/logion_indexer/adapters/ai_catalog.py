@@ -318,6 +318,13 @@ class AICatalogAdapter:
 
         # Collect namespaced metadata from the entry's extra fields.
         metadata: list[tuple[str, str]] = []
+        # The entry's own word for what it is. A Logion resource type and
+        # an AI Catalog media type are different vocabularies, and the
+        # mapping between them is lossy in one direction: `skill` cannot
+        # say whether the catalog called it +json or +zip. Keeping the
+        # original is what lets a re-crawl of our own catalog recover the
+        # type the entry started with instead of a normalized guess.
+        metadata.append(("ai_catalog_type", entry.type))
         for key, value in entry.extra:
             metadata.append((key, str(value)))
 

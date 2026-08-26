@@ -328,8 +328,14 @@ def _encode_host(host: HostInfo) -> JsonObject:
 
 
 def _decode_publisher(raw: JsonObject) -> Publisher:
-    identifier = require_str(raw, "identifier")
-    display_name = require_str(raw, "displayName")
+    # Named, because the entry has an `identifier` too and a bare
+    # "identifier: expected a string, got null" sends the reader to
+    # inspect the field that is fine.
+    try:
+        identifier = require_str(raw, "identifier")
+        display_name = require_str(raw, "displayName")
+    except (TypeError, ValueError) as exc:
+        raise AICatalogDecodeError(f"publisher.{exc}") from exc
     identity_type = opt_str(raw, "identityType")
     return Publisher(
         identifier=identifier,

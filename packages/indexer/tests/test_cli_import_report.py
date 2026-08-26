@@ -76,6 +76,7 @@ def _args(**overrides: object) -> argparse.Namespace:
         "entrypoint": CATALOG_URL,
         "report": None,
         "allow_quarantine": False,
+        "ingest": False,
     }
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -131,3 +132,52 @@ def test_summary_reaches_stdout_without_being_asked(
     out = capsys.readouterr().out
     assert "quarantined: 1" in out
     assert "ai_catalog_entry_invalid: 1" in out
+
+
+@pytest.mark.usefixtures("catalog_crawl")
+def test_ingest_sends_the_entry_type_the_catalog_declared(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # `skill` cannot say whether the catalog called it +json or +zip, so
+    # a normalized type would not round-trip through publication.
+    sent: dict = {}
+
+    class _Transport:
+        def set_api_base_url(self, _url: str) -> None:
+            return
+
+        def post(self, _url: str, json_body: dict, **_kw: object):
+            sent.update(json_body)
+            return HttpResponse(
+                200, b'{"created": 1, "matched": 0, "quarantine": []}'
+            )
+
+    monkeypatch.setattr(cli, "_build_transport", lambda _c: _Transport())
+    cli.cmd_crawl(IndexerConfig(), _args(ingest=True, allow_quarantine=True))
+
+    assert sent["source_kind"] == "ai_catalog_entry"
+    assert sent["entries"][0]["type"] == "application/mcp-server-card+json"
+    assert (
+        sent["entries"][0]["identifier"] == "urn:air:example.com:mcp:weather"
+    )
+
+
+@pytest.mark.usefixtures("catalog_crawl")
+def test_ingest_refusal_fails_the_crawl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Transport:
+        def set_api_base_url(self, _url: str) -> None:
+            return
+
+        def post(self, _url: str, json_body: dict, **_kw: object):  # noqa: ARG002
+            return HttpResponse(403, b"{}")
+
+    monkeypatch.setattr(cli, "_build_transport", lambda _c: _Transport())
+
+    assert (
+        cli.cmd_crawl(
+            IndexerConfig(), _args(ingest=True, allow_quarantine=True)
+        )
+        == 1
+    )

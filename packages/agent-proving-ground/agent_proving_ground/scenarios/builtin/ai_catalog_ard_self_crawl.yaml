@@ -38,50 +38,70 @@ phases:
       LOGION_HOME: logion_home
       EVIDENCE_DIR: evidence_dir
       RESOURCE_ID: resource_id
-      VERSION_ID: version_id
+      CATALOG_URL: catalog_url
+      FINDERS_URL: finders_url
       FILTER_TYPE: filter_type
       FILTER_SOURCE: filter_source
     goal: ""
   - id: publish_and_crawl
     actor: node_operator
     goal: |
-      Work as the node operator in ${FIXTURE_ROOT}. Call the CLI as plain
-      `logion`: the one on your PATH is the artifact the rig installed.
-      The base URL is http://localhost:8000. LOGION_HOME is already set
-      for you; never override it, and never set HOME.
+      Work as the node operator in ${FIXTURE_ROOT}. Call the CLI as
+      plain `logion` and `logion-indexer`: the ones on your PATH are the
+      artifacts the rig installed. The node is at http://localhost:8000.
+      LOGION_HOME is already set for you; never override it, and never
+      set HOME. Every feature flag this task needs is already on.
 
-      Publish this node's AI Catalog at /.well-known/ai-catalog.json by
-      enabling the ai_catalog_public feature flag and verifying the
-      endpoint serves a conformant document. Save the untouched JSON
-      response to ${EVIDENCE_DIR}/ai-catalog.json.
+      Run these five steps in order and save each output to the exact
+      path given. The assertions read those files, so a step whose
+      output landed somewhere else counts as not done.
 
-      Add the local catalog as a catalog source. Synchronize the official
-      Agent Finder directory from the pinned ard-connectors snapshot.
-      Approve the fixture endpoints. Query all enabled finders with
-      `logion-indexer agent-finders run --finder all --query-family
-      default --dry-run` and save the output to
-      ${EVIDENCE_DIR}/finder-run.json.
+      1. Fetch this node's AI Catalog and keep the response untouched:
 
-      Crawl the local AI Catalog twice, writing each run's import
-      report to the exact path given here:
+           curl -sS http://localhost:8000/.well-known/ai-catalog.json
+             -o ${EVIDENCE_DIR}/ai-catalog.json
 
-        logion-indexer crawl --adapter ai-catalog --entrypoint
-        http://localhost:8000/.well-known/ai-catalog.json
-        --report ${EVIDENCE_DIR}/crawl-1.json --allow-quarantine
+      2. Synchronize the Agent Finder directory from the pinned
+         snapshot, which records it against this node:
 
-      then the same command again with
-      `--report ${EVIDENCE_DIR}/crawl-2.json`. The fixture catalog
-      contains one deliberately malformed entry, so each crawl
-      quarantines it and exits non-zero without --allow-quarantine;
-      that is the expected outcome, not a failure to work around.
+           logion-indexer ard-connectors sync
+             --source-url ${FINDERS_URL}
 
-      Then expose/search the same entries through ARD with
-      `logion-indexer search --adapter ard --registry
-      http://localhost:8000/v1/ard/search --query "fixture linter"
-      --json` and save to ${EVIDENCE_DIR}/ard-search.json.
+      3. Query every finder in that directory and save the run:
 
-      Report accepted/rejected entries without touching the database
-      directly or installing connectors in the client.
+           logion-indexer agent-finders run
+             --source-url ${FINDERS_URL} --finder all
+             --query-family default --query "fixture linter"
+             --dry-run --json > ${EVIDENCE_DIR}/finder-run.json
+
+      4. Crawl the fixture catalog twice, ingesting what it offers:
+
+           logion-indexer crawl --adapter ai-catalog
+             --entrypoint ${CATALOG_URL} --ingest --allow-quarantine
+             --report ${EVIDENCE_DIR}/crawl-1.json
+
+         then the same command again writing
+         `--report ${EVIDENCE_DIR}/crawl-2.json`.
+
+         That catalog contains one entry that sets both `url` and
+         `data`, which the spec forbids. Each crawl quarantines it and
+         imports the rest. That is the expected outcome, not a problem
+         to work around: do not edit the catalog, and do not drop
+         --allow-quarantine and treat the non-zero exit as a failure.
+
+      5. Search the node through ARD and save the result:
+
+           logion-indexer search --adapter ard
+             --registry http://localhost:8000/v1/ard
+             --query "fixture linter" --json
+             > ${EVIDENCE_DIR}/ard-search.json
+
+         --registry takes the registry's base URL, not the search
+         endpoint: the client appends /search itself.
+
+      Then report how many entries each crawl accepted and rejected.
+      Do not write to the database directly, and do not install any ARD
+      connector package into the client.
     assertions:
       - type: api.ai_catalog_document_valid
         params:

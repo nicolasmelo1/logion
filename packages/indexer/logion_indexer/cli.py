@@ -10,6 +10,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TextIO
 from urllib.parse import urlparse
 
 from .config import IndexerConfig, SeedFile
@@ -185,11 +186,7 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     plan.partial = plan.partial or bool(discovery.failures)
     plan_dict = _merged_plan_dict(plan, resource_plan)
     diagnostics = sys.stderr if args.json else sys.stdout
-    print(f"discovered: {len(discovery.discoveries)}", file=diagnostics)
-    print(f"create: {len(plan_dict['create'])}", file=diagnostics)
-    print(f"update: {len(plan_dict['update'])}", file=diagnostics)
-    print(f"skip: {len(plan_dict['skip'])}", file=diagnostics)
-    print(f"partial: {'yes' if plan.partial else 'no'}", file=diagnostics)
+    _print_plan_counts(discovery, plan_dict, plan.partial, diagnostics)
     report = _build_import_report(
         config=config,
         args=args,
@@ -201,6 +198,68 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     )
     for line in report.summary_lines():
         print(line, file=diagnostics)
+    if getattr(args, "ingest", False):
+        ingested = _ingest_entries(
+            config, transport, args, discovery.discoveries
+        )
+        if ingested is None:
+            return 1
+        _apply_ingestion(report, ingested)
+        print(
+            f"ingested: {report.created} created, {report.matched} matched",
+            file=diagnostics,
+        )
+    _write_crawl_outputs(args, plan_dict, report, diagnostics)
+    return _crawl_exit_code(args, report)
+
+
+def _print_plan_counts(
+    discovery: DiscoveryResult,
+    plan_dict: dict,
+    partial: bool,
+    diagnostics: TextIO,
+) -> None:
+    """Print what the plan would do, before what the run actually did."""
+    print(f"discovered: {len(discovery.discoveries)}", file=diagnostics)
+    print(f"create: {len(plan_dict['create'])}", file=diagnostics)
+    print(f"update: {len(plan_dict['update'])}", file=diagnostics)
+    print(f"skip: {len(plan_dict['skip'])}", file=diagnostics)
+    print(f"partial: {'yes' if partial else 'no'}", file=diagnostics)
+
+
+def _crawl_exit_code(
+    args: argparse.Namespace,
+    report: ImportReport,
+) -> int:
+    """A partial import is a documented non-zero exit.
+
+    A crawl that dropped entries and still exits 0 teaches every caller
+    above it that quarantine is normal.
+    """
+    if not report.quarantined or getattr(args, "allow_quarantine", False):
+        return 0
+    plural = "y" if report.quarantined == 1 else "ies"
+    print(
+        f"quarantined {report.quarantined} entr{plural}; "
+        f"pass --allow-quarantine to accept a partial import",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _write_crawl_outputs(
+    args: argparse.Namespace,
+    plan_dict: dict,
+    report: ImportReport,
+    diagnostics: TextIO,
+) -> None:
+    """Emit the plan and the report where the caller asked for them.
+
+    They are different artifacts: the plan is a resume-able push
+    payload, the report is the account of what this run saw and
+    refused. Writing one to the other's path loses whichever it
+    overwrites.
+    """
     if args.out:
         Path(args.out).write_text(json.dumps(plan_dict, indent=2))
         print(f"wrote plan: {args.out}", file=diagnostics)
@@ -209,18 +268,103 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
         print(f"wrote import report: {args.report}", file=diagnostics)
     if args.json:
         print(json.dumps(plan_dict, indent=2))
-    # A partial import is a documented non-zero exit: a crawl that
-    # dropped entries and still exits 0 teaches every caller above it
-    # that quarantine is normal.
-    if report.quarantined and not getattr(args, "allow_quarantine", False):
+
+
+def _apply_ingestion(report: ImportReport, ingested: dict) -> None:
+    """Replace the crawler's intent with the registry's answer.
+
+    What the crawler planned to write and what the registry decided to
+    create are different numbers. The report carries the second, because
+    that is the one an operator can act on.
+    """
+    report.created = ingested.get("created", report.created)
+    report.matched = ingested.get("matched", report.matched)
+    for entry in ingested.get("quarantine", []):
+        report.quarantine.append(
+            QuarantinedRecord(
+                identifier=str(entry.get("identifier", "")),
+                error_code=str(entry.get("error_code", "")),
+                reason=str(entry.get("reason", "")),
+            )
+        )
+
+
+def _ingest_entries(
+    config: IndexerConfig,
+    transport: Transport,
+    args: argparse.Namespace,
+    discoveries: list,
+) -> dict | None:
+    """Record discovered entries as resources with catalog provenance.
+
+    The counters come back from the registry rather than from the plan:
+    what the crawler intended to write and what the registry decided to
+    create are different numbers, and the import report should carry the
+    one that actually happened.
+    """
+    entries = [
+        {
+            "identifier": item.canonical_uri.removeprefix("air:"),
+            "type": _catalog_media_type(item),
+            "title": item.title or "",
+            "summary": item.summary or None,
+            "tags": list(item.tags),
+            "publisher": item.original_author or None,
+        }
+        for item in discoveries
+        if isinstance(item, DiscoveredResource)
+    ]
+    url = f"{config.api_base_url.rstrip('/')}/v1/resources:ingest-catalog"
+    transport.set_api_base_url(config.api_base_url)
+    resp = transport.post(
+        url,
+        json_body={
+            "source_uri": getattr(args, "entrypoint", "") or "",
+            "source_kind": "ai_catalog_entry",
+            "entries": entries,
+        },
+    )
+    if resp.status != 200:
         print(
-            f"quarantined {report.quarantined} entr"
-            f"{'y' if report.quarantined == 1 else 'ies'}; "
-            f"pass --allow-quarantine to accept a partial import",
+            f"ingest: registry refused the entries (HTTP {resp.status})",
             file=sys.stderr,
         )
-        return 2
-    return 0
+        return None
+    try:
+        payload = resp.json()
+    except (ValueError, json.JSONDecodeError):
+        print("ingest: registry returned invalid JSON", file=sys.stderr)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _catalog_media_type(item: DiscoveredResource) -> str:
+    """Recover the media type the catalog entry declared.
+
+    The adapter keeps it in channel metadata rather than on the resource,
+    because a Logion resource type and an AI Catalog media type are not
+    the same vocabulary and collapsing them here would lose the entry's
+    own word for what it is.
+    """
+    for channel in item.channels:
+        for key, value in channel.metadata:
+            if key == "ai_catalog_type":
+                return str(value)
+    return _RESOURCE_TYPE_TO_MEDIA_TYPE.get(
+        item.resource_type, "application/octet-stream"
+    )
+
+
+#: The catalog media type each Logion resource type is published as.
+#: Mirrors the registry's own map so a re-crawl of our own catalog
+#: recovers the type it started with.
+_RESOURCE_TYPE_TO_MEDIA_TYPE: dict[str, str] = {
+    "skill": "application/agent-skills+json",
+    "agent_skill": "application/agent-skills+json",
+    "mcp_server": "application/mcp-server-card+json",
+    "catalog": "application/ai-catalog+json",
+    "registry": "application/ai-registry+json",
+}
 
 
 def _crawl_config(
@@ -849,7 +993,14 @@ def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
     from .sources.ard_connectors import ARDConnectorsSource
 
     transport = _build_transport(config)
-    connectors = ARDConnectorsSource(transport=transport)
+    # The directory this run queries has to be the one the node pinned.
+    # Defaulting to upstream means `sync` pins one set and `run` queries
+    # another, while every record still reports a snapshot commit -- the
+    # pin becomes decoration.
+    connectors = ARDConnectorsSource(
+        transport=transport,
+        source_url=getattr(args, "source_url", None),
+    )
     snapshot = connectors.fetch_snapshot(
         commit_sha=getattr(args, "commit", None)
     )
@@ -898,7 +1049,8 @@ def _record_snapshot(
         "upstream_repo": snapshot.repo,  # type: ignore[attr-defined]
         "commit_sha": snapshot.commit_sha,  # type: ignore[attr-defined]
         "file_digest": snapshot.file_digest,  # type: ignore[attr-defined]
-        "validation_result": "valid",
+        # The registry's word for "fetched, parsed, safe to activate".
+        "validation_result": "fresh",
         "last_good": True,
     }
     transport.set_api_base_url(config.api_base_url)
@@ -1044,6 +1196,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the import report (counters and quarantine) here",
     )
     crawl_parser.add_argument(
+        "--ingest",
+        action="store_true",
+        help=(
+            "record the discovered entries as resources with catalog "
+            "provenance (ai-catalog adapter only)"
+        ),
+    )
+    crawl_parser.add_argument(
         "--allow-quarantine",
         action="store_true",
         help=(
@@ -1094,6 +1254,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--adapter",
         default="ard",
         help="search adapter (default: ard)",
+    )
+    # Same reason as `agent-finders run`: every other flag here is local,
+    # so `search ... --json` is what gets typed. argparse leaves an
+    # already-set namespace attribute alone.
+    search_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="output as JSON",
     )
     search_parser.add_argument(
         "--registry",
@@ -1152,6 +1320,20 @@ def build_parser() -> argparse.ArgumentParser:
         dest="agent_finders_command", required=True
     )
     af_run = af_sub.add_parser("run", help="query enabled finders")
+    # `--json` is global, but every other flag on this command is local,
+    # so `... run --dry-run --json` is what anyone writes first. argparse
+    # leaves an already-set namespace attribute alone, so accepting it
+    # here does not clobber the global form.
+    af_run.add_argument(
+        "--json",
+        action="store_true",
+        help="output as JSON",
+    )
+    af_run.add_argument(
+        "--source-url",
+        default=None,
+        help="query the finder directory pinned from this URL",
+    )
     af_run.add_argument(
         "--finder",
         default="all",
