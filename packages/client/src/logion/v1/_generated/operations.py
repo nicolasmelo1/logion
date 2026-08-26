@@ -89,6 +89,8 @@ from logion.v1._types.generated.v1 import (
     GetUnreadCountResponse,
     GetUserDetailResponse,
     GithubIdentityResponse,
+    IngestCatalogEntriesRequest,
+    IngestCatalogEntriesResponse,
     ListAgentsResponse,
     ListBountiesResponse,
     ListBountySubmissionsResponse,
@@ -1811,6 +1813,20 @@ def submit_usage_receipt(
         "POST",
         f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
         SubmitUsageReceiptResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def ingest_catalog_entries(
+    http: HttpClient,
+    *,
+    body: IngestCatalogEntriesRequest,
+) -> IngestCatalogEntriesResponse:
+    """Call the ingest_catalog_entries API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/resources:ingest-catalog",
+        IngestCatalogEntriesResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 

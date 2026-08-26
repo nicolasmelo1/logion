@@ -1433,6 +1433,63 @@
         "title": "CatalogEntry",
         "type": "object"
       },
+      "CatalogEntryInput": {
+        "additionalProperties": false,
+        "description": "One AI Catalog entry offered for ingestion.",
+        "properties": {
+          "identifier": {
+            "maxLength": 2048,
+            "title": "Identifier",
+            "type": "string"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 255,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "type"
+        ],
+        "title": "CatalogEntryInput",
+        "type": "object"
+      },
       "ChannelSchema": {
         "properties": {
           "hub_slug": {
@@ -6189,6 +6246,101 @@
         "title": "IndexingRunProgressStats",
         "type": "object"
       },
+      "IngestCatalogEntriesRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/resources:ingest-catalog request body.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryInput"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "source_kind": {
+            "default": "ai_catalog_entry",
+            "maxLength": 32,
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_uri": {
+            "maxLength": 2048,
+            "title": "Source Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_uri"
+        ],
+        "title": "IngestCatalogEntriesRequest",
+        "type": "object"
+      },
+      "IngestCatalogEntriesResponse": {
+        "description": "POST /v1/resources:ingest-catalog response body.",
+        "properties": {
+          "created": {
+            "default": 0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "matched": {
+            "default": 0,
+            "title": "Matched",
+            "type": "integer"
+          },
+          "new_versions": {
+            "default": 0,
+            "title": "New Versions",
+            "type": "integer"
+          },
+          "quarantine": {
+            "items": {
+              "$ref": "#/components/schemas/QuarantinedEntry"
+            },
+            "title": "Quarantine",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/IngestedEntry"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "title": "IngestCatalogEntriesResponse",
+        "type": "object"
+      },
+      "IngestedEntry": {
+        "description": "What happened to one accepted entry.",
+        "properties": {
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "resource_id",
+          "resource_type",
+          "status"
+        ],
+        "title": "IngestedEntry",
+        "type": "object"
+      },
       "KnownSourceEntry": {
         "properties": {
           "id": {
@@ -7856,6 +8008,30 @@
           "balance_after_cents"
         ],
         "title": "PurchaseCourseResponse",
+        "type": "object"
+      },
+      "QuarantinedEntry": {
+        "description": "One entry that was refused, under a stable code.",
+        "properties": {
+          "error_code": {
+            "title": "Error Code",
+            "type": "string"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "error_code",
+          "reason"
+        ],
+        "title": "QuarantinedEntry",
         "type": "object"
       },
       "QueryFilter": {
@@ -20890,6 +21066,86 @@
         "summary": "Submit a usage receipt for a resource version",
         "tags": [
           "resource_feedback"
+        ]
+      }
+    },
+    "/v1/resources:ingest-catalog": {
+      "post": {
+        "description": "Record catalog entries as resources with catalog provenance.\n\nGated on the ``ai_catalog.ingestion`` feature flag.",
+        "operationId": "ingest_catalog_entries",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestCatalogEntriesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestCatalogEntriesResponse"
+                }
+              }
+            },
+            "description": "Ingestion result"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "AI Catalog ingestion is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many entries"
+          }
+        },
+        "summary": "Ingest AI Catalog entries as resources",
+        "tags": [
+          "resources"
         ]
       }
     },

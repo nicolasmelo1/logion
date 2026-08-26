@@ -180,4 +180,7 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "record_source_snapshot": (
         "ARD operator snapshot write; no stable SDK resource yet."
     ),
+    "ingest_catalog_entries": (
+        "AI Catalog ingestion; operator tooling, no SDK resource yet."
+    ),
 }

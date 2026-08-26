@@ -41,18 +41,37 @@ REQUIRED_FLAGS = (
 DEFAULT_DATABASE_URL = "postgresql://logion:logion@localhost:5433/logion"
 
 
+def _devrig_env_files() -> list[Path]:
+    """Where the rig may have written its environment down.
+
+    Derived from this repository's own location rather than named: the
+    checkout that drives the rig sits beside or above it, and this file
+    ships in a public repository that must not refer to it.
+    """
+    repo_root = Path(
+        os.environ.get("LOGION_PUBLIC_REPO_PATH")
+        or Path(__file__).resolve().parents[3]
+    )
+    return [
+        repo_root / ".devrig" / "devrig.env",
+        repo_root.parent / ".devrig" / "devrig.env",
+    ]
+
+
 def _database_url() -> str:
     """Find the dev rig's database, preferring what the rig wrote down."""
     env_url = os.environ.get("LOGION_DATABASE_URL")
     if not env_url:
-        workspace = Path(__file__).resolve().parents[4] / "logion-workspace"
-        env_file = workspace / ".devrig" / "devrig.env"
-        if env_file.is_file():
+        for env_file in _devrig_env_files():
+            if not env_file.is_file():
+                continue
             for line in env_file.read_text(encoding="utf-8").splitlines():
                 key, _, value = line.partition("=")
                 if key.strip() == "LOGION_DATABASE_URL":
                     env_url = value.strip()
                     break
+            if env_url:
+                break
     url = env_url or DEFAULT_DATABASE_URL
     # SQLAlchemy's driver suffix is not a libpq URL.
     return url.replace("postgresql+psycopg://", "postgresql://")
