@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
@@ -14,6 +15,7 @@ from urllib.parse import urlparse
 from .config import IndexerConfig, SeedFile
 from .crawl import Crawler
 from .dedup import DedupPlan, ResourceDedupPlan
+from .import_report import ImportReport, QuarantinedRecord
 from .mirror import BundleArtifact
 from .models import DiscoveredResource, DiscoveredSkill
 from .pipeline import (
@@ -179,26 +181,30 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
             only=args.adapter,
         )
     # --entrypoint overrides the seed file target for the adapter.
+    quarantine: list[QuarantinedRecord] = []
+    started = time.monotonic()
     if getattr(args, "entrypoint", None) and config.only:
         transport = _build_transport(config)
         adapter = _get_adapter(config.only, transport)
         discoveries: list[DiscoveredSkill | DiscoveredResource] = []
         failures: list[AdapterFailure] = []
         try:
-            for item in adapter.discover(  # type: ignore[attr-defined]
-                args.entrypoint,
-                limit=config.limit,
-            ):
-                discoveries.append(item)
+            discovered, quarantine, seen = _discover_entrypoint(
+                adapter, args.entrypoint, config.limit
+            )
+            discoveries.extend(discovered)
+            entries_seen = seen
         except Exception as e:
             failures.append(
                 AdapterFailure(config.only, args.entrypoint, str(e))
             )
             print(f"adapter {config.only} error: {e}", file=sys.stderr)
+            entries_seen = 0
         discovery = DiscoveryResult(discoveries=discoveries, failures=failures)
     else:
         transport = _build_transport(config)
         discovery = _discover_all(config, transport)
+        entries_seen = len(discovery.discoveries)
     skills, resources = partition_discoveries(discovery.discoveries)
     plan, _ = build_indexing_plan(
         skills,
@@ -217,12 +223,100 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     print(f"update: {len(plan_dict['update'])}", file=diagnostics)
     print(f"skip: {len(plan_dict['skip'])}", file=diagnostics)
     print(f"partial: {'yes' if plan.partial else 'no'}", file=diagnostics)
+    report = _build_import_report(
+        config=config,
+        args=args,
+        plan_dict=plan_dict,
+        quarantine=quarantine,
+        entries_seen=entries_seen,
+        partial=plan.partial,
+        duration_ms=int((time.monotonic() - started) * 1000),
+    )
+    for line in report.summary_lines():
+        print(line, file=diagnostics)
     if args.out:
         Path(args.out).write_text(json.dumps(plan_dict, indent=2))
         print(f"wrote plan: {args.out}", file=diagnostics)
+    if getattr(args, "report", None):
+        report.write(args.report)
+        print(f"wrote import report: {args.report}", file=diagnostics)
     if args.json:
         print(json.dumps(plan_dict, indent=2))
+    # A partial import is a documented non-zero exit: a crawl that
+    # dropped entries and still exits 0 teaches every caller above it
+    # that quarantine is normal.
+    if report.quarantined and not getattr(args, "allow_quarantine", False):
+        print(
+            f"quarantined {report.quarantined} entr"
+            f"{'y' if report.quarantined == 1 else 'ies'}; "
+            f"pass --allow-quarantine to accept a partial import",
+            file=sys.stderr,
+        )
+        return 2
     return 0
+
+
+def _discover_entrypoint(
+    adapter: object,
+    entrypoint: str,
+    limit: int | None,
+) -> tuple[list[DiscoveredSkill | DiscoveredResource], list, int]:
+    """Discover from one URL, keeping what the adapter refused.
+
+    ``discover`` yields only what survived, which is exactly the half a
+    quarantine report cannot be built from. Adapters that expose
+    ``crawl`` return both halves, so prefer it and fall back for the
+    ones that do not.
+    """
+    crawl = getattr(adapter, "crawl", None)
+    if crawl is None:
+        items = list(
+            adapter.discover(entrypoint, limit=limit)  # type: ignore[attr-defined]
+        )
+        return items, [], len(items)
+    result = crawl(entrypoint, limit=limit)
+    quarantine = [
+        QuarantinedRecord(
+            identifier=rejection.identifier,
+            error_code=rejection.error_code,
+            reason=rejection.reason,
+        )
+        for rejection in result.rejected
+    ]
+    return list(result.resources), quarantine, result.seen
+
+
+def _build_import_report(
+    *,
+    config: IndexerConfig,
+    args: argparse.Namespace,
+    plan_dict: dict,
+    quarantine: list,
+    entries_seen: int,
+    partial: bool,
+    duration_ms: int,
+) -> ImportReport:
+    """Turn a finished crawl into the record an operator can audit."""
+    created = plan_dict["create"]
+    matched = plan_dict["update"] + plan_dict["skip"]
+    # Counted, not assumed: an AI Catalog entry is a selection
+    # descriptor and must never mint a ResourceVersion, and the only
+    # honest way to report that is to look at what the plan carries.
+    new_versions = sum(
+        1 for item in created + plan_dict["update"] if item.get("bundle")
+    )
+    return ImportReport(
+        source=getattr(args, "entrypoint", None) or str(config.seed_file),
+        adapter=config.only or "all",
+        seen=entries_seen if entries_seen else len(created) + len(matched),
+        created=len(created),
+        matched=len(matched),
+        new_versions=new_versions,
+        cursor=None,
+        duration_ms=duration_ms,
+        partial=partial,
+        quarantine=list(quarantine),
+    )
 
 
 def _merged_plan_dict(plan: DedupPlan, resources: ResourceDedupPlan) -> dict:
@@ -590,25 +684,19 @@ def cmd_search(config: IndexerConfig, args: argparse.Namespace) -> int:
         for error in result.errors:
             print(f"error: {error}", file=sys.stderr)
     if args.json:
-        import json as json_mod
-
-        output = {
-            "results": [
-                {
-                    "identifier": r.canonical_uri,
-                    "title": r.title,
-                    "resource_type": r.resource_type,
-                    "channels": [
-                        {"hub_slug": c.hub_slug, "hub_url": c.hub_url}
-                        for c in r.channels
-                    ],
-                }
-                for r in result.resources
-            ],
+        output: dict[str, object] = {
+            "registry": {"origin": args.registry},
+            "query": {
+                "text": args.query or "",
+                "page_size": args.page_size or 10,
+                "filters": {},
+            },
+            "results": [_search_result_json(r) for r in result.resources],
             "referrals": result.referrals,
             "page_token": result.page_token,
+            "errors": result.errors,
         }
-        print(json_mod.dumps(output, indent=2))
+        print(json.dumps(output, indent=2))
     else:
         print(f"results: {len(result.resources)}")
         for r in result.resources:
@@ -618,6 +706,39 @@ def cmd_search(config: IndexerConfig, args: argparse.Namespace) -> int:
             for url in result.referrals:
                 print(f"  {url}")
     return 1 if result.errors else 0
+
+
+def _search_result_json(resource: DiscoveredResource) -> dict:
+    """Serialize one ARD hit without dropping where it came from.
+
+    The score and the answering registry live in channel metadata, and
+    a reader that only sees identifier/title/type cannot tell a hit from
+    a trusted registry apart from one a stranger returned -- nor can it
+    check that a score was registry-supplied metadata rather than
+    something Logion inferred. Both claims are in the plan; neither
+    survives a projection that keeps only the names.
+    """
+    channels = [
+        {
+            "hub_slug": channel.hub_slug,
+            "hub_url": channel.hub_url,
+            "metadata": dict(channel.metadata),
+        }
+        for channel in resource.channels
+    ]
+    metadata = dict(resource.channels[0].metadata) if resource.channels else {}
+    return {
+        "identifier": resource.canonical_uri,
+        "title": resource.title,
+        "resource_type": resource.resource_type,
+        # Registry-supplied, never Logion's judgement. Absent rather
+        # than zero when the registry did not send one: a missing score
+        # and a score of zero are different answers.
+        "score": metadata.get("relevance_score"),
+        "source": metadata.get("ard_source")
+        or (resource.channels[0].hub_url if resource.channels else None),
+        "channels": channels,
+    }
 
 
 def cmd_ard_connectors(config: IndexerConfig, args: argparse.Namespace) -> int:
@@ -712,14 +833,17 @@ def cmd_agent_finders(config: IndexerConfig, args: argparse.Namespace) -> int:
         max_results=args.limit or 100,
     )
 
-    if args.dry_run:
-        _print_agent_finders_dry_run(result)
-        return 0
-
+    # --dry-run says "do not commit", not "do not report". It used to
+    # return before the --json branch, so `--dry-run --json` printed
+    # three lines of prose and every caller parsing it got nothing.
     if args.json:
-        _print_agent_finders_json(result)
+        _print_agent_finders_json(result, dry_run=bool(args.dry_run))
+    elif args.dry_run:
+        _print_agent_finders_dry_run(result)
     else:
         _print_agent_finders_text(result)
+    if args.dry_run:
+        return 0
     return 1 if result.errors else 0
 
 
@@ -730,11 +854,15 @@ def _print_agent_finders_dry_run(result: object) -> None:
     print(f"  referrals: {len(result.referrals)}")  # type: ignore[attr-defined]
 
 
-def _print_agent_finders_json(result: object) -> None:
+def _print_agent_finders_json(
+    result: object,
+    *,
+    dry_run: bool = False,
+) -> None:
     """Print agent finder results as JSON."""
-    import json as json_mod
-
     output = {
+        "dry_run": dry_run,
+        "finder_count": len(result.records),  # type: ignore[attr-defined]
         "resources": [
             {
                 "identifier": r.canonical_uri,
@@ -758,7 +886,7 @@ def _print_agent_finders_json(result: object) -> None:
         "referrals": result.referrals,  # type: ignore[attr-defined]
         "errors": result.errors,  # type: ignore[attr-defined]
     }
-    print(json_mod.dumps(output, indent=2))
+    print(json.dumps(output, indent=2))
 
 
 def _print_agent_finders_text(result: object) -> None:
@@ -841,6 +969,19 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "entrypoint URL for ai-catalog or ard adapter "
             "(overrides seed file target)"
+        ),
+    )
+    crawl_parser.add_argument(
+        "--report",
+        default=None,
+        help="write the import report (counters and quarantine) here",
+    )
+    crawl_parser.add_argument(
+        "--allow-quarantine",
+        action="store_true",
+        help=(
+            "exit 0 even when entries were quarantined; without it a "
+            "partial import is a documented failure"
         ),
     )
     subparsers.add_parser("resolve", help="resolve hub pages to GitHub")

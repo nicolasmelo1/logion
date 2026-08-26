@@ -26,9 +26,12 @@ from ..ai_catalog.v1_0 import (
     CatalogEntry,
 )
 from ..ai_catalog.v1_0.codec import (
+    ERROR_CODE_DOCUMENT_INVALID,
+    ERROR_CODE_VERSION_UNSUPPORTED,
     AICatalogDecodeError,
     AICatalogVersionUnsupported,
-    decode_catalog,
+    EntryRejection,
+    decode_catalog_tolerant,
 )
 from ..canonical import CanonicalResourceId
 from ..models import DiscoveredResource, DiscoveryChannel
@@ -49,6 +52,13 @@ _TYPE_MAP: dict[str, str] = {
 
 #: Default resource type for unknown media types.
 _DEFAULT_RESOURCE_TYPE = "artifact"
+
+#: Quarantine codes this adapter adds on top of the codec's. Decoding
+#: proves an entry is well-formed; these two say it is well-formed and
+#: still unusable, which is a different thing to tell an operator.
+ERROR_CODE_IDENTITY_MISSING = "ai_catalog_entry_identity_missing"
+ERROR_CODE_IDENTITY_INVALID = "ai_catalog_entry_identity_invalid"
+ERROR_CODE_FETCH_FAILED = "ai_catalog_fetch_failed"
 
 
 def _map_resource_type(media_type: str) -> str:
@@ -81,6 +91,8 @@ class CatalogCrawlResult:
         nested_catalogs: URLs of nested catalog entries to follow.
         registry_urls: URLs of ARD registry entries found.
         errors: Per-entry errors that did not stop the crawl.
+        rejected: Entries quarantined with a stable code and reason.
+        seen: Entries the document offered, importable or not.
         source_url: The URL the catalog was fetched from.
     """
 
@@ -88,7 +100,29 @@ class CatalogCrawlResult:
     nested_catalogs: list[str] = field(default_factory=list)
     registry_urls: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    rejected: list[EntryRejection] = field(default_factory=list)
+    seen: int = 0
     source_url: str = ""
+
+    def quarantine(self, entry: EntryRejection) -> None:
+        """Record a rejection in both views callers read.
+
+        ``rejected`` is what an import report groups by code; ``errors``
+        is the flat prose list older callers already print. Writing one
+        without the other is how a quarantined entry becomes invisible
+        to half the code that looks for it.
+        """
+        self.rejected.append(entry)
+        named = f"entry {entry.identifier!r}: " if entry.identifier else ""
+        self.errors.append(f"{named}{entry.reason} [{entry.error_code}]")
+
+    @property
+    def errors_by_code(self) -> dict[str, int]:
+        """Count quarantined entries by stable code."""
+        counts: dict[str, int] = {}
+        for entry in self.rejected:
+            counts[entry.error_code] = counts.get(entry.error_code, 0) + 1
+        return counts
 
 
 class AICatalogAdapter:
@@ -136,8 +170,14 @@ class AICatalogAdapter:
 
         resp = self.transport.get(entrypoint_url)
         if resp.status != 200:
-            result.errors.append(
-                f"fetch failed: {entrypoint_url} -> HTTP {resp.status}"
+            result.quarantine(
+                EntryRejection(
+                    identifier="",
+                    error_code=ERROR_CODE_FETCH_FAILED,
+                    reason=(
+                        f"fetch failed: {entrypoint_url} -> HTTP {resp.status}"
+                    ),
+                )
             )
             return result
 
@@ -161,14 +201,39 @@ class AICatalogAdapter:
         try:
             doc = json.loads(resp.body.decode("utf-8"))  # type: ignore[attr-defined]
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            result.errors.append(f"invalid JSON: {e}")
+            result.quarantine(
+                EntryRejection(
+                    identifier="",
+                    error_code=ERROR_CODE_DOCUMENT_INVALID,
+                    reason=f"invalid JSON: {e}",
+                )
+            )
             return None
 
         try:
-            return decode_catalog(doc)
-        except (AICatalogVersionUnsupported, AICatalogDecodeError) as e:
-            result.errors.append(str(e))
+            catalog, rejected = decode_catalog_tolerant(doc)
+        except AICatalogVersionUnsupported as e:
+            result.quarantine(
+                EntryRejection(
+                    identifier="",
+                    error_code=ERROR_CODE_VERSION_UNSUPPORTED,
+                    reason=str(e),
+                )
+            )
             return None
+        except AICatalogDecodeError as e:
+            result.quarantine(
+                EntryRejection(
+                    identifier="",
+                    error_code=ERROR_CODE_DOCUMENT_INVALID,
+                    reason=str(e),
+                )
+            )
+            return None
+        for entry in rejected:
+            result.quarantine(entry)
+        result.seen += len(rejected)
+        return catalog
 
     def _collect_entries(
         self,
@@ -179,6 +244,7 @@ class AICatalogAdapter:
     ) -> None:
         """Walk catalog entries, populating ``result`` in place."""
         count = 0
+        result.seen += len(catalog.entries)
         for entry in catalog.entries:
             if limit is not None and count >= limit:
                 break
@@ -194,9 +260,35 @@ class AICatalogAdapter:
                 result.registry_urls.append(entry.url)
 
             resource = self._entry_to_resource(entry, entrypoint_url, catalog)
-            if resource is not None:
-                result.resources.append(resource)
-                count += 1
+            if resource is None:
+                result.quarantine(self._identity_rejection(entry))
+                continue
+            result.resources.append(resource)
+            count += 1
+
+    @staticmethod
+    def _identity_rejection(entry: CatalogEntry) -> EntryRejection:
+        """Say which half of identity an unusable entry was missing.
+
+        A decoded entry that still cannot become a resource failed on
+        identity, and the operator's next move differs by which half:
+        a missing identifier is the publisher's to fix, an unmappable
+        one may be ours.
+        """
+        if not entry.identifier or not entry.type:
+            return EntryRejection(
+                identifier=entry.identifier,
+                error_code=ERROR_CODE_IDENTITY_MISSING,
+                reason="entry has no identifier or no type",
+            )
+        return EntryRejection(
+            identifier=entry.identifier,
+            error_code=ERROR_CODE_IDENTITY_INVALID,
+            reason=(
+                f"identifier does not map to a canonical resource id: "
+                f"{entry.identifier!r}"
+            ),
+        )
 
     @staticmethod
     def _entry_to_resource(
@@ -267,6 +359,9 @@ def _extract_publisher(entry: CatalogEntry) -> str:
 
 
 __all__ = [
+    "ERROR_CODE_FETCH_FAILED",
+    "ERROR_CODE_IDENTITY_INVALID",
+    "ERROR_CODE_IDENTITY_MISSING",
     "AICatalogAdapter",
     "CatalogCrawlResult",
 ]

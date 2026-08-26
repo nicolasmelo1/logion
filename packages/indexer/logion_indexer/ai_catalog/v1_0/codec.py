@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from logion_indexer._json import (
     JsonObject,
     JsonValue,
@@ -59,15 +61,90 @@ class AICatalogDecodeError(ValueError):
     """A catalog document failed structural validation."""
 
 
-def decode_catalog(doc: JsonValue) -> Catalog:
-    """Decode a JSON value into a :class:`Catalog`.
+#: Stable quarantine codes. An operator reading an import report groups
+#: by these, so they are part of the contract: renaming one silently
+#: changes what a saved report means. They are AI Catalog codes and stay
+#: distinct from ARD's -- the two specs negotiate versions separately.
+ERROR_CODE_VERSION_UNSUPPORTED = "ai_catalog_version_unsupported"
+ERROR_CODE_DOCUMENT_INVALID = "ai_catalog_document_invalid"
+ERROR_CODE_ENTRY_INVALID = "ai_catalog_entry_invalid"
 
-    Raises:
-        AICatalogVersionUnsupported: if ``specVersion`` is not ``"1.0"``.
-        AICatalogDecodeError: if required fields are missing or malformed.
+
+@dataclass(frozen=True)
+class EntryRejection:
+    """One catalog entry that did not survive decoding.
+
+    ``identifier`` is best-effort: an entry can be malformed precisely
+    because it has no readable identifier, and a rejection nobody can
+    name is not actionable. Empty means the entry could not say who it
+    was.
+    """
+
+    identifier: str
+    error_code: str
+    reason: str
+
+
+def decode_catalog_tolerant(
+    doc: JsonValue,
+) -> tuple[Catalog, tuple[EntryRejection, ...]]:
+    """Decode a document, quarantining bad entries instead of the document.
+
+    :func:`decode_catalog` is the conformance answer: it asks whether a
+    document is valid, and one malformed entry makes it invalid. A crawl
+    asks a different question -- what can be imported from this document
+    -- and answering it with an exception discards every good entry
+    because one publisher typed a field wrong.
+
+    Envelope failures (``specVersion``, a missing ``entries`` array) still
+    raise: those are not one entry's problem, and there is nothing to
+    salvage behind them.
     """
     obj = as_object(doc, where="ai-catalog document")
+    spec_version = _require_spec_version(obj)
 
+    entries_raw = obj.get("entries")
+    if not isinstance(entries_raw, list):
+        raise AICatalogDecodeError("missing or invalid field: entries")
+
+    entries: list[CatalogEntry] = []
+    rejected: list[EntryRejection] = []
+    for raw in entries_raw:
+        try:
+            entries.append(_decode_entry(raw))
+        except (AICatalogDecodeError, TypeError, ValueError) as exc:
+            rejected.append(
+                EntryRejection(
+                    identifier=_best_effort_identifier(raw),
+                    error_code=ERROR_CODE_ENTRY_INVALID,
+                    reason=str(exc),
+                )
+            )
+
+    host = None
+    host_raw = opt_object(obj, "host")
+    if host_raw is not None:
+        host = _decode_host(host_raw)
+
+    catalog = Catalog(
+        spec_version=spec_version,
+        entries=tuple(entries),
+        host=host,
+        extra=_collect_extra(obj, _CATALOG_KNOWN_KEYS),
+    )
+    return catalog, tuple(rejected)
+
+
+def _best_effort_identifier(raw: JsonValue) -> str:
+    """Name a rejected entry when it is nameable, without trusting it."""
+    if not isinstance(raw, dict):
+        return ""
+    identifier = raw.get("identifier")
+    return identifier if isinstance(identifier, str) else ""
+
+
+def _require_spec_version(obj: JsonObject) -> str:
+    """Read the one field that decides whether anything else applies."""
     spec_version = opt_str(obj, "specVersion")
     if spec_version is None:
         raise AICatalogDecodeError("missing required field: specVersion")
@@ -76,6 +153,18 @@ def decode_catalog(doc: JsonValue) -> Catalog:
             f"unsupported specVersion: {spec_version!r} "
             f"(supported: {SPEC_VERSION})"
         )
+    return spec_version
+
+
+def decode_catalog(doc: JsonValue) -> Catalog:
+    """Decode a JSON value into a :class:`Catalog`.
+
+    Raises:
+        AICatalogVersionUnsupported: if ``specVersion`` is not ``"1.0"``.
+        AICatalogDecodeError: if required fields are missing or malformed.
+    """
+    obj = as_object(doc, where="ai-catalog document")
+    spec_version = _require_spec_version(obj)
 
     entries_raw = obj.get("entries")
     if not isinstance(entries_raw, list):
