@@ -1,5 +1,5 @@
 {
-  "run_id": "20260826T031219-ai_catalog_ard_self_crawl",
+  "run_id": "20260826T033121-ai_catalog_ard_self_crawl",
   "scenario": "ai_catalog_ard_self_crawl",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -7,16 +7,16 @@
     "node_operator": "claude-code",
     "consumer": "claude-code"
   },
-  "started_at": "2026-08-26T03:12:19.132675Z",
-  "finished_at": "2026-08-26T03:14:25.227916Z",
+  "started_at": "2026-08-26T03:31:21.618496Z",
+  "finished_at": "2026-08-26T03:34:21.314551Z",
   "phase_results": [
     {
       "phase_id": "seed",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-26T03:12:19.424753Z",
-      "finished_at": "2026-08-26T03:12:19.622864Z",
-      "duration_seconds": 0.198
+      "started_at": "2026-08-26T03:31:21.884326Z",
+      "finished_at": "2026-08-26T03:31:22.068608Z",
+      "duration_seconds": 0.184
     },
     {
       "phase_id": "publish_and_crawl",
@@ -230,9 +230,9 @@
           }
         }
       ],
-      "started_at": "2026-08-26T03:12:19.622884Z",
-      "finished_at": "2026-08-26T03:13:54.883493Z",
-      "duration_seconds": 95.261
+      "started_at": "2026-08-26T03:31:22.068625Z",
+      "finished_at": "2026-08-26T03:33:48.919557Z",
+      "duration_seconds": 146.851
     },
     {
       "phase_id": "discover_through_ard",
@@ -277,9 +277,9 @@
           }
         }
       ],
-      "started_at": "2026-08-26T03:13:54.883553Z",
-      "finished_at": "2026-08-26T03:14:25.204033Z",
-      "duration_seconds": 30.32
+      "started_at": "2026-08-26T03:33:48.919630Z",
+      "finished_at": "2026-08-26T03:34:21.290686Z",
+      "duration_seconds": 32.371
     }
   ],
   "assertion_results": [

@@ -83,13 +83,26 @@ def _enable_flags() -> None:
     A run that starts with three of five flags set produces assertion
     failures that read like product defects.
     """
-    values = ", ".join(f"('{flag}', true)" for flag in REQUIRED_FLAGS)
+    # The statement is constant and the flag names travel as a psql
+    # variable, which psql quotes. Building `VALUES ('a', true), ...`
+    # by interpolation would be the same edit every time until one of
+    # those values stops being a literal.
     statement = (
-        f"INSERT INTO feature_flags (key, enabled) VALUES {values} "
-        "ON CONFLICT (key) DO UPDATE SET enabled = true;"
+        "UPDATE feature_flags SET enabled = true "
+        "WHERE key = ANY(string_to_array(:'flags', ','));"
     )
     result = subprocess.run(
-        ["psql", _database_url(), "-v", "ON_ERROR_STOP=1", "-c", statement],
+        [
+            "psql",
+            _database_url(),
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-v",
+            f"flags={','.join(REQUIRED_FLAGS)}",
+        ],
+        # On stdin, not -c: psql only interpolates variables into input
+        # it parses, and -c is sent through verbatim.
+        input=statement,
         capture_output=True,
         text=True,
         check=False,
@@ -97,6 +110,15 @@ def _enable_flags() -> None:
     if result.returncode != 0:
         raise SystemExit(
             f"could not enable feature flags: {result.stderr.strip()}"
+        )
+    # The app seeds a row for every known flag at startup, so an UPDATE
+    # that touched nothing means the rig is not the database this
+    # scenario assumes -- silence there would surface later as an
+    # assertion failure blaming the product.
+    if result.stdout.strip() == "UPDATE 0":
+        raise SystemExit(
+            "no feature flag rows were updated; is this the dev rig's "
+            "database?"
         )
 
 
