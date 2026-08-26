@@ -168,13 +168,13 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     ),
     # AI Catalog / ARD endpoints have generated primitives but no
     # handwritten SDK resource yet.
-    "get_ai_catalog": (
+    "get_catalog": (
         "AI Catalog document endpoint; no stable SDK resource yet."
     ),
-    "ard_search": "ARD search endpoint; no stable SDK resource yet.",
-    "ard_explore": "ARD explore endpoint; no stable SDK resource yet.",
-    "ard_list_agents": "ARD list endpoint; no stable SDK resource yet.",
-    "ard_source_snapshot_status": (
+    "search": "ARD search endpoint; no stable SDK resource yet.",
+    "explore": "ARD explore endpoint; no stable SDK resource yet.",
+    "list_agents": "ARD list endpoint; no stable SDK resource yet.",
+    "get_source_status": (
         "ARD source status endpoint; no stable SDK resource yet."
     ),
 }

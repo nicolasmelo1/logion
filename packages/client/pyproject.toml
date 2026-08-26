@@ -91,6 +91,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/logion/v1/_types/generated/**" = ["ALL"]
+# Generated operations: camelCase parameter names come from the OpenAPI
+# contract (orderBy, pageSize, pageToken) and must match wire names. The
+# root pyproject carries the same ignore for repo-wide runs; this one is
+# what `make generate-client` sees, since it lints from this directory.
+"src/logion/v1/_generated/operations.py" = ["N803", "N806"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 # Repo-wide ban on `typing.Any`. Banning the *import* is what makes it
