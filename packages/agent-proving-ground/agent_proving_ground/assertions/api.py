@@ -700,7 +700,10 @@ class ResourceSourceProvenanceVisibleAssertion(_ApiQueryAssertion):
     type = "api.resource_source_provenance_visible"
     query_type = "resource_source_provenance_visible"
     found_key = "visible"
-    evidence_keys = ("source_type", "source_uri", "upstream_repo")
+    # The names the resource detail endpoint actually uses. The previous
+    # trio (source_type/source_uri/upstream_repo) described the source
+    # *snapshot* table, so every run recorded three empty fields.
+    evidence_keys = ("source_kind", "source_uri", "external_id")
     pass_message = "resource source provenance is visible"
     fail_message = "resource source provenance is missing"
 

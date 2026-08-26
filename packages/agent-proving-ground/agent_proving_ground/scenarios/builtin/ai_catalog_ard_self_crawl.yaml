@@ -39,6 +39,8 @@ phases:
       EVIDENCE_DIR: evidence_dir
       RESOURCE_ID: resource_id
       VERSION_ID: version_id
+      FILTER_TYPE: filter_type
+      FILTER_SOURCE: filter_source
     goal: ""
   - id: publish_and_crawl
     actor: node_operator
@@ -60,11 +62,21 @@ phases:
       default --dry-run` and save the output to
       ${EVIDENCE_DIR}/finder-run.json.
 
-      Crawl the local AI Catalog twice using
-      `logion-indexer crawl --adapter ai-catalog --entrypoint
-      http://localhost:8000/.well-known/ai-catalog.json` and save each
-      run's import report. Then expose/search the same entries through
-      ARD with `logion-indexer search --adapter ard --registry
+      Crawl the local AI Catalog twice, writing each run's import
+      report to the exact path given here:
+
+        logion-indexer crawl --adapter ai-catalog --entrypoint
+        http://localhost:8000/.well-known/ai-catalog.json
+        --report ${EVIDENCE_DIR}/crawl-1.json --allow-quarantine
+
+      then the same command again with
+      `--report ${EVIDENCE_DIR}/crawl-2.json`. The fixture catalog
+      contains one deliberately malformed entry, so each crawl
+      quarantines it and exits non-zero without --allow-quarantine;
+      that is the expected outcome, not a failure to work around.
+
+      Then expose/search the same entries through ARD with
+      `logion-indexer search --adapter ard --registry
       http://localhost:8000/v1/ard/search --query "fixture linter"
       --json` and save to ${EVIDENCE_DIR}/ard-search.json.
 
@@ -81,38 +93,46 @@ phases:
         params:
           search_artifact: "${EVIDENCE_DIR}/ard-search.json"
       - type: api.ard_connectors_snapshot_pinned
-        params:
-          evidence_dir: "${EVIDENCE_DIR}"
       - type: api.agent_finders_queried
         params:
-          finder_run_artifact: "${EVIDENCE_DIR}/finder-run.json"
+          finder_artifact: "${EVIDENCE_DIR}/finder-run.json"
       - type: api.agent_finder_result_provenance_visible
         params:
-          finder_run_artifact: "${EVIDENCE_DIR}/finder-run.json"
+          finder_artifact: "${EVIDENCE_DIR}/finder-run.json"
       - type: files.client_has_no_ard_connector_install
         params:
           workspace_root: "${FIXTURE_ROOT}"
       - type: api.catalog_crawl_completed
         params:
-          evidence_dir: "${EVIDENCE_DIR}"
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
       - type: api.ard_resource_ingested
         params:
           resource_id: "${RESOURCE_ID}"
       - type: api.ard_record_rejected
         params:
-          evidence_dir: "${EVIDENCE_DIR}"
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
       - type: api.self_crawl_no_duplicate
         params:
           resource_id: "${RESOURCE_ID}"
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
       - type: api.resource_source_provenance_visible
         params:
           resource_id: "${RESOURCE_ID}"
       - type: api.search_filters_by_type_and_source
         params:
-          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+          query_text: "fixture"
+          resource_type: "${FILTER_TYPE}"
+          source: "${FILTER_SOURCE}"
       - type: api.discovery_succeeds_without_aktp
         params:
           search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+          query_text: "fixture linter"
       - type: api.ingested_model_requires_no_asm_schema
         params:
           resource_id: "${RESOURCE_ID}"
@@ -123,9 +143,15 @@ phases:
       `logion`. The base URL is http://localhost:8000. LOGION_HOME is
       already set for you; never override it, and never set HOME.
 
-      Find "Fixture Linter" through ARD by searching the local registry:
-      `logion resources search --query "fixture linter" --json`. Save
-      the untouched JSON to ${EVIDENCE_DIR}/consumer-search.json.
+      Find "Fixture Linter" through ARD. Query the registry's ARD
+      endpoint directly, installing nothing:
+
+        curl -sS -X POST http://localhost:8000/v1/ard/search
+          -H 'Content-Type: application/json'
+          -d '{"query": {"text": "fixture linter"}, "pageSize": 10}'
+
+      Save the untouched JSON response to
+      ${EVIDENCE_DIR}/consumer-search.json.
 
       Identify the registry and original AI Catalog publisher/entry from
       the search results. Inspect the canonical source of the
@@ -151,9 +177,13 @@ final_assertions:
   - type: api.self_crawl_no_duplicate
     params:
       resource_id: "${RESOURCE_ID}"
+      crawl_reports:
+        - "${EVIDENCE_DIR}/crawl-1.json"
+        - "${EVIDENCE_DIR}/crawl-2.json"
   - type: api.discovery_succeeds_without_aktp
     params:
       search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      query_text: "fixture linter"
   - type: api.ingested_model_requires_no_asm_schema
     params:
       resource_id: "${RESOURCE_ID}"
