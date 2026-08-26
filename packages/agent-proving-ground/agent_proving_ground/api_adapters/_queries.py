@@ -2554,20 +2554,7 @@ class LogionApiQueries:
         status, items = await self._paged_get("/v1/resources", "admin")
         if status != 200:
             return _unsupported("resource endpoint not available")
-        seen: set[tuple[str, str]] = set()
-        duplicates: list[list[str]] = []
-        for item in items:
-            resource_type = item.get("resource_type")
-            canonical_uri = item.get("canonical_uri")
-            if not isinstance(resource_type, str) or not resource_type:
-                continue
-            if not isinstance(canonical_uri, str) or not canonical_uri:
-                continue
-            key = (resource_type, canonical_uri)
-            if key in seen:
-                duplicates.append(list(key))
-            else:
-                seen.add(key)
+        seen, duplicates = _identity_scan(items)
 
         try:
             reports = _load_import_reports(query, required=False)
@@ -2904,6 +2891,32 @@ def _catalog_conformance_level(document: JsonObject) -> str:
     if host.get("identifier"):
         return "discoverable"
     return "minimal"
+
+
+def _identity_scan(
+    items: list[JsonObject],
+) -> tuple[set[tuple[str, str]], list[list[str]]]:
+    """Group resources by the pair that is supposed to be unique.
+
+    ``(resource_type, canonical_uri)`` is the identity a crawl must not
+    mint twice. Rows missing either half are skipped rather than counted
+    as distinct: an unnameable row cannot prove uniqueness either way.
+    """
+    seen: set[tuple[str, str]] = set()
+    duplicates: list[list[str]] = []
+    for item in items:
+        resource_type = item.get("resource_type")
+        canonical_uri = item.get("canonical_uri")
+        if not isinstance(resource_type, str) or not resource_type:
+            continue
+        if not isinstance(canonical_uri, str) or not canonical_uri:
+            continue
+        key = (resource_type, canonical_uri)
+        if key in seen:
+            duplicates.append(list(key))
+        else:
+            seen.add(key)
+    return seen, duplicates
 
 
 def _rows(payload: JsonValue) -> list[JsonObject]:

@@ -166,45 +166,12 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
     verbatim) is written for a later ``push --plan``; ``--json`` prints the
     same payload to stdout.
     """
-    # --adapter is shorthand for --only.
-    if getattr(args, "adapter", None) and not config.only:
-        config = IndexerConfig(
-            github_token=config.github_token,
-            api_key=config.api_key,
-            base_url=config.base_url,
-            seed_file=config.seed_file,
-            cache_dir=config.cache_dir,
-            user_agent=config.user_agent,
-            rps=config.rps,
-            dry_run=config.dry_run,
-            limit=config.limit,
-            only=args.adapter,
-        )
-    # --entrypoint overrides the seed file target for the adapter.
-    quarantine: list[QuarantinedRecord] = []
+    config = _crawl_config(config, args)
     started = time.monotonic()
-    if getattr(args, "entrypoint", None) and config.only:
-        transport = _build_transport(config)
-        adapter = _get_adapter(config.only, transport)
-        discoveries: list[DiscoveredSkill | DiscoveredResource] = []
-        failures: list[AdapterFailure] = []
-        try:
-            discovered, quarantine, seen = _discover_entrypoint(
-                adapter, args.entrypoint, config.limit
-            )
-            discoveries.extend(discovered)
-            entries_seen = seen
-        except Exception as e:
-            failures.append(
-                AdapterFailure(config.only, args.entrypoint, str(e))
-            )
-            print(f"adapter {config.only} error: {e}", file=sys.stderr)
-            entries_seen = 0
-        discovery = DiscoveryResult(discoveries=discoveries, failures=failures)
-    else:
-        transport = _build_transport(config)
-        discovery = _discover_all(config, transport)
-        entries_seen = len(discovery.discoveries)
+    transport = _build_transport(config)
+    discovery, quarantine, entries_seen = _run_discovery(
+        config, args, transport
+    )
     skills, resources = partition_discoveries(discovery.discoveries)
     plan, _ = build_indexing_plan(
         skills,
@@ -254,6 +221,54 @@ def cmd_crawl(config: IndexerConfig, args: argparse.Namespace) -> int:
         )
         return 2
     return 0
+
+
+def _crawl_config(
+    config: IndexerConfig,
+    args: argparse.Namespace,
+) -> IndexerConfig:
+    """Apply --adapter, which is shorthand for --only."""
+    if not getattr(args, "adapter", None) or config.only:
+        return config
+    return IndexerConfig(
+        github_token=config.github_token,
+        api_key=config.api_key,
+        base_url=config.base_url,
+        seed_file=config.seed_file,
+        cache_dir=config.cache_dir,
+        user_agent=config.user_agent,
+        rps=config.rps,
+        dry_run=config.dry_run,
+        limit=config.limit,
+        only=args.adapter,
+    )
+
+
+def _run_discovery(
+    config: IndexerConfig,
+    args: argparse.Namespace,
+    transport: Transport,
+) -> tuple[DiscoveryResult, list[QuarantinedRecord], int]:
+    """Discover from one entrypoint, or from every seeded source.
+
+    Returns what was found, what was refused, and how many entries the
+    source offered -- the third is not derivable from the first two,
+    because a quarantined entry is neither discovered nor absent.
+    """
+    if not (getattr(args, "entrypoint", None) and config.only):
+        discovery = _discover_all(config, transport)
+        return discovery, [], len(discovery.discoveries)
+
+    adapter = _get_adapter(config.only, transport)
+    try:
+        discovered, quarantine, seen = _discover_entrypoint(
+            adapter, args.entrypoint, config.limit
+        )
+    except Exception as e:
+        print(f"adapter {config.only} error: {e}", file=sys.stderr)
+        failure = AdapterFailure(config.only, args.entrypoint, str(e))
+        return DiscoveryResult(discoveries=[], failures=[failure]), [], 0
+    return DiscoveryResult(discoveries=discovered), quarantine, seen
 
 
 def _discover_entrypoint(
@@ -684,19 +699,7 @@ def cmd_search(config: IndexerConfig, args: argparse.Namespace) -> int:
         for error in result.errors:
             print(f"error: {error}", file=sys.stderr)
     if args.json:
-        output: dict[str, object] = {
-            "registry": {"origin": args.registry},
-            "query": {
-                "text": args.query or "",
-                "page_size": args.page_size or 10,
-                "filters": {},
-            },
-            "results": [_search_result_json(r) for r in result.resources],
-            "referrals": result.referrals,
-            "page_token": result.page_token,
-            "errors": result.errors,
-        }
-        print(json.dumps(output, indent=2))
+        print(json.dumps(_search_envelope(args, result), indent=2))
     else:
         print(f"results: {len(result.resources)}")
         for r in result.resources:
@@ -706,6 +709,33 @@ def cmd_search(config: IndexerConfig, args: argparse.Namespace) -> int:
             for url in result.referrals:
                 print(f"  {url}")
     return 1 if result.errors else 0
+
+
+def _search_envelope(
+    args: argparse.Namespace,
+    result: object,
+) -> dict[str, object]:
+    """Wrap the hits in the context that makes them auditable later.
+
+    A saved result set is only evidence if it says who was asked and
+    what they were asked; the hits alone cannot be checked against
+    either.
+    """
+    return {
+        "registry": {"origin": args.registry},
+        "query": {
+            "text": args.query or "",
+            "page_size": args.page_size or 10,
+            "filters": {},
+        },
+        "results": [
+            _search_result_json(r)
+            for r in result.resources  # type: ignore[attr-defined]
+        ],
+        "referrals": result.referrals,  # type: ignore[attr-defined]
+        "page_token": result.page_token,  # type: ignore[attr-defined]
+        "errors": result.errors,  # type: ignore[attr-defined]
+    }
 
 
 def _search_result_json(resource: DiscoveredResource) -> dict:
