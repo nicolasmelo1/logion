@@ -6,7 +6,7 @@
       "driver": "claude-code",
       "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/ai-catalog-ard-self-crawl.json",
-      "report_sha256": "691a5748d73549817ead293b99fe929f04edc1e72ba0b22bd2b520a953cca9d4",
+      "report_sha256": "57bb2629ff931749a7fda075ab3da5ba66f901d02c75aff043fa3b5d017d5dcb",
       "scenario": "ai_catalog_ard_self_crawl",
       "status": "passed",
       "unsupported_assertions": [],
