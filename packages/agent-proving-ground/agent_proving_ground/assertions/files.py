@@ -189,3 +189,62 @@ def _live_hook_verdict(path: Path) -> str | None:
     if not Path(transcript).exists():
         return f"transcript_path does not exist: {transcript}"
     return None
+
+
+class ClientHasNoARDConnectorInstallAssertion(Assertion):
+    """Verify that no ARD connector files or finder preferences were
+    installed into the client workspace."""
+
+    type = "files.client_has_no_ard_connector_install"
+
+    _CONNECTOR_MARKERS = (
+        ".agentfinder",
+        ".ard-connectors",
+        "agentfinder.json",
+    )
+
+    async def evaluate(
+        self,
+        ctx: AssertionContext,  # noqa: ARG002
+        params: dict,
+    ) -> AssertionOutcome:
+        workspace_root = params.get("workspace_root")
+        if not workspace_root:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="missing workspace_root parameter",
+                evidence=params,
+            )
+        root = Path(workspace_root).resolve()  # noqa: ASYNC240
+        if not root.is_dir():
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"workspace_root does not exist: {root}",
+                evidence={"workspace_root": str(root)},
+            )
+        found: list[str] = []
+        for marker in self._CONNECTOR_MARKERS:
+            candidate = root / marker
+            if candidate.exists():
+                found.append(str(candidate))
+        # Also check home dir for ~/.agentfinder
+        home = Path.home()
+        home_marker = home / ".agentfinder"
+        if home_marker.exists():
+            found.append(str(home_marker))
+        passed = not found
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if passed else "failed",
+            message=(
+                "no ARD connector files or finder preferences in workspace"
+                if passed
+                else f"found connector artifacts: {', '.join(found)}"
+            ),
+            evidence={
+                "workspace_root": str(root),
+                "found_paths": found,
+            },
+        )

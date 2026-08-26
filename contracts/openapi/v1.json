@@ -1,6 +1,59 @@
 {
   "components": {
     "schemas": {
+      "AICatalogDocument": {
+        "description": "The top-level AI Catalog document served at the well-known URL.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HostInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "specVersion": {
+            "default": "1.0",
+            "title": "Specversion",
+            "type": "string"
+          }
+        },
+        "title": "AICatalogDocument",
+        "type": "object"
+      },
+      "ARDError": {
+        "description": "Standard ARD error response.",
+        "properties": {
+          "errorCode": {
+            "title": "Errorcode",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "errorCode",
+          "message"
+        ],
+        "title": "ARDError",
+        "type": "object"
+      },
       "AcceptBountySubmissionResponse": {
         "properties": {
           "bounty_id": {
@@ -246,6 +299,99 @@
           "api_key_prefix"
         ],
         "title": "AddAgentToUserResponse",
+        "type": "object"
+      },
+      "AgentListItem": {
+        "description": "A single catalog entry in a deterministic listing.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "identifier",
+          "type"
+        ],
+        "title": "AgentListItem",
         "type": "object"
       },
       "AgentResponse": {
@@ -1167,6 +1313,181 @@
           }
         },
         "title": "CapabilitySummaryResponse",
+        "type": "object"
+      },
+      "CatalogEntry": {
+        "description": "A single entry in the AI Catalog.\n\nExactly one of ``url`` or ``data`` must be present.  The ``identifier``\nfollows the ``urn:air:<publisher>:<namespace>:<name>`` convention.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublisherObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "trustManifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustManifest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "identifier",
+          "type"
+        ],
+        "title": "CatalogEntry",
+        "type": "object"
+      },
+      "CatalogEntryInput": {
+        "additionalProperties": false,
+        "description": "One AI Catalog entry offered for ingestion.",
+        "properties": {
+          "identifier": {
+            "maxLength": 2048,
+            "title": "Identifier",
+            "type": "string"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 255,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "type"
+        ],
+        "title": "CatalogEntryInput",
         "type": "object"
       },
       "ChannelSchema": {
@@ -2862,6 +3183,99 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExploreFacetBucket": {
+        "description": "A single bucket in a facet result.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "ExploreFacetBucket",
+        "type": "object"
+      },
+      "ExploreFacetResult": {
+        "additionalProperties": true,
+        "description": "Result for a single facet field.",
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/ExploreFacetBucket"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "otherCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Othercount"
+          }
+        },
+        "title": "ExploreFacetResult",
+        "type": "object"
+      },
+      "ExploreRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/explore request body.\n\nThe ARD spec requires ``resultType`` with a ``facets`` array.  We\naccept the raw dict and validate structurally to preserve unknown\nfields per the spec's extensibility rules.",
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "resultType": {
+            "additionalProperties": true,
+            "title": "Resulttype",
+            "type": "object"
+          }
+        },
+        "required": [
+          "resultType"
+        ],
+        "title": "ExploreRequest",
+        "type": "object"
+      },
+      "ExploreResponse": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/explore response body.",
+        "properties": {
+          "facets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ExploreFacetResult"
+            },
+            "title": "Facets",
+            "type": "object"
+          },
+          "resultType": {
+            "default": "facets",
+            "title": "Resulttype",
+            "type": "string"
+          }
+        },
+        "title": "ExploreResponse",
         "type": "object"
       },
       "FeedbackItem": {
@@ -5506,6 +5920,31 @@
         "title": "GetReviewStatusResponse",
         "type": "object"
       },
+      "GetSourceStatusResponse": {
+        "description": "List of source snapshots with pagination.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSnapshotStatus"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "GetSourceStatusResponse",
+        "type": "object"
+      },
       "GetUnreadCountResponse": {
         "properties": {
           "unread_count": {
@@ -5643,6 +6082,63 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HostInfo": {
+        "description": "Host info identifying the operator of the catalog.",
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "documentationUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentationurl"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "logoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logourl"
+          },
+          "trustManifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustManifest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "title": "HostInfo",
+        "type": "object"
+      },
       "IndexingRunProgressStats": {
         "additionalProperties": false,
         "description": "Bounded aggregate checkpoint without item payloads.",
@@ -5750,6 +6246,101 @@
         "title": "IndexingRunProgressStats",
         "type": "object"
       },
+      "IngestCatalogEntriesRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/resources:ingest-catalog request body.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryInput"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "source_kind": {
+            "default": "ai_catalog_entry",
+            "maxLength": 32,
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_uri": {
+            "maxLength": 2048,
+            "title": "Source Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_uri"
+        ],
+        "title": "IngestCatalogEntriesRequest",
+        "type": "object"
+      },
+      "IngestCatalogEntriesResponse": {
+        "description": "POST /v1/resources:ingest-catalog response body.",
+        "properties": {
+          "created": {
+            "default": 0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "matched": {
+            "default": 0,
+            "title": "Matched",
+            "type": "integer"
+          },
+          "new_versions": {
+            "default": 0,
+            "title": "New Versions",
+            "type": "integer"
+          },
+          "quarantine": {
+            "items": {
+              "$ref": "#/components/schemas/QuarantinedEntry"
+            },
+            "title": "Quarantine",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/IngestedEntry"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "title": "IngestCatalogEntriesResponse",
+        "type": "object"
+      },
+      "IngestedEntry": {
+        "description": "What happened to one accepted entry.",
+        "properties": {
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_type": {
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "resource_id",
+          "resource_type",
+          "status"
+        ],
+        "title": "IngestedEntry",
+        "type": "object"
+      },
       "KnownSourceEntry": {
         "properties": {
           "id": {
@@ -5766,6 +6357,42 @@
           "id"
         ],
         "title": "KnownSourceEntry",
+        "type": "object"
+      },
+      "ListAgentsResponse": {
+        "description": "GET /v1/ard/agents response body.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListAgentsResponse",
         "type": "object"
       },
       "ListBountiesResponse": {
@@ -7249,6 +7876,36 @@
         "title": "PresignedUploadResponse",
         "type": "object"
       },
+      "PublisherObject": {
+        "description": "Publisher object identifying the entity responsible for an artifact.",
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "identityType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identitytype"
+          }
+        },
+        "required": [
+          "identifier",
+          "displayName"
+        ],
+        "title": "PublisherObject",
+        "type": "object"
+      },
       "PurchaseCourseRequest": {
         "properties": {
           "expected_price_cents": {
@@ -7351,6 +8008,37 @@
           "balance_after_cents"
         ],
         "title": "PurchaseCourseResponse",
+        "type": "object"
+      },
+      "QuarantinedEntry": {
+        "description": "One entry that was refused, under a stable code.",
+        "properties": {
+          "error_code": {
+            "title": "Error Code",
+            "type": "string"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "error_code",
+          "reason"
+        ],
+        "title": "QuarantinedEntry",
+        "type": "object"
+      },
+      "QueryFilter": {
+        "additionalProperties": true,
+        "description": "Structured filter constraints.\n\nKeys are field paths into the catalog entry (dot-separated for\nnested fields).  Values are arrays; a bare scalar is accepted as\na single-element array.",
+        "properties": {},
+        "title": "QueryFilter",
         "type": "object"
       },
       "QueueItemResponse": {
@@ -7483,6 +8171,139 @@
         "title": "ReactivateUserResponse",
         "type": "object"
       },
+      "RecordSourceSnapshotRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/sources request body.",
+        "properties": {
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "file_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Digest"
+          },
+          "last_good": {
+            "default": false,
+            "title": "Last Good",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "source_type": {
+            "maxLength": 32,
+            "title": "Source Type",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          },
+          "upstream_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream Repo"
+          },
+          "validation_result": {
+            "default": "pending",
+            "maxLength": 32,
+            "title": "Validation Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_type",
+          "source_uri"
+        ],
+        "title": "RecordSourceSnapshotRequest",
+        "type": "object"
+      },
+      "RecordSourceSnapshotResponse": {
+        "description": "POST /v1/ard/sources response body.",
+        "properties": {
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "file_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Digest"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_good": {
+            "title": "Last Good",
+            "type": "boolean"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          },
+          "validation_result": {
+            "title": "Validation Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_type",
+          "source_uri",
+          "validation_result",
+          "last_good"
+        ],
+        "title": "RecordSourceSnapshotResponse",
+        "type": "object"
+      },
       "RedeemSetupTokenRequest": {
         "properties": {
           "agent_description": {
@@ -7547,6 +8368,35 @@
           "api_key_prefix"
         ],
         "title": "RedeemSetupTokenResponse",
+        "type": "object"
+      },
+      "RegistryReferral": {
+        "description": "A referral to another registry.",
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "displayName",
+          "type",
+          "url"
+        ],
+        "title": "RegistryReferral",
         "type": "object"
       },
       "RejectBountySubmissionResponse": {
@@ -8439,6 +9289,205 @@
         "title": "SearchListingsResponse",
         "type": "object"
       },
+      "SearchQueryModel": {
+        "description": "Query model for search \u2014 text is required.",
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SearchQueryModel",
+        "type": "object"
+      },
+      "SearchRequest": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/search request body.",
+        "properties": {
+          "federation": {
+            "default": "auto",
+            "title": "Federation",
+            "type": "string"
+          },
+          "pageSize": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Pagesize",
+            "type": "integer"
+          },
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          },
+          "query": {
+            "$ref": "#/components/schemas/SearchQueryModel"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "additionalProperties": false,
+        "description": "POST /v1/ard/search response body.",
+        "properties": {
+          "pageToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetoken"
+          },
+          "referrals": {
+            "items": {
+              "$ref": "#/components/schemas/RegistryReferral"
+            },
+            "title": "Referrals",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResultItem"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "title": "SearchResponse",
+        "type": "object"
+      },
+      "SearchResultItem": {
+        "description": "A single search result \u2014 a catalog entry with score and source.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "identifier",
+          "type",
+          "score",
+          "source"
+        ],
+        "title": "SearchResultItem",
+        "type": "object"
+      },
       "SellerReadinessResponse": {
         "properties": {
           "charges_enabled": {
@@ -8618,6 +9667,101 @@
           "status"
         ],
         "title": "SetReferralAttributionStatusResponse",
+        "type": "object"
+      },
+      "SourceSnapshotStatus": {
+        "description": "Public-safe source snapshot status (no secrets).",
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "file_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Digest"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_good": {
+            "title": "Last Good",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "source_uri": {
+            "title": "Source Uri",
+            "type": "string"
+          },
+          "upstream_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream Repo"
+          },
+          "validation_result": {
+            "title": "Validation Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_type",
+          "source_uri",
+          "validation_result",
+          "last_good",
+          "fetched_at"
+        ],
+        "title": "SourceSnapshotStatus",
         "type": "object"
       },
       "SubmissionGithubPrBlock": {
@@ -9048,6 +10192,85 @@
           "status"
         ],
         "title": "SuspendUserResponse",
+        "type": "object"
+      },
+      "TrustManifest": {
+        "description": "Optional trust metadata for a catalog entry or host.",
+        "properties": {
+          "attestations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Attestations",
+            "type": "array"
+          },
+          "identity": {
+            "title": "Identity",
+            "type": "string"
+          },
+          "identityType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identitytype"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "privacyPolicyUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacypolicyurl"
+          },
+          "provenance": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Provenance",
+            "type": "array"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature"
+          },
+          "termsOfServiceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termsofserviceurl"
+          }
+        },
+        "required": [
+          "identity"
+        ],
+        "title": "TrustManifest",
         "type": "object"
       },
       "UpdateBountyRequest": {
@@ -10099,6 +11322,38 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/ai-catalog.json": {
+      "get": {
+        "description": "Serve the AI Catalog at the well-known URL.\n\nGated on the ``ai_catalog.public`` feature flag.  Returns the\ncatalog document with an ETag header for conditional caching.",
+        "operationId": "get_catalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AICatalogDocument"
+                }
+              }
+            },
+            "description": "AI Catalog document"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "AI Catalog publication is disabled"
+          }
+        },
+        "summary": "AI Catalog document",
+        "tags": [
+          "ai-catalog"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
@@ -12791,6 +14046,404 @@
         "summary": "Suspend a user and all their active agents.",
         "tags": [
           "admin-users"
+        ]
+      }
+    },
+    "/v1/ard/agents": {
+      "get": {
+        "description": "Deterministic, cacheable listing of catalog entries.\n\nGated on the ``ard.discovery`` feature flag.  Uses strict database\nfiltering without relevance-based sorting.",
+        "operationId": "list_agents",
+        "parameters": [
+          {
+            "description": "EBNF-like filter expression",
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "EBNF-like filter expression",
+              "title": "Filter"
+            }
+          },
+          {
+            "description": "Field and sorting direction",
+            "in": "query",
+            "name": "orderBy",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Field and sorting direction",
+              "title": "Orderby"
+            }
+          },
+          {
+            "description": "Maximum number of entries to return",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Maximum number of entries to return",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Token for pagination",
+            "in": "query",
+            "name": "pageToken",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Token for pagination",
+              "title": "Pagetoken"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAgentsResponse"
+                }
+              }
+            },
+            "description": "Successful list"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD discovery is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Browse catalog entries",
+        "tags": [
+          "ard"
+        ]
+      }
+    },
+    "/v1/ard/explore": {
+      "post": {
+        "description": "Aggregate statistical facets over the matched search space.\n\nGated on the ``ard.discovery`` feature flag.",
+        "operationId": "explore",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExploreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExploreResponse"
+                }
+              }
+            },
+            "description": "Successful explore"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ARDError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD discovery is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ARDError"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "ARD registry introspection",
+        "tags": [
+          "ard"
+        ]
+      }
+    },
+    "/v1/ard/search": {
+      "post": {
+        "description": "Search the registry for matching catalog entries.\n\nGated on the ``ard.discovery`` feature flag.  Returns catalog\nentries ranked by relevance score with an ETag for caching.",
+        "operationId": "search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful search"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ARDError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD discovery is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ARD semantic search",
+        "tags": [
+          "ard"
+        ]
+      }
+    },
+    "/v1/ard/sources": {
+      "post": {
+        "description": "Pin one fetched snapshot of a connector source.\n\nGated on the ``ard.connectors_sync`` feature flag.",
+        "operationId": "record_source_snapshot",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordSourceSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordSourceSnapshotResponse"
+                }
+              }
+            },
+            "description": "Snapshot recorded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD connectors sync is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record a pinned source snapshot",
+        "tags": [
+          "ard"
+        ]
+      }
+    },
+    "/v1/ard/sources/status": {
+      "get": {
+        "description": "List source snapshot metadata without leaking secrets.\n\nGated on the ``ard.connectors_sync`` feature flag.  Returns\npublic-safe fields only \u2014 no credentials, tokens, or raw secrets.",
+        "operationId": "get_source_status",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSourceStatusResponse"
+                }
+              }
+            },
+            "description": "Source snapshot status"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ARD connectors sync is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Source snapshot status",
+        "tags": [
+          "ard"
         ]
       }
     },
@@ -19413,6 +21066,86 @@
         "summary": "Submit a usage receipt for a resource version",
         "tags": [
           "resource_feedback"
+        ]
+      }
+    },
+    "/v1/resources:ingest-catalog": {
+      "post": {
+        "description": "Record catalog entries as resources with catalog provenance.\n\nGated on the ``ai_catalog.ingestion`` feature flag.",
+        "operationId": "ingest_catalog_entries",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestCatalogEntriesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestCatalogEntriesResponse"
+                }
+              }
+            },
+            "description": "Ingestion result"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "AI Catalog ingestion is disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many entries"
+          }
+        },
+        "summary": "Ingest AI Catalog entries as resources",
+        "tags": [
+          "resources"
         ]
       }
     },

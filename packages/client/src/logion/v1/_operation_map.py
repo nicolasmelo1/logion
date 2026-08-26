@@ -166,4 +166,21 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "reject_platform_bounty_submission": (
         "Founder-admin API workflow; no stable SDK resource yet."
     ),
+    # AI Catalog / ARD endpoints have generated primitives but no
+    # handwritten SDK resource yet.
+    "get_catalog": (
+        "AI Catalog document endpoint; no stable SDK resource yet."
+    ),
+    "search": "ARD search endpoint; no stable SDK resource yet.",
+    "explore": "ARD explore endpoint; no stable SDK resource yet.",
+    "list_agents": "ARD list endpoint; no stable SDK resource yet.",
+    "get_source_status": (
+        "ARD source status endpoint; no stable SDK resource yet."
+    ),
+    "record_source_snapshot": (
+        "ARD operator snapshot write; no stable SDK resource yet."
+    ),
+    "ingest_catalog_entries": (
+        "AI Catalog ingestion; operator tooling, no SDK resource yet."
+    ),
 }

@@ -92,6 +92,9 @@ ignore = [
 # OG-image generator: console output (T201) and the Greek matrix-rain glyph
 # string (RUF001 ambiguous letters are intentional brand motif).
 "packages/landing/scripts/gen_og_image.py" = ["T201", "RUF001"]
+# Generated operations: camelCase parameter names come from the OpenAPI
+# contract (orderBy, pageSize, pageToken) and must match wire names.
+"packages/client/src/logion/v1/_generated/operations.py" = ["N803", "N806"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 # Repo-wide ban on `typing.Any`. Banning the *import* is what makes it

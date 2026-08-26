@@ -1,0 +1,209 @@
+schema_version: "1"
+name: ai_catalog_ard_self_crawl
+description: >
+  Publish a conformant AI Catalog, expose it through ARD, consume both
+  paths with production adapters, and verify zero duplicate resources
+  after acquisition/feedback already work. Discovery proves
+  addressability, not quality, safety, or performance.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
+agents:
+  - id: node_operator
+    role: Operator publishing the AI Catalog and syncing Agent Finders
+    driver: codex
+    workspace: node_operator
+    devrig_role: admin
+    timeout_seconds: 1200
+  - id: consumer
+    role: Consumer discovering a resource through ARD
+    driver: codex
+    workspace: consumer
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: seed
+    actor: node_operator
+    local_hook: packages/agent-proving-ground/scripts/seed_ai_catalog_fixture.py
+    local_hook_args:
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}"
+      - "${AGENT_NODE_OPERATOR_LOGION_HOME}"
+    local_hook_capture_json:
+      FIXTURE_ROOT: fixture_root
+      LOGION_HOME: logion_home
+      EVIDENCE_DIR: evidence_dir
+      RESOURCE_ID: resource_id
+      CATALOG_URL: catalog_url
+      FINDERS_URL: finders_url
+      FILTER_TYPE: filter_type
+      FILTER_SOURCE: filter_source
+    goal: ""
+  - id: publish_and_crawl
+    actor: node_operator
+    goal: |
+      Work as the node operator in ${FIXTURE_ROOT}. Call the CLI as
+      plain `logion` and `logion-indexer`: the ones on your PATH are the
+      artifacts the rig installed. The node is at http://localhost:8000.
+      LOGION_HOME is already set for you; never override it, and never
+      set HOME. Every feature flag this task needs is already on.
+
+      Run these five steps in order and save each output to the exact
+      path given. The assertions read those files, so a step whose
+      output landed somewhere else counts as not done.
+
+      1. Fetch this node's AI Catalog and keep the response untouched:
+
+           curl -sS http://localhost:8000/.well-known/ai-catalog.json
+             -o ${EVIDENCE_DIR}/ai-catalog.json
+
+      2. Synchronize the Agent Finder directory from the pinned
+         snapshot, which records it against this node:
+
+           logion-indexer ard-connectors sync
+             --source-url ${FINDERS_URL}
+
+      3. Query every finder in that directory and save the run:
+
+           logion-indexer agent-finders run
+             --source-url ${FINDERS_URL} --finder all
+             --query-family default --query "fixture linter"
+             --dry-run --json > ${EVIDENCE_DIR}/finder-run.json
+
+      4. Crawl the fixture catalog twice, ingesting what it offers:
+
+           logion-indexer crawl --adapter ai-catalog
+             --entrypoint ${CATALOG_URL} --ingest --allow-quarantine
+             --report ${EVIDENCE_DIR}/crawl-1.json
+
+         then the same command again writing
+         `--report ${EVIDENCE_DIR}/crawl-2.json`.
+
+         That catalog contains one entry that sets both `url` and
+         `data`, which the spec forbids. Each crawl quarantines it and
+         imports the rest. That is the expected outcome, not a problem
+         to work around: do not edit the catalog, and do not drop
+         --allow-quarantine and treat the non-zero exit as a failure.
+
+      5. Search the node through ARD and save the result:
+
+           logion-indexer search --adapter ard
+             --registry http://localhost:8000/v1/ard
+             --query "fixture linter" --json
+             > ${EVIDENCE_DIR}/ard-search.json
+
+         --registry takes the registry's base URL, not the search
+         endpoint: the client appends /search itself.
+
+      Then report how many entries each crawl accepted and rejected.
+      Do not write to the database directly, and do not install any ARD
+      connector package into the client.
+    assertions:
+      - type: api.ai_catalog_document_valid
+        params:
+          catalog_artifact: "${EVIDENCE_DIR}/ai-catalog.json"
+      - type: api.ai_catalog_conformance_level_valid
+        params:
+          catalog_artifact: "${EVIDENCE_DIR}/ai-catalog.json"
+      - type: api.ard_search_response_valid
+        params:
+          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      - type: api.ard_connectors_snapshot_pinned
+      - type: api.agent_finders_queried
+        params:
+          finder_artifact: "${EVIDENCE_DIR}/finder-run.json"
+      - type: api.agent_finder_result_provenance_visible
+        params:
+          finder_artifact: "${EVIDENCE_DIR}/finder-run.json"
+      - type: files.client_has_no_ard_connector_install
+        params:
+          workspace_root: "${FIXTURE_ROOT}"
+      - type: api.catalog_crawl_completed
+        params:
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
+      - type: api.ard_resource_ingested
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: api.ard_record_rejected
+        params:
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
+      - type: api.self_crawl_no_duplicate
+        params:
+          resource_id: "${RESOURCE_ID}"
+          crawl_reports:
+            - "${EVIDENCE_DIR}/crawl-1.json"
+            - "${EVIDENCE_DIR}/crawl-2.json"
+      - type: api.resource_source_provenance_visible
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: api.search_filters_by_type_and_source
+        params:
+          query_text: "fixture"
+          resource_type: "${FILTER_TYPE}"
+          source: "${FILTER_SOURCE}"
+      - type: api.discovery_succeeds_without_aktp
+        params:
+          search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+          query_text: "fixture linter"
+      - type: api.ingested_model_requires_no_asm_schema
+        params:
+          resource_id: "${RESOURCE_ID}"
+  - id: discover_through_ard
+    actor: consumer
+    goal: |
+      Work as a consumer in your workspace. Call the CLI as plain
+      `logion`. The base URL is http://localhost:8000. LOGION_HOME is
+      already set for you; never override it, and never set HOME.
+
+      Find "Fixture Linter" through ARD. Query the registry's ARD
+      endpoint directly, installing nothing:
+
+        curl -sS -X POST http://localhost:8000/v1/ard/search
+          -H 'Content-Type: application/json'
+          -d '{"query": {"text": "fixture linter"}, "pageSize": 10}'
+
+      Save the untouched JSON response to
+      ${EVIDENCE_DIR}/consumer-search.json.
+
+      Identify the registry and original AI Catalog publisher/entry from
+      the search results. Inspect the canonical source of the
+      discovered resource with `logion resources get ${RESOURCE_ID}
+      --json` and save to ${EVIDENCE_DIR}/consumer-resource.json.
+
+      Do not install any ARD connector package, do not write any
+      ~/.agentfinder state, and do not modify finder preferences. The
+      client must discover without installing anything.
+    assertions:
+      - type: api.ard_search_response_valid
+        params:
+          search_artifact: "${EVIDENCE_DIR}/consumer-search.json"
+      - type: api.resource_source_provenance_visible
+        params:
+          resource_id: "${RESOURCE_ID}"
+      - type: files.client_has_no_ard_connector_install
+        params:
+          workspace_root: "${AGENT_CONSUMER_WORKSPACE}"
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
+  - type: api.self_crawl_no_duplicate
+    params:
+      resource_id: "${RESOURCE_ID}"
+      crawl_reports:
+        - "${EVIDENCE_DIR}/crawl-1.json"
+        - "${EVIDENCE_DIR}/crawl-2.json"
+  - type: api.discovery_succeeds_without_aktp
+    params:
+      search_artifact: "${EVIDENCE_DIR}/ard-search.json"
+      query_text: "fixture linter"
+  - type: api.ingested_model_requires_no_asm_schema
+    params:
+      resource_id: "${RESOURCE_ID}"

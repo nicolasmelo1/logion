@@ -173,6 +173,24 @@ class LogionApiQueries:
         except Exception as exc:
             return 0, {"error": str(exc)}
 
+    async def _post(
+        self,
+        path: str,
+        role: str | None,
+        body: JsonObject,
+    ) -> tuple[int, JsonValue]:
+        key = self._keys.api_key(role)
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        try:
+            return await http_request_json(
+                "POST",
+                f"{self._base_url}{path}",
+                headers=headers,
+                body=body,
+            )
+        except Exception as exc:
+            return 0, {"error": str(exc)}
+
     async def _paged_get(
         self,
         path: str,
@@ -2187,6 +2205,612 @@ class LogionApiQueries:
             "checked_fields": elements(result, "checked_fields"),
         }
 
+    # ------------------------------------------------------------------
+    # AI Catalog & ARD query handlers (phase 15.12)
+    #
+    # Two rules decide where each of these looks.
+    #
+    # An assertion about *what the agent did* reads the artifact the
+    # scenario made it save. Re-querying the API instead answers a
+    # different question -- "is the endpoint working now" -- which a
+    # scenario where the agent never ran the command still passes.
+    #
+    # An assertion about *what the system holds* reads the API, because
+    # an artifact the agent wrote is the agent's own account of its
+    # work and cannot be the proof that the work landed.
+    # ------------------------------------------------------------------
+
+    async def _q_ai_catalog_document_valid(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Validate the AI Catalog document the operator published."""
+        try:
+            document = _load_json_object(query.get("catalog_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "valid")
+
+        spec_version = document.get("specVersion")
+        host = document.get("host")
+        entries = document.get("entries")
+        if not isinstance(spec_version, str) or not spec_version:
+            return _artifact_failure("missing specVersion", "valid")
+        if not isinstance(host, dict):
+            return _artifact_failure("missing host object", "valid")
+        if not isinstance(entries, list):
+            return _artifact_failure("missing entries array", "valid")
+        return {
+            "valid": True,
+            "spec_version": spec_version,
+            "entry_count": len(entries),
+            "conformance_level": _catalog_conformance_level(document),
+            "evidence": {"source": str(query.get("catalog_artifact"))},
+        }
+
+    async def _q_ai_catalog_conformance_level_valid(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the published document earns the level it claims."""
+        try:
+            document = _load_json_object(query.get("catalog_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "valid")
+
+        spec_version = document.get("specVersion")
+        if spec_version != _AI_CATALOG_SPEC_VERSION:
+            return _artifact_failure(
+                f"specVersion is {spec_version!r}, expected "
+                f"{_AI_CATALOG_SPEC_VERSION!r}",
+                "valid",
+            )
+        host = document.get("host")
+        if not isinstance(host, dict) or not host.get("displayName"):
+            return _artifact_failure("host has no displayName", "valid")
+        level = _catalog_conformance_level(document)
+        if level == "none":
+            return _artifact_failure(
+                "document reaches no conformance level", "valid"
+            )
+        return {
+            "valid": True,
+            "conformance_level": level,
+            "evidence": {
+                "source": str(query.get("catalog_artifact")),
+                "host_display_name": host.get("displayName"),
+            },
+        }
+
+    async def _q_ard_search_response_valid(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the saved ARD search names its registry and its scores."""
+        try:
+            payload = _load_json_object(query.get("search_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "valid")
+
+        results = payload.get("results")
+        if not isinstance(results, list):
+            return _artifact_failure("missing results array", "valid")
+        # Two shapes are legitimate here. A raw ARD response names the
+        # answering registry per result, in each entry's `source`; the
+        # indexer's own output lifts it into an envelope. Requiring only
+        # the envelope would fail a conformant registry for the crime of
+        # not being read through our CLI.
+        registry = payload.get("registry")
+        registry_origin = (
+            registry.get("origin") if isinstance(registry, dict) else None
+        )
+        if not registry_origin:
+            origins = sorted({
+                str(row.get("source"))
+                for row in results
+                if isinstance(row, dict) and row.get("source")
+            })
+            registry_origin = origins[0] if len(origins) == 1 else None
+        if not registry_origin:
+            return _artifact_failure(
+                "response does not name the registry that answered", "valid"
+            )
+        # A score is registry-supplied metadata. Its presence is what
+        # makes it auditable as *theirs*; a result set with no scores
+        # cannot be distinguished from one Logion ranked itself.
+        scored = [
+            row
+            for row in results
+            if isinstance(row, dict) and row.get("score") is not None
+        ]
+        return {
+            "valid": True,
+            "result_count": len(results),
+            "has_scores": bool(scored),
+            "registry_origin": registry_origin,
+            "evidence": {
+                "source": str(query.get("search_artifact")),
+                "scored_count": len(scored),
+            },
+        }
+
+    async def _q_ard_connectors_snapshot_pinned(
+        self,
+        query: JsonObject,  # noqa: ARG002
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the registry holds an immutably pinned connector snapshot.
+
+        This one is an API question on purpose: what matters is what the
+        node will use on its next run, not what a command printed once.
+        """
+        status, data = await self._get("/v1/ard/sources/status", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD source status endpoint not available")
+        items = data.get("items")
+        if not isinstance(items, list) or not items:
+            return {
+                "pinned": False,
+                "reason": "no source snapshots recorded",
+                "evidence": {"source": "api"},
+            }
+        pinned = [
+            item
+            for item in items
+            if isinstance(item, dict)
+            and item.get("commit_sha")
+            and item.get("file_digest")
+            and item.get("last_good") is True
+        ]
+        if not pinned:
+            return {
+                "pinned": False,
+                "reason": (
+                    "no last-good snapshot carries both a commit sha and a "
+                    "file digest"
+                ),
+                "evidence": {"source": "api", "snapshot_count": len(items)},
+            }
+        snapshot = pinned[0]
+        return {
+            "pinned": True,
+            "commit_sha": snapshot.get("commit_sha"),
+            "file_digest": snapshot.get("file_digest"),
+            "finder_count": len(items),
+            "evidence": {
+                "source": "api",
+                "source_type": snapshot.get("source_type"),
+                "source_uri": snapshot.get("source_uri"),
+                "validation_result": snapshot.get("validation_result"),
+            },
+        }
+
+    async def _q_agent_finders_queried(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the operator actually queried the enabled finders."""
+        try:
+            payload = _load_json_object(query.get("finder_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "queried")
+
+        records = payload.get("records")
+        if not isinstance(records, list):
+            return _artifact_failure("run has no records array", "queried")
+        return {
+            "queried": len(records) > 0,
+            "finder_count": len(records),
+            "query_family": payload.get("query_family") or "default",
+            "evidence": {
+                "source": str(query.get("finder_artifact")),
+                "dry_run": payload.get("dry_run"),
+            },
+        }
+
+    async def _q_agent_finder_result_provenance_visible(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check every finder result says which finder returned it."""
+        try:
+            payload = _load_json_object(query.get("finder_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "visible")
+
+        records = payload.get("records")
+        if not isinstance(records, list) or not records:
+            return _artifact_failure("run has no records", "visible")
+        missing: list[str] = []
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                missing.append(f"record[{index}] is not an object")
+                continue
+            if not record.get("finder_id"):
+                missing.append(f"record[{index}] has no finder_id")
+            if not record.get("endpoint"):
+                missing.append(f"record[{index}] has no endpoint")
+        first = records[0] if isinstance(records[0], dict) else {}
+        result_count = sum(
+            len(record.get("result_identifiers") or [])
+            for record in records
+            if isinstance(record, dict)
+        )
+        return {
+            "visible": not missing,
+            "finder_id": first.get("finder_id"),
+            "endpoint": first.get("endpoint"),
+            "result_count": result_count,
+            "reason": "; ".join(missing) if missing else None,
+            "evidence": {
+                "source": str(query.get("finder_artifact")),
+                "record_count": len(records),
+            },
+        }
+
+    async def _q_catalog_crawl_completed(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the crawl finished and reported what it saw."""
+        try:
+            reports = _load_import_reports(query)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "completed")
+
+        incomplete = [
+            report.get("source")
+            for report in reports
+            if report.get("status") != "completed"
+        ]
+        last = reports[-1]
+        return {
+            "completed": not incomplete,
+            "seen": _as_count(last.get("seen")),
+            "created": _as_count(last.get("created")),
+            "matched": _as_count(last.get("matched")),
+            "new_versions": _as_count(last.get("new_versions")),
+            "quarantined": _as_count(last.get("quarantined")),
+            "reason": (
+                f"{len(incomplete)} of {len(reports)} crawls were partial"
+                if incomplete
+                else None
+            ),
+            "evidence": {
+                "source": "import report",
+                "report_count": len(reports),
+            },
+        }
+
+    async def _q_ard_record_rejected(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check malformed input was quarantined under a stable code.
+
+        A crawl that imported everything it was offered proves nothing
+        about rejection, so an empty quarantine fails here rather than
+        passing quietly.
+        """
+        try:
+            reports = _load_import_reports(query)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "rejected")
+
+        quarantined: list[JsonObject] = []
+        for report in reports:
+            entries = report.get("quarantine")
+            if isinstance(entries, list):
+                quarantined.extend(
+                    entry for entry in entries if isinstance(entry, dict)
+                )
+        if not quarantined:
+            return {
+                "rejected": False,
+                "reason": "no entry was quarantined by any crawl",
+                "evidence": {"source": "import report"},
+            }
+        first = quarantined[0]
+        codes = sorted({
+            str(entry.get("error_code"))
+            for entry in quarantined
+            if entry.get("error_code")
+        })
+        if not codes:
+            return {
+                "rejected": False,
+                "reason": "quarantined entries carry no stable error code",
+                "evidence": {"source": "import report"},
+            }
+        return {
+            "rejected": True,
+            "reason": first.get("reason"),
+            "error_code": first.get("error_code"),
+            "evidence": {
+                "source": "import report",
+                "quarantined_count": len(quarantined),
+                "error_codes": codes,
+            },
+        }
+
+    async def _q_self_crawl_no_duplicate(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check crawling twice added the entries once.
+
+        Both halves are needed. The registry holding no duplicate pair
+        is consistent with a second crawl that never ran; a second crawl
+        that created nothing is consistent with a registry that was
+        already duplicated before either ran.
+        """
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
+            return _unsupported("resource endpoint not available")
+        seen, duplicates = _identity_scan(items)
+
+        try:
+            reports = _load_import_reports(query, required=False)
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "no_duplicates")
+        recrawl_created = (
+            _as_count(reports[-1].get("created")) if len(reports) > 1 else 0
+        )
+        return {
+            "no_duplicates": not duplicates and recrawl_created == 0,
+            "crawl_count": len(reports),
+            "resource_count": len(seen),
+            "reason": (
+                f"duplicate resources: {duplicates}"
+                if duplicates
+                else (
+                    f"re-crawl created {recrawl_created} resources"
+                    if recrawl_created
+                    else None
+                )
+            ),
+            "evidence": {
+                "source": "api + import report",
+                "duplicates": duplicates,
+                "recrawl_created": recrawl_created,
+            },
+        }
+
+    async def _q_ard_resource_ingested(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the discovered resource is one the registry now holds."""
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, items = await self._paged_get("/v1/resources", "admin")
+        if status != 200:
+            return _unsupported("resource endpoint not available")
+        for item in items:
+            if resource_id in (item.get("id"), item.get("resource_id")):
+                return {
+                    "ingested": True,
+                    "resource_id": resource_id,
+                    "canonical_uri": item.get("canonical_uri"),
+                    "evidence": {"source": "api"},
+                }
+        return {
+            "ingested": False,
+            "resource_id": resource_id,
+            "reason": "resource is not in the registry",
+            "evidence": {"source": "api", "resource_count": len(items)},
+        }
+
+    async def _q_resource_source_provenance_visible(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check the registry can say where an entry came from."""
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, data = await self._get(f"/v1/resources/{resource_id}", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("resource detail endpoint not available")
+        sources = data.get("sources")
+        if not isinstance(sources, list) or not sources:
+            return {
+                "visible": False,
+                "reason": "resource records no source",
+                "evidence": {"source": "api", "resource_id": resource_id},
+            }
+        complete = [
+            source
+            for source in sources
+            if isinstance(source, dict)
+            and source.get("source_kind")
+            and source.get("source_uri")
+        ]
+        first = complete[0] if complete else {}
+        return {
+            "visible": len(complete) == len(sources),
+            "source_kind": first.get("source_kind"),
+            "source_uri": first.get("source_uri"),
+            "external_id": first.get("external_id"),
+            "reason": (
+                None
+                if len(complete) == len(sources)
+                else "a recorded source is missing its kind or uri"
+            ),
+            "evidence": {
+                "source": "api",
+                "resource_id": resource_id,
+                "source_count": len(sources),
+            },
+        }
+
+    async def _q_search_filters_by_type_and_source(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check a filter narrows the result set instead of decorating it.
+
+        A registry that accepts filters and returns everything passes any
+        check that only reads the filtered response. So this runs the
+        search twice and requires the filter to have excluded something
+        the unfiltered search returned.
+        """
+        text = str(query.get("query_text") or "")
+        type_filter = query.get("resource_type") or query.get("resourceType")
+        source_filter = query.get("source")
+        if not type_filter or not source_filter:
+            return _unsupported(
+                "resource_type and source are required to prove filtering"
+            )
+        unfiltered_status, unfiltered = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {"query": {"text": text}, "pageSize": 100},
+        )
+        filtered_status, filtered = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {
+                "query": {
+                    "text": text,
+                    "filter": {
+                        "type": [str(type_filter)],
+                        "source": [str(source_filter)],
+                    },
+                },
+                "pageSize": 100,
+            },
+        )
+        if unfiltered_status != 200 or filtered_status != 200:
+            return _unsupported(
+                f"ARD search rejected the request "
+                f"(unfiltered {unfiltered_status}, "
+                f"filtered {filtered_status})"
+            )
+        all_rows = _rows(unfiltered)
+        kept = _rows(filtered)
+        if not kept:
+            return {
+                "filtered": False,
+                "reason": "the filter excluded everything",
+                "evidence": {"source": "api"},
+            }
+        mismatched = [
+            row.get("identifier")
+            for row in kept
+            if row.get("type") != str(type_filter)
+        ]
+        narrowed = len(kept) < len(all_rows)
+        return {
+            "filtered": narrowed and not mismatched,
+            "type_filter": type_filter,
+            "source_filter": source_filter,
+            "result_count": len(kept),
+            "reason": (
+                f"entries do not match the type filter: {mismatched}"
+                if mismatched
+                else (
+                    None
+                    if narrowed
+                    else "the filter returned everything the query did"
+                )
+            ),
+            "evidence": {
+                "source": "api",
+                "unfiltered_count": len(all_rows),
+                "filtered_count": len(kept),
+            },
+        }
+
+    async def _q_discovery_succeeds_without_aktp(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check discovery worked over ARD alone.
+
+        The saved response is the evidence that the consumer actually
+        discovered something; the live call is the evidence that ARD is
+        the only endpoint that had to answer.
+        """
+        try:
+            payload = _load_json_object(query.get("search_artifact"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "succeeded")
+
+        saved_results = payload.get("results")
+        if not isinstance(saved_results, list) or not saved_results:
+            return _artifact_failure(
+                "the saved discovery returned nothing", "succeeded"
+            )
+        status, data = await self._post(
+            "/v1/ard/search",
+            "admin",
+            {"query": {"text": str(query.get("query_text") or "")}},
+        )
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("ARD search endpoint not available")
+        aktp_status, _ = await self._get("/v1/aktp/handshake", "admin")
+        return {
+            # 404 is the answer that matters: discovery succeeded on a
+            # node with no AKTP surface at all.
+            "succeeded": bool(_rows(data)),
+            "aktp_required": False,
+            "ard_endpoint": "/v1/ard/search",
+            "evidence": {
+                "source": "artifact + api",
+                "saved_result_count": len(saved_results),
+                "live_result_count": len(_rows(data)),
+                "aktp_handshake_status": aktp_status,
+            },
+        }
+
+    async def _q_ingested_model_requires_no_asm_schema(
+        self,
+        query: JsonObject,
+        agent_roles: JsonObject,  # noqa: ARG002
+    ) -> JsonObject:
+        """Check ingestion did not grow an ASM-shaped field.
+
+        The check reads the resource object and its metadata, not the
+        envelope: an ASM selector that arrives through ingestion lands
+        on the model, and looking only at the top level reports 'clean'
+        for every resource that has ever existed.
+        """
+        resource_id = query.get("resource_id")
+        if not isinstance(resource_id, str) or not resource_id:
+            return _unsupported("resource_id is required")
+        status, data = await self._get(f"/v1/resources/{resource_id}", "admin")
+        if status != 200 or not isinstance(data, dict):
+            return _unsupported("resource detail endpoint not available")
+        resource = data.get("resource")
+        if not isinstance(resource, dict):
+            return _unsupported("resource detail carries no resource object")
+        hits = _asm_shaped_keys(resource)
+        metadata = resource.get("metadata")
+        if isinstance(metadata, dict):
+            hits.extend(
+                f"metadata.{key}" for key in _asm_shaped_keys(metadata)
+            )
+        return {
+            "agnostic": not hits,
+            "has_asm_schema": bool(hits),
+            "resource_id": resource_id,
+            "reason": f"ASM-shaped fields: {hits}" if hits else None,
+            "evidence": {"source": "api", "fields": hits},
+        }
+
 
 def _resolved_scope_root(raw: JsonValue) -> Path:
     """Validate a scenario-supplied scope root outside the async path."""
@@ -2221,6 +2845,111 @@ def _duplicate_install_state(scope_root: Path) -> list[str]:
 
 def _artifact_failure(reason: str, result_key: str) -> JsonObject:
     return {result_key: False, "reason": reason, "evidence": {}}
+
+
+#: The one specVersion the phase's codec and gate both speak.
+_AI_CATALOG_SPEC_VERSION = "1.0"
+
+#: Field names that would make an ingested model ASM-specific. Matched
+#: as a prefix so a renamed variant (``asm_selector_v2``) is caught: the
+#: claim is that nothing ASM-shaped arrived, not that these four exact
+#: spellings are absent.
+_ASM_FIELD_PREFIXES = ("asm_", "asmSchema", "asmSelector", "asm-")
+
+
+def _asm_shaped_keys(payload: JsonObject) -> list[str]:
+    """Name every key that would make this object ASM-specific."""
+    return sorted(
+        key
+        for key in payload
+        if isinstance(key, str) and key.startswith(_ASM_FIELD_PREFIXES)
+    )
+
+
+def _catalog_conformance_level(document: JsonObject) -> str:
+    """Re-derive the level the document earns, from the document.
+
+    Deliberately not the indexer's conformance module: an assertion
+    that asks the code under test whether the code under test agrees
+    with itself passes whenever that code is self-consistent, including
+    when it is wrong about the spec.
+    """
+    entries = document.get("entries")
+    if not isinstance(entries, list) or not entries:
+        return "none"
+    host = document.get("host")
+    if not isinstance(host, dict) or not host.get("displayName"):
+        return "none"
+    signed = any(
+        isinstance(entry, dict)
+        and isinstance(entry.get("trustManifest"), dict)
+        and entry["trustManifest"].get("signature")
+        for entry in entries
+    )
+    if signed:
+        return "trusted"
+    if host.get("identifier"):
+        return "discoverable"
+    return "minimal"
+
+
+def _identity_scan(
+    items: list[JsonObject],
+) -> tuple[set[tuple[str, str]], list[list[str]]]:
+    """Group resources by the pair that is supposed to be unique.
+
+    ``(resource_type, canonical_uri)`` is the identity a crawl must not
+    mint twice. Rows missing either half are skipped rather than counted
+    as distinct: an unnameable row cannot prove uniqueness either way.
+    """
+    seen: set[tuple[str, str]] = set()
+    duplicates: list[list[str]] = []
+    for item in items:
+        resource_type = item.get("resource_type")
+        canonical_uri = item.get("canonical_uri")
+        if not isinstance(resource_type, str) or not resource_type:
+            continue
+        if not isinstance(canonical_uri, str) or not canonical_uri:
+            continue
+        key = (resource_type, canonical_uri)
+        if key in seen:
+            duplicates.append(list(key))
+        else:
+            seen.add(key)
+    return seen, duplicates
+
+
+def _rows(payload: JsonValue) -> list[JsonObject]:
+    """Read an ARD response's results, tolerating an empty answer."""
+    if not isinstance(payload, dict):
+        return []
+    results = payload.get("results")
+    if not isinstance(results, list):
+        return []
+    return [row for row in results if isinstance(row, dict)]
+
+
+def _load_import_reports(
+    query: JsonObject,
+    *,
+    required: bool = True,
+) -> list[JsonObject]:
+    """Load the crawl reports a scenario saved, in the order it ran them.
+
+    Order matters: the second crawl of the same source is the one that
+    proves a re-crawl created nothing, and a set of reports read in
+    arbitrary order cannot tell which one that was.
+    """
+    raw = query.get("crawl_reports")
+    paths = raw if isinstance(raw, list) else []
+    if not paths:
+        single = query.get("crawl_report")
+        paths = [single] if single else []
+    if not paths:
+        if required:
+            raise ValueError("crawl_report or crawl_reports is required")
+        return []
+    return [_load_json_object(path) for path in paths]
 
 
 def _dsh_declared_bundles(dsh_home: Path) -> list[tuple[str, str]]:

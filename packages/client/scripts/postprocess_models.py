@@ -117,7 +117,7 @@ def rewrite(source: str) -> str:
     if "Any" in source:
         text = source.replace("list[dict[str, Any]]", "list[JsonObject]")
         text = text.replace("dict[str, Any]", "JsonObject")
-        text = re.sub(r"(?<![\w.])Any(?![\w\]])", "JsonValue", text)
+        text = re.sub(r"(?<![\w.])Any(?![\w])", "JsonValue", text)
 
         def drop_any(match: re.Match[str]) -> str:
             names = [

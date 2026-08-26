@@ -145,10 +145,13 @@ class CanonicalSkillId:
 
 
 _VALID_RESOURCE_TYPES = frozenset({
+    "artifact",
+    "catalog",
     "course",
     "mcp_server",
     "model",
     "plugin",
+    "registry",
     "skill",
 })
 _RESOURCE_PREFIX_RE = re.compile(r"^([A-Za-z_]+):(.+)$")

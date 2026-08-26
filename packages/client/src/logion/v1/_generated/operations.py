@@ -13,6 +13,7 @@ from logion.v1._types.generated.v1 import (
     AcceptPlatformBountySubmissionResponse,
     AddAgentToUserRequest,
     AddAgentToUserResponse,
+    AICatalogDocument,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
     AuthorizeRequest,
@@ -54,6 +55,8 @@ from logion.v1._types.generated.v1 import (
     DevicePollRequest,
     DismissReportRequest,
     DismissReportResponse,
+    ExploreRequest,
+    ExploreResponse,
     FundBountyResponse,
     FundPlatformBountyResponse,
     GetAcquisitionPlanResponse,
@@ -82,9 +85,13 @@ from logion.v1._types.generated.v1 import (
     GetResourceResponse,
     GetReviewBundleResponse,
     GetReviewStatusResponse,
+    GetSourceStatusResponse,
     GetUnreadCountResponse,
     GetUserDetailResponse,
     GithubIdentityResponse,
+    IngestCatalogEntriesRequest,
+    IngestCatalogEntriesResponse,
+    ListAgentsResponse,
     ListBountiesResponse,
     ListBountySubmissionsResponse,
     ListCourseReviewsResponse,
@@ -108,6 +115,8 @@ from logion.v1._types.generated.v1 import (
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    RecordSourceSnapshotRequest,
+    RecordSourceSnapshotResponse,
     RedeemSetupTokenRequest,
     RedeemSetupTokenResponse,
     RejectBountySubmissionResponse,
@@ -123,6 +132,8 @@ from logion.v1._types.generated.v1 import (
     RotateAgentApiKeyRequest,
     RotateAgentApiKeyResponse,
     SearchListingsResponse,
+    SearchRequest,
+    SearchResponse,
     SellerReadinessResponse,
     SetCourseSourceLinkRequest,
     SetCourseSourceLinkResponse,
@@ -144,6 +155,17 @@ from logion.v1._types.generated.v1 import (
     UpsertCourseReviewResponse,
     WithdrawBountySubmissionResponse,
 )
+
+
+def get_catalog(
+    http: HttpClient,
+) -> AICatalogDocument:
+    """Call the get_catalog API operation."""
+    return http.request_model(
+        "GET",
+        "/.well-known/ai-catalog.json",
+        AICatalogDocument,
+    )
 
 
 def health_health_get(
@@ -547,6 +569,94 @@ def suspend_user(
         "PATCH",
         f"/v1/admin/users/{user_id}/suspension",
         SuspendUserResponse,
+    )
+
+
+def list_agents(
+    http: HttpClient,
+    *,
+    filter_: str | None = None,
+    orderBy: str | None = None,
+    pageSize: int | None = None,
+    pageToken: str | None = None,
+) -> ListAgentsResponse:
+    """Call the list_agents API operation."""
+    params: dict[str, QueryValue] = {}
+    if filter_ is not None:
+        params["filter"] = filter_
+    if orderBy is not None:
+        params["orderBy"] = orderBy
+    if pageSize is not None:
+        params["pageSize"] = pageSize
+    if pageToken is not None:
+        params["pageToken"] = pageToken
+    return http.request_model(
+        "GET",
+        "/v1/ard/agents",
+        ListAgentsResponse,
+        params=params,
+    )
+
+
+def explore(
+    http: HttpClient,
+    *,
+    body: ExploreRequest,
+) -> ExploreResponse:
+    """Call the explore API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/explore",
+        ExploreResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def search(
+    http: HttpClient,
+    *,
+    body: SearchRequest,
+) -> SearchResponse:
+    """Call the search API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/search",
+        SearchResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def record_source_snapshot(
+    http: HttpClient,
+    *,
+    body: RecordSourceSnapshotRequest,
+) -> RecordSourceSnapshotResponse:
+    """Call the record_source_snapshot API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/ard/sources",
+        RecordSourceSnapshotResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_source_status(
+    http: HttpClient,
+    *,
+    source_type: str | None = None,
+    limit: int | None = None,
+) -> GetSourceStatusResponse:
+    """Call the get_source_status API operation."""
+    params: dict[str, QueryValue] = {}
+    if source_type is not None:
+        params["source_type"] = source_type
+    if limit is not None:
+        params["limit"] = limit
+    return http.request_model(
+        "GET",
+        "/v1/ard/sources/status",
+        GetSourceStatusResponse,
+        params=params,
     )
 
 
@@ -1703,6 +1813,20 @@ def submit_usage_receipt(
         "POST",
         f"/v1/resources/{resource_id}/versions/{version_id}/usage-receipts",
         SubmitUsageReceiptResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def ingest_catalog_entries(
+    http: HttpClient,
+    *,
+    body: IngestCatalogEntriesRequest,
+) -> IngestCatalogEntriesResponse:
+    """Call the ingest_catalog_entries API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/resources:ingest-catalog",
+        IngestCatalogEntriesResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
