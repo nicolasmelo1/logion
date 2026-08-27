@@ -107,8 +107,12 @@ node_agent() {
 }
 
 node_down() {
-  # Stop and remove containers; named role state is preserved.
+  # Stop and remove containers; named role state is preserved. The
+  # wheels directory is build output that lives inside the phase's
+  # activation glob: leaving it behind makes the local tree digest
+  # differ from the committed tree the auditor certifies.
   node_compose down
+  rm -rf "${NODE_DIR}/dist-wheels"
 }
 
 # node_reset ROLE=consumer YES=1 — remove ONE role's disposable state
