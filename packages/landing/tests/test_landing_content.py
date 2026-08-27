@@ -24,7 +24,7 @@ REQUIRED_ANCHORS = (
     "reviewed",
     "versioned",
     "capability",
-    "entitlement",
+    "provenance",
     "publication review",
     "bounties",
     "CLI",

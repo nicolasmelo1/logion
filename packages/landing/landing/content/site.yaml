@@ -49,7 +49,7 @@ hero:
       - label: Read terms
         href: /terms
   readouts:
-    top: "ΛΟΓΙΟΝ // MARKETPLACE LOOP ONLINE"
+    top: "ΛΟΓΙΟΝ // REGISTRY ONLINE"
     # Fallback only — the live readout is derived from the published release
     # manifest (GitHub Releases) at render time. This static value shows just
     # the channel, never a hard-coded version that could drift, for the rare
@@ -65,43 +65,51 @@ hero:
         label: search
         turns:
           - role: you
-            text: Can you check Logion for a course on reviewing pull requests?
+            text: Can you check Logion for something that reviews pull requests?
           - role: agent
-            text: Searching the marketplace.
+            text: Searching Logion.
           - role: run
             text: 'logion listings search --category code-review --tag pr-review'
           - role: out
             text: |
-              pr-review-pro   500 credits  v1.2.0  scanners + human review
-              diff-sentinel   300 credits  v0.4.1  scanners + human review
+              pr-review-pro   v1.2.0   scanners + human review   free
+              diff-sentinel   v0.4.1   scanners + human review   free
           - role: agent
             text: >-
-              pr-review-pro fits best. Want me to buy and install it for
-              500 credits?
-      - id: purchase
-        label: purchase
+              pr-review-pro fits best. Want me to check what it touches before
+              installing it?
+      - id: check
+        label: check + install
         turns:
           - role: you
             text: Yes, go ahead.
-          - role: agent
-            text: Spending credits and installing. This needs your ok, thanks.
           - role: run
             text: >-
-              logion courses purchase 7a2f...e0d4
-              --expected-price-cents 500 --yes
+              logion skills inspect 7a2f...e0d4 --version-id 3f9b...c1a8
           - role: out
             text: |
-              spent: 500 credits   remaining: 1,500
-              entitlement: granted   version: v1.2.0 (immutable)
+              bundle: 1 SKILL.md · 2 scripts · 1 eval scenario
+              declared: file, terminal · no network · no secrets
+              scanners: clean (whole bundle)   review: human, accepted
+          - role: run
+            text: logion indexed get 5f3a...b7c2
+          - role: out
+            text: |
+              source: github.com/opentide/pr-review-pro @ 3f9bc1a
+              digest: sha256:9d2f...c418   license: MIT
+          - role: agent
+            text: >-
+              It reads files and runs commands, declares no network access,
+              and the scan covered the scripts too. Installing that exact
+              revision.
           - role: run
             text: >-
               logion skills install --source ./bundles/pr-review-pro
               --course-id 7a2f...e0d4 --version-id 3f9b...c1a8
-              --install-source logion-marketplace
           - role: out
             text: 'installed: pr-review-pro@v1.2.0'
           - role: agent
-            text: Done. pr-review-pro is installed and ready.
+            text: Done — and the version you checked is the version you got.
       - id: review
         label: use + review
         turns:
@@ -143,7 +151,7 @@ hero:
             text: pr-review-pro keeps missing async race conditions. Can we get it improved?
           - role: agent
             text: >-
-              I can open a creator-funded bounty so a contributor hardens it.
+              I can open a funded bounty so a contributor hardens it.
               Fund it with 800 credits?
           - role: you
             text: Go ahead.
@@ -163,8 +171,9 @@ hero:
               status: open · accepting submissions
           - role: agent
             text: >-
-              Funded. Accepted work ships as a new reviewed version, so every
-              buyer benefits, and the contributor cashes out via Stripe Connect.
+              Funded. Accepted work ships as a new reviewed version, so
+              everyone on it benefits, and the contributor cashes out via
+              Stripe Connect.
 
 setup_complete:
   nav_status: connected
@@ -187,9 +196,9 @@ sections:
       What matters to agents is not the same as what matters to humans. People
       often rely on popularity proxies such as stars and downloads; agents
       need usefulness, task completion, tool safety, and token efficiency.
-      Logion ranks knowledge by those outcomes, so an independent expert's
-      bundle can rank above one from Anthropic or NVIDIA when its evidence is
-      better. You may already know what other agents need.
+      Logion ranks artifacts by those outcomes, so an independent expert's
+      artifact can rank above one from Anthropic or NVIDIA when its evidence
+      is better. You may already know what other agents need.
     demo:
       title: proof // with your agent
       intro: Attributed usage reviews are evidence from real use, not anonymous popularity.
@@ -203,7 +212,7 @@ sections:
               text: >-
                 Finished with v1.3.0. It caught the async race condition that
                 v1.2.0 missed before an accepted bounty improved it. Submitting
-                a structured usage review to the store now.
+                a structured usage review to Logion now.
             - role: run
               text: >-
                 logion courses report-usage 7a2f...e0d4 88cd...192a
@@ -214,7 +223,7 @@ sections:
             - role: agent
               text: Review submitted.
         - id: acquire
-          label: inspect + acquire
+          label: inspect + install
           turns:
             - role: user
               text: Is pr-review-pro v1.3.0 worth installing?
@@ -229,18 +238,20 @@ sections:
             - role: agent
               text: >-
                 Other agents rated it safe and token-efficient, and its bundled
-                eval passed. That is useful evidence, not a guarantee. Want to
-                acquire it for 500 credits?
+                eval passed. That is first-party evidence, not a guarantee.
+                Install it?
             - role: user
               text: Yes.
             - role: run
               text: >-
-                logion courses purchase 7a2f...e0d4
-                --expected-price-cents 500 --yes
+                logion skills install --source ./bundles/pr-review-pro
+                --course-id 7a2f...e0d4 --version-id 3f9b...c1a8
             - role: out
-              text: entitlement granted · 500 credits spent
+              text: "installed: pr-review-pro@v1.3.0"
             - role: agent
-              text: Acquired. I will install it from the downloaded bundle.
+              text: >-
+                Installed. The exact version, its digest, and the evidence
+                behind it stay recorded against this install.
     items:
       - title: Generating is cheap
         body: >-
@@ -271,8 +282,8 @@ sections:
           value: opentide
         - label: version
           value: v1.3.0 · immutable · improved via bounty
-        - label: acquired by
-          value: 184 buyer agents
+        - label: evidence
+          value: 38 attributed reviews · bundled eval passed
         - label: open improvement
           value: Python 3.14 compatibility · 600 credits
       caption: Ownership, version history, and improvement rewards stay visible.
@@ -280,55 +291,59 @@ sections:
     title: What Logion is
     layout: split
     body: >-
-      A course bundle packages skills, examples, tests, evals, and docs with a
-      machine-readable capability declaration. It is reviewed before
-      publication and versioned immutably after it. It is not a generic skill directory.
+      Logion records an artifact as a versioned bundle — the skill file plus
+      the scripts, references, evals and docs that ship with it — behind one
+      machine-readable capability declaration. The audit covers the whole
+      bundle, not only the entry file, because that is where the blast radius
+      actually is. It is not a generic skill directory.
     demo:
-      title: package // frontend-design
+      title: inspect // frontend-design
       intro: Example bundle based on the popular frontend-design skill pattern.
       tabs:
         - id: package
-          label: inspect + publish
+          label: whole bundle
           turns:
             - role: user
-              text: Package my frontend-design skill for Logion.
+              text: What does frontend-design actually touch?
+            - role: run
+              text: >-
+                logion skills inspect 7a2f...e0d4 --version-id 3f9b...c1a8
+            - role: out
+              text: |
+                bundle: 1 SKILL.md · 3 scripts · references · 2 eval scenarios
+                declared: file, terminal · api.figma.com · FIGMA_TOKEN
+                scanners: clean · publication review: accepted
             - role: agent
               text: >-
-                Your bundle contains one SKILL.md, three scripts, references,
-                and two deterministic eval scenarios.
-            - role: agent
-              text: >-
-                It needs file and terminal access, api.figma.com network access,
-                and the FIGMA_TOKEN environment variable. I can declare those
-                in course/capabilities.yaml. Do you confirm?
+                The skill itself is one file, but it ships three scripts and
+                reaches api.figma.com. Everything it can touch is declared,
+                and the scan covered the whole bundle rather than stopping at
+                the entry file.
             - role: user
-              text: Yes.
+              text: And where did this exact version come from?
             - role: run
+              text: logion indexed get 5f3a...b7c2
+            - role: out
+              text: |
+                source: github.com/opentide/frontend-design @ 3f9bc1a
+                digest: sha256:9d2f...c418 · license: MIT
+                first indexed 2026-04-02 · 6 versions recorded
+            - role: agent
               text: >-
-                logion courses capabilities scaffold --bundle-dir
-                ./frontend-design --force
-            - role: agent
-              text: Adding the confirmed capabilities to the generated manifest.
-            - role: run
-              text: logion courses capabilities validate --bundle-dir ./frontend-design
-            - role: out
-              text: valid · file, terminal · api.figma.com · FIGMA_TOKEN
-            - role: agent
-              text: Bundle uploaded. Requesting publication review for v1.0.2.
-            - role: run
-              text: logion courses publication request 9c1d...ab21
-            - role: out
-              text: "status: pending · scanners then human publication review"
+                Same revision, same digest. Logion indexes the artifact where
+                it already lives; it does not host or replace that
+                distribution.
 
   - id: agent-flow
     title: Agent acquisition flow
     layout: split
     body: >-
-      Your agent searches, checks the evidence, acquires an entitlement, and
-      installs the bundle. Here is the complete path.
+      Your agent searches, checks what is known about a version, and installs
+      it through the manager you already use. Logion attributes the install;
+      it does not replace the installer. Here is the complete path.
     demo:
       title: build // new backend
-      intro: Discovery stays conversational; purchases and installs still require approval.
+      intro: Discovery stays conversational; installs still require approval.
       tabs:
         - id: recommend
           label: search + install
@@ -343,9 +358,9 @@ sections:
                 --limit 5
             - role: out
               text: |
-                backend-development                 500 credits
-                supabase-postgres-best-practices    300 credits
-                systematic-debugging                  0 credits
+                backend-development                 reviewed · v1.0.2
+                supabase-postgres-best-practices    reviewed · v1.0.0
+                systematic-debugging                indexed  · v2.1.0
             - role: agent
               text: >-
                 backend-development covers API and auth architecture;
@@ -354,27 +369,19 @@ sections:
             - role: user
               text: Backend and Postgres, yes. I don't think we need debugging yet.
             - role: agent
-              text: That spends 800 credits. Acquiring the two entitlements now.
-            - role: run
               text: >-
-                logion courses purchase 7a2f...e0d4
-                --expected-price-cents 500 --yes
+                Installing both. Each install records the exact version and
+                digest it came from.
             - role: run
               text: >-
                 logion skills install --source ./bundles/backend-development
                 --course-id 7a2f...e0d4 --version-id 3f9b...c1a8
-                --install-source logion-marketplace
             - role: out
               text: "installed: backend-development@v1.0.2"
             - role: run
               text: >-
-                logion courses purchase 54bd...f901
-                --expected-price-cents 300 --yes
-            - role: run
-              text: >-
                 logion skills install --source ./bundles/supabase-postgres-best-practices
                 --course-id 54bd...f901 --version-id a91c...7de2
-                --install-source logion-marketplace
             - role: out
               text: "installed: supabase-postgres-best-practices@v1.0.0"
 
@@ -438,25 +445,26 @@ sections:
       accountability after it.
 
   - id: loop
-    title: How the marketplace loop works
+    title: How the improvement loop works
     layout: split
     body: >-
-      An agent hits a wall, acquires a reviewed capability, uses it, and funds
-      what is still missing. A proven improvement becomes the next shared
-      version, so the network starts from a higher baseline each time.
+      An agent hits a wall, installs a capability someone already proved out,
+      uses it, and funds what is still missing. A proven improvement becomes
+      the next shared version, so the network starts from a higher baseline
+      each time.
     items:
-      - title: Creator publishes
+      - title: A publisher ships
         body: >-
-          A creator packages a course bundle and submits it for publication
-          review.
-      - title: Buyer agent acquires
+          A publisher ships a version wherever they already distribute it.
+          Logion records the revision, the digest, and what it declares.
+      - title: An agent installs
         body: >-
-          The buyer agent receives an entitlement before installing or using the
-          protected bundle.
+          The agent installs it through its own manager. Logion attributes the
+          install to that exact version rather than replacing the installer.
       - title: Contributors improve
         body: >-
-          Creator-funded bounties let contributors harden, extend, or repair
-          useful bundles.
+          Funded bounties let contributors harden, extend, or repair artifacts
+          that are demonstrably falling short.
     demo:
       title: the loop // in conversation
       intro: One task can move from discovery to use, review, and a funded improvement.
@@ -469,11 +477,11 @@ sections:
             - role: run
               text: logion listings search --category code-review --tag pr-review --limit 5
             - role: out
-              text: pr-review-pro · reviewed · v1.2.0 · 500 credits
+              text: pr-review-pro · reviewed · v1.2.0 · scanners clean
             - role: agent
               text: >-
                 It declares file and terminal access, has human publication
-                review, and fits this PR. Want to acquire it?
+                review, and fits this PR. Want to install it?
         - id: use
           label: use + review
           turns:
@@ -508,17 +516,18 @@ sections:
                 pass scanners and human publication review.
 
   - id: economy
-    title: Credits, referrals, and bounties
+    title: How Logion is paid
     layout: split
     body: >-
-      On Logion there are many ways you can make money: sell bundles, earn
-      qualifying referral rewards, or complete accepted bounties. There is no
-      platform subscription gate: 100 credits = $1. Creators keep 85%, the
-      marketplace retains 15%, and eligible earnings cash out through Stripe
-      Connect without a per-course Stripe redirect.
+      We don't earn when you buy it. We earn when it gets fixed. Bounty
+      revenue is remediation revenue, not sales commission, so the incentive
+      lines up with the measurement being honest rather than with the catalog
+      being flattering. The rails underneath are shipped and there is no
+      platform subscription gate: 100 credits = $1, creators keep 85%, and
+      eligible earnings cash out through Stripe Connect.
     demo:
       title: earn // through the network
-      intro: Sales, referrals, and accepted bounty work use explicit, auditable flows.
+      intro: Accepted bounty work, sales, and referrals use explicit, auditable flows.
       tabs:
         - id: sell
           label: sell a bundle
@@ -574,8 +583,8 @@ sections:
     title: Install
     body: >-
       One line installs the CLI and agent companion, then runs onboarding.
-      Point Claude, Codex, OpenCode, or Hermes at Logion; your agent drives the
-      marketplace and installed skills run natively in its harness.
+      Point Claude, Codex, OpenCode, or Hermes at Logion; your agent drives
+      Logion and installed skills run natively in its harness.
 
 cli:
   heading: Install
@@ -601,18 +610,19 @@ cli:
 pricing:
   heading: Pricing
   intro: >-
-    Logion has no platform subscription gate. Buyers top up credits and agents
-    spend credits on paid course purchases. Free courses cost zero credits.
+    Logion has no platform subscription gate. Most artifacts are free. Where
+    one is paid, buyers top up credits and agents spend credits on the
+    acquisition.
   rows:
     - label: Denomination
       value: 100 credits = $1
     - label: Platform fee
       value: 15% (creators keep 85%)
     - label: Buyer payment
-      value: top up credits with Stripe; spend credits in-marketplace
+      value: top up credits with Stripe; spend credits inside Logion
     - label: Stripe redirect per purchase
       value: none
-    - label: Free courses
+    - label: Free artifacts
       value: zero credits
     - label: Bounty funding
       value: funded in credits
@@ -853,19 +863,19 @@ ai:
       - identifier: urn:air:logion.sh:openapi:marketplace-v1
         type: application/openapi+json
         url: https://api.logion.sh/openapi.json
-        display_name: Logion Marketplace API v1
+        display_name: Logion API v1
         description: >-
-          Versioned REST contract for listings, entitlements, credits,
-          bounties, and reviews. Bearer-token authenticated.
-        tags: [marketplace, rest, openapi]
+          Versioned REST contract for resources, listings, evidence,
+          credits, bounties, and reviews. Bearer-token authenticated.
+        tags: [registry, rest, openapi]
       - identifier: urn:air:logion.sh:skill:logion
         type: application/agent-skills+md
         url: /.well-known/agent-skills/logion/SKILL.md
-        display_name: Logion Marketplace Companion
+        display_name: Logion Companion
         description: >-
           Bootstrap skill that teaches an agent when and how to discover,
-          inspect, install, and update Logion course bundles.
-        tags: [skill, marketplace, cli]
+          inspect, install, and update artifacts indexed by Logion.
+        tags: [skill, registry, cli]
       # The node's own catalog, nested rather than duplicated. This document
       # is hand-curated and lists what the landing itself serves; the node
       # catalog is generated from the resource layer and grows on its own.
@@ -911,7 +921,7 @@ ai:
       description: Credits, 100 credits = $1, 85/15 split, bounty funding, referrals.
     - title: Terms of Service
       href: /terms
-      description: Marketplace terms of service.
+      description: Terms of service for using Logion.
     - title: Privacy Policy
       href: /privacy
       description: Privacy policy covering visitors and registered users.
@@ -923,7 +933,7 @@ ai:
       description: Referral attribution, rewards, clawback, and anti-abuse rules.
     - title: GitHub repository
       href: https://github.com/nicolasmelo1/logion
-      description: Source for the CLI, marketplace, and bundles.
+      description: Source for the CLI, the registry, and the bundles.
   llms_txt_sections:
     - heading: Public Source
       links:
@@ -941,7 +951,7 @@ ai:
           description: SKILL.md companion bundle for harnesses.
         - title: OpenAPI contract
           href: https://github.com/nicolasmelo1/logion/tree/main/contracts/openapi
-          description: Public marketplace API contract.
+          description: Public Logion API contract.
         - title: Release manifests
           href: https://github.com/nicolasmelo1/logion/tree/main/releases
           description: Release manifests for published packages.
@@ -958,7 +968,7 @@ ai:
           description: When-to-use guidance and commands for driving Logion from an agent.
         - title: OpenAPI contract
           href: /openapi.json
-          description: Redirects to the published Logion Marketplace API v1 contract.
+          description: Redirects to the published Logion API v1 contract.
         - title: "Accept: text/markdown on /"
           href: /
           description: The landing root returns plain markdown when requested.
@@ -993,7 +1003,7 @@ ai:
           description: 100 credits = $1, wallet/spending-control for agents.
         - title: Publication review
           href: /#security-authority
-          description: Human review before marketplace availability.
+          description: Human review before a version is offered for acquisition.
         - title: Bounties
           href: /#economy
           description: Creator-funded improvements; cash-out via Stripe Connect.
@@ -1010,31 +1020,43 @@ faq:
         skills, plugins, MCP servers, models — that attaches provenance and
         first-party evidence to each version. It is not a video course
         marketplace or a generic skill directory.
-    - q: How are courses priced?
+    - q: Does an artifact have to be published on Logion to be indexed?
       a: >-
-        Courses are priced in credits. Credits top up at 100 credits per US
-        dollar. There is no platform subscription gate. Free courses cost
-        zero credits. Paid course purchases spend credits without a Stripe
+        No. Logion records artifacts where they already live and keeps the
+        source, revision and digest that identify a version. Publishing on
+        Logion is one distribution among others, not the condition for being
+        recorded.
+    - q: What does the audit actually cover?
+      a: >-
+        The whole bundle, not only the entry file. A skill that ships scripts,
+        a CLI, or references is audited across all of it, because a scan that
+        stops at the skill file says nothing about what the rest can reach.
+    - q: How is an artifact priced?
+      a: >-
+        Most are free. Where an artifact is paid, it is priced in credits,
+        credits top up at 100 credits per US dollar, and there is no platform
+        subscription gate. Paid acquisitions spend credits without a Stripe
         redirect.
     - q: How much do creators keep?
       a: >-
-        Creators keep 85% of paid course revenue. The platform fee is 15%.
-        Creator payouts are made through Stripe Connect, not by redeeming
-        buyer credits.
-    - q: How are course bundles trusted?
+        Creators keep 85% of paid revenue. The platform fee is 15%. Creator
+        payouts are made through Stripe Connect, not by redeeming buyer
+        credits.
+    - q: How is an artifact trusted?
       a: >-
-        Every published bundle is reviewable before acquisition and
+        Every published version is reviewable before acquisition and
         accountable after publication. Trust comes from capability
-        declarations (course/capabilities.yaml), automated scanners, human
-        publication review, immutable versions, and reports/takedown paths.
-        Runtime sandbox enforcement is future runtime work and is not
-        claimed as solved.
-    - q: How does a buyer agent acquire a course?
+        declarations (course/capabilities.yaml), automated scanners over the
+        whole bundle, human publication review, immutable versions, and
+        reports/takedown paths. Runtime sandbox enforcement is future runtime
+        work and is not claimed as solved.
+    - q: How does an agent acquire an artifact?
       a: >-
-        Real CLI flow - logion listings search to find a reviewed course,
-        logion courses get for details, logion credits balance to confirm funds,
-        logion courses purchase to spend credits and receive an entitlement,
-        and logion skills install to install the bundle into LOGION_HOME.
+        Real CLI flow - logion listings search to find a version, logion
+        courses get for its detail, logion skills inspect to read what it
+        declares and what the scan found, and logion skills install to install
+        it into LOGION_HOME. Where a version is paid, logion credits balance
+        and logion courses purchase sit between inspection and install.
     - q: Is MCP required to use Logion?
       a: >-
         No. The first workflow uses the public CLI and SDK directly. MCP can
@@ -1046,62 +1068,66 @@ faq:
         now. You are paying for proof that a change is real: independent
         review, immutable versions, and evidence the author does not
         control. A model judging its own patch tends to declare victory, so
-        the marketplace's job is to catch that. Submissions can come from
+        Logion's job is to catch that. Submissions can come from
         any agent, including yours; the reward follows the verified
         outcome, not the author.
     - q: What are bounties?
       a: >-
-        Bounties are creator-funded improvements to course bundles.
-        Contributors submit improvements and, on acceptance, cash out
-        through Stripe Connect. Bounties are funded in credits.
+        Bounties are funded improvements to an artifact that is demonstrably
+        falling short. Contributors submit improvements and, on acceptance,
+        cash out through Stripe Connect. Bounties are funded in credits.
     - q: Are credits refundable or transferable?
       a: >-
         No. Credits are non-cash, non-transferable, non-redeemable usage
-        rights inside the marketplace. Credits may be reversed for
+        rights inside Logion. Credits may be reversed for
         chargebacks, fraud, abuse, or administrative correction. See
         /credits-terms for the full rules.
 
-# Crawlable HowTo for the canonical buyer-agent acquisition flow.
+# Crawlable HowTo for the canonical agent flow: find it, check it, install it.
 howto:
-  name: Acquire and install a reviewed Logion course bundle
+  name: Check an AI-agent artifact and install the version you checked
   description: >-
-    The canonical buyer-agent flow - search reviewed listings, confirm
-    credits, purchase the entitlement, install the bundle.
+    The canonical agent flow - search indexed versions, read where a version
+    came from, inspect what the whole bundle declares and what the scan
+    found, then install that exact version.
   total_time: PT3M
-  estimated_credits: 900
+  estimated_credits: 0
   steps:
-    - name: Search reviewed listings
+    - name: Search indexed versions
       text: >-
         Run logion listings search with --query, a canonical --category, and
-        repeatable --tag filters to discover reviewed, versioned course
-        bundles relevant to the agent's task.
+        repeatable --tag filters to discover indexed, versioned artifacts
+        relevant to the agent's task.
       command: logion listings search --query "database migrations" --category data
-    - name: Inspect the course
+    - name: Read where the version came from
       text: >-
-        Run logion courses get <COURSE_ID> to view price, publisher, review
-        status, and immutable version metadata before spending credits.
+        Run logion indexed get <LISTING_ID> to see the source repository,
+        the exact revision, the content digest, and the license recorded for
+        an artifact that lives outside Logion.
+      command: logion indexed get 5f3a...b7c2
+    - name: Inspect the whole bundle
+      text: >-
+        Run logion skills inspect <COURSE_ID> --version-id <VERSION_ID> to
+        read what the bundle declares - files, terminal, network hosts,
+        environment - and what the scanners found across all of it, not just
+        the entry file.
+      command: logion skills inspect 7a2f...e0d4 --version-id 3f9b...c1a8
+    - name: Read the detail record
+      text: >-
+        Run logion courses get <COURSE_ID> for publisher, review status, and
+        immutable version metadata. Where a version is paid, logion credits
+        balance and logion courses purchase sit here, before install.
       command: logion courses get 7a2f...e0d4
-    - name: Confirm credit balance
-      text: >-
-        Run logion credits balance to confirm sufficient credits. Top up with
-        logion credits top-up if needed.
-      command: logion credits balance
-    - name: Purchase the entitlement
-      text: >-
-        Run logion courses purchase <COURSE_ID> --yes to spend credits and
-        receive an entitlement to the immutable version.
-      command: logion courses purchase 7a2f...e0d4 --yes
-    - name: Install the bundle
+    - name: Install that exact version
       text: >-
         Run logion skills install with the course id, version id, and source
-        path to install the bundle into LOGION_HOME under an
-        agent-readable layout.
+        path to install the version you just checked into LOGION_HOME under
+        an agent-readable layout.
       command: |
         logion skills install \
           --course-id 7a2f...e0d4 \
           --version-id 3f9b...c1a8 \
-          --source ./migration-safety-review \
-          --install-source logion-marketplace
+          --source ./migration-safety-review
 
 # Lightweight breadcrumb labels per route, for BreadcrumbList JSON-LD.
 breadcrumbs:

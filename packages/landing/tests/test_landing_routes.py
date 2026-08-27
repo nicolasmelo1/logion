@@ -371,11 +371,12 @@ def test_index_returns_markdown_when_requested() -> None:
     assert response.headers["content-type"].startswith("text/markdown")
     assert "# Logion" in response.text
     assert "curl -fsSL https://logion.sh/install.sh | sh" in response.text
-    assert "Marketplace loop" in response.text
+    assert "Improvement loop" in response.text
     assert "Trust model" in response.text
     assert "Agent acquisition flow" in response.text
     assert "Open-source trust layer" in response.text
-    assert "logion courses purchase" in response.text
+    assert "logion skills inspect" in response.text
+    assert "logion indexed get" in response.text
 
 
 def test_markdown_response_is_agent_readable_without_visual_assets() -> None:
@@ -395,12 +396,17 @@ def test_homepage_includes_trust_model_language() -> None:
     assert "runtime sandbox enforcement is future runtime work" in lower_text
 
 
-def test_homepage_includes_marketplace_terms() -> None:
+def test_homepage_includes_registry_terms() -> None:
     response = client.get("/")
     text = response.text
-    assert "entitlement" in text
+    assert "provenance" in text
+    assert "digest" in text
+    assert "scanners" in text
     assert "publication review" in text
     assert "bounties" in text
+    # Entitlement language belonged to the store framing and is deliberately
+    # gone from the page; the rails still exist, they are just not the pitch.
+    assert "entitlement" not in text
 
 
 def test_homepage_explains_agent_native_ranking_signals() -> None:
@@ -423,17 +429,19 @@ def test_homepage_renders_agent_acquisition_demo() -> None:
     assert "data-section-demo" in text
     assert "Agent acquisition flow" in text
     assert "logion listings search" in text
-    assert "logion courses purchase" in text
+    assert "logion skills inspect" in text
+    assert "logion indexed get" in text
     assert "logion skills install" in text
-    assert "--install-source logion-marketplace" in text
-    assert "entitlement granted" in text
+    # The acquisition path must not sell. The FAQ still names the paid
+    # path; the demo must not run it.
+    assert "entitlement granted" not in text
 
 
 def test_homepage_renders_animated_hero_demo() -> None:
     text = client.get("/").text
     assert "data-terminal-demo" in text
     assert 'role="tablist"' in text
-    for tab_id in ("search", "purchase", "review", "publish"):
+    for tab_id in ("search", "check", "review", "publish"):
         assert f'data-tab="{tab_id}"' in text
         assert f'id="demo-panel-{tab_id}"' in text
     # The animation script must be linked.
@@ -465,7 +473,7 @@ def test_homepage_interleaves_copy_with_agent_examples() -> None:
     assert text.count('aria-label="Scrollable terminal conversation"') == 7
     for example in (
         "proof // with your agent",
-        "package // frontend-design",
+        "inspect // frontend-design",
         "build // new backend",
         "review // actionable feedback",
         "the loop // in conversation",
@@ -696,7 +704,7 @@ def test_homepage_emits_faq_jsonld_with_visible_answers() -> None:
     # JSON-LD FAQPage block with the canonical Q&A set.
     assert '"@type": "FAQPage"' in text
     assert "What is Logion?" in text
-    assert "How are courses priced?" in text
+    assert "How is an artifact priced?" in text
     assert "Are credits refundable or transferable?" in text
     # Visible FAQ section anchors the same content for human readers.
     assert 'id="faq"' in text
@@ -706,9 +714,11 @@ def test_homepage_emits_faq_jsonld_with_visible_answers() -> None:
 def test_homepage_emits_howto_jsonld_with_real_cli_steps() -> None:
     text = client.get("/").text
     assert '"@type": "HowTo"' in text
-    assert "Acquire and install" in text
+    assert "Check an AI-agent artifact" in text
     assert "logion listings search" in text
-    assert "logion courses purchase" in text
+    assert "logion indexed get" in text
+    assert "logion skills inspect" in text
+    assert "logion skills install" in text
 
 
 def test_homepage_emits_software_application_jsonld() -> None:
