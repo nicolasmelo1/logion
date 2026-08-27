@@ -31,6 +31,7 @@ uv.lock
 .generated-files.lock
 
 # Directories
+deploy
 .githooks
 .github
 assets

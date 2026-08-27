@@ -1,0 +1,46 @@
+# Pinned linux/arm64 role image for the phase 15.14.1 local node.
+#
+# Contains only what the role smoke needs: the Logion public CLI and
+# companion, git, one gate-approved real-agent harness runtime, and the
+# certificate/runtime dependencies they require. A non-root entrypoint;
+# no baked-in provider, Logion, GitHub, cloud, or host credentials.
+#
+# Deliberately absent: the phase 15.15 runner package, the host Docker
+# socket, any credential file from the host.
+
+FROM --platform=linux/arm64 python:3.12-slim-bookworm
+
+ARG LOGION_BASE_URL=http://localhost:8000
+ENV LOGION_BASE_URL=${LOGION_BASE_URL}
+
+# Runtime + certificate dependencies only. Node is required by the
+# companion's npm delivery path; git is the one VCS the role smoke uses.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    nodejs \
+    npm \
+  && rm -rf /var/lib/apt/lists/*
+
+# The public CLI wheel is built by `make node-dev-up` from the sibling
+# packages in this repository and copied in at build time. No
+# credentials travel with it.
+COPY dist-wheels/ /opt/logion-wheels/
+RUN pip install --no-cache-dir --no-deps /opt/logion-wheels/*.whl \
+  && pip install --no-cache-dir logion-marketplace-companion || true
+
+# Non-root role user. The container's `user:` directive overrides the
+# UID per role (consumer 10001, auditor 10002) so each role's files on
+# its own volume are owned by a distinct non-root identity.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin agent
+USER agent
+WORKDIR /workspace/task
+
+# Nothing is executed at container start by the image itself: the
+# Compose service provides `sleep infinity` and the operator drives
+# work through `make node-agent ROLE=...`. This keeps the image inert
+# and the run reproducible.
+ENTRYPOINT []
+CMD ["sleep", "infinity"]

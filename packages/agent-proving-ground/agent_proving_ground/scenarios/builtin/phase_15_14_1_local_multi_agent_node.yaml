@@ -1,0 +1,205 @@
+schema_version: "1"
+name: phase_15_14_1_local_multi_agent_node
+description: |
+  Bounded local multi-agent first-node foundation. Host coordination
+  starts consumer and auditor as separate non-root Compose services
+  with declared limits, distinct credentials, homes, spools, and
+  workspaces. The run proves non-root execution, enforced limits,
+  credential/home isolation, host and cross-role canary unreadability,
+  a repository-scoped install visible to a fresh same-role session and
+  absent everywhere else, restart persistence in named volumes, and a
+  selective consumer reset that revokes only the consumer's key. Stops
+  before runner jobs, receipts, bounties, funding, or delivery: those
+  belong to 15.15 and 15.14/15.16.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
+agents:
+  - id: consumer
+    role: Consumer agent working in repository XPTO
+    driver: codex
+    workspace: consumer
+    devrig_role: buyer
+    timeout_seconds: 1200
+  - id: auditor
+    role: Auditor agent proving isolation in repository ABC
+    driver: codex
+    workspace: auditor
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: capture_identity_limits
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - identity
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+    local_hook_capture_json:
+      IDENTITY_MANIFEST: evidence_manifest
+    goal: ""
+    assertions:
+      - type: sandbox.roles_run_non_root
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+      - type: sandbox.role_resource_limits_enforced
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+
+  - id: capture_canaries
+    actor: auditor
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - canaries
+      - "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
+    local_hook_capture_json:
+      CANARY_MANIFEST: evidence_manifest
+    goal: ""
+    assertions:
+      - type: sandbox.cross_volume_canary_unreadable
+        params:
+          manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
+
+  - id: consumer_repo_scoped_install
+    actor: consumer
+    goal: |
+      Work as the consumer role inside the node container. The local
+      Logion node is at http://localhost:8000; your LOGION_HOME is
+      already set for you, never override it, and never set HOME.
+
+      A checked-in fixture skill bundle lives at
+      /workspace/fixtures/fixture-skill. Install it into the repository
+      checkout at /workspace/xpto using the public CLI
+      (`logion skills install --source /workspace/fixtures/fixture-skill
+      --course-id fixture-skill --version-id v1 --title "Fixture Skill"
+      --no-symlink`), running it from /workspace/xpto so the install is
+      scoped to that repository.
+
+      Then verify from a fresh session what is visible: list installed
+      skills (`logion skills installed --json`) from /workspace/xpto,
+      from /workspace/abc, and with the repository context cleared, and
+      note where the fixture appears.
+
+      Do not modify the fixture, do not install anything into
+      /workspace/abc, and do not touch the auditor role's workspace.
+    success_hint: |
+      evidence shows the fixture under XPTO only: absent from ABC,
+      absent from consumer user scope, and invisible to the auditor.
+    assertions:
+      - type: files.install_scoped_to_repository
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
+
+  - id: capture_scope
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - repository_scope
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
+    local_hook_capture_json:
+      SCOPE_MANIFEST: evidence_manifest
+    goal: ""
+
+  - id: write_restart_markers
+    actor: consumer
+    goal: |
+      Still as the consumer role: write a one-line state marker that
+      names your role into your own LOGION_HOME state directory:
+
+        sh -c 'echo "consumer-marker-$(date +%s)" > ${LOGION_HOME}/node-state-marker'
+
+      Then read it back with `cat` and confirm the file exists. Do not
+      write anywhere outside your own LOGION_HOME.
+    success_hint: |
+      The marker file exists and contains a consumer line.
+  - id: auditor_restart_marker
+    actor: auditor
+    goal: |
+      As the auditor role: write your own state marker the same way:
+
+        sh -c 'echo "auditor-marker-$(date +%s)" > ${LOGION_HOME}/node-state-marker'
+
+      Read it back and confirm it exists. Then try to read the consumer
+      role's marker (you should not be able to: that home is not
+      mounted here) and note the result. Do not create any file
+      outside your own LOGION_HOME.
+    success_hint: |
+      The auditor marker exists; the consumer marker is unreadable.
+  - id: capture_restart
+    actor: auditor
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - restart
+      - "${AGENT_AUDITOR_WORKSPACE}/evidence/restart.json"
+    local_hook_capture_json:
+      RESTART_MANIFEST: evidence_manifest
+    goal: |
+      The operator restarted the node between the previous phase and
+      this one (make node-dev-down then make node-dev-up). As the
+      auditor role, read your own state marker back now:
+
+        cat ${LOGION_HOME}/node-state-marker
+
+      Confirm it still contains the auditor line from before the
+      restart. Report what you see.
+    success_hint: |
+      The auditor marker survived; the restart manifest captures both
+      roles' markers and the cross-role probe.
+    assertions:
+      - type: api.state_survives_restart
+        params:
+          manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/restart.json"
+
+  - id: capture_credentials
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - credentials
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
+    local_hook_capture_json:
+      CREDENTIALS_MANIFEST: evidence_manifest
+    goal: ""
+  - id: selective_reset
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - selective_reset
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/reset.json"
+    local_hook_capture_json:
+      RESET_MANIFEST: evidence_manifest
+    goal: |
+      The operator just performed the selective consumer reset
+      (make node-dev-reset ROLE=consumer YES=1), which removed the
+      consumer role's disposable volumes and revoked its API key. As
+      the consumer role (running again on a fresh volume with a revoked
+      key), try to authenticate against the node:
+
+        curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $(cat /run/secrets/consumer_api_key 2>/dev/null)" http://host.docker.internal:8000/v1/notifications
+
+      Report the HTTP status. Expect rejection (401/403) — do not try
+      to fix it, obtain a new key, or touch the auditor role.
+    success_hint: |
+      evidence records the consumer key rejected while the auditor's
+      key still authenticates and auditor state remains.
+    assertions:
+      - type: api.role_credentials_isolated
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
+          auditor_agent: auditor
+      - type: files.role_cleanup_complete
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/reset.json"
+
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
+  - type: sandbox.roles_run_non_root
+    params:
+      manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+  - type: sandbox.cross_volume_canary_unreadable
+    params:
+      manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"

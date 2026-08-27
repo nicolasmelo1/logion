@@ -12,3 +12,15 @@ packages/client/README.md:36
 # Cross-repository contract gate; these paths are coordination inputs only.
 Makefile:57
 Makefile:58
+Makefile:59
+
+# Local node container paths: /home/agent is the in-container non-root
+# user home inside the role image, not a host user directory.
+deploy/local-node/compose.yaml:42
+deploy/local-node/compose.yaml:50
+deploy/local-node/compose.yaml:61
+deploy/local-node/compose.yaml:67
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:181
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:296
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:310
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:311

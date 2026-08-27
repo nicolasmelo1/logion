@@ -1,0 +1,86 @@
+# Local multi-agent node foundation: bounded role services.
+#
+# Two real agent containers (`consumer`, `auditor`) with separate homes,
+# credentials, repository workspaces, observation spools, and runtime
+# limits. Roles are Compose services, not labels: each is its own
+# non-root container with its own named volumes and secrets.
+#
+# The operator's Hermes process is never mounted into a role. No role
+# receives the host Docker socket, the host home, or another role's
+# state. Runtime limits are declared here and enforced by the runtime.
+
+name: logion-local-node
+
+x-role-base: &role-base
+  init: true
+  read_only: true
+  # Dropped capabilities and no privilege escalation are the default
+  # posture; the role smoke asserts both are active.
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp
+  working_dir: /workspace/task
+  networks: [node-internal]
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 1536M
+        pids: 256
+
+services:
+  consumer:
+    <<: *role-base
+    image: ${LOGION_NODE_IMAGE:?set LOGION_NODE_IMAGE to the pinned role image}
+    user: "10001:10001"
+    environment:
+      ROLE_ID: consumer
+      LOGION_BASE_URL: ${LOGION_BASE_URL:?set LOGION_BASE_URL}
+      LOGION_API_KEY_FILE: /run/secrets/consumer_api_key
+      LOGION_HOME: /home/agent/.logion
+      HOME: /home/agent
+    secrets: [consumer_api_key]
+    volumes:
+      # Each role owns its own state; nothing here is shared with the
+      # other role or with the host.
+      - consumer_home:/home/agent
+      - consumer_workspace:/workspace
+      - consumer_spool:/home/agent/.logion/spool
+    command: ["sleep", "infinity"]
+
+  auditor:
+    <<: *role-base
+    image: ${LOGION_NODE_IMAGE:?set LOGION_NODE_IMAGE to the pinned role image}
+    user: "10002:10002"
+    environment:
+      ROLE_ID: auditor
+      LOGION_BASE_URL: ${LOGION_BASE_URL:?set LOGION_BASE_URL}
+      LOGION_API_KEY_FILE: /run/secrets/auditor_api_key
+      LOGION_HOME: /home/agent/.logion
+      HOME: /home/agent
+    secrets: [auditor_api_key]
+    volumes:
+      - auditor_home:/home/agent
+      - auditor_workspace:/workspace
+      - auditor_spool:/home/agent/.logion/spool
+    command: ["sleep", "infinity"]
+
+networks:
+  node-internal:
+    driver: bridge
+
+volumes:
+  consumer_home:
+  consumer_workspace:
+  consumer_spool:
+  auditor_home:
+  auditor_workspace:
+  auditor_spool:
+
+secrets:
+  consumer_api_key:
+    file: ./roles/consumer.api_key
+  auditor_api_key:
+    file: ./roles/auditor.api_key

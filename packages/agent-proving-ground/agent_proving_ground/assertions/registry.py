@@ -63,11 +63,13 @@ from agent_proving_ground.assertions.api import (
     ResourceSearchReturnsKindsAssertion,
     ResourceSourceProvenanceVisibleAssertion,
     ReviewExistsAssertion,
+    RoleCredentialsIsolatedAssertion,
     ScopeIsolationPreservedAssertion,
     SearchFiltersByTypeAndSourceAssertion,
     SelfCrawlNoDuplicateAssertion,
     SetupTokenPendingAssertion,
     SourceLinkExistsAssertion,
+    StateSurvivesRestartAssertion,
     UsageReportExistsAssertion,
     VendorInstallUnchangedAssertion,
 )
@@ -84,7 +86,12 @@ from agent_proving_ground.assertions.db import (
 from agent_proving_ground.assertions.files import (
     ClientHasNoARDConnectorInstallAssertion,
     FileExistsAssertion,
+    InstallScopedToRepositoryAssertion,
     ObservationFromLiveHookAssertion,
+    RoleCleanupCompleteAssertion,
+    SandboxCrossVolumeCanaryUnreadableAssertion,
+    SandboxRoleResourceLimitsEnforcedAssertion,
+    SandboxRolesRunNonRootAssertion,
     UsagePendingEmptyAssertion,
 )
 from agent_proving_ground.assertions.github import (
@@ -201,6 +208,14 @@ class AssertionRegistry:
             IngestedModelRequiresNoASMSchemaAssertion,
             # Filesystem assertions
             ClientHasNoARDConnectorInstallAssertion,
+            # Local multi-agent node foundation
+            SandboxRolesRunNonRootAssertion,
+            SandboxRoleResourceLimitsEnforcedAssertion,
+            SandboxCrossVolumeCanaryUnreadableAssertion,
+            InstallScopedToRepositoryAssertion,
+            RoleCleanupCompleteAssertion,
+            RoleCredentialsIsolatedAssertion,
+            StateSurvivesRestartAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

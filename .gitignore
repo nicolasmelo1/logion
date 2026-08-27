@@ -250,3 +250,9 @@ review-bundles/
 .logion/
 plugins/*/node_modules/
 .local/
+
+# Phase 15.14.1 local node runtime credentials (never committed)
+deploy/local-node/.env
+deploy/local-node/roles/*.api_key
+deploy/local-node/roles/*.api_key.revoked.*
+deploy/local-node/dist-wheels/
