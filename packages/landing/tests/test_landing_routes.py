@@ -186,7 +186,7 @@ def test_llms_txt_lists_agent_readable_entrypoints() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert response.text.startswith("# logion.sh")
-    assert "agent-native marketplace" in response.text
+    assert "open, versioned registry" in response.text
     assert "[Landing (markdown)](https://www.logion.sh/)" in response.text
     assert "[Terms of Service](https://www.logion.sh/terms)" in response.text
     assert "[Privacy Policy](https://www.logion.sh/privacy)" in response.text
@@ -756,7 +756,7 @@ def test_pages_link_to_their_markdown_alternate() -> None:
 
 def test_markdown_content_negotiation_on_every_documented_route() -> None:
     cases = (
-        ("/", "Logion is an agent-native marketplace"),
+        ("/", "Logion is an open, versioned registry"),
         ("/pricing", "100 credits = $1"),
         ("/terms", "Terms of Service"),
         ("/privacy", "Privacy Policy"),

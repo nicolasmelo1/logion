@@ -4,26 +4,28 @@
 site:
   name: logion.sh
   tagline: >-
-    Logion is an agent-native marketplace for operational knowledge packaged as
-    reviewed, versioned course bundles that buyer agents can acquire, install,
-    and improve!
+    Logion is an open, versioned registry of AI-agent artifacts — skills,
+    plugins, MCP servers, models — with provenance and evidence attached to
+    every version.
   description: >-
-    Creators publish operational course bundles. Buyer agents acquire
-    entitlements. Contributors improve bundles through bounties. Trust comes
-    from capability declarations, automated scanners, human publication review,
-    and accountable update history.
+    Logion indexes artifacts wherever they already live, records where each
+    version came from, and attaches first-party findings to it: capability
+    declarations, scanner results over the whole bundle, human publication
+    review, and accountable update history. The method is published; anyone
+    can reproduce it.
   # One-sentence definitional answer for LLM Overviews / AI assistants.
   one_liner: >-
-    Logion is an agent-native marketplace where buyer agents acquire reviewed
-    course bundles by spending credits (100 credits = $1), install them via
-    the logion CLI, and improve them through creator-funded bounties.
+    Logion is an open, versioned registry of AI-agent artifacts — skills,
+    plugins, MCP servers, models — that attaches provenance and first-party
+    evidence to each version and publishes the method behind it.
 
 hero:
   heading: AI capability, with proof.
   motto: Smarter, together.
   subheading: >-
-    Logion is the marketplace where agents find reviewed playbooks, install
-    them, and finish work they could not finish alone.
+    Logion is the open registry where an agent finds a capability together
+    with where it came from and what is known about it — so the claim can be
+    checked instead of trusted.
   # Honest trust signals shown above the fold — every item is already true and
   # documented elsewhere on the page. Not testimonials; real proof points.
   signals:
@@ -692,24 +694,24 @@ seo:
   # already published in released READMEs and packages, and curl follows the
   # 308. Machine-read URLs are canonical; a command a human types is brand.
   canonical_base: https://www.logion.sh
-  default_title: "Logion — agent-native marketplace for operational knowledge"
+  default_title: "Logion — open registry of AI-agent artifacts, with proof"
   default_description: >-
-    Logion is an agent-native marketplace for operational knowledge, packaged
-    as reviewed, versioned course bundles that buyer agents can acquire,
-    install, and improve.
+    Logion is an open, versioned registry of AI-agent artifacts — skills,
+    plugins, MCP servers, models — with provenance, scanner findings, and
+    evidence attached to every version.
   keywords:
-    - agent marketplace
+    - agent artifact registry
     - AI agent skills
-    - operational knowledge
-    - course bundles
+    - MCP servers
+    - artifact provenance
     - capabilities.yaml
-    - reviewed bundles
-    - entitlements
+    - bundle scanning
+    - agent observability
     - bounties
-    - Stripe Connect
     - LLM tooling
     - Claude Code skills
-    - ChatGPT agents
+    - open protocols
+    - AI Catalog
   theme_color: "#0a0a0a"
   locale: en_US
   organization:
@@ -733,7 +735,7 @@ social:
   og_image_width: 1200
   og_image_height: 630
   og_image_alt: >-
-    Logion — agent-native marketplace for operational knowledge
+    Logion — open registry of AI-agent artifacts, with proof
 
 design:
   motto: Smarter, together.
@@ -777,12 +779,14 @@ design:
 
 ai:
   llms_txt_summary: >-
-    Logion is an agent-native marketplace for operational knowledge. Creators
-    publish course bundles (skills, manifests, examples, tests, evals, docs,
-    capability declarations). Buyer agents acquire entitlements and install
-    them. Contributors improve bundles through creator-funded bounties.
-    Thesis: generating improvements is cheap; proving they are real is
-    scarce. Logion sells the proof, not the writing.
+    Logion is an open, versioned registry of AI-agent artifacts: skills,
+    plugins, MCP servers, and models. It records where each version came
+    from and attaches first-party findings — capability declarations,
+    scanner results over the whole bundle, and accountable update history.
+    Publishers keep their own distribution; Logion indexes and attributes,
+    it does not host or replace it. Thesis: generating improvements is
+    cheap; proving they are real is scarce. Logion sells the proof, not the
+    writing.
 
   # Routing guidance for an agent deciding whether Logion is the right tool.
   # Rendered into llms.txt and llms-full.txt, which is where agents and
@@ -1002,10 +1006,10 @@ faq:
   items:
     - q: What is Logion?
       a: >-
-        Logion is an agent-native marketplace for operational knowledge,
-        packaged as reviewed, versioned course bundles that buyer agents can
-        acquire, install, and improve. It is not a video course marketplace
-        or a generic skill directory.
+        Logion is an open, versioned registry of AI-agent artifacts —
+        skills, plugins, MCP servers, models — that attaches provenance and
+        first-party evidence to each version. It is not a video course
+        marketplace or a generic skill directory.
     - q: How are courses priced?
       a: >-
         Courses are priced in credits. Credits top up at 100 credits per US
@@ -1130,9 +1134,9 @@ software_application:
   application_category: DeveloperApplication
   operating_system: macOS, Linux, Windows
   description: >-
-    Agent-native marketplace and CLI for acquiring reviewed, versioned
-    course bundles for AI agents. Credits top up at 100 credits per US
-    dollar; creators keep 85%; bounties fund creator-led improvements.
+    Open registry and CLI for AI-agent artifacts. Search the catalog,
+    inspect where a version came from — source, revision, digest, license,
+    declared permissions — and track what is installed locally.
   download_url: https://www.logion.sh/install.sh
   url: https://www.logion.sh
   offers:

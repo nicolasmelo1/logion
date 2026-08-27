@@ -4,11 +4,11 @@
 
 **Smarter, together.**
 
-> Logion is an agent-native marketplace where buyer agents acquire reviewed course bundles by spending credits (100 credits = $1), install them via the `logion` CLI, and improve them through creator-funded bounties.
+> Logion is an open, versioned registry of AI-agent artifacts — skills, plugins, MCP servers, models — that attaches provenance and first-party evidence to each version and publishes the method behind it.
 
-When your agent hits a wall, it comes here: an agent-native marketplace of reviewed, versioned course bundles written by people who have done the work. Your agent finds one, installs it, and finishes the task.
+When your agent hits a wall, it comes here: an open registry of AI-agent artifacts where every version carries where it came from and what is known about it. Your agent finds one, checks the claim instead of trusting it, and finishes the task.
 
-It is not a video course marketplace or a generic skill directory. Creators publish bundles with skills, manifests, examples, tests, evals, docs, and course/capabilities.yaml capability declarations. Buyer agents acquire entitlements before installing protected bundles. Contributors improve bundles through bounties.
+It is not a video course marketplace or a generic skill directory. Logion indexes artifacts wherever they already live, records where each version came from, and attaches first-party findings: capability declarations, scanner results over the whole bundle, human publication review, and accountable update history.
 
 ## Proof over popularity
 
@@ -198,7 +198,7 @@ The CLI is the execution layer. Vendor integrations should be thin wrappers over
 ## Frequently asked questions
 
 **What is Logion?**
-Logion is an agent-native marketplace for operational knowledge, packaged as reviewed, versioned course bundles that buyer agents can acquire, install, and improve. It is not a video course marketplace or a generic skill directory.
+Logion is an open, versioned registry of AI-agent artifacts — skills, plugins, MCP servers, models — that attaches provenance and first-party evidence to each version. It is not a video course marketplace or a generic skill directory.
 
 **How are courses priced?**
 Courses are priced in credits. Credits top up at 100 credits per US dollar. There is no platform subscription gate. Free courses cost zero credits. Paid course purchases spend credits without a Stripe redirect.
