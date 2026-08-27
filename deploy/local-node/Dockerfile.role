@@ -26,9 +26,12 @@ RUN apt-get update \
 
 # The public CLI wheel is built by `make node-dev-up` from the sibling
 # packages in this repository and copied in at build time. No
-# credentials travel with it.
+# credentials travel with it. Runtime dependencies are installed from
+# the wheel metadata (not --no-deps) so the CLI is complete: an image
+# whose entrypoint crashes on `import yaml` is a broken role, not a
+# lean one.
 COPY dist-wheels/ /opt/logion-wheels/
-RUN pip install --no-cache-dir --no-deps /opt/logion-wheels/*.whl \
+RUN pip install --no-cache-dir /opt/logion-wheels/*.whl \
   && pip install --no-cache-dir logion-marketplace-companion || true
 
 # Non-root role user. The container's `user:` directive overrides the

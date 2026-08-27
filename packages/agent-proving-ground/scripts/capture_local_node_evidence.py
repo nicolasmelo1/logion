@@ -79,13 +79,13 @@ def capture_identity_and_limits(roles: list[str], out: Path) -> None:
             limits["pids"] = int(pids_text)
         # The runtime declares CPU/memory limits in compose.yaml; the
         # hook records what the runtime reports so the assertion
-        # compares two machine facts.
-        inspect = _compose(
-            "inspect",
-            "--format",
-            "{{json .HostConfig.NanoCpus}}",
-            f"logion-local-node-{role}-1",
-            check=False,
+        # compares two machine facts. Plain `docker inspect`, not
+        # `docker compose inspect` (which does not exist).
+        inspect = subprocess.run(
+            ["docker", "inspect",
+             "--format", "{{json .HostConfig.NanoCpus}}",
+             f"logion-local-node-{role}-1"],
+            capture_output=True, text=True, check=False,
         )
         if inspect.stdout.strip().isdigit() and inspect.stdout.strip() != "0":
             limits["cpus"] = int(inspect.stdout.strip()) / 1_000_000_000
