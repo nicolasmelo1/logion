@@ -20,11 +20,11 @@ CREDITS_PATH = LEGAL_DIR / "credits.md"
 REFERRALS_PATH = LEGAL_DIR / "referrals.md"
 
 REQUIRED_ANCHORS = (
-    "agent-native marketplace",
+    "open, versioned registry",
     "reviewed",
     "versioned",
     "capability",
-    "entitlement",
+    "provenance",
     "publication review",
     "bounties",
     "CLI",
@@ -57,6 +57,7 @@ MARKDOWN_EXTRA_ANCHORS = (
 )
 
 NEGATIVE_ANCHORS = (
+    "agent-native marketplace",
     "cash balance",
     "withdraw credits",
     "skill marketplace",
