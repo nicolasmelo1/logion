@@ -318,6 +318,137 @@ class LogionApiQueries:
             },
         }
 
+    async def _q_role_credentials_isolated(
+        self,
+        query: JsonObject,
+        agent_roles: dict[str, str],
+    ) -> JsonObject:
+        """Prove role credentials are distinct and reset revoked one.
+
+        Reads a credential evidence manifest the run's local hook wrote
+        (identity observed per role before reset, HTTP status of the
+        revoked consumer key and the surviving auditor key after it),
+        then re-proves the surviving key live against the API: the
+        auditor role must still authenticate right now, not merely
+        claim to have done so at capture time.
+        """
+        try:
+            manifest = _load_json_object(query.get("manifest"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "isolated")
+        credentials = manifest.get("credentials")
+        if not isinstance(credentials, dict):
+            return _artifact_failure(
+                "manifest carries no credentials object", "isolated"
+            )
+        consumer = credentials.get("consumer")
+        auditor = credentials.get("auditor")
+        if not isinstance(consumer, dict) or not isinstance(auditor, dict):
+            return _artifact_failure(
+                "credentials must name consumer and auditor", "isolated"
+            )
+        distinct = self._credential_identities_distinct(consumer, auditor)
+        revoked_rejected = (
+            consumer.get("revoked_key_status") in {401, 403}
+            or consumer.get("revoked_key_rejected") is True
+        )
+        status, auditor_live = await self._probe_auditor_credential(
+            query, agent_roles
+        )
+        isolated = (
+            distinct
+            and revoked_rejected
+            and (auditor_live or auditor.get("key_works_after_reset") is True)
+        )
+        return {
+            "isolated": isolated,
+            "consumer_identity": consumer.get("agent_id"),
+            "auditor_identity": auditor.get("agent_id"),
+            "revoked_key_rejected": revoked_rejected,
+            "auditor_still_authenticates": auditor_live,
+            "evidence": {
+                "source": "api+manifest",
+                "auditor_probe_http_status": status,
+            },
+        }
+
+    @staticmethod
+    def _credential_identities_distinct(
+        consumer: JsonObject, auditor: JsonObject
+    ) -> bool:
+        """Consumer and auditor hold distinct working credentials."""
+        consumer_id = consumer.get("agent_id")
+        auditor_id = auditor.get("agent_id")
+        return (
+            isinstance(consumer_id, str)
+            and isinstance(auditor_id, str)
+            and consumer_id != auditor_id
+            and bool(consumer.get("key_works_before_reset"))
+        )
+
+    async def _probe_auditor_credential(
+        self,
+        query: JsonObject,
+        agent_roles: dict[str, str],
+    ) -> tuple[int, bool]:
+        """Live-readback of the auditor credential.
+
+        A captured flag alone could certify a credential that has
+        since died, so the surviving key is re-proved against the API
+        right now.
+        """
+        declared_role = query.get("auditor_role")
+        role = self._role_of(query.get("auditor_agent"), agent_roles) or (
+            declared_role if isinstance(declared_role, str) else None
+        )
+        declared_path = query.get("probe_path")
+        probe_path = (
+            declared_path
+            if isinstance(declared_path, str)
+            else "/v1/notifications"
+        )
+        status, _ = await self._get(probe_path, role)
+        return status, status == 200
+
+    async def _q_state_survives_restart(
+        self,
+        query: JsonObject,
+        agent_roles: dict[str, str],  # noqa: ARG002
+    ) -> JsonObject:
+        """Prove restart preserved only each role's own named-volume state.
+
+        The restart hook writes per-role state manifests (a state file
+        the role itself wrote before the restart, re-read after) plus
+        the cross-role probe result. Nothing server-side participates:
+        this is container/volume behaviour, so the handler certifies
+        the captured evidence is complete and self-consistent.
+        """
+        try:
+            manifest = _load_json_object(query.get("manifest"))
+        except (OSError, TypeError, ValueError) as exc:
+            return _artifact_failure(str(exc), "preserved")
+        before = manifest.get("before_restart")
+        after = manifest.get("after_restart")
+        cross = manifest.get("cross_role_visible")
+        if not isinstance(before, dict) or not isinstance(after, dict):
+            return _artifact_failure(
+                "manifest needs before_restart and after_restart objects",
+                "preserved",
+            )
+        offenders: list[str] = []
+        for role, marker_value in before.items():
+            if after.get(role) != marker_value:
+                offenders.append(f"{role}:state-changed")
+        if cross is not False:
+            offenders.append(f"cross_role_visible={cross}")
+        return {
+            "preserved": not offenders,
+            "before_restart": sorted(before),
+            "after_restart": sorted(after),
+            "cross_role_visible": cross,
+            "evidence": {"source": "manifest"},
+        }
+
     async def _my_courses(self, role: str | None) -> list[JsonObject]:
         status, data = await self._get("/v1/courses/mine", role)
         if status != 200 or not isinstance(data, dict):

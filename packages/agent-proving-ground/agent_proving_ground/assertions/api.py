@@ -735,3 +735,37 @@ class IngestedModelRequiresNoASMSchemaAssertion(_ApiQueryAssertion):
         "ingested model remains artifact-agnostic without ASM schema"
     )
     fail_message = "ingested model has ASM-specific schema or fields"
+
+
+class RoleCredentialsIsolatedAssertion(_ApiQueryAssertion):
+    type = "api.role_credentials_isolated"
+    query_type = "role_credentials_isolated"
+    found_key = "isolated"
+    evidence_keys = (
+        "consumer_identity",
+        "auditor_identity",
+        "revoked_key_rejected",
+        "auditor_still_authenticates",
+    )
+    pass_message = (
+        "consumer and auditor credentials are distinct, and selective "
+        "reset revoked only the consumer's"
+    )
+    fail_message = (
+        "role credentials are shared, unrevoked, or the reset invalidated "
+        "the wrong role"
+    )
+
+
+class StateSurvivesRestartAssertion(_ApiQueryAssertion):
+    type = "api.state_survives_restart"
+    query_type = "state_survives_restart"
+    found_key = "preserved"
+    evidence_keys = ("before_restart", "after_restart", "cross_role_visible")
+    pass_message = (
+        "each role's intended state survived the restart and stayed "
+        "invisible to the other role"
+    )
+    fail_message = (
+        "restart lost role state or made it visible to the other role"
+    )

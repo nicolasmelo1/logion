@@ -19,7 +19,8 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	scanners-lint scanners-test social-lint social-test \
 	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
-	release-plan release release-dry-run release-store release-smoke-input
+	release-plan release release-dry-run release-store release-smoke-input \
+	node-dev-up node-agent node-status node-dev-down node-dev-reset
 
 # scripts/ and tests/ are in scope too: the typing.Any ban is only
 # real if every path the repo actually runs is checked.
@@ -325,3 +326,29 @@ release-store:
 
 release-smoke-input:
 	uv run python scripts/release_smoke.py workflow-input --version $(VERSION)
+
+# ---------------------------------------------------------------------------
+# Local multi-agent node foundation — operator-side targets only.
+# Roles are Compose services in deploy/local-node/compose.yaml; the
+# behavior contract lives in docs/node/local-macos.md.
+# ---------------------------------------------------------------------------
+
+NODE_DIR := $(ROOT)/deploy/local-node
+
+node-dev-up:
+	bash $(NODE_DIR)/node.sh up "$(ROLES)"
+
+node-status:
+	bash $(NODE_DIR)/node.sh status
+
+node-agent:
+	@test -n "$(ROLE)" || { echo "usage: make node-agent ROLE=consumer ARGS='id'" >&2; exit 2; }
+	@test -n "$(ARGS)" || { echo "usage: make node-agent ROLE=consumer ARGS='id'" >&2; exit 2; }
+	bash $(NODE_DIR)/node.sh agent $(ROLE) $(ARGS)
+
+node-dev-down:
+	bash $(NODE_DIR)/node.sh down
+
+node-dev-reset:
+	@test -n "$(ROLE)" || { echo "usage: make node-dev-reset ROLE=consumer YES=1" >&2; exit 2; }
+	bash $(NODE_DIR)/node.sh reset $(ROLE) "$(YES)"

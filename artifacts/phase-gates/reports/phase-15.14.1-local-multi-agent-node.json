@@ -1,0 +1,433 @@
+{
+  "run_id": "20260827T125905-phase_15_14_1_local_multi_agent_node",
+  "scenario": "phase_15_14_1_local_multi_agent_node",
+  "status": "passed",
+  "api_adapter": "local-devrig",
+  "agent_drivers": {
+    "consumer": "codex",
+    "auditor": "codex"
+  },
+  "started_at": "2026-08-27T12:59:05.823369Z",
+  "finished_at": "2026-08-27T13:07:39.259388Z",
+  "phase_results": [
+    {
+      "phase_id": "capture_identity_limits",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "sandbox.roles_run_non_root",
+          "status": "passed",
+          "message": "all role containers run as their declared non-root UIDs",
+          "evidence": {
+            "roles": {
+              "auditor": {
+                "uid": 10002,
+                "user": "10002"
+              },
+              "consumer": {
+                "uid": 10001,
+                "user": "agent"
+              }
+            }
+          }
+        },
+        {
+          "type": "sandbox.role_resource_limits_enforced",
+          "status": "passed",
+          "message": "every role runs with declared CPU, memory, and PID limits",
+          "evidence": {
+            "roles": {
+              "auditor": {
+                "cpus": 1.0,
+                "memory_bytes": 1610612736,
+                "pids": 256
+              },
+              "consumer": {
+                "cpus": 1.0,
+                "memory_bytes": 1610612736,
+                "pids": 256
+              }
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-27T12:59:06.152615Z",
+      "finished_at": "2026-08-27T12:59:07.036601Z",
+      "duration_seconds": 0.884
+    },
+    {
+      "phase_id": "capture_canaries",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "sandbox.cross_volume_canary_unreadable",
+          "status": "passed",
+          "message": "host and cross-role canaries are unreadable from every role",
+          "evidence": {
+            "canaries": {
+              "auditor_sees_docker_socket": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_host_home": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_other_role_home": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "consumer_sees_docker_socket": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_host_home": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_other_role_home": {
+                "readable": false,
+                "role": "consumer"
+              }
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-27T12:59:07.036624Z",
+      "finished_at": "2026-08-27T12:59:07.685689Z",
+      "duration_seconds": 0.649
+    },
+    {
+      "phase_id": "seed_node_workspaces",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T12:59:07.685713Z",
+      "finished_at": "2026-08-27T12:59:08.724578Z",
+      "duration_seconds": 1.039
+    },
+    {
+      "phase_id": "consumer_repo_scoped_install",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T12:59:08.724600Z",
+      "finished_at": "2026-08-27T13:00:44.136405Z",
+      "duration_seconds": 95.412
+    },
+    {
+      "phase_id": "capture_scope",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.install_scoped_to_repository",
+          "status": "passed",
+          "message": "fixture is visible in XPTO only: absent from ABC, user scope, and the auditor role",
+          "evidence": {
+            "repository_scope": {
+              "visible_in_xpto": true,
+              "absent_from_abc": true,
+              "absent_from_user_scope": true,
+              "absent_from_auditor": true
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-27T13:00:44.136460Z",
+      "finished_at": "2026-08-27T13:00:44.626411Z",
+      "duration_seconds": 0.49
+    },
+    {
+      "phase_id": "write_restart_markers",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T13:00:44.626434Z",
+      "finished_at": "2026-08-27T13:01:45.076323Z",
+      "duration_seconds": 60.45
+    },
+    {
+      "phase_id": "auditor_restart_marker",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T13:01:45.076362Z",
+      "finished_at": "2026-08-27T13:05:56.732278Z",
+      "duration_seconds": 251.657
+    },
+    {
+      "phase_id": "capture_restart",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "api.state_survives_restart",
+          "status": "passed",
+          "message": "each role's intended state survived the restart and stayed invisible to the other role",
+          "evidence": {
+            "before_restart": [
+              "auditor",
+              "consumer"
+            ],
+            "after_restart": [
+              "auditor",
+              "consumer"
+            ],
+            "cross_role_visible": false,
+            "query_evidence": {
+              "source": "manifest"
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-27T13:05:56.732307Z",
+      "finished_at": "2026-08-27T13:06:35.084847Z",
+      "duration_seconds": 38.353
+    },
+    {
+      "phase_id": "provision_credentials",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T13:06:35.084922Z",
+      "finished_at": "2026-08-27T13:06:37.817999Z",
+      "duration_seconds": 2.733
+    },
+    {
+      "phase_id": "capture_credentials",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-08-27T13:06:37.818024Z",
+      "finished_at": "2026-08-27T13:06:38.126334Z",
+      "duration_seconds": 0.308
+    },
+    {
+      "phase_id": "selective_reset",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "api.role_credentials_isolated",
+          "status": "passed",
+          "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
+          "evidence": {
+            "consumer_identity": "live:consumer",
+            "auditor_identity": "live:auditor",
+            "revoked_key_rejected": true,
+            "auditor_still_authenticates": true,
+            "query_evidence": {
+              "source": "api+manifest",
+              "auditor_probe_http_status": 200
+            }
+          }
+        },
+        {
+          "type": "files.role_cleanup_complete",
+          "status": "passed",
+          "message": "consumer reset removed only consumer state; auditor remains usable",
+          "evidence": {
+            "selective_reset": {
+              "consumer_state_removed": true,
+              "consumer_key_rejected": true,
+              "auditor_state_preserved": true,
+              "auditor_key_accepted": true
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-27T13:06:38.126355Z",
+      "finished_at": "2026-08-27T13:07:39.255418Z",
+      "duration_seconds": 61.129
+    }
+  ],
+  "assertion_results": [
+    {
+      "type": "sandbox.roles_run_non_root",
+      "status": "passed",
+      "message": "all role containers run as their declared non-root UIDs",
+      "evidence": {
+        "roles": {
+          "auditor": {
+            "uid": 10002,
+            "user": "10002"
+          },
+          "consumer": {
+            "uid": 10001,
+            "user": "agent"
+          }
+        }
+      }
+    },
+    {
+      "type": "sandbox.role_resource_limits_enforced",
+      "status": "passed",
+      "message": "every role runs with declared CPU, memory, and PID limits",
+      "evidence": {
+        "roles": {
+          "auditor": {
+            "cpus": 1.0,
+            "memory_bytes": 1610612736,
+            "pids": 256
+          },
+          "consumer": {
+            "cpus": 1.0,
+            "memory_bytes": 1610612736,
+            "pids": 256
+          }
+        }
+      }
+    },
+    {
+      "type": "sandbox.cross_volume_canary_unreadable",
+      "status": "passed",
+      "message": "host and cross-role canaries are unreadable from every role",
+      "evidence": {
+        "canaries": {
+          "auditor_sees_docker_socket": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_host_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_other_role_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "consumer_sees_docker_socket": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_host_home": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_other_role_home": {
+            "readable": false,
+            "role": "consumer"
+          }
+        }
+      }
+    },
+    {
+      "type": "files.install_scoped_to_repository",
+      "status": "passed",
+      "message": "fixture is visible in XPTO only: absent from ABC, user scope, and the auditor role",
+      "evidence": {
+        "repository_scope": {
+          "visible_in_xpto": true,
+          "absent_from_abc": true,
+          "absent_from_user_scope": true,
+          "absent_from_auditor": true
+        }
+      }
+    },
+    {
+      "type": "api.state_survives_restart",
+      "status": "passed",
+      "message": "each role's intended state survived the restart and stayed invisible to the other role",
+      "evidence": {
+        "before_restart": [
+          "auditor",
+          "consumer"
+        ],
+        "after_restart": [
+          "auditor",
+          "consumer"
+        ],
+        "cross_role_visible": false,
+        "query_evidence": {
+          "source": "manifest"
+        }
+      }
+    },
+    {
+      "type": "api.role_credentials_isolated",
+      "status": "passed",
+      "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
+      "evidence": {
+        "consumer_identity": "live:consumer",
+        "auditor_identity": "live:auditor",
+        "revoked_key_rejected": true,
+        "auditor_still_authenticates": true,
+        "query_evidence": {
+          "source": "api+manifest",
+          "auditor_probe_http_status": 200
+        }
+      }
+    },
+    {
+      "type": "files.role_cleanup_complete",
+      "status": "passed",
+      "message": "consumer reset removed only consumer state; auditor remains usable",
+      "evidence": {
+        "selective_reset": {
+          "consumer_state_removed": true,
+          "consumer_key_rejected": true,
+          "auditor_state_preserved": true,
+          "auditor_key_accepted": true
+        }
+      }
+    },
+    {
+      "type": "logs.no_500s",
+      "status": "passed",
+      "message": "API log contains no obvious 500 responses",
+      "evidence": {
+        "log_path": "<repo>/api.log"
+      }
+    },
+    {
+      "type": "timeline.no_unredacted_secret",
+      "status": "passed",
+      "message": "timeline contains no obvious unredacted secrets",
+      "evidence": {}
+    },
+    {
+      "type": "sandbox.roles_run_non_root",
+      "status": "passed",
+      "message": "all role containers run as their declared non-root UIDs",
+      "evidence": {
+        "roles": {
+          "auditor": {
+            "uid": 10002,
+            "user": "10002"
+          },
+          "consumer": {
+            "uid": 10001,
+            "user": "agent"
+          }
+        }
+      }
+    },
+    {
+      "type": "sandbox.cross_volume_canary_unreadable",
+      "status": "passed",
+      "message": "host and cross-role canaries are unreadable from every role",
+      "evidence": {
+        "canaries": {
+          "auditor_sees_docker_socket": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_host_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_other_role_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "consumer_sees_docker_socket": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_host_home": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_other_role_home": {
+            "readable": false,
+            "role": "consumer"
+          }
+        }
+      }
+    }
+  ],
+  "failure_message": null,
+  "artifact_root": "/tmp/pg-15.14.1-run12"
+}

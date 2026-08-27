@@ -248,3 +248,280 @@ class ClientHasNoARDConnectorInstallAssertion(Assertion):
                 "found_paths": found,
             },
         )
+
+
+def _load_role_manifest(ctx: AssertionContext, params: dict) -> dict:
+    """Read a role evidence manifest written by a local hook.
+
+    Every sandbox assertion reads a manifest the run itself produced —
+    the operator hook captures ``docker inspect`` facts, ``id -u``,
+    canary probes, and scope checks per role. A missing or malformed
+    manifest is a failure, not ``unsupported``: the phase gate is
+    required, and "we did not look" is exactly the answer it exists to
+    reject.
+    """
+    path = params.get("manifest")
+    if not path:
+        raise ValueError("manifest parameter is required")
+    target = _resolve_pending_artifact(ctx.artifacts_dir, path)
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError("role manifest is not a JSON object")
+    return payload
+
+
+class SandboxRolesRunNonRootAssertion(Assertion):
+    """Every role container runs as its declared non-root UID."""
+
+    type = "sandbox.roles_run_non_root"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"role manifest unreadable: {exc}",
+                evidence=params,
+            )
+        roles = manifest.get("roles")
+        if not isinstance(roles, dict) or not roles:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="role manifest carries no roles object",
+                evidence=params,
+            )
+        offenders: list[str] = []
+        observed: dict[str, object] = {}
+        for role, entry in sorted(roles.items()):
+            if not isinstance(entry, dict):
+                offenders.append(role)
+                continue
+            uid = entry.get("uid")
+            expected = entry.get("expected_uid")
+            if not isinstance(uid, int) or uid == 0:
+                offenders.append(f"{role}:uid={uid}")
+            elif expected is not None and uid != expected:
+                offenders.append(f"{role}:uid={uid}!={expected}")
+            observed[role] = {"uid": uid, "user": entry.get("user")}
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if not offenders else "failed",
+            message=(
+                "all role containers run as their declared non-root UIDs"
+                if not offenders
+                else f"non-root violation: {', '.join(offenders)}"
+            ),
+            evidence={"roles": observed},
+        )
+
+
+class SandboxRoleResourceLimitsEnforcedAssertion(Assertion):
+    """Each role runs with the declared CPU, memory, and PID limits."""
+
+    type = "sandbox.role_resource_limits_enforced"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"role manifest unreadable: {exc}",
+                evidence=params,
+            )
+        roles = manifest.get("roles")
+        if not isinstance(roles, dict) or not roles:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="role manifest carries no roles object",
+                evidence=params,
+            )
+        offenders: list[str] = []
+        observed: dict[str, object] = {}
+        for role, entry in sorted(roles.items()):
+            if not isinstance(entry, dict):
+                offenders.append(role)
+                continue
+            limits = entry.get("limits")
+            if not isinstance(limits, dict):
+                offenders.append(f"{role}:no-limits")
+                continue
+            missing = [
+                key
+                for key in ("cpus", "memory_bytes", "pids")
+                if limits.get(key) is None
+            ]
+            if missing:
+                offenders.append(f"{role}:missing-{','.join(missing)}")
+            observed[role] = limits
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if not offenders else "failed",
+            message=(
+                "every role runs with declared CPU, memory, and PID limits"
+                if not offenders
+                else f"limits violation: {', '.join(offenders)}"
+            ),
+            evidence={"roles": observed},
+        )
+
+
+class SandboxCrossVolumeCanaryUnreadableAssertion(Assertion):
+    """Host, keychain, socket, and cross-role canaries are unreadable."""
+
+    type = "sandbox.cross_volume_canary_unreadable"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"role manifest unreadable: {exc}",
+                evidence=params,
+            )
+        canaries = manifest.get("canaries")
+        if not isinstance(canaries, dict) or not canaries:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="role manifest carries no canaries object",
+                evidence=params,
+            )
+        offenders: list[str] = []
+        observed: dict[str, object] = {}
+        for probe, entry in sorted(canaries.items()):
+            if not isinstance(entry, dict):
+                offenders.append(probe)
+                continue
+            if entry.get("readable"):
+                offenders.append(probe)
+            observed[probe] = {
+                "readable": entry.get("readable"),
+                "role": entry.get("role"),
+            }
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if not offenders else "failed",
+            message=(
+                "host and cross-role canaries are unreadable from every role"
+                if not offenders
+                else f"canary readable from inside a role: "
+                f"{', '.join(offenders)}"
+            ),
+            evidence={"canaries": observed},
+        )
+
+
+class InstallScopedToRepositoryAssertion(Assertion):
+    """A repository install is visible in its repo and nowhere else."""
+
+    type = "files.install_scoped_to_repository"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"role manifest unreadable: {exc}",
+                evidence=params,
+            )
+        scope = manifest.get("repository_scope")
+        if not isinstance(scope, dict):
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="role manifest carries no repository_scope object",
+                evidence=params,
+            )
+        expected_checks = {
+            "visible_in_xpto": True,
+            "absent_from_abc": True,
+            "absent_from_user_scope": True,
+            "absent_from_auditor": True,
+        }
+        offenders: list[str] = []
+        observed: dict[str, object] = {}
+        for check, expected in expected_checks.items():
+            actual = scope.get(check)
+            observed[check] = actual
+            if actual is not expected:
+                offenders.append(f"{check}={actual}")
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if not offenders else "failed",
+            message=(
+                "fixture is visible in XPTO only: absent from ABC, user "
+                "scope, and the auditor role"
+                if not offenders
+                else f"repository scope violation: {', '.join(offenders)}"
+            ),
+            evidence={"repository_scope": observed},
+        )
+
+
+class RoleCleanupCompleteAssertion(Assertion):
+    """Selective reset removed one role's state, the other survives."""
+
+    type = "files.role_cleanup_complete"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"role manifest unreadable: {exc}",
+                evidence=params,
+            )
+        cleanup = manifest.get("selective_reset")
+        if not isinstance(cleanup, dict):
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message="role manifest carries no selective_reset object",
+                evidence=params,
+            )
+        expected_checks = {
+            "consumer_state_removed": True,
+            "consumer_key_rejected": True,
+            "auditor_state_preserved": True,
+            "auditor_key_accepted": True,
+        }
+        offenders: list[str] = []
+        observed: dict[str, object] = {}
+        for check, expected in expected_checks.items():
+            actual = cleanup.get(check)
+            observed[check] = actual
+            if actual is not expected:
+                offenders.append(f"{check}={actual}")
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if not offenders else "failed",
+            message=(
+                "consumer reset removed only consumer state; auditor "
+                "remains usable"
+                if not offenders
+                else f"selective reset incomplete: {', '.join(offenders)}"
+            ),
+            evidence={"selective_reset": observed},
+        )

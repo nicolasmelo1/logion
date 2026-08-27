@@ -1,0 +1,240 @@
+schema_version: "1"
+name: phase_15_14_1_local_multi_agent_node
+description: |
+  Bounded local multi-agent first-node foundation. Host coordination
+  starts consumer and auditor as separate non-root Compose services
+  with declared limits, distinct credentials, homes, spools, and
+  workspaces. The run proves non-root execution, enforced limits,
+  credential/home isolation, host and cross-role canary unreadability,
+  a repository-scoped install visible to a fresh same-role session and
+  absent everywhere else, restart persistence in named volumes, and a
+  selective consumer reset that revokes only the consumer's key. Stops
+  before runner jobs, receipts, bounties, funding, or delivery: those
+  belong to 15.15 and 15.14/15.16.
+api_adapter: local-devrig
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+  driver_models: {codex: [gpt-5.4-mini], claude-code: [claude-haiku-4-5]}
+agents:
+  - id: consumer
+    role: Consumer agent working in repository XPTO
+    driver: codex
+    workspace: consumer
+    devrig_role: buyer
+    timeout_seconds: 1200
+  - id: auditor
+    role: Auditor agent proving isolation in repository ABC
+    driver: codex
+    workspace: auditor
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: capture_identity_limits
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - identity
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+    local_hook_capture_json:
+      IDENTITY_MANIFEST: evidence_manifest
+    goal: ""
+    assertions:
+      - type: sandbox.roles_run_non_root
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+      - type: sandbox.role_resource_limits_enforced
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+
+  - id: capture_canaries
+    actor: auditor
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - canaries
+      - "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
+    local_hook_capture_json:
+      CANARY_MANIFEST: evidence_manifest
+    goal: ""
+    assertions:
+      - type: sandbox.cross_volume_canary_unreadable
+        params:
+          manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
+
+  - id: seed_node_workspaces
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - seed_node_workspaces
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/seed.json"
+    local_hook_capture_json:
+      SEED_MANIFEST: evidence_manifest
+    goal: ""
+
+  - id: consumer_repo_scoped_install
+    actor: consumer
+    goal: |
+      You operate the consumer role of a local multi-agent node from the
+      operator side. The node runs as Docker Compose services managed
+      from this repository (deploy/local-node). Run commands inside the
+      consumer role with:
+
+        docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c '<command>'
+
+      (or `make node-dev-up ROLES=consumer` is already done — do NOT
+      start, stop, or reset the node; a fixture and the checkouts
+      already exist inside the containers).
+
+      Inside the consumer role: a fixture skill bundle is at
+      /workspace/fixtures/fixture-skill and repository checkouts exist
+      at /workspace/xpto and /workspace/abc. Using the public CLI inside
+      the consumer container, install the fixture into the XPTO
+      checkout with LOGION_HOME scoped to that repository:
+
+        sh -c 'cd /workspace/xpto && LOGION_HOME=/workspace/xpto/.logion-home logion skills install --source /workspace/fixtures/fixture-skill --course-id fixture-skill --version-id v1 --title "Fixture Skill" --no-symlink'
+
+      Then verify visibility from fresh sessions inside the same
+      container: run `logion skills installed --json` with
+      LOGION_HOME=/workspace/xpto/.logion-home, with
+      LOGION_HOME=/workspace/abc/.logion-home, and with the default
+      LOGION_HOME, and note where the fixture appears.
+
+      Do not modify the fixture, do not install into the ABC checkout,
+      and never exec into the auditor container.
+    success_hint: |
+      evidence shows the fixture under XPTO only: absent from ABC,
+      absent from consumer default (user) scope, and invisible to the
+      auditor.
+
+  - id: capture_scope
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - repository_scope
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
+    local_hook_capture_json:
+      SCOPE_MANIFEST: evidence_manifest
+    assertions:
+      - type: files.install_scoped_to_repository
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
+    goal: ""
+
+  - id: write_restart_markers
+    actor: consumer
+    goal: |
+      Operate the consumer role container from the operator side (use
+      the docker compose exec pattern above; do not start or stop the
+      node). Write a one-line state marker that names your role into
+      the role's LOGION_HOME state directory:
+
+        sh -c 'echo "consumer-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker"'
+
+      Read it back with `cat` inside the container and confirm it
+      exists. Do not write outside your own state home.
+    success_hint: |
+      The marker file exists and contains a consumer line.
+  - id: auditor_restart_marker
+    actor: auditor
+    goal: |
+      Operate the auditor role container the same way (docker compose
+      exec into the auditor only; do not start or stop the node).
+      Write its state marker:
+
+        sh -c 'echo "auditor-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker"'
+
+      Read it back and confirm it exists. Then attempt to read the
+      consumer role's marker from inside the auditor (it must fail:
+      that home is not mounted here) and note the result. Do not
+      create any file outside your own state home.
+    success_hint: |
+      The auditor marker exists; the consumer marker is unreadable.
+  - id: capture_restart
+    actor: auditor
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - restart
+      - "${AGENT_AUDITOR_WORKSPACE}/evidence/restart.json"
+    local_hook_capture_json:
+      RESTART_MANIFEST: evidence_manifest
+    goal: |
+      The operator restarted the node between the previous phase and
+      this one (make node-dev-down then make node-dev-up). Operate the
+      auditor role container (docker compose exec) and read its own
+      state marker back now:
+
+        cat "$LOGION_HOME/node-state-marker"
+
+      Confirm it still contains the auditor line from before the
+      restart. Report what you see.
+    success_hint: |
+      The auditor marker survived; the restart manifest captures both
+      roles' markers and the cross-role probe.
+    assertions:
+      - type: api.state_survives_restart
+        params:
+          manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/restart.json"
+
+  - id: provision_credentials
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - provision_credentials
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/provision.json"
+    local_hook_capture_json:
+      PROVISION_MANIFEST: evidence_manifest
+    goal: ""
+
+  - id: capture_credentials
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - credentials
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
+    local_hook_capture_json:
+      CREDENTIALS_MANIFEST: evidence_manifest
+    goal: ""
+  - id: selective_reset
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - selective_reset
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/reset.json"
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
+    local_hook_capture_json:
+      RESET_MANIFEST: evidence_manifest
+    goal: |
+      The operator just performed the selective consumer reset
+      (make node-dev-reset ROLE=consumer YES=1), which removed the
+      consumer role's disposable volumes and revoked its API key. As
+      the consumer role (running again on a fresh volume with a revoked
+      key), try to authenticate against the node:
+
+        curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $(cat /run/secrets/consumer_api_key 2>/dev/null)" http://host.docker.internal:8000/v1/notifications
+
+      Report the HTTP status. Expect rejection (401/403) — do not try
+      to fix it, obtain a new key, or touch the auditor role.
+    success_hint: |
+      evidence records the consumer key rejected while the auditor's
+      key still authenticates and auditor state remains.
+    assertions:
+      - type: api.role_credentials_isolated
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
+          auditor_agent: auditor
+      - type: files.role_cleanup_complete
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/reset.json"
+
+final_assertions:
+  - type: logs.no_500s
+  - type: timeline.no_unredacted_secret
+  - type: sandbox.roles_run_non_root
+    params:
+      manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
+  - type: sandbox.cross_volume_canary_unreadable
+    params:
+      manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"

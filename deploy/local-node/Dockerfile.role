@@ -1,0 +1,58 @@
+# Pinned linux/arm64 role image for the phase 15.14.1 local node.
+#
+# Contains only what the role smoke needs: the Logion public CLI and
+# companion, git, one gate-approved real-agent harness runtime, and the
+# certificate/runtime dependencies they require. A non-root entrypoint;
+# no baked-in provider, Logion, GitHub, cloud, or host credentials.
+#
+# Deliberately absent: the phase 15.15 runner package, the host Docker
+# socket, any credential file from the host.
+
+FROM --platform=linux/arm64 python:3.12-slim-bookworm
+
+ARG LOGION_BASE_URL=http://localhost:8000
+ENV LOGION_BASE_URL=${LOGION_BASE_URL}
+
+# Runtime + certificate dependencies only. Node is required by the
+# companion's npm delivery path; git is the one VCS the role smoke uses.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    nodejs \
+    npm \
+  && rm -rf /var/lib/apt/lists/*
+
+# The public CLI wheel is built by `make node-dev-up` from the sibling
+# packages in this repository and copied in at build time. No
+# credentials travel with it. Runtime dependencies are installed from
+# the wheel metadata (not --no-deps) so the CLI is complete: an image
+# whose entrypoint crashes on `import yaml` is a broken role, not a
+# lean one.
+COPY dist-wheels/ /opt/logion-wheels/
+# The companion is a workspace package: it arrives in dist-wheels/ by
+# the same staging step as the CLI (`uv build --all-packages`), so it
+# needs no network install here. A build that cannot install a staged
+# wheel must fail loudly rather than start a half-provisioned role.
+RUN pip install --no-cache-dir /opt/logion-wheels/*.whl
+
+# Non-root role user. The container's `user:` directive overrides the
+# UID per role (consumer 10001, auditor 10002) so each role's files on
+# its own volume are owned by a distinct non-root identity. The
+# workspace root is mode 0777 because Docker seeds a fresh named
+# volume from the image content: a 10001-owned /workspace would leave
+# the auditor (10002) unable to write its own workspace. The isolation
+# boundary is the per-role volume, not the mode of its mount point.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin agent \
+  && mkdir -p /workspace/task \
+  && chmod 0777 /workspace /workspace/task
+USER agent
+WORKDIR /workspace/task
+
+# Nothing is executed at container start by the image itself: the
+# Compose service provides `sleep infinity` and the operator drives
+# work through `make node-agent ROLE=...`. This keeps the image inert
+# and the run reproducible.
+ENTRYPOINT []
+CMD ["sleep", "infinity"]
