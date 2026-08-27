@@ -270,6 +270,84 @@ def _load_role_manifest(ctx: AssertionContext, params: dict) -> dict:
     return payload
 
 
+def _identity_evidence(
+    manifest: dict, roles: dict, observed: dict[str, object]
+) -> dict:
+    """Retain the full identity manifest facts alongside the assertion."""
+    return {
+        "roles": observed,
+        "runtime": manifest.get("runtime"),
+        "compose_sha256": manifest.get("compose_sha256"),
+        "dockerfile_sha256": manifest.get("dockerfile_sha256"),
+        "role_agent_ids": manifest.get("role_agent_ids"),
+        "credential_fingerprints": manifest.get("credential_fingerprints"),
+        "prompts": manifest.get("prompts"),
+        "role_runtime": {
+            role: {
+                "container_id": entry.get("container_id"),
+                "image_id": entry.get("image_id"),
+                "versions": entry.get("versions"),
+                "mounts": entry.get("mounts"),
+            }
+            for role, entry in roles.items()
+            if isinstance(entry, dict)
+        },
+    }
+
+
+def _outcome(
+    assertion_type: str, ok: bool, ok_msg: str, fail_msg: str, evidence: dict
+) -> AssertionOutcome:
+    return AssertionOutcome(
+        type=assertion_type,
+        status="passed" if ok else "failed",
+        message=ok_msg if ok else fail_msg,
+        evidence=evidence,
+    )
+
+
+def _role_manifest_or_failure(
+    ctx: AssertionContext, params: dict, label: str
+) -> tuple[dict | None, AssertionOutcome | None]:
+    try:
+        return _load_role_manifest(ctx, params), None
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return None, AssertionOutcome(
+            type=label,
+            status="failed",
+            message=f"role manifest unreadable: {exc}",
+            evidence=params,
+        )
+
+
+def _nonroot_offender(entry: dict) -> str | None:
+    uid = entry.get("uid")
+    expected = entry.get("expected_uid")
+    if not isinstance(uid, int) or uid == 0:
+        return f"uid={uid}"
+    if expected is not None and uid != expected:
+        return f"uid={uid}!={expected}"
+    if entry.get("home_writable") is not True:
+        return "home-not-writable"
+    return None
+
+
+def _limits_offender(entry: dict) -> str | None:
+    limits = entry.get("limits")
+    if not isinstance(limits, dict):
+        return "no-limits"
+    missing = [
+        key
+        for key in ("cpus", "memory_bytes", "pids", "wall_time_seconds")
+        if limits.get(key) is None
+    ]
+    if missing:
+        return f"missing-{','.join(missing)}"
+    if limits.get("wall_time_enforced") is not True:
+        return f"wall_time_enforced={limits.get('wall_time_enforced')}"
+    return None
+
+
 class SandboxRolesRunNonRootAssertion(Assertion):
     """Every role container runs as its declared non-root UID."""
 
@@ -301,27 +379,25 @@ class SandboxRolesRunNonRootAssertion(Assertion):
             if not isinstance(entry, dict):
                 offenders.append(role)
                 continue
-            uid = entry.get("uid")
-            expected = entry.get("expected_uid")
-            if not isinstance(uid, int) or uid == 0:
-                offenders.append(f"{role}:uid={uid}")
-            elif expected is not None and uid != expected:
-                offenders.append(f"{role}:uid={uid}!={expected}")
-            observed[role] = {"uid": uid, "user": entry.get("user")}
-        return AssertionOutcome(
-            type=self.type,
-            status="passed" if not offenders else "failed",
-            message=(
-                "all role containers run as their declared non-root UIDs"
-                if not offenders
-                else f"non-root violation: {', '.join(offenders)}"
-            ),
-            evidence={"roles": observed},
+            offender = _nonroot_offender(entry)
+            if offender is not None:
+                offenders.append(f"{role}:{offender}")
+            observed[role] = {
+                "uid": entry.get("uid"),
+                "user": entry.get("user"),
+                "home_writable": entry.get("home_writable"),
+            }
+        return _outcome(
+            self.type,
+            not offenders,
+            "all role containers run as their declared non-root UIDs",
+            f"non-root violation: {', '.join(offenders)}",
+            _identity_evidence(manifest, roles, observed),
         )
 
 
 class SandboxRoleResourceLimitsEnforcedAssertion(Assertion):
-    """Each role runs with the declared CPU, memory, and PID limits."""
+    """Each role runs with declared CPU, memory, PID, and wall-time limits."""
 
     type = "sandbox.role_resource_limits_enforced"
 
@@ -351,28 +427,93 @@ class SandboxRoleResourceLimitsEnforcedAssertion(Assertion):
             if not isinstance(entry, dict):
                 offenders.append(role)
                 continue
-            limits = entry.get("limits")
-            if not isinstance(limits, dict):
-                offenders.append(f"{role}:no-limits")
-                continue
-            missing = [
-                key
-                for key in ("cpus", "memory_bytes", "pids")
-                if limits.get(key) is None
-            ]
-            if missing:
-                offenders.append(f"{role}:missing-{','.join(missing)}")
-            observed[role] = limits
+            offender = _limits_offender(entry)
+            if offender is not None:
+                offenders.append(f"{role}:{offender}")
+            observed[role] = entry.get("limits")
         return AssertionOutcome(
             type=self.type,
             status="passed" if not offenders else "failed",
             message=(
-                "every role runs with declared CPU, memory, and PID limits"
+                "every role runs with declared CPU, memory, PID, and "
+                "wall-time limits"
                 if not offenders
                 else f"limits violation: {', '.join(offenders)}"
             ),
             evidence={"roles": observed},
         )
+
+
+def _required_canaries() -> set[str]:
+    return {
+        f"{role}_sees_{probe}"
+        for role in ("consumer", "auditor")
+        for probe in (
+            "host_home",
+            "host_keychain",
+            "docker_socket",
+            "peer_home",
+            "peer_credential",
+            "peer_spool",
+            "peer_workspace",
+        )
+    }
+
+
+def _canary_findings(
+    canaries: dict,
+) -> tuple[list[str], dict[str, object]]:
+    offenders: list[str] = []
+    observed: dict[str, object] = {}
+    for probe, entry in sorted(canaries.items()):
+        if not isinstance(entry, dict):
+            offenders.append(probe)
+            continue
+        if entry.get("readable"):
+            offenders.append(probe)
+        observed[probe] = {
+            "readable": entry.get("readable"),
+            "role": entry.get("role"),
+        }
+    return offenders, observed
+
+
+def _harness_role_offender(entry: dict, role: str) -> list[str]:
+    proof = entry.get("proof")
+    marker = f"LOGION_HARNESS_OK {role}"
+    command_output = (
+        proof.replace(marker, "").strip() if isinstance(proof, str) else ""
+    )
+    offenders: list[str] = []
+    if entry.get("process_exit_code") != 0:
+        offenders.append("process-exit")
+    if entry.get("proof_read_exit_code") != 0:
+        offenders.append("proof-unreadable")
+    if not command_output or "logion" not in command_output.lower():
+        offenders.append("logion-proof-missing")
+    if not isinstance(proof, str) or marker not in proof:
+        offenders.append("completion-marker-missing")
+    codex_version = entry.get("codex_version")
+    if not isinstance(codex_version, str) or "codex" not in codex_version:
+        offenders.append("codex-version-missing")
+    return offenders
+
+
+def _harness_findings(runs: object) -> tuple[dict, list[str]]:
+    expected_roles = {"consumer", "auditor"}
+    offenders: list[str] = []
+    if not isinstance(runs, dict) or set(runs) != expected_roles:
+        offenders.append("role-set-incomplete")
+        runs = runs if isinstance(runs, dict) else {}
+    for role in sorted(expected_roles):
+        entry = runs.get(role)
+        if not isinstance(entry, dict):
+            offenders.append(f"{role}:missing")
+            continue
+        offenders.extend(
+            f"{role}:{item}" for item in _harness_role_offender(entry, role)
+        )
+    return runs, offenders
 
 
 class SandboxCrossVolumeCanaryUnreadableAssertion(Assertion):
@@ -400,28 +541,62 @@ class SandboxCrossVolumeCanaryUnreadableAssertion(Assertion):
                 message="role manifest carries no canaries object",
                 evidence=params,
             )
-        offenders: list[str] = []
-        observed: dict[str, object] = {}
-        for probe, entry in sorted(canaries.items()):
-            if not isinstance(entry, dict):
-                offenders.append(probe)
-                continue
-            if entry.get("readable"):
-                offenders.append(probe)
-            observed[probe] = {
-                "readable": entry.get("readable"),
-                "role": entry.get("role"),
+        missing = sorted(_required_canaries() - set(canaries))
+        offenders, observed = _canary_findings(canaries)
+        ok = not offenders and not missing
+        if missing:
+            fail = f"missing required canaries: {', '.join(missing)}"
+        else:
+            fail = "canary readable from inside a role: " + ", ".join(
+                offenders
+            )
+        return _outcome(
+            self.type,
+            ok,
+            "host and cross-role canaries are unreadable from every role",
+            fail,
+            {"canaries": observed},
+        )
+
+
+class SandboxRealHarnessUsesLogionAssertion(Assertion):
+    """A real in-container harness process invokes the installed Logion CLI."""
+
+    type = "sandbox.real_harness_uses_logion"
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        try:
+            manifest = _load_role_manifest(ctx, params)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            return AssertionOutcome(
+                type=self.type,
+                status="failed",
+                message=f"harness manifest unreadable: {exc}",
+                evidence=params,
+            )
+        runs, harness_offenders = _harness_findings(
+            manifest.get("harness_runs")
+        )
+        observed = {
+            role: {
+                "process_exit_code": entry.get("process_exit_code"),
+                "proof_read_exit_code": entry.get("proof_read_exit_code"),
+                "proof": entry.get("proof"),
+                "prompt": entry.get("prompt"),
+                "codex_version": entry.get("codex_version"),
             }
-        return AssertionOutcome(
-            type=self.type,
-            status="passed" if not offenders else "failed",
-            message=(
-                "host and cross-role canaries are unreadable from every role"
-                if not offenders
-                else f"canary readable from inside a role: "
-                f"{', '.join(offenders)}"
-            ),
-            evidence={"canaries": observed},
+            for role, entry in sorted(runs.items())
+            if isinstance(entry, dict)
+        }
+        return _outcome(
+            self.type,
+            not harness_offenders,
+            "real Codex processes inside both role containers used Logion",
+            "in-container harness proof failed: "
+            + ", ".join(harness_offenders),
+            {"harness_runs": observed},
         )
 
 
@@ -504,6 +679,7 @@ class RoleCleanupCompleteAssertion(Assertion):
         expected_checks = {
             "consumer_state_removed": True,
             "consumer_key_rejected": True,
+            "consumer_new_key_accepted": True,
             "auditor_state_preserved": True,
             "auditor_key_accepted": True,
         }
@@ -513,6 +689,11 @@ class RoleCleanupCompleteAssertion(Assertion):
             actual = cleanup.get(check)
             observed[check] = actual
             if actual is not expected:
+                offenders.append(f"{check}={actual}")
+        for check in ("reset_exit_code", "up_exit_code"):
+            actual = cleanup.get(check)
+            observed[check] = actual
+            if actual != 0:
                 offenders.append(f"{check}={actual}")
         return AssertionOutcome(
             type=self.type,

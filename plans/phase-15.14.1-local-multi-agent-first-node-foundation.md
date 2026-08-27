@@ -2,171 +2,192 @@
 
 # Phase 15.14.1 — Local multi-agent first-node foundation
 
-> **Dogfood status:** this is the founder-operated supply for Phase 15.15–15.16.
-> **Honesty boundary:** several isolated agents on one MacBook are several roles
-> and failure domains, not independent network operators.
+> **Dogfood status:** this supplies the local role-isolation substrate used by
+> Phase 15.15 and later by Phase 15.16.
+> **Honesty boundary:** isolated roles on one MacBook are not independent
+> operators, and this phase does not yet prove runner execution or an
+> improvement loop.
 
 ## Goal
 
-Use the founder's existing MacBook and Hermes coding agent to operate the first
-complete Logion node with additional isolated agents performing distinct roles:
+On the founder's existing MacBook, let host Hermes start and coordinate at
+least two real agent containers with separate homes, credentials, repository
+scopes, and runtime limits.
 
-- consumer/user;
-- catalog operator;
-- evaluator/runner;
-- sponsor;
-- contributor;
-- auditor/adversary.
+This phase prepares a node. It does not operate the complete node: job leasing,
+sandbox execution, and signed runner receipts begin in 15.15; feedback-driven
+bounty selection and the recurring improvement loop remain in 15.14 and 15.16.
 
-No additional physical server is required for the development loop.
+## Exact phase boundary
+
+### Required here
+
+- one versioned, non-root role image;
+- one Compose stack with `consumer` and `auditor` role profiles;
+- separate role homes, Logion/harness state, repository workspaces,
+  observation spools, and API credentials;
+- explicit CPU, memory, PID, and wall-time limits;
+- no host home, keychain, SSH agent, browser profile, cloud credentials, or
+  Docker/Podman socket inside a role;
+- start, status, role-agent, stop, and explicit per-role reset commands;
+- one repository-scoped install visible in a fresh session of the same role but
+  absent from another repository, user scope, and the other role;
+- restart persistence and selective reset/revocation.
+
+### Deferred to named phases
+
+- runner enrollment, offers, leases, job state, disposable execution
+  sandboxes, artifact upload, execution receipts, and receipt signing: **15.15**;
+- evaluator contracts and normalized results: **16.1–16.2**;
+- sponsor funding, contributor delivery/acceptance, feedback clustering,
+  bounty recommendation, rerun, and complete improvement lineage:
+  **15.14/15.16**;
+- remote machines and independently operated roles: **16.3+**.
+
+Do not add placeholder production implementations for deferred behavior. The
+15.14.1 scenario ends after isolation, repository scope, restart, and reset are
+proven.
 
 ## Process model
 
-The existing host Hermes remains the founder/operator console. Other roles run
-as containers with separate writable homes:
-
 ```text
 macOS host
-├── existing Hermes operator
+├── existing Hermes operator (never mounted into a role)
 ├── local Logion API/devrig
 ├── role-consumer container
-├── role-evaluator container
-├── role-contributor container
-├── role-sponsor container
-└── disposable sandbox containers created by the runner
+└── role-auditor container
 ```
 
-Role containers may use Hermes profiles, Codex, Claude Code, Pi, or another
-proving-ground driver. Harness choice and network role are orthogonal.
+The two roles are actual Compose services, not labels or subprocesses sharing
+one home. The Compose/image pattern must be reusable by the evaluator,
+contributor, and sponsor profiles added by later phases, but those profiles are
+not required to close 15.14.1.
 
-## Isolation requirements
+“Role” is an operator-side container profile in this phase, not a new Logion
+authorization model. Each role authenticates as a distinct seeded agent using
+the existing public API authorization rules. Do not add generic RBAC, runner
+credentials, admin impersonation, or bounty-specific permissions here.
 
-Every role receives:
+## Isolation contract
 
-- a separate container and non-root UID;
-- a separate `$HOME`, `LOGION_HOME`, harness config, memory, session store,
-  skill inventory, credentials, and observation spool;
-- only its role-scoped API key;
-- a dedicated checkout/worktree or read-only repository plus writable task
-  workspace;
-- explicit CPU, memory, PID, disk, wall-time, and model/API budget;
-- no host Docker socket, SSH agent, cloud credentials, browser profile, or host
-  home mount;
-- no access to another role's volume.
+Each role receives:
 
-The repository under test may be mounted or cloned into a role container. Repo
-skills live inside that checkout (`.agents/skills`, `.claude/skills`,
-`.pi/skills` as appropriate); user skills live only in that role's home volume.
+- its own container and non-root UID;
+- its own `$HOME`, `LOGION_HOME`, harness config, memory/session store, skill
+  inventory, credential file, observation spool, and repository workspace;
+- a distinct disposable agent API key injected only into that role;
+- a read-only repository checkout or dedicated worktree plus its own writable
+  task directory;
+- enforced CPU, memory, PID, and wall-time limits;
+- no volume, secret, or ambient credential belonging to another role or host.
 
-## Container images
+The same role keeps its intended named-volume state across normal stop/start.
+Reset targets exactly one role: it deletes that role's disposable state and
+revokes its credential without changing the other role.
 
-Build one versioned base image containing:
+Repository skills stay inside the checkout (`.agents/skills`,
+`.claude/skills`, `.pi/skills` as appropriate). User-scope skills, if any, stay
+inside that role's home volume and never appear in another role.
 
-- Logion public CLI, companion, and proving-ground runner;
-- Git and the selected harness binaries;
+## Image and Compose deliverables
+
+Build one pinned `linux/arm64` base image containing only what the role smoke
+needs:
+
+- the Logion public CLI and companion;
+- Git and one gate-approved real-agent harness;
 - certificate/runtime dependencies;
 - a non-root entrypoint;
-- no provider or Logion credentials.
+- no baked-in provider, Logion, GitHub, cloud, or host credentials.
 
-Create thin role profiles through Compose, not bespoke images. Secrets enter at
-runtime through Docker secrets or short-lived environment files and are never
-baked into layers.
+Do not install the Phase 15.15 runner package or give a role access to the host
+container socket. Runtime secrets enter through Compose secrets or an explicit
+short-lived environment file outside the image layers.
 
-Use `linux/arm64` on Apple Silicon. A role may call a hosted cheap model even
-though the harness process is local. Running local model weights is optional,
-not required to close the network loop.
+Required files:
 
-## Proposed operator surface
+- `deploy/local-node/compose.yaml`;
+- `deploy/local-node/roles/consumer.env.example`;
+- `deploy/local-node/roles/auditor.env.example`;
+- `docs/node/local-macos.md`.
+
+The documentation covers Docker Desktop and Podman, Apple Silicon, the exact
+commands, mounts and limits, provider-secret injection, troubleshooting,
+credential lifetime, and selective cleanup.
+
+## Operator surface
 
 From the canonical workspace:
 
 ```bash
-make node-dev-up
-make node-agent ROLE=consumer HARNESS=hermes
-make node-agent ROLE=evaluator HARNESS=codex
-make node-agent ROLE=contributor HARNESS=claude-code
-make node-dogfood PROGRAM=resource-improvement-v1
+make node-dev-up ROLES=consumer,auditor
+make node-agent ROLE=consumer
+make node-agent ROLE=auditor
 make node-status
 make node-dev-down
+make node-dev-reset ROLE=consumer YES=1
 ```
 
-`node-dev-up`:
+`node-dev-up` validates the local container runtime, disk, ports, API health,
+and the one requested provider credential; builds or pulls the pinned image;
+creates distinct homes and agent keys; starts the local devrig and requested
+roles; and prints role IDs, limits, sanitized mounts, credential status, and
+cleanup commands.
 
-1. validates Docker/Podman, disk, ports, API health, and provider credentials;
-2. builds/pulls the pinned role image;
-3. creates per-role volumes and throwaway role API keys;
-4. starts API dependencies and idle role containers;
-5. installs the Logion companion/integration in each requested harness;
-6. prints costs, mounts, scopes, credentials expiry, and cleanup command.
+`node-agent` opens or submits a prompt only to the named role. It never copies
+the operator conversation, host memory, host skills, or another role's state.
 
-`node-agent` opens or submits a prompt to one named role. It does not silently
-share the operator conversation, memories, or skills.
+`node-dev-down` preserves named role state. `node-dev-reset` requires both an
+exact role and `YES=1`; it removes only that role's disposable volume and
+revokes only that role's API key.
 
-`node-dev-down` stops containers. A separate explicit
-`node-dev-reset --role ROLE --yes` removes a role's disposable volumes; normal
-shutdown preserves them for cross-session testing.
+## Bounded foundation smoke
 
-## Founder-operated closed loop
+The closing run is exactly:
 
-The minimum recurring program is:
+1. Host Hermes starts the local devrig plus `consumer` and `auditor` services.
+2. Both services prove their non-root UID, runtime limits, distinct state
+   directories, and distinct authenticated agent identities.
+3. Consumer installs one harmless checked-in skill fixture into repository
+   `XPTO` using the public CLI.
+4. A fresh consumer session sees the fixture in `XPTO`, but not in repository
+   `ABC` or consumer user scope; auditor cannot see it or read consumer
+   canaries, credentials, home, spool, or workspace.
+5. Neither role can read host-home/keychain/socket canaries.
+6. Normal stop/start preserves only each role's own intended named-volume state.
+7. Resetting consumer removes its disposable state and revokes its old key;
+   auditor state and credential remain valid.
 
-1. consumer searches Logion from a fixture or real repository;
-2. consumer installs into that repository's native scope;
-3. a fresh consumer session discovers and uses it;
-4. harness integration writes an attributed local observation;
-5. consumer explicitly submits minimum-disclosure feedback;
-6. operator sees a qualified problem and drafts a bounty;
-7. sponsor explicitly funds it;
-8. contributor discovers work and submits a new immutable version;
-9. evaluator runs the same bounded case and signs a receipt;
-10. operator records disposition; consumer later reruns and submits outcome;
-11. auditor verifies lineage and attempts replay, scope confusion, data leak,
-    self-dealing, and cross-role access.
+No bounty is drafted or funded. No contributor delivers anything. No evaluator
+claims a job. No execution or attestation receipt is created.
 
-All steps use public CLI/API/harness artifacts. Direct database writes and
-sharing role credentials invalidate the run.
+## What this phase proves
 
-## What multiple local agents prove
+- two real agent processes can use Logion without sharing homes or credentials;
+- repository and user installation scopes remain distinct inside a container;
+- host and cross-role canaries are unreadable;
+- resource limits are active;
+- normal restart and explicit selective reset have different, predictable
+  effects.
 
-They prove:
+It does not prove runner isolation, execution safety, signed evidence,
+independent operation, issuer diversity, resistance to founder collusion,
+external demand, funding, delivery, or improvement lineage.
 
-- product usability by distinct personas;
-- credential and state isolation;
-- repository versus user scope behavior;
-- real multi-session observation;
-- coordinator/runner/job mechanics;
-- bounded costs and reproducible failures;
-- the full improvement lineage.
+## Required tests
 
-They do not prove:
-
-- independent operators;
-- issuer diversity;
-- resistance to founder collusion;
-- external demand or liquidity;
-- cross-machine sandbox boundaries.
-
-Public evidence must label issuer/operator as Logion first-party.
-
-## Promotion to an always-on node
-
-After the local loop is stable, move the runner role to one inexpensive CPU
-server separate from the API/DB. Keep the Mac operator and remaining roles if
-useful. Specialized GPU jobs wait for participant-supplied or sponsor-funded
-capacity.
-
-## Required documentation and tests
-
-- `docs/node/local-macos.md`: Docker Desktop and Podman paths, Apple Silicon,
-  provider credentials, budgets, commands, troubleshooting, and cleanup.
-- `deploy/local-node/compose.yaml`: role services, read-only mounts, networks,
-  volumes, limits, health checks, and profiles.
-- `deploy/local-node/roles/*.env.example`: non-secret role configuration.
-- adversarial test proving no role can read another home or the host keychain;
-- proving-ground scenario with at least consumer, contributor, evaluator, and
-  sponsor containers;
+- Compose/config test for non-root users, read-only base filesystems, dropped
+  capabilities, no privileged mode/socket/host-home mounts, separate volumes,
+  separate secrets, and declared limits;
+- adversarial canary test for host and cross-role homes, credentials, spools,
+  and workspaces;
+- repository-scope test using `XPTO` and `ABC` plus a fresh session;
 - restart test proving state persists only in the intended role volume;
-- cleanup test proving disposable credentials/volumes are removed.
+- selective-reset test proving one role's state and key are removed while the
+  other role remains usable.
+
+Scripted configuration tests support diagnosis but do not replace the retained
+real-agent scenario below.
 
 ## Acceptance gates
 
@@ -175,30 +196,57 @@ capacity.
 Add `builtin:phase_15_14_1_local_multi_agent_node` and pass it with GPT-5.4-mini
 or Claude Haiku against the locally running real API.
 
-- Prompt to host Hermes: “Start the bounded local Logion program. Delegate use
-  to consumer, delivery to contributor, verification to evaluator, approval to
-  sponsor, and lineage review to auditor. Keep homes, credentials, repository
-  scopes, memories, and spools isolated.”
-- Actors are the actual Compose services, not role labels in one process. Use
-  at least two cheap harness/model configurations.
-- Assert non-root containers, API role authorization, repo-only install,
-  unreadable cross-volume canaries, bounded spend, signed receipt, first-party
-  issuer label, restart persistence, and explicit cleanup.
-- Negative cases prove consumer cannot fund, contributor cannot accept its own
-  work, auditor cannot read another spool, and no role can access the host
-  Docker socket/keychain/home.
-- Retain image/Compose digests, versions, sanitized mounts, prompts, API IDs,
-  receipt, costs, canary results, and no-500 proof. Scripted Compose tests do
-  not close the phase.
+- **Prompt to host Hermes:** “Start the bounded 15.14.1 foundation smoke with
+  consumer and auditor as separate Compose services. Prove non-root execution,
+  limits, credential/home isolation, repository-only install, restart
+  persistence, and selective consumer reset. Stop before runner jobs, receipts,
+  bounties, funding, or delivery.”
+- Actors are the actual `consumer` and `auditor` services. One allowed cheap
+  harness/model configuration is sufficient.
+- Negative cases prove cross-volume and host canaries unreadable, the fixture
+  absent from `ABC`, user scope, and auditor, and the reset consumer credential
+  rejected while auditor remains usable.
+- Retain image/Compose digests, versions, sanitized mounts and limits, prompts,
+  role agent IDs, credential fingerprints/status (never secrets), scope checks,
+  canary results, restart/reset results, and no-500 proof.
 
-- A clean Apple Silicon Mac can start one API/devrig and four role containers
-  using a documented command.
-- The existing host Hermes can coordinate without its home or credentials being
-  mounted into role containers.
-- Consumer installs a skill in repository XPTO and a fresh session sees it
-  there but not in unrelated repository ABC or the role's user scope.
-- Each role submits only actions permitted by its API key.
-- The full founder-operated loop completes end to end with bounded spend and a
-  first-party label.
-- Replacing one local role with a remote independently operated runner requires
-  no protocol or coordinator rewrite.
+The canonical policy requires exactly these assertions:
+`sandbox.roles_run_non_root`, `sandbox.real_harness_uses_logion`,
+`sandbox.role_resource_limits_enforced`,
+`files.install_scoped_to_repository`,
+`sandbox.cross_volume_canary_unreadable`,
+`api.role_credentials_isolated`, `api.state_survives_restart`,
+`files.role_cleanup_complete`, and `logs.no_500s`.
+
+- [ ] The documented command starts the local API/devrig plus consumer and
+      auditor as actual non-root Compose services.
+      (proof: assertion:sandbox.roles_run_non_root)
+- [ ] Both role services run a gate-approved real-agent harness inside their
+      containers, and each harness process invokes the installed Logion CLI.
+      Host-side drivers coordinate but do not count as either role process.
+      (proof: assertion:sandbox.real_harness_uses_logion)
+- [ ] Both role services run with the declared CPU, memory, PID, and wall-time
+      limits.
+      (proof: assertion:sandbox.role_resource_limits_enforced)
+- [ ] Host Hermes can coordinate without mounting host or cross-role homes,
+      credentials, spools, workspaces, keychain, or container socket.
+      (proof: assertion:sandbox.cross_volume_canary_unreadable)
+- [ ] Consumer and auditor receive distinct credentials; selective reset
+      revokes consumer's old credential without invalidating auditor.
+      (proof: assertion:api.role_credentials_isolated)
+- [ ] A fresh consumer session sees the fixture in repository `XPTO`, but not
+      in repository `ABC`, consumer user scope, or auditor scope.
+      (proof: assertion:files.install_scoped_to_repository)
+- [ ] Normal stop/start preserves each role's intended state without making it
+      visible to the other role.
+      (proof: assertion:api.state_survives_restart)
+- [ ] Explicit consumer reset removes only consumer disposable state while
+      auditor remains usable.
+      (proof: assertion:files.role_cleanup_complete)
+
+## Implementation stop rule
+
+Once every criterion and the canonical scenario above pass, stop. Changes to
+runner/coordinator domains, execution receipts, eval contracts, improvements,
+bounties, ledger funding, contribution delivery, or remote-node deployment are
+out of scope even if they appear next in the roadmap.

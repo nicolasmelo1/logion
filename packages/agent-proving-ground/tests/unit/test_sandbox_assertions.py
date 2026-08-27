@@ -11,6 +11,7 @@ from agent_proving_ground.assertions.files import (
     InstallScopedToRepositoryAssertion,
     RoleCleanupCompleteAssertion,
     SandboxCrossVolumeCanaryUnreadableAssertion,
+    SandboxRealHarnessUsesLogionAssertion,
     SandboxRoleResourceLimitsEnforcedAssertion,
     SandboxRolesRunNonRootAssertion,
 )
@@ -23,21 +24,27 @@ def _identity_manifest() -> dict:
             "consumer": {
                 "uid": 10001,
                 "expected_uid": 10001,
+                "home_writable": True,
                 "user": "agent",
                 "limits": {
                     "cpus": 1.0,
                     "memory_bytes": 1610612736,
                     "pids": 256,
+                    "wall_time_seconds": 3600,
+                    "wall_time_enforced": True,
                 },
             },
             "auditor": {
                 "uid": 10002,
                 "expected_uid": 10002,
+                "home_writable": True,
                 "user": "agent",
                 "limits": {
                     "cpus": 1.0,
                     "memory_bytes": 1610612736,
                     "pids": 256,
+                    "wall_time_seconds": 3600,
+                    "wall_time_enforced": True,
                 },
             },
         }
@@ -102,6 +109,15 @@ class TestRolesRunNonRoot:
         )
         assert outcome.status == "failed"
 
+    async def test_fails_when_role_home_is_not_writable(self, tmp_path):
+        payload = _identity_manifest()
+        payload["roles"]["auditor"]["home_writable"] = False
+        outcome = await _evaluate(
+            SandboxRolesRunNonRootAssertion(), tmp_path, payload
+        )
+        assert outcome.status == "failed"
+        assert "home-not-writable" in outcome.message
+
 
 class TestResourceLimits:
     async def test_passes_when_limits_declared(self, tmp_path):
@@ -114,26 +130,32 @@ class TestResourceLimits:
 
     async def test_fails_when_a_limit_is_missing(self, tmp_path):
         payload = _identity_manifest()
-        payload["roles"]["consumer"]["limits"]["pids"] = None
+        payload["roles"]["consumer"]["limits"]["wall_time_enforced"] = False
         outcome = await _evaluate(
             SandboxRoleResourceLimitsEnforcedAssertion(), tmp_path, payload
         )
         assert outcome.status == "failed"
-        assert "pids" in outcome.message
+        assert "wall_time_enforced" in outcome.message
 
 
 class TestCrossVolumeCanaries:
     async def test_passes_when_every_canary_unreadable(self, tmp_path):
         payload = {
             "canaries": {
-                "consumer_sees_host_home": {
+                f"{role}_sees_{probe}": {
                     "readable": False,
-                    "role": "consumer",
-                },
-                "auditor_sees_docker_socket": {
-                    "readable": False,
-                    "role": "auditor",
-                },
+                    "role": role,
+                }
+                for role in ("consumer", "auditor")
+                for probe in (
+                    "host_home",
+                    "host_keychain",
+                    "docker_socket",
+                    "peer_home",
+                    "peer_credential",
+                    "peer_spool",
+                    "peer_workspace",
+                )
             }
         }
         outcome = await _evaluate(
@@ -152,6 +174,63 @@ class TestCrossVolumeCanaries:
         }
         outcome = await _evaluate(
             SandboxCrossVolumeCanaryUnreadableAssertion(), tmp_path, payload
+        )
+        assert outcome.status == "failed"
+
+    async def test_fails_when_required_canaries_are_missing(self, tmp_path):
+        payload = {
+            "canaries": {
+                "consumer_sees_docker_socket": {
+                    "readable": False,
+                    "role": "consumer",
+                }
+            }
+        }
+        outcome = await _evaluate(
+            SandboxCrossVolumeCanaryUnreadableAssertion(), tmp_path, payload
+        )
+        assert outcome.status == "failed"
+        assert "missing required canaries" in outcome.message
+
+
+class TestRealHarnessUsesLogion:
+    async def test_passes_for_two_in_container_codex_runs(self, tmp_path):
+        payload = {
+            "harness_runs": {
+                role: {
+                    "process_exit_code": 0,
+                    "proof_read_exit_code": 0,
+                    "proof": f"logion 0.2.0\nLOGION_HARNESS_OK {role}",
+                    "prompt": "run logion --version",
+                    "codex_version": "codex-cli 0.150.1",
+                }
+                for role in ("consumer", "auditor")
+            }
+        }
+        outcome = await _evaluate(
+            SandboxRealHarnessUsesLogionAssertion(), tmp_path, payload
+        )
+        assert outcome.status == "passed"
+
+    async def test_fails_when_one_role_did_not_run_logion(self, tmp_path):
+        payload = {
+            "harness_runs": {
+                "consumer": {
+                    "process_exit_code": 0,
+                    "proof_read_exit_code": 0,
+                    "proof": "LOGION_HARNESS_OK consumer",
+                    "codex_version": "codex-cli 0.150.1",
+                },
+                "auditor": {
+                    "process_exit_code": 0,
+                    "proof_read_exit_code": 0,
+                    "proof": "logion 0.2.0\nLOGION_HARNESS_OK auditor",
+                    "codex_version": "codex-cli 0.150.1",
+                },
+            }
+        }
+        outcome = await _evaluate(
+            SandboxRealHarnessUsesLogionAssertion(), tmp_path, payload
         )
         assert outcome.status == "failed"
 
@@ -189,8 +268,11 @@ class TestRoleCleanupComplete:
             "selective_reset": {
                 "consumer_state_removed": True,
                 "consumer_key_rejected": True,
+                "consumer_new_key_accepted": True,
                 "auditor_state_preserved": True,
                 "auditor_key_accepted": True,
+                "reset_exit_code": 0,
+                "up_exit_code": 0,
             }
         }
 
@@ -230,6 +312,7 @@ class TestScenarioShape:
         required = {
             "sandbox.roles_run_non_root",
             "sandbox.role_resource_limits_enforced",
+            "sandbox.real_harness_uses_logion",
             "files.install_scoped_to_repository",
             "sandbox.cross_volume_canary_unreadable",
             "api.role_credentials_isolated",

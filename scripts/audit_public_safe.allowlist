@@ -16,11 +16,22 @@ Makefile:59
 
 # Local node container paths: /home/agent is the in-container non-root
 # user home inside the role image, not a host user directory.
-deploy/local-node/compose.yaml:42
-deploy/local-node/compose.yaml:50
-deploy/local-node/compose.yaml:61
-deploy/local-node/compose.yaml:67
-packages/agent-proving-ground/scripts/capture_local_node_evidence.py:181
-packages/agent-proving-ground/scripts/capture_local_node_evidence.py:296
-packages/agent-proving-ground/scripts/capture_local_node_evidence.py:310
-packages/agent-proving-ground/scripts/capture_local_node_evidence.py:311
+deploy/local-node/compose.yaml:16
+deploy/local-node/compose.yaml:43
+deploy/local-node/compose.yaml:57
+deploy/local-node/Dockerfile.role:24
+deploy/local-node/Dockerfile.role:25
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:219
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:300
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:302
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:314
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:322
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:331
+
+# Retained node evidence records in-container /home/agent mounts, not host paths.
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:97
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:138
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:514
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:555
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:845
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:886

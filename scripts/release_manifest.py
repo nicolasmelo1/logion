@@ -296,13 +296,20 @@ def cmd_check(args: argparse.Namespace) -> None:
             for package in on_disk_manifest.get("packages", {}).values()
             if isinstance(package, dict)
         ]
-        if any(isinstance(version, str) and ".dev" in version for version in on_disk_versions):
+        if any(
+            isinstance(version, str) and ".dev" in version
+            for version in on_disk_versions
+        ):
             print(
-                "FAIL: stable manifest must not point to a development release",
+                "FAIL: stable manifest must not point to a development "
+                "release",
                 file=sys.stderr,
             )
             sys.exit(1)
-        print("OK: stable manifest intentionally unchanged for development release")
+        print(
+            "OK: stable manifest intentionally unchanged for development "
+            "release"
+        )
         return
 
     if not args.release_assets_dir:

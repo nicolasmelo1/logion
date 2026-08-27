@@ -49,6 +49,35 @@ skill adapter boundaries. Record exact applied advice in
 diff, then submit one honest feedback report after tests pass.
 ```
 
+## External implementations to check compatibility against
+
+Do not build in isolation what already exists in the open. Verify each against
+its current release before pinning; treat every figure below as the publisher's
+claim until reproduced.
+
+- **NVIDIA SkillEvaluator** (<https://github.com/NVIDIA/SkillEvaluator>,
+  Apache-2.0). A three-tier pipeline — validation, deduplication, live
+  evaluation — running agents in Docker or cloud sandboxes across several
+  providers, integrating the Harbor agent-evaluation framework. NVIDIA reports
+  benchmarking 300+ of its verified skills with the same task, model and setup,
+  the only difference being whether the agent had the skill, and claims +41
+  correctness, +39 effectiveness, +35 efficiency. That description is the
+  control/assisted arm design this phase specifies; the repository README does
+  not spell out how the three metrics are computed, so the arm design is a claim
+  to verify, not a settled fact.
+- **Vercel fx** (<https://github.com/vercel-labs/fx>, Apache-2.0). A 6.3 MiB
+  Zig harness with a ~10µs cold start, model and provider agnostic, which its
+  authors describe as suited to model benchmarking, sandboxing and evals. A
+  candidate environment class for the reference runner — and a third-party
+  harness makes a result more credible than a first-party one, not less.
+
+The point of listing these is the same as everywhere else in this roadmap: the
+measurement layer keeps getting built and open-sourced, and the registry keeps
+not existing. SkillEvaluator produces results locally with no shared registry of
+what was measured about which artifact version. That gap is this project's
+subject, and being compatible with the tools that fill the other half is worth
+more than a competing runner.
+
 ## Evaluator SDK contract
 
 Create `logion/packages/evaluator-sdk/` with a typed interface:
@@ -126,9 +155,20 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 
 ## Gates
 
-- Adding a fake resource evaluator requires no coordinator schema change.
-- Skill runs cannot mutate global companion state.
-- Baseline and assisted runs share equivalent budgets and inputs.
-- Raw assertions remain visible beside any aggregate score.
-- All evaluator subprocesses run inside the 15.15 sandbox; the coordinator never imports evaluator plugin code.
-- The project-scope install is removed after the run and a canary proves no global installation changed.
+Each gate names the check that proves it; see `DEFERRED.md` for
+what the markers below leave unproven.
+
+- [ ] Adding a fake resource evaluator requires no coordinator schema change.
+      (proof: unspecified:the SDK conformance gate for a second resource type has no proving-ground assertion)
+- [ ] Skill runs cannot mutate global companion state.
+      (proof: assertion:sandbox.global_agent_state_unchanged)
+- [ ] Baseline and assisted runs share equivalent budgets and inputs.
+      (proof: assertion:api.eval_arms_comparable)
+- [ ] Raw assertions remain visible beside any aggregate score.
+      (proof: assertion:api.typed_eval_result_exists)
+- [ ] All evaluator subprocesses run inside the 15.15 sandbox; the coordinator
+      never imports evaluator plugin code.
+      (proof: unspecified:no assertion proves the coordinator never imports evaluator plugin code)
+- [ ] The project-scope install is removed after the run and a canary proves no
+      global installation changed.
+      (proof: unspecified:no assertion proves the project-scope install is removed after the run)

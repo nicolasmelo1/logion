@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+: "${ROLE_ID:?ROLE_ID is required}"
+auth="/run/secrets/${ROLE_ID}_codex_auth"
+if [ ! -s "$auth" ]; then
+  echo "missing role-scoped Codex authentication" >&2
+  exit 1
+fi
+export CODEX_HOME="/tmp/codex-home-${ROLE_ID}"
+mkdir -p "$CODEX_HOME"
+cp "$auth" "$CODEX_HOME/auth.json"
+chmod 600 "$CODEX_HOME/auth.json"
+exec codex "$@"

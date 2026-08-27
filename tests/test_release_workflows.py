@@ -115,7 +115,7 @@ def test_release_all_calls_each_publisher_after_tags_exist():
 
 
 def test_release_client_pins_a_twine_compatible_build_backend():
-    """Client distributions remain Core Metadata versions Twine can validate."""
+    """Client distributions use Twine-compatible Core Metadata versions."""
     build = CLIENT["jobs"]["build"]
     build_step = next(
         step

@@ -175,13 +175,29 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 
 ## Acceptance gates
 
-- A fresh runner completes a signed fixture job from claim through artifact upload.
-- Cancellation, timeout, lease loss, retry, and duplicate submission are safe.
-- A malicious fixture cannot read host secrets or mutate the API service.
-- Runner receipts bind resource, environment, inputs, outputs, and assertion results.
-- Public runner package can be installed and complete the conformance fixture without access to either repository's source tree.
-- On an Apple Silicon Mac, the documented Compose stack starts all five roles,
-  isolates homes/credentials/repository scopes, and completes one signed CPU
-  job without a local GPU.
-- The production deploy check proves the API host and runner host are different machines/security domains.
-- p95 coordinator poll/heartbeat endpoints remain within the API benchmark budget at one runner and synthetic 100-runner load.
+Each gate names the check that proves it; see `DEFERRED.md` for
+what the markers below leave unproven.
+
+- [ ] A fresh runner completes a signed fixture job from claim through artifact
+      upload.
+      (proof: assertion:api.runner_job_completed)
+- [ ] Cancellation, timeout, lease loss, retry, and duplicate submission are safe.
+      (proof: assertion:api.runner_job_terminal_once)
+- [ ] A malicious fixture cannot read host secrets or mutate the API service.
+      (proof: assertion:sandbox.canary_not_exfiltrated)
+- [ ] Runner receipts bind resource, environment, inputs, outputs, and assertion
+      results.
+      (proof: assertion:crypto.runner_receipt_valid)
+- [ ] Public runner package can be installed and complete the conformance fixture
+      without access to either repository's source tree.
+      (proof: assertion:api.runner_enrolled)
+- [ ] On an Apple Silicon Mac, the documented Compose stack starts all five roles,
+      isolates homes/credentials/repository scopes, and completes one signed CPU
+      job without a local GPU.
+      (proof: unspecified:a cold start on a clean host is not observable from inside the scenario)
+- [ ] The production deploy check proves the API host and runner host are different
+      machines/security domains.
+      (proof: unspecified:the deploy-time host separation check has no proving-ground assertion)
+- [ ] p95 coordinator poll/heartbeat endpoints remain within the API benchmark
+      budget at one runner and synthetic 100-runner load.
+      (proof: unspecified:the 100-runner synthetic load benchmark is not part of the real-agent gate)

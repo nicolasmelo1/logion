@@ -1,114 +1,121 @@
-# Local node (macOS) — phase 15.14.1
+# Local node on macOS
 
-How to run the bounded local multi-agent node on the founder's MacBook
-(Apple Silicon). This page covers the exact commands, mounts, limits,
-provider-secret injection, troubleshooting, credential lifetime, and
-selective cleanup for the `consumer` and `auditor` role services.
-
-> **Honesty boundary.** Two isolated roles on one MacBook are not
-> independent operators. This phase proves isolation, repository
-> scoping, restart persistence, and selective reset — nothing more.
-> Runner execution, receipts, and the improvement loop live in later
-> phases.
+This operator surface runs the bounded `consumer` and `auditor` roles as
+separate Linux/arm64 Compose services on Apple Silicon. It proves local role
+isolation; it does not prove independent operators or runner isolation.
 
 ## Prerequisites
 
-- Docker Desktop (or Podman) running, linux/arm64 capable
-- The local devrig stack up: `make bootstrap`, `make dev-up`, and
-  `make dev-api` from the workspace root
-- `uv` for building the public CLI wheel
+- Docker Desktop **or** Podman machine with a Compose provider;
+- at least 5 GiB free disk;
+- `uv`, Node.js, and Codex authenticated on the host;
+- the canonical maintainer workspace, which exposes the node targets and passes
+  its root to the public operator script.
 
-## One-time setup
+The role image pins the real Codex CLI. At bring-up, `node-dev-up` validates the
+runtime, free disk, port/API health, and the requested Codex authentication. If
+the local API is not healthy it provisions the canonical devrig and starts the
+API, then waits for `/health`.
+
+## Configuration
 
 ```bash
-# From the logion/ repository root:
-cp deploy/local-node/roles/consumer.env.example deploy/local-node/.env
+cp "$PUBLIC_REPO/deploy/local-node/roles/consumer.env.example" \
+  "$PUBLIC_REPO/deploy/local-node/.env"
 ```
 
-Provision one disposable agent API key per role against the local API
-(seeded devrig agents) and write each key to its secret file:
+Run these commands from the canonical maintainer workspace.
+
+Use Docker (default):
 
 ```bash
-printf '%s' "$CONSUMER_KEY" > deploy/local-node/roles/consumer.api_key
-printf '%s' "$AUDITOR_KEY" > deploy/local-node/roles/auditor.api_key
-chmod 600 deploy/local-node/roles/*.api_key
+CONTAINER_RUNTIME=docker make node-dev-up ROLES=consumer,auditor
 ```
 
-## Starting the node
+Use Podman:
 
 ```bash
-make node-dev-up ROLES=consumer,auditor
+podman machine start
+CONTAINER_RUNTIME=podman make node-dev-up ROLES=consumer,auditor
 ```
 
-`node-dev-up` validates the container runtime, builds the pinned
-`linux/arm64` role image, installs the disposable API keys as Compose
-secrets, starts the requested roles, and prints role IDs, limits,
-sanitized mounts, credential status, and cleanup commands.
+`node-dev-up` creates distinct disposable Logion identities and API keys when
+absent. It copies the selected Codex `auth.json` into separate role-scoped
+Compose secret files. Neither the host auth path nor any host home is mounted.
+Secret files, role identity files, and build wheels are ignored by Git.
 
-## Driving a role
+## Driving roles
 
 ```bash
-make node-agent ROLE=consumer ARGS='id'            # proves non-root UID
-make node-agent ROLE=auditor ARGS='id'
+make node-agent ROLE=consumer             # interactive Codex inside consumer
+make node-agent ROLE=consumer ARGS='id'   # bounded one-shot command
+make node-agent ROLE=auditor ARGS='logion --version'
 make node-status
 ```
 
-`node-agent` submits a command only to the named role. It never copies
-the operator conversation, host memory, host skills, or another role's
-state into the container.
+The role image contains Git, Logion CLI/companion, and a pinned real Codex
+harness. `codex-role` copies only that role's provider secret to tmpfs for the
+process lifetime. The retained closing scenario starts Codex in **both** role
+containers and requires each process to create evidence from `logion --version`.
+Host Codex coordinates the scenario but is not counted as either role process.
 
-## What isolation means here
+## Isolation and limits
 
-Each role gets:
+Each role has a distinct non-root UID, named home, Logion spool, workspace,
+Logion API secret, and Codex auth secret. The root filesystem is read-only;
+capabilities are dropped and privilege escalation is disabled. No host home,
+Keychain, SSH agent, browser/cloud credential, peer secret, or container socket
+is mounted.
 
-- its own container and non-root UID (consumer `10001`, auditor `10002`);
-- its own `$HOME`, `LOGION_HOME`, observation spool, credential file,
-  and repository workspace, each on a dedicated named volume;
-- its own Compose secret (`/run/secrets/<role>_api_key`) — never an
-  image layer, never a shared env var;
-- enforced CPU, memory, and PID limits from `compose.yaml`;
-- a read-only root filesystem with `/tmp` as the only writable tmpfs.
+Per role, Compose enforces:
 
-No role receives the host home, keychain, SSH agent, browser profile,
-cloud credentials, or the Docker socket. Skills installed by a role
-stay inside that role's volumes; a repository-scoped install is visible
-to a fresh session of the same role in that repository and absent
-everywhere else.
+- CPU: 1 core;
+- memory: 1536 MiB;
+- PIDs: 256;
+- wall time: 3600 seconds by default (`ROLE_WALL_TIME_SECONDS`).
 
-## Stop, restart, reset
+Wall time is not documentation-only: PID 1 is wrapped by GNU `timeout`, and the
+gate reads the live container command plus configured deadline.
+
+The adversarial canary phase seeds unique values at each role's **actual** home,
+spool, and workspace, then probes the peer value at those same mount targets. It
+also probes the peer's real Compose secret path, the Docker socket, `/Users`, and
+macOS Keychain paths. The assertion fails if any required probe is absent.
+
+## Stop, restart, and reset
 
 ```bash
-make node-dev-down                      # preserves named role state
-make node-dev-up ROLES=consumer,auditor # restart: state persists
-make node-dev-reset ROLE=consumer YES=1 # selective reset
+make node-dev-down
+make node-dev-up ROLES=consumer,auditor
+make node-dev-reset ROLE=consumer YES=1
 ```
 
-Normal stop/start preserves each role's own named-volume state.
-`node-dev-reset` requires both an exact role name and `YES=1`; it
-removes only that role's disposable volumes and retires its local key
-copy (revoke the matching key on the devrig API to finish the
-revocation). The other role's state and credential remain valid.
+Normal down/up preserves named volumes. The restart hook itself executes both
+commands between marker snapshots, records old/new container IDs, and fails on
+missing or unreachable markers.
 
-## Credential lifetime
+Selective reset requires an exact role and `YES=1`. It stops/removes only that
+service, rotates the role's API key **server-side**, retains the old key only as
+a local revoked test artifact, writes the new key for the next start, and removes
+only that role's home/workspace/spool volumes. The smoke proves the old key is
+rejected, the new key works, and the auditor remains running and authenticated.
 
-Role API keys are disposable. Treat them as short-lived: reset revokes
-the key and the smoke run asserts a revoked key is rejected while the
-other role's key still authenticates. Keys never leave the Compose
-secret mount at rest.
+## Evidence retained by the gate
+
+The sealed report contains image/container IDs, Compose and Dockerfile SHA-256,
+CLI/Git/Codex versions, sanitized runtime mounts, CPU/memory/PID/wall-time
+limits, exact scenario prompts, role agent IDs, non-secret credential
+fingerprints and status, all canary results, marker values and digests,
+mechanical restart IDs/status, reset/revocation facts, and the no-500 assertion.
+It does not point to `/tmp` as its only evidence source.
 
 ## Troubleshooting
 
-| Symptom | Fix |
+| Symptom | Action |
 | --- | --- |
-| `ERROR: no working container runtime` | Start Docker Desktop; on Podman, start the machine. |
-| `roles/consumer.api_key is missing` | Write the role key files shown under one-time setup. |
-| `id -u` returns `0` | The role must never run as root — check `user:` in `compose.yaml`. |
-| Role cannot reach `http://localhost:8000` | Confirm `make dev-api` is running and `LOGION_BASE_URL` matches. |
-| Reset says `refusing ... without YES=1` | That is the guard. Pass `YES=1` and the exact role. |
-
-## Provider secrets
-
-Provider credentials (model APIs the harness might need) are injected
-per run as Compose secrets or a short-lived env file outside the image
-layers. The pinned image contains none, and no role can read another
-role's or the host's.
+| Runtime unavailable | Start Docker Desktop or `podman machine start`. |
+| Port 8000 occupied but unhealthy | Stop the conflicting listener, then rerun. |
+| Codex auth missing | Run `codex login` or set `CODEX_AUTH_SOURCE`. |
+| A role exits near one hour | Increase `ROLE_WALL_TIME_SECONDS` explicitly and restart. |
+| Podman cannot reach the host API | Set `LOGION_BASE_URL` to a host address reachable from the Podman machine. |
+| Reset refuses | Pass an exact role plus `YES=1`; the guard is intentional. |

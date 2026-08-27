@@ -213,8 +213,86 @@ Accepted outcomes:
 Silence, scheduling difficulty, or disagreement is outcome 3, not permission to
 infer partnership.
 
+## Decision record — T1, recorded 2026-08-25
+
+Source: [`nicolasmelo1/logion#262`](https://github.com/nicolasmelo1/logion/issues/262).
+T0 and T1 are complete. This section is the public decision record the section
+above requires before T2; an implementer must not re-derive these from the issue
+thread.
+
+**Reviewed versions.** ASM: `asm-protocol==0.5.2`, draft head `9cde81a`,
+[`YE-YI7/asm-spec#12`](https://github.com/YE-YI7/asm-spec/pull/12). Logion:
+public `main@55e34fe`. Both sides independently confirmed the same upstream
+pins — AI Catalog `28825483143ce9f3b344ed01dc2771d4adf02d01` and ARD
+`5fa2f5aef790b478319f6a3b43adf4661b0ed0e0` — which match
+`protocol-specs/UPSTREAM.lock.json`.
+
+**Canonical identity and digest rules.** Settled:
+
+1. AI Catalog `identifier` maps to a stable Logion `Resource` through an
+   explicit source mapping.
+2. The referenced artifact's immutable content digest anchors the
+   `ResourceVersion`. AI Catalog `version` and source revision are provenance
+   for that version, not its identity.
+3. ASM `service_id` is a source alias only. It never becomes a second global
+   identity.
+4. ASM `manifest_digest` pins the exact selection descriptor the selector
+   consulted. It must not define the `ResourceVersion`, because pricing, SLA and
+   risk can change while the artifact does not.
+
+The load-bearing consequence, and the one the fixture must prove: **a
+manifest-only change changes the selection-evidence digest and must not create a
+new `ResourceVersion`.**
+
+**Receipt decision.** The upstream `{kind, digest, issuer}` reference does *not*
+belong on the usage receipt. It belongs on a later evidence/AKTP artifact. This
+is no longer a preference — it is a contract fact:
+`SubmitUsageReceiptRequest` is published with `additionalProperties: false` in
+`contracts/openapi/v1.json` and enforced as `extra="forbid"` at
+`packages/api/api/resource_feedback/controllers/submit_usage_receipt.py`, so the
+privacy-minimized observation cannot quietly grow an evidence reference.
+
+**Selection-policy decision.** ASM owns the selection descriptor and the
+Selection Receipt. Logion creates no selection manifest and copies no selection,
+execution, payment or authorization fact into an observation.
+
+**Unsigned boundary.** Selection Receipt v0.1 is intentionally unsigned. Any
+reference must carry a machine-readable `"verification_status": "unsigned"` and
+must not present `selector.name` as a verified issuer.
+
+**AKTP scope.** Deferred. Catalog publication, ARD discovery and the evidence
+feed where the reference is meant to live are all unbuilt, so the fixture is an
+interoperability and design artifact and must not be read as freezing the wire
+format of something unbuilt.
+
+**Ownership matrix.**
+
+| Concern | Owner |
+| --- | --- |
+| Canonical ASM manifest, Selection Receipt, `asm-protocol==0.5.2` validator behaviour | ASM |
+| Shared fixture, offline deterministic checks, current-shape usage observation, non-adoption and unsigned statements | Logion public PR |
+| Backend `Resource`/`ResourceVersion` mapping, fixture seeding, real devrig verification | Logion |
+| Sanitized conformance results, published after both sides pass | Both |
+
+**Open item.** ASM observed that public `main` generates
+`SubmitUsageReceiptRequest` with `extra="allow"` in
+`packages/client/src/logion/v1/_types/generated/v1.py`. Confirmed: the published
+contract and the API both close the boundary; the *generated client* does not
+mirror `additionalProperties: false`. Until that is reconciled, neither side may
+cite the generated client as evidence of the closed boundary — cite the contract
+or the API.
+
+**Outcome.** Not yet decided. This is exploration under the standing rule that
+"remain independent" (outcome 3) is a valid result. Nothing here is adoption,
+partnership, endorsement, or shared governance.
+
 ## Acceptance gates
 
+- Exit condition: the gate is finished when the T1 decision record has a
+  recorded ASM response (accept, decline, or no response after the stated
+  window) and either the T2 fixture proves one subject and one receipt move
+  without lossy translation, or the outreach closes with the overlap matrix
+  filed as the durable artifact and the collaboration explicitly parked.
 - Initial outreach links a shareable plan and makes no adoption claim.
 - A written overlap/ownership matrix exists before Phase 15.12 adds any
   ASM-specific production adapter.

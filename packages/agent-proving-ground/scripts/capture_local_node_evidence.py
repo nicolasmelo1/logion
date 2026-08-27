@@ -19,6 +19,7 @@ agent agreed to.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import subprocess
@@ -40,10 +41,62 @@ COMPOSE = (
 EXPECTED_UIDS = {"consumer": 10001, "auditor": 10002}
 
 
+def _runtime() -> str:
+    return os.environ.get("CONTAINER_RUNTIME", "docker")
+
+
 def _compose(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [*COMPOSE, *args], capture_output=True, text=True, check=check
+    runtime = _runtime()
+    command = [*COMPOSE, *args]
+    command[0] = runtime
+    container_host = (
+        "host.containers.internal"
+        if runtime == "podman"
+        else "host.docker.internal"
     )
+    env = {
+        **os.environ,
+        "LOGION_NODE_IMAGE": os.environ.get(
+            "LOGION_NODE_IMAGE", "logion-local-node-role:latest"
+        ),
+        "LOGION_BASE_URL": os.environ.get(
+            "LOGION_BASE_URL", "http://localhost:8000"
+        ),
+        "LOGION_CONTAINER_BASE_URL": os.environ.get(
+            "LOGION_CONTAINER_BASE_URL", f"http://{container_host}:8000"
+        ),
+        "ROLE_WALL_TIME_SECONDS": os.environ.get(
+            "ROLE_WALL_TIME_SECONDS", "3600"
+        ),
+    }
+    return subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=check,
+        env=env,
+    )
+
+
+def _container_id(role: str) -> str:
+    result = _compose("ps", "-q", role, check=False)
+    return result.stdout.strip()
+
+
+def _inspect(role: str) -> dict:
+    container_id = _container_id(role)
+    if not container_id:
+        return {}
+    result = subprocess.run(
+        [_runtime(), "inspect", container_id],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {}
+    payload = json.loads(result.stdout)
+    return payload[0] if isinstance(payload, list) and payload else {}
 
 
 def _exec(role: str, command: list[str]) -> tuple[int, str]:
@@ -52,111 +105,244 @@ def _exec(role: str, command: list[str]) -> tuple[int, str]:
     return result.returncode, result.stdout.strip()
 
 
+def _role_limits(
+    inspect: dict, role: str
+) -> dict[str, float | int | bool | None]:
+    """Read the runtime's actual cgroup/inspect facts for one role."""
+    host_config = inspect.get("HostConfig", {})
+    config = inspect.get("Config", {})
+    nano_cpus = host_config.get("NanoCpus")
+    command = " ".join(str(item) for item in config.get("Cmd", []))
+    env = config.get("Env", [])
+    wall_time = next(
+        (
+            int(value.split("=", 1)[1])
+            for value in env
+            if value.startswith("ROLE_WALL_TIME_SECONDS=")
+        ),
+        None,
+    )
+    _rc, pids_text = _exec(
+        role,
+        ["sh", "-c", "cat /sys/fs/cgroup/pids.max 2>/dev/null || echo max"],
+    )
+    _rc, mem_text = _exec(
+        role,
+        ["sh", "-c", "cat /sys/fs/cgroup/memory.max 2>/dev/null || echo max"],
+    )
+    timeout_probe_rc, _ = _exec(role, ["timeout", "0.05", "sleep", "1"])
+    return {
+        "cpus": nano_cpus / 1_000_000_000
+        if isinstance(nano_cpus, int) and nano_cpus
+        else None,
+        "memory_bytes": int(mem_text) if mem_text.isdigit() else None,
+        "pids": int(pids_text) if pids_text.isdigit() else None,
+        "wall_time_seconds": wall_time,
+        "wall_time_probe_exit_code": timeout_probe_rc,
+        "wall_time_enforced": bool(
+            wall_time
+            and "timeout --signal=TERM" in command
+            and timeout_probe_rc == 124
+        ),
+    }
+
+
+def _role_identity_facts(role: str) -> tuple[str | None, str | None]:
+    """Identity, agent id, and non-secret credential fingerprint per role."""
+    identity_path = NODE_DIR / "roles" / f"{role}.identity.json"
+    agent_id: str | None = None
+    if identity_path.exists():
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+        agent_id = identity.get("agent_id")
+    key_path = NODE_DIR / "roles" / f"{role}.api_key"
+    fingerprint = (
+        hashlib.sha256(key_path.read_bytes()).hexdigest()[:16]
+        if key_path.exists()
+        else None
+    )
+    return agent_id, fingerprint
+
+
+def _scenario_prompts() -> list[dict[str, str]]:
+    """Retain the exact phase goals agents were given (no secrets)."""
+    scenario_path = (
+        Path(__file__).resolve().parents[1]
+        / "agent_proving_ground"
+        / "scenarios"
+        / "builtin"
+        / "phase_15_14_1_local_multi_agent_node.yaml"
+    )
+    try:
+        import yaml
+
+        scenario = yaml.safe_load(scenario_path.read_text(encoding="utf-8"))
+        return [
+            {
+                "phase_id": phase["id"],
+                "actor": phase["actor"],
+                "goal": phase["goal"],
+            }
+            for phase in scenario.get("phases", [])
+            if phase.get("goal")
+        ]
+    except (OSError, TypeError, ValueError):
+        return []
+
+
+def _role_entry(role: str) -> dict:
+    """Collect one role's runtime identity, limits, and version facts."""
+    rc, uid_text = _exec(role, ["id", "-u"])
+    uid = int(uid_text) if rc == 0 and uid_text.isdigit() else None
+    inspect = _inspect(role)
+    versions = {}
+    for name, cmd in {
+        "logion": ["logion", "--version"],
+        "codex": ["codex", "--version"],
+        "git": ["git", "--version"],
+    }.items():
+        version_rc, version = _exec(role, cmd)
+        versions[name] = version if version_rc == 0 else "unavailable"
+    mounts = [
+        {
+            "type": mount.get("Type"),
+            "name": mount.get("Name"),
+            "destination": mount.get("Destination"),
+            "rw": mount.get("RW"),
+        }
+        for mount in inspect.get("Mounts", [])
+    ]
+    home_rc, _ = _exec(
+        role,
+        [
+            "sh",
+            "-c",
+            "touch /home/agent/.write-probe && rm /home/agent/.write-probe",
+        ],
+    )
+    return {
+        "uid": uid,
+        "home_writable": home_rc == 0,
+        "expected_uid": EXPECTED_UIDS.get(role),
+        "user": _exec(role, ["id", "-un"])[1],
+        "container_id": _container_id(role),
+        "image_id": inspect.get("Image"),
+        "limits": _role_limits(inspect, role),
+        "versions": versions,
+        "mounts": mounts,
+    }
+
+
 def capture_identity_and_limits(roles: list[str], out: Path) -> None:
     entries: dict[str, dict] = {}
+    role_agent_ids: dict[str, str | None] = {}
+    credential_fingerprints: dict[str, str | None] = {}
     for role in roles:
-        rc, uid_text = _exec(role, ["id", "-u"])
-        uid = int(uid_text) if rc == 0 and uid_text.isdigit() else None
-        rc, pids_text = _exec(
-            role,
-            [
-                "sh",
-                "-c",
-                "cat /sys/fs/cgroup/pids.max 2>/dev/null || echo max",
-            ],
+        entries[role] = _role_entry(role)
+        agent_id, fingerprint = _role_identity_facts(role)
+        role_agent_ids[role] = agent_id
+        credential_fingerprints[role] = fingerprint
+    scenario_path = (
+        Path(__file__).resolve().parents[1]
+        / "agent_proving_ground"
+        / "scenarios"
+        / "builtin"
+        / "phase_15_14_1_local_multi_agent_node.yaml"
+    )
+    prompts: list[dict[str, str]] = []
+    try:
+        import yaml
+
+        scenario = yaml.safe_load(scenario_path.read_text(encoding="utf-8"))
+        prompts = [
+            {
+                "phase_id": phase["id"],
+                "actor": phase["actor"],
+                "goal": phase["goal"],
+            }
+            for phase in scenario.get("phases", [])
+            if phase.get("goal")
+        ]
+    except (OSError, TypeError, ValueError):
+        prompts = []
+    compose_bytes = (NODE_DIR / "compose.yaml").read_bytes()
+    dockerfile_bytes = (NODE_DIR / "Dockerfile.role").read_bytes()
+    out.write_text(
+        json.dumps(
+            {
+                "roles": entries,
+                "runtime": _runtime(),
+                "compose_sha256": hashlib.sha256(compose_bytes).hexdigest(),
+                "dockerfile_sha256": hashlib.sha256(
+                    dockerfile_bytes
+                ).hexdigest(),
+                "role_agent_ids": role_agent_ids,
+                "credential_fingerprints": credential_fingerprints,
+                "prompts": prompts,
+            },
+            indent=2,
         )
-        limits: dict[str, float | int | None] = {
-            "cpus": None,
-            "memory_bytes": None,
-            "pids": None,
-        }
-        rc, mem_text = _exec(
-            role,
-            [
-                "sh",
-                "-c",
-                "cat /sys/fs/cgroup/memory.max 2>/dev/null || echo max",
-            ],
-        )
-        if mem_text.isdigit():
-            limits["memory_bytes"] = int(mem_text)
-        if pids_text.isdigit():
-            limits["pids"] = int(pids_text)
-        # The runtime declares CPU/memory limits in compose.yaml; the
-        # hook records what the runtime reports so the assertion
-        # compares two machine facts. Plain `docker inspect`, not
-        # `docker compose inspect` (which does not exist).
-        inspect = subprocess.run(
-            [
-                "docker",
-                "inspect",
-                "--format",
-                "{{json .HostConfig.NanoCpus}}",
-                f"logion-local-node-{role}-1",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if inspect.stdout.strip().isdigit() and inspect.stdout.strip() != "0":
-            limits["cpus"] = int(inspect.stdout.strip()) / 1_000_000_000
-        entries[role] = {
-            "uid": uid,
-            "expected_uid": EXPECTED_UIDS.get(role),
-            "user": _exec(role, ["id", "-un"])[1],
-            "limits": limits,
-        }
-    out.write_text(json.dumps({"roles": entries}, indent=2) + "\n")
+        + "\n"
+    )
 
 
 def capture_canaries(roles: list[str], out: Path) -> None:
     canaries: dict[str, dict] = {}
-    probes = [
-        (
-            "host_home",
-            [
-                "sh",
-                "-c",
-                "cat /host-home/.logion-node-canary "
-                "2>/dev/null || echo UNMOUNTED",
-            ],
-        ),
-        (
-            "docker_socket",
-            [
-                "sh",
-                "-c",
-                "test -S /var/run/docker.sock && echo PRESENT || echo ABSENT",
-            ],
-        ),
-        ("other_role_home", None),  # filled per pair below
-    ]
+    # Seed unique values at the REAL home/spool/workspace locations. A peer
+    # probe greps for the other role's value at its mounted target, so a shared
+    # volume is detected instead of merely checking an invented path.
     for role in roles:
-        for name, command in probes:
-            if command is None:
-                other = [r for r in roles if r != role]
-                readable = False
-                for peer in other:
-                    rc, text = _exec(
-                        role,
-                        [
-                            "sh",
-                            "-c",
-                            f"test -d /peer-{peer}-home "
-                            "&& echo MOUNTED || echo ABSENT",
-                        ],
-                    )
-                    readable = readable or text == "MOUNTED"
-                canaries[f"{role}_sees_{name}"] = {
-                    "readable": readable,
-                    "role": role,
-                }
-                continue
-            rc, text = _exec(role, command)
-            readable = text not in {"UNMOUNTED", "ABSENT", ""} and rc == 0
+        seed_rc, _ = _exec(
+            role,
+            [
+                "sh",
+                "-c",
+                f"printf '%s' '{role}-home-canary' > "
+                "/home/agent/isolation-canary && "
+                f"printf '%s' '{role}-spool-canary' > "
+                "/home/agent/.logion/spool/isolation-canary && "
+                f"printf '%s' '{role}-workspace-canary' > "
+                "/workspace/isolation-canary",
+            ],
+        )
+        if seed_rc != 0:
+            raise SystemExit(f"cannot seed real canary paths for {role}")
+    for role in roles:
+        peer = next(item for item in roles if item != role)
+        commands = {
+            "host_home": "test -d /Users && echo PRESENT || echo ABSENT",
+            "host_keychain": (
+                "test -e /home/agent/Library/Keychains/login.keychain-db "
+                "-o -e /Library/Keychains/System.keychain "
+                "&& echo PRESENT || echo ABSENT"
+            ),
+            "docker_socket": (
+                "test -S /var/run/docker.sock && echo PRESENT || echo ABSENT"
+            ),
+            "peer_home": (
+                f"grep -q '{peer}-home-canary' /home/agent/isolation-canary "
+                "2>/dev/null && echo PRESENT || echo ABSENT"
+            ),
+            "peer_credential": (
+                f"test -r /run/secrets/{peer}_api_key "
+                "&& echo PRESENT || echo ABSENT"
+            ),
+            "peer_spool": (
+                f"grep -q '{peer}-spool-canary' "
+                "/home/agent/.logion/spool/isolation-canary "
+                "2>/dev/null && echo PRESENT || echo ABSENT"
+            ),
+            "peer_workspace": (
+                f"grep -q '{peer}-workspace-canary' "
+                "/workspace/isolation-canary "
+                "2>/dev/null && echo PRESENT || echo ABSENT"
+            ),
+        }
+        for name, command in commands.items():
+            rc, text = _exec(role, ["sh", "-c", command])
             canaries[f"{role}_sees_{name}"] = {
-                "readable": readable,
+                "readable": rc == 0 and text == "PRESENT",
                 "role": role,
+                "peer": peer if name.startswith("peer_") else None,
             }
     out.write_text(json.dumps({"canaries": canaries}, indent=2) + "\n")
 
@@ -303,7 +489,7 @@ def _probe_http(role: str, attempts: int = 10) -> str:
     for _ in range(attempts):
         state = subprocess.run(
             [
-                "docker",
+                _runtime(),
                 "inspect",
                 "--format",
                 "{{.State.Running}}",
@@ -327,7 +513,7 @@ def _probe_http(role: str, attempts: int = 10) -> str:
                 '-H "Authorization: Bearer $(cat /run/secrets/'
                 + role
                 + '_api_key 2>/dev/null)" '
-                "'http://host.docker.internal:8000/v1/notifications'",
+                '"$LOGION_BASE_URL/v1/notifications"',
             ],
         )
         if rc == 0 and code in {"200", "401", "403"}:
@@ -337,15 +523,11 @@ def _probe_http(role: str, attempts: int = 10) -> str:
 
 
 def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
-    """Run the selective consumer reset, then capture post-state.
-
-    The reset is an operator action (`make node-dev-reset
-    ROLE=consumer YES=1`): it stops the consumer container, removes
-    only the consumer's disposable volumes, and retires its local key
-    copy. This hook executes it and then probes both roles so the
-    assertion compares machine facts, not intentions.
-    """
+    """Use the delivered reset command, then prove revocation and isolation."""
     repo_root = NODE_DIR.parent.parent
+    old_key_path = NODE_DIR / "roles" / "consumer.api_key"
+    old_key = old_key_path.read_text(encoding="utf-8").strip()
+    old_fingerprint = hashlib.sha256(old_key.encode()).hexdigest()[:16]
     reset = subprocess.run(
         ["make", "node-dev-reset", "ROLE=consumer", "YES=1"],
         capture_output=True,
@@ -353,72 +535,41 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
         cwd=repo_root,
         check=False,
     )
-    # Server-side revocation: rotate the consumer agent's api key.
-    # The old mounted key dies at the server; the container still runs
-    # with the old credential, so the rejection probe measures a real
-    # revocation, not a missing file.
-    ident_path = NODE_DIR / "roles" / "consumer.identity.json"
-    ident = json.loads(ident_path.read_text(encoding="utf-8"))
-    rot = requests.post(
-        f"http://localhost:8000/v1/identity/users/{ident['user_id']}"
-        f"/agents/{ident['agent_id']}/api-keys",
-        json={"user_password": ident["user_password"]},
+    req = requests.get(
+        os.environ.get("LOGION_BASE_URL", "http://localhost:8000").rstrip("/")
+        + "/v1/notifications",
+        headers={"Authorization": f"Bearer {old_key}"},
         timeout=30,
     )
-    rot.raise_for_status()
-    new_key = rot.json().get("api_key", "")
-
-    # node-dev-up refuses to start a role whose key file is missing,
-    # and the reset just retired it. Restore the RETIRED key so the
-    # recreated consumer mounts the very credential the rotation just
-    # killed: the rejection probe then measures a server-side
-    # revocation of a mounted key, not an unreachable container.
-    retired = sorted(NODE_DIR.glob("roles/consumer.api_key.revoked.*"))
-    if retired:
-        key_file = NODE_DIR / "roles" / "consumer.api_key"
-        key_file.write_text(retired[-1].read_text(encoding="utf-8"))
-        os.chmod(key_file, 0o600)
-    subprocess.run(
+    consumer_key_rejected = req.status_code in {401, 403}
+    up = subprocess.run(
         ["make", "node-dev-up", "ROLES=consumer,auditor"],
         capture_output=True,
         text=True,
         cwd=repo_root,
         check=False,
     )
-
-    # Consumer: fresh volume, xpto gone. The probe must SUCCEED and
-    # report the expected state: an unreachable container proves
-    # nothing about the reset.
     rc, text = _exec(
         "consumer",
         ["sh", "-c", "test -d /workspace/xpto && echo present || echo gone"],
     )
     consumer_state_removed = rc == 0 and text == "gone"
-
-    # Consumer: the mounted (rotated-away) key must be rejected by the
-    # server. Strict 401/403: an unreachable container or a network
-    # error is not evidence of revocation.
-    code = _probe_http("consumer")
-    consumer_key_rejected = code in {"401", "403"}
-
-    # Auditor: untouched state and a still-valid key.
     rc, text = _exec(
         "auditor",
         ["sh", "-c", "test -d /workspace/abc && echo present || echo gone"],
     )
-    auditor_state_preserved = text == "present"
+    auditor_state_preserved = rc == 0 and text == "present"
+    consumer_new_key_accepted = _probe_http("consumer") == "200"
     auditor_key_accepted = _probe_http("auditor") == "200"
-    if new_key:
-        key_file = NODE_DIR / "roles" / "consumer.api_key"
-        key_file.write_text(new_key, encoding="utf-8")
-        os.chmod(key_file, 0o600)
-    # The credentials assertion reads the post-reset facts from the
-    # credentials manifest; merge this pass's machine facts into it.
     if cred_path is not None and Path(cred_path).exists():
         cred = json.loads(cred_path.read_text(encoding="utf-8"))
         credentials = cred.get("credentials", {})
-        cons = credentials.get("consumer", {})
-        cons["revoked_key_rejected"] = consumer_key_rejected
+        credentials.setdefault("consumer", {})["revoked_key_rejected"] = (
+            consumer_key_rejected
+        )
+        credentials["consumer"]["new_key_works_after_reset"] = (
+            consumer_new_key_accepted
+        )
         credentials.setdefault("auditor", {})["key_works_after_reset"] = (
             auditor_key_accepted
         )
@@ -430,10 +581,13 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
                 "selective_reset": {
                     "consumer_state_removed": consumer_state_removed,
                     "consumer_key_rejected": consumer_key_rejected,
+                    "consumer_new_key_accepted": consumer_new_key_accepted,
                     "auditor_state_preserved": auditor_state_preserved,
                     "auditor_key_accepted": auditor_key_accepted,
+                    "old_credential_fingerprint": old_fingerprint,
                     "reset_exit_code": reset.returncode,
-                },
+                    "up_exit_code": up.returncode,
+                }
             },
             indent=2,
         )
@@ -441,92 +595,46 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
     )
 
 
-def provision_credentials(out: Path) -> None:  # noqa: ARG001
-    """Provision a disposable server-side consumer agent per run.
-
-    The consumer's mounted credential must be a real, server-issued
-    key so the selective reset can revoke it for truth (rotation
-    invalidates the old key at the server, which is what makes the
-    rejection probe a fact rather than a wish). Identity ids are
-    persisted next to the key file so the reset hook can rotate
-    without any lookup-by-key API (none exists).
-    """
-    import secrets as _secrets
-
-    api = "http://localhost:8000"
-    pass_phrase = "node-" + _secrets.token_urlsafe(12)
-    email = f"consumer-node-{_secrets.token_hex(4)}@nodetest.dev"
-    resp = requests.post(
-        f"{api}/v1/identity/users",
-        json={
-            "email": email,
-            "user_password": pass_phrase,
-            "agent_name": "consumer-node",
-            "agent_description": "Disposable consumer role of the local node",
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    body = resp.json()
-    roles_dir = NODE_DIR / "roles"
-    (roles_dir / "consumer.api_key").write_text(
-        body["api_key"], encoding="utf-8"
-    )
-    os.chmod(roles_dir / "consumer.api_key", 0o600)
-    (roles_dir / "consumer.identity.json").write_text(
-        json.dumps(
-            {
-                "email": email,
-                "user_password": pass_phrase,
-                "user_id": body["user"]["id"],
-                "agent_id": body["agent"]["id"],
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    os.chmod(roles_dir / "consumer.identity.json", 0o600)
-    # Recreate the consumer so its secret mount carries the fresh key.
-    repo_root = NODE_DIR.parent.parent
-    subprocess.run(
-        ["make", "node-dev-up", "ROLES=consumer,auditor"],
-        capture_output=True,
-        text=True,
-        cwd=repo_root,
-        check=False,
-    )
-    sys.stdout.write(
-        json.dumps({"provisioned": True, "agent_id": body["agent"]["id"]})
-        + "\n"
-    )
+def provision_credentials(out: Path) -> None:
+    """Verify node-up provisioned distinct, server-issued role identities."""
+    identities: dict[str, dict] = {}
+    for role in ("consumer", "auditor"):
+        identity_path = NODE_DIR / "roles" / f"{role}.identity.json"
+        key_path = NODE_DIR / "roles" / f"{role}.api_key"
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+        identities[role] = {
+            "agent_id": identity.get("agent_id"),
+            "user_id": identity.get("user_id"),
+            "credential_fingerprint": hashlib.sha256(
+                key_path.read_bytes()
+            ).hexdigest()[:16],
+        }
+    if identities["consumer"]["agent_id"] == identities["auditor"]["agent_id"]:
+        raise SystemExit("role identities are not distinct")
+    out.write_text(json.dumps({"identities": identities}, indent=2) + "\n")
+    sys.stdout.write(json.dumps({"provisioned": sorted(identities)}) + "\n")
 
 
 def capture_credentials(out: Path) -> None:
-    """Per-role identity + key liveness for the credentials assertion."""
+    """Per-role identity, non-secret fingerprint, and live key status."""
     credentials: dict[str, dict] = {}
     for role in ("consumer", "auditor"):
-        rc, agent_id = _exec(
-            role,
-            [
-                "sh",
-                "-c",
-                'curl -s -H "Authorization: Bearer '
-                "$(cat /run/secrets/" + role + '_api_key 2>/dev/null)" '
-                "http://host.docker.internal:8000/v1/notifications"
-                " | head -c 200",
-            ],
-        )
-        key_works = rc == 0 and '"items"' in agent_id
+        identity_path = NODE_DIR / "roles" / f"{role}.identity.json"
+        key_path = NODE_DIR / "roles" / f"{role}.api_key"
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+        key_works = _probe_http(role) == "200"
         credentials[role] = {
-            "agent_id": f"live:{role}" if key_works else None,
+            "agent_id": identity.get("agent_id"),
+            "credential_fingerprint": hashlib.sha256(
+                key_path.read_bytes()
+            ).hexdigest()[:16],
             "key_works_before_reset": key_works,
         }
     out.write_text(json.dumps({"credentials": credentials}, indent=2) + "\n")
 
 
 def capture_restart(out: Path) -> None:
-    """Read per-role state markers before/after and cross-role probes."""
+    """Mechanically stop/start the node between marker snapshots."""
 
     def markers() -> dict[str, str]:
         result: dict[str, str] = {}
@@ -536,40 +644,112 @@ def capture_restart(out: Path) -> None:
                 [
                     "sh",
                     "-c",
-                    'cat "$LOGION_HOME/node-state-marker" '
-                    "2>/dev/null || echo missing",
+                    'cat "$LOGION_HOME/node-state-marker" 2>/dev/null',
                 ],
             )
-            result[role] = text if rc == 0 else f"unreachable:{role}"
+            result[role] = text if rc == 0 and text else f"unreachable:{role}"
         return result
 
+    repo_root = NODE_DIR.parent.parent
     before = markers()
-    cross_visible = False
+    before_ids = {
+        role: _container_id(role) for role in ("consumer", "auditor")
+    }
+    down = subprocess.run(
+        ["make", "node-dev-down"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    up = subprocess.run(
+        ["make", "node-dev-up", "ROLES=consumer,auditor"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    after_ids = {role: _container_id(role) for role in ("consumer", "auditor")}
+    after = markers()
     _rc, text = _exec(
         "auditor",
         [
             "sh",
             "-c",
-            'test -f "$LOGION_HOME/node-state-marker" && '
             'grep -q consumer "$LOGION_HOME/node-state-marker" '
             "2>/dev/null && echo yes || echo no",
         ],
     )
-    # The auditor can only read its own marker; a consumer marker showing
-    # up there would mean volumes leaked.
-    cross_visible = text == "yes"
-    after = markers()
+    restart = {
+        "performed": down.returncode == 0 and up.returncode == 0,
+        "down_exit_code": down.returncode,
+        "up_exit_code": up.returncode,
+        "container_ids_before": before_ids,
+        "container_ids_after": after_ids,
+        "container_ids_changed": all(
+            before_ids[role]
+            and after_ids[role]
+            and before_ids[role] != after_ids[role]
+            for role in ("consumer", "auditor")
+        ),
+    }
     out.write_text(
         json.dumps(
             {
                 "before_restart": before,
                 "after_restart": after,
-                "cross_role_visible": cross_visible,
+                "marker_sha256": {
+                    "before": {
+                        role: hashlib.sha256(value.encode()).hexdigest()
+                        for role, value in before.items()
+                    },
+                    "after": {
+                        role: hashlib.sha256(value.encode()).hexdigest()
+                        for role, value in after.items()
+                    },
+                },
+                "cross_role_visible": text == "yes",
+                "restart": restart,
             },
             indent=2,
         )
         + "\n"
     )
+
+
+def capture_harness_use(out: Path) -> None:
+    """Run Codex in each role and require a Logion-produced artifact."""
+    results: dict[str, dict] = {}
+    for role in ("consumer", "auditor"):
+        proof = "/workspace/task/harness-proof.txt"
+        _exec(role, ["rm", "-f", proof])
+        prompt = (
+            "Use the shell exactly once to run: logion --version > "
+            f"{proof} && printf '\nLOGION_HARNESS_OK {role}\n' >> {proof}. "
+            "Then report completion without changing any other file."
+        )
+        process = _compose(
+            "exec",
+            "-T",
+            role,
+            "codex-role",
+            "exec",
+            "--skip-git-repo-check",
+            "--dangerously-bypass-approvals-and-sandbox",
+            "--model",
+            "gpt-5.4-mini",
+            prompt,
+            check=False,
+        )
+        rc, proof_text = _exec(role, ["sh", "-c", f"cat {proof} 2>/dev/null"])
+        results[role] = {
+            "process_exit_code": process.returncode,
+            "proof_read_exit_code": rc,
+            "proof": proof_text,
+            "prompt": prompt,
+            "codex_version": _exec(role, ["codex", "--version"])[1],
+        }
+    out.write_text(json.dumps({"harness_runs": results}, indent=2) + "\n")
 
 
 def main() -> int:
@@ -590,6 +770,8 @@ def main() -> int:
         capture_credentials(out)
     elif capture == "restart":
         capture_restart(out)
+    elif capture == "harness_use":
+        capture_harness_use(out)
     elif capture == "selective_reset":
         cred = Path(sys.argv[3]) if len(sys.argv) > 3 else None
         capture_selective_reset(out, cred)
