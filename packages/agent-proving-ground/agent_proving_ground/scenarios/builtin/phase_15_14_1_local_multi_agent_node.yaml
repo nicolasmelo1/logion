@@ -117,6 +117,10 @@ phases:
       - "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
     local_hook_capture_json:
       SCOPE_MANIFEST: evidence_manifest
+    assertions:
+      - type: files.install_scoped_to_repository
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
     goal: ""
 
   - id: write_restart_markers
@@ -173,6 +177,16 @@ phases:
       - type: api.state_survives_restart
         params:
           manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/restart.json"
+
+  - id: provision_credentials
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - provision_credentials
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/provision.json"
+    local_hook_capture_json:
+      PROVISION_MANIFEST: evidence_manifest
+    goal: ""
 
   - id: capture_credentials
     actor: consumer

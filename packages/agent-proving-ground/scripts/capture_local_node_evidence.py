@@ -20,9 +20,13 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+import requests
 
 NODE_DIR = Path(__file__).resolve().parents[3] / "deploy" / "local-node"
 COMPOSE = (
@@ -275,7 +279,8 @@ def seed_node_workspaces(out: Path) -> None:  # noqa: ARG001
             [
                 "sh",
                 "-c",
-                "test -f /workspace/fixtures/fixture-skill/SKILL.md && echo ok "
+                "test -f /workspace/fixtures/fixture-skill/SKILL.md "
+                "&& echo ok || echo missing",
                 "|| echo missing",
             ],
         )
@@ -284,6 +289,51 @@ def seed_node_workspaces(out: Path) -> None:  # noqa: ARG001
                 f"fixture seed failed in {role}: SKILL.md missing"
             )
     sys.stdout.write(json.dumps({"seeded": ["consumer", "auditor"]}) + "\n")
+
+
+def _probe_http(role: str, attempts: int = 10) -> str:
+    """Probe the API from inside a role, retrying until stable.
+
+    A single-shot curl right after `node-dev-up` races the container
+    start and the network attach; a probe that would flake is not
+    evidence. Retries read the same fact until it is stable.
+    """
+    # The re-up may have recreated the role's container; wait for the
+    # container to actually be running before the first probe.
+    for _ in range(attempts):
+        state = subprocess.run(
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{.State.Running}}",
+                f"logion-local-node-{role}-1",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if state.stdout.strip() == "true":
+            break
+        time.sleep(1)
+    code = "000"
+    for _ in range(attempts):
+        rc, code = _exec(
+            role,
+            [
+                "sh",
+                "-c",
+                'curl -s -o /dev/null -w "%{http_code}" '
+                '-H "Authorization: Bearer $(cat /run/secrets/'
+                + role
+                + '_api_key 2>/dev/null)" '
+                "'http://host.docker.internal:8000/v1/notifications'",
+            ],
+        )
+        if rc == 0 and code in {"200", "401", "403"}:
+            return code
+        time.sleep(2)
+    return code
 
 
 def capture_selective_reset(out: Path) -> None:
@@ -303,15 +353,24 @@ def capture_selective_reset(out: Path) -> None:
         cwd=repo_root,
         check=False,
     )
-    # The reset retires the consumer's key file and removes its
-    # volumes; the consumer container no longer exists, which is the
-    # expected post-state. The retired key file is the now-revoked
-    # secret: restore it so the stack can remount it and the rejection
-    # probe proves the server side really revoked it.
-    retired = sorted(NODE_DIR.glob("roles/consumer.api_key.revoked.*"))
-    key_file = NODE_DIR / "roles" / "consumer.api_key"
-    if not key_file.exists() and retired:
-        key_file.write_text(retired[-1].read_text(encoding="utf-8"))
+    # Server-side revocation: rotate the consumer agent's api key.
+    # The old mounted key dies at the server; the container still runs
+    # with the old credential, so the rejection probe measures a real
+    # revocation, not a missing file.
+    ident_path = NODE_DIR / "roles" / "consumer.identity.json"
+    ident = json.loads(ident_path.read_text(encoding="utf-8"))
+    rot = requests.post(
+        f"http://localhost:8000/v1/identity/users/{ident['user_id']}"
+        f"/agents/{ident['agent_id']}/api-keys",
+        json={"user_password": ident["user_password"]},
+        timeout=30,
+    )
+    rot.raise_for_status()
+    new_key = rot.json().get("api_key", "")
+
+    # Restart the consumer on fresh volumes with the STILL-MOUNTED old
+    # key gone: bring the consumer back up only after the probe, so the
+    # probe measures the mounted revoked key against the server.
     subprocess.run(
         ["make", "node-dev-up", "ROLES=consumer,auditor"],
         capture_output=True,
@@ -329,18 +388,7 @@ def capture_selective_reset(out: Path) -> None:
 
     # Consumer: its key must be rejected by the API. The key file was
     # retired by the reset, so the secret mount is empty/absent.
-    rc, code = _exec(
-        "consumer",
-        [
-            "sh",
-            "-c",
-            'curl -s -o /dev/null -w "%{http_code}" '
-            '-H "Authorization: Bearer $(cat /run/secrets/consumer_api_key '
-            '2>/dev/null)" '
-            'http://host.docker.internal:8000/v1/notifications"',
-        ],
-    )
-    consumer_key_rejected = code not in {"200"}
+    consumer_key_rejected = _probe_http("consumer") != "200"
 
     # Auditor: untouched state and a still-valid key.
     rc, text = _exec(
@@ -348,18 +396,11 @@ def capture_selective_reset(out: Path) -> None:
         ["sh", "-c", "test -d /workspace/abc && echo present || echo gone"],
     )
     auditor_state_preserved = text == "present"
-    rc, code = _exec(
-        "auditor",
-        [
-            "sh",
-            "-c",
-            'curl -s -o /dev/null -w "%{http_code}" '
-            '-H "Authorization: Bearer $(cat /run/secrets/auditor_api_key '
-            '2>/dev/null)" '
-            'http://host.docker.internal:8000/v1/notifications"',
-        ],
-    )
-    auditor_key_accepted = code == "200"
+    auditor_key_accepted = _probe_http("auditor") == "200"
+    if new_key:
+        key_file = NODE_DIR / "roles" / "consumer.api_key"
+        key_file.write_text(new_key, encoding="utf-8")
+        os.chmod(key_file, 0o600)
     out.write_text(
         json.dumps(
             {
@@ -373,6 +414,67 @@ def capture_selective_reset(out: Path) -> None:
             },
             indent=2,
         )
+        + "\n"
+    )
+
+
+def provision_credentials(out: Path) -> None:  # noqa: ARG001
+    """Provision a disposable server-side consumer agent per run.
+
+    The consumer's mounted credential must be a real, server-issued
+    key so the selective reset can revoke it for truth (rotation
+    invalidates the old key at the server, which is what makes the
+    rejection probe a fact rather than a wish). Identity ids are
+    persisted next to the key file so the reset hook can rotate
+    without any lookup-by-key API (none exists).
+    """
+    import secrets as _secrets
+
+    api = "http://localhost:8000"
+    password = "node-" + _secrets.token_urlsafe(12)
+    email = f"consumer-node-{_secrets.token_hex(4)}@nodetest.dev"
+    resp = requests.post(
+        f"{api}/v1/identity/users",
+        json={
+            "email": email,
+            "user_password": password,
+            "agent_name": "consumer-node",
+            "agent_description": "Disposable consumer role of the local node",
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    body = resp.json()
+    roles_dir = NODE_DIR / "roles"
+    (roles_dir / "consumer.api_key").write_text(
+        body["api_key"], encoding="utf-8"
+    )
+    os.chmod(roles_dir / "consumer.api_key", 0o600)
+    (roles_dir / "consumer.identity.json").write_text(
+        json.dumps(
+            {
+                "email": email,
+                "user_password": password,
+                "user_id": body["user"]["id"],
+                "agent_id": body["agent"]["id"],
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(roles_dir / "consumer.identity.json", 0o600)
+    # Recreate the consumer so its secret mount carries the fresh key.
+    repo_root = NODE_DIR.parent.parent
+    subprocess.run(
+        ["make", "node-dev-up", "ROLES=consumer,auditor"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        check=False,
+    )
+    sys.stdout.write(
+        json.dumps({"provisioned": True, "agent_id": body["agent"]["id"]})
         + "\n"
     )
 
@@ -459,6 +561,8 @@ def main() -> int:
         capture_repository_scope(out)
     elif capture == "seed_node_workspaces":
         seed_node_workspaces(out)
+    elif capture == "provision_credentials":
+        provision_credentials(out)
     elif capture == "credentials":
         capture_credentials(out)
     elif capture == "restart":

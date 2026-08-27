@@ -256,3 +256,6 @@ deploy/local-node/.env
 deploy/local-node/roles/*.api_key
 deploy/local-node/roles/*.api_key.revoked.*
 deploy/local-node/dist-wheels/
+
+# Local node role credentials and identity files
+deploy/local-node/roles/*.identity.json
