@@ -336,7 +336,7 @@ def _probe_http(role: str, attempts: int = 10) -> str:
     return code
 
 
-def capture_selective_reset(out: Path) -> None:
+def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
     """Run the selective consumer reset, then capture post-state.
 
     The reset is an operator action (`make node-dev-reset
@@ -401,6 +401,16 @@ def capture_selective_reset(out: Path) -> None:
         key_file = NODE_DIR / "roles" / "consumer.api_key"
         key_file.write_text(new_key, encoding="utf-8")
         os.chmod(key_file, 0o600)
+    # The credentials assertion reads the post-reset facts from the
+    # credentials manifest; merge this pass's machine facts into it.
+    if cred_path is not None and Path(cred_path).exists():
+        cred = json.loads(cred_path.read_text(encoding="utf-8"))
+        cons = cred.get("credentials", {}).get("consumer", {})
+        cons["revoked_key_rejected"] = consumer_key_rejected
+        cred.setdefault("auditor", {})["key_works_after_reset"] = (
+            auditor_key_accepted
+        )
+        cred_path.write_text(json.dumps(cred, indent=2) + "\n")
     out.write_text(
         json.dumps(
             {
@@ -568,7 +578,8 @@ def main() -> int:
     elif capture == "restart":
         capture_restart(out)
     elif capture == "selective_reset":
-        capture_selective_reset(out)
+        cred = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+        capture_selective_reset(out, cred)
     else:
         raise SystemExit(f"unknown capture: {capture}")
     sys.stdout.write(json.dumps({"evidence_manifest": str(out)}) + "\n")

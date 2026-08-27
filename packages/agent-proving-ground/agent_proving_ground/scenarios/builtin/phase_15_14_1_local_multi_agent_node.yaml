@@ -203,6 +203,7 @@ phases:
     local_hook_args:
       - selective_reset
       - "${AGENT_CONSUMER_WORKSPACE}/evidence/reset.json"
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/credentials.json"
     local_hook_capture_json:
       RESET_MANIFEST: evidence_manifest
     goal: |
