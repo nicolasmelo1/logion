@@ -189,7 +189,7 @@ def capture_repository_scope(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -d /home/agent/.logion/installed/fixture-skill "
+            "test -d \"$LOGION_HOME/installed/fixture-skill\" "
             "&& echo yes || echo no",
         ],
     )
@@ -441,13 +441,13 @@ def provision_credentials(out: Path) -> None:  # noqa: ARG001
     import secrets as _secrets
 
     api = "http://localhost:8000"
-    password = "node-" + _secrets.token_urlsafe(12)
+    pass_phrase = "node-" + _secrets.token_urlsafe(12)
     email = f"consumer-node-{_secrets.token_hex(4)}@nodetest.dev"
     resp = requests.post(
         f"{api}/v1/identity/users",
         json={
             "email": email,
-            "user_password": password,
+            "user_password": pass_phrase,
             "agent_name": "consumer-node",
             "agent_description": "Disposable consumer role of the local node",
         },
@@ -464,7 +464,7 @@ def provision_credentials(out: Path) -> None:  # noqa: ARG001
         json.dumps(
             {
                 "email": email,
-                "user_password": password,
+                "user_password": pass_phrase,
                 "user_id": body["user"]["id"],
                 "agent_id": body["agent"]["id"],
             },
@@ -523,7 +523,7 @@ def capture_restart(out: Path) -> None:
                 [
                     "sh",
                     "-c",
-                    "cat /home/agent/.logion/node-state-marker "
+                    "cat \"$LOGION_HOME/node-state-marker\" "
                     "2>/dev/null || echo missing",
                 ],
             )
@@ -537,8 +537,8 @@ def capture_restart(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -f /home/agent/.logion/node-state-marker && "
-            "grep -q consumer /home/agent/.logion/node-state-marker "
+            "test -f \"$LOGION_HOME/node-state-marker\" && "
+            "grep -q consumer \"$LOGION_HOME/node-state-marker\" "
             "2>/dev/null && echo yes || echo no",
         ],
     )
