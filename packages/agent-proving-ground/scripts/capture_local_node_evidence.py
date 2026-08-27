@@ -169,7 +169,7 @@ def capture_repository_scope(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -d /workspace/xpto/.logion-skills/fixture-skill "
+            "test -d /workspace/xpto/.logion-home/installed/fixture-skill "
             "&& echo yes || echo no",
         ],
     )
@@ -179,7 +179,7 @@ def capture_repository_scope(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -d /workspace/abc/.logion-skills/fixture-skill "
+            "test -d /workspace/abc/.logion-home/installed/fixture-skill "
             "&& echo yes || echo no",
         ],
     )
@@ -199,7 +199,7 @@ def capture_repository_scope(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -d /workspace/xpto/.logion-skills/fixture-skill "
+            "test -d /workspace/xpto/.logion-home/installed/fixture-skill "
             "&& echo yes || echo no",
         ],
     )
