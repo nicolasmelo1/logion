@@ -189,7 +189,7 @@ def capture_repository_scope(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -d \"$LOGION_HOME/installed/fixture-skill\" "
+            'test -d "$LOGION_HOME/installed/fixture-skill" '
             "&& echo yes || echo no",
         ],
     )
@@ -523,7 +523,7 @@ def capture_restart(out: Path) -> None:
                 [
                     "sh",
                     "-c",
-                    "cat \"$LOGION_HOME/node-state-marker\" "
+                    'cat "$LOGION_HOME/node-state-marker" '
                     "2>/dev/null || echo missing",
                 ],
             )
@@ -537,8 +537,8 @@ def capture_restart(out: Path) -> None:
         [
             "sh",
             "-c",
-            "test -f \"$LOGION_HOME/node-state-marker\" && "
-            "grep -q consumer \"$LOGION_HOME/node-state-marker\" "
+            'test -f "$LOGION_HOME/node-state-marker" && '
+            'grep -q consumer "$LOGION_HOME/node-state-marker" '
             "2>/dev/null && echo yes || echo no",
         ],
     )
