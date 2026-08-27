@@ -368,7 +368,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": "/Users/nicolasmelo/workspaces/personal/logion-workspace/.devrig/api.log"
+        "log_path": "<repo>/api.log"
       }
     },
     {

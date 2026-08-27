@@ -48,8 +48,8 @@ sanitized mounts, credential status, and cleanup commands.
 ## Driving a role
 
 ```bash
-make node-agent ROLE=consumer -- id            # proves non-root UID
-make node-agent ROLE=auditor  -- id
+make node-agent ROLE=consumer ARGS='id'            # proves non-root UID
+make node-agent ROLE=auditor ARGS='id'
 make node-status
 ```
 

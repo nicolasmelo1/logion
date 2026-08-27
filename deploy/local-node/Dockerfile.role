@@ -32,7 +32,7 @@ RUN apt-get update \
 # lean one.
 COPY dist-wheels/ /opt/logion-wheels/
 RUN pip install --no-cache-dir /opt/logion-wheels/*.whl \
-  && pip install --no-cache-dir logion-marketplace-companion || true
+  && pip install --no-cache-dir logion-marketplace-companion
 
 # Non-root role user. The container's `user:` directive overrides the
 # UID per role (consumer 10001, auditor 10002) so each role's files on

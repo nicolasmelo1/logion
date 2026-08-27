@@ -30,6 +30,14 @@ node_compose() {
 
 node_build_image() {
   load_node_env
+  # The role image copies pre-built wheels from dist-wheels/. Stage
+  # them here so a fresh checkout can build the image without a
+  # manual pre-step; they are build output, cleaned by node_down.
+  if ! ls "${NODE_DIR}"/dist-wheels/*.whl >/dev/null 2>&1; then
+    mkdir -p "${NODE_DIR}/dist-wheels"
+    (cd "$(dirname "${NODE_DIR}")/.." \
+      && uv build --all-packages --wheel --out-dir "${NODE_DIR}/dist-wheels")
+  fi
   docker build \
     --platform linux/arm64 \
     -f "${NODE_DIR}/Dockerfile.role" \

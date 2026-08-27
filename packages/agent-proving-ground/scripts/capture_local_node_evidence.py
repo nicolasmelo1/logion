@@ -368,9 +368,16 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
     rot.raise_for_status()
     new_key = rot.json().get("api_key", "")
 
-    # Restart the consumer on fresh volumes with the STILL-MOUNTED old
-    # key gone: bring the consumer back up only after the probe, so the
-    # probe measures the mounted revoked key against the server.
+    # node-dev-up refuses to start a role whose key file is missing,
+    # and the reset just retired it. Restore the RETIRED key so the
+    # recreated consumer mounts the very credential the rotation just
+    # killed: the rejection probe then measures a server-side
+    # revocation of a mounted key, not an unreachable container.
+    retired = sorted(NODE_DIR.glob("roles/consumer.api_key.revoked.*"))
+    if retired:
+        key_file = NODE_DIR / "roles" / "consumer.api_key"
+        key_file.write_text(retired[-1].read_text(encoding="utf-8"))
+        os.chmod(key_file, 0o600)
     subprocess.run(
         ["make", "node-dev-up", "ROLES=consumer,auditor"],
         capture_output=True,
@@ -379,16 +386,20 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
         check=False,
     )
 
-    # Consumer: fresh volume, xpto gone.
+    # Consumer: fresh volume, xpto gone. The probe must SUCCEED and
+    # report the expected state: an unreachable container proves
+    # nothing about the reset.
     rc, text = _exec(
         "consumer",
         ["sh", "-c", "test -d /workspace/xpto && echo present || echo gone"],
     )
-    consumer_state_removed = text == "gone" or rc != 0
+    consumer_state_removed = rc == 0 and text == "gone"
 
-    # Consumer: its key must be rejected by the API. The key file was
-    # retired by the reset, so the secret mount is empty/absent.
-    consumer_key_rejected = _probe_http("consumer") != "200"
+    # Consumer: the mounted (rotated-away) key must be rejected by the
+    # server. Strict 401/403: an unreachable container or a network
+    # error is not evidence of revocation.
+    code = _probe_http("consumer")
+    consumer_key_rejected = code in {"401", "403"}
 
     # Auditor: untouched state and a still-valid key.
     rc, text = _exec(
@@ -405,11 +416,13 @@ def capture_selective_reset(out: Path, cred_path: Path | None = None) -> None:
     # credentials manifest; merge this pass's machine facts into it.
     if cred_path is not None and Path(cred_path).exists():
         cred = json.loads(cred_path.read_text(encoding="utf-8"))
-        cons = cred.get("credentials", {}).get("consumer", {})
+        credentials = cred.get("credentials", {})
+        cons = credentials.get("consumer", {})
         cons["revoked_key_rejected"] = consumer_key_rejected
-        cred.setdefault("auditor", {})["key_works_after_reset"] = (
+        credentials.setdefault("auditor", {})["key_works_after_reset"] = (
             auditor_key_accepted
         )
+        cred["credentials"] = credentials
         cred_path.write_text(json.dumps(cred, indent=2) + "\n")
     out.write_text(
         json.dumps(

@@ -342,7 +342,7 @@ node-status:
 	bash $(NODE_DIR)/node.sh status
 
 node-agent:
-	@test -n "$(ROLE)" || { echo "usage: make node-agent ROLE=consumer -- <command>" >&2; exit 2; }
+	@test -n "$(ROLE)" || { echo "usage: make node-agent ROLE=consumer ARGS='id'" >&2; exit 2; }
 	@test -n "$(ARGS)" || { echo "usage: make node-agent ROLE=consumer ARGS='id'" >&2; exit 2; }
 	bash $(NODE_DIR)/node.sh agent $(ROLE) $(ARGS)
 

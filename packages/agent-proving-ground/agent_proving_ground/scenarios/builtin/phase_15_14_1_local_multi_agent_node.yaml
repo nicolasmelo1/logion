@@ -131,7 +131,7 @@ phases:
       node). Write a one-line state marker that names your role into
       the role's LOGION_HOME state directory:
 
-        sh -c 'echo "consumer-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker''
+        sh -c 'echo "consumer-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker"'
 
       Read it back with `cat` inside the container and confirm it
       exists. Do not write outside your own state home.
@@ -144,7 +144,7 @@ phases:
       exec into the auditor only; do not start or stop the node).
       Write its state marker:
 
-        sh -c 'echo "auditor-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker''
+        sh -c 'echo "auditor-marker-$(date +%s)" > "$LOGION_HOME/node-state-marker"'
 
       Read it back and confirm it exists. Then attempt to read the
       consumer role's marker from inside the auditor (it must fail:
