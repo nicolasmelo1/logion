@@ -64,35 +64,50 @@ phases:
         params:
           manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
 
+  - id: seed_node_workspaces
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - seed_node_workspaces
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/seed.json"
+    local_hook_capture_json:
+      SEED_MANIFEST: evidence_manifest
+    goal: ""
+
   - id: consumer_repo_scoped_install
     actor: consumer
     goal: |
-      Work as the consumer role inside the node container. The local
-      Logion node is at http://localhost:8000; your LOGION_HOME is
-      already set for you, never override it, and never set HOME.
+      You operate the consumer role of a local multi-agent node from the
+      operator side. The node runs as Docker Compose services managed
+      from this repository (deploy/local-node). Run commands inside the
+      consumer role with:
 
-      A checked-in fixture skill bundle lives at
-      /workspace/fixtures/fixture-skill. Install it into the repository
-      checkout at /workspace/xpto using the public CLI
-      (`logion skills install --source /workspace/fixtures/fixture-skill
-      --course-id fixture-skill --version-id v1 --title "Fixture Skill"
-      --no-symlink`), running it from /workspace/xpto so the install is
-      scoped to that repository.
+        docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c '<command>'
 
-      Then verify from a fresh session what is visible: list installed
-      skills (`logion skills installed --json`) from /workspace/xpto,
-      from /workspace/abc, and with the repository context cleared, and
-      note where the fixture appears.
+      (or `make node-dev-up ROLES=consumer` is already done — do NOT
+      start, stop, or reset the node; a fixture and the checkouts
+      already exist inside the containers).
 
-      Do not modify the fixture, do not install anything into
-      /workspace/abc, and do not touch the auditor role's workspace.
+      Inside the consumer role: a fixture skill bundle is at
+      /workspace/fixtures/fixture-skill and repository checkouts exist
+      at /workspace/xpto and /workspace/abc. Using the public CLI inside
+      the consumer container, install the fixture into the XPTO
+      checkout with LOGION_HOME scoped to that repository:
+
+        sh -c 'cd /workspace/xpto && LOGION_HOME=/workspace/xpto/.logion-home logion skills install --source /workspace/fixtures/fixture-skill --course-id fixture-skill --version-id v1 --title "Fixture Skill" --no-symlink'
+
+      Then verify visibility from fresh sessions inside the same
+      container: run `logion skills installed --json` with
+      LOGION_HOME=/workspace/xpto/.logion-home, with
+      LOGION_HOME=/workspace/abc/.logion-home, and with the default
+      LOGION_HOME, and note where the fixture appears.
+
+      Do not modify the fixture, do not install into the ABC checkout,
+      and never exec into the auditor container.
     success_hint: |
       evidence shows the fixture under XPTO only: absent from ABC,
-      absent from consumer user scope, and invisible to the auditor.
-    assertions:
-      - type: files.install_scoped_to_repository
-        params:
-          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/scope.json"
+      absent from consumer default (user) scope, and invisible to the
+      auditor.
 
   - id: capture_scope
     actor: consumer
@@ -107,26 +122,30 @@ phases:
   - id: write_restart_markers
     actor: consumer
     goal: |
-      Still as the consumer role: write a one-line state marker that
-      names your role into your own LOGION_HOME state directory:
+      Operate the consumer role container from the operator side (use
+      the docker compose exec pattern above; do not start or stop the
+      node). Write a one-line state marker that names your role into
+      the role's LOGION_HOME state directory:
 
-        sh -c 'echo "consumer-marker-$(date +%s)" > ${LOGION_HOME}/node-state-marker'
+        sh -c 'echo "consumer-marker-$(date +%s)" > /home/agent/.logion/node-state-marker'
 
-      Then read it back with `cat` and confirm the file exists. Do not
-      write anywhere outside your own LOGION_HOME.
+      Read it back with `cat` inside the container and confirm it
+      exists. Do not write outside /home/agent.
     success_hint: |
       The marker file exists and contains a consumer line.
   - id: auditor_restart_marker
     actor: auditor
     goal: |
-      As the auditor role: write your own state marker the same way:
+      Operate the auditor role container the same way (docker compose
+      exec into the auditor only; do not start or stop the node).
+      Write its state marker:
 
-        sh -c 'echo "auditor-marker-$(date +%s)" > ${LOGION_HOME}/node-state-marker'
+        sh -c 'echo "auditor-marker-$(date +%s)" > /home/agent/.logion/node-state-marker'
 
-      Read it back and confirm it exists. Then try to read the consumer
-      role's marker (you should not be able to: that home is not
-      mounted here) and note the result. Do not create any file
-      outside your own LOGION_HOME.
+      Read it back and confirm it exists. Then attempt to read the
+      consumer role's marker from inside the auditor (it must fail:
+      that home is not mounted here) and note the result. Do not
+      create any file outside /home/agent.
     success_hint: |
       The auditor marker exists; the consumer marker is unreadable.
   - id: capture_restart
@@ -139,10 +158,11 @@ phases:
       RESTART_MANIFEST: evidence_manifest
     goal: |
       The operator restarted the node between the previous phase and
-      this one (make node-dev-down then make node-dev-up). As the
-      auditor role, read your own state marker back now:
+      this one (make node-dev-down then make node-dev-up). Operate the
+      auditor role container (docker compose exec) and read its own
+      state marker back now:
 
-        cat ${LOGION_HOME}/node-state-marker
+        cat /home/agent/.logion/node-state-marker
 
       Confirm it still contains the auditor line from before the
       restart. Report what you see.

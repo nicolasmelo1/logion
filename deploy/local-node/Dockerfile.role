@@ -36,8 +36,14 @@ RUN pip install --no-cache-dir /opt/logion-wheels/*.whl \
 
 # Non-root role user. The container's `user:` directive overrides the
 # UID per role (consumer 10001, auditor 10002) so each role's files on
-# its own volume are owned by a distinct non-root identity.
-RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin agent
+# its own volume are owned by a distinct non-root identity. The
+# workspace root is mode 0777 because Docker seeds a fresh named
+# volume from the image content: a 10001-owned /workspace would leave
+# the auditor (10002) unable to write its own workspace. The isolation
+# boundary is the per-role volume, not the mode of its mount point.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin agent \
+  && mkdir -p /workspace/task \
+  && chmod 0777 /workspace /workspace/task
 USER agent
 WORKDIR /workspace/task
 

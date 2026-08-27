@@ -131,8 +131,8 @@ node_reset() {
   node_compose stop "${role}"
   node_compose rm -f "${role}"
   # Remove exactly this role's disposable volumes; the other role's
-  # volumes stay untouched.
-  node_compose down --remove-orphans >/dev/null 2>&1 || true
+  # containers and volumes stay untouched (never `compose down`, which
+  # would stop both roles).
   docker volume rm -f "logion-local-node_${role}_home" \
     "logion-local-node_${role}_workspace" \
     "logion-local-node_${role}_spool" >/dev/null

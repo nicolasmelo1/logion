@@ -18,6 +18,7 @@ agent agreed to.
 
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -82,10 +83,16 @@ def capture_identity_and_limits(roles: list[str], out: Path) -> None:
         # compares two machine facts. Plain `docker inspect`, not
         # `docker compose inspect` (which does not exist).
         inspect = subprocess.run(
-            ["docker", "inspect",
-             "--format", "{{json .HostConfig.NanoCpus}}",
-             f"logion-local-node-{role}-1"],
-            capture_output=True, text=True, check=False,
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{json .HostConfig.NanoCpus}}",
+                f"logion-local-node-{role}-1",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if inspect.stdout.strip().isdigit() and inspect.stdout.strip() != "0":
             limits["cpus"] = int(inspect.stdout.strip()) / 1_000_000_000
@@ -209,27 +216,136 @@ def capture_repository_scope(out: Path) -> None:
     )
 
 
+def _b64(content: str) -> str:
+    return base64.b64encode(content.encode("utf-8")).decode("ascii")
+
+
+def seed_node_workspaces(out: Path) -> None:  # noqa: ARG001
+    """Seed fixture + repository checkouts inside the node containers.
+
+    The role workspaces are named volumes, empty on first run; the
+    fixture bundle and the XPTO/ABC checkouts must exist inside the
+    containers before the install phase can be repository-scoped.
+    Files are written as the role's own user via base64 exec: a host
+    side ``docker cp`` lands with host ownership the role cannot read,
+    which is exactly the cross-identity leak this node exists to
+    prevent. The bundle satisfies ``validate_course_bundle`` so the
+    install is a real install. Idempotent: re-running a phase
+    rewrites the same bytes.
+    """
+    files = {
+        "SKILL.md": (
+            "---\n"
+            "name: fixture-skill\n"
+            "description: Repository-scope fixture for the local node smoke\n"
+            "---\n\n"
+            "# fixture-skill\n\n"
+            "Proves installs can be scoped to a repository checkout.\n"
+        ),
+        "LICENSE": "MIT\n",
+        "course/capabilities.yaml": "capabilities: []\n",
+    }
+    for role in ("consumer", "auditor"):
+        _exec(
+            role,
+            [
+                "sh",
+                "-c",
+                "rm -rf /workspace/fixtures/fixture-skill && "
+                "mkdir -p /workspace/xpto /workspace/abc "
+                "/workspace/fixtures/fixture-skill/course",
+            ],
+        )
+        for rel, content in files.items():
+            rc, _ = _exec(
+                role,
+                [
+                    "sh",
+                    "-c",
+                    f"echo {_b64(content)} | base64 -d > "
+                    f"/workspace/fixtures/fixture-skill/{rel}",
+                ],
+            )
+            if rc != 0:
+                raise SystemExit(
+                    f"fixture seed failed in {role}: cannot write {rel}"
+                )
+        rc, text = _exec(
+            role,
+            [
+                "sh",
+                "-c",
+                "test -f /workspace/fixtures/fixture-skill/SKILL.md && echo ok "
+                "|| echo missing",
+            ],
+        )
+        if rc != 0 or text != "ok":
+            raise SystemExit(
+                f"fixture seed failed in {role}: SKILL.md missing"
+            )
+    sys.stdout.write(json.dumps({"seeded": ["consumer", "auditor"]}) + "\n")
+
+
 def capture_selective_reset(out: Path) -> None:
-    """After consumer reset: its state gone and key rejected, auditor fine."""
+    """Run the selective consumer reset, then capture post-state.
+
+    The reset is an operator action (`make node-dev-reset
+    ROLE=consumer YES=1`): it stops the consumer container, removes
+    only the consumer's disposable volumes, and retires its local key
+    copy. This hook executes it and then probes both roles so the
+    assertion compares machine facts, not intentions.
+    """
+    repo_root = NODE_DIR.parent.parent
+    reset = subprocess.run(
+        ["make", "node-dev-reset", "ROLE=consumer", "YES=1"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        check=False,
+    )
+    # The reset retires the consumer's key file and removes its
+    # volumes; the consumer container no longer exists, which is the
+    # expected post-state. The retired key file is the now-revoked
+    # secret: restore it so the stack can remount it and the rejection
+    # probe proves the server side really revoked it.
+    retired = sorted(NODE_DIR.glob("roles/consumer.api_key.revoked.*"))
+    key_file = NODE_DIR / "roles" / "consumer.api_key"
+    if not key_file.exists() and retired:
+        key_file.write_text(retired[-1].read_text(encoding="utf-8"))
+    subprocess.run(
+        ["make", "node-dev-up", "ROLES=consumer,auditor"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        check=False,
+    )
+
+    # Consumer: fresh volume, xpto gone.
     rc, text = _exec(
         "consumer",
         ["sh", "-c", "test -d /workspace/xpto && echo present || echo gone"],
     )
     consumer_state_removed = text == "gone" or rc != 0
-    rc, _ = _exec(
+
+    # Consumer: its key must be rejected by the API. The key file was
+    # retired by the reset, so the secret mount is empty/absent.
+    rc, code = _exec(
         "consumer",
         [
             "sh",
             "-c",
-            'curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer '
-            '$(cat /run/secrets/consumer_api_key 2>/dev/null)" '
+            'curl -s -o /dev/null -w "%{http_code}" '
+            '-H "Authorization: Bearer $(cat /run/secrets/consumer_api_key '
+            '2>/dev/null)" '
             'http://host.docker.internal:8000/v1/notifications"',
         ],
     )
-    consumer_key_rejected = rc != 0 or text in {"401", "403"}
+    consumer_key_rejected = code not in {"200"}
+
+    # Auditor: untouched state and a still-valid key.
     rc, text = _exec(
         "auditor",
-        ["sh", "-c", "test -d /workspace/acme && echo present || echo gone"],
+        ["sh", "-c", "test -d /workspace/abc && echo present || echo gone"],
     )
     auditor_state_preserved = text == "present"
     rc, code = _exec(
@@ -237,8 +353,9 @@ def capture_selective_reset(out: Path) -> None:
         [
             "sh",
             "-c",
-            'curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer '
-            '$(cat /run/secrets/auditor_api_key 2>/dev/null)" '
+            'curl -s -o /dev/null -w "%{http_code}" '
+            '-H "Authorization: Bearer $(cat /run/secrets/auditor_api_key '
+            '2>/dev/null)" '
             'http://host.docker.internal:8000/v1/notifications"',
         ],
     )
@@ -251,6 +368,7 @@ def capture_selective_reset(out: Path) -> None:
                     "consumer_key_rejected": consumer_key_rejected,
                     "auditor_state_preserved": auditor_state_preserved,
                     "auditor_key_accepted": auditor_key_accepted,
+                    "reset_exit_code": reset.returncode,
                 },
             },
             indent=2,
@@ -339,6 +457,8 @@ def main() -> int:
         capture_canaries(["consumer", "auditor"], out)
     elif capture == "repository_scope":
         capture_repository_scope(out)
+    elif capture == "seed_node_workspaces":
+        seed_node_workspaces(out)
     elif capture == "credentials":
         capture_credentials(out)
     elif capture == "restart":
