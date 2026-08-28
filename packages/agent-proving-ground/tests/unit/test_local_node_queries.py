@@ -181,6 +181,12 @@ async def test_state_survives_restart_requires_identical_markers(
             "before_restart": {"consumer": "m1", "auditor": "m2"},
             "after_restart": {"consumer": "m1", "auditor": "m2"},
             "cross_role_visible": False,
+            "restart": {
+                "performed": True,
+                "down_exit_code": 0,
+                "up_exit_code": 0,
+                "container_ids_changed": True,
+            },
         },
     )
     result = await queries.query(
@@ -201,6 +207,12 @@ async def test_state_survives_restart_fails_on_state_loss(
             "before_restart": {"consumer": "m1", "auditor": "m2"},
             "after_restart": {"consumer": "missing", "auditor": "m2"},
             "cross_role_visible": False,
+            "restart": {
+                "performed": True,
+                "down_exit_code": 0,
+                "up_exit_code": 0,
+                "container_ids_changed": True,
+            },
         },
     )
     result = await queries.query(
@@ -208,7 +220,7 @@ async def test_state_survives_restart_fails_on_state_loss(
         {},
     )
     assert result["preserved"] is False
-    assert result["before_restart"] == ["auditor", "consumer"]
+    assert result["before_restart"] == {"consumer": "m1", "auditor": "m2"}
 
 
 async def test_state_survives_restart_fails_on_cross_role_leak(
@@ -229,3 +241,53 @@ async def test_state_survives_restart_fails_on_cross_role_leak(
     )
     assert result["preserved"] is False
     assert result["cross_role_visible"] is True
+
+
+async def test_state_survives_restart_rejects_sentinel_markers(
+    tmp_path,
+) -> None:
+    queries = _queries()
+    for sentinel in ("missing", "unreachable:consumer", ""):
+        manifest = _write(
+            tmp_path,
+            {
+                "before_restart": {"consumer": sentinel, "auditor": "m2"},
+                "after_restart": {"consumer": sentinel, "auditor": "m2"},
+                "cross_role_visible": False,
+                "restart": {
+                    "performed": True,
+                    "down_exit_code": 0,
+                    "up_exit_code": 0,
+                    "container_ids_changed": True,
+                },
+            },
+        )
+        result = await queries.query(
+            {"type": "state_survives_restart", "manifest": manifest}, {}
+        )
+        assert result["preserved"] is False
+
+
+async def test_state_survives_restart_requires_mechanical_restart(
+    tmp_path,
+) -> None:
+    queries = _queries()
+    manifest = _write(
+        tmp_path,
+        {
+            "before_restart": {"consumer": "m1", "auditor": "m2"},
+            "after_restart": {"consumer": "m1", "auditor": "m2"},
+            "cross_role_visible": False,
+            "restart": {
+                "performed": False,
+                "down_exit_code": 0,
+                "up_exit_code": 0,
+                "container_ids_changed": False,
+            },
+        },
+    )
+    result = await queries.query(
+        {"type": "state_survives_restart", "manifest": manifest}, {}
+    )
+    assert result["preserved"] is False
+    assert result["restart"]["performed"] is False

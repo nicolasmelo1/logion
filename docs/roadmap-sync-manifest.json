@@ -62,7 +62,7 @@
     },
     {
       "path": "plans/asm-logion-collaboration-and-protocol-convergence-gate.md",
-      "sha256": "e5199778-89706231-51919010-174dbe86-0c7324b7-31c70852-abb900ec-d2b3ffce"
+      "sha256": "47422cde-999e89ee-30ce82e6-8c76ff0d-6b41d05f-3e3a4303-122ae0cd-2dc11828"
     },
     {
       "path": "plans/cli-api-compatibility-matrix.md",
@@ -73,10 +73,6 @@
       "sha256": "b814ba20-d9e27f51-36398919-14206993-a1efa607-ba190225-8045057e-3bc1abe5"
     },
     {
-      "path": "plans/course-capability-manifest-policy.md",
-      "sha256": "8356744b-c43d5390-15c66a77-7eec5e05-5ca6e0f8-94e9b562-436b0275-dd196b1b"
-    },
-    {
       "path": "plans/cycle-0-contract-e2e-hardening.md",
       "sha256": "28506ec7-5aaaddd0-76eb5a9b-0608e2a9-cf6577a7-662441bd-757d02ff-c9331c62"
     },
@@ -85,8 +81,16 @@
       "sha256": "33c1fc21-7d214fa6-375ecbcc-28a474a1-9e0395f3-180589b0-f90e3fb3-acae8140"
     },
     {
+      "path": "plans/legal-and-entity.md",
+      "sha256": "ea512330-7e174655-19649eeb-9edd6088-d331b842-646209a5-b1644630-4dc1ed12"
+    },
+    {
       "path": "plans/next-steps.md",
-      "sha256": "0b19462e-635974e6-b10fd49d-b0dab844-8a78137c-d281d6bf-ac6af715-8b69fc02"
+      "sha256": "31db3ea7-09fe50cd-8bd71a21-6b47870d-d2ae5cc6-e7bc2f7c-576de2bb-54c52a33"
+    },
+    {
+      "path": "plans/normative-carry-overs.md",
+      "sha256": "18b61ccc-7d166dd2-b44840d0-47e609f9-3835ee6b-bf6aedf8-033c303c-64171dca"
     },
     {
       "path": "plans/phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md",
@@ -102,15 +106,15 @@
     },
     {
       "path": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md",
-      "sha256": "b8e733ae-75d93d82-bcafd511-c9c53945-cad2c88b-2cdf3185-7cfd6920-b083dd92"
+      "sha256": "1c0bc904-75836003-6811c3e4-c8bcfc4e-abe8730e-9e969e3b-84988eda-9acd0139"
     },
     {
       "path": "plans/phase-15.11.1-publisher-integrated-consented-observation.md",
-      "sha256": "a4d749b5-a184e8ab-cba2164f-61882894-ea9deb7a-91ff8e0f-3018d88b-396aa19a"
+      "sha256": "31926669-fd250129-f9628228-560ffff0-ab0d7b0e-3776d0c0-c99cab59-64a0ce1a"
     },
     {
       "path": "plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md",
-      "sha256": "7d0c3f06-032cba38-f83d2b27-c7c84e95-808f75b2-b9bcfe41-9518aeea-75beb0dc"
+      "sha256": "cc6c5481-2a0af01e-0b363d03-e9a6940b-3349e324-a0e6996a-70f85ad6-84acb564"
     },
     {
       "path": "plans/phase-15.13-portable-scan-evidence.md",
@@ -122,11 +126,11 @@
     },
     {
       "path": "plans/phase-15.14.1-local-multi-agent-first-node-foundation.md",
-      "sha256": "ccaac110-9bf4dca2-bad5bbde-4a82af90-77289034-5b6ec229-5b827d5a-28d3381e"
+      "sha256": "a396ddad-4164d54c-b39dab94-31da0ae9-e9e68941-da2f8f84-e00c6cee-b3c4978d"
     },
     {
       "path": "plans/phase-15.15-isolated-first-runner-node.md",
-      "sha256": "e45ab42b-9205b892-b7545735-60d2b072-7dad6bfc-c2dfbff0-50c22ab9-e6a4170f"
+      "sha256": "b27bca03-16f928e3-ea74d387-70026145-4f70b119-3c83f80b-cf177403-41882042"
     },
     {
       "path": "plans/phase-15.16-first-party-resource-dogfood-loop.md",
@@ -142,7 +146,7 @@
     },
     {
       "path": "plans/phase-16.1-eval-contract-and-reference-runner.md",
-      "sha256": "46458bf7-773a9a9a-4c4c822b-94a6aa58-577e622a-3fc3c0d3-33835b17-8b8315a0"
+      "sha256": "9cb69e3c-de28f259-ddff0bac-ddbc10c6-725a28e3-ac77cb3c-ae1ed4bc-3d2767cb"
     },
     {
       "path": "plans/phase-16.10-external-runner-onboarding-and-conformance.md",
@@ -158,7 +162,7 @@
     },
     {
       "path": "plans/phase-16.2-typed-evaluators-and-skill-reference-evaluator.md",
-      "sha256": "0c6fee29-40e92d55-c5876e44-94fb4381-086161fd-7f07a3b2-07f8deb1-840370c3"
+      "sha256": "8674489b-651863c5-4cbd4cd3-2f2ce452-dca6a2ad-b4e2f5e0-ced0e3ec-d9eb0fb0"
     },
     {
       "path": "plans/phase-16.3-runner-registry-and-network-jobs.md",
@@ -221,16 +225,12 @@
       "sha256": "3741d269-eb8ec2b1-f5d27deb-f811b430-40e07475-b73ad5b0-2a8f5669-d20d7f62"
     },
     {
-      "path": "plans/roadmap-block-1-core-marketplace-flows-and-capability-foundations.md",
-      "sha256": "88645b70-31372491-29f964a1-bac358e3-022bd142-44004375-fe80a286-11ac1868"
+      "path": "plans/positioning-and-independence.md",
+      "sha256": "0df78710-3faa4046-f5f8a600-97bda4c7-371a4a08-e95cf9df-3f51de51-4ca9b3bc"
     },
     {
-      "path": "plans/roadmap-block-2-review-visibility-and-deployable-backend.md",
-      "sha256": "122823a7-bd2e550f-f56303c3-1d148276-8a3af51b-74951dd1-d8d2bc28-2a796c4d"
-    },
-    {
-      "path": "plans/roadmap-block-3-distribution-launch-surface-and-open-improvements.md",
-      "sha256": "03ff1198-fe649d62-0bf47f16-ee85354a-fa002479-2b94fd82-b36e4cc6-d2f9b192"
+      "path": "plans/release-0.2.md",
+      "sha256": "4a5f1f7b-06c7fe45-6f280905-91468f40-4b56b2aa-a261bdf6-efe008cd-5e9274db"
     },
     {
       "path": "protocol-specs/README.md",
@@ -294,5 +294,5 @@
     }
   ],
   "schema_version": 1,
-  "source_revision": "35913986-9a9536c0-540389dc-981f3e6c-1fd90049"
+  "source_revision": "9f43c8f5-9534ee5b-644a30f6-a43c8dba-a987b9d2"
 }

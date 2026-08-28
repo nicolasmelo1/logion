@@ -24,17 +24,17 @@
 > **Still open before this phase may be called complete:**
 > 1. Prove a live hook end to end, with the harness itself delivering the
 >    payload to an installed CLI, rather than the documented replay
->    fallback.
-> 2. Published first-party artifacts: `packages/harness-plugins/` now
+>    fallback. The current phase-gate evidence still uses replay because
+>    cross-driver delivery is not yet supported by any harness.
+> 2. Pseudonymous participation: server-side `shadow` identity tier support
+>    exists, but the contract was tightened to require a signer-capable local
+>    pseudonymous subject; the public CLI still has no local keypair-backed
+>    pseudonymous identity flow.
+> 3. Published first-party artifacts: `packages/harness-plugins/` now
 >    contains the observer scaffold, but no official `npx skills add`
 >    companion or `npx plugins add` observer package is published on the
 >    stable coordinates, so the clean-machine onboarding contract remains
 >    unbuilt.
-> 3. Generic self-review is only detectable for resources that project to a
->    Course, because `resources` has no owner column.
-> 4. Pseudonymous signing and receipt-vs-review consent are now implemented in
->    code and covered by focused tests, but the real-agent phase evidence and
->    gate artifacts have not yet been re-recorded on top of those changes.
 >
 > **Dogfood — Level 2 (real use and feedback):** the implementing agent acquires a resource through any supported channel, uses it in its ordinary harness, and submits feedback through Logion linked to the exact original `ResourceVersion`.
 > **After this phase:** Logion can learn from resources installed by `npx skills`, `npx plugins`, `hf`, or Logion itself without forcing a new acquisition workflow.
@@ -400,7 +400,7 @@ The API response explains the projection disposition.
 ### Pseudonymous participation
 
 - Free resource discovery, reconciliation, local observation, and local pending usage do not require signup.
-- A random local pseudonymous subject may sign/upload feedback only after explicit consent policy is stored.
+- A random local pseudonymous subject may sign/upload feedback only after explicit consent policy is stored. **Sign is literal.** The subject is a locally held keypair with a stable public identifier, not an opaque random id — an id satisfies "works without an account" and forecloses everything downstream, because an agent that cannot sign can never become an issuer without an identity migration. This is the cheapest decision in the phase and the most expensive one to reverse.
 - If the backend supports provisional agents, the local subject attaches later to an account without changing historical IDs.
 - Identity tier is carried into aggregation; it is not a hidden multiplier.
 - Money, authorship, claims, and paid entitlement stay account-gated.
@@ -415,6 +415,51 @@ auto        user explicitly opted in; agent may submit one post-task feedback re
 ```
 
 `auto` does not infer a rating from file reads. The agent must have task outcome context and must generate the structured report at meaningful task completion. Users can inspect, edit, delete, export, or disable.
+
+An unconfigured harness is `off`, not `local-only`: `effective_mode` returns
+`off` for anything never configured, and `DO_NOT_TRACK` forces it regardless.
+Observation is opt-in at the harness, not merely at the upload.
+
+### One knob is the wrong shape for two questions
+
+The two signal classes are separated everywhere in this design — different
+tables, different endpoints, `Rating? Never` against `Rating? Yes` — and then
+joined again by a single per-harness `mode`. `may_spool` and `may_upload` both
+derive from it, so consenting to a receipt and consenting to an agent-authored
+review are the same act.
+
+They are not the same ask:
+
+| | Deterministic receipt | Agent review |
+| --- | --- | --- |
+| Cost | zero tokens; a hook is a subprocess | a model call, once per task |
+| Content | version ran, completed or failed, duration bucket, harness | rating, four subjective dimensions, prose |
+| Subject | the artifact | work done in the user's repository |
+
+"May I record that this version ran and completed" is a small request most
+people grant. "May my agent write a public review of what happened in my
+repo" is a large one. Binding them to one switch loses the easy consent to
+pay for the hard one, and that is the most likely single cause of the empty
+cohort that Loop B has to answer around on day one.
+
+Split the mode into a receipt scope and a review scope. Neither implies the
+other, and the review scope stays account-gated because it carries prose.
+
+**Why the default does not become `auto`.** More rows would be worse data,
+not better. `next-steps.md` requires publishing consent mode alongside `n`,
+so every row carries its provenance permanently, and a cohort marked
+default-on is discounted by exactly the careful reader the project is for.
+16.8 suppresses below minimum cohort and caps concentration anyway, so volume
+from a homogeneous default-on population frequently cannot be published at
+all — the reputational cost paid for a number that stays suppressed. `auto`
+also fires without the user confirming an outcome, which biases toward
+completion. A measurement whose provenance is "they did not turn it off" is
+not evidence, which is the category this project exists to improve on.
+
+The cold start is real, and the answer is when the question gets asked, not
+whether. After the first meaningful use, show the exact pending receipt and
+ask once. That converts better than a silent default and the row comes out
+marked as explicit consent, which is publishable.
 
 ## Agent companion behavior
 
@@ -547,22 +592,56 @@ Add `builtin:remote_private_mcp_feedback`:
 
 ## Acceptance criteria
 
+Every criterion names the check that proves it. `assertion:` is a proving-ground
+assertion this phase's gate requires, `test:` is a test path in either checkout,
+and `deferred:`/`unspecified:` are declarations of debt that the generated
+`DEFERRED.md` collects. The auditor rejects a criterion with no
+marker and a marker naming an assertion the gate does not require.
+
 - [ ] A skill installed directly by `npx skills add` can be observed and receive feedback linked to the exact Logion `ResourceVersion` without reinstalling through Logion.
+      (proof: assertion:api.feedback_linked_to_acquisition)
 - [ ] A Logion-hosted Course, Vercel plugin, and HF revision use the same generic feedback contract.
+      (proof: test:packages/api/tests/resource_feedback/test_feedback_projection.py::test_projection_to_course_review_for_eligible)
 - [ ] A pre-existing vendor plugin backed by a closed OAuth remote MCP server
       can be reconciled and, where the harness exposes a trustworthy hook,
       observed through a separately installed Logion companion without proxying,
       reinstalling, or claiming ownership of the original resource.
+      (proof: assertion:api.remote_mcp_use_attributed)
 - [ ] Passive observation never creates a rating or CourseReview.
+      (proof: test:packages/api/tests/resource_feedback/test_usage_receipt.py::test_usage_receipt_never_projects_feedback_or_course_reviews)
 - [ ] Eligible feedback projects through the existing Course review service; ineligible feedback remains useful and clearly labeled.
+      (proof: assertion:api.course_review_projection_exists)
 - [ ] `off` produces no local observation state and no network request.
+      (proof: test:packages/cli/tests/test_usage_upload.py::test_off_never_uploads)
 - [ ] The official Logion skill/plugin integrates feedback into a user's existing agent workflow.
+      (proof: deferred:no official companion skill or observer plugin is published)
 - [ ] Codex, Claude, Hermes, and Pi have tested native scope discovery and a
       declared observation path or an honest explicit-report fallback.
+      (proof: test:packages/cli/tests/test_integrations_commands.py)
 - [ ] From a clean machine, `npx skills add OFFICIAL_LOGION_SOURCE --skill logion` installs the companion; first use can install/verify the CLI with explicit approval and then preview/enable a harness integration.
+      (proof: deferred:the companion scaffold is merged but the official source coordinates are still unpublished, so the clean-machine onboarding contract is unbuilt)
 - [ ] `npx plugins add OFFICIAL_LOGION_PLUGIN` installs the observer integration without duplicating identity, inventory, spool, redaction, or API-write logic.
+      (proof: deferred:the observer scaffold is merged but no official observer plugin package is published)
 - [ ] Neither native install command silently opts the user into observation upload or automatic feedback.
+      (proof: deferred:blocked on the two unpublished native install commands above)
 - [ ] Dogfood submits a real feedback record for an externally installed resource and records the Course projection disposition.
+      (proof: test:artifacts/dogfood/phase-15.11.md)
+- [ ] The observation hook fires from the harness itself, not from a replayed
+      `PostToolUse` payload.
+      (proof: deferred:cross-driver payload delivery is unsupported, so the recorded evidence used the documented replay fallback)
+- [ ] Free discovery and feedback work without an account, through a locally
+      held **keypair** whose public identifier stays stable when it later
+      attaches to an account. A random opaque id does not satisfy this: the
+      subject has to be able to sign.
+      (proof: test:packages/api/tests/resource_feedback/test_submit_feedback.py::test_feedback_controller_accepts_signed_pseudonymous_subject)
+- [ ] Generic self-review is detectable for every resource type, not only for
+      resources that project to a `CourseVersion`.
+      (proof: test:packages/api/tests/resource_feedback/test_submit_feedback.py::test_submit_feedback_self_review_still_records)
+- [ ] Exactly one observation envelope is normative for a usage record.
+      (proof: test:packages/cli/tests/test_observation.py)
+- [ ] Consenting to a deterministic receipt and consenting to an
+      agent-authored review are separate scopes; neither implies the other.
+      (proof: test:packages/cli/tests/test_integrations_commands.py::test_status_keeps_receipt_and_review_scopes_separate)
 
 ## Out of scope
 

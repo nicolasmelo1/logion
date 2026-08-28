@@ -182,7 +182,9 @@ def test_manifest_check_passes_on_committed_manifest() -> None:
     result = _run(["check", "--in", str(STABLE_MANIFEST)])
     if _workspace_is_development_release():
         assert result.returncode == 0, result.stderr
-        assert "intentionally unchanged for development release" in result.stdout
+        assert (
+            "intentionally unchanged for development release" in result.stdout
+        )
     else:
         assert result.returncode == 0, (
             f"check failed (exit {result.returncode}): {result.stderr}"

@@ -259,3 +259,4 @@ deploy/local-node/dist-wheels/
 
 # Local node role credentials and identity files
 deploy/local-node/roles/*.identity.json
+deploy/local-node/roles/*.codex_auth.json

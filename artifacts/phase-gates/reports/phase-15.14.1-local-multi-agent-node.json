@@ -1,5 +1,5 @@
 {
-  "run_id": "20260827T125905-phase_15_14_1_local_multi_agent_node",
+  "run_id": "20260828T130851-phase_15_14_1_local_multi_agent_node",
   "scenario": "phase_15_14_1_local_multi_agent_node",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -7,8 +7,8 @@
     "consumer": "codex",
     "auditor": "codex"
   },
-  "started_at": "2026-08-27T12:59:05.823369Z",
-  "finished_at": "2026-08-27T13:07:39.259388Z",
+  "started_at": "2026-08-28T13:08:51.799679Z",
+  "finished_at": "2026-08-28T13:15:09.052385Z",
   "phase_results": [
     {
       "phase_id": "capture_identity_limits",
@@ -22,11 +22,135 @@
             "roles": {
               "auditor": {
                 "uid": 10002,
-                "user": "10002"
+                "user": "10002",
+                "home_writable": true
               },
               "consumer": {
                 "uid": 10001,
-                "user": "agent"
+                "user": "agent",
+                "home_writable": true
+              }
+            },
+            "runtime": "docker",
+            "compose_sha256": "bef1c568f2d00edd4ca00a6e5e40cd629ddb73547a7e1246d6bb63a5734334e2",
+            "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
+            "role_agent_ids": {
+              "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+              "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
+            },
+            "credential_fingerprints": {
+              "consumer": "068ad58b46f86bef",
+              "auditor": "f142d6ac4785709f"
+            },
+            "prompts": [
+              {
+                "phase_id": "consumer_repo_scoped_install",
+                "actor": "consumer",
+                "goal": "You operate the consumer role of a local multi-agent node from the\noperator side. The node runs as Docker Compose services managed\nfrom this repository (deploy/local-node). Run commands inside the\nconsumer role with:\n\n  docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c '<command>'\n\n(or `make node-dev-up ROLES=consumer` is already done \u2014 do NOT\nstart, stop, or reset the node; a fixture and the checkouts\nalready exist inside the containers).\n\nInside the consumer role: a fixture skill bundle is at\n/workspace/fixtures/fixture-skill and repository checkouts exist\nat /workspace/xpto and /workspace/abc. Using the public CLI inside\nthe consumer container, install the fixture into the XPTO\ncheckout with LOGION_HOME scoped to that repository:\n\n  sh -c 'cd /workspace/xpto && LOGION_HOME=/workspace/xpto/.logion-home logion skills install --source /workspace/fixtures/fixture-skill --course-id fixture-skill --version-id v1 --title \"Fixture Skill\" --no-symlink'\n\nThen verify visibility from fresh sessions inside the same\ncontainer: run `logion skills installed --json` with\nLOGION_HOME=/workspace/xpto/.logion-home, with\nLOGION_HOME=/workspace/abc/.logion-home, and with the default\nLOGION_HOME, and note where the fixture appears.\n\nDo not modify the fixture, do not install into the ABC checkout,\nand never exec into the auditor container.\n"
+              },
+              {
+                "phase_id": "write_restart_markers",
+                "actor": "consumer",
+                "goal": "Operate the consumer role container from the operator side (use\nthe docker compose exec pattern above; do not start or stop the\nnode). Write a one-line state marker that names your role into\nthe role's LOGION_HOME state directory:\n\n  sh -c 'echo \"consumer-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back with `cat` inside the container and confirm it\nexists. Do not write outside your own state home.\n"
+              },
+              {
+                "phase_id": "auditor_restart_marker",
+                "actor": "auditor",
+                "goal": "Operate the auditor role container the same way (docker compose\nexec into the auditor only; do not start or stop the node).\nWrite its state marker:\n\n  sh -c 'echo \"auditor-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back and confirm it exists. Then attempt to read the\nconsumer role's marker from inside the auditor (it must fail:\nthat home is not mounted here) and note the result. Do not\ncreate any file outside your own state home.\n"
+              },
+              {
+                "phase_id": "capture_restart",
+                "actor": "auditor",
+                "goal": "The operator restarted the node between the previous phase and\nthis one (make node-dev-down then make node-dev-up). Operate the\nauditor role container (docker compose exec) and read its own\nstate marker back now:\n\n  cat \"$LOGION_HOME/node-state-marker\"\n\nConfirm it still contains the auditor line from before the\nrestart. Report what you see.\n"
+              },
+              {
+                "phase_id": "selective_reset",
+                "actor": "consumer",
+                "goal": "The operator just performed the delivered selective consumer reset.\nThe hook retained the old credential only long enough to prove that\nthe API rejects it, then recreated consumer with the newly rotated\ncredential. As the fresh consumer role, verify its current credential\nauthenticates without touching the auditor:\n\n  sh -c 'code=$(curl -s -o /dev/null -w \"%{http_code}\" -H \"Authorization: Bearer $(cat /run/secrets/consumer_api_key)\" \"$LOGION_BASE_URL/v1/notifications\"); test \"$code\" = 200'\n\nReport that the fresh role is usable. Do not obtain another key,\nstart/stop the node, or touch the auditor role.\n"
+              }
+            ],
+            "role_runtime": {
+              "consumer": {
+                "container_id": "c1e34d9607d9eb2889d224ca327858f10f17326d9d6a7110e0e784625e1b1c05",
+                "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+                "versions": {
+                  "logion": "logion 0.2.0.dev1",
+                  "codex": "codex-cli 0.150.1",
+                  "git": "git version 2.39.5"
+                },
+                "mounts": [
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_consumer_home",
+                    "destination": "/home/agent",
+                    "rw": true
+                  },
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_consumer_workspace",
+                    "destination": "/workspace",
+                    "rw": true
+                  },
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_consumer_spool",
+                    "destination": "/home/agent/.logion/spool",
+                    "rw": true
+                  },
+                  {
+                    "type": "bind",
+                    "name": null,
+                    "destination": "/run/secrets/consumer_api_key",
+                    "rw": false
+                  },
+                  {
+                    "type": "bind",
+                    "name": null,
+                    "destination": "/run/secrets/consumer_codex_auth",
+                    "rw": false
+                  }
+                ]
+              },
+              "auditor": {
+                "container_id": "de9a7c171b30f7cfe947463ad7ac800e97c47b5e158fc99e8f3e6c4ae8a51706",
+                "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+                "versions": {
+                  "logion": "logion 0.2.0.dev1",
+                  "codex": "codex-cli 0.150.1",
+                  "git": "git version 2.39.5"
+                },
+                "mounts": [
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_auditor_home",
+                    "destination": "/home/agent",
+                    "rw": true
+                  },
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_auditor_workspace",
+                    "destination": "/workspace",
+                    "rw": true
+                  },
+                  {
+                    "type": "bind",
+                    "name": null,
+                    "destination": "/run/secrets/auditor_codex_auth",
+                    "rw": false
+                  },
+                  {
+                    "type": "bind",
+                    "name": null,
+                    "destination": "/run/secrets/auditor_api_key",
+                    "rw": false
+                  },
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_auditor_spool",
+                    "destination": "/home/agent/.logion/spool",
+                    "rw": true
+                  }
+                ]
               }
             }
           }
@@ -34,26 +158,64 @@
         {
           "type": "sandbox.role_resource_limits_enforced",
           "status": "passed",
-          "message": "every role runs with declared CPU, memory, and PID limits",
+          "message": "every role runs with declared CPU, memory, PID, and wall-time limits",
           "evidence": {
             "roles": {
               "auditor": {
                 "cpus": 1.0,
                 "memory_bytes": 1610612736,
-                "pids": 256
+                "pids": 256,
+                "wall_time_seconds": 3600,
+                "wall_time_probe_exit_code": 124,
+                "wall_time_enforced": true
               },
               "consumer": {
                 "cpus": 1.0,
                 "memory_bytes": 1610612736,
-                "pids": 256
+                "pids": 256,
+                "wall_time_seconds": 3600,
+                "wall_time_probe_exit_code": 124,
+                "wall_time_enforced": true
               }
             }
           }
         }
       ],
-      "started_at": "2026-08-27T12:59:06.152615Z",
-      "finished_at": "2026-08-27T12:59:07.036601Z",
-      "duration_seconds": 0.884
+      "started_at": "2026-08-28T13:08:52.132868Z",
+      "finished_at": "2026-08-28T13:08:54.818869Z",
+      "duration_seconds": 2.686
+    },
+    {
+      "phase_id": "prove_in_container_harnesses",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "sandbox.real_harness_uses_logion",
+          "status": "passed",
+          "message": "real Codex processes inside both role containers used Logion",
+          "evidence": {
+            "harness_runs": {
+              "auditor": {
+                "process_exit_code": 0,
+                "proof_read_exit_code": 0,
+                "proof": "logion 0.2.0.dev1\n\nLOGION_HARNESS_OK auditor",
+                "prompt": "Use the shell exactly once to run: logion --version > /workspace/task/harness-proof.txt && printf '\nLOGION_HARNESS_OK auditor\n' >> /workspace/task/harness-proof.txt. Then report completion without changing any other file.",
+                "codex_version": "codex-cli 0.150.1"
+              },
+              "consumer": {
+                "process_exit_code": 0,
+                "proof_read_exit_code": 0,
+                "proof": "logion 0.2.0.dev1\n\nLOGION_HARNESS_OK consumer",
+                "prompt": "Use the shell exactly once to run: logion --version > /workspace/task/harness-proof.txt && printf '\nLOGION_HARNESS_OK consumer\n' >> /workspace/task/harness-proof.txt. Then report completion without changing any other file.",
+                "codex_version": "codex-cli 0.150.1"
+              }
+            }
+          }
+        }
+      ],
+      "started_at": "2026-08-28T13:08:54.818896Z",
+      "finished_at": "2026-08-28T13:09:28.424753Z",
+      "duration_seconds": 33.606
     },
     {
       "phase_id": "capture_canaries",
@@ -73,7 +235,23 @@
                 "readable": false,
                 "role": "auditor"
               },
-              "auditor_sees_other_role_home": {
+              "auditor_sees_host_keychain": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_peer_credential": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_peer_home": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_peer_spool": {
+                "readable": false,
+                "role": "auditor"
+              },
+              "auditor_sees_peer_workspace": {
                 "readable": false,
                 "role": "auditor"
               },
@@ -85,7 +263,23 @@
                 "readable": false,
                 "role": "consumer"
               },
-              "consumer_sees_other_role_home": {
+              "consumer_sees_host_keychain": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_peer_credential": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_peer_home": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_peer_spool": {
+                "readable": false,
+                "role": "consumer"
+              },
+              "consumer_sees_peer_workspace": {
                 "readable": false,
                 "role": "consumer"
               }
@@ -93,25 +287,25 @@
           }
         }
       ],
-      "started_at": "2026-08-27T12:59:07.036624Z",
-      "finished_at": "2026-08-27T12:59:07.685689Z",
-      "duration_seconds": 0.649
+      "started_at": "2026-08-28T13:09:28.424782Z",
+      "finished_at": "2026-08-28T13:09:30.019214Z",
+      "duration_seconds": 1.594
     },
     {
       "phase_id": "seed_node_workspaces",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T12:59:07.685713Z",
-      "finished_at": "2026-08-27T12:59:08.724578Z",
-      "duration_seconds": 1.039
+      "started_at": "2026-08-28T13:09:30.019235Z",
+      "finished_at": "2026-08-28T13:09:31.053628Z",
+      "duration_seconds": 1.034
     },
     {
       "phase_id": "consumer_repo_scoped_install",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T12:59:08.724600Z",
-      "finished_at": "2026-08-27T13:00:44.136405Z",
-      "duration_seconds": 95.412
+      "started_at": "2026-08-28T13:09:31.053649Z",
+      "finished_at": "2026-08-28T13:10:57.323151Z",
+      "duration_seconds": 86.27
     },
     {
       "phase_id": "capture_scope",
@@ -131,25 +325,25 @@
           }
         }
       ],
-      "started_at": "2026-08-27T13:00:44.136460Z",
-      "finished_at": "2026-08-27T13:00:44.626411Z",
-      "duration_seconds": 0.49
+      "started_at": "2026-08-28T13:10:57.323216Z",
+      "finished_at": "2026-08-28T13:10:57.809747Z",
+      "duration_seconds": 0.487
     },
     {
       "phase_id": "write_restart_markers",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T13:00:44.626434Z",
-      "finished_at": "2026-08-27T13:01:45.076323Z",
-      "duration_seconds": 60.45
+      "started_at": "2026-08-28T13:10:57.809770Z",
+      "finished_at": "2026-08-28T13:11:30.713933Z",
+      "duration_seconds": 32.904
     },
     {
       "phase_id": "auditor_restart_marker",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T13:01:45.076362Z",
-      "finished_at": "2026-08-27T13:05:56.732278Z",
-      "duration_seconds": 251.657
+      "started_at": "2026-08-28T13:11:30.713996Z",
+      "finished_at": "2026-08-28T13:13:24.062262Z",
+      "duration_seconds": 113.349
     },
     {
       "phase_id": "capture_restart",
@@ -160,14 +354,14 @@
           "status": "passed",
           "message": "each role's intended state survived the restart and stayed invisible to the other role",
           "evidence": {
-            "before_restart": [
-              "auditor",
-              "consumer"
-            ],
-            "after_restart": [
-              "auditor",
-              "consumer"
-            ],
+            "before_restart": {
+              "consumer": "consumer-marker-1787922686",
+              "auditor": "auditor-marker-1787922798"
+            },
+            "after_restart": {
+              "consumer": "consumer-marker-1787922686",
+              "auditor": "auditor-marker-1787922798"
+            },
             "cross_role_visible": false,
             "query_evidence": {
               "source": "manifest"
@@ -175,25 +369,25 @@
           }
         }
       ],
-      "started_at": "2026-08-27T13:05:56.732307Z",
-      "finished_at": "2026-08-27T13:06:35.084847Z",
-      "duration_seconds": 38.353
+      "started_at": "2026-08-28T13:13:24.062297Z",
+      "finished_at": "2026-08-28T13:14:03.236763Z",
+      "duration_seconds": 39.175
     },
     {
       "phase_id": "provision_credentials",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T13:06:35.084922Z",
-      "finished_at": "2026-08-27T13:06:37.817999Z",
-      "duration_seconds": 2.733
+      "started_at": "2026-08-28T13:14:03.236806Z",
+      "finished_at": "2026-08-28T13:14:03.333897Z",
+      "duration_seconds": 0.097
     },
     {
       "phase_id": "capture_credentials",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-08-27T13:06:37.818024Z",
-      "finished_at": "2026-08-27T13:06:38.126334Z",
-      "duration_seconds": 0.308
+      "started_at": "2026-08-28T13:14:03.333917Z",
+      "finished_at": "2026-08-28T13:14:03.702260Z",
+      "duration_seconds": 0.368
     },
     {
       "phase_id": "selective_reset",
@@ -204,8 +398,8 @@
           "status": "passed",
           "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
           "evidence": {
-            "consumer_identity": "live:consumer",
-            "auditor_identity": "live:auditor",
+            "consumer_identity": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+            "auditor_identity": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b",
             "revoked_key_rejected": true,
             "auditor_still_authenticates": true,
             "query_evidence": {
@@ -222,15 +416,18 @@
             "selective_reset": {
               "consumer_state_removed": true,
               "consumer_key_rejected": true,
+              "consumer_new_key_accepted": true,
               "auditor_state_preserved": true,
-              "auditor_key_accepted": true
+              "auditor_key_accepted": true,
+              "reset_exit_code": 0,
+              "up_exit_code": 0
             }
           }
         }
       ],
-      "started_at": "2026-08-27T13:06:38.126355Z",
-      "finished_at": "2026-08-27T13:07:39.255418Z",
-      "duration_seconds": 61.129
+      "started_at": "2026-08-28T13:14:03.702279Z",
+      "finished_at": "2026-08-28T13:15:09.046792Z",
+      "duration_seconds": 65.345
     }
   ],
   "assertion_results": [
@@ -242,11 +439,135 @@
         "roles": {
           "auditor": {
             "uid": 10002,
-            "user": "10002"
+            "user": "10002",
+            "home_writable": true
           },
           "consumer": {
             "uid": 10001,
-            "user": "agent"
+            "user": "agent",
+            "home_writable": true
+          }
+        },
+        "runtime": "docker",
+        "compose_sha256": "bef1c568f2d00edd4ca00a6e5e40cd629ddb73547a7e1246d6bb63a5734334e2",
+        "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
+        "role_agent_ids": {
+          "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+          "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
+        },
+        "credential_fingerprints": {
+          "consumer": "068ad58b46f86bef",
+          "auditor": "f142d6ac4785709f"
+        },
+        "prompts": [
+          {
+            "phase_id": "consumer_repo_scoped_install",
+            "actor": "consumer",
+            "goal": "You operate the consumer role of a local multi-agent node from the\noperator side. The node runs as Docker Compose services managed\nfrom this repository (deploy/local-node). Run commands inside the\nconsumer role with:\n\n  docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c '<command>'\n\n(or `make node-dev-up ROLES=consumer` is already done \u2014 do NOT\nstart, stop, or reset the node; a fixture and the checkouts\nalready exist inside the containers).\n\nInside the consumer role: a fixture skill bundle is at\n/workspace/fixtures/fixture-skill and repository checkouts exist\nat /workspace/xpto and /workspace/abc. Using the public CLI inside\nthe consumer container, install the fixture into the XPTO\ncheckout with LOGION_HOME scoped to that repository:\n\n  sh -c 'cd /workspace/xpto && LOGION_HOME=/workspace/xpto/.logion-home logion skills install --source /workspace/fixtures/fixture-skill --course-id fixture-skill --version-id v1 --title \"Fixture Skill\" --no-symlink'\n\nThen verify visibility from fresh sessions inside the same\ncontainer: run `logion skills installed --json` with\nLOGION_HOME=/workspace/xpto/.logion-home, with\nLOGION_HOME=/workspace/abc/.logion-home, and with the default\nLOGION_HOME, and note where the fixture appears.\n\nDo not modify the fixture, do not install into the ABC checkout,\nand never exec into the auditor container.\n"
+          },
+          {
+            "phase_id": "write_restart_markers",
+            "actor": "consumer",
+            "goal": "Operate the consumer role container from the operator side (use\nthe docker compose exec pattern above; do not start or stop the\nnode). Write a one-line state marker that names your role into\nthe role's LOGION_HOME state directory:\n\n  sh -c 'echo \"consumer-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back with `cat` inside the container and confirm it\nexists. Do not write outside your own state home.\n"
+          },
+          {
+            "phase_id": "auditor_restart_marker",
+            "actor": "auditor",
+            "goal": "Operate the auditor role container the same way (docker compose\nexec into the auditor only; do not start or stop the node).\nWrite its state marker:\n\n  sh -c 'echo \"auditor-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back and confirm it exists. Then attempt to read the\nconsumer role's marker from inside the auditor (it must fail:\nthat home is not mounted here) and note the result. Do not\ncreate any file outside your own state home.\n"
+          },
+          {
+            "phase_id": "capture_restart",
+            "actor": "auditor",
+            "goal": "The operator restarted the node between the previous phase and\nthis one (make node-dev-down then make node-dev-up). Operate the\nauditor role container (docker compose exec) and read its own\nstate marker back now:\n\n  cat \"$LOGION_HOME/node-state-marker\"\n\nConfirm it still contains the auditor line from before the\nrestart. Report what you see.\n"
+          },
+          {
+            "phase_id": "selective_reset",
+            "actor": "consumer",
+            "goal": "The operator just performed the delivered selective consumer reset.\nThe hook retained the old credential only long enough to prove that\nthe API rejects it, then recreated consumer with the newly rotated\ncredential. As the fresh consumer role, verify its current credential\nauthenticates without touching the auditor:\n\n  sh -c 'code=$(curl -s -o /dev/null -w \"%{http_code}\" -H \"Authorization: Bearer $(cat /run/secrets/consumer_api_key)\" \"$LOGION_BASE_URL/v1/notifications\"); test \"$code\" = 200'\n\nReport that the fresh role is usable. Do not obtain another key,\nstart/stop the node, or touch the auditor role.\n"
+          }
+        ],
+        "role_runtime": {
+          "consumer": {
+            "container_id": "c1e34d9607d9eb2889d224ca327858f10f17326d9d6a7110e0e784625e1b1c05",
+            "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+            "versions": {
+              "logion": "logion 0.2.0.dev1",
+              "codex": "codex-cli 0.150.1",
+              "git": "git version 2.39.5"
+            },
+            "mounts": [
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_home",
+                "destination": "/home/agent",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_workspace",
+                "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_spool",
+                "destination": "/home/agent/.logion/spool",
+                "rw": true
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/consumer_api_key",
+                "rw": false
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/consumer_codex_auth",
+                "rw": false
+              }
+            ]
+          },
+          "auditor": {
+            "container_id": "de9a7c171b30f7cfe947463ad7ac800e97c47b5e158fc99e8f3e6c4ae8a51706",
+            "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+            "versions": {
+              "logion": "logion 0.2.0.dev1",
+              "codex": "codex-cli 0.150.1",
+              "git": "git version 2.39.5"
+            },
+            "mounts": [
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_home",
+                "destination": "/home/agent",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_workspace",
+                "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/auditor_codex_auth",
+                "rw": false
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/auditor_api_key",
+                "rw": false
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_spool",
+                "destination": "/home/agent/.logion/spool",
+                "rw": true
+              }
+            ]
           }
         }
       }
@@ -254,18 +575,47 @@
     {
       "type": "sandbox.role_resource_limits_enforced",
       "status": "passed",
-      "message": "every role runs with declared CPU, memory, and PID limits",
+      "message": "every role runs with declared CPU, memory, PID, and wall-time limits",
       "evidence": {
         "roles": {
           "auditor": {
             "cpus": 1.0,
             "memory_bytes": 1610612736,
-            "pids": 256
+            "pids": 256,
+            "wall_time_seconds": 3600,
+            "wall_time_probe_exit_code": 124,
+            "wall_time_enforced": true
           },
           "consumer": {
             "cpus": 1.0,
             "memory_bytes": 1610612736,
-            "pids": 256
+            "pids": 256,
+            "wall_time_seconds": 3600,
+            "wall_time_probe_exit_code": 124,
+            "wall_time_enforced": true
+          }
+        }
+      }
+    },
+    {
+      "type": "sandbox.real_harness_uses_logion",
+      "status": "passed",
+      "message": "real Codex processes inside both role containers used Logion",
+      "evidence": {
+        "harness_runs": {
+          "auditor": {
+            "process_exit_code": 0,
+            "proof_read_exit_code": 0,
+            "proof": "logion 0.2.0.dev1\n\nLOGION_HARNESS_OK auditor",
+            "prompt": "Use the shell exactly once to run: logion --version > /workspace/task/harness-proof.txt && printf '\nLOGION_HARNESS_OK auditor\n' >> /workspace/task/harness-proof.txt. Then report completion without changing any other file.",
+            "codex_version": "codex-cli 0.150.1"
+          },
+          "consumer": {
+            "process_exit_code": 0,
+            "proof_read_exit_code": 0,
+            "proof": "logion 0.2.0.dev1\n\nLOGION_HARNESS_OK consumer",
+            "prompt": "Use the shell exactly once to run: logion --version > /workspace/task/harness-proof.txt && printf '\nLOGION_HARNESS_OK consumer\n' >> /workspace/task/harness-proof.txt. Then report completion without changing any other file.",
+            "codex_version": "codex-cli 0.150.1"
           }
         }
       }
@@ -284,7 +634,23 @@
             "readable": false,
             "role": "auditor"
           },
-          "auditor_sees_other_role_home": {
+          "auditor_sees_host_keychain": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_credential": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_spool": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_workspace": {
             "readable": false,
             "role": "auditor"
           },
@@ -296,7 +662,23 @@
             "readable": false,
             "role": "consumer"
           },
-          "consumer_sees_other_role_home": {
+          "consumer_sees_host_keychain": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_credential": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_home": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_spool": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_workspace": {
             "readable": false,
             "role": "consumer"
           }
@@ -321,14 +703,14 @@
       "status": "passed",
       "message": "each role's intended state survived the restart and stayed invisible to the other role",
       "evidence": {
-        "before_restart": [
-          "auditor",
-          "consumer"
-        ],
-        "after_restart": [
-          "auditor",
-          "consumer"
-        ],
+        "before_restart": {
+          "consumer": "consumer-marker-1787922686",
+          "auditor": "auditor-marker-1787922798"
+        },
+        "after_restart": {
+          "consumer": "consumer-marker-1787922686",
+          "auditor": "auditor-marker-1787922798"
+        },
         "cross_role_visible": false,
         "query_evidence": {
           "source": "manifest"
@@ -340,8 +722,8 @@
       "status": "passed",
       "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
       "evidence": {
-        "consumer_identity": "live:consumer",
-        "auditor_identity": "live:auditor",
+        "consumer_identity": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+        "auditor_identity": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b",
         "revoked_key_rejected": true,
         "auditor_still_authenticates": true,
         "query_evidence": {
@@ -358,8 +740,11 @@
         "selective_reset": {
           "consumer_state_removed": true,
           "consumer_key_rejected": true,
+          "consumer_new_key_accepted": true,
           "auditor_state_preserved": true,
-          "auditor_key_accepted": true
+          "auditor_key_accepted": true,
+          "reset_exit_code": 0,
+          "up_exit_code": 0
         }
       }
     },
@@ -368,7 +753,7 @@
       "status": "passed",
       "message": "API log contains no obvious 500 responses",
       "evidence": {
-        "log_path": "<repo>/api.log"
+        "log_path": ".devrig/api.log"
       }
     },
     {
@@ -385,11 +770,135 @@
         "roles": {
           "auditor": {
             "uid": 10002,
-            "user": "10002"
+            "user": "10002",
+            "home_writable": true
           },
           "consumer": {
             "uid": 10001,
-            "user": "agent"
+            "user": "agent",
+            "home_writable": true
+          }
+        },
+        "runtime": "docker",
+        "compose_sha256": "bef1c568f2d00edd4ca00a6e5e40cd629ddb73547a7e1246d6bb63a5734334e2",
+        "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
+        "role_agent_ids": {
+          "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+          "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
+        },
+        "credential_fingerprints": {
+          "consumer": "068ad58b46f86bef",
+          "auditor": "f142d6ac4785709f"
+        },
+        "prompts": [
+          {
+            "phase_id": "consumer_repo_scoped_install",
+            "actor": "consumer",
+            "goal": "You operate the consumer role of a local multi-agent node from the\noperator side. The node runs as Docker Compose services managed\nfrom this repository (deploy/local-node). Run commands inside the\nconsumer role with:\n\n  docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c '<command>'\n\n(or `make node-dev-up ROLES=consumer` is already done \u2014 do NOT\nstart, stop, or reset the node; a fixture and the checkouts\nalready exist inside the containers).\n\nInside the consumer role: a fixture skill bundle is at\n/workspace/fixtures/fixture-skill and repository checkouts exist\nat /workspace/xpto and /workspace/abc. Using the public CLI inside\nthe consumer container, install the fixture into the XPTO\ncheckout with LOGION_HOME scoped to that repository:\n\n  sh -c 'cd /workspace/xpto && LOGION_HOME=/workspace/xpto/.logion-home logion skills install --source /workspace/fixtures/fixture-skill --course-id fixture-skill --version-id v1 --title \"Fixture Skill\" --no-symlink'\n\nThen verify visibility from fresh sessions inside the same\ncontainer: run `logion skills installed --json` with\nLOGION_HOME=/workspace/xpto/.logion-home, with\nLOGION_HOME=/workspace/abc/.logion-home, and with the default\nLOGION_HOME, and note where the fixture appears.\n\nDo not modify the fixture, do not install into the ABC checkout,\nand never exec into the auditor container.\n"
+          },
+          {
+            "phase_id": "write_restart_markers",
+            "actor": "consumer",
+            "goal": "Operate the consumer role container from the operator side (use\nthe docker compose exec pattern above; do not start or stop the\nnode). Write a one-line state marker that names your role into\nthe role's LOGION_HOME state directory:\n\n  sh -c 'echo \"consumer-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back with `cat` inside the container and confirm it\nexists. Do not write outside your own state home.\n"
+          },
+          {
+            "phase_id": "auditor_restart_marker",
+            "actor": "auditor",
+            "goal": "Operate the auditor role container the same way (docker compose\nexec into the auditor only; do not start or stop the node).\nWrite its state marker:\n\n  sh -c 'echo \"auditor-marker-$(date +%s)\" > \"$LOGION_HOME/node-state-marker\"'\n\nRead it back and confirm it exists. Then attempt to read the\nconsumer role's marker from inside the auditor (it must fail:\nthat home is not mounted here) and note the result. Do not\ncreate any file outside your own state home.\n"
+          },
+          {
+            "phase_id": "capture_restart",
+            "actor": "auditor",
+            "goal": "The operator restarted the node between the previous phase and\nthis one (make node-dev-down then make node-dev-up). Operate the\nauditor role container (docker compose exec) and read its own\nstate marker back now:\n\n  cat \"$LOGION_HOME/node-state-marker\"\n\nConfirm it still contains the auditor line from before the\nrestart. Report what you see.\n"
+          },
+          {
+            "phase_id": "selective_reset",
+            "actor": "consumer",
+            "goal": "The operator just performed the delivered selective consumer reset.\nThe hook retained the old credential only long enough to prove that\nthe API rejects it, then recreated consumer with the newly rotated\ncredential. As the fresh consumer role, verify its current credential\nauthenticates without touching the auditor:\n\n  sh -c 'code=$(curl -s -o /dev/null -w \"%{http_code}\" -H \"Authorization: Bearer $(cat /run/secrets/consumer_api_key)\" \"$LOGION_BASE_URL/v1/notifications\"); test \"$code\" = 200'\n\nReport that the fresh role is usable. Do not obtain another key,\nstart/stop the node, or touch the auditor role.\n"
+          }
+        ],
+        "role_runtime": {
+          "consumer": {
+            "container_id": "c1e34d9607d9eb2889d224ca327858f10f17326d9d6a7110e0e784625e1b1c05",
+            "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+            "versions": {
+              "logion": "logion 0.2.0.dev1",
+              "codex": "codex-cli 0.150.1",
+              "git": "git version 2.39.5"
+            },
+            "mounts": [
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_home",
+                "destination": "/home/agent",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_workspace",
+                "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_consumer_spool",
+                "destination": "/home/agent/.logion/spool",
+                "rw": true
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/consumer_api_key",
+                "rw": false
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/consumer_codex_auth",
+                "rw": false
+              }
+            ]
+          },
+          "auditor": {
+            "container_id": "de9a7c171b30f7cfe947463ad7ac800e97c47b5e158fc99e8f3e6c4ae8a51706",
+            "image_id": "sha256:ea6558afabb05900e6f49362c9c21d1b1963c51ee1028df4a7b063b8406d8762",
+            "versions": {
+              "logion": "logion 0.2.0.dev1",
+              "codex": "codex-cli 0.150.1",
+              "git": "git version 2.39.5"
+            },
+            "mounts": [
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_home",
+                "destination": "/home/agent",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_workspace",
+                "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/auditor_codex_auth",
+                "rw": false
+              },
+              {
+                "type": "bind",
+                "name": null,
+                "destination": "/run/secrets/auditor_api_key",
+                "rw": false
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_spool",
+                "destination": "/home/agent/.logion/spool",
+                "rw": true
+              }
+            ]
           }
         }
       }
@@ -408,7 +917,23 @@
             "readable": false,
             "role": "auditor"
           },
-          "auditor_sees_other_role_home": {
+          "auditor_sees_host_keychain": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_credential": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_home": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_spool": {
+            "readable": false,
+            "role": "auditor"
+          },
+          "auditor_sees_peer_workspace": {
             "readable": false,
             "role": "auditor"
           },
@@ -420,7 +945,23 @@
             "readable": false,
             "role": "consumer"
           },
-          "consumer_sees_other_role_home": {
+          "consumer_sees_host_keychain": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_credential": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_home": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_spool": {
+            "readable": false,
+            "role": "consumer"
+          },
+          "consumer_sees_peer_workspace": {
             "readable": false,
             "role": "consumer"
           }
@@ -429,5 +970,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "/tmp/pg-15.14.1-run12"
+  "artifact_root": ".runs/phase-15.14.1-seal4"
 }

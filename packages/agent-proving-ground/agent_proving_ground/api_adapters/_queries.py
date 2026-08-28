@@ -435,17 +435,21 @@ class LogionApiQueries:
                 "manifest needs before_restart and after_restart objects",
                 "preserved",
             )
-        offenders: list[str] = []
-        for role, marker_value in before.items():
-            if after.get(role) != marker_value:
-                offenders.append(f"{role}:state-changed")
+        offenders = _restart_marker_offenders(before, after)
+        restart = manifest.get("restart")
+        if not isinstance(restart, dict):
+            offenders.append("restart-evidence-missing")
+            restart = {}
+        offenders.extend(_restart_operation_offenders(restart))
         if cross is not False:
             offenders.append(f"cross_role_visible={cross}")
         return {
             "preserved": not offenders,
-            "before_restart": sorted(before),
-            "after_restart": sorted(after),
+            "before_restart": before,
+            "after_restart": after,
+            "restart": restart,
             "cross_role_visible": cross,
+            "offenders": offenders,
             "evidence": {"source": "manifest"},
         }
 
@@ -2972,6 +2976,47 @@ def _duplicate_install_state(scope_root: Path) -> list[str]:
             for path in scope_root.rglob(pattern)
         )
     return sorted(leftovers)
+
+
+def _restart_marker_offenders(before: dict, after: dict) -> list[str]:
+    """Reject missing/unreachable markers and changed state per role."""
+    offenders: list[str] = []
+    expected_roles = {"consumer", "auditor"}
+    if set(before) != expected_roles or set(after) != expected_roles:
+        offenders.append("marker-role-set-incomplete")
+    invalid_prefixes = ("missing", "unreachable:")
+    for role in sorted(expected_roles):
+        marker_value = before.get(role)
+        after_value = after.get(role)
+        if (
+            not isinstance(marker_value, str)
+            or not marker_value
+            or marker_value.startswith(invalid_prefixes)
+        ):
+            offenders.append(f"{role}:invalid-before-marker")
+        if (
+            not isinstance(after_value, str)
+            or not after_value
+            or after_value.startswith(invalid_prefixes)
+        ):
+            offenders.append(f"{role}:invalid-after-marker")
+        if after_value != marker_value:
+            offenders.append(f"{role}:state-changed")
+    return offenders
+
+
+def _restart_operation_offenders(restart: dict) -> list[str]:
+    """Require mechanical proof the node actually stopped and started."""
+    offenders: list[str] = []
+    for key, expected in (
+        ("performed", True),
+        ("down_exit_code", 0),
+        ("up_exit_code", 0),
+        ("container_ids_changed", True),
+    ):
+        if restart.get(key) != expected:
+            offenders.append(f"restart:{key}={restart.get(key)}")
+    return offenders
 
 
 def _artifact_failure(reason: str, result_key: str) -> JsonObject:

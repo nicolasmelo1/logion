@@ -59,7 +59,7 @@ Provide complete JSON Schemas plus typed Python models. Closed enums: outcome, a
 
 ## Reference-runner adapter
 
-- Add `packages/runner/logion_runner/evals/` and adapt the 15.12 execution contract to `logion-eval-contract`.
+- Add `packages/runner/logion_runner/evals/` and adapt the [15.15](phase-15.15-isolated-first-runner-node.md) job/receipt contract to `logion-eval-contract`.
 - Convert companion deterministic scenarios through a checked-in conversion tool; do not maintain parallel handwritten copies.
 - CLI: `logion eval validate CONTRACT`, `run CONTRACT --subject PATH|RESOURCE_ID`, `inspect-result FILE`, `compare BASE CANDIDATE`.
 - `run` resolves all inputs before leasing/execution and prints the exact contract, subject, image, and evaluator digests.
@@ -76,6 +76,49 @@ Provide complete JSON Schemas plus typed Python models. Closed enums: outcome, a
 - Runner: workspace contents, env allowlist, timeout, output size, missing metrics, duplicate assertions, artifact normalization, deterministic double-run.
 - Backend: upload/get/idempotency/auth/object-store failure/OpenAPI/client.
 - Add fixtures under `packages/eval-contract/tests/fixtures/`; both runner and private integration tests consume the same fixture release.
+
+## The contract is an artifact, and it is contestable
+
+An attestation is worth exactly what its verifier is worth. A scorecard saying
+"this does what it promises" is a function of the contract that produced it, so
+a slop contract yields a slop scorecard — and an index of slop with a trust
+badge on it is worse than no index.
+
+This is the field's live failure mode, not a hypothetical. Practitioners report
+verifiers that expect an output format the agent cannot infer from the task
+prompt, and reference solutions that fail against their own benchmark a quarter
+of the time. The published record agrees: re-annotating MMLU found 6.49% of
+questions defective across all subjects and 57% in one; a review of 445
+benchmarks found only 16% used any statistical test; and a study of 60
+benchmarks found keeping a test set private did **not** protect against
+saturation — only expert curation did.
+
+The consequence for this phase: a contract carries a digest and a version, so it
+is an artifact like any other, and it belongs in the same index as the subjects
+it measures. `api/resources/constants/resource_types.py` accepts unknown values
+for forward compatibility and the column is a plain `VARCHAR(64)`, so adding an
+`eval_contract` type is a constant, not a migration.
+
+What that buys:
+
+- **A contract can be contested.** "This contract's reference solution fails a
+  quarter of the time" is evidence about an artifact, which is machinery this
+  roadmap already builds. It needs no new subsystem.
+- **It is the best-shaped bounty in the system.** Repairing a broken oracle is
+  bounded, deliverable, and success is checkable by re-running — more checkable
+  than most bounties against a skill.
+- **A scorecard must carry the contract digest and the contract's standing.** A
+  pass under a contested contract is not a pass under a reproduced one, and
+  presenting them identically is the same error as blending evidence layers.
+
+This does **not** make Logion an eval library. The index of artifacts stays the
+product: a contract with no subject measures nothing, and nobody installs a
+contract. What changes is that the thing every claim depends on stops being
+invisible. Publishing a defect in someone else's contract is a measurement about
+someone else's artifact and follows
+[the measurement publication playbook](../maintainer documentation: measurement-publication-playbook.md)
+unchanged — author contacted first, rebuttal published verbatim, nothing true
+and reproducible removed on request.
 
 ## Rollout/acceptance additions
 
@@ -112,9 +155,24 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 
 ## Gates
 
-- Companion deterministic scenarios convert without losing assertions.
-- Two local executions of deterministic fixtures normalize identically.
-- Unsupported requirements fail before execution.
-- Contract and result schemas have golden compatibility fixtures.
-- A third-party script can validate a contract using only the public package and fixtures.
-- The private API and reference runner produce the same canonical digest for every golden contract.
+Each gate names the check that proves it; see `DEFERRED.md` for
+what the markers below leave unproven.
+
+- [ ] Companion deterministic scenarios convert without losing assertions.
+      (proof: unspecified:the conversion tool has no assertion in the real-agent gate)
+- [ ] Two local executions of deterministic fixtures normalize identically.
+      (proof: assertion:api.eval_result_digest_stable)
+- [ ] Unsupported requirements fail before execution.
+      (proof: assertion:api.invalid_eval_rejected)
+- [ ] Contract and result schemas have golden compatibility fixtures.
+      (proof: assertion:files.eval_contract_valid)
+- [ ] A third-party script can validate a contract using only the public package
+      and fixtures.
+      (proof: assertion:files.eval_reproduced_clean_workspace)
+- [ ] The private API and reference runner produce the same canonical digest for
+      every golden contract.
+      (proof: unspecified:no assertion compares the backend and runner canonical digest for one golden contract)
+- [ ] An eval contract is addressable as a resource in the same index as its
+      subjects, and a result carries both the contract digest and that
+      contract's standing.
+      (proof: unspecified:eval_contract is not yet a known resource type and no assertion covers contract standing on a result)

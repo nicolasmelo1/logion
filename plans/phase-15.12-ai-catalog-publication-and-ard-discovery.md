@@ -66,12 +66,32 @@ specification.
 
 ## ASM collaboration boundary
 
-Before the Phase 15.12 design freeze, complete the T0 outreach and create the
-initial overlap/ownership matrix in
-[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md).
-This phase does not adopt ASM and does not require an ASM production adapter.
-The base AI Catalog/ARD work does not wait on an external response: silence is
-recorded as the independent outcome and the phase remains artifact-agnostic.
+T0 and T1 are complete. The decisions are recorded in
+[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md)
+under *Decision record — T1*; read that section before writing any identity or
+receipt code, and do not re-derive it from
+[`#262`](https://github.com/nicolasmelo1/logion/issues/262).
+
+This phase still does not adopt ASM and still does not require an ASM production
+adapter. The base AI Catalog/ARD work does not wait on an external response: the
+phase remains artifact-agnostic and outcome 3 ("remain independent") stays valid.
+
+Four constraints from that record bind this phase's implementation directly:
+
+1. The referenced artifact's **immutable content digest** anchors
+   `ResourceVersion`. An AI Catalog `identifier` maps to a `Resource` through an
+   explicit source mapping; `version` and source revision are provenance only.
+2. A selection-descriptor digest — ASM's `manifest_digest` or any equivalent
+   from another registry — **must not create a `ResourceVersion`**. Mutable
+   pricing, SLA and risk change that digest while the artifact is unchanged.
+3. No upstream `{kind, digest, issuer}` reference goes on the usage receipt.
+   `SubmitUsageReceiptRequest` is published `additionalProperties: false` and
+   enforced `extra="forbid"`, so adding one is a 422, not an extension point.
+   The reference belongs on a later evidence/AKTP artifact, which this phase
+   does not build.
+4. An unsigned upstream receipt must keep a machine-readable
+   `"verification_status": "unsigned"` and must never be surfaced as a verified
+   issuer.
 
 AI Catalog's open `type` and `metadata` mechanisms allow an independently
 governed artifact such as ASM to be represented without changing AI Catalog.
@@ -364,8 +384,11 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
   `api.agent_finder_result_provenance_visible`,
   `files.client_has_no_ard_connector_install`,
   `api.catalog_crawl_completed`, `api.ard_resource_ingested`,
-  `api.ard_record_rejected`, `api.self_crawl_no_duplicate`, and
-  `api.resource_source_provenance_visible`.
+  `api.ard_record_rejected`, `api.self_crawl_no_duplicate`,
+  `api.resource_source_provenance_visible`,
+  `api.search_filters_by_type_and_source`,
+  `api.discovery_succeeds_without_aktp`, and
+  `api.ingested_model_requires_no_asm_schema`.
 - **Negative/evidence:** malformed input is quarantined with a stable reason;
   crawl two and ARD discovery add zero duplicates. Retain both spec
   versions/commits, AI Catalog document, ARD request/response, crawl counters,
@@ -373,19 +396,33 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 
 ## Acceptance gates
 
-- A clean client can consume the staging AI Catalog directly and discover the
-  same resource through the staging ARD service.
-- The indexer synchronizes a pinned upstream `agent-finders.json`, queries every
-  enabled approved finder, and makes at least one resulting resource searchable.
-- No ARD connector package or finder preference is installed into customer
-  clients/harnesses.
-- Cross-finder duplicate results converge on one canonical resource while
-  preserving all discovery-source edges.
-- Self-crawl is idempotent and emits an auditable import report.
-- AI Catalog and ARD failures have separate stable error codes and quarantine.
-- Search can filter by resource type and source.
-- No AKTP endpoint is required to discover a resource.
-- The published/ingested model remains artifact-agnostic: no ASM-specific
-  schema, selector, receipt, or partnership claim is required for this phase.
-- The ASM outreach/ownership matrix exists before any later production adapter
-  is authorized.
+Each gate names the check that proves it; see `DEFERRED.md` for
+what the markers below leave unproven.
+
+- [ ] A clean client can consume the staging AI Catalog directly and discover the
+      same resource through the staging ARD service.
+      (proof: assertion:api.ard_search_response_valid)
+- [ ] The indexer synchronizes a pinned upstream `agent-finders.json`, queries
+      every enabled approved finder, and makes at least one resulting resource
+      searchable.
+      (proof: assertion:api.agent_finders_queried)
+- [ ] No ARD connector package or finder preference is installed into customer
+      clients/harnesses.
+      (proof: assertion:files.client_has_no_ard_connector_install)
+- [ ] Cross-finder duplicate results converge on one canonical resource while
+      preserving all discovery-source edges.
+      (proof: assertion:api.self_crawl_no_duplicate)
+- [ ] Self-crawl is idempotent and emits an auditable import report.
+      (proof: assertion:api.catalog_crawl_completed)
+- [ ] AI Catalog and ARD failures have separate stable error codes and quarantine.
+      (proof: assertion:api.ard_record_rejected)
+- [ ] Search can filter by resource type and source.
+      (proof: assertion:api.search_filters_by_type_and_source)
+- [ ] No AKTP endpoint is required to discover a resource.
+      (proof: assertion:api.discovery_succeeds_without_aktp)
+- [ ] The published/ingested model remains artifact-agnostic: no ASM-specific
+      schema, selector, receipt, or partnership claim is required for this phase.
+      (proof: assertion:api.ingested_model_requires_no_asm_schema)
+- [ ] The ASM outreach/ownership matrix exists before any later production adapter
+      is authorized.
+      (proof: deferred:satisfied by the T1 decision record in the ASM convergence gate; no scenario asserts that a document exists, and this phase authorizes no ASM adapter)

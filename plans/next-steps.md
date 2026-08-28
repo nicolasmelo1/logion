@@ -2,254 +2,243 @@
 
 # Logion — Next Steps
 
-We plan in cycles, but the post-15.8 architecture now has one strict dependency spine:
+The execution order. Short on purpose: this is the file to reread weekly.
+Everything that is context, contract, or policy moved out on 2026-08-17.
 
-`public planning + protocol-convergence outreach → generic resources → native scope contract → acquisition/use feedback → publisher-integrated consented observation → AI Catalog publication + ARD discovery → portable evidence → local multi-agent node → independent verification → improvement liquidity`.
+| Read when | File |
+| --- | --- |
+| Cutting the next release; defining what "done" means | [`release-0.2.md`](release-0.2.md) |
+| Writing public copy, arguing positioning, touching protocols | [`positioning-and-independence.md`](positioning-and-independence.md) |
+| Implementing identity, acquisition, reconciliation, observation | [`normative-carry-overs.md`](normative-carry-overs.md) |
+| Instructing counsel, forming the entity | [`legal-and-entity.md`](legal-and-entity.md) |
+| Publishing a measurement about someone else's artifact | [`../maintainer documentation: measurement-publication-playbook.md`](../maintainer documentation: measurement-publication-playbook.md) |
 
-Each `phase-*.md` is an implementation contract. A subphase should fit one focused PR or one explicit operator rollout; umbrellas define gates, not parallel implementation tickets.
+**Current position:** step 3 — phase 15.12 (AI Catalog publication and ARD
+discovery) is being implemented on `feat/phase-15.12-ai-catalog-ard`. Nothing
+has been published since 0.1.15 on 2026-07-19.
 
-## Current release cycle
+**The one-sentence goal:** *evaluation is the entry, observation is the upsell.*
+A controlled eval needs nobody's permission and works at N=1; consented field
+observation needs users and is what gets sold after an eval report opens the
+door.
 
-1. [`cycle-0-contract-e2e-hardening.md`](cycle-0-contract-e2e-hardening.md)
-   is the immediate gate: repair API/public-contract drift, enforce additive
-   `/v1` compatibility, and prove supported CLI/API pairs.
-2. `cycles/cycle-1-to-release.md` ships the
-   MVP after Cycle 0 is green. Phases 13.x and 14.x still gate first users.
+## Execution order
 
-The additional focused plans
-[`cli-api-compatibility-matrix.md`](cli-api-compatibility-matrix.md) and
-[`indexer-run-progress-observability.md`](indexer-run-progress-observability.md)
-belong to those current hardening/release cycles; they do not alter the strict
-post-15.8 product sequence below.
+Authoritative. A phase not listed here is written, valid, and **off the critical
+path** until its precondition exists. Cross-cutting gates that authorize or
+constrain phases rather than shipping work of their own sit off the order with
+their own exit conditions: [`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md)
+(precondition: Phase 15.12/15.17 design freezes, which it precedes),
+[`legal-and-entity.md`](legal-and-entity.md) (trigger-based, runs in parallel),
+[`normative-carry-overs.md`](normative-carry-overs.md) (binding contracts, no
+work of its own), and [`positioning-and-independence.md`](positioning-and-independence.md)
+(binding language discipline, no work of its own).
 
-## Completed foundation for the new direction
-
-The delivered slices through the former 15.9.1 plan have been consolidated and
-their old plan files retired; the shipped shape is documented in maintainer
-documentation
-(`api.md`, `database-schema.md`, `cli-structure.md`,
-`review-and-trust-pipeline.md`, `marketplace-economy.md`,
-`repository-structure.md`, `agent-proving-ground.md`). That foundation
-provides GitHub identity and the sign-in→install handoff, package maps and
-repo source links, the bounty PR bot and merge policy, external skill
-indexing, indexed-listing observation scanning with honest discovery tiers,
-platform-funded bounties on ownerless listings, the generic resource identity
-layer, and the
-harness scope vocabulary, read-only inventory, blocked dry-run planning, and
-local observation envelope library. This retirement does **not** claim that
-native acquisition, harness-integrated observation, HMAC local identity, or
-feedback shipped.
-
-Phase 15.8 was the pivot point: Logion can sponsor improvements on ownerless
-indexed resources before network liquidity exists.
-
-Known carry-overs from that range, tracked here rather than in a retired plan:
-
-- there is no `versions/from-source` materialization endpoint or
-  `publish-from-repo` command — repo publishing stops at the source link;
-- the platform-bounty admin lane is API-only (no SDK resource, no
-  `logion admin bounties` CLI subgroup);
-- production observation commands and consent-gated hook wiring are shipped,
-  but the 15.11 live-hook criterion is still unmet: the proving-ground
-  evidence replays a recorded `PostToolUse` payload into the installed hook
-  because no harness yet supports the required cross-driver delivery path.
-  Published first-party companion/observer artifacts and signer-capable
-  pseudonymous local subjects also remain open;
-- `resources acquire` is a blocked, zero-write plan only. Current resource
-  versions expose no usable distribution URL, permissions remain unresolved,
-  and `--no-dry-run` returns `logion.error`; real acquisition is owned by 15.10;
-- the retired scope plan's normative `scope_id`/`installation_id` HMAC and
-  cryptographic publisher-signature verification are not implemented. Their
-  complete carry-over contract is retained below;
-- the indexer has no `lobehub` adapter (`skillsmp` and `smithery` shipped
-  instead), and the `hermes_docs` adapter has no seed entry.
-
-### Normative carry-over: local installation identity
-
-This contract remains mandatory for 15.10/15.11 implementation; the existing
-inventory must not approximate it with a plain path hash.
-
-Each profile/node creates a random 256-bit `local_node_secret` as exactly 32 raw
-bytes (no encoding/newline) at
-`$LOGION_HOME/identity/local-node-secret`. The identity directory is owner-only
-`0700` and the atomically created file is `0600` (or platform-equivalent ACL).
-Opaque IDs use HMAC-SHA-256 with domain-separated canonical UTF-8 inputs:
-
-```text
-scope_id = base64url(HMAC-SHA-256(
-  local_node_secret,
-  "logion-scope-v1\0" + harness + "\0" + scope_kind + "\0" + canonical_scope_root
-))
-
-installation_id = base64url(HMAC-SHA-256(
-  local_node_secret,
-  "logion-installation-v1\0" + resource_version_id + "\0" + distribution_id
-  + "\0" + harness + "\0" + native_manager + "\0" + scope_kind + "\0"
-  + scope_id + "\0" + relative_target_path + "\0" + native_receipt_digest
-))
-```
-
-Each `\0` is one NUL byte (`0x00`); NUL is forbidden inside components.
-`base64url` uses RFC 4648's URL-safe alphabet without `=` padding.
-`resource_version_id` and the server-issued `distribution_id` are lowercase,
-hyphenated RFC 4122 UUIDs. `harness` and `scope_kind` are canonical lowercase
-CLI identifiers. `native_manager` is
-`<canonical-lowercase-name>@<exact-version>`. `relative_target_path` uses NFC,
-`/` separators, no leading slash, and no empty, `.` or `..` segment; it
-preserves case on case-sensitive volumes and is Unicode-casefolded on
-case-insensitive volumes.
-
-`native_receipt_digest` is `sha256:<64 lowercase hex>` over RFC 8785 canonical
-JSON bytes of a fixed-schema native evidence record containing manager
-name/version, native receipt or lock identifier, canonical source, immutable
-revision, and content digest—never a raw local path. Without exact native
-evidence, neither `native_receipt_digest` nor `installation_id` may be minted;
-the item remains an unlinked local candidate. A dry-run may emit `scope_id` only
-after this HMAC contract exists, but never invents an installation identity.
-
-`canonical_scope_root` is
-`<platform>:<normalized-absolute-path>` (`posix` or `windows`), after resolving
-symlinks/junctions, normalizing NFC and `/`, and removing trailing separators
-except filesystem roots. POSIX preserves case. Windows removes `\\?\`,
-uppercases drive letters, and casefolds only when the containing volume is
-case-insensitive; UNC server/share follows the same volume rule. Missing or
-unresolved roots fail closed. Neither the canonical root nor raw path enters an
-outbound payload. Unsalted/plain path hashes are forbidden. Moving a checkout,
-rotating the secret, changing profile/node/receipt, or changing scope creates a
-new local identity; migration must be explicit. Deterministic cross-language
-vectors for both HMACs are required before release.
-
-### Normative carry-over: acquisition, reconciliation, and observation
-
-15.10 must turn the current blocked plan into real acquisition only after the
-API supplies a validated immutable distribution and the plan reports target,
-version/distribution/manager, native argv or copy operation, collisions,
-digest/provenance verification, observation state, permissions, and required
-confirmation. Non-dry-run requires explicit approval when creating a scope,
-replacing content, widening permissions, configuring a hook/plugin, or crossing
-repo → user/admin. It must also own installation/update/removal isolation,
-validated receipts, exact reconciliation, and fresh-harness discovery.
-
-Reconciliation order remains: (1) native receipt/lock plus immutable revision;
-(2) canonical source plus revision and content digest; (3) a cryptographically
-verified signature over canonical bytes/digest whose key is validly bound to
-the publisher; otherwise `signature-present-unverified`, `ambiguous`, or
-`unlinked`. Name similarity is never identity. The current runtime correctly
-uses `signature-present-unverified`; `signed` remains reserved until canonical
-serialization, algorithms, publisher-key binding, rotation/revocation, and
-failure behavior are implemented.
-
-15.11 owns real harness hook/plugin observation, attributed native use,
-consented upload, and immutable-version-linked feedback. Its fixed local
-envelope may carry only event, canonical harness, opaque harness session and
-installation/scope IDs, exact resource version when known, scope kind, closed
-task class/outcome, ordered RFC3339 timestamps, and integration version. It
-must reject raw prompts, source code, paths, arguments, secrets, model context,
-terminal output, and arbitrary fields. Consent remains: `off` = no spool or
-network; `local-only` = local attribution only; `prompt` = queue a
-minimum-disclosure proposal; `auto` = only the separately documented narrow
-receipt class. Ratings, prose, and raw task data always need separate consent.
-An observation is not a rating.
-
-## Cross-cutting ASM collaboration gate
-
-[`asm-logion-collaboration-and-protocol-convergence-gate.md`](asm-logion-collaboration-and-protocol-convergence-gate.md)
-starts exploratory outreach to ASM creator Yi Guo as soon as the plan is
-publicly shareable. It is not another implementation phase or an ASM adoption
-decision. It prevents Logion and ASM from independently freezing competing
-selection descriptors, ranking layers, or invocation/cost receipts.
-
-The first contact happens before Phase 15.12 design freeze. Concrete co-design
-uses Phase 15.11 artifacts and must resolve the one-subject/one-receipt boundary
-before Phase 15.17 or Phase 16.7 publishes a wire contract. Silence or
-non-agreement keeps the projects independent and authorizes no compatibility
-claim.
-
-## Phase 15 — first useful node
-
-Umbrella: [`phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md`](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md).
-
-| Phase | Outcome | Dogfood level |
+| # | Work | Exit condition |
 | --- | --- | --- |
-| [`15.10`](phase-15.10-native-acquisition-artifact-delivery-and-inventory.md) | Hosted artifact downloads plus `npx skills`, `npx plugins`, and `hf` acquisition/reconciliation | Level 1: acquisition |
-| [`15.10.1`](phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md) | Index, acquire, and reconcile DeepSeek Harness (dsh) plugins through the native manager, plus a thin Logion dsh plugin entry surface | Level 1.1: new-ecosystem acquisition |
-| [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) | Observe native usage and submit generic feedback linked to the exact resource/Course | Level 2: real feedback |
-| [`15.11.1`](phase-15.11.1-publisher-integrated-consented-observation.md) | Let publishers ship thin consented skill/plugin projections that emit minimum receipts automatically without requiring the full Logion CLI | Level 2.1: publisher-side adoption |
-| [`15.12`](phase-15.12-ai-catalog-publication-and-ard-discovery.md) | AI Catalog publication/ingestion plus server-side ARD Agent Finder indexing from `ard-connectors`, with zero-duplicate self-crawl and no premature ASM-specific contract | Level 3: discovery |
-| [`15.13`](phase-15.13-portable-scan-evidence.md) | Signed portable evidence from current scanners | Level 4: evidence |
-| [`15.14`](phase-15.14-feedback-driven-platform-bounties.md) | Choose platform-funded improvements from attributed usage and friction | Level 5: demand → improvement |
-| [`15.14.1`](phase-15.14.1-local-multi-agent-first-node-foundation.md) | Isolated founder-operated roles on one MacBook | Level 5.5: local roles |
-| [`15.15`](phase-15.15-isolated-first-runner-node.md) | First isolated CPU runner using the proving ground | Level 6: execution |
-| [`15.16`](phase-15.16-first-party-resource-dogfood-loop.md) | Recurring acquire → use → feedback/evidence → bounty → improvement → rerun loop | Level 7: full product |
-| [`15.17`](phase-15.17-aktp-evidence-and-improvement-feed-v0.md) | AKTP v0 as an ARD-linked evidence/improvement feed | Level 8: protocol |
+| 1 | [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) closeout | The remaining "Still open" items are closed and the observation hook fires **live**, not from a replayed payload. Item 1 and item 2 are also prerequisites of step 2 — see below. |
+| 2 | **Cross-hub install reconciliation** | One canonical artifact + version shows where it is listed across every indexed hub, and the install counts of the hubs that publish them, with coverage and blind spots stated. No hub can answer this about another hub. |
+| 3 | [`15.12`](phase-15.12-ai-catalog-publication-and-ard-discovery.md) | `logion.sh` serves `/.well-known/ai-catalog.json` and ARD ingestion runs. **ASM contact (T1) fires before this design freeze.** |
+| 4 | [`15.14.1`](phase-15.14.1-local-multi-agent-first-node-foundation.md) + [`15.15`](phase-15.15-isolated-first-runner-node.md) | One isolated local node runs jobs in rootless containers. Hard prerequisite of 16.1. |
+| 5 | [`16.1`](phase-16.1-eval-contract-and-reference-runner.md) + [`16.2`](phase-16.2-typed-evaluators-and-skill-reference-evaluator.md) | A portable eval contract runs a third-party skill through the reference runner and produces a normalized result. |
+| — | **RELEASE 0.2** | Loops A, B, D work end to end. Full gate in [`release-0.2.md`](release-0.2.md). No publish before this. Note that Loop B's primary launch answer is Logion's own controlled evaluation, so measurements exist *before* this line, not after it. What step 6 adds is publishing one as a report about a named third party. |
+| 6 | **First public measurement** | One published, reproducible evaluation of a third-party artifact: prose, stated method and limits, the subject version, and the command to reproduce. The real gate — not "16.2 merged", and not the same artifact as the in-product answer that 0.2 already ships. |
+| 7 | [`15.17`](phase-15.17-aktp-evidence-and-improvement-feed-v0.md) | AKTP v0, minimal, defined only after real payload exists, and the first `evidence.published` event carries the step 6 measurement. The event cannot be step 6's own exit condition, because the protocol that transports it is built here. |
+| 8 | Publisher outreach | Contact carries a finished report. Nobody is asked to install anything first. |
+| 9 | [`17.3`](phase-17.3-resource-claims-and-commercial-rails.md) + [`16.3`](phase-16.3-runner-registry-and-network-jobs.md)–[`16.5`](phase-16.5-eval-attestations-and-cross-node-authority.md) | Claims/commerce (Loop C) and federation. 16.3–16.5 are **blocked by definition** until an external operator exists. |
+| 10 | **Issuer #2** | The first attestation about a Logion-catalogued subject issued by someone who is not Logion. The thesis milestone. |
 
-**Phase 15 exit:** a resource installed through Logion or a native manager is exactly attributed, used, receives linked feedback, is discovered through ARD, scanned, exercised, improved through a feedback-driven bounty, and rerun by the Logion-operated first node.
+### Why 15.11.1 moved off the critical path
 
-## Phase 16 — independent verification
+`15.11.1` is written and valid. It is off the critical path because it answers a
+question that is not the bottleneck, at a cost the bottleneck does not require.
 
-Umbrella: [`phase-16-distributed-evaluation-and-independent-verification.md`](phase-16-distributed-evaluation-and-independent-verification.md).
+What it uniquely buys is observation of *use* by people who never install
+Logion. That is client-side observation, so it needs consent — legally (ePrivacy
+Art. 5(3) covers storing or accessing information on terminal equipment, and
+applies even to anonymous data) and practically (Go shipped telemetry opt-in
+after backlash, Homebrew added a first-run prompt, and the .NET SDK's opt-out is
+patched out downstream by the distributors that carry it). Consent is the right
+answer, and it is a real ask to put in front of a publisher's users.
 
-1. [`16.1 — Eval contract and reference runner`](phase-16.1-eval-contract-and-reference-runner.md)
-2. [`16.2 — Typed evaluators and skill reference evaluator`](phase-16.2-typed-evaluators-and-skill-reference-evaluator.md)
-3. [`16.3 — Runner registry and network jobs`](phase-16.3-runner-registry-and-network-jobs.md)
-4. [`16.4 — Deterministic replication and agreement`](phase-16.4-deterministic-replication-and-agreement.md)
-5. [`16.5 — Eval attestations and cross-node authority`](phase-16.5-eval-attestations-and-cross-node-authority.md)
-6. [`16.6 — Benchmark-backed bounties`](phase-16.6-benchmark-backed-bounties.md)
-7. [`16.7 — Evidence search and issuer-aware ranking`](phase-16.7-evidence-search-and-issuer-aware-ranking.md)
-8. [`16.8 — Portable field evidence and aggregation`](phase-16.8-portable-field-evidence-and-aggregation.md)
-9. [`16.9 — Benchmark/field reconciliation`](phase-16.9-benchmark-field-reconciliation.md)
-10. [`16.10 — External runner onboarding and conformance`](phase-16.10-external-runner-onboarding-and-conformance.md)
-11. [`16.11 — MCP registry adapter and safe probes`](phase-16.11-mcp-registry-adapter-and-safe-probes.md)
-12. [`16.12 — Hugging Face metadata and constrained model evaluation`](phase-16.12-hugging-face-metadata-and-constrained-model-evaluation.md)
+The problem publishers actually have is that install counts are fragmented per
+store. The same skill can hold three million installs split across skills.sh,
+ClawHub and browse.sh, and none of them can see the others. Counting installs
+from Logion's own store would only add a fourth fragment.
 
-**Phase 16 exit:** at least one independent operator reproduces a bounded evaluation and issues a verifiable attestation without Logion-owned compute or credentials.
+De-fragmentation needs no consent and no client-side code, and the hard half is
+already built: `packages/indexer/` crawls the hubs, resolves each skill to its
+GitHub identity, and dedups across them, recording a `DiscoveryChannel` per hub
+per skill. Step 2 is the metric layer on top of that identity layer.
 
-## Phase 17 — ecosystem and hardening
+**Verified 2026-08-25, hub by hub** — the promise has to match what is actually
+published:
 
-Umbrella: [`phase-17-open-ecosystem-and-production-hardening.md`](phase-17-open-ecosystem-and-production-hardening.md).
+| Hub | Per-skill install count public? | Where |
+| --- | --- | --- |
+| skills.sh | yes | rendered in the page, with a trend series; `/api/v1/skills` exists but returns 401 |
+| browse.sh | yes | `installCount` in embedded JSON |
+| ClawHub | **no** | `/v1/feeds/skills` returns 861 entries whose only numeric field is `featuredAt`; not on the site either |
+| LobeHub | unconfirmed | a single `installCount` that reads as a schema example, not data |
+| skillsmp, smithery | not found | homepage only; detail pages not checked |
 
-1. [`17.1 — AI Catalog/ARD/AKTP conformance and upstream proposals`](phase-17.1-ai-catalog-ard-aktp-conformance-and-upstream-proposals.md)
-2. [`17.2 — Independent node federation`](phase-17.2-independent-node-federation.md)
-3. [`17.3 — Resource claims and commercial rails`](phase-17.3-resource-claims-and-commercial-rails.md)
-4. [`17.4 — Private and enterprise nodes`](phase-17.4-private-and-enterprise-nodes.md)
-5. [`17.5 — Trust-boundary invariant tests`](phase-17.5-trust-boundary-invariant-tests.md)
-6. [`17.6 — Public narrative and landing truth pass`](phase-17.6-public-narrative-and-landing-truth-pass.md)
+So "sum the downloads across stores" is **not** deliverable as stated: the hub
+with the largest catalog does not publish counts. What is deliverable is
+cross-hub *presence and version coverage* per canonical artifact — which nobody
+offers — plus a partial install sum over the hubs that do publish, labelled with
+its coverage and its blind spots. That is the same discipline `15.11.1` already
+requires of aggregation, applied to a cheaper signal.
 
-## Phase 18 — prove it is a network
+One constraint to carry forward when `15.11.1` returns: its consent must reuse
+the existing `~/.logion/integrations.json` store — the four modes, the separate
+review scope, the `DO_NOT_TRACK` handling — rather than the parallel
+per-projection `consent.json` the closed attempt introduced. Two consent stores
+that do not read each other is a privacy defect, not a layout preference: a user
+who set `off` in one was not honoured by the other.
 
-[`phase-18-network-liquidity-and-independent-operation.md`](phase-18-network-liquidity-and-independent-operation.md) requires useful non-founder supply and demand for three consecutive months. It explicitly rejects a token, fake subsidized volume, a mandatory global payment rail, or an owned GPU fleet.
+Step 1 remains a prerequisite of nothing in step 2. Its own exit condition still
+stands on its own terms.
+
+### Why 16.3–16.5 cannot be pulled forward
+
+Definitional, not a priority call. `16.4`: *"two processes under one operator are
+not independent nodes."* Phase 16 exit: *"at least one independent operator …
+without Logion-owned compute or credentials."* With zero external operators the
+code can be written and cannot pass its own gate. `16.1`/`16.2` have no such
+dependency — they run at N=1 on Logion's own node, which is why they are the
+entry point.
 
 ## Sequencing rules
 
-- Every active 15.10+ subphase adds a named builtin scenario and is incomplete
-  until it passes [the cheap real-agent proving-ground gate](agent-proving-ground-phase-gate.md)
-  against the locally running API. Scripted scenarios validate the harness but
-  cannot close a phase. The HMAC, acquisition/reconciliation, and observation
-  carry-over gates above are inherited by 15.10/15.11 rather than waived.
-- AI Catalog owns the typed catalog/entry model; ARD owns intent-oriented
-  discovery and registry interaction over those entries. AKTP must recreate
-  neither.
+- **A phase closes on its externally visible effect, not on its merge.** Step 6
+  is the clearest case.
+- Every critical-path subphase adds a named builtin scenario and is incomplete
+  until it passes [the real-agent proving-ground gate](agent-proving-ground-phase-gate.md)
+  against the locally running API. **A replayed payload is not a live run** —
+  record which one the evidence represents.
+- The identity, acquisition/reconciliation, and observation contracts in
+  [`normative-carry-overs.md`](normative-carry-overs.md) are inherited, not
+  waived by any resequencing.
+- AI Catalog owns the typed catalog/entry model; ARD owns discovery over those
+  entries. AKTP recreates neither, and is not frozen before it has real payload.
 - Selection/value metadata and invocation receipts have exactly one public
-  owner. Follow the ASM collaboration gate before adding a Logion equivalent;
-  adapters do not justify duplicate schemas.
-- Logion is open-source first: public planning and contribution surfaces are a
-  product invariant, while commercial rails remain optional.
-- Repository scope is the default inside a repository. No harness adapter may
-  silently install into a user-global directory.
-- `Resource` is the protocol identity; `Course`, indexed listing, and skills commands remain compatible product projections.
-- Logion runs every path first, including hosted artifact download and native-manager reconciliation, through the same public contracts used by other operators.
-- Users keep `npx skills`, `npx plugins`, `hf`, and future native workflows;
-  Logion integrates attribution, evidence, and feedback instead of imposing a
-  replacement installer. A publisher-integrated projection may bundle a tiny
-  consented reporter, but denial keeps the resource working and a static Skill
-  without verified hooks never fabricates automatic observation.
-- First-party evidence is valuable but labeled first-party until independently reproduced.
-- Skills come first. MCP execution follows strict safe probes. Hugging Face starts metadata-first; larger model evaluation waits for compatible external or sponsor-funded compute.
+  owner. Follow the ASM gate before adding a Logion equivalent.
+- Logion is open-source first; commercial rails stay optional.
+- Repository scope is the default inside a repository. No harness adapter
+  silently installs into a user-global directory.
+- `Resource` is the protocol identity; `Course`, indexed listing, and skills
+  commands are compatible projections.
+- Logion runs every path first through the same public contracts other operators
+  use.
+- Users keep `npx skills`, `npx plugins`, `hf`, and native workflows. Logion
+  integrates attribution, evidence, and feedback rather than imposing a
+  replacement installer.
+- **Field evidence is sampled, not censused.** Always publish `n`, version
+  coverage, consent mode, harness coverage, concentration, and blind spots.
+- First-party evidence is labelled first-party until independently reproduced.
+- **Independence is methodological until issuer #2, structural after.** While
+  Logion is the only issuer, public copy claims a published, reproducible
+  method — never network validation.
+- **A single-issuer attestation format is a proprietary log.** Portability is
+  proven by the first non-Logion issuer, not by publishing a spec version.
+- **Every network reward names an external payer.** A network paying itself to
+  validate itself fails the coalition-wealth test.
+- Skills first. MCP follows strict safe probes. Hugging Face is metadata-first.
 - No phase may require Logion to own a GPU fleet.
-- No public claim can be stronger than its underlying evidence and local authority policy.
+- **No public claim can be stronger than its underlying evidence and local
+  authority policy.**
+
+## Phase index
+
+`#` maps to the execution order; `—` means written but off the critical path.
+
+### Phase 15 — first useful node
+[umbrella](phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md)
+
+| Phase | # | Outcome |
+| --- | --- | --- |
+| [`15.10`](phase-15.10-native-acquisition-artifact-delivery-and-inventory.md) | done | Hosted artifact downloads plus `npx skills`, `npx plugins`, `hf` acquisition/reconciliation |
+| [`15.10.1`](phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md) | — | DeepSeek Harness plugins; **distribution experiment**, run after step 6 |
+| [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) | 1 | Observe native usage; feedback linked to the exact resource |
+| [`15.11.1`](phase-15.11.1-publisher-integrated-consented-observation.md) | — | Publisher-shipped consented projections; **deferred**, see above |
+| [`15.12`](phase-15.12-ai-catalog-publication-and-ard-discovery.md) | 3 | AI Catalog publication + ARD discovery — **in progress** on `feat/phase-15.12-ai-catalog-ard` |
+| [`15.13`](phase-15.13-portable-scan-evidence.md) | — | Signed portable evidence from current scanners |
+| [`15.14`](phase-15.14-feedback-driven-platform-bounties.md) | — | Platform-funded improvements from attributed usage |
+| [`15.14.1`](phase-15.14.1-local-multi-agent-first-node-foundation.md) | 4 | Isolated founder-operated roles on one MacBook |
+| [`15.15`](phase-15.15-isolated-first-runner-node.md) | 4 | First isolated CPU runner |
+| [`15.16`](phase-15.16-first-party-resource-dogfood-loop.md) | — | Recurring acquire → use → evidence → bounty → rerun loop |
+| [`15.17`](phase-15.17-aktp-evidence-and-improvement-feed-v0.md) | 7 | AKTP v0 as an ARD-linked evidence/improvement feed |
+
+### Phase 16 — verification
+[umbrella](phase-16-distributed-evaluation-and-independent-verification.md)
+
+**Step 5:** [`16.1`](phase-16.1-eval-contract-and-reference-runner.md),
+[`16.2`](phase-16.2-typed-evaluators-and-skill-reference-evaluator.md).
+`16.2` is also what satisfies "must work for more than MCP" — the `Evaluator`
+protocol is typed per resource, so skills, plugins, MCP servers and models all
+enter through one execution envelope with no hook, no non-standard frontmatter,
+and no permission from the author. **Portability across artifact types is solved
+in the evaluation layer, not the observation layer.**
+
+**Step 9, blocked on an external operator:**
+[`16.3`](phase-16.3-runner-registry-and-network-jobs.md),
+[`16.4`](phase-16.4-deterministic-replication-and-agreement.md),
+[`16.5`](phase-16.5-eval-attestations-and-cross-node-authority.md).
+
+**Written, unscheduled:** [`16.6`](phase-16.6-benchmark-backed-bounties.md),
+[`16.7`](phase-16.7-evidence-search-and-issuer-aware-ranking.md),
+[`16.8`](phase-16.8-portable-field-evidence-and-aggregation.md),
+[`16.9`](phase-16.9-benchmark-field-reconciliation.md),
+[`16.10`](phase-16.10-external-runner-onboarding-and-conformance.md),
+[`16.11`](phase-16.11-mcp-registry-adapter-and-safe-probes.md),
+[`16.12`](phase-16.12-hugging-face-metadata-and-constrained-model-evaluation.md).
+
+### Phase 17 — ecosystem and hardening
+[umbrella](phase-17-open-ecosystem-and-production-hardening.md). Off the critical
+path except [`17.3`](phase-17.3-resource-claims-and-commercial-rails.md) at step
+9 and [`17.6`](phase-17.6-public-narrative-and-landing-truth-pass.md), **pulled
+forward into the 0.2 release gate** because the landing still describes a
+marketplace.
+
+Remaining: [`17.1`](phase-17.1-ai-catalog-ard-aktp-conformance-and-upstream-proposals.md),
+[`17.2`](phase-17.2-independent-node-federation.md),
+[`17.4`](phase-17.4-private-and-enterprise-nodes.md),
+[`17.5`](phase-17.5-trust-boundary-invariant-tests.md).
+
+### Phase 18 — prove it is a network
+[`phase-18`](phase-18-network-liquidity-and-independent-operation.md) requires
+useful non-founder supply and demand for three consecutive months. Explicitly
+rejects a token, subsidized volume, a mandatory global payment rail, or an owned
+GPU fleet.
+
+## Release cycle plans
+
+[`cycle-0-contract-e2e-hardening.md`](cycle-0-contract-e2e-hardening.md) is
+folded into the single 0.2 release gate rather than blocking feature work: its
+invariants must be green **before the publish**, not before each phase.
+[`cli-api-compatibility-matrix.md`](cli-api-compatibility-matrix.md) and
+[`indexer-run-progress-observability.md`](indexer-run-progress-observability.md)
+belong to the same gate.
+[`consumption-adoption-ladder.md`](consumption-adoption-ladder.md) is the
+standing policy behind Loop A's "acquire wherever the ecosystem already works"
+non-negotiable; read it before changing any acquisition or attribution surface.
 
 ## Already shipped
 
-Phases 1–12 are done. The proving ground is also existing infrastructure, not a future Phase 18. Current behavior lives in [`../maintainer documentation: `](../maintainer documentation: ), with recurring release verification in [`../maintainer documentation: release-smoke-checklist.md`](../maintainer documentation: release-smoke-checklist.md).
+Phases 1–12 are done, and the proving ground is existing infrastructure. Shipped
+behavior lives in [`../maintainer documentation: `](../maintainer documentation: ), with recurring release
+verification in
+[`../maintainer documentation: release-smoke-checklist.md`](../maintainer documentation: release-smoke-checklist.md).
 
-The older roadmap blocks are historical context only. This file supersedes their future sequencing where they conflict.
+The delivered slices through the former 15.9.1 plan were consolidated and their
+plan files retired; the shipped shape is in `api.md`, `database-schema.md`,
+`cli-structure.md`, `review-and-trust-pipeline.md`, `marketplace-economy.md`,
+`repository-structure.md`, and `agent-proving-ground.md`. That retirement does
+**not** claim that native acquisition, harness-integrated observation, HMAC local
+identity, or feedback shipped — see
+[`normative-carry-overs.md`](normative-carry-overs.md).
+
+The pre-Phase-15 roadmap blocks and the cycle-1 plan were deleted on
+2026-08-18: every phase file they linked was already retired, and they reused
+the numbers `15`, `16`, and `17` for phases that mean something else today.
+This file is the only sequencing authority.

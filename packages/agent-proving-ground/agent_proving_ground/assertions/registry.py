@@ -90,6 +90,7 @@ from agent_proving_ground.assertions.files import (
     ObservationFromLiveHookAssertion,
     RoleCleanupCompleteAssertion,
     SandboxCrossVolumeCanaryUnreadableAssertion,
+    SandboxRealHarnessUsesLogionAssertion,
     SandboxRoleResourceLimitsEnforcedAssertion,
     SandboxRolesRunNonRootAssertion,
     UsagePendingEmptyAssertion,
@@ -210,6 +211,7 @@ class AssertionRegistry:
             ClientHasNoARDConnectorInstallAssertion,
             # Local multi-agent node foundation
             SandboxRolesRunNonRootAssertion,
+            SandboxRealHarnessUsesLogionAssertion,
             SandboxRoleResourceLimitsEnforcedAssertion,
             SandboxCrossVolumeCanaryUnreadableAssertion,
             InstallScopedToRepositoryAssertion,

@@ -50,6 +50,20 @@ phases:
         params:
           manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/identity.json"
 
+  - id: prove_in_container_harnesses
+    actor: consumer
+    local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    local_hook_args:
+      - harness_use
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/harness.json"
+    local_hook_capture_json:
+      HARNESS_MANIFEST: evidence_manifest
+    goal: ""
+    assertions:
+      - type: sandbox.real_harness_uses_logion
+        params:
+          manifest: "${AGENT_CONSUMER_WORKSPACE}/evidence/harness.json"
+
   - id: capture_canaries
     actor: auditor
     local_hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
@@ -207,16 +221,17 @@ phases:
     local_hook_capture_json:
       RESET_MANIFEST: evidence_manifest
     goal: |
-      The operator just performed the selective consumer reset
-      (make node-dev-reset ROLE=consumer YES=1), which removed the
-      consumer role's disposable volumes and revoked its API key. As
-      the consumer role (running again on a fresh volume with a revoked
-      key), try to authenticate against the node:
+      The operator just performed the delivered selective consumer reset.
+      The hook retained the old credential only long enough to prove that
+      the API rejects it, then recreated consumer with the newly rotated
+      credential. As the fresh consumer role, verify its current credential
+      authenticates without touching the auditor:
 
-        curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $(cat /run/secrets/consumer_api_key 2>/dev/null)" http://host.docker.internal:8000/v1/notifications
+        sh -c 'code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $(cat /run/secrets/consumer_api_key)" "$LOGION_BASE_URL/v1/notifications"); test "$code" = 200'
 
-      Report the HTTP status. Expect rejection (401/403) — do not try
-      to fix it, obtain a new key, or touch the auditor role.
+      Report that the fresh role is usable. Do not obtain another key,
+      start/stop the node, or touch the auditor role.
+
     success_hint: |
       evidence records the consumer key rejected while the auditor's
       key still authenticates and auditor state remains.
