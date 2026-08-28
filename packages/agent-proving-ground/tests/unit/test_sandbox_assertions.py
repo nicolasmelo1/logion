@@ -211,20 +211,42 @@ class TestRealHarnessUsesLogion:
             SandboxRealHarnessUsesLogionAssertion(), tmp_path, payload
         )
         assert outcome.status == "passed"
+        # The auditor recomputes this verdict from facts, so the outcome
+        # carries every observed field at the evidence root in the
+        # {"ok": ..., "value": ...} envelope, role-keyed.
+        evidence = outcome.evidence
+        assert set(evidence) == {
+            "harness_runs",
+            "process_exit_code",
+            "proof_read_exit_code",
+            "proof",
+            "prompt",
+            "codex_version",
+        }
+        assert evidence["process_exit_code"] == {
+            "ok": True,
+            "value": {"auditor": 0, "consumer": 0},
+        }
+        assert evidence["proof"]["value"]["consumer"].endswith(
+            "LOGION_HARNESS_OK consumer"
+        )
 
-    async def test_fails_when_one_role_did_not_run_logion(self, tmp_path):
+    async def test_failed_runs_still_retain_their_facts(self, tmp_path):
+        """A failed capture is evidence too: facts go out either way."""
         payload = {
             "harness_runs": {
                 "consumer": {
-                    "process_exit_code": 0,
-                    "proof_read_exit_code": 0,
-                    "proof": "LOGION_HARNESS_OK consumer",
-                    "codex_version": "codex-cli 0.150.1",
+                    "process_exit_code": 1,
+                    "proof_read_exit_code": 1,
+                    "proof": "",
+                    "prompt": "run logion --version",
+                    "codex_version": None,
                 },
                 "auditor": {
                     "process_exit_code": 0,
                     "proof_read_exit_code": 0,
                     "proof": "logion 0.2.0\nLOGION_HARNESS_OK auditor",
+                    "prompt": "run logion --version",
                     "codex_version": "codex-cli 0.150.1",
                 },
             }
@@ -233,6 +255,21 @@ class TestRealHarnessUsesLogion:
             SandboxRealHarnessUsesLogionAssertion(), tmp_path, payload
         )
         assert outcome.status == "failed"
+        evidence = outcome.evidence
+        # A non-zero exit was still observed: ok means "seen", and the
+        # contract's expected_values are what reject the value.
+        assert evidence["process_exit_code"] == {
+            "ok": True,
+            "value": {"auditor": 0, "consumer": 1},
+        }
+        # A field nothing observed is still retained — typed as a missing
+        # failure, never a fabricated placeholder. A report that dropped the
+        # fact entirely would read as "not retained" and hide the gap.
+        assert evidence["codex_version"] == {
+            "ok": False,
+            "failure": "missing",
+            "value": {"auditor": "codex-cli 0.150.1", "consumer": None},
+        }
 
 
 class TestInstallScopedToRepository:

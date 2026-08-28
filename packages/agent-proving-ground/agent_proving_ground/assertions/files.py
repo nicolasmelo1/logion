@@ -576,13 +576,45 @@ class SandboxRealHarnessUsesLogionAssertion(Assertion):
             for role, entry in sorted(runs.items())
             if isinstance(entry, dict)
         }
+        # The auditor recomputes this verdict from typed facts, so every field
+        # the contract requires goes out at the evidence root in the
+        # {"ok": true, "value": ...} envelope a fact must carry to even be
+        # read — including when nothing observed it: a fact everywhere absent
+        # reads as "not retained", which hides what the capture skipped
+        # behind a bookkeeping code. ``ok`` means observed for every role;
+        # None is the hook's unobserved marker and fails the fact instead of
+        # standing in for an observation. Whether an observed value is
+        # *acceptable* (exit 0, non-empty proof) is the contract's job via
+        # expected/forbidden values, not the handler's.
+        fields = (
+            "process_exit_code",
+            "proof_read_exit_code",
+            "proof",
+            "prompt",
+            "codex_version",
+        )
+        evidence: dict[str, object] = {"harness_runs": observed}
+        for field in fields:
+            value: dict[str, object] = {
+                role: entry[field]
+                for role, entry in observed.items()
+                if field in entry
+            }
+            taken = bool(value) and all(
+                entry.get(field) is not None for entry in observed.values()
+            )
+            fact: dict[str, object] = {"ok": taken}
+            if not taken:
+                fact["failure"] = "missing"
+            fact["value"] = value
+            evidence[field] = fact
         return _outcome(
             self.type,
             not harness_offenders,
             "real Codex processes inside both role containers used Logion",
             "in-container harness proof failed: "
             + ", ".join(harness_offenders),
-            {"harness_runs": observed},
+            evidence,
         )
 
 
