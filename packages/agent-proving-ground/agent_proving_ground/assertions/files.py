@@ -306,20 +306,6 @@ def _outcome(
     )
 
 
-def _role_manifest_or_failure(
-    ctx: AssertionContext, params: dict, label: str
-) -> tuple[dict | None, AssertionOutcome | None]:
-    try:
-        return _load_role_manifest(ctx, params), None
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        return None, AssertionOutcome(
-            type=label,
-            status="failed",
-            message=f"role manifest unreadable: {exc}",
-            evidence=params,
-        )
-
-
 def _nonroot_offender(entry: dict) -> str | None:
     uid = entry.get("uid")
     expected = entry.get("expected_uid")

@@ -241,29 +241,7 @@ def capture_identity_and_limits(roles: list[str], out: Path) -> None:
         agent_id, fingerprint = _role_identity_facts(role)
         role_agent_ids[role] = agent_id
         credential_fingerprints[role] = fingerprint
-    scenario_path = (
-        Path(__file__).resolve().parents[1]
-        / "agent_proving_ground"
-        / "scenarios"
-        / "builtin"
-        / "phase_15_14_1_local_multi_agent_node.yaml"
-    )
-    prompts: list[dict[str, str]] = []
-    try:
-        import yaml
-
-        scenario = yaml.safe_load(scenario_path.read_text(encoding="utf-8"))
-        prompts = [
-            {
-                "phase_id": phase["id"],
-                "actor": phase["actor"],
-                "goal": phase["goal"],
-            }
-            for phase in scenario.get("phases", [])
-            if phase.get("goal")
-        ]
-    except (OSError, TypeError, ValueError):
-        prompts = []
+    prompts = _scenario_prompts()
     compose_bytes = (NODE_DIR / "compose.yaml").read_bytes()
     dockerfile_bytes = (NODE_DIR / "Dockerfile.role").read_bytes()
     out.write_text(

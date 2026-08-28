@@ -22,16 +22,20 @@ deploy/local-node/compose.yaml:57
 deploy/local-node/Dockerfile.role:24
 deploy/local-node/Dockerfile.role:25
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:219
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:278
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:280
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:290
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:292
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:300
-packages/agent-proving-ground/scripts/capture_local_node_evidence.py:302
+packages/agent-proving-ground/scripts/capture_local_node_evidence.py:309
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:314
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:322
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:331
 
 # Retained node evidence records in-container /home/agent mounts, not host paths.
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:109
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:132
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:526
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:549
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:857
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:880
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:97
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:150
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:514
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:567
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:845
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:898
