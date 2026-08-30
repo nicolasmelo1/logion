@@ -1,0 +1,101 @@
+[project]
+name = "logion-runner"
+version = "0.1.0.dev1"
+description = "Reference isolated runner node for the Logion job system."
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Logion contributors" }]
+keywords = ["logion", "runner", "sandbox", "jobs"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+    "cryptography>=44.0,<52.0",
+    "httpx>=0.27,<1.0.0",
+    "logion-client",
+]
+
+[tool.uv.sources]
+logion-client = { workspace = true }
+
+[project.scripts]
+logion-node = "logion_runner.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "logion_runner"
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ANN401",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PGH",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TID251",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Repo-wide ban on `typing.Any`. Banning the *import* is what makes it
+# stick: it kills `dict[str, Any]`, `list[Any]`, `-> Any` and bare
+# `x: Any` in one rule, instead of only the top-level annotations
+# ANN401 can see.
+"typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape, JsonValue/JsonObject from the package's _json module at a JSON boundary, or a TypeVar for generic passthrough. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
+
+[tool.ruff.lint.isort]
+known-first-party = ["logion_runner"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: integration tests requiring a running coordinator (deselect with '-m \"not integration\"')",
+    "docker: tests requiring Docker (deselect with '-m \"not docker\"')",
+]
