@@ -106,6 +106,15 @@ from agent_proving_ground.assertions.logs import (
     LogsContainsRequestAssertion,
     LogsNo500sAssertion,
 )
+from agent_proving_ground.assertions.runner import (
+    CanaryNotExfiltratedAssertion,
+    ForbiddenEffectBlockedAssertion,
+    RunnerEnrolledAssertion,
+    RunnerJobCompletedAssertion,
+    RunnerJobTerminalOnceAssertion,
+    RunnerReceiptPublishedAssertion,
+    RunnerReceiptValidAssertion,
+)
 from agent_proving_ground.assertions.timeline import (
     TimelineNoUnredactedSecretAssertion,
 )
@@ -218,6 +227,13 @@ class AssertionRegistry:
             RoleCleanupCompleteAssertion,
             RoleCredentialsIsolatedAssertion,
             StateSurvivesRestartAssertion,
+            RunnerEnrolledAssertion,
+            RunnerJobCompletedAssertion,
+            RunnerReceiptPublishedAssertion,
+            RunnerReceiptValidAssertion,
+            CanaryNotExfiltratedAssertion,
+            ForbiddenEffectBlockedAssertion,
+            RunnerJobTerminalOnceAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance

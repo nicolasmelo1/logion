@@ -1,0 +1,73 @@
+schema_version: "1"
+name: phase_15_15_isolated_runner
+description: |
+  Execute one deterministic job through the enrolled isolated runner, retain
+  coordinator and independent-verifier facts, and prove adversarial effects
+  were attempted, contained, and terminal exactly once.
+api_adapter: local-devrig
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+agents:
+  - id: node_operator
+    role: Host operator for the enrolled runner node
+    driver: codex
+    devrig_role: admin
+    timeout_seconds: 1200
+  - id: consumer
+    role: Isolated consumer job container
+    driver: codex
+    devrig_role: buyer
+    timeout_seconds: 1200
+  - id: evaluator
+    role: Independent receipt verifier
+    driver: codex
+    devrig_role: buyer
+    timeout_seconds: 1200
+  - id: contributor
+    role: Adversarial fixture contributor
+    driver: codex
+    devrig_role: buyer
+    timeout_seconds: 1200
+  - id: sponsor
+    role: Job sponsor
+    driver: codex
+    devrig_role: seller
+    timeout_seconds: 1200
+  - id: auditor
+    role: Independent evidence auditor
+    driver: codex
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: collect_runner_evidence
+    actor: node_operator
+    goal: ""
+    local_hook: packages/agent-proving-ground/scripts/capture_runner_evidence.py
+    local_hook_args:
+      - collect
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+    local_hook_capture_json:
+      RUNNER_EVIDENCE_MANIFEST: evidence_manifest
+    assertions:
+      - type: api.runner_enrolled
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: api.runner_job_completed
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: api.runner_receipt_published
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: crypto.runner_receipt_valid
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: sandbox.canary_not_exfiltrated
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: sandbox.forbidden_effect_blocked
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+      - type: api.runner_job_terminal_once
+        params:
+          manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"

@@ -56,6 +56,22 @@ services:
       - auditor_workspace:/workspace
       - auditor_spool:/home/agent/.logion/spool
 
+  runner:
+    <<: *role-base
+    image: ${LOGION_NODE_IMAGE:?set LOGION_NODE_IMAGE to the pinned role image}
+    user: "10001:10001"
+    profiles: [runner]
+    environment:
+      <<: *role-environment
+      LOGION_NODE_BASE_URL: ${LOGION_CONTAINER_BASE_URL:?set LOGION_CONTAINER_BASE_URL}
+      LOGION_RUNNER_STATE_DIR: /home/agent/.logion/runner
+      LOGION_RUNNER_KEY_FILE: /run/secrets/runner_api_key
+    secrets: [runner_api_key]
+    volumes:
+      - runner_home:/home/agent
+    entrypoint: ["logion-node"]
+    command: ["run", "--once"]
+
 networks:
   node-internal:
     driver: bridge
@@ -67,6 +83,7 @@ volumes:
   auditor_home:
   auditor_workspace:
   auditor_spool:
+  runner_home:
 
 secrets:
   consumer_api_key:
@@ -77,3 +94,5 @@ secrets:
     file: ./roles/consumer.codex_auth.json
   auditor_codex_auth:
     file: ./roles/auditor.codex_auth.json
+  runner_api_key:
+    file: ./roles/runner.api_key

@@ -20,7 +20,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	bootstrap dev-up dev-api doctor companion start-companion clean-companion \
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
 	release-plan release release-dry-run release-store release-smoke-input \
-	node-dev-up node-agent node-status node-dev-down node-dev-reset
+	node-dev-up node-agent node-status node-dev-down node-dev-reset node-run-once node-doctor
 
 # scripts/ and tests/ are in scope too: the typing.Any ban is only
 # real if every path the repo actually runs is checked.
@@ -351,3 +351,9 @@ node-dev-down:
 node-dev-reset:
 	@test -n "$(ROLE)" || { echo "usage: make node-dev-reset ROLE=consumer YES=1" >&2; exit 2; }
 	bash $(NODE_DIR)/node.sh reset $(ROLE) "$(YES)"
+
+node-run-once:
+	bash $(NODE_DIR)/node.sh runner-once
+
+node-doctor:
+	bash $(NODE_DIR)/node.sh doctor
