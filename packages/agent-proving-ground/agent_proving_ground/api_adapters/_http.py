@@ -25,7 +25,11 @@ def _http_get_json_sync(
     """
     request = urllib.request.Request(
         url,
-        headers={"Accept": "application/json", **(headers or {})},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "logion-agent-proving-ground/1",
+            **(headers or {}),
+        },
         method="GET",
     )
     try:
