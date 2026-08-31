@@ -5,21 +5,28 @@ from __future__ import annotations
 
 import argparse
 import builtins
+import importlib.util
 import json
 import keyword
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from logion._json import (
-    JsonObject,
-    as_object,
-    child,
-    children,
-)
-
 ROOT = Path(__file__).resolve().parents[3]
+type JsonObject = dict[str, object]
+_JSON_PATH = ROOT / "packages" / "client" / "src" / "logion" / "_json.py"
+_JSON_SPEC = importlib.util.spec_from_file_location(
+    "logion_client_json", _JSON_PATH
+)
+if _JSON_SPEC is None or _JSON_SPEC.loader is None:
+    raise RuntimeError(f"cannot load JSON helpers from {_JSON_PATH}")
+_JSON_MODULE = importlib.util.module_from_spec(_JSON_SPEC)
+_JSON_SPEC.loader.exec_module(_JSON_MODULE)
+as_object: Callable[..., JsonObject] = _JSON_MODULE.as_object
+child: Callable[..., JsonObject] = _JSON_MODULE.child
+children: Callable[..., list[JsonObject]] = _JSON_MODULE.children
 CONTRACT_PATH = ROOT / "contracts" / "openapi" / "v1.json"
 OUTPUT_PATH = (
     ROOT

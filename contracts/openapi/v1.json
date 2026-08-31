@@ -246,57 +246,6 @@
         "title": "AcceptPlatformBountySubmissionResponse",
         "type": "object"
       },
-      "AcceptedReceiptSummary": {
-        "properties": {
-          "accepted_as_late_evidence": {
-            "title": "Accepted As Late Evidence",
-            "type": "boolean"
-          },
-          "attempt": {
-            "title": "Attempt",
-            "type": "integer"
-          },
-          "published_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Published At"
-          },
-          "receipt_digest": {
-            "title": "Receipt Digest",
-            "type": "string"
-          },
-          "receipt_id": {
-            "title": "Receipt Id",
-            "type": "string"
-          },
-          "terminal_status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Terminal Status"
-          }
-        },
-        "required": [
-          "receipt_id",
-          "attempt",
-          "receipt_digest",
-          "accepted_as_late_evidence"
-        ],
-        "title": "AcceptedReceiptSummary",
-        "type": "object"
-      },
       "AddAgentToUserRequest": {
         "properties": {
           "agent_description": {
@@ -589,34 +538,6 @@
         "title": "ApprovedCapabilitySummaryResponse",
         "type": "object"
       },
-      "ArtifactDigestResponse": {
-        "properties": {
-          "attempt": {
-            "title": "Attempt",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sha256": {
-            "title": "Sha256",
-            "type": "string"
-          },
-          "size_bytes": {
-            "title": "Size Bytes",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "name",
-          "attempt",
-          "sha256",
-          "size_bytes"
-        ],
-        "title": "ArtifactDigestResponse",
-        "type": "object"
-      },
       "ArtifactFile": {
         "properties": {
           "aggregate_key": {
@@ -660,29 +581,6 @@
           "aggregate_key"
         ],
         "title": "ArtifactFile",
-        "type": "object"
-      },
-      "ArtifactUploadResponse": {
-        "properties": {
-          "sha256": {
-            "title": "Sha256",
-            "type": "string"
-          },
-          "size_bytes": {
-            "title": "Size Bytes",
-            "type": "integer"
-          },
-          "stored": {
-            "title": "Stored",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "sha256",
-          "size_bytes",
-          "stored"
-        ],
-        "title": "ArtifactUploadResponse",
         "type": "object"
       },
       "AssetResponse": {
@@ -2854,10 +2752,7 @@
           },
           "resource_id": {
             "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
+              {},
               {
                 "type": "null"
               }
@@ -2866,10 +2761,7 @@
           },
           "resource_version_id": {
             "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
+              {},
               {
                 "type": "null"
               }
@@ -2885,6 +2777,184 @@
           "sandbox_profile"
         ],
         "title": "CreateExecutionJobRequest",
+        "type": "object"
+      },
+      "CreateExecutionJobResponse": {
+        "properties": {
+          "artifacts": {
+            "items": {},
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "contract_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Digest"
+          },
+          "created_at": {
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "input_digests": {
+            "additionalProperties": true,
+            "title": "Input Digests",
+            "type": "object"
+          },
+          "job_type": {
+            "title": "Job Type",
+            "type": "string"
+          },
+          "lease_expires_at": {
+            "title": "Lease Expires At"
+          },
+          "lease_holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Holder"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "title": "Limits",
+            "type": "object"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "required_capabilities": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Capabilities"
+          },
+          "resource_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Digest"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "resource_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Version Id"
+          },
+          "sandbox_profile": {
+            "$ref": "#/components/schemas/SandboxProfile"
+          },
+          "sandbox_profile_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Profile Digest"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "terminal_at": {
+            "title": "Terminal At"
+          },
+          "terminal_transition_count": {
+            "title": "Terminal Transition Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "job_type",
+          "status",
+          "contract_digest",
+          "sandbox_profile",
+          "sandbox_profile_digest",
+          "resource_id",
+          "resource_version_id",
+          "resource_digest",
+          "required_capabilities",
+          "input_digests",
+          "limits",
+          "artifacts",
+          "idempotency_key",
+          "attempt_count",
+          "max_attempts",
+          "lease_holder",
+          "lease_expires_at",
+          "terminal_transition_count",
+          "terminal_at",
+          "cancel_requested",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CreateExecutionJobResponse",
         "type": "object"
       },
       "CreateIndexedBundleUploadRequest": {
@@ -3521,406 +3591,6 @@
           "detail"
         ],
         "title": "ErrorResponse",
-        "type": "object"
-      },
-      "ExecutionJobItemResponse": {
-        "properties": {
-          "artifacts": {
-            "items": {},
-            "title": "Artifacts",
-            "type": "array"
-          },
-          "attempt_count": {
-            "title": "Attempt Count",
-            "type": "integer"
-          },
-          "cancel_requested": {
-            "title": "Cancel Requested",
-            "type": "boolean"
-          },
-          "contract_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contract Digest"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          },
-          "input_digests": {
-            "additionalProperties": true,
-            "title": "Input Digests",
-            "type": "object"
-          },
-          "job_type": {
-            "title": "Job Type",
-            "type": "string"
-          },
-          "lease_expires_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lease Expires At"
-          },
-          "lease_holder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lease Holder"
-          },
-          "limits": {
-            "additionalProperties": true,
-            "title": "Limits",
-            "type": "object"
-          },
-          "max_attempts": {
-            "title": "Max Attempts",
-            "type": "integer"
-          },
-          "required_capabilities": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required Capabilities"
-          },
-          "resource_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Digest"
-          },
-          "resource_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Id"
-          },
-          "resource_version_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Version Id"
-          },
-          "sandbox_profile": {
-            "$ref": "#/components/schemas/SandboxProfile"
-          },
-          "sandbox_profile_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sandbox Profile Digest"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "terminal_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Terminal At"
-          },
-          "terminal_transition_count": {
-            "title": "Terminal Transition Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "job_type",
-          "status",
-          "contract_digest",
-          "sandbox_profile",
-          "sandbox_profile_digest",
-          "resource_id",
-          "resource_version_id",
-          "resource_digest",
-          "required_capabilities",
-          "input_digests",
-          "limits",
-          "artifacts",
-          "idempotency_key",
-          "attempt_count",
-          "max_attempts",
-          "lease_holder",
-          "lease_expires_at",
-          "terminal_transition_count",
-          "terminal_at",
-          "cancel_requested",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ExecutionJobItemResponse",
-        "type": "object"
-      },
-      "ExecutionJobResponse": {
-        "properties": {
-          "artifacts": {
-            "items": {},
-            "title": "Artifacts",
-            "type": "array"
-          },
-          "attempt_count": {
-            "title": "Attempt Count",
-            "type": "integer"
-          },
-          "cancel_requested": {
-            "title": "Cancel Requested",
-            "type": "boolean"
-          },
-          "contract_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contract Digest"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          },
-          "input_digests": {
-            "additionalProperties": true,
-            "title": "Input Digests",
-            "type": "object"
-          },
-          "job_type": {
-            "title": "Job Type",
-            "type": "string"
-          },
-          "lease_expires_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lease Expires At"
-          },
-          "lease_holder": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lease Holder"
-          },
-          "limits": {
-            "additionalProperties": true,
-            "title": "Limits",
-            "type": "object"
-          },
-          "max_attempts": {
-            "title": "Max Attempts",
-            "type": "integer"
-          },
-          "required_capabilities": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required Capabilities"
-          },
-          "resource_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Digest"
-          },
-          "resource_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Id"
-          },
-          "resource_version_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Version Id"
-          },
-          "sandbox_profile": {
-            "$ref": "#/components/schemas/SandboxProfile"
-          },
-          "sandbox_profile_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sandbox Profile Digest"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "terminal_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Terminal At"
-          },
-          "terminal_transition_count": {
-            "title": "Terminal Transition Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "job_type",
-          "status",
-          "contract_digest",
-          "sandbox_profile",
-          "sandbox_profile_digest",
-          "resource_id",
-          "resource_version_id",
-          "resource_digest",
-          "required_capabilities",
-          "input_digests",
-          "limits",
-          "artifacts",
-          "idempotency_key",
-          "attempt_count",
-          "max_attempts",
-          "lease_holder",
-          "lease_expires_at",
-          "terminal_transition_count",
-          "terminal_at",
-          "cancel_requested",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ExecutionJobResponse",
         "type": "object"
       },
       "ExploreFacetBucket": {
@@ -5559,22 +5229,27 @@
           "accepted_receipt": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/AcceptedReceiptSummary"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Accepted Receipt"
           },
           "artifacts": {
             "items": {
-              "$ref": "#/components/schemas/ArtifactDigestResponse"
+              "additionalProperties": true,
+              "type": "object"
             },
             "title": "Artifacts",
             "type": "array"
           },
           "job": {
-            "$ref": "#/components/schemas/ExecutionJobResponse"
+            "additionalProperties": true,
+            "title": "Job",
+            "type": "object"
           }
         },
         "required": [
@@ -6851,48 +6526,6 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
-      "HeartbeatRunnerRequest": {
-        "properties": {
-          "attempt": {
-            "title": "Attempt",
-            "type": "integer"
-          },
-          "job_id": {
-            "title": "Job Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "job_id",
-          "attempt"
-        ],
-        "title": "HeartbeatRunnerRequest",
-        "type": "object"
-      },
-      "HeartbeatRunnerResponse": {
-        "properties": {
-          "cancel_requested": {
-            "title": "Cancel Requested",
-            "type": "boolean"
-          },
-          "lease_expires_at": {
-            "format": "date-time",
-            "title": "Lease Expires At",
-            "type": "string"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "ok",
-          "lease_expires_at",
-          "cancel_requested"
-        ],
-        "title": "HeartbeatRunnerResponse",
-        "type": "object"
-      },
       "HostInfo": {
         "description": "Host info identifying the operator of the catalog.",
         "properties": {
@@ -7170,145 +6803,7 @@
         "title": "KnownSourceEntry",
         "type": "object"
       },
-      "LeaseEnvelope": {
-        "properties": {
-          "artifacts": {
-            "items": {},
-            "title": "Artifacts",
-            "type": "array"
-          },
-          "attempt": {
-            "title": "Attempt",
-            "type": "integer"
-          },
-          "contract_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Contract Digest"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          },
-          "input_digests": {
-            "additionalProperties": true,
-            "title": "Input Digests",
-            "type": "object"
-          },
-          "job_id": {
-            "title": "Job Id",
-            "type": "string"
-          },
-          "job_type": {
-            "title": "Job Type",
-            "type": "string"
-          },
-          "lease_expires_at": {
-            "format": "date-time",
-            "title": "Lease Expires At",
-            "type": "string"
-          },
-          "limits": {
-            "additionalProperties": true,
-            "title": "Limits",
-            "type": "object"
-          },
-          "required_capabilities": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required Capabilities"
-          },
-          "resource_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Digest"
-          },
-          "resource_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Id"
-          },
-          "resource_version_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Version Id"
-          },
-          "sandbox_profile": {
-            "$ref": "#/components/schemas/SandboxProfile"
-          },
-          "sandbox_profile_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sandbox Profile Digest"
-          }
-        },
-        "required": [
-          "job_id",
-          "attempt",
-          "job_type",
-          "contract_digest",
-          "sandbox_profile",
-          "sandbox_profile_digest",
-          "resource_id",
-          "resource_version_id",
-          "resource_digest",
-          "required_capabilities",
-          "input_digests",
-          "limits",
-          "artifacts",
-          "idempotency_key",
-          "lease_expires_at"
-        ],
-        "title": "LeaseEnvelope",
-        "type": "object"
-      },
-      "LeaseRunnerRequest": {
+      "LeaseExecutionJobRequest": {
         "properties": {
           "capabilities": {
             "items": {
@@ -7318,26 +6813,28 @@
             "type": "array"
           }
         },
-        "title": "LeaseRunnerRequest",
+        "title": "LeaseExecutionJobRequest",
         "type": "object"
       },
-      "LeaseRunnerResponse": {
+      "LeaseExecutionJobResponse": {
         "properties": {
           "data": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/LeaseEnvelope"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Data"
           }
         },
         "required": [
           "data"
         ],
-        "title": "LeaseRunnerResponse",
+        "title": "LeaseExecutionJobResponse",
         "type": "object"
       },
       "ListAgentsResponse": {
@@ -7667,11 +7164,191 @@
         "title": "ListCreditLedgerResponse",
         "type": "object"
       },
+      "ListExecutionJobsItemResponse": {
+        "properties": {
+          "artifacts": {
+            "items": {},
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "contract_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Digest"
+          },
+          "created_at": {
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "input_digests": {
+            "additionalProperties": true,
+            "title": "Input Digests",
+            "type": "object"
+          },
+          "job_type": {
+            "title": "Job Type",
+            "type": "string"
+          },
+          "lease_expires_at": {
+            "title": "Lease Expires At"
+          },
+          "lease_holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Holder"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "title": "Limits",
+            "type": "object"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "required_capabilities": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Capabilities"
+          },
+          "resource_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Digest"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "resource_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Version Id"
+          },
+          "sandbox_profile": {
+            "additionalProperties": true,
+            "title": "Sandbox Profile",
+            "type": "object"
+          },
+          "sandbox_profile_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Profile Digest"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "terminal_at": {
+            "title": "Terminal At"
+          },
+          "terminal_transition_count": {
+            "title": "Terminal Transition Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "job_type",
+          "status",
+          "contract_digest",
+          "sandbox_profile",
+          "sandbox_profile_digest",
+          "resource_id",
+          "resource_version_id",
+          "resource_digest",
+          "required_capabilities",
+          "input_digests",
+          "limits",
+          "artifacts",
+          "idempotency_key",
+          "attempt_count",
+          "max_attempts",
+          "lease_holder",
+          "lease_expires_at",
+          "terminal_transition_count",
+          "terminal_at",
+          "cancel_requested",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ListExecutionJobsItemResponse",
+        "type": "object"
+      },
       "ListExecutionJobsResponse": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ExecutionJobItemResponse"
+              "$ref": "#/components/schemas/ListExecutionJobsItemResponse"
             },
             "title": "Items",
             "type": "array"
@@ -8064,11 +7741,69 @@
         "title": "ListResourcesResponse",
         "type": "object"
       },
+      "ListRunnersItemResponse": {
+        "properties": {
+          "capabilities": {
+            "items": {},
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "key_fingerprint": {
+            "title": "Key Fingerprint",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "runner_id": {
+            "title": "Runner Id",
+            "type": "string"
+          },
+          "signing_key_fingerprint": {
+            "title": "Signing Key Fingerprint",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runner_id",
+          "name",
+          "capabilities",
+          "key_fingerprint",
+          "signing_key_fingerprint",
+          "status",
+          "last_seen_at",
+          "created_at"
+        ],
+        "title": "ListRunnersItemResponse",
+        "type": "object"
+      },
       "ListRunnersResponse": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/RunnerIdentityResponse"
+              "$ref": "#/components/schemas/ListRunnersItemResponse"
             },
             "title": "Items",
             "type": "array"
@@ -9199,63 +8934,6 @@
         "title": "ReactivateUserResponse",
         "type": "object"
       },
-      "ReceiptSubmissionRequest": {
-        "properties": {
-          "client_receipt": {
-            "additionalProperties": true,
-            "title": "Client Receipt",
-            "type": "object"
-          },
-          "signature": {
-            "title": "Signature",
-            "type": "string"
-          },
-          "signature_algorithm": {
-            "title": "Signature Algorithm",
-            "type": "string"
-          }
-        },
-        "required": [
-          "client_receipt",
-          "signature",
-          "signature_algorithm"
-        ],
-        "title": "ReceiptSubmissionRequest",
-        "type": "object"
-      },
-      "ReceiptSubmissionResponse": {
-        "properties": {
-          "accepted_as_late_evidence": {
-            "title": "Accepted As Late Evidence",
-            "type": "boolean"
-          },
-          "coordinator_accepted": {
-            "title": "Coordinator Accepted",
-            "type": "boolean"
-          },
-          "receipt_digest": {
-            "title": "Receipt Digest",
-            "type": "string"
-          },
-          "receipt_id": {
-            "title": "Receipt Id",
-            "type": "string"
-          },
-          "terminal_status": {
-            "title": "Terminal Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "receipt_id",
-          "receipt_digest",
-          "coordinator_accepted",
-          "accepted_as_late_evidence",
-          "terminal_status"
-        ],
-        "title": "ReceiptSubmissionResponse",
-        "type": "object"
-      },
       "RecordSourceSnapshotRequest": {
         "additionalProperties": false,
         "description": "POST /v1/ard/sources request body.",
@@ -10347,62 +10025,79 @@
         "title": "RotateAgentApiKeyResponse",
         "type": "object"
       },
-      "RunnerIdentityResponse": {
+      "RotateRunnerKeyResponse": {
         "properties": {
-          "capabilities": {
-            "items": {},
-            "title": "Capabilities",
-            "type": "array"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
           "key_fingerprint": {
             "title": "Key Fingerprint",
-            "type": "string"
-          },
-          "last_seen_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Seen At"
-          },
-          "name": {
-            "title": "Name",
             "type": "string"
           },
           "runner_id": {
             "title": "Runner Id",
             "type": "string"
           },
+          "runner_key": {
+            "title": "Runner Key",
+            "type": "string"
+          },
           "signing_key_fingerprint": {
             "title": "Signing Key Fingerprint",
             "type": "string"
           },
-          "status": {
-            "title": "Status",
+          "signing_key_pem": {
+            "title": "Signing Key Pem",
             "type": "string"
           }
         },
         "required": [
           "runner_id",
-          "name",
-          "capabilities",
+          "runner_key",
+          "signing_key_pem",
           "key_fingerprint",
-          "signing_key_fingerprint",
-          "status",
-          "last_seen_at",
-          "created_at"
+          "signing_key_fingerprint"
         ],
-        "title": "RunnerIdentityResponse",
+        "title": "RotateRunnerKeyResponse",
+        "type": "object"
+      },
+      "RunnerHeartbeatRequest": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "attempt"
+        ],
+        "title": "RunnerHeartbeatRequest",
+        "type": "object"
+      },
+      "RunnerHeartbeatResponse": {
+        "properties": {
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "lease_expires_at": {
+            "format": "date-time",
+            "title": "Lease Expires At",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "lease_expires_at",
+          "cancel_requested"
+        ],
+        "title": "RunnerHeartbeatResponse",
         "type": "object"
       },
       "SandboxProfile": {
@@ -11003,6 +10698,63 @@
           "status"
         ],
         "title": "SubmissionGithubPrBlock",
+        "type": "object"
+      },
+      "SubmitExecutionReceiptRequest": {
+        "properties": {
+          "client_receipt": {
+            "additionalProperties": true,
+            "title": "Client Receipt",
+            "type": "object"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "signature_algorithm": {
+            "title": "Signature Algorithm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_receipt",
+          "signature",
+          "signature_algorithm"
+        ],
+        "title": "SubmitExecutionReceiptRequest",
+        "type": "object"
+      },
+      "SubmitExecutionReceiptResponse": {
+        "properties": {
+          "accepted_as_late_evidence": {
+            "title": "Accepted As Late Evidence",
+            "type": "boolean"
+          },
+          "coordinator_accepted": {
+            "title": "Coordinator Accepted",
+            "type": "boolean"
+          },
+          "receipt_digest": {
+            "title": "Receipt Digest",
+            "type": "string"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "terminal_status": {
+            "title": "Terminal Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "receipt_digest",
+          "coordinator_accepted",
+          "accepted_as_late_evidence",
+          "terminal_status"
+        ],
+        "title": "SubmitExecutionReceiptResponse",
         "type": "object"
       },
       "SubmitFeedbackRequest": {
@@ -11930,6 +11682,29 @@
           "closed_at"
         ],
         "title": "UpdateIndexingRunProgressResponse",
+        "type": "object"
+      },
+      "UploadExecutionArtifactResponse": {
+        "properties": {
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sha256",
+          "size_bytes",
+          "stored"
+        ],
+        "title": "UploadExecutionArtifactResponse",
         "type": "object"
       },
       "UpsertCourseReviewRequest": {
@@ -19511,7 +19286,7 @@
                 }
               }
             },
-            "description": "Unauthorized"
+            "description": "Authentication required"
           },
           "403": {
             "content": {
@@ -19521,7 +19296,7 @@
                 }
               }
             },
-            "description": "Forbidden"
+            "description": "Administrator access required"
           },
           "422": {
             "content": {
@@ -19574,7 +19349,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExecutionJobResponse"
+                  "$ref": "#/components/schemas/CreateExecutionJobResponse"
                 }
               }
             },
@@ -19584,7 +19359,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExecutionJobResponse"
+                  "$ref": "#/components/schemas/CreateExecutionJobResponse"
                 }
               }
             },
@@ -19598,7 +19373,7 @@
                 }
               }
             },
-            "description": "Unauthorized"
+            "description": "Authentication required"
           },
           "403": {
             "content": {
@@ -19608,7 +19383,7 @@
                 }
               }
             },
-            "description": "Forbidden"
+            "description": "Administrator access required"
           },
           "422": {
             "content": {
@@ -19618,7 +19393,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Invalid execution job"
           }
         },
         "summary": "Create an execution job.",
@@ -19677,7 +19452,7 @@
                 }
               }
             },
-            "description": "Unauthorized"
+            "description": "Authentication required"
           },
           "403": {
             "content": {
@@ -19687,7 +19462,7 @@
                 }
               }
             },
-            "description": "Forbidden"
+            "description": "Administrator access required"
           },
           "404": {
             "content": {
@@ -19697,7 +19472,7 @@
                 }
               }
             },
-            "description": "Not Found"
+            "description": "Execution job not found"
           },
           "422": {
             "content": {
@@ -19766,7 +19541,7 @@
                 }
               }
             },
-            "description": "Unauthorized"
+            "description": "Authentication required"
           },
           "403": {
             "content": {
@@ -19776,7 +19551,7 @@
                 }
               }
             },
-            "description": "Forbidden"
+            "description": "Administrator access required"
           },
           "404": {
             "content": {
@@ -19786,7 +19561,7 @@
                 }
               }
             },
-            "description": "Not Found"
+            "description": "Execution job not found"
           },
           "409": {
             "content": {
@@ -19796,7 +19571,7 @@
                 }
               }
             },
-            "description": "Already terminal"
+            "description": "Job is already terminal"
           },
           "422": {
             "content": {
@@ -22843,15 +22618,35 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Enrollment is disabled or access is forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid enrollment request"
           }
         },
         "summary": "Enroll a runner node.",
@@ -22885,7 +22680,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/HeartbeatRunnerRequest"
+                "$ref": "#/components/schemas/RunnerHeartbeatRequest"
               }
             }
           },
@@ -22896,21 +22691,61 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HeartbeatRunnerResponse"
+                  "$ref": "#/components/schemas/RunnerHeartbeatResponse"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner access forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Execution job or lease not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner lease was lost"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid heartbeat request"
           }
         },
         "summary": "Renew a held lease.",
@@ -22963,21 +22798,81 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArtifactUploadResponse"
+                  "$ref": "#/components/schemas/UploadExecutionArtifactResponse"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner access forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Execution job or lease not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner lease was lost"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Artifact exceeds the size limit"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Expected an octet-stream request"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid artifact request"
           }
         },
         "summary": "Upload one artifact blob for the leased job.",
@@ -23020,7 +22915,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReceiptSubmissionRequest"
+                "$ref": "#/components/schemas/SubmitExecutionReceiptRequest"
               }
             }
           },
@@ -23031,11 +22926,41 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReceiptSubmissionResponse"
+                  "$ref": "#/components/schemas/SubmitExecutionReceiptResponse"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner access forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Execution job or lease not found"
           },
           "409": {
             "content": {
@@ -23045,17 +22970,17 @@
                 }
               }
             },
-            "description": "Conflict"
+            "description": "Receipt conflicts with coordinator state"
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid receipt request"
           }
         },
         "summary": "Submit a signed execution receipt.",
@@ -23089,7 +23014,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaseRunnerRequest"
+                "$ref": "#/components/schemas/LeaseExecutionJobRequest"
               }
             }
           },
@@ -23100,21 +23025,41 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LeaseRunnerResponse"
+                  "$ref": "#/components/schemas/LeaseExecutionJobResponse"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner access forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid lease request"
           }
         },
         "summary": "Claim one queued execution job.",
@@ -23149,21 +23094,41 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollRunnerResponse"
+                  "$ref": "#/components/schemas/RotateRunnerKeyResponse"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Runner access forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid rotation request"
           }
         },
         "summary": "Rotate a runner's API key and signing keypair.",

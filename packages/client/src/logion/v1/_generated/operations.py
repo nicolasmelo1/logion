@@ -16,7 +16,6 @@ from logion.v1._types.generated.v1 import (
     AICatalogDocument,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
-    ArtifactUploadResponse,
     AuthorizeRequest,
     AuthorizeResponse,
     BatchUpsertListingsRequest,
@@ -44,6 +43,7 @@ from logion.v1._types.generated.v1 import (
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
     CreateExecutionJobRequest,
+    CreateExecutionJobResponse,
     CreateIndexedBundleUploadRequest,
     CreateIndexedBundleUploadResponse,
     CreatePlatformBountyRequest,
@@ -60,7 +60,6 @@ from logion.v1._types.generated.v1 import (
     DismissReportResponse,
     EnrollRunnerRequest,
     EnrollRunnerResponse,
-    ExecutionJobResponse,
     ExploreRequest,
     ExploreResponse,
     FundBountyResponse,
@@ -96,12 +95,10 @@ from logion.v1._types.generated.v1 import (
     GetUnreadCountResponse,
     GetUserDetailResponse,
     GithubIdentityResponse,
-    HeartbeatRunnerRequest,
-    HeartbeatRunnerResponse,
     IngestCatalogEntriesRequest,
     IngestCatalogEntriesResponse,
-    LeaseRunnerRequest,
-    LeaseRunnerResponse,
+    LeaseExecutionJobRequest,
+    LeaseExecutionJobResponse,
     ListAgentsResponse,
     ListBountiesResponse,
     ListBountySubmissionsResponse,
@@ -128,8 +125,6 @@ from logion.v1._types.generated.v1 import (
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
-    ReceiptSubmissionRequest,
-    ReceiptSubmissionResponse,
     RecordSourceSnapshotRequest,
     RecordSourceSnapshotResponse,
     RedeemSetupTokenRequest,
@@ -146,6 +141,9 @@ from logion.v1._types.generated.v1 import (
     ResolveReportResponse,
     RotateAgentApiKeyRequest,
     RotateAgentApiKeyResponse,
+    RotateRunnerKeyResponse,
+    RunnerHeartbeatRequest,
+    RunnerHeartbeatResponse,
     SearchListingsResponse,
     SearchRequest,
     SearchResponse,
@@ -154,6 +152,8 @@ from logion.v1._types.generated.v1 import (
     SetCourseSourceLinkResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
+    SubmitExecutionReceiptRequest,
+    SubmitExecutionReceiptResponse,
     SubmitFeedbackRequest,
     SubmitFeedbackResponse,
     SubmitUsageReceiptRequest,
@@ -166,6 +166,7 @@ from logion.v1._types.generated.v1 import (
     UpdateCourseResponse,
     UpdateIndexingRunProgressRequest,
     UpdateIndexingRunProgressResponse,
+    UploadExecutionArtifactResponse,
     UpsertCourseReviewRequest,
     UpsertCourseReviewResponse,
     WithdrawBountySubmissionResponse,
@@ -1333,12 +1334,12 @@ def create_execution_job(
     http: HttpClient,
     *,
     body: CreateExecutionJobRequest,
-) -> ExecutionJobResponse:
+) -> CreateExecutionJobResponse:
     """Call the create_execution_job API operation."""
     return http.request_model(
         "POST",
         "/v1/executions/jobs",
-        ExecutionJobResponse,
+        CreateExecutionJobResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
@@ -1946,13 +1947,13 @@ def enroll_runner(
 def runner_heartbeat(
     http: HttpClient,
     *,
-    body: HeartbeatRunnerRequest,
-) -> HeartbeatRunnerResponse:
+    body: RunnerHeartbeatRequest,
+) -> RunnerHeartbeatResponse:
     """Call the runner_heartbeat API operation."""
     return http.request_model(
         "POST",
         "/v1/runners/heartbeat",
-        HeartbeatRunnerResponse,
+        RunnerHeartbeatResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
@@ -1962,12 +1963,12 @@ def upload_execution_artifact(
     *,
     job_id: str,
     name: str,
-) -> ArtifactUploadResponse:
+) -> UploadExecutionArtifactResponse:
     """Call the upload_execution_artifact API operation."""
     return http.request_model(
         "POST",
         f"/v1/runners/jobs/{job_id}/artifacts/{name}",
-        ArtifactUploadResponse,
+        UploadExecutionArtifactResponse,
     )
 
 
@@ -1975,13 +1976,13 @@ def submit_execution_receipt(
     http: HttpClient,
     *,
     job_id: str,
-    body: ReceiptSubmissionRequest,
-) -> ReceiptSubmissionResponse:
+    body: SubmitExecutionReceiptRequest,
+) -> SubmitExecutionReceiptResponse:
     """Call the submit_execution_receipt API operation."""
     return http.request_model(
         "POST",
         f"/v1/runners/jobs/{job_id}/receipt",
-        ReceiptSubmissionResponse,
+        SubmitExecutionReceiptResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
@@ -1989,25 +1990,25 @@ def submit_execution_receipt(
 def lease_execution_job(
     http: HttpClient,
     *,
-    body: LeaseRunnerRequest,
-) -> LeaseRunnerResponse:
+    body: LeaseExecutionJobRequest,
+) -> LeaseExecutionJobResponse:
     """Call the lease_execution_job API operation."""
     return http.request_model(
         "POST",
         "/v1/runners/lease",
-        LeaseRunnerResponse,
+        LeaseExecutionJobResponse,
         json=body.model_dump(mode="json", exclude_none=True),
     )
 
 
 def rotate_runner_key(
     http: HttpClient,
-) -> EnrollRunnerResponse:
+) -> RotateRunnerKeyResponse:
     """Call the rotate_runner_key API operation."""
     return http.request_model(
         "POST",
         "/v1/runners/rotate-key",
-        EnrollRunnerResponse,
+        RotateRunnerKeyResponse,
     )
 
 
