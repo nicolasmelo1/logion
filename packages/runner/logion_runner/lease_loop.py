@@ -20,7 +20,7 @@ import json
 import platform
 import time
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from logion_runner._jcs import short_sha256
 from logion_runner._json import JsonObject
@@ -43,6 +43,7 @@ from logion_runner.sandbox.backends import (
     SandboxExecutionError,
     SandboxUnavailable,
 )
+from logion_runner.sandbox.profiles import profile_name
 
 
 class StateStore(Protocol):
@@ -122,7 +123,7 @@ def _payload_for(lease: Lease) -> JsonObject:
     declared inputs, and where to write outputs. Nothing from the host
     environment flows in.
     """
-    return {
+    payload: JsonObject = {
         "job_id": lease.job_id,
         "attempt": lease.attempt,
         "job_type": lease.job_type,
@@ -132,8 +133,9 @@ def _payload_for(lease: Lease) -> JsonObject:
         "input_digests": lease.input_digests,
         "fixture": lease.fixture,
         "effect": lease.effect,
-        "sandbox_profile": lease.sandbox_profile,
+        "sandbox_profile": cast(JsonObject, lease.sandbox_profile),
     }
+    return payload
 
 
 def _leased_summary(
@@ -242,7 +244,7 @@ def _publish(
             attempt=lease.attempt,
             runner_id=runner_id,
             runtime_digest=runtime_digest,
-            sandbox_profile=lease.sandbox_profile,
+            sandbox_profile=profile_name(lease.sandbox_profile),
             sandbox_profile_digest=lease.sandbox_profile_digest,
             contract_digest=lease.contract_digest,
             resource_id=lease.resource_id,

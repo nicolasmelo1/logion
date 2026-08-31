@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from logion_runner._json import JsonObject, opt_str, require_int
+
+SandboxProfile = dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -49,7 +52,7 @@ class Lease:
     attempt: int
     job_type: str
     contract_digest: str
-    sandbox_profile: str
+    sandbox_profile: SandboxProfile
     sandbox_profile_digest: str
     resource_id: str
     resource_version_id: str
@@ -83,7 +86,7 @@ class Lease:
             attempt=require_int(payload, "attempt"),
             job_type=opt_str(payload, "job_type") or "",
             contract_digest=opt_str(payload, "contract_digest") or "",
-            sandbox_profile=opt_str(payload, "sandbox_profile") or "",
+            sandbox_profile=_profile_map(payload.get("sandbox_profile")),
             sandbox_profile_digest=(
                 opt_str(payload, "sandbox_profile_digest") or ""
             ),
@@ -123,6 +126,15 @@ def _str_map(value: object) -> dict[str, str]:
         for key, item in value.items()
         if isinstance(key, str) and isinstance(item, str)
     }
+
+
+def _profile_map(value: object) -> SandboxProfile:
+    if not isinstance(value, dict):
+        return {}
+    return cast(
+        SandboxProfile,
+        {str(key): item for key, item in value.items()},
+    )
 
 
 TERMINAL_STATUSES = (

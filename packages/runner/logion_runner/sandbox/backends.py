@@ -420,6 +420,7 @@ class DockerBackend:
         wall: int,
     ) -> list[str]:
         flags = [
+            self._docker,
             "run",
             "--rm",
             "--read-only",
@@ -436,9 +437,12 @@ class DockerBackend:
             "--pids-limit",
             str(DEFAULT_PIDS),
             "--tmpfs",
-            "/workspace:rw,noexec,nosuid,size=64m",
+            # The job runs as a non-root UID, so the tmpfs workspace it
+            # writes into (including the job payload copy) must be owned
+            # by that same UID.
+            f"/workspace:rw,noexec,nosuid,size=64m,uid={self._uid}",
             "--tmpfs",
-            "/tmp:rw,noexec,nosuid,size=16m",  # nosec B108 - container tmpfs
+            f"/tmp:rw,noexec,nosuid,size=16m,uid={self._uid}",
             "-v",
             f"{workspace}/out:/workspace/out:rw",
             "-w",
@@ -455,7 +459,7 @@ class DockerBackend:
             f"/workspace/job-payload.json"
         )
         flags.extend(["-v", f"{payload_path}:/logion/payload.json:ro"])
-        flags.extend([image, "sh", "-c", inner])
+        flags.extend(["--entrypoint", "sh", image, "-c", inner])
         return flags
 
 
@@ -468,6 +472,4 @@ def _image_for_lease(lease: Lease) -> str:
     """
     from logion_runner.sandbox.profiles import image_for_profile
 
-    return image_for_profile(
-        lease.sandbox_profile, lease.sandbox_profile_digest
-    )
+    return image_for_profile(lease.sandbox_profile)

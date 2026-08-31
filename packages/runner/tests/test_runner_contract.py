@@ -11,6 +11,7 @@ from logion_runner._jcs import canonicalize_text
 from logion_runner.config import RunnerConfig
 from logion_runner.receipt_builder import redact
 from logion_runner.sandbox.backends import (
+    DockerBackend,
     LocalTestBackend,
     SandboxExecutionError,
     SandboxUnavailable,
@@ -34,7 +35,13 @@ def test_local_backend_fails_closed_for_adversarial() -> None:
         attempt=1,
         job_type="adversarial",
         contract_digest="c",
-        sandbox_profile="isolated-runner-v0",
+        sandbox_profile={
+            "runtime": "container",
+            "image": "logion-runner-job@sha256:abc",
+            "read_only": True,
+            "network": "none",
+            "user": "10005",
+        },
         sandbox_profile_digest="",
         resource_id="r",
         resource_version_id="v",
@@ -79,7 +86,13 @@ def test_output_symlink_is_rejected(tmp_path: Path) -> None:
         attempt=1,
         job_type="echo",
         contract_digest="c",
-        sandbox_profile="p",
+        sandbox_profile={
+            "runtime": "container",
+            "image": "logion-runner-job@sha256:def",
+            "read_only": True,
+            "network": "none",
+            "user": "10005",
+        },
         sandbox_profile_digest="d",
         resource_id="r",
         resource_version_id="v",
@@ -93,6 +106,46 @@ def test_output_symlink_is_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(SandboxExecutionError):
         _collect_out(out, lease)
+
+
+def test_docker_backend_command_starts_with_selected_cli(
+    tmp_path: Path,
+) -> None:
+    from logion_runner.job import JobLimits, Lease
+
+    lease = Lease(
+        job_id="j",
+        attempt=1,
+        job_type="echo",
+        contract_digest="c",
+        sandbox_profile={
+            "runtime": "container",
+            "image": "logion-runner-job@sha256:def",
+            "read_only": True,
+            "network": "none",
+            "user": "10005",
+        },
+        sandbox_profile_digest="d",
+        resource_id="r",
+        resource_version_id="v",
+        resource_digest="d",
+        required_capabilities=[],
+        input_digests={},
+        limits=JobLimits(1, 1, 10, 10),
+        artifacts=[],
+        idempotency_key="i",
+        lease_expires_at="",
+    )
+    backend = DockerBackend(docker_cli="docker-test")
+    command = backend._docker_command(
+        lease,
+        "logion-runner-job@sha256:def",
+        tmp_path,
+        tmp_path / "payload.json",
+        {},
+        1,
+    )
+    assert command[:2] == ["docker-test", "run"]
 
 
 def test_receipt_redacts_nested_tool_and_command_fields() -> None:

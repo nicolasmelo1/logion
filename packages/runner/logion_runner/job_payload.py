@@ -104,6 +104,7 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         "undeclared_network",
         "secret_read",
         "oversized_output",
+        "timeout_ignoring_sigterm",
     }
     detail = ""
     succeeded = False
@@ -134,6 +135,15 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         ]
         detail = f"ambient env vars visible: {len(ambient)}"
         succeeded = False
+    elif effect == "timeout_ignoring_sigterm":
+        import signal
+        import time
+
+        signal.signal(signal.SIGTERM, lambda *_: None)
+        detail = "process ignored SIGTERM until the backend deadline"
+        attempted = True
+        while True:
+            time.sleep(1)
     _write_out(
         out_dir,
         "effect-report.json",

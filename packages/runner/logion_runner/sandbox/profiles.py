@@ -8,6 +8,8 @@ unknown, so no job ever starts on an unpinned image.
 
 from __future__ import annotations
 
+from logion_runner.job import SandboxProfile
+
 #: Sandbox profile name the coordinator sends in ``sandbox_profile``.
 PROFILE_V0 = "isolated-runner-v0"
 
@@ -17,7 +19,7 @@ PROFILE_V0_NAME = "logion-runner-job"
 # Digest of the reproducible Dockerfile.runner build published with this
 # package. A zero digest is deliberately not a valid fallback.
 PROFILE_V0_DIGEST = (
-    "sha256:b3a0e7741c1edd72ed3ebc785dbdbec295e77e00322154650113b46b42231467"
+    "sha256:a5c4b5d89ccc9104181d87f2d84b61f0c0e06c7637fb1bc177ebd5eef4fd8296"
 )
 PROFILE_V0_IMAGE = f"{PROFILE_V0_NAME}@{PROFILE_V0_DIGEST}"
 
@@ -37,22 +39,34 @@ PROFILE_V0_PROPERTIES: dict[str, object] = {
 }
 
 
-def image_for_profile(profile: str, digest: str) -> str:
-    """Return the pinned image reference for *profile*.
+def profile_name(profile: SandboxProfile) -> str:
+    """Return the canonical profile name for a coordinator profile object."""
+    runtime = str(profile.get("runtime", ""))
+    image = str(profile.get("image", ""))
+    prefix = f"{PROFILE_V0_NAME}@sha256:"
+    if runtime == "container" and image.startswith(prefix):
+        return PROFILE_V0
+    raise ValueError(f"unknown sandbox profile object: {profile!r}")
 
-    ``digest`` is the coordinator's ``sandbox_profile_digest``. When it
-    carries an explicit ``sha256:...`` value it overrides the built-in
-    pin; an empty digest is accepted only for the local test backend's
-    deterministic fixtures, so the default resolves to the built-in pin.
+
+def image_for_profile(profile: SandboxProfile) -> str:
+    """Return the pinned image reference declared by *profile*.
+
+    The coordinator sends the full sandbox profile object. The runner executes
+    only the exact digest-pinned image declared there and refuses unpinned or
+    missing image fields.
     """
-    if profile != PROFILE_V0:
+    runtime = str(profile.get("runtime", ""))
+    image = str(profile.get("image", ""))
+    if runtime != "container":
         raise ValueError(
-            f"unknown sandbox profile: {profile!r} (expected {PROFILE_V0!r})"
+            f"unknown sandbox runtime: {runtime!r} (expected 'container')"
         )
-    if (
-        digest.startswith("sha256:")
-        and len(digest) == 71
-        and digest[7:] != "0" * 64
-    ):
-        return f"{PROFILE_V0_NAME}@{digest}"
-    return PROFILE_V0_IMAGE
+    if not image.startswith(f"{PROFILE_V0_NAME}@sha256:"):
+        raise ValueError(
+            "sandbox image must be pinned as "
+            f"{PROFILE_V0_NAME}@sha256:..., got {image!r}"
+        )
+    if image.endswith("@sha256:" + "0" * 64):
+        raise ValueError("sandbox image digest cannot be the zero placeholder")
+    return image

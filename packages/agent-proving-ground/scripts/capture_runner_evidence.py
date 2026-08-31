@@ -25,10 +25,16 @@ REQUIRED = (
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        sys.stderr.write("usage: capture_runner_evidence.py collect OUTPUT\n")
+    if len(sys.argv) not in {3, 4}:
+        sys.stderr.write(
+            "usage: capture_runner_evidence.py collect OUTPUT [SOURCE_DIR]\n"
+        )
         return 2
-    source_value = os.environ.get("LOGION_RUNNER_EVIDENCE_DIR")
+    source_value = (
+        sys.argv[3]
+        if len(sys.argv) == 4
+        else os.environ.get("LOGION_RUNNER_EVIDENCE_DIR")
+    )
     source = Path(source_value) if source_value else None
     if source is None or not source.is_dir():
         sys.stderr.write(
