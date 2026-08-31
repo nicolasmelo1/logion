@@ -16,12 +16,14 @@ from logion.v1._types.generated.v1 import (
     AICatalogDocument,
     ApproveHumanReviewRequest,
     ApproveHumanReviewResponse,
+    ArtifactUploadResponse,
     AuthorizeRequest,
     AuthorizeResponse,
     BatchUpsertListingsRequest,
     BatchUpsertListingsResponse,
     BlockCourseResponse,
     CancelBountyResponse,
+    CancelExecutionJobResponse,
     ClaimSetupHandoffRequest,
     ClaimSetupHandoffResponse,
     CompleteCourseVersionUploadSessionResponse,
@@ -41,6 +43,7 @@ from logion.v1._types.generated.v1 import (
     CreateCourseVersionUploadSessionResponse,
     CreateCreditTopUpRequest,
     CreateCreditTopUpResponse,
+    CreateExecutionJobRequest,
     CreateIndexedBundleUploadRequest,
     CreateIndexedBundleUploadResponse,
     CreatePlatformBountyRequest,
@@ -55,6 +58,9 @@ from logion.v1._types.generated.v1 import (
     DevicePollRequest,
     DismissReportRequest,
     DismissReportResponse,
+    EnrollRunnerRequest,
+    EnrollRunnerResponse,
+    ExecutionJobResponse,
     ExploreRequest,
     ExploreResponse,
     FundBountyResponse,
@@ -72,6 +78,7 @@ from logion.v1._types.generated.v1 import (
     GetCreatorEarningsResponse,
     GetCreditBalanceResponse,
     GetCreditTopUpResponse,
+    GetExecutionJobResponse,
     GetFeedbackSummaryResponse,
     GetHumanReviewDetailResponse,
     GetIndexedListingResponse,
@@ -89,13 +96,18 @@ from logion.v1._types.generated.v1 import (
     GetUnreadCountResponse,
     GetUserDetailResponse,
     GithubIdentityResponse,
+    HeartbeatRunnerRequest,
+    HeartbeatRunnerResponse,
     IngestCatalogEntriesRequest,
     IngestCatalogEntriesResponse,
+    LeaseRunnerRequest,
+    LeaseRunnerResponse,
     ListAgentsResponse,
     ListBountiesResponse,
     ListBountySubmissionsResponse,
     ListCourseReviewsResponse,
     ListCreditLedgerResponse,
+    ListExecutionJobsResponse,
     ListHumanReviewQueueResponse,
     ListModerationQueueResponse,
     ListMyCoursesResponse,
@@ -106,6 +118,7 @@ from logion.v1._types.generated.v1 import (
     ListResourceFeedbackResponse,
     ListResourcesResponse,
     ListResourceVersionsResponse,
+    ListRunnersResponse,
     OnboardingLinkResponse,
     OpenBountyResponse,
     OpenIndexingRunResponse,
@@ -115,6 +128,8 @@ from logion.v1._types.generated.v1 import (
     PurchaseCourseResponse,
     ReactivateAgentResponse,
     ReactivateUserResponse,
+    ReceiptSubmissionRequest,
+    ReceiptSubmissionResponse,
     RecordSourceSnapshotRequest,
     RecordSourceSnapshotResponse,
     RedeemSetupTokenRequest,
@@ -1288,6 +1303,72 @@ def get_credit_top_up(
     )
 
 
+def list_execution_jobs(
+    http: HttpClient,
+    *,
+    status: str | None = None,
+    job_type: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> ListExecutionJobsResponse:
+    """Call the list_execution_jobs API operation."""
+    params: dict[str, QueryValue] = {}
+    if status is not None:
+        params["status"] = status
+    if job_type is not None:
+        params["job_type"] = job_type
+    if limit is not None:
+        params["limit"] = limit
+    if offset is not None:
+        params["offset"] = offset
+    return http.request_model(
+        "GET",
+        "/v1/executions/jobs",
+        ListExecutionJobsResponse,
+        params=params,
+    )
+
+
+def create_execution_job(
+    http: HttpClient,
+    *,
+    body: CreateExecutionJobRequest,
+) -> ExecutionJobResponse:
+    """Call the create_execution_job API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/executions/jobs",
+        ExecutionJobResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def get_execution_job(
+    http: HttpClient,
+    *,
+    job_id: str | UUID,
+) -> GetExecutionJobResponse:
+    """Call the get_execution_job API operation."""
+    return http.request_model(
+        "GET",
+        f"/v1/executions/jobs/{job_id}",
+        GetExecutionJobResponse,
+    )
+
+
+def cancel_execution_job(
+    http: HttpClient,
+    *,
+    job_id: str | UUID,
+) -> CancelExecutionJobResponse:
+    """Call the cancel_execution_job API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/executions/jobs/{job_id}/cancel",
+        CancelExecutionJobResponse,
+    )
+
+
 def list_my_feedback(
     http: HttpClient,
     *,
@@ -1834,6 +1915,99 @@ def ingest_catalog_entries(
         "/v1/resources:ingest-catalog",
         IngestCatalogEntriesResponse,
         json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def list_runners(
+    http: HttpClient,
+) -> ListRunnersResponse:
+    """Call the list_runners API operation."""
+    return http.request_model(
+        "GET",
+        "/v1/runners",
+        ListRunnersResponse,
+    )
+
+
+def enroll_runner(
+    http: HttpClient,
+    *,
+    body: EnrollRunnerRequest,
+) -> EnrollRunnerResponse:
+    """Call the enroll_runner API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/runners/enroll",
+        EnrollRunnerResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def runner_heartbeat(
+    http: HttpClient,
+    *,
+    body: HeartbeatRunnerRequest,
+) -> HeartbeatRunnerResponse:
+    """Call the runner_heartbeat API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/runners/heartbeat",
+        HeartbeatRunnerResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def upload_execution_artifact(
+    http: HttpClient,
+    *,
+    job_id: str,
+    name: str,
+) -> ArtifactUploadResponse:
+    """Call the upload_execution_artifact API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/runners/jobs/{job_id}/artifacts/{name}",
+        ArtifactUploadResponse,
+    )
+
+
+def submit_execution_receipt(
+    http: HttpClient,
+    *,
+    job_id: str,
+    body: ReceiptSubmissionRequest,
+) -> ReceiptSubmissionResponse:
+    """Call the submit_execution_receipt API operation."""
+    return http.request_model(
+        "POST",
+        f"/v1/runners/jobs/{job_id}/receipt",
+        ReceiptSubmissionResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def lease_execution_job(
+    http: HttpClient,
+    *,
+    body: LeaseRunnerRequest,
+) -> LeaseRunnerResponse:
+    """Call the lease_execution_job API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/runners/lease",
+        LeaseRunnerResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def rotate_runner_key(
+    http: HttpClient,
+) -> EnrollRunnerResponse:
+    """Call the rotate_runner_key API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/runners/rotate-key",
+        EnrollRunnerResponse,
     )
 
 
