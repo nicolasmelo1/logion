@@ -54,10 +54,12 @@ class RunnerNode:
     """The runner process state rooted at a state directory."""
 
     config: RunnerConfig
-    backend_name: str = "local-test"
+    backend_name: str | None = None
 
     def __post_init__(self) -> None:
         self.store = KeyStore(self.config.state_dir)
+        if self.backend_name is None:
+            self.backend_name = self.config.backend
 
     # ── construction helpers ────────────────────────────────────
 
@@ -78,8 +80,10 @@ class RunnerNode:
 
     def _backend(self):
         if self.backend_name == "docker":
-            return DockerBackend()
-        return LocalTestBackend()
+            return DockerBackend(image=self.config.image or None)
+        if self.backend_name == "local-test":
+            return LocalTestBackend()
+        raise ValueError(f"unsupported backend: {self.backend_name}")
 
     # ── enroll / rotate ─────────────────────────────────────────
 

@@ -14,8 +14,10 @@ PROFILE_V0 = "isolated-runner-v0"
 #: Image pinned by digest. ``latest`` is forbidden by the profile; a
 #: job's image reference is always ``name@sha256:<hex>``.
 PROFILE_V0_NAME = "logion-runner-job"
+# Digest of the reproducible Dockerfile.runner build published with this
+# package. A zero digest is deliberately not a valid fallback.
 PROFILE_V0_DIGEST = (
-    "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    "sha256:b3a0e7741c1edd72ed3ebc785dbdbec295e77e00322154650113b46b42231467"
 )
 PROFILE_V0_IMAGE = f"{PROFILE_V0_NAME}@{PROFILE_V0_DIGEST}"
 
@@ -47,6 +49,10 @@ def image_for_profile(profile: str, digest: str) -> str:
         raise ValueError(
             f"unknown sandbox profile: {profile!r} (expected {PROFILE_V0!r})"
         )
-    if digest.startswith("sha256:"):
+    if (
+        digest.startswith("sha256:")
+        and len(digest) == 71
+        and digest[7:] != "0" * 64
+    ):
         return f"{PROFILE_V0_NAME}@{digest}"
     return PROFILE_V0_IMAGE

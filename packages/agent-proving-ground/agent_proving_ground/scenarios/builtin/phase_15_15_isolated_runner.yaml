@@ -8,6 +8,9 @@ api_adapter: local-devrig
 execution_requirements:
   api_adapters: [local-devrig]
   agent_drivers: [codex, claude-code]
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
 agents:
   - id: node_operator
     role: Host operator for the enrolled runner node
@@ -71,3 +74,8 @@ phases:
       - type: api.runner_job_terminal_once
         params:
           manifest: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner.json"
+  - id: verify_api_logs
+    actor: auditor
+    goal: "Verify the enrolled runner completed without server errors."
+    assertions:
+      - type: logs.no_500s

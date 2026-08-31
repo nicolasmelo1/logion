@@ -64,8 +64,9 @@ services:
     environment:
       <<: *role-environment
       LOGION_NODE_BASE_URL: ${LOGION_CONTAINER_BASE_URL:?set LOGION_CONTAINER_BASE_URL}
-      LOGION_RUNNER_STATE_DIR: /home/agent/.logion/runner
-      LOGION_RUNNER_KEY_FILE: /run/secrets/runner_api_key
+      LOGION_NODE_STATE_DIR: /home/agent/.logion/runner
+      LOGION_NODE_BACKEND: ${LOGION_NODE_BACKEND:-docker}
+      LOGION_NODE_IMAGE: ${LOGION_NODE_IMAGE:?set LOGION_NODE_IMAGE to a digest-pinned runner image}
     secrets: [runner_api_key]
     volumes:
       - runner_home:/home/agent

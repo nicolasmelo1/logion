@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import math
+from decimal import Decimal
 
 from logion_runner._json import JsonValue
 
@@ -58,16 +59,29 @@ def _escape_string(value: str) -> str:
 
 
 def _format_number(value: float) -> str:
-    """Shortest round-trip form; JCS forbids NaN/Infinity."""
-    if math.isnan(value) or math.isinf(value):
+    """Format using the ECMAScript number form required by RFC 8785."""
+    if not math.isfinite(value):
         raise ValueError(f"cannot canonicalize non-finite number: {value!r}")
     if value == 0:
         return "0"
-    if value.is_integer() and abs(value) < 1e21:
-        # A float that is a whole number canonicalizes without a
-        # trailing ".0": JCS emits the integer form.
-        return str(int(value))
-    return repr(value)
+    text = repr(value).lower()
+    if "e" not in text:
+        if text.endswith(".0"):
+            text = text[:-2]
+        return text
+    mantissa, exponent_text = text.split("e")
+    exponent = int(exponent_text)
+    digits = mantissa.replace(".", "").lstrip("+")
+    sign = ""
+    if digits.startswith("-"):
+        sign, digits = "-", digits[1:]
+    if exponent >= -6 and exponent < 21:
+        expanded = format(Decimal(text), "f")
+        if "." in expanded:
+            expanded = expanded.rstrip("0").rstrip(".")
+        return expanded
+    normalized = digits[0] + ("." + digits[1:] if len(digits) > 1 else "")
+    return f"{sign}{normalized}e{'+' if exponent >= 0 else ''}{exponent}"
 
 
 def _canonical(value: JsonValue, out: list[str]) -> None:

@@ -147,6 +147,13 @@ class LocalDevrigAdapter(ApiAdapter):
                 "found": self._api_log_path.is_file(),
                 "path": str(self._api_log_path),
             }
+        if query_type in {
+            "runner_enrolled",
+            "runner_job_completed",
+            "runner_receipt_published",
+            "runner_job_terminal_once",
+        }:
+            return _runner_fact_query(query_type, query)
         agent_roles = world.data.get("agent_roles") or {}
         role_keys = _role_key_store_from_devrig(
             self._base_env, list(world.agent_env.keys()), agent_roles
@@ -366,3 +373,91 @@ def _resolve_api_log_path(root: Path, explicit: Path | str | None) -> Path:
         if candidate.is_file():
             return candidate
     return root / ".devrig" / "api.log"
+
+
+_RUNNER_QUERY_FACTS: dict[str, tuple[str, ...]] = {
+    "runner_enrolled": (
+        "runner_id",
+        "runner_key_fingerprint",
+        "runner_import_root",
+        "runner_credential_kind",
+        "runner_package_version",
+    ),
+    "runner_job_completed": (
+        "job_id",
+        "terminal_status",
+        "attempt_count",
+        "uploaded_artifact_digest",
+        "coordinator_artifact_digest",
+        "lease_holder",
+    ),
+    "runner_receipt_published": (
+        "receipt_id",
+        "receipt_digest",
+        "coordinator_accepted",
+        "accepted_as_late_evidence",
+        "published_at",
+    ),
+    "runner_job_terminal_once": (
+        "terminal_transition_count",
+        "terminal_status",
+        "duplicate_receipt_rejected",
+        "attempt_count",
+    ),
+}
+
+
+def _runner_fact_query(query_type: object, query: JsonObject) -> JsonObject:
+    """Return only typed facts captured by the retained runner manifest.
+
+    A missing manifest is a real capability gap and is the only path that
+    returns ``unsupported``. Malformed or incomplete captured data is a failed
+    observation, never an excuse to turn a required assertion into a skip.
+    """
+    required = _RUNNER_QUERY_FACTS.get(str(query_type))
+    if required is None:
+        return {
+            "found": False,
+            "unsupported": True,
+            "reason": "unknown runner query",
+        }
+    raw_path = query.get("manifest")
+    if not isinstance(raw_path, str) or not raw_path:
+        return {
+            "found": False,
+            "unsupported": True,
+            "reason": "retained runner evidence manifest is unavailable",
+        }
+    path = Path(raw_path)
+    try:
+        if path.is_symlink() or not path.is_file():
+            return {
+                "found": False,
+                "unsupported": True,
+                "reason": "retained runner evidence manifest is unavailable",
+            }
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"found": False, "reason": f"runner evidence unreadable: {exc}"}
+    if not isinstance(payload, dict) or not isinstance(
+        payload.get("facts"), dict
+    ):
+        return {"found": False, "reason": "runner evidence has no typed facts"}
+    facts = payload["facts"]
+    selected = {name: facts.get(name) for name in required}
+    complete = all(
+        isinstance(value, dict)
+        and value.get("ok") is True
+        and "value" in value
+        for value in selected.values()
+    )
+    return {
+        "found": complete,
+        "facts": selected,
+        "evidence": {"source": "retained-runner-manifest", "path": str(path)},
+        **(
+            {}
+            if complete
+            else {"reason": "required typed runner facts are missing"}
+        ),
+    }

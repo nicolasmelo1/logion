@@ -130,6 +130,8 @@ def _payload_for(lease: Lease) -> JsonObject:
         "resource_id": lease.resource_id,
         "resource_version_id": lease.resource_version_id,
         "input_digests": lease.input_digests,
+        "fixture": lease.fixture,
+        "effect": lease.effect,
         "sandbox_profile": lease.sandbox_profile,
     }
 
@@ -141,15 +143,18 @@ def _leased_summary(
     artifacts: dict[str, str] | None = None,
     duplicate_rejected: bool = False,
     coordinator_accepted: bool = True,
+    coordinator_facts: JsonObject | None = None,
 ) -> JsonObject:
     summary: JsonObject = {
         "leased": True,
         "job_id": lease.job_id,
         "status": status,
         "attempt": lease.attempt,
-        "attempt_count": 1,
-        "terminal_transition_count": 1,
     }
+    if coordinator_facts:
+        for key in ("attempt_count", "terminal_transition_count"):
+            if key in coordinator_facts:
+                summary[key] = coordinator_facts[key]
     if artifacts is not None:
         receipt_summary: JsonObject = {
             "submitted": True,
@@ -200,7 +205,7 @@ def _publish(
     result: ExecutionResult | None,
     runtime_digest: str,
     error: str | None = None,
-) -> tuple[dict[str, str], bool, bool]:
+) -> tuple[dict[str, str], bool, bool, JsonObject]:
     """Upload artifacts, build/sign/submit the receipt.
 
     Returns (artifacts, duplicate_rejected, coordinator_accepted).
@@ -266,9 +271,14 @@ def _publish(
             # The coordinator already holds a receipt for this attempt
             # (an upload retry raced it). The terminal state is
             # unchanged; the duplicate was rejected.
-            return artifacts, True, False
+            return artifacts, True, False, {"coordinator_accepted": False}
         raise
-    return artifacts, False, bool(acceptance.get("coordinator_accepted", True))
+    return (
+        artifacts,
+        False,
+        bool(acceptance.get("coordinator_accepted", True)),
+        acceptance,
+    )
 
 
 def _environment_fingerprint() -> dict[str, str]:
@@ -351,7 +361,13 @@ def run_one_iteration(
     result: ExecutionResult | None = None
     error: str | None = None
     try:
-        result = backend.execute(lease, _payload_for(lease))
+        result = backend.execute(
+            lease,
+            _payload_for(lease),
+            on_heartbeat=lambda: _heartbeat_or_raise(
+                client, runner_key, lease
+            ),
+        )
     except (SandboxUnavailable, SandboxExecutionError) as exc:
         status = "failed"
         error = str(exc)
@@ -367,7 +383,7 @@ def run_one_iteration(
     _heartbeat_or_raise(client, runner_key, lease)
 
     denied_effect = result.denied_effect if result is not None else None
-    artifacts, duplicate, accepted = _publish(
+    artifacts, duplicate, accepted, acceptance = _publish(
         client,
         signing_key,
         lease,
@@ -387,6 +403,7 @@ def run_one_iteration(
         artifacts=artifacts,
         duplicate_rejected=duplicate,
         coordinator_accepted=accepted,
+        coordinator_facts=acceptance,
     )
     return _record(summary, state_store)
 

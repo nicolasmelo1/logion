@@ -14,6 +14,7 @@ import base64
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import cast
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -21,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 
 from logion_runner._jcs import canonicalize
-from logion_runner._json import JsonObject
+from logion_runner._json import JsonObject, JsonValue
 
 RECEIPT_SCHEMA_VERSION = "1"
 SIGNATURE_ALGORITHM = "Ed25519"
@@ -74,6 +75,8 @@ class ReceiptInput:
     assertion_vector_digest: str
     redactions_applied: list[str]
     environment_fingerprint: dict[str, str]
+    command: list[str] | None = None
+    tool_calls: list[JsonObject] | None = None
     lease_holder: str | None = None
     idempotency_key: str | None = None
 
@@ -90,34 +93,30 @@ def utc_now_iso() -> str:
 
 
 def redact(value: JsonObject) -> tuple[JsonObject, list[str]]:
-    """Return (redacted copy, redacted key paths).
-
-    Any key whose lowercase name contains a redacted marker has its
-    value replaced with ``"[REDACTED]"`` and the path recorded. The
-    receipt then carries the *fact* of the redaction, never the value.
-    """
+    """Return a deep redacted copy and the redacted key paths."""
     redactions: list[str] = []
 
-    def walk(node: JsonObject, prefix: str) -> JsonObject:
-        out: JsonObject = {}
-        for key, item in node.items():
-            path = f"{prefix}.{key}" if prefix else key
-            lowered = key.lower()
-            if (
-                any(marker in lowered for marker in REDACTED_KEYS)
-                and isinstance(item, str)
-                and item
-            ):
-                redactions.append(path)
-                out[key] = "[REDACTED]"
-                continue
-            if isinstance(item, dict):
-                out[key] = walk(item, path)
-            else:
-                out[key] = item
-        return out
+    def walk(node: object, prefix: str) -> object:
+        if isinstance(node, dict):
+            out: JsonObject = {}
+            for key, item in node.items():
+                path = f"{prefix}.{key}" if prefix else str(key)
+                lowered = str(key).lower()
+                if any(marker in lowered for marker in REDACTED_KEYS):
+                    redactions.append(path)
+                    out[str(key)] = "[REDACTED]"
+                else:
+                    out[str(key)] = cast(JsonValue, walk(item, path))
+            return out
+        if isinstance(node, list):
+            return [
+                walk(item, f"{prefix}[{index}]")
+                for index, item in enumerate(node)
+            ]
+        return node
 
-    return walk(value, ""), sorted(set(redactions))
+    result = walk(value, "")
+    return result if isinstance(result, dict) else {}, sorted(set(redactions))
 
 
 def build_receipt(data: ReceiptInput) -> JsonObject:
@@ -138,6 +137,12 @@ def build_receipt(data: ReceiptInput) -> JsonObject:
     redacted_environment, env_redactions = redact(
         dict(data.environment_fingerprint)
     )
+    redacted_command, command_redactions = redact({
+        "command": data.command or []
+    })
+    redacted_tools, tool_redactions = redact({
+        "tool_calls": data.tool_calls or []
+    })
     receipt: JsonObject = {
         "schema_version": RECEIPT_SCHEMA_VERSION,
         "job_id": data.job_id,
@@ -156,8 +161,13 @@ def build_receipt(data: ReceiptInput) -> JsonObject:
         "output_artifacts": data.output_artifacts,
         "assertion_vector_digest": data.assertion_vector_digest,
         "outcome": outcome,
-        "redactions_applied": data.redactions_applied + env_redactions,
+        "redactions_applied": data.redactions_applied
+        + env_redactions
+        + command_redactions
+        + tool_redactions,
         "environment_fingerprint": redacted_environment,
+        "command": redacted_command["command"],
+        "tool_calls": redacted_tools["tool_calls"],
     }
     if data.lease_holder:
         receipt["lease_holder"] = data.lease_holder

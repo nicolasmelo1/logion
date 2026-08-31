@@ -9,6 +9,8 @@ from pathlib import Path
 BASE_URL_ENV = "LOGION_NODE_BASE_URL"
 STATE_DIR_ENV = "LOGION_NODE_STATE_DIR"
 RUNNER_NAME_ENV = "LOGION_NODE_RUNNER_NAME"
+BACKEND_ENV = "LOGION_NODE_BACKEND"
+IMAGE_ENV = "LOGION_NODE_IMAGE"
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_STATE_DIRNAME = ".logion-node"
@@ -31,6 +33,8 @@ class RunnerConfig:
     base_url: str = DEFAULT_BASE_URL
     state_dir: Path = field(default_factory=default_state_dir)
     runner_name: str = ""
+    backend: str = "docker"
+    image: str = ""
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> RunnerConfig:
@@ -42,7 +46,18 @@ class RunnerConfig:
             Path(state_raw).expanduser() if state_raw else default_state_dir()
         )
         name = source.get(RUNNER_NAME_ENV, "").strip()
-        return cls(base_url=base_url, state_dir=state_dir, runner_name=name)
+        backend = source.get(BACKEND_ENV, "docker").strip().lower()
+        if backend not in {"docker", "local-test"}:
+            raise ValueError(
+                "LOGION_NODE_BACKEND must be docker or local-test"
+            )
+        return cls(
+            base_url=base_url,
+            state_dir=state_dir,
+            runner_name=name,
+            backend=backend,
+            image=source.get(IMAGE_ENV, "").strip(),
+        )
 
 
 def job_history_path(state_dir: Path) -> Path:

@@ -140,6 +140,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Idle sleep between leases when looping",
     )
+    run.add_argument(
+        "--backend", choices=("docker", "local-test"), default=None
+    )
     run.set_defaults(handler=cmd_run)
 
     jobs = subparsers.add_parser("jobs", help="Show local run history")
@@ -170,6 +173,11 @@ def main(argv: list[str] | None = None) -> int:
         import os
 
         os.environ["LOGION_NODE_BASE_URL"] = base_override
+    backend_override = getattr(args, "backend", None)
+    if backend_override:
+        import os
+
+        os.environ["LOGION_NODE_BACKEND"] = backend_override
     handler = args.handler
     return int(handler(args))
 

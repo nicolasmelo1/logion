@@ -106,11 +106,13 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         "oversized_output",
     }
     detail = ""
+    succeeded = False
     attempted = effect in blocked_kinds
     if effect == "filesystem_escape":
         try:
             Path("/etc/passwd").read_text()
             detail = "root filesystem was readable"
+            succeeded = True
         except OSError:
             detail = "root path unreadable"
     elif effect == "undeclared_network":
@@ -119,6 +121,7 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         try:
             socket.create_connection(("127.0.0.1", 9), timeout=0.2)
             detail = "socket connect unexpectedly succeeded"
+            succeeded = True
         except OSError:
             detail = "network unavailable"
     elif effect == "secret_read":
@@ -130,21 +133,20 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
             if key not in {"PATH", "LANG", "LC_ALL", "TZ", "LOGION_JOB_ID"}
         ]
         detail = f"ambient env vars visible: {len(ambient)}"
+        succeeded = False
     _write_out(
         out_dir,
         "effect-report.json",
         json.dumps(
-            {"effect": effect, "attempted": attempted, "detail": detail},
+            {
+                "effect": effect,
+                "attempted": attempted,
+                "detail": detail,
+                "succeeded": succeeded,
+                "effect_blocked": attempted and not succeeded,
+            },
             sort_keys=True,
         ).encode(),
-    )
-    sys.stderr.write(
-        json.dumps({
-            "effect_blocked": True,
-            "effect_kind": effect,
-            "effect_detail": detail,
-        })
-        + "\n"
     )
     # A blocked effect is still a failed job: the fixture must end in a
     # typed terminal state, never "succeeded".

@@ -120,6 +120,30 @@ class LogionApiQueries:
             return _unsupported(f"query {query_type} not implemented")
         return await handler(query, agent_roles)
 
+    async def _q_runner_enrolled(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_enrolled")
+
+    async def _q_runner_job_completed(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_job_completed")
+
+    async def _q_runner_receipt_published(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_receipt_published")
+
+    async def _q_runner_job_terminal_once(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_job_terminal_once")
+
     async def baseline(self, agent_roles: dict[str, str]) -> JsonObject:
         """Capture existing marketplace state before a scenario mutates it."""
         course_ids: set[str] = set()
@@ -3366,6 +3390,75 @@ def _as_count(value: JsonValue) -> int:
 
 def _unsupported(reason: str) -> JsonObject:
     return {"found": False, "unsupported": True, "reason": reason}
+
+
+_RUNNER_QUERY_FACTS: dict[str, tuple[str, ...]] = {
+    "runner_enrolled": (
+        "runner_id",
+        "runner_key_fingerprint",
+        "runner_import_root",
+        "runner_credential_kind",
+        "runner_package_version",
+    ),
+    "runner_job_completed": (
+        "job_id",
+        "terminal_status",
+        "attempt_count",
+        "uploaded_artifact_digest",
+        "coordinator_artifact_digest",
+        "lease_holder",
+    ),
+    "runner_receipt_published": (
+        "receipt_id",
+        "receipt_digest",
+        "coordinator_accepted",
+        "accepted_as_late_evidence",
+        "published_at",
+    ),
+    "runner_job_terminal_once": (
+        "terminal_transition_count",
+        "terminal_status",
+        "duplicate_receipt_rejected",
+        "attempt_count",
+    ),
+}
+
+
+def _runner_fact_query(query: JsonObject, query_name: str) -> JsonObject:
+    """Read a runner query from captured typed facts, never report claims."""
+    required = _RUNNER_QUERY_FACTS[query_name]
+    raw_path = query.get("manifest")
+    if not isinstance(raw_path, str) or not raw_path:
+        return _unsupported("retained runner evidence manifest is unavailable")
+    path = Path(raw_path)
+    try:
+        if path.is_symlink() or not path.is_file():
+            return _unsupported(
+                "retained runner evidence manifest is unavailable"
+            )
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"found": False, "reason": f"runner evidence unreadable: {exc}"}
+    facts = payload.get("facts") if isinstance(payload, dict) else None
+    if not isinstance(facts, dict):
+        return {"found": False, "reason": "runner evidence has no typed facts"}
+    selected = {name: facts.get(name) for name in required}
+    complete = all(
+        isinstance(value, dict)
+        and value.get("ok") is True
+        and "value" in value
+        for value in selected.values()
+    )
+    return {
+        "found": complete,
+        "facts": selected,
+        "evidence": {"source": "retained-runner-manifest", "path": str(path)},
+        **(
+            {}
+            if complete
+            else {"reason": "required typed runner facts are missing"}
+        ),
+    }
 
 
 def _baseline_ids(query: JsonObject, key: str) -> set[str]:

@@ -26,6 +26,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -35,7 +36,7 @@ from logion_runner.job import Lease
 
 #: Environment variables a job process may see. Everything else starts
 #: empty: ambient credentials do not leak into the sandbox by default.
-ENV_ALLOWLIST = frozenset({"PATH", "LANG", "LC_ALL", "TZ", "PYTHON_VERSION"})
+ENV_ALLOWLIST = frozenset({"LANG", "LC_ALL", "TZ", "PYTHON_VERSION"})
 
 SANDBOX_PROFILE_V0 = "isolated-runner-v0"
 
@@ -133,12 +134,13 @@ class LocalTestBackend:
         self._state_root = state_root
 
     def execute(
-        self,
-        lease: Lease,
-        payload: JsonObject,
-        *,
-        on_heartbeat=None,  # noqa: ARG002 - parity with DockerBackend
+        self, lease: Lease, payload: JsonObject, *, on_heartbeat=None
     ) -> ExecutionResult:
+        if lease.job_type == "adversarial":
+            raise SandboxUnavailable(
+                "local-test backend is development-only and cannot execute "
+                "adversarial jobs"
+            )
         wall = max(1, lease.limits.wall_seconds)
         workspace = Path(tempfile.mkdtemp(prefix="logion-runner-")).resolve()
         try:
@@ -165,17 +167,9 @@ class LocalTestBackend:
                 raise SandboxExecutionError(
                     f"cannot start payload process: {exc}"
                 ) from exc
-            timed_out = False
-            try:
-                stdout, stderr = proc.communicate(timeout=wall)
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                proc.send_signal(signal.SIGTERM)
-                try:
-                    stdout, stderr = proc.communicate(timeout=5)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    stdout, stderr = proc.communicate()
+            stdout, stderr, timed_out, logs_truncated = _communicate_bounded(
+                proc, wall, lease.limits.log_bytes, on_heartbeat
+            )
             output_files, truncated = _collect_out(out_dir, lease)
             if timed_out:
                 return ExecutionResult(
@@ -188,10 +182,10 @@ class LocalTestBackend:
                         name: _sha256_hex(data)
                         for name, data in output_files.items()
                     },
-                    truncated_output=truncated,
+                    truncated_output=truncated or logs_truncated,
                 )
             status = "succeeded" if proc.returncode == 0 else "failed"
-            denied = _denied_effect_from_stderr(stderr)
+            denied = _denied_effect_from_observed_output(output_files)
             return ExecutionResult(
                 status=status,
                 exit_code=proc.returncode,
@@ -202,35 +196,80 @@ class LocalTestBackend:
                     name: _sha256_hex(data)
                     for name, data in output_files.items()
                 },
-                truncated_output=truncated,
+                truncated_output=truncated or logs_truncated,
                 denied_effect=denied,
             )
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
 
 
-def _denied_effect_from_stderr(stderr: str) -> dict | None:
-    """Parse the payload's structured denied-effect marker, if any.
+def _denied_effect_from_observed_output(
+    output_files: dict[str, bytes],
+) -> dict | None:
+    """Derive denial only from the backend-observed effect report."""
+    raw = output_files.get("effect-report.json")
+    if raw is None:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not isinstance(parsed, dict)
+        or parsed.get("effect_blocked") is not True
+    ):
+        return None
+    if parsed.get("succeeded") is True:
+        return None
+    return {
+        "effect_blocked": True,
+        "effect_kind": parsed.get("effect"),
+        "effect_detail": parsed.get("detail"),
+    }
 
-    The sandboxed payload reports a blocked effect by writing one JSON
-    line ``{"effect_blocked": true, ...}`` to stderr. The lease loop
-    records those fields inside the receipt and the job ends ``failed``.
-    """
-    for line in stderr.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("{"):
-            continue
+
+def _communicate_bounded(
+    proc: subprocess.Popen[str],
+    wall: int,
+    log_limit: int,
+    on_heartbeat,
+) -> tuple[str, str, bool, bool]:
+    """Poll a child, heartbeat while it runs, and cap retained logs."""
+    deadline = time.monotonic() + max(1, wall)
+    log_limit = max(1, log_limit)
+    while proc.poll() is None and time.monotonic() < deadline:
+        if on_heartbeat is not None:
+            on_heartbeat()
         try:
-            parsed = json.loads(stripped)
-        except ValueError:
+            stdout, stderr = proc.communicate(timeout=0.25)
+            return (
+                stdout[-log_limit:],
+                stderr[-log_limit:],
+                False,
+                len(stdout) > log_limit or len(stderr) > log_limit,
+            )
+        except subprocess.TimeoutExpired:
             continue
-        if isinstance(parsed, dict) and parsed.get("effect_blocked") is True:
-            return {
-                "effect_blocked": True,
-                "effect_kind": parsed.get("effect_kind"),
-                "effect_detail": parsed.get("effect_detail"),
-            }
-    return None
+    if proc.poll() is None:
+        proc.send_signal(signal.SIGTERM)
+        try:
+            stdout, stderr = proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            stdout, stderr = proc.communicate()
+        return (
+            stdout[-log_limit:],
+            stderr[-log_limit:],
+            True,
+            len(stdout) > log_limit or len(stderr) > log_limit,
+        )
+    stdout, stderr = proc.communicate()
+    return (
+        stdout[-log_limit:],
+        stderr[-log_limit:],
+        False,
+        len(stdout) > log_limit or len(stderr) > log_limit,
+    )
 
 
 def _collect_out(out_dir: Path, lease: Lease) -> tuple[dict[str, bytes], bool]:
@@ -240,6 +279,8 @@ def _collect_out(out_dir: Path, lease: Lease) -> tuple[dict[str, bytes], bool]:
     total = 0
     truncated = False
     for path in sorted(out_dir.rglob("*")):
+        if path.is_symlink():
+            raise SandboxExecutionError("symlink in output tree is forbidden")
         if not path.is_file():
             continue
         data = path.read_bytes()
@@ -313,7 +354,7 @@ class DockerBackend:
         lease: Lease,
         payload: JsonObject,
         *,
-        on_heartbeat=None,  # noqa: ARG002 - heartbeat parity hook
+        on_heartbeat=None,
     ) -> ExecutionResult:
         self._require_docker()
 
@@ -331,7 +372,6 @@ class DockerBackend:
             command = self._docker_command(
                 lease, image, workspace, payload_path, env, wall
             )
-            timed_out = False
             try:
                 proc = subprocess.Popen(
                     command,
@@ -343,22 +383,15 @@ class DockerBackend:
                 raise SandboxExecutionError(
                     f"cannot start docker: {exc}"
                 ) from exc
-            try:
-                stdout, stderr = proc.communicate(timeout=wall)
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                proc.send_signal(signal.SIGTERM)
-                try:
-                    stdout, stderr = proc.communicate(timeout=10)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    stdout, stderr = proc.communicate()
+            stdout, stderr, timed_out, logs_truncated = _communicate_bounded(
+                proc, wall, lease.limits.log_bytes, on_heartbeat
+            )
             output_files, truncated = _collect_out(out_dir, lease)
             if timed_out:
                 status = "timed_out"
             else:
                 status = "succeeded" if proc.returncode == 0 else "failed"
-            denied = _denied_effect_from_stderr(stderr)
+            denied = _denied_effect_from_observed_output(output_files)
             if denied is not None and status == "failed":
                 pass
             return ExecutionResult(
@@ -371,7 +404,7 @@ class DockerBackend:
                     name: _sha256_hex(data)
                     for name, data in output_files.items()
                 },
-                truncated_output=truncated,
+                truncated_output=truncated or logs_truncated,
                 denied_effect=denied,
             )
         finally:
