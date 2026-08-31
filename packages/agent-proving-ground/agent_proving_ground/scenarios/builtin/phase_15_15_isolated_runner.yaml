@@ -45,7 +45,10 @@ agents:
 phases:
   - id: collect_runner_evidence
     actor: node_operator
-    goal: ""
+    goal: >-
+      Use my enrolled Logion node to execute the portable checker for this
+      resource. Show and verify the receipt, then try the untrusted fixture
+      under the same published policy and explain why it was contained.
     local_hook: packages/agent-proving-ground/scripts/capture_runner_evidence.py
     local_hook_args:
       - collect
