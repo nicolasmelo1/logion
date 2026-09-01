@@ -3,5 +3,5 @@
   "packages/client/src/logion/v1/_generated/__init__.py": "a7dca5b1167b240ff752c4adff0ed4cf948b75a5d547baf4332525a81f096c66",
   "packages/client/src/logion/v1/_generated/operations.py": "a5deb961bd8a471dad48cd0a8c43bf644a6073c8fe14e8af2d55bf24e5826fbc",
   "packages/client/src/logion/v1/_types/generated/__init__.py": "49694c314c13c45cdac0e8b789d78a747bab1131ce6bf89649e5daca4ab56f7e",
-  "packages/client/src/logion/v1/_types/generated/v1.py": "7388f2d49f72fc37651a5228f974e20077fc9ae0e1d8a4c69cef291c1c52fb49"
+  "packages/client/src/logion/v1/_types/generated/v1.py": "759c37aafa7d08893f390b69ae241cf53b4df2ebe547c5089a9d912be909666d"
 }
