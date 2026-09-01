@@ -492,7 +492,10 @@ class DockerBackend:
             # by that same UID.
             f"/workspace:rw,noexec,nosuid,size=64m,uid={self._uid}",
             "--tmpfs",
-            f"/tmp:rw,noexec,nosuid,size=16m,uid={self._uid}",
+            # nosec B108 - a container tmpfs mount spec, not a host path:
+            # /tmp here exists only inside the sandbox, and mounting it
+            # noexec/nosuid is what keeps the job from using it.
+            f"/tmp:rw,noexec,nosuid,size=16m,uid={self._uid}",  # nosec B108
             "-v",
             f"{workspace}/out:/workspace/out:rw",
             "-w",
