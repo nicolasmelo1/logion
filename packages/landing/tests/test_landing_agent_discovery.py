@@ -355,13 +355,29 @@ def test_404_negotiates_html_for_browsers_and_json_for_clients() -> None:
 
 
 def test_landing_does_not_publish_its_own_routes_as_the_api() -> None:
-    # The marketing routes were being discovered as "the Logion API": 15
-    # HTML endpoints, no versioning, no pagination. Both paths now point at
-    # the real contract instead.
-    for path in ("/openapi.json", "/docs"):
-        response = client.get(path, follow_redirects=False)
-        assert response.status_code == 302, path
-        assert response.headers["location"] == f"{API_BASE}{path}", path
+    # The marketing routes were being discovered as "the Logion API": 15 HTML
+    # endpoints, no versioning, no pagination. The app therefore serves no
+    # OpenAPI document and no Swagger UI of its own, and /openapi.json points
+    # at the real contract.
+    assert app.openapi_url is None
+    assert app.docs_url is None
+
+    response = client.get("/openapi.json", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{API_BASE}/openapi.json"
+
+
+def test_docs_route_is_the_product_reference_not_a_swagger_ui() -> None:
+    # /docs used to redirect to the API's Swagger UI, because the landing had
+    # nothing better there. It now serves the generated product reference. The
+    # property being protected is unchanged: whatever answers here must not be
+    # a rendering of *this* app's marketing routes.
+    response = client.get("/docs", follow_redirects=False)
+    assert response.status_code == 200
+    body = response.text
+    assert "swagger-ui" not in body.lower()
+    assert "API Reference" in body
+    assert "CLI Reference" in body
 
 
 # ── robots.txt ────────────────────────────────────────────────────

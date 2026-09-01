@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} — Logion docs{% endblock %}
+{% block meta_description %}{{ page.summary or page.title }}{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block main %}
+  <div class="docs">
+    <nav class="docs-nav" aria-label="Documentation">
+      <a class="docs-nav-home" href="/docs">Documentation</a>
+      {%- for section in nav %}
+      <div class="docs-nav-section{% if section.active %} is-open{% endif %}">
+        <p class="docs-nav-title">{{ section.title }}</p>
+        <ul>
+          {%- for entry in section.pages %}
+          <li>
+            <a href="{{ entry.url }}"
+               {% if entry.active %}aria-current="page"{% endif %}>{{ entry.title }}</a>
+          </li>
+          {%- endfor %}
+        </ul>
+      </div>
+      {%- endfor %}
+    </nav>
+
+    <article class="docs-body">
+      {%- if page.kind in ("api", "cli") and page.slug not in ("api/overview", "cli/overview") %}
+      <p class="docs-generated">
+        Generated from
+        {%- if page.kind == "api" %} the OpenAPI contract
+        <code>{{ source.contract_digest[:23] }}…</code>
+        {%- else %} the CLI argparse tree, <code>logion {{ source.cli_version }}</code>
+        {%- endif %}.
+        <a href="/docs/reference/how-these-docs-are-built">How this works</a>.
+      </p>
+      {%- endif %}
+      {{ page.html | safe }}
+      <footer class="docs-footer">
+        <a href="{{ page.markdown_url }}">Read this page as Markdown</a>
+        &middot;
+        <a href="/docs/llms.txt">Full index for agents</a>
+      </footer>
+    </article>
+
+    {%- if outline %}
+    <aside class="docs-outline" aria-label="On this page">
+      <p class="docs-nav-title">On this page</p>
+      <ul>
+        {%- for heading in outline %}
+        <li><a href="#{{ heading.anchor }}">{{ heading.text }}</a></li>
+        {%- endfor %}
+      </ul>
+    </aside>
+    {%- endif %}
+  </div>
+{% endblock %}

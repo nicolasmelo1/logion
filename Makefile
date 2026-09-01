@@ -6,7 +6,7 @@ AGENT ?= codex
 ROLE ?= seller
 LOGION_DEVRIG_API_BASE_URL ?=
 
-.PHONY: lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
+.PHONY: docs-generate check-docs lint dead-code dead-code-advisory test typecheck security audit secrets mock mock-stop install-hooks cross-repo-guardrails companion-verify companion-bundle companion-bundle-verify public-audit \
 	ci-checks check-generated-lock check-deps-lock check-roadmap-mirror check-protocol-specs \
 	check-logion-sh-urls check-skip-reasons check-forbidden-imports check-cli-http check-json-module check-canonical-host
 	check-installer-security \
@@ -133,9 +133,20 @@ check-canonical-host:
 # L1.NO_BLANKET_SUPPRESSION cover them, each proven equivalent on this
 # repository and each with a mutation fixture the scripts never had.
 ci-checks: public-audit check-generated-lock check-deps-lock check-roadmap-mirror check-protocol-specs \
-	check-logion-sh-urls check-skip-reasons \
+	check-logion-sh-urls check-skip-reasons check-docs \
 	check-forbidden-imports check-cli-http check-installer-security check-json-module \
 	factory-check
+
+# The documentation artifact rendered at logion.sh/docs. Generated from the
+# OpenAPI contract, the CLI argparse tree and docs/marketplace/, because the
+# landing deploys with packages/landing/ as its root and cannot read either
+# source at runtime. check-docs is what makes "the docs are current" a fact:
+# a contract sync or a new CLI flag turns the build red until it is rerun.
+docs-generate:
+	uv run python scripts/gen_docs.py
+
+check-docs:
+	uv run python scripts/gen_docs.py --check
 
 factory-check:
 	sf verify

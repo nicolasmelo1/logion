@@ -24,81 +24,88 @@
   <a href="https://x.com/logionsh"><img alt="X (Twitter)" src="https://img.shields.io/badge/X-@logionsh-D99A2B?style=flat-square&logo=x&logoColor=white&labelColor=0C1E22"></a>
 </p>
 
-**Logion is an open protocol and economic network for _verifiable_ agent capability.**
+**Nobody proves that a skill works. Logion does.**
 
-When an agent hits a wall, instead of improvising it acquires a capability
-published by someone else — and trusts it not because it's popular, but because
-the exact version carries evidence: it was scanned, its declared powers were
-reconciled against what it actually does, and — where an eval contract exists —
-it was **proven** against a reproducible benchmark. When a capability isn't good enough, a funded bounty
-pays someone to improve it, and the money flows to the people who create and
-improve — not to whoever hosts the list.
+Your agent installs skills, plugins, MCP servers and models that nobody has
+ever measured. Every hub in this space publishes the same two things — where an
+artifact came from, and how popular it is. Installs, stars, security audits.
+**None of them publishes whether it works.**
 
-It does not matter where the capability came from. `npx skills`, a plugin
+Logion measures the exact version an agent installed, against a pinned and
+reproducible contract, and publishes the result with its method and its limits
+attached — so the claim can be checked instead of trusted.
+
+> The category next door measures **the agent you wrote**: your prompts, your
+> task function, your scorers, inside your own perimeter.
+> Logion measures **the parts you installed inside it** — the ones you did not
+> write, cannot see, and did not test.
+
+It does not matter where the artifact came from. `npx skills`, a plugin
 manager, Hugging Face, a bare `git clone`, or Logion itself — Logion's job is to
 resolve *which exact version* that was and attach the evidence to it. **It
 attributes; it does not replace your installer.**
 
-This repository is the **open-source developer tooling** for that network: the
+This repository is the **open-source developer tooling** for that layer: the
 SDK, CLI, and agent companion you build and integrate against. It is the client
 surface — not the platform itself.
 
-## The end goal
+## What this is not
 
-A skills index is free everywhere, so discovery is worth ~nothing. The thing
-that is worth paying for — and the thing no free index can give you — is
-**proof that a capability works, and a loop that makes it better.** Logion is
-built to be that layer, and to be it as an open network rather than a walled
-store:
+Stated up front because the category is crowded with things Logion is not:
 
-- **Proof over popularity.** Stars and install counts say a capability is
-  popular. Logion attaches *attestations* instead — scan, eval score, usage
-  telemetry, improvement history — each with its producer and trust level shown.
-  An unknown author's capability can outrank a famous one because the evidence
-  says so.
-- **A loop, not a transaction.** Every acquisition, use, and bounty leaves the
-  next version better — and because versions are shared, one accepted
-  improvement becomes everyone's new starting point. Whoever joins the network
-  today starts at today's level, never from zero. Money enters from outside the
-  loop — whoever needs the improvement funds it: a user, a creator, a team
-  whose agents depend on it, a lab — work flows in from anyone's agents, and
-  Logion clears it: the majority to the people who create and improve, a rail
-  fee for running the network.
-- **An evidence layer, not another store.** A capability you already installed
-  with your own package manager is in scope. Requiring you to reacquire it
-  through Logion is the difference between an evidence layer and a competing
-  store, and we would rather be the former.
-- **Skills are the wedge, not the ceiling.** The same backbone — a versioned
-  artifact that accumulates attestations — extends to tools, MCP servers,
-  agents, and the evals/environments that judge them.
-- **One node among many.** Logion is designed to be a protocol, not a landlord.
-  Anyone can run a node on the same spec, index the same capabilities, and
-  federate. If someone runs a better node, the protocol won.
+- **Not an index or a directory.** A skills index is free everywhere, so
+  discovery is worth roughly nothing. Logion publishes behaviour, which nobody
+  else does.
+- **Not a marketplace.** There is no store to browse. The commerce rails exist
+  and are documented below, but the product is the answer, not the checkout.
+- **Not a safety certification.** A measurement says what happened under one
+  contract, in one environment, against one version. It is not a compliance
+  attestation and not advice to install. A security audit is evidence about
+  what an artifact can *reach*, never evidence that it does what it *claims*.
+- **Not a verdict from a network.** Logion is currently the only issuer of its
+  own measurements, so the honest claim is: Logion measured it, the method is
+  published, anyone can reproduce it.
 
-Not all of this exists yet. See **[What's live today](#whats-live-today)** and
-**[Where it's going](#where-its-going)** below — we try hard to keep the line
-between the two honest.
+## How an answer is shaped
 
-## Why Logion exists
+*"Does this artifact actually work, and what do other agents say?"* Logion
+answers in **labelled layers**, never blended into one opaque score:
 
-For two decades people wrote the tutorials, the answers, and the open source —
-for free. It was compiled into products worth billions, and the people who
-wrote it were told they were replaceable.
+1. **Controlled evaluation** — our own measurement, reproducible from a pinned
+   contract. Works at N=1 and needs nobody's permission.
+2. **Static evidence** — scanner results, capability manifest, permissions,
+   license, provenance.
+3. **Field evidence** — what real agents reported, shown only above a minimum
+   cohort and always with `n`, version coverage, and known blind spots. It is
+   sampled, never a census.
+4. **Nothing yet** — said plainly. *"No measurement yet"* is an honest answer,
+   and it is also a signal about what deserves measuring next.
 
-Logion is the correction. You keep your knowledge, publish it as a reviewed
-capability, and agents acquire it to do real work. When it can be better, a
-funded bounty pays someone to improve it — and the next version lifts everyone.
+You should always be able to see which layer an answer came from. A result
+belongs to a **model–harness pair**: harness id and version, model id and
+version, as closed fields — because harness-induced variance can exceed
+model-induced variance, and comparing two runs across differing pairs turns a
+harness upgrade into a fake improvement.
 
-Models compress what already exists; they don't invent what was never written
-down. Frontier capability is bottlenecked by data, and human expertise — the
-scarce input — erodes as fewer people learn the craft and more just ask a
-model. **Logion is the human teaching the agent**: it keeps that knowledge
-alive, owned, and compounding.
+## What a published measurement commits to
 
-The edge is shifting from raw model scale to how well a system integrates real
-human expertise through continual learning loops — distributed and defensible,
-not winner-take-all. A network of people teaching agents out-learns any single
-model alone.
+- The subject is pinned: exact version, content digest, source URL, license.
+- The method is pinned: contract digest, evaluator version, environment digest.
+- It reproduced at least twice before it was called a finding.
+- The author was contacted before publication, with the full result, the
+  reproduce command, and an offer to publish their reply verbatim.
+- **A true, reproducible result is not deleted on request.** Errors are
+  corrected in public, rebuttals are published at the same URL, and a result is
+  marked superseded once a newer version has been measured.
+
+## Why this exists
+
+An agent that improves alone gets better only for its owner, and the improvement
+dies with the session. On a shared layer, one measured, accepted improvement
+becomes everyone's new starting point — whoever joins today starts at today's
+level, never from zero. Models compress what already exists; they don't invent
+what was never written down, and the people who write it down keep ownership of
+it here.
 
 **Smarter, together.**
 
@@ -135,35 +142,26 @@ shown openly. No single blessed score.
 ```
 
 > Spend, install, and permission **always** require human confirmation.
-> Money never moves faster than trust — and the network only produces
-> proof where someone actually uses it.
+> Money never moves faster than trust — and evidence only exists where
+> someone actually used the thing.
 
-### The question it answers
-
-*"Does this capability actually work, and what do other agents say?"* Today
-nobody can answer that. Logion answers it in **labelled layers**, never blended
-into one opaque score:
-
-1. **Controlled evaluation** — our own measurement, reproducible from a pinned
-   contract.
-2. **Static evidence** — scanner results, capability manifest, permissions,
-   license, provenance.
-3. **Field evidence** — what real agents reported, shown only above a minimum
-   cohort and always with `n`, version coverage, and known blind spots. It is
-   sampled, never a census.
-4. **Nothing yet** — said plainly. *"No measurement yet"* is an honest answer,
-   and it is also a signal about what deserves measuring next.
-
-You should always be able to see which layer an answer came from.
+**We don't earn when you buy it. We earn when it gets fixed.** Bounty revenue
+is remediation revenue, not sales commission, so the incentive is aligned with
+the measurement being honest rather than with the catalog being flattering.
 
 ## What's live today
 
 Running code, not a whitepaper. Everything below is shipped and exercised
-against the live API by a real autonomous agent:
+against the live API by a real autonomous agent.
 
-- **Marketplace loop** — publish → automated review → human gate → acquire →
-  use → review → bounty → accept, exercised end-to-end by a real autonomous
-  agent.
+**Published:** `logion-cli` and `logion-client` on PyPI, `@logionsh/cli` on npm,
+at **0.1.15**. The next publish is **0.2**, and there is no release before it —
+acquisition, observation, catalog/discovery, and the eval contract ship as one
+product story rather than as fragments.
+
+- **Publish → acquire → use → improve** — publish, automated review, human
+  gate, acquire, use, review, bounty, accept: exercised end-to-end by a real
+  autonomous agent.
 - **Trust pipeline** — every version declares `capabilities.yaml`, runs through
   Trivy · OSV Scanner · agent-safety checks, reconciles observed-vs-declared
   behavior, and passes a human reviewer before publish.
@@ -187,8 +185,9 @@ against the live API by a real autonomous agent:
 
 ## Where it's going
 
-The proof layer — the part that makes Logion more than a paid index — is what
-we are building next. Honestly labeled as *not yet shipped*:
+The measurement layer — the part that makes Logion more than another index — is
+what is being built now. Honestly labeled as *not yet shipped*, in roughly the
+order it lands:
 
 - **Acquire anywhere, attributed here** — resolve and reconcile capabilities you
   installed with `npx skills`, `npx plugins`, `hf`, or a plain `git clone`, down
@@ -208,10 +207,19 @@ we are building next. Honestly labeled as *not yet shipped*:
   claim, never authoritative, until it is reproduced under a trusted baseline.
 - **Benchmark ↔ field reconciliation** — a benchmark score that real-world
   usage contradicts is flagged, never trusted blindly.
+- **A public answer with no account and no install** — one URL where pasting a
+  skill, plugin, MCP server or model returns what is known about it, rendering
+  a real finding rather than a grid of listings, and content-negotiating the
+  same URL for a browser and for an agent.
 - **Open node network** — AKTP (Agentic Knowledge Transfer Protocol):
   `/.well-known/aktp.json` feeds so any index can crawl our catalog exactly
   the way we crawl others', with payment routing born from a verified claim,
   never from a crawl.
+
+The milestone that decides whether any of this was worth building is
+**issuer #2**: the first attestation about a Logion-catalogued subject issued by
+somebody who is not Logion. An attestation format only one entity ever issues is
+a proprietary log with extra steps.
 
 ## Install
 
@@ -299,7 +307,7 @@ With `--sort relevance` results are ranked by how closely they match the query.
 | [`packages/skillmap`](packages/skillmap) | **`logion-skillmap`** — deterministic, LLM-free package-map inference and Agent Skills spec validation |
 | [`packages/indexer`](packages/indexer) | **`logion-indexer`** — external skillhub crawler that resolves skills to their GitHub identity |
 | [`packages/bot`](packages/bot) | **`logion-bot`** — the issue-mention bot's public grammar, parser, and reply templates |
-| [`packages/landing`](packages/landing) | the [logion.sh](https://logion.sh) landing app, including the GitHub sign-in / setup-complete handoff |
+| [`packages/landing`](packages/landing) | the [logion.sh](https://logion.sh) landing app: the public site, the generated documentation at `/docs`, and the GitHub sign-in / setup-complete handoff |
 | [`packages/npm-wrapper`](packages/npm-wrapper) | **`@logionsh/cli`** — npm distribution wrapper for the CLI |
 | [`packages/agent-proving-ground`](packages/agent-proving-ground) | multi-agent scenario runner that release-gates real marketplace flows |
 | [`packages/social-management`](packages/social-management) | local-only Discord/X operations helper |
@@ -353,10 +361,30 @@ publish   immutable, hashable version → buyer sees a safe summary
 
 Review establishes publication trust. Evals establish that a version is
 measurably good. Sandboxing establishes runtime containment. Bounties establish
-economic coordination. None substitutes for another. See
+economic coordination. **None substitutes for another**, and in particular a
+clean scan is not evidence that an artifact does what it claims — it is evidence
+about what the artifact can reach. Conflating the two is the single most common
+mistake in this space. See
 [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
 
 ## Documentation
+
+**[logion.sh/docs](https://logion.sh/docs)** — guides, the full API reference,
+and the full CLI reference, cross-linked in both directions. Every page also
+answers at its `.md` URL, and [`/docs/llms.txt`](https://logion.sh/docs/llms.txt)
+is the flat index for agents.
+
+The two references are **generated**, not written: the API reference from
+`contracts/openapi/v1.json`, the CLI reference by walking the same argparse tree
+the binary builds. `make check-docs` runs in CI and fails when either source
+moves and the docs do not, which is what makes "the docs are current" a fact
+rather than a hope. See
+[How these docs are built](https://logion.sh/docs/reference/how-these-docs-are-built).
+
+```bash
+make docs-generate   # rebuild the artifact after a contract sync or a new flag
+logion docs          # the same guides, offline, version-matched to your CLI
+```
 
 - [`docs/marketplace/`](docs/marketplace) — concepts, getting started,
   creating courses, credits & purchases, reviews, bounties, and safety

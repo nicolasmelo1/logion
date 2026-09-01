@@ -28,12 +28,12 @@ def test_index_renders_concise_hero_and_signals() -> None:
     # Guard the above-the-fold hierarchy: one direct proposition, one brand
     # anchor, and a short trust-signal strip.
     html = client.get("/").text
-    assert "<h1>AI capability, with proof.</h1>" in html
+    assert "<h1>Does it actually work?</h1>" in html
     assert 'class="hero-hook"' not in html
     assert html.count('class="greek"') == 1
     assert 'class="latin"' not in html
     assert 'class="hero-signals"' in html
-    assert "Open-source, auditable client" in html
+    assert "Published method, reproducible by anyone" in html
     assert "Immutable versions" in html
     assert 'class="hero-secondary"' in html
 
@@ -411,9 +411,32 @@ def test_homepage_includes_registry_terms() -> None:
 
 def test_homepage_explains_agent_native_ranking_signals() -> None:
     text = client.get("/").text
-    assert "popularity proxies such as stars and downloads" in text
-    assert "task completion, tool safety, and token efficiency" in text
+    # The gap the product exists for: hubs publish provenance and popularity,
+    # nobody publishes behaviour.
+    assert "how popular it is" in text
+    assert "task completion, tool" in text
     assert "Anthropic or NVIDIA" in text
+
+
+def test_homepage_states_the_category_boundary() -> None:
+    # A reader who cannot place the category reads nothing else on the page.
+    text = client.get("/").text
+    assert "the agent you wrote" in text
+    assert "installed inside it" in text
+
+
+def test_homepage_scopes_measurements_as_non_endorsement() -> None:
+    # The disclaimer travels with the claim; it does not live in the terms.
+    text = client.get("/").text
+    assert "A measurement is not an endorsement" in text
+    assert "not a safety certification" in text
+
+
+def test_homepage_discloses_sole_issuer_status() -> None:
+    # No copy may claim network validation while Logion is the only issuer.
+    text = client.get("/").text
+    assert "only issuer" in text
+    assert "not that a network validated it" in text
 
 
 def test_homepage_examples_form_continuous_bundle_stories() -> None:
@@ -766,7 +789,7 @@ def test_pages_link_to_their_markdown_alternate() -> None:
 
 def test_markdown_content_negotiation_on_every_documented_route() -> None:
     cases = (
-        ("/", "Logion is an open, versioned registry"),
+        ("/", "Logion is an independent measurement layer"),
         ("/pricing", "100 credits = $1"),
         ("/terms", "Terms of Service"),
         ("/privacy", "Privacy Policy"),
