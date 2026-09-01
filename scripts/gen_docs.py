@@ -40,6 +40,7 @@ import difflib
 import hashlib
 import inspect
 import json
+import os
 import re
 import sys
 from collections.abc import Callable, Iterator
@@ -64,6 +65,30 @@ ARTIFACT_VERSION = 1
 #: How much of a staleness diff to print. Enough to name what drifted without
 #: burying the CI log in a regenerated reference.
 _DIFF_PREVIEW_LINES = 60
+
+#: Environment the CLI parser is built under.
+#:
+#: `logion admin` is gated on LOGION_ENABLE_ADMIN: argparse builds either a
+#: 13-command subtree or a single hidden stub depending on it. Read from the
+#: ambient environment, the artifact differs between a maintainer's shell and
+#: CI — which is exactly the drift this generator exists to prevent. Pinning it
+#: here is what makes the output a function of the repository alone.
+#:
+#: It is pinned *on* rather than off because every admin endpoint is already
+#: in the public OpenAPI contract, so documenting the CLI half conceals
+#: nothing and keeps the cross-link symmetric. The gate is stated on the page.
+_PARSER_ENV = {"LOGION_ENABLE_ADMIN": "1"}
+
+#: Notes rendered under a CLI group heading, for groups whose availability is
+#: not what a reader would assume from the command existing.
+_GROUP_NOTES = {
+    "admin": (
+        "> **Gated.** These commands are hidden unless `LOGION_ENABLE_ADMIN` "
+        "is set to a truthy value, and the API authorises them separately — "
+        "an admin role on the calling key is what actually grants access. "
+        "Without the variable the group prints *No such command* and exits 2."
+    ),
+}
 
 _HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
@@ -775,6 +800,10 @@ def _cli_page_body(
         f"{len(commands)} command{plural} in this group.",
         "",
     ]
+    note = _GROUP_NOTES.get(group)
+    if note:
+        lines.append(note)
+        lines.append("")
     for command in commands:
         suffix = f" — {command.help}" if command.help else ""
         lines.append(f"- [`{command.invocation}`](#{command.anchor}){suffix}")
@@ -1067,6 +1096,11 @@ def _nav_entries(pages: list[PageDict]) -> list[NavEntry]:
 
 def build_artifact() -> Artifact:
     """Compile the whole documentation artifact from its three sources."""
+    # Pin the parser environment before importing the CLI: registration reads
+    # it at build_parser() time, so the artifact would otherwise depend on
+    # whoever ran the generator. See _PARSER_ENV.
+    os.environ.update(_PARSER_ENV)
+
     # Imported lazily: this runs under the workspace venv where both packages
     # are installed, and importing the CLI at module scope would make a plain
     # `--help` pay for the whole command tree.

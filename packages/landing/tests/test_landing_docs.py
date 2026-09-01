@@ -10,6 +10,7 @@ two references must resolve, and every page must answer for both readers.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -88,6 +89,51 @@ def test_stale_artifact_fails_the_check(tmp_path: Path) -> None:
         assert "stale" in result.stderr
     finally:
         ARTIFACT_PATH.write_text(original, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        pytest.param({"LOGION_ENABLE_ADMIN": "1"}, id="admin-on"),
+        pytest.param({"LOGION_ENABLE_ADMIN": "0"}, id="admin-off"),
+        pytest.param({}, id="admin-unset"),
+    ],
+)
+def test_generation_ignores_the_ambient_environment(
+    env: dict[str, str], tmp_path: Path
+) -> None:
+    """The artifact must be a function of the repository, nothing else.
+
+    Regression: `logion admin` is gated on LOGION_ENABLE_ADMIN, so argparse
+    builds a 13-command subtree or a single hidden stub depending on a
+    variable that happened to be set in one maintainer's shell and not in CI.
+    The committed artifact was generated with it set and the check failed
+    everywhere else. A generator whose output depends on who ran it makes the
+    freshness check worse than useless — it goes red for the wrong reason.
+    """
+    child_env = {
+        key: value
+        for key, value in os.environ.items()
+        if key != "LOGION_ENABLE_ADMIN"
+    }
+    child_env.update(env)
+    output = tmp_path / "docs.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "gen_docs.py"),
+            "--check",
+        ],
+        cwd=REPO_ROOT,
+        env=child_env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"generation depends on the environment {env}:\n"
+        f"{result.stdout}\n{result.stderr}"
+    )
+    assert not output.exists()
 
 
 def test_renderer_refuses_an_artifact_it_does_not_understand() -> None:
