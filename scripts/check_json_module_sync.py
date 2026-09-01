@@ -47,6 +47,15 @@ COPIES: tuple[tuple[str, bool], ...] = (
         False,
     ),
     (
+        os.path.join(
+            "packages",
+            "runner",
+            "logion_runner",
+            "_json.py",
+        ),
+        False,
+    ),
+    (
         os.path.join("packages", "scanners", "logion_scanners", "_json.py"),
         False,
     ),

@@ -266,11 +266,34 @@ node_reset() {
   echo "The other role was not stopped, reset, or re-keyed."
 }
 
+node_runner_once() {
+  load_node_env
+  select_runtime
+  [[ -s "${NODE_DIR}/roles/runner.api_key" ]] || {
+    echo "ERROR: enroll a runner and save its key to ${NODE_DIR}/roles/runner.api_key." >&2
+    return 1
+  }
+  node_compose --profile runner run --rm runner
+}
+
+node_doctor() {
+  load_node_env
+  select_runtime
+  node_compose config >/dev/null
+  [[ -s "${NODE_DIR}/roles/runner.api_key" ]] || {
+    echo "runner key: missing" >&2
+    return 1
+  }
+  echo "local node compose configuration and runner credential are ready"
+}
+
 case "${1:-}" in
   up) shift; node_up "${1:-${NODE_ROLES:-consumer,auditor}}" ;;
   status) node_status ;;
   agent) shift; role="$1"; shift; node_agent "${role}" "$@" ;;
   down) node_down ;;
   reset) shift; node_reset "$1" "${2:-}" ;;
-  *) echo "usage: node.sh {up|status|agent|down|reset} ..." >&2; exit 2 ;;
+  runner-once) node_runner_once ;;
+  doctor) node_doctor ;;
+  *) echo "usage: node.sh {up|status|agent|down|reset|runner-once|doctor} ..." >&2; exit 2 ;;
 esac

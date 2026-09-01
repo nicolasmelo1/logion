@@ -40,7 +40,7 @@ class LogsNo500sAssertion(Assertion):
             type=self.type,
             status="passed",
             message="API log contains no obvious 500 responses",
-            evidence={"log_path": str(log_path)},
+            evidence={"log_path": _evidence_path(log_path)},
         )
 
 
@@ -74,14 +74,28 @@ class LogsContainsRequestAssertion(Assertion):
                 type=self.type,
                 status="passed",
                 message=f"log contains request: {needle}",
-                evidence={"log_path": str(log_path)},
+                evidence={"log_path": _evidence_path(log_path)},
             )
         return AssertionOutcome(
             type=self.type,
             status="failed",
             message=f"log does not contain request: {needle}",
-            evidence={"log_path": str(log_path)},
+            evidence={"log_path": _evidence_path(log_path)},
         )
+
+
+def _evidence_path(log_path: object) -> str:
+    """What to retain about the log this assertion read.
+
+    The absolute location is the operator's business and identifies their
+    machine and checkout layout; retained evidence is committed to a public
+    repository. The last two segments say which log was read, which is the
+    only part a reader of the evidence can use.
+    """
+    from pathlib import Path as _Path
+
+    parts = _Path(str(log_path)).parts
+    return str(_Path(*parts[-2:])) if len(parts) >= 2 else str(log_path)
 
 
 def _find_log_path(ctx: AssertionContext) -> Path | None:

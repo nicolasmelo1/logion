@@ -1,0 +1,12 @@
+FROM python:3.12.8-slim-bookworm
+
+ARG RUNNER_UID=10005
+RUN useradd --uid "${RUNNER_UID}" --create-home --shell /usr/sbin/nologin runner
+WORKDIR /workspace
+COPY packages/runner /opt/logion-runner
+COPY packages/client /opt/logion-client
+RUN python -m pip install --no-cache-dir --no-compile /opt/logion-client /opt/logion-runner \
+    && rm -rf /root/.cache
+USER runner:runner
+ENV PATH=/usr/local/bin:/usr/bin:/bin PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "-m", "logion_runner.job_payload"]

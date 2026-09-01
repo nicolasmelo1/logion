@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+from pathlib import Path
 
 DEFAULT_SECRET_KEYWORDS = {
     "api_key",
@@ -32,6 +34,35 @@ _REDACTED = "<redacted>"
 _PRESENT_REDACTED = "<present:redacted>"
 
 
+def _home_prefix() -> str:
+    """The operator's home directory, or "" when it cannot be resolved."""
+    try:
+        return str(Path.home())
+    except (OSError, RuntimeError):  # pragma: no cover - no HOME set
+        return ""
+
+
+def normalize_home_paths(value: str) -> str:
+    """Rewrite absolute paths under the operator's home to ``~``.
+
+    Retained evidence is committed to a public repository, where an
+    operator's real home directory is both a privacy leak and a portability
+    problem: a reader cannot tell which parts of a path are meaningful. The
+    guardrail in ``scripts/audit_public_safe.py`` refuses host paths for
+    exactly this reason, so reports stop producing them at the source
+    rather than accumulating allowlist entries for each new run.
+
+    This is deliberately *not* part of :func:`redact_text`. That function
+    is also the detector behind ``timeline.no_unredacted_secret``, which
+    asserts it leaves an already-clean line untouched; a cosmetic rewrite
+    in there reports every local path as an unredacted secret.
+    """
+    home = _home_prefix()
+    if not home or home in {"/", os.sep}:
+        return value
+    return value.replace(home, "~")
+
+
 def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
     text = value
     text = _BEARER_RE.sub("bearer " + _REDACTED, text)
@@ -44,6 +75,33 @@ def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
         for pattern in extra_patterns:
             text = re.sub(pattern, _REDACTED, text)
     return text
+
+
+#: Shortest string the key heuristic will redact. Real credentials are
+#: long: the shortest thing this repo issues is a 14-character prefix plus
+#: 43 random characters. Below this, a sensitive-looking key is far more
+#: likely to be naming a subject than holding a secret.
+_CREDENTIAL_MIN_LEN = 16
+
+
+def _cannot_be_secret(value: object) -> bool:
+    """True for values that carry no secret no matter what they are named.
+
+    The key heuristic is a backstop for values that no pattern matches. It
+    misfires on facts keyed by what they are *about* rather than by what
+    they hold: ``{"coordinator_token": false}`` says a canary was not
+    readable, and ``{"secret_read": "failed"}`` is a terminal status.
+    Replacing those protects nothing and destroys the observation the
+    auditor recomputes its verdict from.
+
+    Narrowing this backstop does not narrow the real control: every string
+    still goes through :func:`redact_text`, so anything shaped like a
+    bearer token, API key, GitHub, Stripe or provider credential is
+    redacted on its own evidence regardless of the key it sits under.
+    """
+    if value is None or isinstance(value, bool):
+        return True
+    return isinstance(value, str) and len(value) < _CREDENTIAL_MIN_LEN
 
 
 def redact_json(
@@ -62,7 +120,7 @@ def redact_json(
     if isinstance(value, dict):
         return {
             k: _REDACTED
-            if _is_sensitive_key(k, keys)
+            if _is_sensitive_key(k, keys) and not _cannot_be_secret(v)
             else redact_json(v, keys, redact_emails)
             for k, v in value.items()
         }
@@ -72,7 +130,12 @@ def redact_json(
         text = redact_text(value)
         if redact_emails:
             text = _EMAIL_RE.sub(_REDACTED, text)
-        return text
+        # Structured evidence is what gets sealed into a public repo, so
+        # it is normalized here rather than in `redact_text`: that
+        # function doubles as the secret *detector*
+        # (`timeline.no_unredacted_secret` asserts it changes nothing),
+        # and anything cosmetic inside it reads as a leak.
+        return normalize_home_paths(text)
     return value
 
 

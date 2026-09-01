@@ -30,6 +30,7 @@ members = [
     "logion-harness-plugins",
     "logion-indexer",
     "logion-landing",
+    "logion-runner",
     "logion-scanners",
     "logion-skillmap",
     "logion-social-management",
@@ -265,12 +266,12 @@ name = "black"
 version = "26.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click", marker = "sys_platform != 'emscripten'" },
-    { name = "mypy-extensions", marker = "sys_platform != 'emscripten'" },
-    { name = "packaging", marker = "sys_platform != 'emscripten'" },
-    { name = "pathspec", marker = "sys_platform != 'emscripten'" },
-    { name = "platformdirs", marker = "sys_platform != 'emscripten'" },
-    { name = "pytokens", marker = "sys_platform != 'emscripten'" },
+    { name = "click" },
+    { name = "mypy-extensions" },
+    { name = "packaging" },
+    { name = "pathspec" },
+    { name = "platformdirs" },
+    { name = "pytokens" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/c5/61175d618685d42b005847464b8fb4743a67b1b8fdb75e50e5a96c31a27a/black-26.3.1.tar.gz", hash = "sha256:2c50f5063a9641c7eed7795014ba37b0f5fa227f3d408b968936e24bc0566b07", size = 666155, upload-time = "2026-03-12T03:36:03.593Z" }
 wheels = [
@@ -1863,6 +1864,23 @@ dev = [
 ]
 
 [[package]]
+name = "logion-runner"
+version = "0.1.0.dev1"
+source = { editable = "packages/runner" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "httpx" },
+    { name = "logion-client" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=44.0,<52.0" },
+    { name = "httpx", specifier = ">=0.27,<1.0.0" },
+    { name = "logion-client", editable = "packages/client" },
+]
+
+[[package]]
 name = "logion-scanners"
 version = "0.1.0"
 source = { editable = "packages/scanners" }
@@ -3388,8 +3406,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "cryptography" },
+    { name = "jeepney" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
