@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import difflib
 import hashlib
 import inspect
 import json
@@ -59,6 +60,10 @@ TARGET_PATH = (
 #: about. The landing refuses to render an artifact it does not understand
 #: rather than silently dropping fields.
 ARTIFACT_VERSION = 1
+
+#: How much of a staleness diff to print. Enough to name what drifted without
+#: burying the CI log in a regenerated reference.
+_DIFF_PREVIEW_LINES = 60
 
 _HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
@@ -426,15 +431,21 @@ def walk_parser(
         if path:
             yield CliCommand(path, parser, group or path[0])
         return
-    seen: set[int] = set()
+    seen: set[str] = set()
     for action in subparser_actions:
         for name, child in action.choices.items():
             # argparse registers aliases as separate keys pointing at one
             # parser object. Documenting a command once per alias would
-            # triple some groups, so key on identity.
-            if id(child) in seen:
+            # triple some groups, so dedupe them.
+            #
+            # Keyed on `prog` rather than `id()`: object ids are only unique
+            # among live objects, so an identity set is a correctness argument
+            # about the garbage collector rather than about the parser tree.
+            # `prog` is the parser's own name and is stable across runs, which
+            # a generated artifact compared byte-for-byte in CI depends on.
+            if child.prog in seen:
                 continue
-            seen.add(id(child))
+            seen.add(child.prog)
             yield from walk_parser(child, [*path, name], group or name)
 
 
@@ -1215,13 +1226,27 @@ def main() -> int:
             "docs artifact missing; run `make docs-generate`", file=sys.stderr
         )
         return 1
-    if TARGET_PATH.read_text(encoding="utf-8") != rendered:
+    committed = TARGET_PATH.read_text(encoding="utf-8")
+    if committed != rendered:
         print(
             "docs artifact is stale — the contract or the CLI moved and "
             "the documentation did not.\n"
-            "Run `make docs-generate` and commit the result.",
+            "Run `make docs-generate` and commit the result.\n",
             file=sys.stderr,
         )
+        # Show what moved. "Stale" on its own sends the reader to re-run the
+        # generator and eyeball a 400 KB JSON diff; naming the drifting keys
+        # is the difference between a one-minute fix and an afternoon.
+        diff = difflib.unified_diff(
+            committed.splitlines(),
+            rendered.splitlines(),
+            fromfile="committed",
+            tofile="regenerated",
+            lineterm="",
+            n=1,
+        )
+        for line in list(diff)[:_DIFF_PREVIEW_LINES]:
+            print(line, file=sys.stderr)
         return 1
     print("docs artifact is current.")
     return 0
