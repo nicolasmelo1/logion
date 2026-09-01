@@ -120,6 +120,30 @@ class LogionApiQueries:
             return _unsupported(f"query {query_type} not implemented")
         return await handler(query, agent_roles)
 
+    async def _q_runner_enrolled(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_enrolled")
+
+    async def _q_runner_job_completed(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_job_completed")
+
+    async def _q_runner_receipt_published(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_receipt_published")
+
+    async def _q_runner_job_terminal_once(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "runner_job_terminal_once")
+
     async def baseline(self, agent_roles: dict[str, str]) -> JsonObject:
         """Capture existing marketplace state before a scenario mutates it."""
         course_ids: set[str] = set()
@@ -3366,6 +3390,103 @@ def _as_count(value: JsonValue) -> int:
 
 def _unsupported(reason: str) -> JsonObject:
     return {"found": False, "unsupported": True, "reason": reason}
+
+
+_RUNNER_QUERY_FACTS: dict[str, tuple[str, ...]] = {
+    "runner_enrolled": (
+        "runner_id",
+        "runner_key_fingerprint",
+        "runner_import_root",
+        "runner_credential_kind",
+        "runner_package_version",
+    ),
+    "runner_job_completed": (
+        "job_id",
+        "terminal_status",
+        "attempt_count",
+        "uploaded_artifact_digest",
+        "coordinator_artifact_digest",
+        "lease_holder",
+    ),
+    "runner_receipt_published": (
+        "receipt_id",
+        "receipt_digest",
+        "coordinator_accepted",
+        "accepted_as_late_evidence",
+        "published_at",
+    ),
+    "runner_job_terminal_once": (
+        "terminal_transition_count",
+        "terminal_status",
+        "duplicate_receipt_rejected",
+        "attempt_count",
+    ),
+}
+
+
+def _load_runner_manifest(
+    raw_path: object, assertion: str
+) -> tuple[JsonObject | None, str]:
+    """Read the retained manifest, scoped to *assertion*.
+
+    Returns ``(facts, path)`` on success and ``(None, reason)`` otherwise.
+    Three 15.15 contracts name a fact ``terminal_status`` over three
+    different keyspaces, so the manifest is scoped by assertion type; a
+    flat manifest is still read, for evidence sealed before the scoping.
+    """
+    if not isinstance(raw_path, str) or not raw_path:
+        return None, "unavailable"
+    path = Path(raw_path)
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None, "unavailable"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return None, f"runner evidence unreadable: {exc}"
+    if not isinstance(payload, dict) or not isinstance(
+        payload.get("facts"), dict
+    ):
+        return None, "runner evidence has no typed facts"
+    facts = payload["facts"]
+    scoped = facts.get(assertion)
+    return (scoped if isinstance(scoped, dict) else facts), str(path)
+
+
+def _runner_fact_result(
+    facts: JsonObject, required: object, path: str
+) -> JsonObject:
+    """Decide found/complete from what the manifest actually retained."""
+    names = required if isinstance(required, (list, tuple)) else []
+    selected = {name: facts.get(name) for name in names}
+    complete = all(
+        isinstance(value, dict)
+        and value.get("ok") is True
+        and "value" in value
+        for value in selected.values()
+    )
+    return {
+        "found": complete,
+        "facts": selected,
+        "evidence": {"source": "retained-runner-manifest", "path": path},
+        **(
+            {}
+            if complete
+            else {"reason": "required typed runner facts are missing"}
+        ),
+    }
+
+
+def _runner_fact_query(query: JsonObject, query_name: str) -> JsonObject:
+    """Read a runner query from captured typed facts, never report claims."""
+    required = _RUNNER_QUERY_FACTS[query_name]
+    facts, detail = _load_runner_manifest(query.get("manifest"), query_name)
+    if facts is None:
+        if detail == "unavailable":
+            return _unsupported(
+                "retained runner evidence manifest is unavailable"
+            )
+        return {"found": False, "reason": detail}
+    return _runner_fact_result(facts, required, detail)
 
 
 def _baseline_ids(query: JsonObject, key: str) -> set[str]:

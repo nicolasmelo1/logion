@@ -137,6 +137,37 @@ PREDECLARED_OPERATION_IDS = frozenset({
 })
 
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
+    # Runner/coordinator endpoints are generated for contract compatibility,
+    # but have no stable handwritten SDK resource surface yet.
+    "enroll_runner": ("Runner operator endpoint; no stable SDK resource yet."),
+    "rotate_runner_key": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "lease_execution_job": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "runner_heartbeat": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "upload_execution_artifact": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "submit_execution_receipt": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "list_runners": ("Runner operator endpoint; no stable SDK resource yet."),
+    "create_execution_job": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "list_execution_jobs": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "get_execution_job": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
+    "cancel_execution_job": (
+        "Runner operator endpoint; no stable SDK resource yet."
+    ),
     # Indexer ingestion endpoints have generated primitives, but are not part
     # of the stable, handwritten SDK resource surface yet.
     "get_known_indexed_sources": "Indexer-only ingestion endpoint.",

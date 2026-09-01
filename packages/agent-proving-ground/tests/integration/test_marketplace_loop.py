@@ -174,7 +174,10 @@ async def test_release_report_includes_timings_and_artifacts(
     runner = loop_runner_factory(FULL_LOOP_OPERATIONS)
     await runner.run()
     report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
-    assert report["artifact_root"] == str(tmp_path)
+    # The report names the run directory, not the machine that hosted it:
+    # retained reports are committed to a public repository.
+    assert report["artifact_root"] == tmp_path.name
+    assert str(tmp_path.parent) not in report["artifact_root"]
     for phase in report["phase_results"]:
         assert phase["started_at"]
         assert phase["finished_at"]

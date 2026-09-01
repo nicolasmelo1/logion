@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -1067,7 +1068,10 @@ class ScenarioRunner:
                 a.model_dump(mode="json") for a in result.assertion_results
             ],
             "failure_message": result.failure_message,
-            "artifact_root": str(result.artifact_root),
+            # The run directory identifies the run, not the machine that
+            # hosted it. Retained reports are committed to a public
+            # repository, so the operator's checkout layout stays out.
+            "artifact_root": pathlib.Path(str(result.artifact_root)).name,
         }
         self.artifacts.write_json("report.json", report)
 

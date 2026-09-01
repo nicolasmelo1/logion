@@ -35,6 +35,7 @@ PYPROJECTS = [
     "packages/client/pyproject.toml",
     "packages/indexer/pyproject.toml",
     "packages/landing/pyproject.toml",
+    "packages/runner/pyproject.toml",
     "packages/skillmap/pyproject.toml",
 ]
 

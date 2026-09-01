@@ -9,6 +9,7 @@ dependencies = []
 members = [
     "packages/cli",
     "packages/client",
+    "packages/runner",
     "packages/landing",
     "packages/agent-companion",
     "packages/agent-proving-ground",
