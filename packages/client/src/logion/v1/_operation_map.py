@@ -139,9 +139,7 @@ PREDECLARED_OPERATION_IDS = frozenset({
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
     # Runner/coordinator endpoints are generated for contract compatibility,
     # but have no stable handwritten SDK resource surface yet.
-    "enroll_runner": (
-        "Runner operator endpoint; no stable SDK resource yet."
-    ),
+    "enroll_runner": ("Runner operator endpoint; no stable SDK resource yet."),
     "rotate_runner_key": (
         "Runner operator endpoint; no stable SDK resource yet."
     ),
@@ -157,9 +155,7 @@ UNSUPPORTED_OPERATIONS: dict[str, str] = {
     "submit_execution_receipt": (
         "Runner operator endpoint; no stable SDK resource yet."
     ),
-    "list_runners": (
-        "Runner operator endpoint; no stable SDK resource yet."
-    ),
+    "list_runners": ("Runner operator endpoint; no stable SDK resource yet."),
     "create_execution_job": (
         "Runner operator endpoint; no stable SDK resource yet."
     ),

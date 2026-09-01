@@ -63,7 +63,10 @@ async def test_logs_no_500s_reads_local_devrig_api_log(tmp_path) -> None:
     result = await LogsNo500sAssertion().evaluate(ctx, {})
 
     assert result.status == "passed"
-    assert result.evidence["log_path"] == str(devrig / "api.log")
+    # Retained evidence names which log was read, not where the operator
+    # keeps it: this report is committed to a public repository.
+    assert result.evidence["log_path"] == ".devrig/api.log"
+    assert str(tmp_path) not in result.evidence["log_path"]
 
 
 async def test_logs_no_500s_prioritizes_role_keys_devrig(

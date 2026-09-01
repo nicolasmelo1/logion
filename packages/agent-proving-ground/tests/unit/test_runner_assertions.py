@@ -201,3 +201,21 @@ def test_a_real_credential_is_still_redacted_under_any_key() -> None:
     assert redacted["api_token"] == "<redacted>"
     assert "sk_live" not in str(redacted["secret_read"])
     assert "sk_live" not in str(redacted["harmless"])
+
+
+def test_retained_evidence_does_not_carry_the_operator_home_path() -> None:
+    """Public evidence must be portable and must not name a real host."""
+    from pathlib import Path
+
+    from agent_proving_ground.redaction import redact_json
+
+    home = str(Path.home())
+    redacted = redact_json({
+        "artifact_root": f"{home}/workspaces/logion/.runs/p1515",
+        "nested": [{"log_path": f"{home}/.devrig/api.log"}],
+    })
+    assert redacted == {
+        "artifact_root": "~/workspaces/logion/.runs/p1515",
+        "nested": [{"log_path": "~/.devrig/api.log"}],
+    }
+    assert home not in str(redacted)

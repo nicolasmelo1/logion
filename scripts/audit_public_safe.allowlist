@@ -39,3 +39,23 @@ artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:549
 artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:602
 artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:915
 artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:968
+
+# Cross-repository contract gate; PRIVATE_REPO is a coordination input only,
+# same as the WORKSPACE_REPO/ROOT lines above it.
+Makefile:60
+
+# Local node container path: /home/agent is the in-container non-root user
+# home inside the role image, not a host user directory.
+deploy/local-node/compose.yaml:67
+
+# The 15.15 dogfood record names the phase it belongs to, which is the
+# vocabulary the file exists to carry.
+artifacts/dogfood/phase-15.15.md:1
+
+# Collecting runner evidence reads the coordinator's own tables: the
+# terminal transitions and stored receipts are facts only it holds, and a
+# runner reporting on itself is the position the gate exists to distrust.
+# Development and CI only; nothing here ships to a user.
+packages/agent-proving-ground/scripts/run_runner_evidence.py:225
+packages/agent-proving-ground/scripts/run_runner_evidence.py:534
+

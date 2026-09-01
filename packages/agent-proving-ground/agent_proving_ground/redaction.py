@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+from pathlib import Path
 
 DEFAULT_SECRET_KEYWORDS = {
     "api_key",
@@ -32,6 +34,30 @@ _REDACTED = "<redacted>"
 _PRESENT_REDACTED = "<present:redacted>"
 
 
+def _home_prefix() -> str:
+    """The operator's home directory, or "" when it cannot be resolved."""
+    try:
+        return str(Path.home())
+    except (OSError, RuntimeError):  # pragma: no cover - no HOME set
+        return ""
+
+
+def normalize_home_paths(value: str) -> str:
+    """Rewrite absolute paths under the operator's home to ``~``.
+
+    Retained evidence is committed to a public repository, where an
+    operator's real home directory is both a privacy leak and a portability
+    problem: a reader cannot tell which parts of a path are meaningful. The
+    guardrail in ``scripts/audit_public_safe.py`` refuses host paths for
+    exactly this reason, so reports stop producing them at the source
+    rather than accumulating allowlist entries for each new run.
+    """
+    home = _home_prefix()
+    if not home or home in {"/", os.sep}:
+        return value
+    return value.replace(home, "~")
+
+
 def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
     text = value
     text = _BEARER_RE.sub("bearer " + _REDACTED, text)
@@ -40,6 +66,7 @@ def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
     text = _STRIPE_KEY_RE.sub(_REDACTED, text)
     text = _PROVIDER_KEY_RE.sub(_REDACTED, text)
     text = _SETUP_TOKEN_RE.sub(_REDACTED, text)
+    text = normalize_home_paths(text)
     if extra_patterns:
         for pattern in extra_patterns:
             text = re.sub(pattern, _REDACTED, text)

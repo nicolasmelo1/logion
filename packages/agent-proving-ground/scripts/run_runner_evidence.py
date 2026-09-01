@@ -394,25 +394,7 @@ def _private_receipt(
         ),
         *receipt_block,
     ])
-    workspace_repo = private_repo.with_name("logion-workspace")
-    dev_env = workspace_repo / "scripts" / "dev-env.sh"
-    api_dir = private_repo / "packages" / "api"
-    quoted_code = code.replace("'", "'\\''")
-    venv_python = private_repo / ".venv" / "bin" / "python"
-    result = _must_run(
-        [
-            "bash",
-            str(dev_env),
-            "bash",
-            "-c",
-            (
-                f"cd '{api_dir}' && env -u VIRTUAL_ENV "
-                f"'{venv_python}' -c '{quoted_code}'"
-            ),
-        ],
-        cwd=workspace_repo,
-    )
-    return json.loads(result.stdout)
+    return _private_python(private_repo, code)
 
 
 def _setup_runner_venv(public_repo: Path, venv_dir: Path) -> dict:

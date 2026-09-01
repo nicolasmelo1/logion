@@ -11,8 +11,8 @@
       },
       "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/phase-15.15-isolated-runner.json",
-      "report_sha256": "3b5854eb8393e85a843c9f5056c1e13422e902aa1626f02ab55ba6c10f0dc90e",
-      "run_id": "20260901T014609-phase_15_15_isolated_runner",
+      "report_sha256": "98fcbae77d781ca6e6c3b80f9b574f8cc25fd65d7859da3e5959fbbb4587748a",
+      "run_id": "20260901T033753-phase_15_15_isolated_runner",
       "scenario": "phase_15_15_isolated_runner",
       "status": "passed",
       "unsupported_assertions": []
