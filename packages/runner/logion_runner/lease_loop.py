@@ -135,7 +135,9 @@ def _payload_for(lease: Lease) -> JsonObject:
         "effect": lease.effect,
         "sandbox_profile": cast(JsonObject, lease.sandbox_profile),
     }
-    if lease.job_type == "canary_probe":
+    if lease.job_type in {"canary_probe", "adversarial"}:
+        # The adversarial filesystem_escape fixture needs host paths to
+        # reach for; naming them is what makes "unreachable" a measurement.
         payload["canary_paths"] = list(CANARY_PATHS)
     return payload
 

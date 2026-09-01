@@ -40,9 +40,18 @@ ENV_ALLOWLIST = frozenset({"LANG", "LC_ALL", "TZ", "PYTHON_VERSION"})
 
 SANDBOX_PROFILE_V0 = "isolated-runner-v0"
 
+#: Host paths the ``canary_probe`` job is told to read. Each one holds a
+#: real decoy secret planted outside the sandbox, one per canary role the
+#: 15.15 contract names, so "not readable" is an observation about the
+#: boundary rather than an artefact of never having looked.
 CANARY_PATHS: tuple[str, ...] = (
-    str(Path.home() / ".logion-runner-canary"),
-    "/etc/logion-runner-canary",
+    str(Path.home() / ".logion-runner-canary"),  # host_home
+    "/etc/logion-runner-canary",  # etc_shadow
+    str(Path.home() / ".logion-runner-canary-etc"),  # etc_shadow, unrooted
+    str(Path.home() / ".logion-runner-canary-token"),  # coordinator_token
+    str(Path.home() / ".logion-runner-canary-env"),  # canary_env
+    str(Path.home() / ".logion-runner-canary-imds"),  # cloud_metadata
+    str(Path.home() / ".logion-runner-canary-parent"),  # parent_path
 )
 
 #: Default per-job resource bounds, overridable by the lease limits.
@@ -349,6 +358,46 @@ class DockerBackend:
                 "development fixtures only."
             )
 
+    def _require_pinned_image(self, image: str) -> str:
+        """Verify the pinned image is present locally, byte for byte.
+
+        The profile names ``logion-runner-job@sha256:<hex>``. The runtime
+        cannot resolve that form for a locally built image, so resolve the
+        bare content digest and require the daemon to hold exactly it. A
+        missing or mismatched image fails closed: the job never falls back
+        to "whatever is tagged nearby".
+        """
+        from logion_runner.sandbox.profiles import runnable_reference
+
+        runnable = runnable_reference(image)
+        probe = subprocess.run(
+            [
+                self._docker,
+                "image",
+                "inspect",
+                runnable,
+                "--format",
+                "{{.Id}}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        if probe.returncode != 0:
+            raise SandboxUnavailable(
+                f"pinned sandbox image {image} is not present locally; "
+                "build it with `make runner-image`, which prints the digest "
+                "the coordinator must put in the job's sandbox profile"
+            )
+        resolved = probe.stdout.strip()
+        if resolved != runnable:
+            raise SandboxUnavailable(
+                f"sandbox image digest mismatch: profile pinned {runnable}, "
+                f"the daemon resolved {resolved}"
+            )
+        return runnable
+
     def execute(
         self,
         lease: Lease,
@@ -368,9 +417,10 @@ class DockerBackend:
             payload_path = Path(workspace) / "job-payload.json"
             payload_path.write_text(json.dumps(payload), encoding="utf-8")
             image = self._image or _image_for_lease(lease)
+            runnable = self._require_pinned_image(image)
             env = _allowlisted_env({"LOGION_JOB_ID": lease.job_id})
             command = self._docker_command(
-                lease, image, workspace, payload_path, env, wall
+                lease, runnable, workspace, payload_path, env, wall
             )
             try:
                 proc = subprocess.Popen(

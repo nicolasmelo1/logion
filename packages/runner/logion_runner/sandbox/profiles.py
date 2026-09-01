@@ -15,13 +15,15 @@ PROFILE_V0 = "isolated-runner-v0"
 
 #: Image pinned by digest. ``latest`` is forbidden by the profile; a
 #: job's image reference is always ``name@sha256:<hex>``.
+#:
+#: There is deliberately no module-level default digest. A build that
+#: nothing produces is not a pin, and a constant here would let a job run
+#: against whatever the runner happened to have. The coordinator names the
+#: exact digest per job; ``make runner-image`` prints the one it built.
 PROFILE_V0_NAME = "logion-runner-job"
-# Digest of the reproducible Dockerfile.runner build published with this
-# package. A zero digest is deliberately not a valid fallback.
-PROFILE_V0_DIGEST = (
-    "sha256:a5c4b5d89ccc9104181d87f2d84b61f0c0e06c7637fb1bc177ebd5eef4fd8296"
-)
-PROFILE_V0_IMAGE = f"{PROFILE_V0_NAME}@{PROFILE_V0_DIGEST}"
+
+#: Length of the hex body of a ``sha256:`` digest.
+_DIGEST_HEX_LEN = 64
 
 #: Human-readable contract the profile enforces (mirrored by the
 #: DockerBackend flag mapping and the Compose runner service).
@@ -67,6 +69,26 @@ def image_for_profile(profile: SandboxProfile) -> str:
             "sandbox image must be pinned as "
             f"{PROFILE_V0_NAME}@sha256:..., got {image!r}"
         )
-    if image.endswith("@sha256:" + "0" * 64):
+    digest = image.split("@", 1)[1]
+    hex_body = digest.removeprefix("sha256:")
+    if len(hex_body) != _DIGEST_HEX_LEN or not all(
+        char in "0123456789abcdef" for char in hex_body
+    ):
+        raise ValueError(
+            f"sandbox image digest is not a sha256 hex digest: {digest!r}"
+        )
+    if hex_body == "0" * _DIGEST_HEX_LEN:
         raise ValueError("sandbox image digest cannot be the zero placeholder")
     return image
+
+
+def runnable_reference(image: str) -> str:
+    """Return the reference the container runtime can actually resolve.
+
+    ``name@sha256:<hex>`` is the contract the coordinator speaks, but that
+    form only resolves for images carrying a *repository* digest, i.e. ones
+    pulled from or pushed to a registry. A locally built image has none, so
+    the runnable form is the bare content digest, which is the image's own
+    config digest and identifies exactly the same bytes.
+    """
+    return image.split("@", 1)[1]

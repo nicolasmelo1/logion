@@ -21,7 +21,7 @@ LOGION_DEVRIG_API_BASE_URL ?=
 	dev-logs devrig-lint devrig-test dev-rebuild dev-rebuild-cli dev-rebuild-companion dev-rebuild-npm \
 	release-plan release release-dry-run release-store release-smoke-input \
 	node-dev-up node-agent node-status node-dev-down node-dev-reset node-run-once node-doctor \
-	runner-evidence
+	runner-evidence runner-image
 
 # scripts/ and tests/ are in scope too: the typing.Any ban is only
 # real if every path the repo actually runs is checked.
@@ -363,6 +363,14 @@ node-doctor:
 # node operator (a customer persona with only the installed product)
 # can run to enroll the node, execute the checker and the adversarial
 # fixtures in the isolated sandbox, and retain the typed evidence.
+# Builds the sandbox image the runner executes jobs inside and prints the
+# content digest to pin. Nothing else may name a digest: a pin that no
+# build produces is not a pin.
+RUNNER_IMAGE_TAG ?= logion-runner-job:fixed
+runner-image:
+	docker build -f deploy/local-node/Dockerfile.runner -t $(RUNNER_IMAGE_TAG) .
+	@echo "logion-runner-job@$$(docker inspect --format '{{.Id}}' $(RUNNER_IMAGE_TAG))"
+
 runner-evidence:
 	LOGION_PROVING_GROUND_ROLE_KEYS_FILE=$(LOGION_PROVING_GROUND_ROLE_KEYS_FILE) \
 	LOGION_API_BASE_URL=$(LOGION_API_BASE_URL) \

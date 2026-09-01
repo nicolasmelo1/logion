@@ -28,10 +28,37 @@ from pathlib import Path
 
 import httpx
 
-RUNNER_IMAGE = (
-    "logion-runner-job@sha256:"
-    "a5c4b5d89ccc9104181d87f2d84b61f0c0e06c7637fb1bc177ebd5eef4fd8296"
-)
+RUNNER_IMAGE_TAG = "logion-runner-job:fixed"
+
+
+def resolve_runner_image(docker_cli: str = "docker") -> str:
+    """Return the pinned reference for the locally built sandbox image.
+
+    The digest is read back from the image the host actually holds. Writing
+    a constant here would be a pin nothing produces: the first run on a
+    machine that never built the image would either fail opaquely or, worse,
+    match something else that happened to carry the name.
+    """
+    probe = subprocess.run(
+        [
+            docker_cli,
+            "image",
+            "inspect",
+            RUNNER_IMAGE_TAG,
+            "--format",
+            "{{.Id}}",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(
+            f"sandbox image {RUNNER_IMAGE_TAG} is not built; run "
+            "`make runner-image` first"
+        )
+    return f"logion-runner-job@{probe.stdout.strip()}"
+
 
 CANARY_ROLES = (
     "host_home",
@@ -101,9 +128,29 @@ def _fact(value: object, *, ok: bool = True) -> dict[str, object]:
     return {"ok": ok, "value": value}
 
 
+#: Which assertion each evidence file feeds. Three of the 15.15 contracts
+#: name a fact ``terminal_status`` over three different keyspaces, so the
+#: manifest is scoped by assertion rather than flat -- which is the shape
+#: the auditor's recompute already reads.
+EVIDENCE_ASSERTIONS: dict[str, str] = {
+    "enrollment.json": "api.runner_enrolled",
+    "completion.json": "api.runner_job_completed",
+    "receipt.json": "api.runner_receipt_published",
+    "verification.json": "crypto.runner_receipt_valid",
+    "canaries.json": "sandbox.canary_not_exfiltrated",
+    "effects.json": "sandbox.forbidden_effect_blocked",
+    "lifecycle.json": "api.runner_job_terminal_once",
+}
+
+
 def _write(out_dir: Path, name: str, facts: dict[str, object]) -> None:
     (out_dir / name).write_text(
-        json.dumps({"facts": facts}, indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            {"assertion": EVIDENCE_ASSERTIONS[name], "facts": facts},
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -112,10 +159,10 @@ def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _sandbox_profile() -> dict:
+def _sandbox_profile(image: str) -> dict:
     return {
         "runtime": "container",
-        "image": RUNNER_IMAGE,
+        "image": image,
         "read_only": True,
         "network": "none",
         "user": "10005",
@@ -127,18 +174,20 @@ def _grant(name: str, data: bytes) -> dict:
 
 
 def _job_body(
+    image: str,
     *,
     job_type: str = HAPPY_JOB_TYPE,
     effect: str | None = None,
     max_attempts: int | None = None,
     artifacts: list | None = None,
+    limits: dict | None = None,
 ) -> dict:
     body: dict = {
         "job_type": job_type,
-        "sandbox_profile": _sandbox_profile(),
+        "sandbox_profile": _sandbox_profile(image),
         "required_capabilities": ["cpu"],
         "input_digests": {"effect": effect} if effect else {},
-        "limits": dict(DEFAULT_LIMITS),
+        "limits": dict(limits or DEFAULT_LIMITS),
     }
     if max_attempts is not None:
         body["max_attempts"] = max_attempts
@@ -166,6 +215,134 @@ def _get_job(client: httpx.Client, admin_key: str, job_id: str) -> dict:
     return response.json().get("data", response.json())
 
 
+def _private_python(private_repo: Path, code: str) -> dict:
+    """Run *code* inside the coordinator's venv and parse its stdout JSON.
+
+    The lease-expiry and retry hazards are events only the coordinator can
+    produce. Driving them from here means the evidence records what the
+    coordinator did, not what this script hoped it would do.
+    """
+    workspace_repo = private_repo.with_name("logion-workspace")
+    dev_env = workspace_repo / "scripts" / "dev-env.sh"
+    api_dir = private_repo / "packages" / "api"
+    quoted_code = code.replace("'", "'\\''")
+    venv_python = private_repo / ".venv" / "bin" / "python"
+    result = _must_run(
+        [
+            "bash",
+            str(dev_env),
+            "bash",
+            "-c",
+            (
+                f"cd '{api_dir}' && env -u VIRTUAL_ENV "
+                f"'{venv_python}' -c '{quoted_code}'"
+            ),
+        ],
+        cwd=workspace_repo,
+    )
+    return json.loads(result.stdout)
+
+
+def _claim_only(base_url: str, runner_key: str) -> dict | None:
+    """Take a lease and walk away, so the lease can be lost mid-flight.
+
+    The runner CLI always runs a job to completion, which is the wrong
+    shape for the lease-loss and retry hazards: those need a lease that is
+    genuinely held and then genuinely expires.
+    """
+    client = httpx.Client(base_url=base_url, timeout=120)
+    try:
+        response = client.post(
+            "/v1/runners/lease",
+            headers={"Authorization": f"Bearer {runner_key}"},
+            json={"capabilities": ["cpu"]},
+        )
+        response.raise_for_status()
+        return response.json().get("data")
+    finally:
+        client.close()
+
+
+def _expire_lease(private_repo: Path, job_id: str) -> dict:
+    """Push a held lease into the past and run the coordinator's sweep.
+
+    This is the lease-loss event: the runner still believes it holds the
+    job, and the coordinator's own recovery decides what happens next.
+    """
+    return _private_python(
+        private_repo,
+        "\n".join([
+            "import json",
+            "from datetime import UTC, datetime, timedelta",
+            "from api.database import SessionLocal",
+            "from api.models import ExecutionJob",
+            "from api.executions.services.run_expired_leases import (",
+            "    RunExpiredLeasesService,",
+            ")",
+            "with SessionLocal() as db:",
+            f"    job = db.get(ExecutionJob, '{job_id}')",
+            "    before = job.status",
+            "    job.lease_expires_at = datetime.now(UTC) - timedelta(",
+            "        seconds=600)",
+            "    db.commit()",
+            "    swept = RunExpiredLeasesService(db).execute()",
+            "    db.refresh(job)",
+            "    print(json.dumps({",
+            "        'before': before,",
+            "        'swept': swept,",
+            "        'after': job.status,",
+            "        'attempt_count': job.attempt_count,",
+            "        'terminal_transition_count':"
+            " job.terminal_transition_count,",
+            "    }))",
+        ]),
+    )
+
+
+def _stored_artifacts_text(private_repo: Path, job_ids: list[str]) -> str:
+    """Every artifact byte the coordinator stored for *job_ids*."""
+    quoted = ", ".join(f"'{job_id}'" for job_id in job_ids)
+    payload = _private_python(
+        private_repo,
+        "\n".join([
+            "import json",
+            "from sqlalchemy import select",
+            "from api.database import SessionLocal",
+            "from api.models import ExecutionArtifact",
+            "with SessionLocal() as db:",
+            "    rows = db.scalars(select(ExecutionArtifact).where(",
+            f"        ExecutionArtifact.execution_job_id.in_([{quoted}]),",
+            "    )).all()",
+            "    print(json.dumps({'text': '\\n'.join(",
+            "        (r.content or b'').decode('utf-8', 'replace')",
+            "        + ' ' + r.name for r in rows)}))",
+        ]),
+    )
+    return str(payload["text"])
+
+
+def _stored_receipts_text(private_repo: Path, job_ids: list[str]) -> str:
+    """Every receipt the coordinator holds for *job_ids*, as text."""
+    quoted = ", ".join(f"'{job_id}'" for job_id in job_ids)
+    payload = _private_python(
+        private_repo,
+        "\n".join([
+            "import json",
+            "from sqlalchemy import select",
+            "from api.database import SessionLocal",
+            "from api.models import ExecutionReceipt",
+            "with SessionLocal() as db:",
+            "    rows = db.scalars(select(ExecutionReceipt).where(",
+            f"        ExecutionReceipt.execution_job_id.in_([{quoted}]),",
+            "    )).all()",
+            "    print(json.dumps({'text': '\\n'.join(",
+            "        json.dumps(r.receipt) + json.dumps(r.client_receipt)",
+            "        for r in rows)}))",
+        ]),
+    )
+    return str(payload["text"])
+
+
 def _private_receipt(
     private_repo: Path, job_id: str, artifact_name: str | None = None
 ) -> dict:
@@ -174,6 +351,7 @@ def _private_receipt(
         "        'receipt': row.receipt,",
         "        'client_receipt': row.client_receipt,",
         "        'receipt_digest': row.receipt_digest,",
+        "        'signature': row.signature,",
         "        'signature_algorithm': row.signature_algorithm,",
         "        'signing_key_fingerprint': row.signing_key_fingerprint,",
         "        'verify_exit_code': row.verify_exit_code,",
@@ -268,31 +446,80 @@ def _setup_runner_venv(public_repo: Path, venv_dir: Path) -> dict:
     return json.loads(inspect.stdout)
 
 
+#: Every byte the runner wrote across the run. The canary log fact is a
+#: search over this, so it can only say "no marker" after there was
+#: output to look through.
+RUNNER_LOG: list[str] = []
+
+
 def _runner_pass(public_repo: Path, runner_bin: Path, run_env: dict) -> dict:
     """One ``run --once`` pass; the runner's stdout is the observed truth."""
     run = _must_run(
         [str(runner_bin), "run", "--once"], cwd=public_repo, env=run_env
     )
+    RUNNER_LOG.append(run.stdout)
+    RUNNER_LOG.append(run.stderr)
     return _json_stdout(run)
 
 
-def _plant_canaries(env_name: str) -> None:
-    """Write real decoy secrets at the paths the canary probe reads."""
-    (Path.home() / ".logion-runner-canary").write_text(
-        "pg-canary-host-home-marker\n"
-    )
-    Path("/etc/logion-runner-canary").write_text("pg-canary-etc-marker\n")
-    os.environ[env_name] = "pg-canary-env-value-9f3ab1"
+#: One decoy per canary role, each with a marker string that appears
+#: nowhere else. The exfiltration facts are a search for these exact
+#: values in the artifacts, the receipt and the runner logs, so a leak
+#: anywhere along that path is observable rather than assumed absent.
+CANARY_MARKERS: dict[str, str] = {
+    "host_home": "pg-canary-host-home-4f1c2a",
+    "etc_shadow": "pg-canary-etc-shadow-7b3d90",
+    "coordinator_token": "pg-canary-coordinator-token-2e8f55",
+    "canary_env": "pg-canary-env-value-9f3ab1",
+    "cloud_metadata": "pg-canary-cloud-metadata-6a4d17",
+    "parent_path": "pg-canary-parent-path-c0b2e4",
+}
 
 
 def _canary_probes(env_name: str) -> dict[str, str]:
+    """Role -> host path, all of them inside ``CANARY_PATHS``.
+
+    ``etc_shadow`` prefers ``/etc`` because that is the path an escaping
+    job would reach for, but collecting evidence must not require root.
+    When ``/etc`` is not writable the decoy moves to the host home, which
+    is the same boundary from the sandbox's point of view; the runner
+    probes both, so whichever was planted is the one measured.
+    """
+    del env_name
+    home = Path.home()
     return {
-        "host_home": str(Path.home() / ".logion-runner-canary"),
-        "cloud_metadata": "http://169.254.169.254/latest/meta-data/",
-        "coordinator_token": "/root/.logion-probe-credential",
-        "canary_env": f"${env_name}",
-        "etc_shadow": "/etc/logion-runner-canary",
-        "parent_path": "/workspace/../escape-probe",
+        "host_home": str(home / ".logion-runner-canary"),
+        "etc_shadow": _etc_canary_path(),
+        "coordinator_token": str(home / ".logion-runner-canary-token"),
+        "canary_env": str(home / ".logion-runner-canary-env"),
+        "cloud_metadata": str(home / ".logion-runner-canary-imds"),
+        "parent_path": str(home / ".logion-runner-canary-parent"),
+    }
+
+
+def _etc_canary_path() -> str:
+    """``/etc`` when this user can write it, else the host-home stand-in."""
+    if os.access("/etc", os.W_OK):
+        return "/etc/logion-runner-canary"
+    return str(Path.home() / ".logion-runner-canary-etc")
+
+
+def _plant_canaries(env_name: str) -> dict[str, str]:
+    """Write a real decoy secret at every path the canary probe reads."""
+    probes = _canary_probes(env_name)
+    for role, path in probes.items():
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(CANARY_MARKERS[role] + "\n", encoding="utf-8")
+        os.chmod(target, 0o600)
+    os.environ[env_name] = CANARY_MARKERS["canary_env"]
+    return probes
+
+
+def canary_exfiltration_map(haystack: str) -> dict[str, bool]:
+    """True for every canary marker that appears in *haystack*."""
+    return {
+        role: marker in haystack for role, marker in CANARY_MARKERS.items()
     }
 
 
@@ -328,6 +555,7 @@ def main() -> int:
     base_url = os.environ.get("LOGION_API_BASE_URL", "http://localhost:8000")
     echo_digest = _sha256_text('{"echoed": []}')
     env_name = "LOGION_RUNNER_CANARY_PROBE"
+    runner_image = resolve_runner_image()
 
     runner_venv = out_dir / "runner-venv"
     runner_state = out_dir / "runner-state"
@@ -382,25 +610,33 @@ def main() -> int:
             client,
             admin_key,
             _job_body(
+                runner_image,
                 artifacts=[
                     {"name": "echo-result.json", "sha256": echo_digest}
                 ],
             ),
         )
         canary_job_id = _create_job(
-            client, admin_key, _job_body(job_type=CANARY_JOB_TYPE)
+            client,
+            admin_key,
+            _job_body(
+                runner_image,
+                job_type=CANARY_JOB_TYPE,
+                artifacts=[{"name": "canary-report.json"}],
+            ),
         )
         effect_job_ids = {
             effect: _create_job(
                 client,
                 admin_key,
-                _job_body(job_type=ADVERSARIAL_JOB_TYPE, effect=effect),
+                _job_body(
+                    runner_image,
+                    job_type=ADVERSARIAL_JOB_TYPE,
+                    effect=effect,
+                    artifacts=[{"name": "effect-report.json"}],
+                ),
             )
             for effect in EFFECT_ROLES
-        }
-        hazard_job_ids = {
-            hazard: _create_job(client, admin_key, _job_body())
-            for hazard in HAZARD_ROLES
         }
     finally:
         client.close()
@@ -427,13 +663,13 @@ def main() -> int:
     module_path = inspect_json["module_path"]
 
     # ── Canary probe ──
-    _plant_canaries(env_name)
+    planted_probes = _plant_canaries(env_name)
     _runner_pass(public_repo, runner_bin, run_env)
     canary_payload = _private_receipt(
         private_repo, canary_job_id, "canary-report.json"
     )
     canary_report = json.loads(canary_payload.get("artifact_content") or "{}")
-    readable = canary_readable_map(canary_report, _canary_probes(env_name))
+    readable = canary_readable_map(canary_report, planted_probes)
 
     # ── Five forbidden effects, one sandbox run each ──
     effect_status: dict[str, str] = {}
@@ -465,11 +701,37 @@ def main() -> int:
         }
 
     # ── Lifecycle hazards: five real coordinator exercises ──
+    #
+    # Each hazard gets its own job, created only now so FIFO leasing hands
+    # the next `run --once` pass exactly the job being exercised. Nothing
+    # below is asserted: every value is read back from the coordinator
+    # after the event it names actually happened.
+    hazard_jobs: dict[str, dict] = {}
+    hazard_events: dict[str, dict] = {}
+    duplicate_rejected: dict[str, bool] = {}
+
+    def _new_hazard_job(**kwargs) -> str:
+        client = httpx.Client(base_url=base_url, timeout=120)
+        try:
+            return _create_job(
+                client, admin_key, _job_body(runner_image, **kwargs)
+            )
+        finally:
+            client.close()
+
+    def _read_hazard(job_id: str) -> dict:
+        client = httpx.Client(base_url=base_url, timeout=120)
+        try:
+            return _get_job(client, admin_key, job_id)
+        finally:
+            client.close()
+
     # cancellation: cancel while queued; the admin cancel IS the event.
+    cancel_id = _new_hazard_job()
     client = httpx.Client(base_url=base_url, timeout=120)
     try:
         response = client.post(
-            f"/v1/executions/jobs/{hazard_job_ids['cancellation']}/cancel",
+            f"/v1/executions/jobs/{cancel_id}/cancel",
             headers={"Authorization": f"Bearer {admin_key}"},
         )
         if response.status_code != 200:
@@ -478,19 +740,115 @@ def main() -> int:
             )
     finally:
         client.close()
-    # timeout: each pass leases whatever is queued; after the five effect
-    # runs, only timeout-hazard shapes remain? No — leases are FIFO over
-    # queued jobs, so hazard jobs are consumed in creation order. We read
-    # them back by hazard after draining every remaining queued job.
-    hazard_jobs: dict[str, dict] = {}
+    hazard_jobs["cancellation"] = _read_hazard(cancel_id)
+    hazard_events["cancellation"] = {"cancel_status": response.status_code}
+
+    # timeout: a payload that installs a SIGTERM handler and never exits,
+    # under a short wall limit. The sandbox deadline is the event.
+    timeout_id = _new_hazard_job(
+        job_type=ADVERSARIAL_JOB_TYPE,
+        effect="timeout_ignoring_sigterm",
+        artifacts=[{"name": "effect-report.json"}],
+        limits={**DEFAULT_LIMITS, "wall_seconds": 5},
+    )
+    _runner_pass(public_repo, runner_bin, run_env)
+    hazard_jobs["timeout"] = _read_hazard(timeout_id)
+    hazard_events["timeout"] = {"wall_seconds": 5}
+
+    # lease_loss: hold a lease, push it into the past, let the
+    # coordinator's own sweep reclaim it, then finish it.
+    lease_loss_id = _new_hazard_job(
+        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}]
+    )
+    _claim_only(base_url, enroll_json["runner_key"])
+    hazard_events["lease_loss"] = _expire_lease(private_repo, lease_loss_id)
+    if hazard_events["lease_loss"]["after"] != "queued":
+        raise RuntimeError(
+            "lease_loss hazard: sweep left the job in "
+            f"{hazard_events['lease_loss']['after']!r}, expected 'queued'"
+        )
+    _runner_pass(public_repo, runner_bin, run_env)
+    hazard_jobs["lease_loss"] = _read_hazard(lease_loss_id)
+
+    # retry: same expiry, but the job goes on to a second attempt and must
+    # still reach terminal exactly once.
+    retry_id = _new_hazard_job(
+        max_attempts=3,
+        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}],
+    )
+    _claim_only(base_url, enroll_json["runner_key"])
+    hazard_events["retry"] = _expire_lease(private_repo, retry_id)
+    _runner_pass(public_repo, runner_bin, run_env)
+    hazard_jobs["retry"] = _read_hazard(retry_id)
+    if hazard_jobs["retry"]["job"]["attempt_count"] < 2:
+        raise RuntimeError(
+            "retry hazard: job never reached a second attempt "
+            f"({hazard_jobs['retry']['job']['attempt_count']})"
+        )
+
+    # duplicate_submission: replay the exact receipt bytes the coordinator
+    # already accepted, with the runner's own bearer. The 409 is the event.
+    duplicate_id = _new_hazard_job(
+        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}]
+    )
+    _runner_pass(public_repo, runner_bin, run_env)
+    hazard_jobs["duplicate_submission"] = _read_hazard(duplicate_id)
+    replayed = _private_receipt(private_repo, duplicate_id)
+    client = httpx.Client(base_url=base_url, timeout=120)
+    try:
+        replay = client.post(
+            f"/v1/runners/jobs/{duplicate_id}/receipt",
+            headers={"Authorization": f"Bearer {enroll_json['runner_key']}"},
+            json={
+                "client_receipt": replayed["client_receipt"],
+                "signature": replayed["signature"],
+                "signature_algorithm": replayed["signature_algorithm"],
+            },
+        )
+    finally:
+        client.close()
+    hazard_events["duplicate_submission"] = {
+        "replay_status": replay.status_code,
+        "replay_detail": replay.json().get("detail")
+        if replay.headers.get("content-type", "").startswith(
+            "application/json"
+        )
+        else replay.text[:200],
+    }
+    replay_rejected = replay.status_code == 409
+    # Re-read after the replay: a rejected duplicate must not have moved
+    # the job a second time.
+    hazard_jobs["duplicate_submission"] = _read_hazard(duplicate_id)
+
+    # Only the duplicate hazard performs a replay; the other four assert
+    # nothing about it, so their fact is the same observation carried
+    # forward: no second terminal transition was accepted for that job.
     for hazard in HAZARD_ROLES:
-        client = httpx.Client(base_url=base_url, timeout=120)
-        try:
-            hazard_jobs[hazard] = _get_job(
-                client, admin_key, hazard_job_ids[hazard]
-            )
-        finally:
-            client.close()
+        transitions = hazard_jobs[hazard]["job"]["terminal_transition_count"]
+        duplicate_rejected[hazard] = (
+            replay_rejected
+            if hazard == "duplicate_submission"
+            else transitions == 1
+        )
+
+    # ── Canary exfiltration: search what was actually retained ──
+    #
+    # Every artifact byte the coordinator stored, every receipt it holds,
+    # and every byte the runner printed. A marker absent from all three is
+    # an absence that was looked for.
+    all_job_ids = [
+        happy_job_id,
+        canary_job_id,
+        *effect_job_ids.values(),
+        cancel_id,
+        timeout_id,
+        lease_loss_id,
+        retry_id,
+        duplicate_id,
+    ]
+    artifacts_haystack = _stored_artifacts_text(private_repo, all_job_ids)
+    receipts_haystack = _stored_receipts_text(private_repo, all_job_ids)
+    logs_haystack = "\n".join(RUNNER_LOG)
 
     (out_dir / "run-summary.json").write_text(
         json.dumps(
@@ -500,6 +858,11 @@ def main() -> int:
                 "happy_receipt": receipt,
                 "canary_readable": readable,
                 "effect_runs": effect_details,
+                "hazard_events": hazard_events,
+                "hazard_jobs": {
+                    hazard: hazard_jobs[hazard]["job"]
+                    for hazard in HAZARD_ROLES
+                },
             },
             indent=2,
             sort_keys=True,
@@ -579,9 +942,13 @@ def main() -> int:
         "canaries.json",
         {
             "canary_readable": _fact(readable),
-            "canary_in_artifacts": _fact(dict.fromkeys(CANARY_ROLES, False)),
-            "canary_in_receipt": _fact(dict.fromkeys(CANARY_ROLES, False)),
-            "canary_in_logs": _fact(dict.fromkeys(CANARY_ROLES, False)),
+            "canary_in_artifacts": _fact(
+                canary_exfiltration_map(artifacts_haystack)
+            ),
+            "canary_in_receipt": _fact(
+                canary_exfiltration_map(receipts_haystack)
+            ),
+            "canary_in_logs": _fact(canary_exfiltration_map(logs_haystack)),
         },
     )
     _write(
@@ -606,9 +973,7 @@ def main() -> int:
                 hazard: hazard_jobs[hazard]["job"]["status"]
                 for hazard in HAZARD_ROLES
             }),
-            "duplicate_receipt_rejected": _fact(
-                dict.fromkeys(HAZARD_ROLES, True)
-            ),
+            "duplicate_receipt_rejected": _fact(duplicate_rejected),
             "attempt_count": _fact({
                 hazard: hazard_jobs[hazard]["job"]["attempt_count"]
                 for hazard in HAZARD_ROLES

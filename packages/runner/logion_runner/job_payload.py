@@ -110,12 +110,22 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
     succeeded = False
     attempted = effect in blocked_kinds
     if effect == "filesystem_escape":
-        try:
-            Path("/etc/passwd").read_text()
-            detail = "root filesystem was readable"
-            succeeded = True
-        except OSError:
-            detail = "root path unreadable"
+        # Reading the *container's* /etc/passwd proves nothing: every image
+        # ships one. The escape only happened if a path belonging to the
+        # host became readable from in here.
+        raw_hosts = payload.get("canary_paths")
+        host_paths = [
+            item
+            for item in (raw_hosts if isinstance(raw_hosts, list) else [])
+            if isinstance(item, str)
+        ]
+        reached = [path for path in host_paths if _read_canary(path)]
+        succeeded = bool(reached)
+        detail = (
+            f"host paths readable from the sandbox: {len(reached)}"
+            if reached
+            else f"none of {len(host_paths)} host paths were reachable"
+        )
     elif effect == "undeclared_network":
         import socket
 
@@ -139,9 +149,26 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         import signal
         import time
 
-        signal.signal(signal.SIGTERM, lambda *_: None)
         detail = "process ignored SIGTERM until the backend deadline"
         attempted = True
+        # The report has to land before the process stops responding, or
+        # the only job that never returns is also the only one that can
+        # never say what it tried.
+        _write_out(
+            out_dir,
+            "effect-report.json",
+            json.dumps(
+                {
+                    "effect": effect,
+                    "attempted": True,
+                    "detail": detail,
+                    "succeeded": False,
+                    "effect_blocked": True,
+                },
+                sort_keys=True,
+            ).encode(),
+        )
+        signal.signal(signal.SIGTERM, lambda *_: None)
         while True:
             time.sleep(1)
     elif effect == "oversized_output":

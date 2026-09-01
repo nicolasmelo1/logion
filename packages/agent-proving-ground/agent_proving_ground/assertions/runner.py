@@ -45,10 +45,23 @@ def _manifest(ctx: AssertionContext, params: dict) -> dict[str, object]:
     return value
 
 
-def _typed_facts(payload: dict[str, object]) -> dict[str, object]:
+def _typed_facts(
+    payload: dict[str, object], assertion: str | None = None
+) -> dict[str, object]:
+    """Return the typed facts this assertion owns.
+
+    Three 15.15 contracts name a fact ``terminal_status`` over three
+    different keyspaces, so the manifest is scoped by assertion type. A
+    flat manifest is still read, for evidence sealed before the scoping.
+    """
     facts = payload.get("facts")
     if not isinstance(facts, dict):
         raise TypeError("runner evidence carries no typed facts")
+    if assertion is not None and assertion in facts:
+        scoped = facts[assertion]
+        if not isinstance(scoped, dict):
+            raise TypeError(f"{assertion} evidence is not an object")
+        return cast(dict[str, object], scoped)
     return cast(dict[str, object], facts)
 
 
@@ -135,7 +148,7 @@ class _RunnerFactsAssertion(Assertion):
     ) -> AssertionOutcome:
         try:
             payload = _manifest(ctx, params)
-            facts = _typed_facts(payload)
+            facts = _typed_facts(payload, self.type)
             passed, evidence, errors = _check(
                 facts,
                 self.required,
@@ -263,7 +276,7 @@ class ForbiddenEffectBlockedAssertion(_RunnerFactsAssertion):
         result = await super().evaluate(ctx, params)
         if result.status == "failed":
             return result
-        facts = _typed_facts(_manifest(ctx, params))
+        facts = _typed_facts(_manifest(ctx, params), self.type)
         _, attempted = _value(facts, "effect_attempted")
         _, blocked = _value(facts, "effect_blocked")
         _, statuses = _value(facts, "terminal_status")
@@ -307,7 +320,7 @@ class RunnerJobTerminalOnceAssertion(_RunnerFactsAssertion):
         result = await super().evaluate(ctx, params)
         if result.status == "failed":
             return result
-        facts = _typed_facts(_manifest(ctx, params))
+        facts = _typed_facts(_manifest(ctx, params), self.type)
         _, counts = _value(facts, "terminal_transition_count")
         _, statuses = _value(facts, "terminal_status")
         _, duplicate = _value(facts, "duplicate_receipt_rejected")

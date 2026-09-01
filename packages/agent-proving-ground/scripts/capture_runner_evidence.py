@@ -56,13 +56,14 @@ def main() -> int:
         ):
             sys.stderr.write(f"{path} lacks typed facts\n")
             return 1
-        overlap = set(facts).intersection(payload["facts"])
-        if overlap:
-            sys.stderr.write(
-                f"duplicate fact names: {', '.join(sorted(overlap))}\n"
-            )
+        assertion = payload.get("assertion")
+        if not isinstance(assertion, str) or not assertion:
+            sys.stderr.write(f"{path} does not name its assertion\n")
             return 1
-        facts.update(payload["facts"])
+        if assertion in facts:
+            sys.stderr.write(f"duplicate assertion: {assertion}\n")
+            return 1
+        facts[assertion] = payload["facts"]
         files.append(str(path))
     output = Path(sys.argv[2])
     output.parent.mkdir(parents=True, exist_ok=True)

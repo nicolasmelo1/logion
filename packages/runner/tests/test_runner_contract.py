@@ -169,3 +169,31 @@ def test_receipt_redacts_nested_tool_and_command_fields() -> None:
 )
 def test_jcs_float_vectors(value: float, expected: str) -> None:
     assert canonicalize_text(value) == expected
+
+
+def test_image_pin_rejects_a_placeholder_or_malformed_digest() -> None:
+    from logion_runner.sandbox.profiles import (
+        image_for_profile,
+        runnable_reference,
+    )
+
+    base = {"runtime": "container"}
+    with pytest.raises(ValueError, match="zero placeholder"):
+        image_for_profile({
+            **base,
+            "image": "logion-runner-job@sha256:" + "0" * 64,
+        })
+    with pytest.raises(ValueError, match="not a sha256 hex digest"):
+        image_for_profile({**base, "image": "logion-runner-job@sha256:abc"})
+    with pytest.raises(ValueError, match="must be pinned"):
+        image_for_profile({**base, "image": "logion-runner-job:latest"})
+    pinned = "logion-runner-job@sha256:" + "a1" * 32
+    assert image_for_profile({**base, "image": pinned}) == pinned
+    assert runnable_reference(pinned) == "sha256:" + "a1" * 32
+
+
+def test_docker_backend_refuses_an_image_the_daemon_does_not_hold() -> None:
+    """A pin nothing resolves must fail closed, never fall back."""
+    backend = DockerBackend(docker_cli="/usr/bin/false")
+    with pytest.raises(SandboxUnavailable):
+        backend._require_pinned_image("logion-runner-job@sha256:" + "b2" * 32)
