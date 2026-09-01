@@ -128,6 +128,7 @@ class DocsSite:
         sections: list[NavSection] = []
         for section in self.sections:
             entries = children(section, "pages")
+            slugs = [_str(entry.get("slug")) for entry in entries]
             sections.append({
                 "id": _str(section.get("id")),
                 "title": _str(section.get("title")),
@@ -136,14 +137,16 @@ class DocsSite:
                     {
                         "title": _str(entry.get("title")),
                         "summary": _str(entry.get("summary")),
-                        "url": f"/docs/{_str(entry.get('slug'))}",
-                        "active": _str(entry.get("slug")) == current,
+                        "url": f"/docs/{slug}",
+                        "active": slug == current,
                     }
-                    for entry in entries
+                    for entry, slug in zip(entries, slugs, strict=True)
                 ],
-                "active": any(
-                    _str(entry.get("slug")) == current for entry in entries
-                ),
+                # The section is open when it holds the current page. Reading
+                # the slugs once and testing membership keeps the two answers
+                # derived from one list rather than two passes that could
+                # disagree.
+                "active": current in slugs,
             })
         return sections
 
