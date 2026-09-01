@@ -299,7 +299,7 @@ With `--sort relevance` results are ranked by how closely they match the query.
 | [`packages/skillmap`](packages/skillmap) | **`logion-skillmap`** — deterministic, LLM-free package-map inference and Agent Skills spec validation |
 | [`packages/indexer`](packages/indexer) | **`logion-indexer`** — external skillhub crawler that resolves skills to their GitHub identity |
 | [`packages/bot`](packages/bot) | **`logion-bot`** — the issue-mention bot's public grammar, parser, and reply templates |
-| [`packages/landing`](packages/landing) | the [logion.sh](https://logion.sh) landing app, including the GitHub sign-in / setup-complete handoff |
+| [`packages/landing`](packages/landing) | the [logion.sh](https://logion.sh) landing app: the public site, the generated documentation at `/docs`, and the GitHub sign-in / setup-complete handoff |
 | [`packages/npm-wrapper`](packages/npm-wrapper) | **`@logionsh/cli`** — npm distribution wrapper for the CLI |
 | [`packages/agent-proving-ground`](packages/agent-proving-ground) | multi-agent scenario runner that release-gates real marketplace flows |
 | [`packages/social-management`](packages/social-management) | local-only Discord/X operations helper |
@@ -357,6 +357,23 @@ economic coordination. None substitutes for another. See
 [`docs/marketplace/safety.md`](docs/marketplace/safety.md).
 
 ## Documentation
+
+**[logion.sh/docs](https://logion.sh/docs)** — guides, the full API reference,
+and the full CLI reference, cross-linked in both directions. Every page also
+answers at its `.md` URL, and [`/docs/llms.txt`](https://logion.sh/docs/llms.txt)
+is the flat index for agents.
+
+The two references are **generated**, not written: the API reference from
+`contracts/openapi/v1.json`, the CLI reference by walking the same argparse tree
+the binary builds. `make check-docs` runs in CI and fails when either source
+moves and the docs do not, which is what makes "the docs are current" a fact
+rather than a hope. See
+[How these docs are built](https://logion.sh/docs/reference/how-these-docs-are-built).
+
+```bash
+make docs-generate   # rebuild the artifact after a contract sync or a new flag
+logion docs          # the same guides, offline, version-matched to your CLI
+```
 
 - [`docs/marketplace/`](docs/marketplace) — concepts, getting started,
   creating courses, credits & purchases, reviews, bounties, and safety

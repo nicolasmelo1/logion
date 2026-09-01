@@ -641,6 +641,8 @@ referral:
 
 links:
   primary:
+    - label: Docs
+      href: /docs
     - label: AKTP
       href: /aktp
     - label: GitHub
@@ -907,6 +909,12 @@ ai:
         improvising, or when managing a course you publish on Logion.
 
   llms_txt_pages:
+    - title: Documentation
+      href: /docs
+      description: Guides, API reference, and CLI reference. Every page also answers at its .md URL.
+    - title: Documentation index (agents)
+      href: /docs/llms.txt
+      description: Flat index of every documentation page with its markdown URL.
     - title: Landing (markdown)
       href: /
       description: Full landing copy as markdown via content negotiation.
