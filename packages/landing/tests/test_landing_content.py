@@ -20,7 +20,8 @@ CREDITS_PATH = LEGAL_DIR / "credits.md"
 REFERRALS_PATH = LEGAL_DIR / "referrals.md"
 
 REQUIRED_ANCHORS = (
-    "open, versioned registry",
+    "independent measurement layer",
+    "reproduce",
     "reviewed",
     "versioned",
     "capability",
@@ -64,6 +65,34 @@ NEGATIVE_ANCHORS = (
     "credit pack",
 )
 
+# Language discipline that is binding on public copy while Logion is the only
+# issuer of its own measurements. These are not style preferences: each one is a
+# claim the evidence does not currently support, or a metaphor that reliably
+# relocates readers into the marketplace category the product left.
+#
+# Source of truth: plans/positioning-and-independence.md (private workspace).
+FORBIDDEN_CLAIMS = (
+    # No public copy may assert network validation before a second issuer
+    # exists. Say "Logion measured it and the method is published" instead.
+    "the network verifies",
+    "the network validates",
+    "network-verified",
+    "network verified",
+    "validated by the network",
+    "verified by the network",
+    # Index metaphors re-import the marketplace framing every time.
+    "google of",
+    "google for",
+    "hub of skills",
+    "skill hub",
+    "catalog of skills",
+    # A measurement is never a safety verdict.
+    "certified safe",
+    "logion-approved",
+    "logion approved",
+    "guaranteed to work",
+)
+
 
 def _content_text() -> str:
     return CONTENT_PATH.read_text(encoding="utf-8")
@@ -98,6 +127,53 @@ def test_content_avoids_negative_anchors() -> None:
     text = _content_text().lower()
     present = [a for a in NEGATIVE_ANCHORS if a.lower() in text]
     assert not present, f"forbidden anchors in site.yaml: {present}"
+
+
+def test_content_avoids_forbidden_claims() -> None:
+    """No copy may overclaim authority, safety, or the category.
+
+    While Logion is the only issuer, "the network validates this" is stronger
+    than the evidence. An index metaphor puts the reader back in the
+    marketplace category. And a measurement is scoped to one contract, one
+    environment, one version — it is never a safety verdict.
+    """
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        lower = path.read_text(encoding="utf-8").lower()
+        present = [claim for claim in FORBIDDEN_CLAIMS if claim in lower]
+        assert not present, f"forbidden claims in {path.name}: {present}"
+
+
+def test_content_states_the_category_boundary() -> None:
+    """A reader who cannot place the category reads nothing else on the page.
+
+    The fix is to borrow the adjacent full category rather than invent
+    vocabulary: an eval platform measures the agent you wrote; Logion measures
+    the parts you installed inside it.
+    """
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        lower = path.read_text(encoding="utf-8").lower()
+        assert "the agent you wrote" in lower
+        assert "installed inside it" in lower
+
+
+def test_content_scopes_measurements_as_non_endorsement() -> None:
+    """The disclaimer has to travel with the finding, not live in the terms.
+
+    A published number about a third party's artifact is read as blessing that
+    artifact. The only defence that works is the one already on the page.
+    """
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        lower = path.read_text(encoding="utf-8").lower()
+        assert "a measurement is not an endorsement" in lower
+        assert "not a safety certification" in lower
+
+
+def test_content_discloses_sole_issuer_status() -> None:
+    """Independence is methodological until a second issuer exists; say so."""
+    for path in (CONTENT_PATH, MARKDOWN_PATH):
+        lower = path.read_text(encoding="utf-8").lower()
+        assert "only issuer" in lower
+        assert "anyone can reproduce it" in lower
 
 
 def test_content_keeps_negative_positioning() -> None:
