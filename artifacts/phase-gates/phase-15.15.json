@@ -1,0 +1,22 @@
+{
+  "caveats": [],
+  "phase_id": "15.15",
+  "runs": [
+    {
+      "api_adapter": "local-devrig",
+      "driver": "claude-code",
+      "implementation": {
+        "private_sha256": "2abd346c3fd5980325366f0c32bea238b27078519e058f34a906f9ee1cd22051",
+        "public_sha256": "31a6c57dfc6a54dc930f36cc5a9bca99971a036ce8702b31a8e4e014e026f744"
+      },
+      "model": "claude-haiku-4-5",
+      "report": "artifacts/phase-gates/reports/phase-15.15-isolated-runner.json",
+      "report_sha256": "3b5854eb8393e85a843c9f5056c1e13422e902aa1626f02ab55ba6c10f0dc90e",
+      "run_id": "20260901T014609-phase_15_15_isolated_runner",
+      "scenario": "phase_15_15_isolated_runner",
+      "status": "passed",
+      "unsupported_assertions": []
+    }
+  ],
+  "schema_version": 2
+}

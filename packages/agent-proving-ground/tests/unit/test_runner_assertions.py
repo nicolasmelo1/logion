@@ -172,3 +172,32 @@ def test_none_sentinel_still_fails(tmp_path: Path) -> None:
         RunnerEnrolledAssertion().evaluate(_ctx(tmp_path), params)
     )
     assert outcome.status == "failed"
+
+
+def test_evidence_keyed_by_its_subject_survives_redaction() -> None:
+    """Canary facts are keyed by what they are about, not what they hold."""
+    from agent_proving_ground.redaction import redact_json
+
+    assert redact_json({
+        "coordinator_token": False,
+        "secret_read": "failed",
+        "canary_env": True,
+    }) == {
+        "coordinator_token": False,
+        "secret_read": "failed",
+        "canary_env": True,
+    }
+
+
+def test_a_real_credential_is_still_redacted_under_any_key() -> None:
+    """Narrowing the key backstop must not let a credential through."""
+    from agent_proving_ground.redaction import redact_json
+
+    redacted = redact_json({
+        "api_token": "logion_runner_" + "x" * 43,
+        "secret_read": "Bearer sk_live_abcdefghijklmnopqrstuv",
+        "harmless": "Bearer sk_live_abcdefghijklmnopqrstuv",
+    })
+    assert redacted["api_token"] == "<redacted>"
+    assert "sk_live" not in str(redacted["secret_read"])
+    assert "sk_live" not in str(redacted["harmless"])

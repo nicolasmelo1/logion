@@ -46,6 +46,33 @@ def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
     return text
 
 
+#: Shortest string the key heuristic will redact. Real credentials are
+#: long: the shortest thing this repo issues is a 14-character prefix plus
+#: 43 random characters. Below this, a sensitive-looking key is far more
+#: likely to be naming a subject than holding a secret.
+_CREDENTIAL_MIN_LEN = 16
+
+
+def _cannot_be_secret(value: object) -> bool:
+    """True for values that carry no secret no matter what they are named.
+
+    The key heuristic is a backstop for values that no pattern matches. It
+    misfires on facts keyed by what they are *about* rather than by what
+    they hold: ``{"coordinator_token": false}`` says a canary was not
+    readable, and ``{"secret_read": "failed"}`` is a terminal status.
+    Replacing those protects nothing and destroys the observation the
+    auditor recomputes its verdict from.
+
+    Narrowing this backstop does not narrow the real control: every string
+    still goes through :func:`redact_text`, so anything shaped like a
+    bearer token, API key, GitHub, Stripe or provider credential is
+    redacted on its own evidence regardless of the key it sits under.
+    """
+    if value is None or isinstance(value, bool):
+        return True
+    return isinstance(value, str) and len(value) < _CREDENTIAL_MIN_LEN
+
+
 def redact_json(
     value: object,
     sensitive_keys: set[str] | None = None,
@@ -62,7 +89,7 @@ def redact_json(
     if isinstance(value, dict):
         return {
             k: _REDACTED
-            if _is_sensitive_key(k, keys)
+            if _is_sensitive_key(k, keys) and not _cannot_be_secret(v)
             else redact_json(v, keys, redact_emails)
             for k, v in value.items()
         }

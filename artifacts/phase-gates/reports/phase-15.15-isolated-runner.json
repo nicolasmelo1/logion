@@ -1,0 +1,606 @@
+{
+  "run_id": "20260901T014609-phase_15_15_isolated_runner",
+  "scenario": "phase_15_15_isolated_runner",
+  "status": "passed",
+  "api_adapter": "local-devrig",
+  "agent_drivers": {
+    "node_operator": "claude-code",
+    "consumer": "claude-code",
+    "evaluator": "claude-code",
+    "contributor": "claude-code",
+    "sponsor": "claude-code",
+    "auditor": "claude-code"
+  },
+  "started_at": "2026-09-01T01:46:09.945549Z",
+  "finished_at": "2026-09-01T01:49:30.708909Z",
+  "phase_results": [
+    {
+      "phase_id": "execute_runner_evidence",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-09-01T01:46:10.764073Z",
+      "finished_at": "2026-09-01T01:48:24.314276Z",
+      "duration_seconds": 133.556
+    },
+    {
+      "phase_id": "collect_runner_evidence",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "api.runner_enrolled",
+          "status": "passed",
+          "message": "runner evidence satisfies the contract",
+          "evidence": {
+            "runner_id": {
+              "ok": true,
+              "value": "5191f39d-6399-46d3-a936-7f302dc9d247"
+            },
+            "runner_key_fingerprint": {
+              "ok": true,
+              "value": "1fe5c7f1893cf1a7"
+            },
+            "runner_import_root": {
+              "ok": true,
+              "value": "site-packages"
+            },
+            "runner_credential_kind": {
+              "ok": true,
+              "value": "runner"
+            },
+            "runner_package_version": {
+              "ok": true,
+              "value": "0.1.0.dev1"
+            }
+          }
+        },
+        {
+          "type": "api.runner_job_completed",
+          "status": "passed",
+          "message": "runner evidence satisfies the contract",
+          "evidence": {
+            "job_id": {
+              "ok": true,
+              "value": "4c18cf41-089d-4ea8-a0fe-5ea67be9eabe"
+            },
+            "terminal_status": {
+              "ok": true,
+              "value": "succeeded"
+            },
+            "attempt_count": {
+              "ok": true,
+              "value": 1
+            },
+            "uploaded_artifact_digest": {
+              "ok": true,
+              "value": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+            },
+            "coordinator_artifact_digest": {
+              "ok": true,
+              "value": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+            },
+            "lease_holder": {
+              "ok": true,
+              "value": "5191f39d-6399-46d3-a936-7f302dc9d247"
+            }
+          }
+        },
+        {
+          "type": "api.runner_receipt_published",
+          "status": "passed",
+          "message": "runner evidence satisfies the contract",
+          "evidence": {
+            "receipt_id": {
+              "ok": true,
+              "value": "0b0316b4-5b13-4ab8-8b11-820a896bdfa7"
+            },
+            "receipt_digest": {
+              "ok": true,
+              "value": "c8d95b93f61db2af7b8243fa9c6ea2d8111d36039ef8824273e3f8a5cbd8513e"
+            },
+            "coordinator_accepted": {
+              "ok": true,
+              "value": true
+            },
+            "accepted_as_late_evidence": {
+              "ok": true,
+              "value": false
+            },
+            "published_at": {
+              "ok": true,
+              "value": "2026-09-01T01:47:26.658140+00:00"
+            }
+          }
+        },
+        {
+          "type": "crypto.runner_receipt_valid",
+          "status": "passed",
+          "message": "runner evidence satisfies the contract",
+          "evidence": {
+            "canonicalization": {
+              "ok": true,
+              "value": "JCS"
+            },
+            "signature_algorithm": {
+              "ok": true,
+              "value": "Ed25519"
+            },
+            "signing_key_fingerprint": {
+              "ok": true,
+              "value": "cb5fa427da6b6936"
+            },
+            "verify_exit_code": {
+              "ok": true,
+              "value": 0
+            },
+            "bound_input_digest": {
+              "ok": true,
+              "value": {}
+            },
+            "bound_image_digest": {
+              "ok": true,
+              "value": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53"
+            },
+            "bound_output_digest": {
+              "ok": true,
+              "value": {
+                "echo-result.json": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+              }
+            },
+            "bound_assertion_vector_digest": {
+              "ok": true,
+              "value": "7a5903bb02974eb3f5dc6d1808cfa7c3c5b19a4efac0a32fefea2dbd8672a341"
+            }
+          }
+        },
+        {
+          "type": "sandbox.canary_not_exfiltrated",
+          "status": "passed",
+          "message": "runner evidence satisfies the contract",
+          "evidence": {
+            "canary_readable": {
+              "ok": true,
+              "value": {
+                "canary_env": false,
+                "cloud_metadata": false,
+                "coordinator_token": false,
+                "etc_shadow": false,
+                "host_home": false,
+                "parent_path": false
+              }
+            },
+            "canary_in_artifacts": {
+              "ok": true,
+              "value": {
+                "canary_env": false,
+                "cloud_metadata": false,
+                "coordinator_token": false,
+                "etc_shadow": false,
+                "host_home": false,
+                "parent_path": false
+              }
+            },
+            "canary_in_receipt": {
+              "ok": true,
+              "value": {
+                "canary_env": false,
+                "cloud_metadata": false,
+                "coordinator_token": false,
+                "etc_shadow": false,
+                "host_home": false,
+                "parent_path": false
+              }
+            },
+            "canary_in_logs": {
+              "ok": true,
+              "value": {
+                "canary_env": false,
+                "cloud_metadata": false,
+                "coordinator_token": false,
+                "etc_shadow": false,
+                "host_home": false,
+                "parent_path": false
+              }
+            }
+          }
+        },
+        {
+          "type": "sandbox.forbidden_effect_blocked",
+          "status": "passed",
+          "message": "adversarial effects were attempted and blocked",
+          "evidence": {
+            "effect_attempted": {
+              "ok": true,
+              "value": {
+                "filesystem_escape": true,
+                "oversized_output": true,
+                "secret_read": true,
+                "timeout_ignoring_sigterm": true,
+                "undeclared_network": true
+              }
+            },
+            "effect_blocked": {
+              "ok": true,
+              "value": {
+                "filesystem_escape": true,
+                "oversized_output": true,
+                "secret_read": true,
+                "timeout_ignoring_sigterm": true,
+                "undeclared_network": true
+              }
+            },
+            "terminal_status": {
+              "ok": true,
+              "value": {
+                "filesystem_escape": "failed",
+                "oversized_output": "failed",
+                "secret_read": "failed",
+                "timeout_ignoring_sigterm": "failed",
+                "undeclared_network": "failed"
+              }
+            },
+            "sandbox_profile_digest": {
+              "ok": true,
+              "value": {
+                "filesystem_escape": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+                "oversized_output": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+                "secret_read": "<redacted>",
+                "timeout_ignoring_sigterm": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+                "undeclared_network": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53"
+              }
+            }
+          }
+        },
+        {
+          "type": "api.runner_job_terminal_once",
+          "status": "passed",
+          "message": "each lifecycle hazard reached one terminal state",
+          "evidence": {
+            "terminal_transition_count": {
+              "ok": true,
+              "value": {
+                "cancellation": 1,
+                "duplicate_submission": 1,
+                "lease_loss": 1,
+                "retry": 1,
+                "timeout": 1
+              }
+            },
+            "terminal_status": {
+              "ok": true,
+              "value": {
+                "cancellation": "cancelled",
+                "duplicate_submission": "succeeded",
+                "lease_loss": "succeeded",
+                "retry": "succeeded",
+                "timeout": "failed"
+              }
+            },
+            "duplicate_receipt_rejected": {
+              "ok": true,
+              "value": {
+                "cancellation": true,
+                "duplicate_submission": true,
+                "lease_loss": true,
+                "retry": true,
+                "timeout": true
+              }
+            },
+            "attempt_count": {
+              "ok": true,
+              "value": {
+                "cancellation": 0,
+                "duplicate_submission": 1,
+                "lease_loss": 2,
+                "retry": 2,
+                "timeout": 1
+              }
+            }
+          }
+        }
+      ],
+      "started_at": "2026-09-01T01:48:24.314394Z",
+      "finished_at": "2026-09-01T01:48:24.345341Z",
+      "duration_seconds": 0.031
+    },
+    {
+      "phase_id": "verify_api_logs",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "logs.no_500s",
+          "status": "passed",
+          "message": "API log contains no obvious 500 responses",
+          "evidence": {
+            "log_path": "/Users/nicolasmelo/workspaces/personal/logion-workspace/.devrig/api.log"
+          }
+        }
+      ],
+      "started_at": "2026-09-01T01:48:24.345376Z",
+      "finished_at": "2026-09-01T01:49:30.708729Z",
+      "duration_seconds": 66.366
+    }
+  ],
+  "assertion_results": [
+    {
+      "type": "api.runner_enrolled",
+      "status": "passed",
+      "message": "runner evidence satisfies the contract",
+      "evidence": {
+        "runner_id": {
+          "ok": true,
+          "value": "5191f39d-6399-46d3-a936-7f302dc9d247"
+        },
+        "runner_key_fingerprint": {
+          "ok": true,
+          "value": "1fe5c7f1893cf1a7"
+        },
+        "runner_import_root": {
+          "ok": true,
+          "value": "site-packages"
+        },
+        "runner_credential_kind": {
+          "ok": true,
+          "value": "runner"
+        },
+        "runner_package_version": {
+          "ok": true,
+          "value": "0.1.0.dev1"
+        }
+      }
+    },
+    {
+      "type": "api.runner_job_completed",
+      "status": "passed",
+      "message": "runner evidence satisfies the contract",
+      "evidence": {
+        "job_id": {
+          "ok": true,
+          "value": "4c18cf41-089d-4ea8-a0fe-5ea67be9eabe"
+        },
+        "terminal_status": {
+          "ok": true,
+          "value": "succeeded"
+        },
+        "attempt_count": {
+          "ok": true,
+          "value": 1
+        },
+        "uploaded_artifact_digest": {
+          "ok": true,
+          "value": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+        },
+        "coordinator_artifact_digest": {
+          "ok": true,
+          "value": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+        },
+        "lease_holder": {
+          "ok": true,
+          "value": "5191f39d-6399-46d3-a936-7f302dc9d247"
+        }
+      }
+    },
+    {
+      "type": "api.runner_receipt_published",
+      "status": "passed",
+      "message": "runner evidence satisfies the contract",
+      "evidence": {
+        "receipt_id": {
+          "ok": true,
+          "value": "0b0316b4-5b13-4ab8-8b11-820a896bdfa7"
+        },
+        "receipt_digest": {
+          "ok": true,
+          "value": "c8d95b93f61db2af7b8243fa9c6ea2d8111d36039ef8824273e3f8a5cbd8513e"
+        },
+        "coordinator_accepted": {
+          "ok": true,
+          "value": true
+        },
+        "accepted_as_late_evidence": {
+          "ok": true,
+          "value": false
+        },
+        "published_at": {
+          "ok": true,
+          "value": "2026-09-01T01:47:26.658140+00:00"
+        }
+      }
+    },
+    {
+      "type": "crypto.runner_receipt_valid",
+      "status": "passed",
+      "message": "runner evidence satisfies the contract",
+      "evidence": {
+        "canonicalization": {
+          "ok": true,
+          "value": "JCS"
+        },
+        "signature_algorithm": {
+          "ok": true,
+          "value": "Ed25519"
+        },
+        "signing_key_fingerprint": {
+          "ok": true,
+          "value": "cb5fa427da6b6936"
+        },
+        "verify_exit_code": {
+          "ok": true,
+          "value": 0
+        },
+        "bound_input_digest": {
+          "ok": true,
+          "value": {}
+        },
+        "bound_image_digest": {
+          "ok": true,
+          "value": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53"
+        },
+        "bound_output_digest": {
+          "ok": true,
+          "value": {
+            "echo-result.json": "de80e747ec75c9e54960c18a42591f1ba0f3bca62db3e35a81b4a1d74cfcc008"
+          }
+        },
+        "bound_assertion_vector_digest": {
+          "ok": true,
+          "value": "7a5903bb02974eb3f5dc6d1808cfa7c3c5b19a4efac0a32fefea2dbd8672a341"
+        }
+      }
+    },
+    {
+      "type": "sandbox.canary_not_exfiltrated",
+      "status": "passed",
+      "message": "runner evidence satisfies the contract",
+      "evidence": {
+        "canary_readable": {
+          "ok": true,
+          "value": {
+            "canary_env": false,
+            "cloud_metadata": false,
+            "coordinator_token": false,
+            "etc_shadow": false,
+            "host_home": false,
+            "parent_path": false
+          }
+        },
+        "canary_in_artifacts": {
+          "ok": true,
+          "value": {
+            "canary_env": false,
+            "cloud_metadata": false,
+            "coordinator_token": false,
+            "etc_shadow": false,
+            "host_home": false,
+            "parent_path": false
+          }
+        },
+        "canary_in_receipt": {
+          "ok": true,
+          "value": {
+            "canary_env": false,
+            "cloud_metadata": false,
+            "coordinator_token": false,
+            "etc_shadow": false,
+            "host_home": false,
+            "parent_path": false
+          }
+        },
+        "canary_in_logs": {
+          "ok": true,
+          "value": {
+            "canary_env": false,
+            "cloud_metadata": false,
+            "coordinator_token": false,
+            "etc_shadow": false,
+            "host_home": false,
+            "parent_path": false
+          }
+        }
+      }
+    },
+    {
+      "type": "sandbox.forbidden_effect_blocked",
+      "status": "passed",
+      "message": "adversarial effects were attempted and blocked",
+      "evidence": {
+        "effect_attempted": {
+          "ok": true,
+          "value": {
+            "filesystem_escape": true,
+            "oversized_output": true,
+            "secret_read": true,
+            "timeout_ignoring_sigterm": true,
+            "undeclared_network": true
+          }
+        },
+        "effect_blocked": {
+          "ok": true,
+          "value": {
+            "filesystem_escape": true,
+            "oversized_output": true,
+            "secret_read": true,
+            "timeout_ignoring_sigterm": true,
+            "undeclared_network": true
+          }
+        },
+        "terminal_status": {
+          "ok": true,
+          "value": {
+            "filesystem_escape": "failed",
+            "oversized_output": "failed",
+            "secret_read": "failed",
+            "timeout_ignoring_sigterm": "failed",
+            "undeclared_network": "failed"
+          }
+        },
+        "sandbox_profile_digest": {
+          "ok": true,
+          "value": {
+            "filesystem_escape": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+            "oversized_output": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+            "secret_read": "<redacted>",
+            "timeout_ignoring_sigterm": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53",
+            "undeclared_network": "5c8d1cc5ed12b9e40b4d4a08fdafc9feb3937d2dacd46864c45f4e30d9991d53"
+          }
+        }
+      }
+    },
+    {
+      "type": "api.runner_job_terminal_once",
+      "status": "passed",
+      "message": "each lifecycle hazard reached one terminal state",
+      "evidence": {
+        "terminal_transition_count": {
+          "ok": true,
+          "value": {
+            "cancellation": 1,
+            "duplicate_submission": 1,
+            "lease_loss": 1,
+            "retry": 1,
+            "timeout": 1
+          }
+        },
+        "terminal_status": {
+          "ok": true,
+          "value": {
+            "cancellation": "cancelled",
+            "duplicate_submission": "succeeded",
+            "lease_loss": "succeeded",
+            "retry": "succeeded",
+            "timeout": "failed"
+          }
+        },
+        "duplicate_receipt_rejected": {
+          "ok": true,
+          "value": {
+            "cancellation": true,
+            "duplicate_submission": true,
+            "lease_loss": true,
+            "retry": true,
+            "timeout": true
+          }
+        },
+        "attempt_count": {
+          "ok": true,
+          "value": {
+            "cancellation": 0,
+            "duplicate_submission": 1,
+            "lease_loss": 2,
+            "retry": 2,
+            "timeout": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "logs.no_500s",
+      "status": "passed",
+      "message": "API log contains no obvious 500 responses",
+      "evidence": {
+        "log_path": "/Users/nicolasmelo/workspaces/personal/logion-workspace/.devrig/api.log"
+      }
+    }
+  ],
+  "failure_message": null,
+  "artifact_root": "/Users/nicolasmelo/workspaces/personal/logion-workspace/.runs/proving-ground/p1515c"
+}
