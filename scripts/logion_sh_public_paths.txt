@@ -35,6 +35,8 @@
 /aktp.md
 /credits-terms.md
 /docs
+/docs/*
+/docs/llms.txt
 /index.md
 /openapi.json
 /pricing.md

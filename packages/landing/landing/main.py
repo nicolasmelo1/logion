@@ -38,6 +38,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from landing._json import JsonObject, child, children, strings
+from landing.docs_site import DocsPage, load_docs, render_html
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -78,6 +79,7 @@ _readout_cache: _ReadoutCache = {"value": None, "at": 0.0}
 PUBLIC_PATHS = (
     "/",
     "/aktp",
+    "/docs",
     "/pricing",
     "/terms",
     "/privacy",
@@ -222,12 +224,25 @@ def robots_txt() -> str:
     return "\n".join(lines) + "\n"
 
 
+def sitemap_paths() -> list[str]:
+    """Every indexable path, marketing pages plus the whole reference.
+
+    The docs are the largest indexable surface the site has — one page per
+    contract tag and per CLI group — and they are the pages someone searching
+    for a specific endpoint or flag is actually trying to reach.
+    """
+    seen: dict[str, None] = dict.fromkeys(PUBLIC_PATHS)
+    for page in DOCS.pages:
+        seen.setdefault(page.url, None)
+    return list(seen)
+
+
 def sitemap_xml() -> str:
     urls = "\n".join(
         "  <url>\n"
         f"    <loc>{escape(canonical_url(path), quote=True)}</loc>\n"
         "  </url>"
-        for path in PUBLIC_PATHS
+        for path in sitemap_paths()
     )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -1079,10 +1094,70 @@ def openapi_contract() -> RedirectResponse:
     return RedirectResponse(f"{API_BASE}/openapi.json", status_code=302)
 
 
-@app.get("/docs", include_in_schema=False)
-def api_docs() -> RedirectResponse:
-    """Point /docs at the API reference rather than this app's Swagger UI."""
-    return RedirectResponse(f"{API_BASE}/docs", status_code=302)
+#: The compiled reference. Loaded once per process: it is a few hundred KB of
+#: JSON and never changes between deploys, so re-reading it per request would
+#: buy nothing.
+DOCS = load_docs()
+
+
+def _docs_response(page: DocsPage, request: Request) -> Response:
+    """Render one documentation page, HTML or Markdown."""
+    if _wants_markdown(request):
+        return PlainTextResponse(
+            page.body, media_type="text/markdown; charset=utf-8"
+        )
+    return templates.TemplateResponse(
+        request,
+        "docs.html",
+        _ctx(
+            page={
+                "slug": page.slug,
+                "title": page.title,
+                "summary": page.summary,
+                "kind": page.kind,
+                "html": Markup(render_html(page.body)),
+                "markdown_url": page.markdown_url,
+            },
+            nav=DOCS.nav(page.slug),
+            outline=DOCS.outline(page),
+            source=DOCS.source,
+        ),
+    )
+
+
+@app.get("/docs", response_class=HTMLResponse)
+def docs_index(request: Request) -> Response:
+    """The documentation home: guides, API reference, CLI reference."""
+    return _docs_response(DOCS.index(), request)
+
+
+@app.get("/docs/llms.txt", response_class=PlainTextResponse)
+def docs_llms_txt() -> PlainTextResponse:
+    """A flat index of every documentation page, for agents."""
+    return PlainTextResponse(
+        DOCS.llms_txt(canonical_url("/").rstrip("/")),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/docs/{slug:path}", response_class=HTMLResponse)
+def docs_page(request: Request, slug: str) -> Response:
+    """Serve one page. ``/docs/x`` negotiates; ``/docs/x.md`` is always text.
+
+    The ``.md`` twin exists for the same reason the rest of the site has one:
+    a crawler that cannot set an Accept header would otherwise never reach the
+    Markdown, which makes the alternate link a dead end.
+    """
+    wants_markdown_url = slug.endswith(".md")
+    lookup = slug.removesuffix(".md").strip("/")
+    page = DOCS.get(lookup)
+    if page is None:
+        raise HTTPException(status_code=404, detail="documentation not found")
+    if wants_markdown_url:
+        return PlainTextResponse(
+            page.body, media_type="text/markdown; charset=utf-8"
+        )
+    return _docs_response(page, request)
 
 
 @app.exception_handler(404)
