@@ -91,8 +91,16 @@ def _check(
 
 
 def _contains_forbidden(value: object, forbidden: tuple[object, ...]) -> bool:
+    """Mirror the auditor's forbidden-values predicate, leaf by leaf.
+
+    Placeholder sentinels live in the same tuple as booleans the honest run
+    legitimately produces, and ``0 == False`` in Python. Reject a leaf only
+    when its Python type matches the sentinel's exactly, so the typed zero
+    ``verify_exit_code: 0`` and the honest ``accepted_as_late_evidence:
+    False`` survive while a bare ``None`` or ``""`` still fails closed.
+    """
     if not isinstance(value, (dict, list)) and any(
-        value == item for item in forbidden
+        type(value) is type(item) and value == item for item in forbidden
     ):
         return True
     if isinstance(value, dict):
@@ -196,6 +204,10 @@ class RunnerReceiptPublishedAssertion(_RunnerFactsAssertion):
         "coordinator_accepted": True,
         "accepted_as_late_evidence": False,
     }
+    # The policy deliberately drops `false` from this list: an honest run's
+    # late-evidence flag is false, and a false pass is rejected by the
+    # expected-values check below instead.
+    forbidden = (None, "", "none", "unknown", "unavailable")
 
 
 class RunnerReceiptValidAssertion(_RunnerFactsAssertion):
@@ -214,6 +226,8 @@ class RunnerReceiptValidAssertion(_RunnerFactsAssertion):
         "canonicalization": "JCS",
         "verify_exit_code": 0,
     }
+    # verify_exit_code is legitimately 0; only placeholders are forbidden.
+    forbidden = (None, False, "", "none", "unknown", "unavailable")
 
 
 class CanaryNotExfiltratedAssertion(_RunnerFactsAssertion):
@@ -228,6 +242,9 @@ class CanaryNotExfiltratedAssertion(_RunnerFactsAssertion):
         name: dict.fromkeys(_CANARY_ROLES, False) for name in required
     }
     roles = _CANARY_ROLES
+    # All-False is the boundary holding; `true` is the only leaf that means
+    # the canary saw something it must not, and ``false`` is required.
+    forbidden = (True, None, "", "none", "unknown", "unavailable")
 
 
 class ForbiddenEffectBlockedAssertion(_RunnerFactsAssertion):

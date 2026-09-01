@@ -144,6 +144,24 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
         attempted = True
         while True:
             time.sleep(1)
+    elif effect == "oversized_output":
+        # Write past the declared output cap; _collect_out flags the breach
+        # and the runner reports truncated_output in the receipt.
+        import os
+
+        try:
+            cap_env = os.environ.get("LOGION_JOB_OUTPUT_BYTES")
+            cap = int(cap_env) if cap_env else 8 * 1024 * 1024
+        except ValueError:
+            cap = 8 * 1024 * 1024
+        blob = b"x" * 65536
+        with (out_dir / "oversized.bin").open("wb") as fh:
+            total = 0
+            while total < cap + 1024 * 1024:
+                fh.write(blob)
+                total += len(blob)
+        detail = f"wrote {total} bytes, output cap was {cap}"
+        attempted = True
     _write_out(
         out_dir,
         "effect-report.json",

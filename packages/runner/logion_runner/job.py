@@ -63,7 +63,6 @@ class Lease:
     artifacts: list[ArtifactGrant]
     idempotency_key: str
     lease_expires_at: str
-    fixture: dict | None = None
     effect: str | None = None
 
     @classmethod
@@ -79,8 +78,6 @@ class Lease:
             else []
         )
         limits_payload = payload.get("limits")
-        raw_fixture = payload.get("fixture")
-        fixture = raw_fixture if isinstance(raw_fixture, dict) else None
         return cls(
             job_id=opt_str(payload, "job_id") or "",
             attempt=require_int(payload, "attempt"),
@@ -99,8 +96,12 @@ class Lease:
                 if item
             ],
             input_digests=_str_map(payload.get("input_digests")),
-            fixture=fixture,
-            effect=opt_str(payload, "effect"),
+            # The coordinator does not carry an `effect` field; the
+            # adversarial fixture declares its effect via input_digests so
+            # the whole envelope stays inside the public contract.
+            effect=opt_str(payload, "effect")
+            or _str_map(payload.get("input_digests")).get("effect")
+            or None,
             limits=JobLimits.from_json(
                 limits_payload if isinstance(limits_payload, dict) else {}
             ),

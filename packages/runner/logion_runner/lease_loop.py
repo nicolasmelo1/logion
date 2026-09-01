@@ -38,6 +38,7 @@ from logion_runner.receipt_builder import (
     utc_now_iso,
 )
 from logion_runner.sandbox.backends import (
+    CANARY_PATHS,
     ExecutionResult,
     SandboxBackend,
     SandboxExecutionError,
@@ -131,10 +132,11 @@ def _payload_for(lease: Lease) -> JsonObject:
         "resource_id": lease.resource_id,
         "resource_version_id": lease.resource_version_id,
         "input_digests": lease.input_digests,
-        "fixture": lease.fixture,
         "effect": lease.effect,
         "sandbox_profile": cast(JsonObject, lease.sandbox_profile),
     }
+    if lease.job_type == "canary_probe":
+        payload["canary_paths"] = list(CANARY_PATHS)
     return payload
 
 
