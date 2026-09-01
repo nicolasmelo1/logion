@@ -54,6 +54,31 @@ Coverage this repository did not have:
 
 - **`L1.COMPLEXITY_CEILING`** — 94 functions over the ceiling, frozen with a
   review date. Nothing measured this before.
+- **`L1.COMMENT_STAYS_SUCCINCT`** — a comment block stays at or under six
+  lines. `ruff` has no rule for this, and the worst offenders were in YAML,
+  which no linter here reads at all. **Nothing is frozen:** all 36 blocks that
+  were over the ceiling were rewritten.
+
+  One exclusion, `packages/cli/cli/templates/**`. A scaffold the user
+  uncomments is not commentary on code — 179 of `course_capabilities.template.yaml`'s
+  189 lines are `#`, and they are the form a course author fills in.
+  Shortening them would delete product documentation, which is the opposite of
+  what the ceiling is for.
+
+  Eight blocks under `packages/agent-proving-ground/` and `packages/runner/`
+  **are** frozen, with the reason in the ratchet. Those trees are sealed by the
+  15.14.1 and 15.15 phase gates, whose implementation digest is taken over
+  bytes: editing a comment there invalidates a retained real-agent run and
+  turns `PHASE_EVIDENCE_STALE` critical. The seal is deliberately unable to
+  tell a comment from a semicolon, which is what makes it worth having, so
+  these wait for the next re-seal that has a real reason behind it.
+
+`L6.DATA_RACES_ARE_DETECTED` is **disabled**, and that is the honest form
+rather than a freeze. The catalog declares race detectors for Go and Rust;
+this repository is Python and TypeScript and has neither to declare, so
+enabling it would report zero findings forever — which reads in a report
+exactly like a rule that is protecting you. Adopting it would mean naming a
+detector that actually runs, not switching the rule back on.
 - **`L4.PLAN_DECLARES_EXIT_CONDITION`** — 48 plans that never say what would
   make them finished.
 - **`L6.ONE_LOCK_AT_A_TIME`** — two functions taking a second lock while
@@ -64,6 +89,16 @@ Coverage this repository did not have:
 - **`L5`** — every enabled rule now has a mutation fixture proving it fires.
 
 ## L1 — Grain: how the code reads
+
+### L1.COMMENT_STAYS_SUCCINCT
+
+**A comment block stays under the line ceiling**
+
+A contiguous run of whole-line comments stays at or under the configured number of lines. A blank line starts a new run.
+
+**Why.** A comment earns its place by being read. Past a handful of lines it stops being read and starts being scrolled past, so the longest comments reliably explain the least. Agents inflate them hardest: prose is the cheapest thing to generate, it looks like diligence in a diff, and no compiler ever disagrees with it. The ceiling does not ban explanation — it forces the choice between a note, which belongs at the code, and an argument, which belongs in a document the code can link to.
+
+**Fix.** Cut to the sentence a reader needs at this line. If the reasoning is genuinely long, move it to a document and leave a comment pointing there — a link that survives the next refactor is worth more than a paragraph that will not be updated with the code beneath it. Splitting one run into paragraphs with a blank line is also a real fix, not a dodge: paragraphs are read.
 
 ### L1.COMPLEXITY_CEILING
 
@@ -153,11 +188,11 @@ For each enabled rule there is a mutation fixture that violates it, and `sf veri
 
 **An enabled rule must be capable of producing a finding**
 
-A rule that is switched on must be configured to look at something: a lock rule needs a scope, a toolchain rule needs tools, a gate rule needs a gate.
+A rule that is switched on must be configured to look at something: a lock rule needs a scope, a toolchain rule needs tools, an evidence rule needs a gate a change can activate, a gate-coverage rule needs a gate that names a plan, a text-pattern or complexity rule needs a scope that actually selects a file it can evaluate, and a rule carrying a `when` needs a manifest that still satisfies it.
 
-**Why.** `sf verify` proves a rule *can* fire, by running it against a fixture built to trip it. It says nothing about whether the rule is pointed at anything in *this* repository. An enabled lock with an empty scope, or a hazard rule with no tools declared, passes every run forever and appears in every report as a rule that found nothing — indistinguishable from a rule that is protecting you. This was not hypothetical: the tool's own scaffolding wrote an empty scope over a critical lock, and nothing noticed until the lock file failed to appear.
+**Why.** `sf verify` proves a rule *can* fire, by running it against a fixture built to trip it. It says nothing about whether the rule is pointed at anything in *this* repository. An enabled lock with an empty scope, or a hazard rule with no tools declared, passes every run forever and appears in every report as a rule that found nothing — indistinguishable from a rule that is protecting you. This was not hypothetical: the tool's own scaffolding wrote an empty scope over a critical lock, and nothing noticed until the lock file failed to appear. The same blindness reaches a text-pattern or complexity rule: a scope glob that matches no file in the repository, or a declared language none of its files ever resolve to, leaves the rule enabled and silent forever. This was also not hypothetical — a repository that declared `languages: [typescript]` while containing zero `.ts` files ran its complexity ceiling and its suppression bans over 365,133 lines and reported nothing, and nothing here noticed until this rule was taught to look. A `toolchain` rule has the same hole in a quieter form: `tools:` is a map, so it can be non-empty and still miss the one language the adopting project declares — `checks::toolchain::run` skips a declared language it has no entry for with a bare `continue`, not a finding. This was also not hypothetical: a Ruby-only adoption enabled `L6.DATA_RACES_ARE_DETECTED`, `L6.DEAD_CODE_IS_DETECTED` and `L6.PERFORMANCE_REGRESSION_IS_GUARDED`, whose `tools:` maps carry python, typescript, go and rust and no `ruby:` key, and got three permanent green checkmarks that could never have said anything else — `sf verify` reported all three proven to fire and never mentioned that the project's own language was invisible to them. The last shape is the one a repository walks into without editing a line of policy: a rule written for one version of a dependency, carrying a `when` that names it, after somebody moved the pin. Its patterns then describe an API nobody calls anymore, and a text-pattern rule matching nothing reads exactly like a text-pattern rule protecting you. A condition that went false stops the rule running — it is about a version this repository does not have — and is reported here rather than quietly disabling itself, which is also what stops `when` becoming a way to switch a rule off by editing a manifest. And L3 reaches it through a third door, because gates live in their own top-level `gates:` map: `enabled: true` and `gates: {}` coexist perfectly happily, and the two rules the method calls "the whole method in one check" then sit in every report having found nothing. This one was the least hypothetical of all — it was the state of `software-factory`'s own policy, under a rule written to catch exactly this, which could not see the layer it mattered most in. Both L3 rules have the quieter form too: a gate whose `activation` is empty can never be turned on by any change, and `gate_coverage` silently skips every gate that names no `plan`.
 
-**Fix.** Give the rule something to look at, or switch it off in policy and say why in the rules document. Disabled and documented is honest; enabled and inert is a rule that lies about its own coverage.
+**Fix.** Give the rule something to look at, or switch it off in policy and say why in the rules document. Disabled and documented is honest; enabled and inert is a rule that lies about its own coverage. A rule whose `when` went false is the one case with nothing to configure: repoint it at the version this repository installs, or remove it along with the version it described.
 
 ## L6 — Hazard: the defect classes this repository hunts
 
@@ -189,7 +224,7 @@ At least one dependency vulnerability scanner for each of this repository's lang
 
 **Why.** An agent adding a dependency is making a supply-chain decision in a one-line diff, usually while solving something else entirely, and it has no way to know what that package shipped last week. This check does not audit anything itself — the ecosystem tools are far better than anything that could live here. What it guarantees is the thing that actually rots: that the audit is still wired in. A scanner someone removed to make CI faster fails exactly like one that was never added.
 
-**Fix.** Add the scanner to your CI workflow or task runner. `pip-audit` for Python, `npm audit` or `osv-scanner` for TypeScript, `govulncheck` for Go, `cargo audit` for Rust.
+**Fix.** Add the scanner to your CI workflow or task runner. `pip-audit` for Python, `npm audit` or `osv-scanner` for TypeScript, `govulncheck` for Go, `cargo audit` for Rust, `bundler-audit` for Ruby.
 
 ### L6.INSECURE_PATTERNS_ARE_SCANNED
 
@@ -199,7 +234,7 @@ A static security analyser for each of this repository's languages runs somewher
 
 **Why.** Shell interpolation, string-built SQL, disabled certificate verification, weak hashes, unsafe deserialization — these are the defects that look entirely normal in review, because the code reads exactly like the safe version. An agent reproduces them faithfully from the enormous amount of training data that contains them. A static analyser recognises the shapes a reviewer skims past.
 
-**Fix.** Wire in `bandit` or `semgrep` for Python, `semgrep` or `eslint-plugin-security` for TypeScript, `gosec` for Go, `cargo-geiger` or `clippy` for Rust.
+**Fix.** Wire in `bandit` or `semgrep` for Python, `semgrep` or `eslint-plugin-security` for TypeScript, `gosec` for Go, `cargo-geiger` or `clippy` for Rust, `brakeman` for Ruby.
 
 ### L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK
 

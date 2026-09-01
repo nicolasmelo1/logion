@@ -27,13 +27,12 @@ from pathlib import Path
 IMPORT_RE = re.compile(r"^from typing import (.+)$", re.MULTILINE)
 JSON_IMPORT = "from logion._json import JsonObject, JsonValue\n"
 
-# When the OpenAPI contract names free-form object schemas (JsonObject-Input,
-# JsonObject-Output, JsonValue-Input, JsonValue-Output), datamodel-codegen
-# emits standalone RootModel classes for them.  Those classes are recursive
+# datamodel-codegen emits standalone RootModel classes for the contract's
+# free-form object schemas. They are recursive
 # (``list["JsonValueInput" | None]``) and fail at runtime under
-# ``from __future__ import annotations`` because ``str | None`` is not
-# evaluated lazily inside ``RootModel[...]``.  They are also redundant: the
-# canonical types from ``logion._json`` cover the same shape.
+# ``from __future__ import annotations``, because ``str | None`` is not
+# evaluated lazily inside ``RootModel[...]`` — and redundant besides, since
+# ``logion._json`` already covers the shape.
 #
 # The regex matches the full class body (indented lines) up to the next
 # blank line.  We use a non-greedy match on the RootModel parameter to

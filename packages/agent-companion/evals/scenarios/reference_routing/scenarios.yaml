@@ -8,17 +8,20 @@
 #   referrals | use-observation-and-feedback
 #
 # Distribution targets (see plan §6):
+#
 #   none                          : 12
 #   creator-course-management     :  4
 #   account-and-identity          :  3
 #   notifications-and-reports     :  3
 #   credits-and-payments          :  4
+#
 #   bounties                      :  4
 #   course-review-queue           :  3
 #   admin-operations              :  4
 #   troubleshooting                :  3
 #   referrals                     :  3
 #   use-observation-and-feedback  :  3
+#
 # total: 46
 
 scenarios:

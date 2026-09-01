@@ -2,7 +2,7 @@
 version: 1
 project:
   name: mutation-L5.EVERY_CHECK_HAS_A_MUTATION_TEST
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
 gates: {}

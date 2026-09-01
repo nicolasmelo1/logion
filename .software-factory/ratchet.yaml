@@ -4,6 +4,18 @@
 # visible in review.
 version: 1
 rules:
+  L1.COMMENT_STAYS_SUCCINCT:
+    review_by: 2027-03-01
+    note: sealed by the 15.14.1 / 15.15 phase gates; rewriting a comment here invalidates a retained real-agent run
+    allow:
+    - packages/agent-proving-ground/agent_proving_ground/_json.py:51
+    - packages/agent-proving-ground/agent_proving_ground/assertions/api.py:62
+    - packages/agent-proving-ground/agent_proving_ground/assertions/files.py:579
+    - packages/agent-proving-ground/agent_proving_ground/drivers/_provider.py:217
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:578
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:594
+    - packages/agent-proving-ground/tests/unit/test_builtin_scenario_labels.py:10
+    - packages/runner/logion_runner/_json.py:51
   L1.COMPLEXITY_CEILING:
     review_by: 2027-02-19
     note: null

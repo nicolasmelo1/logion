@@ -1,0 +1,3 @@
+class Payload
+  def handle: (untyped event) -> untyped
+end

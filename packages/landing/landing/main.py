@@ -1106,13 +1106,13 @@ def _docs_response(page: DocsPage, request: Request) -> Response:
         return PlainTextResponse(
             page.body, media_type="text/markdown; charset=utf-8"
         )
-    # Safe: render_html runs markdown-it with html=False, so raw HTML in the
-    # source is escaped rather than passed through, and markdown-it's link
-    # validator refuses to build an href from javascript:, vbscript:, file: or
-    # non-image data: URLs. The input is the committed, generated artifact —
-    # not request data. Both properties are held by
-    # test_raw_html_in_a_page_is_not_executed and
-    # test_dangerous_link_schemes_never_become_hrefs; this suppression is only
+    # Safe: render_html runs markdown-it with html=False, so raw HTML is
+    # escaped, and its link validator refuses javascript:, vbscript:, file:
+    # and non-image data: hrefs. The input is the committed generated
+    # artifact, not request data.
+    #
+    # Held by test_raw_html_in_a_page_is_not_executed and
+    # test_dangerous_link_schemes_never_become_hrefs. This suppression is only
     # honest while they pass.
     rendered = Markup(render_html(page.body))  # nosec B704
     return templates.TemplateResponse(

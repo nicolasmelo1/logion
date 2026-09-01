@@ -277,7 +277,7 @@ jobs:
       - name: Install sf
         run: >
           cargo install --git https://github.com/nicolasmelo1/software-factory
-          --rev 76ec836dd0264712844fa86abc3fc26b35ccac4f --locked
+          --rev b06be44f6c982dac58b898778d7dba224d9ed7b1 --locked
 
       - name: Prove the factory rules still fire
         run: sf verify

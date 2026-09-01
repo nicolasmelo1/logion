@@ -2,14 +2,52 @@
 version: 1
 project:
   name: mutation-L5.NO_INERT_RULE
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
-gates: {}
+gates:
+  checkout:
+    activation: []
+    evidence: "evidence/checkout.json"
 rules:
   L2.GENERATED_FILES_ARE_LOCKED:
     enabled: true
     options:
       scope: []
+  L1.NO_BLANKET_SUPPRESSION@inert:
+    enabled: true
+    options:
+      scope: ["nonexistent/**"]
+  L1.COMPLEXITY_CEILING@inert:
+    enabled: true
+    options:
+      scope: ["nonexistent/**"]
+  L6.DATA_RACES_ARE_DETECTED@toolchain_gap:
+    enabled: true
+    options:
+      tools:
+        java: ["error-prone", "jcstress"]
+  L1.NO_BLANKET_SUPPRESSION@tailwind3:
+    enabled: true
+    when:
+      dependency: tailwindcss
+      manifest: package.json
+      version: "^3"
+  L1.NO_BLANKET_SUPPRESSION@quickbooks:
+    enabled: true
+    when:
+      dependency: node-quickbooks
+      manifest: package.json
+      version: "^2"
+  L1.NO_BLANKET_SUPPRESSION@tailwind4:
+    enabled: true
+    when:
+      dependency: tailwindcss
+      manifest: package.json
+      version: "^4"
+  L3.GATE_HAS_FRESH_EVIDENCE:
+    enabled: true
+  L3.GATE_COVERS_THE_PLAN:
+    enabled: true
   L5.NO_INERT_RULE:
     enabled: true

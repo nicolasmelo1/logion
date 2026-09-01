@@ -1,0 +1,13 @@
+# Generated mutation fixture for L1.COMMENT_STAYS_SUCCINCT. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L1.COMMENT_STAYS_SUCCINCT
+  languages: [python, typescript, go, rust, ruby]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L1.COMMENT_STAYS_SUCCINCT:
+    enabled: true
+    options:
+        max: 3

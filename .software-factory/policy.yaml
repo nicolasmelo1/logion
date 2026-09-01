@@ -19,6 +19,16 @@ gates: {}
 
 rules:
   # L1 — No function exceeds the cyclomatic ceiling
+  # L1 — A comment block stays under the line ceiling
+  L1.COMMENT_STAYS_SUCCINCT:
+    enabled: true
+    options:
+      exclude:
+        # A scaffold the user uncomments, not commentary on code: 179 of its
+        # 189 lines are `#`, and they are the form a course author fills in.
+        # Shortening them deletes product documentation rather than noise,
+        # which is the opposite of what the ceiling is for.
+        - "packages/cli/cli/templates/**"
   L1.COMPLEXITY_CEILING:
     enabled: true
   # L1 — Every suppression names a code and a reason
@@ -61,7 +71,11 @@ rules:
     enabled: true
   # L6 — Concurrent code is exercised under a race detector
   L6.DATA_RACES_ARE_DETECTED:
-    enabled: true
+    # Disabled, not frozen. The catalog declares race detectors for Go and
+    # Rust; this repository is Python and TypeScript, and neither has one to
+    # declare. Enabled it would report zero findings forever, which reads in a
+    # report exactly like a rule that is protecting you. See docs/factory-rules.md.
+    enabled: false
   # L6 — Something detects code nothing reaches
   L6.DEAD_CODE_IS_DETECTED:
     enabled: true

@@ -2,7 +2,7 @@
 version: 1
 project:
   name: mutation-L6.ONE_LOCK_AT_A_TIME
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
 gates: {}

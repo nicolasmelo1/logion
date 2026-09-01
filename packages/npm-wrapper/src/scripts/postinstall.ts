@@ -3,14 +3,14 @@
 // postinstall.ts — detect Python, install logion-cli into the npm-managed venv.
 //
 // Environment variables:
-//   LOGION_NPM_SKIP_INSTALL=1   — skip CLI install only (still handles companion)
+//   LOGION_NPM_SKIP_INSTALL=1   — skip CLI install only (companion still runs)
 //   LOGION_NPM_FORCE_INSTALLER  — force "pipx", "uv", or "venv" (default: venv)
 //   LOGION_NPM_PYTHON           — override Python binary path
 //   LOGION_NPM_SKIP_ONBOARDING=1 — do not print onboarding pointer
-//   LOGION_COMPANION_BUNDLE_SOURCE — directory containing companion tarball
-//                                    (dev rig only; copies bundle to
-//                                     $LOGION_HOME/companion-bundles/ or
-//                                     ~/.logion/companion-bundles/)
+//
+//   LOGION_COMPANION_BUNDLE_SOURCE — directory holding the companion tarball.
+//     Dev rig only; copies the bundle to $LOGION_HOME/companion-bundles/, or
+//     ~/.logion/companion-bundles/.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";

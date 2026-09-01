@@ -1,12 +1,12 @@
 # Authoritative map of SDK-backed CLI leaves to the operations they invoke.
 #
-# Consumed by an external cross-repo contract auditor that emits findings
-# when:
-# - a leaf imports the SDK but has no entry here
+# Consumed by an external cross-repo contract auditor, which reports:
+#
+# - a leaf importing the SDK with no entry here
 #   (CLI_SDK_BACKED_NO_HANDLER_MANIFEST)
-# - a declared operation isn't in IMPLEMENTED_OPERATIONS
+# - a declared operation absent from IMPLEMENTED_OPERATIONS
 #   (CLI_SDK_BACKED_OP_NOT_IMPLEMENTED)
-# - a declared flag isn't in argparse or maps to a non-existent SDK kwarg
+# - a declared flag absent from argparse, or mapped to no SDK kwarg
 #   (CLI_FLAG_NOT_IN_SDK_SIGNATURE)
 #
 # Entries with `operations: []` acknowledge the leaf is SDK-backed but their
