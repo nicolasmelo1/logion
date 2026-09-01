@@ -66,8 +66,8 @@ NEGATIVE_ANCHORS = (
 )
 
 # Language discipline that is binding on public copy while Logion is the only
-# issuer of its own measurements. These are not style preferences: each one is a
-# claim the evidence does not currently support, or a metaphor that reliably
+# issuer of its own measurements. These are not style preferences: each one is
+# a claim the evidence does not currently support, or a metaphor that reliably
 # relocates readers into the marketplace category the product left.
 #
 # Source of truth: plans/positioning-and-independence.md (private workspace).
