@@ -219,3 +219,21 @@ def test_retained_evidence_does_not_carry_the_operator_home_path() -> None:
         "nested": [{"log_path": "~/.devrig/api.log"}],
     }
     assert home not in str(redacted)
+
+
+def test_normalization_stays_out_of_the_secret_detector() -> None:
+    """`redact_text` doubles as the detector; it must not rewrite paths.
+
+    `timeline.no_unredacted_secret` fails a line whenever `redact_text`
+    changes it, so a cosmetic rewrite in there reports every ordinary
+    local path as a leak.
+    """
+    from pathlib import Path
+
+    from agent_proving_ground.redaction import redact_json, redact_text
+
+    line = f'{{"workspace": "{Path.home()}/logion/.runs/p1"}}'
+    assert redact_text(line) == line
+    assert redact_json({"workspace": f"{Path.home()}/logion/.runs/p1"}) == {
+        "workspace": "~/logion/.runs/p1"
+    }

@@ -7,12 +7,12 @@
       "driver": "claude-code",
       "implementation": {
         "private_sha256": "27ad80932471b07200b9367b7aaead63837d9d02725105f4e1bf172841cbae7f",
-        "public_sha256": "060fc524e96b980ab74bf667d26b34bf588a04f6680053e70b1dbb8b4a83528f"
+        "public_sha256": "f4fd0fbc70ca62c6ea179505090ec98e060a5445b1beb98ea0c144e9d8b4c38f"
       },
       "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/phase-15.15-isolated-runner.json",
-      "report_sha256": "75827a4101e1f6dbedb4c01383be7049fd8a640b3f653fb2894b4407ba1c970b",
-      "run_id": "20260901T040004-phase_15_15_isolated_runner",
+      "report_sha256": "b61cab8e7dff0d94f988a87aacbc9ce5f6de00ab9ce7a6c806348b9f1fa82a32",
+      "run_id": "20260901T171705-phase_15_15_isolated_runner",
       "scenario": "phase_15_15_isolated_runner",
       "status": "passed",
       "unsupported_assertions": []

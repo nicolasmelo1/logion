@@ -51,6 +51,11 @@ def normalize_home_paths(value: str) -> str:
     guardrail in ``scripts/audit_public_safe.py`` refuses host paths for
     exactly this reason, so reports stop producing them at the source
     rather than accumulating allowlist entries for each new run.
+
+    This is deliberately *not* part of :func:`redact_text`. That function
+    is also the detector behind ``timeline.no_unredacted_secret``, which
+    asserts it leaves an already-clean line untouched; a cosmetic rewrite
+    in there reports every local path as an unredacted secret.
     """
     home = _home_prefix()
     if not home or home in {"/", os.sep}:
@@ -66,7 +71,6 @@ def redact_text(value: str, extra_patterns: list[str] | None = None) -> str:
     text = _STRIPE_KEY_RE.sub(_REDACTED, text)
     text = _PROVIDER_KEY_RE.sub(_REDACTED, text)
     text = _SETUP_TOKEN_RE.sub(_REDACTED, text)
-    text = normalize_home_paths(text)
     if extra_patterns:
         for pattern in extra_patterns:
             text = re.sub(pattern, _REDACTED, text)
@@ -126,7 +130,12 @@ def redact_json(
         text = redact_text(value)
         if redact_emails:
             text = _EMAIL_RE.sub(_REDACTED, text)
-        return text
+        # Structured evidence is what gets sealed into a public repo, so
+        # it is normalized here rather than in `redact_text`: that
+        # function doubles as the secret *detector*
+        # (`timeline.no_unredacted_secret` asserts it changes nothing),
+        # and anything cosmetic inside it reads as a leak.
+        return normalize_home_paths(text)
     return value
 
 
