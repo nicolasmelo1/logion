@@ -4,8 +4,15 @@ name: Deploy landing to Vercel
   workflow_dispatch: {}
   push:
     branches: [main]
+    # Everything the deployed site is built from. Without the last three a
+    # contract change, a generator change or a fix to this workflow lands on
+    # main and production silently keeps serving the previous build -- which
+    # is exactly how /docs kept answering with the old redirect.
     paths:
       - "packages/landing/**"
+      - "contracts/openapi/v1.json"
+      - "scripts/gen_docs.py"
+      - ".github/workflows/deploy-landing-vercel.yml"
 
 permissions:
   contents: read
@@ -43,6 +50,15 @@ jobs:
       # with ModuleNotFoundError -- which is why this deploy has been red
       # since the docs site landed, and why /docs still serves the old
       # redirect to api.logion.sh in production.
+      # The landing tests need two things from one interpreter: fastapi, which
+      # is a landing dependency, and the client plus the skillmap, which
+      # `scripts/gen_docs.py` imports when the docs tests shell out to it.
+      # Only the fully synced workspace has both -- running from
+      # `packages/landing` misses the latter, running from the root without
+      # this step misses the former.
+      - name: Install the workspace
+        run: uv sync --all-packages --all-groups --locked
+
       - name: Run landing tests
         run: uv run pytest packages/landing/tests -q
 
