@@ -1,5 +1,5 @@
 {
-  "run_id": "20260901T034332-phase_15_15_isolated_runner",
+  "run_id": "20260901T040004-phase_15_15_isolated_runner",
   "scenario": "phase_15_15_isolated_runner",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -11,16 +11,16 @@
     "sponsor": "claude-code",
     "auditor": "claude-code"
   },
-  "started_at": "2026-09-01T03:43:32.625213Z",
-  "finished_at": "2026-09-01T03:45:36.185751Z",
+  "started_at": "2026-09-01T04:00:04.871098Z",
+  "finished_at": "2026-09-01T04:03:22.127565Z",
   "phase_results": [
     {
       "phase_id": "execute_runner_evidence",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T03:43:33.396292Z",
-      "finished_at": "2026-09-01T03:44:53.463584Z",
-      "duration_seconds": 80.067
+      "started_at": "2026-09-01T04:00:06.113426Z",
+      "finished_at": "2026-09-01T04:02:23.501480Z",
+      "duration_seconds": 137.387
     },
     {
       "phase_id": "collect_runner_evidence",
@@ -33,11 +33,11 @@
           "evidence": {
             "runner_id": {
               "ok": true,
-              "value": "ea62d9b0-abcb-4dc6-bf77-7bda15d0d18b"
+              "value": "ac24b3b5-1c58-483b-a2a2-b79f8f58ff71"
             },
             "runner_key_fingerprint": {
               "ok": true,
-              "value": "548fd061ac3fb069"
+              "value": "fca83372c781e4f5"
             },
             "runner_import_root": {
               "ok": true,
@@ -60,7 +60,7 @@
           "evidence": {
             "job_id": {
               "ok": true,
-              "value": "f9da3a81-3ded-4967-8c4a-0562ed52d82f"
+              "value": "c40e8f8a-0b23-45f6-b93a-e13bf395a57f"
             },
             "terminal_status": {
               "ok": true,
@@ -80,7 +80,7 @@
             },
             "lease_holder": {
               "ok": true,
-              "value": "ea62d9b0-abcb-4dc6-bf77-7bda15d0d18b"
+              "value": "ac24b3b5-1c58-483b-a2a2-b79f8f58ff71"
             }
           }
         },
@@ -91,11 +91,11 @@
           "evidence": {
             "receipt_id": {
               "ok": true,
-              "value": "cdb57651-86c9-4894-9eb6-97da54d204c0"
+              "value": "74c0a06e-c495-4ac7-967e-7136e7cc92f0"
             },
             "receipt_digest": {
               "ok": true,
-              "value": "3644ba2b26e3aa202a7a7c91348be50c49295bfa405e471f60ce40727db0de31"
+              "value": "b3327f4c26c99540bfc26f71d47181a135bec8b4b152b1ccab43e8e491a5e028"
             },
             "coordinator_accepted": {
               "ok": true,
@@ -107,7 +107,7 @@
             },
             "published_at": {
               "ok": true,
-              "value": "2026-09-01T03:43:48.109843+00:00"
+              "value": "2026-09-01T04:01:26.277448+00:00"
             }
           }
         },
@@ -126,7 +126,7 @@
             },
             "signing_key_fingerprint": {
               "ok": true,
-              "value": "a313db79c463fe49"
+              "value": "77745dc8d891193e"
             },
             "verify_exit_code": {
               "ok": true,
@@ -138,7 +138,7 @@
             },
             "bound_image_digest": {
               "ok": true,
-              "value": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde"
+              "value": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7"
             },
             "bound_output_digest": {
               "ok": true,
@@ -241,11 +241,11 @@
             "sandbox_profile_digest": {
               "ok": true,
               "value": {
-                "filesystem_escape": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
-                "oversized_output": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
+                "filesystem_escape": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
+                "oversized_output": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
                 "secret_read": "<redacted>",
-                "timeout_ignoring_sigterm": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
-                "undeclared_network": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde"
+                "timeout_ignoring_sigterm": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
+                "undeclared_network": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7"
               }
             }
           }
@@ -298,9 +298,9 @@
           }
         }
       ],
-      "started_at": "2026-09-01T03:44:53.463631Z",
-      "finished_at": "2026-09-01T03:44:53.511043Z",
-      "duration_seconds": 0.047
+      "started_at": "2026-09-01T04:02:23.501503Z",
+      "finished_at": "2026-09-01T04:02:23.529367Z",
+      "duration_seconds": 0.028
     },
     {
       "phase_id": "verify_api_logs",
@@ -315,9 +315,9 @@
           }
         }
       ],
-      "started_at": "2026-09-01T03:44:53.511076Z",
-      "finished_at": "2026-09-01T03:45:36.185550Z",
-      "duration_seconds": 42.674
+      "started_at": "2026-09-01T04:02:23.529396Z",
+      "finished_at": "2026-09-01T04:03:22.127271Z",
+      "duration_seconds": 58.598
     }
   ],
   "assertion_results": [
@@ -328,11 +328,11 @@
       "evidence": {
         "runner_id": {
           "ok": true,
-          "value": "ea62d9b0-abcb-4dc6-bf77-7bda15d0d18b"
+          "value": "ac24b3b5-1c58-483b-a2a2-b79f8f58ff71"
         },
         "runner_key_fingerprint": {
           "ok": true,
-          "value": "548fd061ac3fb069"
+          "value": "fca83372c781e4f5"
         },
         "runner_import_root": {
           "ok": true,
@@ -355,7 +355,7 @@
       "evidence": {
         "job_id": {
           "ok": true,
-          "value": "f9da3a81-3ded-4967-8c4a-0562ed52d82f"
+          "value": "c40e8f8a-0b23-45f6-b93a-e13bf395a57f"
         },
         "terminal_status": {
           "ok": true,
@@ -375,7 +375,7 @@
         },
         "lease_holder": {
           "ok": true,
-          "value": "ea62d9b0-abcb-4dc6-bf77-7bda15d0d18b"
+          "value": "ac24b3b5-1c58-483b-a2a2-b79f8f58ff71"
         }
       }
     },
@@ -386,11 +386,11 @@
       "evidence": {
         "receipt_id": {
           "ok": true,
-          "value": "cdb57651-86c9-4894-9eb6-97da54d204c0"
+          "value": "74c0a06e-c495-4ac7-967e-7136e7cc92f0"
         },
         "receipt_digest": {
           "ok": true,
-          "value": "3644ba2b26e3aa202a7a7c91348be50c49295bfa405e471f60ce40727db0de31"
+          "value": "b3327f4c26c99540bfc26f71d47181a135bec8b4b152b1ccab43e8e491a5e028"
         },
         "coordinator_accepted": {
           "ok": true,
@@ -402,7 +402,7 @@
         },
         "published_at": {
           "ok": true,
-          "value": "2026-09-01T03:43:48.109843+00:00"
+          "value": "2026-09-01T04:01:26.277448+00:00"
         }
       }
     },
@@ -421,7 +421,7 @@
         },
         "signing_key_fingerprint": {
           "ok": true,
-          "value": "a313db79c463fe49"
+          "value": "77745dc8d891193e"
         },
         "verify_exit_code": {
           "ok": true,
@@ -433,7 +433,7 @@
         },
         "bound_image_digest": {
           "ok": true,
-          "value": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde"
+          "value": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7"
         },
         "bound_output_digest": {
           "ok": true,
@@ -536,11 +536,11 @@
         "sandbox_profile_digest": {
           "ok": true,
           "value": {
-            "filesystem_escape": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
-            "oversized_output": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
+            "filesystem_escape": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
+            "oversized_output": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
             "secret_read": "<redacted>",
-            "timeout_ignoring_sigterm": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde",
-            "undeclared_network": "2c8ef3d0069d45e24298082f3838acb81001f828333b753d40c702b826b77dde"
+            "timeout_ignoring_sigterm": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7",
+            "undeclared_network": "e25a18ee3268110db4a38f3438d1c0d2eff55b5e3ff7766ae7a32ed31111a9e7"
           }
         }
       }
@@ -602,5 +602,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "p1515g"
+  "artifact_root": "final"
 }

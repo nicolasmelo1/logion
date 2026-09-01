@@ -84,33 +84,53 @@ def _format_number(value: float) -> str:
     return f"{sign}{normalized}e{'+' if exponent >= 0 else ''}{exponent}"
 
 
-def _canonical(value: JsonValue, out: list[str]) -> None:
+def _canonical_scalar(value: JsonValue) -> str | None:
+    """The canonical form of a scalar, or ``None`` if it is a container.
+
+    ``bool`` is tested before ``int`` because ``bool`` subclasses ``int``
+    in Python, and ``True`` must serialize as ``true``, never ``1``.
+    """
     if value is None:
-        out.append("null")
-    elif isinstance(value, bool):
-        out.append("true" if value else "false")
-    elif isinstance(value, int):
-        out.append(str(value))
-    elif isinstance(value, float):
-        out.append(_format_number(value))
-    elif isinstance(value, str):
-        out.append(_escape_string(value))
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return _format_number(value)
+    if isinstance(value, str):
+        return _escape_string(value)
+    return None
+
+
+def _canonical_array(value: list, out: list[str]) -> None:
+    out.append("[")
+    for index, item in enumerate(value):
+        if index:
+            out.append(",")
+        _canonical(item, out)
+    out.append("]")
+
+
+def _canonical_object(value: dict, out: list[str]) -> None:
+    out.append("{")
+    for index, key in enumerate(sorted(value)):
+        if index:
+            out.append(",")
+        out.append(_escape_string(key))
+        out.append(":")
+        _canonical(value[key], out)
+    out.append("}")
+
+
+def _canonical(value: JsonValue, out: list[str]) -> None:
+    scalar = _canonical_scalar(value)
+    if scalar is not None:
+        out.append(scalar)
     elif isinstance(value, list):
-        out.append("[")
-        for index, item in enumerate(value):
-            if index:
-                out.append(",")
-            _canonical(item, out)
-        out.append("]")
+        _canonical_array(value, out)
     elif isinstance(value, dict):
-        out.append("{")
-        for index, key in enumerate(sorted(value)):
-            if index:
-                out.append(",")
-            out.append(_escape_string(key))
-            out.append(":")
-            _canonical(value[key], out)
-        out.append("}")
+        _canonical_object(value, out)
     else:
         raise TypeError(
             f"cannot canonicalize non-JSON value of type {type(value)!r}"

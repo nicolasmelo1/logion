@@ -521,41 +521,23 @@ def canary_readable_map(
 _canary_readable_map = canary_readable_map
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stderr.write("usage: run_runner_evidence.py OUT_DIR\n")
-        return 2
-    out_dir = Path(sys.argv[1]).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+def _enroll_and_seed(
+    *,
+    base_url: str,
+    admin_key: str,
+    runner_image: str,
+    echo_digest: str,
+) -> tuple[int, dict, str, str, dict[str, str]]:
+    """Drain leftovers, enrol the runner, and queue the seed jobs.
 
-    public_repo = Path(
-        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
-    ).resolve()
-    private_repo = public_repo.with_name("logion-private")
-    role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
-    admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
-    base_url = os.environ.get("LOGION_API_BASE_URL", "http://localhost:8000")
-    echo_digest = _sha256_text('{"echoed": []}')
-    env_name = "LOGION_RUNNER_CANARY_PROBE"
-    runner_image = resolve_runner_image()
-
-    runner_venv = out_dir / "runner-venv"
-    runner_state = out_dir / "runner-state"
-    runner_state.mkdir(parents=True, exist_ok=True)
-    os.chmod(runner_state, 0o700)
-    inspect_json = _setup_runner_venv(public_repo, runner_venv)
-    runner_bin = runner_venv / "bin" / "logion-node"
-
-    run_env = {
-        "LOGION_NODE_BASE_URL": base_url,
-        "LOGION_NODE_STATE_DIR": str(runner_state),
-        "LOGION_NODE_BACKEND": "docker",
-    }
-
+    Stale queued jobs from an aborted run are cancelled first so leasing
+    is FIFO-deterministic. Every artifact a sandbox may produce is
+    declared up front or the coordinator rejects the upload as unknown;
+    the two report artifacts carry no digest because their contents are
+    what the run is trying to find out.
+    """
     client = httpx.Client(base_url=base_url, timeout=120)
     try:
-        # Drain stale queued jobs from earlier aborted runs so leases are
-        # deterministic.
         stale = client.get(
             "/v1/executions/jobs?status=queued&limit=200",
             headers={"Authorization": f"Bearer {admin_key}"},
@@ -582,12 +564,6 @@ def main() -> int:
         enroll.raise_for_status()
         enroll_json = enroll.json()
 
-        # Every artifact the sandbox can produce must be declared up front,
-        # or the coordinator rejects the upload (unknown_artifact).
-        report_digest_placeholder = (
-            "0" * 64
-        )  # digest verified loosely: coordinator only
-        report_digest_placeholder = report_digest_placeholder
         happy_job_id = _create_job(
             client,
             admin_key,
@@ -622,6 +598,254 @@ def main() -> int:
         }
     finally:
         client.close()
+    return (
+        cancelled,
+        enroll_json,
+        happy_job_id,
+        canary_job_id,
+        effect_job_ids,
+    )
+
+
+def _exercise_effects(
+    *,
+    base_url: str,
+    admin_key: str,
+    effect_job_ids: dict[str, str],
+    public_repo: Path,
+    private_repo: Path,
+    runner_bin: Path,
+    run_env: dict,
+) -> dict[str, dict]:
+    """Run each adversarial fixture and read back what the sandbox did.
+
+    The verdict comes from the coordinator's terminal status and the
+    effect report the sandbox retained, never from the fixture asserting
+    its own containment.
+    """
+    collected: dict[str, dict] = {
+        "status": {},
+        "attempted": {},
+        "blocked": {},
+        "profile_digest": {},
+        "details": {},
+    }
+    for effect in EFFECT_ROLES:
+        job_id = effect_job_ids[effect]
+        _runner_pass(public_repo, runner_bin, run_env)
+        client = httpx.Client(base_url=base_url, timeout=120)
+        try:
+            detail = _get_job(client, admin_key, job_id)
+            payload = _private_receipt(
+                private_repo, job_id, "effect-report.json"
+            )
+        finally:
+            client.close()
+        report = json.loads(payload.get("artifact_content") or "{}")
+        job = detail["job"]
+        collected["status"][effect] = job["status"]
+        collected["profile_digest"][effect] = job["sandbox_profile_digest"]
+        collected["attempted"][effect] = bool(report.get("attempted", False))
+        collected["blocked"][effect] = bool(
+            report.get("effect_blocked", False)
+        )
+        collected["details"][effect] = {
+            "status": job["status"],
+            "attempted": report.get("attempted"),
+            "blocked": report.get("effect_blocked"),
+            "detail": str(report.get("detail", "")),
+        }
+    return collected
+
+
+def _exercise_hazards(
+    *,
+    base_url: str,
+    admin_key: str,
+    runner_key: str,
+    runner_image: str,
+    echo_digest: str,
+    public_repo: Path,
+    private_repo: Path,
+    runner_bin: Path,
+    run_env: dict,
+) -> tuple[dict, dict, dict, list[str]]:
+    """Drive the five lifecycle hazards and read back what happened.
+
+    Each hazard gets its own job, created only now so FIFO leasing hands
+    the next ``run --once`` pass exactly the job being exercised. Nothing
+    here is asserted: every value is read back from the coordinator after
+    the event it names actually happened.
+
+    Returns ``(jobs, events, duplicate_rejected, job_ids)``.
+    """
+    hazard_jobs: dict[str, dict] = {}
+    hazard_events: dict[str, dict] = {}
+    job_ids: dict[str, str] = {}
+
+    def _new_job(**kwargs) -> str:
+        client = httpx.Client(base_url=base_url, timeout=120)
+        try:
+            return _create_job(
+                client, admin_key, _job_body(runner_image, **kwargs)
+            )
+        finally:
+            client.close()
+
+    def _read(job_id: str) -> dict:
+        client = httpx.Client(base_url=base_url, timeout=120)
+        try:
+            return _get_job(client, admin_key, job_id)
+        finally:
+            client.close()
+
+    echo_grant = [{"name": "echo-result.json", "sha256": echo_digest}]
+
+    # cancellation: cancel while queued; the admin cancel IS the event.
+    job_ids["cancellation"] = _new_job()
+    client = httpx.Client(base_url=base_url, timeout=120)
+    try:
+        response = client.post(
+            f"/v1/executions/jobs/{job_ids['cancellation']}/cancel",
+            headers={"Authorization": f"Bearer {admin_key}"},
+        )
+    finally:
+        client.close()
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"cancellation hazard: cancel returned {response.status_code}"
+        )
+    hazard_events["cancellation"] = {"cancel_status": response.status_code}
+    hazard_jobs["cancellation"] = _read(job_ids["cancellation"])
+
+    # timeout: a payload that installs a SIGTERM handler and never exits,
+    # under a short wall limit. The sandbox deadline is the event.
+    job_ids["timeout"] = _new_job(
+        job_type=ADVERSARIAL_JOB_TYPE,
+        effect="timeout_ignoring_sigterm",
+        artifacts=[{"name": "effect-report.json"}],
+        limits={**DEFAULT_LIMITS, "wall_seconds": 5},
+    )
+    _runner_pass(public_repo, runner_bin, run_env)
+    hazard_events["timeout"] = {"wall_seconds": 5}
+    hazard_jobs["timeout"] = _read(job_ids["timeout"])
+
+    # lease_loss and retry: hold a lease, push it into the past, let the
+    # coordinator's own sweep reclaim it, then finish the job.
+    for hazard, extra in (
+        ("lease_loss", {}),
+        ("retry", {"max_attempts": 3}),
+    ):
+        job_ids[hazard] = _new_job(artifacts=echo_grant, **extra)
+        _claim_only(base_url, runner_key)
+        hazard_events[hazard] = _expire_lease(private_repo, job_ids[hazard])
+        if hazard_events[hazard]["after"] != "queued":
+            raise RuntimeError(
+                f"{hazard} hazard: sweep left the job in "
+                f"{hazard_events[hazard]['after']!r}, expected 'queued'"
+            )
+        _runner_pass(public_repo, runner_bin, run_env)
+        hazard_jobs[hazard] = _read(job_ids[hazard])
+    if hazard_jobs["retry"]["job"]["attempt_count"] < 2:
+        raise RuntimeError(
+            "retry hazard: job never reached a second attempt "
+            f"({hazard_jobs['retry']['job']['attempt_count']})"
+        )
+
+    # duplicate_submission: replay the exact receipt bytes the coordinator
+    # already accepted, with the runner's own bearer. The 409 is the event.
+    job_ids["duplicate_submission"] = _new_job(artifacts=echo_grant)
+    _runner_pass(public_repo, runner_bin, run_env)
+    replayed = _private_receipt(private_repo, job_ids["duplicate_submission"])
+    client = httpx.Client(base_url=base_url, timeout=120)
+    try:
+        replay = client.post(
+            f"/v1/runners/jobs/{job_ids['duplicate_submission']}/receipt",
+            headers={"Authorization": f"Bearer {runner_key}"},
+            json={
+                "client_receipt": replayed["client_receipt"],
+                "signature": replayed["signature"],
+                "signature_algorithm": replayed["signature_algorithm"],
+            },
+        )
+    finally:
+        client.close()
+    hazard_events["duplicate_submission"] = {
+        "replay_status": replay.status_code,
+        "replay_detail": _response_detail(replay),
+    }
+    # Re-read after the replay: a rejected duplicate must not have moved
+    # the job a second time.
+    hazard_jobs["duplicate_submission"] = _read(
+        job_ids["duplicate_submission"]
+    )
+
+    # Only the duplicate hazard performs a replay; for the other four the
+    # same claim is the observation that no second terminal transition was
+    # accepted for their job.
+    duplicate_rejected = {
+        hazard: (
+            replay.status_code == 409
+            if hazard == "duplicate_submission"
+            else hazard_jobs[hazard]["job"]["terminal_transition_count"] == 1
+        )
+        for hazard in HAZARD_ROLES
+    }
+    return (
+        hazard_jobs,
+        hazard_events,
+        duplicate_rejected,
+        list(job_ids.values()),
+    )
+
+
+def _response_detail(response: httpx.Response) -> object:
+    """The coordinator's stated reason, whatever shape it came back in."""
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith("application/json"):
+        return response.json().get("detail")
+    return response.text[:200]
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        sys.stderr.write("usage: run_runner_evidence.py OUT_DIR\n")
+        return 2
+    out_dir = Path(sys.argv[1]).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    public_repo = Path(
+        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
+    ).resolve()
+    private_repo = public_repo.with_name("logion-private")
+    role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
+    admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
+    base_url = os.environ.get("LOGION_API_BASE_URL", "http://localhost:8000")
+    echo_digest = _sha256_text('{"echoed": []}')
+    env_name = "LOGION_RUNNER_CANARY_PROBE"
+    runner_image = resolve_runner_image()
+
+    runner_venv = out_dir / "runner-venv"
+    runner_state = out_dir / "runner-state"
+    runner_state.mkdir(parents=True, exist_ok=True)
+    os.chmod(runner_state, 0o700)
+    inspect_json = _setup_runner_venv(public_repo, runner_venv)
+    runner_bin = runner_venv / "bin" / "logion-node"
+
+    run_env = {
+        "LOGION_NODE_BASE_URL": base_url,
+        "LOGION_NODE_STATE_DIR": str(runner_state),
+        "LOGION_NODE_BACKEND": "docker",
+    }
+
+    cancelled, enroll_json, happy_job_id, canary_job_id, effect_job_ids = (
+        _enroll_and_seed(
+            base_url=base_url,
+            admin_key=admin_key,
+            runner_image=runner_image,
+            echo_digest=echo_digest,
+        )
+    )
 
     (runner_state / "runner.json").write_text(
         json.dumps(enroll_json, indent=2, sort_keys=True) + "\n",
@@ -654,164 +878,38 @@ def main() -> int:
     readable = canary_readable_map(canary_report, planted_probes)
 
     # ── Five forbidden effects, one sandbox run each ──
-    effect_status: dict[str, str] = {}
-    effect_attempted: dict[str, bool] = {}
-    effect_blocked: dict[str, bool] = {}
-    effect_profile_digest: dict[str, str] = {}
-    effect_details: dict[str, dict] = {}
-    for effect in EFFECT_ROLES:
-        job_id = effect_job_ids[effect]
-        _runner_pass(public_repo, runner_bin, run_env)
-        client = httpx.Client(base_url=base_url, timeout=120)
-        try:
-            detail = _get_job(client, admin_key, job_id)
-            payload = _private_receipt(
-                private_repo, job_id, "effect-report.json"
-            )
-        finally:
-            client.close()
-        report = json.loads(payload.get("artifact_content") or "{}")
-        effect_status[effect] = detail["job"]["status"]
-        effect_profile_digest[effect] = detail["job"]["sandbox_profile_digest"]
-        effect_attempted[effect] = bool(report.get("attempted", False))
-        effect_blocked[effect] = bool(report.get("effect_blocked", False))
-        effect_details[effect] = {
-            "status": detail["job"]["status"],
-            "attempted": report.get("attempted"),
-            "blocked": report.get("effect_blocked"),
-            "detail": str(report.get("detail", "")),
-        }
+    effects = _exercise_effects(
+        base_url=base_url,
+        admin_key=admin_key,
+        effect_job_ids=effect_job_ids,
+        public_repo=public_repo,
+        private_repo=private_repo,
+        runner_bin=runner_bin,
+        run_env=run_env,
+    )
+    effect_status = effects["status"]
+    effect_attempted = effects["attempted"]
+    effect_blocked = effects["blocked"]
+    effect_profile_digest = effects["profile_digest"]
+    effect_details = effects["details"]
 
     # ── Lifecycle hazards: five real coordinator exercises ──
-    #
-    # Each hazard gets its own job, created only now so FIFO leasing hands
-    # the next `run --once` pass exactly the job being exercised. Nothing
-    # below is asserted: every value is read back from the coordinator
-    # after the event it names actually happened.
-    hazard_jobs: dict[str, dict] = {}
-    hazard_events: dict[str, dict] = {}
-    duplicate_rejected: dict[str, bool] = {}
-
-    def _new_hazard_job(**kwargs) -> str:
-        client = httpx.Client(base_url=base_url, timeout=120)
-        try:
-            return _create_job(
-                client, admin_key, _job_body(runner_image, **kwargs)
-            )
-        finally:
-            client.close()
-
-    def _read_hazard(job_id: str) -> dict:
-        client = httpx.Client(base_url=base_url, timeout=120)
-        try:
-            return _get_job(client, admin_key, job_id)
-        finally:
-            client.close()
-
-    # cancellation: cancel while queued; the admin cancel IS the event.
-    cancel_id = _new_hazard_job()
-    client = httpx.Client(base_url=base_url, timeout=120)
-    try:
-        response = client.post(
-            f"/v1/executions/jobs/{cancel_id}/cancel",
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"cancellation hazard: cancel returned {response.status_code}"
-            )
-    finally:
-        client.close()
-    hazard_jobs["cancellation"] = _read_hazard(cancel_id)
-    hazard_events["cancellation"] = {"cancel_status": response.status_code}
-
-    # timeout: a payload that installs a SIGTERM handler and never exits,
-    # under a short wall limit. The sandbox deadline is the event.
-    timeout_id = _new_hazard_job(
-        job_type=ADVERSARIAL_JOB_TYPE,
-        effect="timeout_ignoring_sigterm",
-        artifacts=[{"name": "effect-report.json"}],
-        limits={**DEFAULT_LIMITS, "wall_seconds": 5},
+    (
+        hazard_jobs,
+        hazard_events,
+        duplicate_rejected,
+        hazard_job_ids,
+    ) = _exercise_hazards(
+        base_url=base_url,
+        admin_key=admin_key,
+        runner_key=enroll_json["runner_key"],
+        runner_image=runner_image,
+        echo_digest=echo_digest,
+        public_repo=public_repo,
+        private_repo=private_repo,
+        runner_bin=runner_bin,
+        run_env=run_env,
     )
-    _runner_pass(public_repo, runner_bin, run_env)
-    hazard_jobs["timeout"] = _read_hazard(timeout_id)
-    hazard_events["timeout"] = {"wall_seconds": 5}
-
-    # lease_loss: hold a lease, push it into the past, let the
-    # coordinator's own sweep reclaim it, then finish it.
-    lease_loss_id = _new_hazard_job(
-        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}]
-    )
-    _claim_only(base_url, enroll_json["runner_key"])
-    hazard_events["lease_loss"] = _expire_lease(private_repo, lease_loss_id)
-    if hazard_events["lease_loss"]["after"] != "queued":
-        raise RuntimeError(
-            "lease_loss hazard: sweep left the job in "
-            f"{hazard_events['lease_loss']['after']!r}, expected 'queued'"
-        )
-    _runner_pass(public_repo, runner_bin, run_env)
-    hazard_jobs["lease_loss"] = _read_hazard(lease_loss_id)
-
-    # retry: same expiry, but the job goes on to a second attempt and must
-    # still reach terminal exactly once.
-    retry_id = _new_hazard_job(
-        max_attempts=3,
-        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}],
-    )
-    _claim_only(base_url, enroll_json["runner_key"])
-    hazard_events["retry"] = _expire_lease(private_repo, retry_id)
-    _runner_pass(public_repo, runner_bin, run_env)
-    hazard_jobs["retry"] = _read_hazard(retry_id)
-    if hazard_jobs["retry"]["job"]["attempt_count"] < 2:
-        raise RuntimeError(
-            "retry hazard: job never reached a second attempt "
-            f"({hazard_jobs['retry']['job']['attempt_count']})"
-        )
-
-    # duplicate_submission: replay the exact receipt bytes the coordinator
-    # already accepted, with the runner's own bearer. The 409 is the event.
-    duplicate_id = _new_hazard_job(
-        artifacts=[{"name": "echo-result.json", "sha256": echo_digest}]
-    )
-    _runner_pass(public_repo, runner_bin, run_env)
-    hazard_jobs["duplicate_submission"] = _read_hazard(duplicate_id)
-    replayed = _private_receipt(private_repo, duplicate_id)
-    client = httpx.Client(base_url=base_url, timeout=120)
-    try:
-        replay = client.post(
-            f"/v1/runners/jobs/{duplicate_id}/receipt",
-            headers={"Authorization": f"Bearer {enroll_json['runner_key']}"},
-            json={
-                "client_receipt": replayed["client_receipt"],
-                "signature": replayed["signature"],
-                "signature_algorithm": replayed["signature_algorithm"],
-            },
-        )
-    finally:
-        client.close()
-    hazard_events["duplicate_submission"] = {
-        "replay_status": replay.status_code,
-        "replay_detail": replay.json().get("detail")
-        if replay.headers.get("content-type", "").startswith(
-            "application/json"
-        )
-        else replay.text[:200],
-    }
-    replay_rejected = replay.status_code == 409
-    # Re-read after the replay: a rejected duplicate must not have moved
-    # the job a second time.
-    hazard_jobs["duplicate_submission"] = _read_hazard(duplicate_id)
-
-    # Only the duplicate hazard performs a replay; the other four assert
-    # nothing about it, so their fact is the same observation carried
-    # forward: no second terminal transition was accepted for that job.
-    for hazard in HAZARD_ROLES:
-        transitions = hazard_jobs[hazard]["job"]["terminal_transition_count"]
-        duplicate_rejected[hazard] = (
-            replay_rejected
-            if hazard == "duplicate_submission"
-            else transitions == 1
-        )
 
     # ── Canary exfiltration: search what was actually retained ──
     #
@@ -822,11 +920,7 @@ def main() -> int:
         happy_job_id,
         canary_job_id,
         *effect_job_ids.values(),
-        cancel_id,
-        timeout_id,
-        lease_loss_id,
-        retry_id,
-        duplicate_id,
+        *hazard_job_ids,
     ]
     artifacts_haystack = _stored_artifacts_text(private_repo, all_job_ids)
     receipts_haystack = _stored_receipts_text(private_repo, all_job_ids)

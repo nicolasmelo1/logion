@@ -67,48 +67,63 @@ class Lease:
 
     @classmethod
     def from_json(cls, payload: JsonObject) -> Lease:
-        artifacts_payload = payload.get("artifacts")
-        artifacts = (
-            [
-                ArtifactGrant.from_json(item)
-                for item in artifacts_payload
-                if isinstance(item, dict)
-            ]
-            if isinstance(artifacts_payload, list)
-            else []
-        )
         limits_payload = payload.get("limits")
         return cls(
-            job_id=opt_str(payload, "job_id") or "",
+            job_id=_text(payload, "job_id"),
             attempt=require_int(payload, "attempt"),
-            job_type=opt_str(payload, "job_type") or "",
-            contract_digest=opt_str(payload, "contract_digest") or "",
+            job_type=_text(payload, "job_type"),
+            contract_digest=_text(payload, "contract_digest"),
             sandbox_profile=_profile_map(payload.get("sandbox_profile")),
-            sandbox_profile_digest=(
-                opt_str(payload, "sandbox_profile_digest") or ""
-            ),
-            resource_id=opt_str(payload, "resource_id") or "",
-            resource_version_id=opt_str(payload, "resource_version_id") or "",
-            resource_digest=opt_str(payload, "resource_digest") or "",
-            required_capabilities=[
-                item
-                for item in _str_list(payload.get("required_capabilities"))
-                if item
-            ],
+            sandbox_profile_digest=_text(payload, "sandbox_profile_digest"),
+            resource_id=_text(payload, "resource_id"),
+            resource_version_id=_text(payload, "resource_version_id"),
+            resource_digest=_text(payload, "resource_digest"),
+            required_capabilities=_capabilities(payload),
             input_digests=_str_map(payload.get("input_digests")),
-            # The coordinator does not carry an `effect` field; the
-            # adversarial fixture declares its effect via input_digests so
-            # the whole envelope stays inside the public contract.
-            effect=opt_str(payload, "effect")
-            or _str_map(payload.get("input_digests")).get("effect")
-            or None,
+            effect=_effect(payload),
             limits=JobLimits.from_json(
                 limits_payload if isinstance(limits_payload, dict) else {}
             ),
-            artifacts=artifacts,
-            idempotency_key=opt_str(payload, "idempotency_key") or "",
-            lease_expires_at=opt_str(payload, "lease_expires_at") or "",
+            artifacts=_artifacts(payload),
+            idempotency_key=_text(payload, "idempotency_key"),
+            lease_expires_at=_text(payload, "lease_expires_at"),
         )
+
+
+def _text(payload: JsonObject, key: str) -> str:
+    """A string field, or ``""`` when absent or the wrong type."""
+    return opt_str(payload, key) or ""
+
+
+def _artifacts(payload: JsonObject) -> list[ArtifactGrant]:
+    raw = payload.get("artifacts")
+    if not isinstance(raw, list):
+        return []
+    return [
+        ArtifactGrant.from_json(item) for item in raw if isinstance(item, dict)
+    ]
+
+
+def _capabilities(payload: JsonObject) -> list[str]:
+    return [
+        item
+        for item in _str_list(payload.get("required_capabilities"))
+        if item
+    ]
+
+
+def _effect(payload: JsonObject) -> str | None:
+    """The adversarial fixture's declared effect, if the job names one.
+
+    The coordinator carries no ``effect`` field, so the fixture declares
+    it through ``input_digests`` and the whole envelope stays inside the
+    public contract.
+    """
+    return (
+        opt_str(payload, "effect")
+        or _str_map(payload.get("input_digests")).get("effect")
+        or None
+    )
 
 
 def _str_list(value: object) -> list[str]:

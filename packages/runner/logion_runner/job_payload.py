@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 from logion_runner._json import JsonObject
 
@@ -91,104 +92,116 @@ def _run_canary_probe(payload: JsonObject, out_dir: Path) -> int:
     return 0
 
 
-def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
-    """Attempt one forbidden effect and report it as blocked.
+#: One attempt at a forbidden effect: what it saw, and whether anything
+#: got through. ``succeeded`` is the sandbox failing, never the fixture
+#: succeeding.
+class _Attempt(NamedTuple):
+    detail: str
+    succeeded: bool
 
-    Under the real sandbox profile the effect *fails* (read-only root,
-    no network, no capabilities). The payload certifies what it tried
-    and whether anything got through, on stderr as one JSON line.
+
+def _attempt_filesystem_escape(payload: JsonObject) -> _Attempt:
+    """Reach for a host path from inside the sandbox.
+
+    Reading the *container's* ``/etc/passwd`` proves nothing: every image
+    ships one. The escape only happened if a path belonging to the host
+    became readable from in here.
     """
-    effect = payload.get("effect") or ""
-    blocked_kinds = {
-        "filesystem_escape",
-        "undeclared_network",
-        "secret_read",
-        "oversized_output",
+    raw_hosts = payload.get("canary_paths")
+    host_paths = [
+        item
+        for item in (raw_hosts if isinstance(raw_hosts, list) else [])
+        if isinstance(item, str)
+    ]
+    reached = [path for path in host_paths if _read_canary(path)]
+    if reached:
+        return _Attempt(
+            f"host paths readable from the sandbox: {len(reached)}",
+            succeeded=True,
+        )
+    return _Attempt(
+        f"none of {len(host_paths)} host paths were reachable",
+        succeeded=False,
+    )
+
+
+def _attempt_undeclared_network() -> _Attempt:
+    """Open a socket the sandbox profile does not allow."""
+    import socket
+
+    try:
+        socket.create_connection(("127.0.0.1", 9), timeout=0.2)
+    except OSError:
+        return _Attempt("network unavailable", succeeded=False)
+    return _Attempt("socket connect unexpectedly succeeded", succeeded=True)
+
+
+def _attempt_secret_read() -> _Attempt:
+    """Count ambient environment the allowlist should have stripped."""
+    import os
+
+    ambient = [
+        key
+        for key in os.environ
+        if key not in {"PATH", "LANG", "LC_ALL", "TZ", "LOGION_JOB_ID"}
+    ]
+    return _Attempt(
+        f"ambient env vars visible: {len(ambient)}", succeeded=False
+    )
+
+
+def _attempt_oversized_output(out_dir: Path) -> _Attempt:
+    """Write past the declared output cap.
+
+    ``_collect_out`` flags the breach and the runner records
+    ``truncated_output`` in the receipt.
+    """
+    import os
+
+    default_cap = 8 * 1024 * 1024
+    try:
+        cap_env = os.environ.get("LOGION_JOB_OUTPUT_BYTES")
+        cap = int(cap_env) if cap_env else default_cap
+    except ValueError:
+        cap = default_cap
+    blob = b"x" * 65536
+    with (out_dir / "oversized.bin").open("wb") as fh:
+        total = 0
+        while total < cap + 1024 * 1024:
+            fh.write(blob)
+            total += len(blob)
+    return _Attempt(
+        f"wrote {total} bytes, output cap was {cap}", succeeded=False
+    )
+
+
+def _attempt_timeout_ignoring_sigterm(out_dir: Path) -> _Attempt:
+    """Ignore SIGTERM and never return.
+
+    The report is written *before* the process stops responding: the one
+    job that cannot return would otherwise be the only one that could
+    never say what it tried.
+    """
+    import signal
+    import time
+
+    _write_effect_report(
+        out_dir,
         "timeout_ignoring_sigterm",
-    }
-    detail = ""
-    succeeded = False
-    attempted = effect in blocked_kinds
-    if effect == "filesystem_escape":
-        # Reading the *container's* /etc/passwd proves nothing: every image
-        # ships one. The escape only happened if a path belonging to the
-        # host became readable from in here.
-        raw_hosts = payload.get("canary_paths")
-        host_paths = [
-            item
-            for item in (raw_hosts if isinstance(raw_hosts, list) else [])
-            if isinstance(item, str)
-        ]
-        reached = [path for path in host_paths if _read_canary(path)]
-        succeeded = bool(reached)
-        detail = (
-            f"host paths readable from the sandbox: {len(reached)}"
-            if reached
-            else f"none of {len(host_paths)} host paths were reachable"
-        )
-    elif effect == "undeclared_network":
-        import socket
+        attempted=True,
+        attempt=_Attempt(
+            "process ignored SIGTERM until the backend deadline",
+            succeeded=False,
+        ),
+    )
+    signal.signal(signal.SIGTERM, lambda *_: None)
+    while True:
+        time.sleep(1)
 
-        try:
-            socket.create_connection(("127.0.0.1", 9), timeout=0.2)
-            detail = "socket connect unexpectedly succeeded"
-            succeeded = True
-        except OSError:
-            detail = "network unavailable"
-    elif effect == "secret_read":
-        import os
 
-        ambient = [
-            key
-            for key in os.environ
-            if key not in {"PATH", "LANG", "LC_ALL", "TZ", "LOGION_JOB_ID"}
-        ]
-        detail = f"ambient env vars visible: {len(ambient)}"
-        succeeded = False
-    elif effect == "timeout_ignoring_sigterm":
-        import signal
-        import time
-
-        detail = "process ignored SIGTERM until the backend deadline"
-        attempted = True
-        # The report has to land before the process stops responding, or
-        # the only job that never returns is also the only one that can
-        # never say what it tried.
-        _write_out(
-            out_dir,
-            "effect-report.json",
-            json.dumps(
-                {
-                    "effect": effect,
-                    "attempted": True,
-                    "detail": detail,
-                    "succeeded": False,
-                    "effect_blocked": True,
-                },
-                sort_keys=True,
-            ).encode(),
-        )
-        signal.signal(signal.SIGTERM, lambda *_: None)
-        while True:
-            time.sleep(1)
-    elif effect == "oversized_output":
-        # Write past the declared output cap; _collect_out flags the breach
-        # and the runner reports truncated_output in the receipt.
-        import os
-
-        try:
-            cap_env = os.environ.get("LOGION_JOB_OUTPUT_BYTES")
-            cap = int(cap_env) if cap_env else 8 * 1024 * 1024
-        except ValueError:
-            cap = 8 * 1024 * 1024
-        blob = b"x" * 65536
-        with (out_dir / "oversized.bin").open("wb") as fh:
-            total = 0
-            while total < cap + 1024 * 1024:
-                fh.write(blob)
-                total += len(blob)
-        detail = f"wrote {total} bytes, output cap was {cap}"
-        attempted = True
+def _write_effect_report(
+    out_dir: Path, effect: str, *, attempted: bool, attempt: _Attempt
+) -> None:
     _write_out(
         out_dir,
         "effect-report.json",
@@ -196,12 +209,36 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
             {
                 "effect": effect,
                 "attempted": attempted,
-                "detail": detail,
-                "succeeded": succeeded,
-                "effect_blocked": attempted and not succeeded,
+                "detail": attempt.detail,
+                "succeeded": attempt.succeeded,
+                "effect_blocked": attempted and not attempt.succeeded,
             },
             sort_keys=True,
         ).encode(),
+    )
+
+
+def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
+    """Attempt one forbidden effect and report what the sandbox did.
+
+    Under the real profile the effect fails: read-only root, no network,
+    no capabilities. The payload certifies what it tried and whether
+    anything got through; it never certifies its own containment.
+    """
+    effect = str(payload.get("effect") or "")
+    attempts = {
+        "filesystem_escape": lambda: _attempt_filesystem_escape(payload),
+        "undeclared_network": _attempt_undeclared_network,
+        "secret_read": _attempt_secret_read,
+        "oversized_output": lambda: _attempt_oversized_output(out_dir),
+        "timeout_ignoring_sigterm": (
+            lambda: _attempt_timeout_ignoring_sigterm(out_dir)
+        ),
+    }
+    run = attempts.get(effect)
+    attempt = run() if run is not None else _Attempt("", succeeded=False)
+    _write_effect_report(
+        out_dir, effect, attempted=run is not None, attempt=attempt
     )
     # A blocked effect is still a failed job: the fixture must end in a
     # typed terminal state, never "succeeded".
