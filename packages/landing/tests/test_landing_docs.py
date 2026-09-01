@@ -331,9 +331,40 @@ def test_headings_carry_their_anchors() -> None:
 
 
 def test_raw_html_in_a_page_is_not_executed() -> None:
-    """Guides are hand-written and flow through the same renderer."""
+    """Guides are hand-written and flow through the same renderer.
+
+    The rendered body is wrapped in ``Markup`` before it reaches the template,
+    so bandit's B704 is suppressed there on the strength of this and the next
+    test. Both need to keep holding for that suppression to stay honest.
+    """
     html = render_html("<script>alert(1)</script>\n")
     assert "<script>" not in html
+
+
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "javascript:alert(1)",
+        "vbscript:alert(1)",
+        "file:///etc/passwd",
+        "data:text/html,<b>",
+    ],
+)
+def test_dangerous_link_schemes_never_become_hrefs(scheme: str) -> None:
+    """markdown-it's link validator must keep rejecting these.
+
+    It rejects the link rather than sanitising it, so the URL survives as
+    escaped body text. What must never happen is it reaching an ``href``.
+    """
+    html = render_html(f"[click]({scheme})\n")
+    assert "<a " not in html
+    assert "href" not in html
+
+
+def test_ordinary_links_still_render() -> None:
+    """The guard above is only meaningful if normal links work."""
+    html = render_html("[docs](/docs/api/overview)\n")
+    assert '<a href="/docs/api/overview">docs</a>' in html
 
 
 def test_generated_pages_declare_their_provenance() -> None:
