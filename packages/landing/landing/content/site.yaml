@@ -4,34 +4,37 @@
 site:
   name: logion.sh
   tagline: >-
-    Logion is an open, versioned registry of AI-agent artifacts — skills,
-    plugins, MCP servers, models — with provenance and evidence attached to
-    every version.
+    Logion measures whether the skills, plugins, MCP servers and models your
+    agent installs actually do what they claim — and publishes the method so
+    anyone can check.
   description: >-
-    Logion indexes artifacts wherever they already live, records where each
-    version came from, and attaches first-party findings to it: capability
-    declarations, scanner results over the whole bundle, human publication
-    review, and accountable update history. The method is published; anyone
-    can reproduce it.
+    Every hub in this space publishes provenance and popularity: installs,
+    stars, security audits. None publishes behaviour. Logion measures the
+    exact version an agent installed, attaches the evidence to it — capability
+    declarations, scanner results over the whole bundle, publication review,
+    reproducible evaluation, and what real agents reported — and always says
+    which layer an answer came from. The method is published; anyone can
+    reproduce it.
   # One-sentence definitional answer for LLM Overviews / AI assistants.
   one_liner: >-
-    Logion is an open, versioned registry of AI-agent artifacts — skills,
-    plugins, MCP servers, models — that attaches provenance and first-party
-    evidence to each version and publishes the method behind it.
+    Logion is an independent measurement layer for AI-agent artifacts —
+    skills, plugins, MCP servers, models — that publishes versioned,
+    reproducible evidence about each exact version, and the method behind it.
 
 hero:
-  heading: AI capability, with proof.
+  heading: Does it actually work?
   motto: Smarter, together.
   subheading: >-
-    Logion is the open registry where an agent finds a capability together
-    with where it came from and what is known about it — so the claim can be
-    checked instead of trusted.
+    Your agent installs skills, plugins and MCP servers that nobody has ever
+    measured. Logion measures them against a pinned, reproducible contract,
+    publishes the result with its limits, and says which layer the answer came
+    from — so the claim can be checked instead of trusted.
   # Honest trust signals shown above the fold — every item is already true and
   # documented elsewhere on the page. Not testimonials; real proof points.
   signals:
-    - Open-source, auditable client
-    - Scanners + human publication review
-    - Immutable versions
+    - Published method, reproducible by anyone
+    - Evidence in labelled layers, never one blended score
+    - Immutable versions, scanned whole-bundle
   release_note: >-
     One command sets up the CLI and the agent companion and runs onboarding so
     your agent can use Logion, going live with the first public release.
@@ -193,12 +196,15 @@ sections:
     title: Proof over popularity
     layout: split
     body: >-
-      What matters to agents is not the same as what matters to humans. People
-      often rely on popularity proxies such as stars and downloads; agents
-      need usefulness, task completion, tool safety, and token efficiency.
-      Logion ranks artifacts by those outcomes, so an independent expert's
-      artifact can rank above one from Anthropic or NVIDIA when its evidence
-      is better. You may already know what other agents need.
+      Every hub in this space publishes the same two things: where an artifact
+      came from, and how popular it is. Installs, stars, security audits. None
+      of them publishes whether it works — the most-installed skill whose job
+      is finding good skills ranks candidates by install count and GitHub
+      stars, because popularity is the only signal the ecosystem publishes.
+      Logion measures behaviour instead: usefulness, task completion, tool
+      safety, and token efficiency, against a pinned contract on a named
+      harness and model, with the limits stated. An unknown author's artifact
+      can rank above one from Anthropic or NVIDIA when the evidence says so.
     demo:
       title: proof // with your agent
       intro: Attributed usage reviews are evidence from real use, not anonymous popularity.
@@ -253,18 +259,24 @@ sections:
                 Installed. The exact version, its digest, and the evidence
                 behind it stay recorded against this install.
     items:
-      - title: Generating is cheap
+      - title: A measurement, not a badge
         body: >-
-          Any person or model can draft and submit an improvement.
-      - title: Proof is the product
+          Every result names its contract, subject version, harness, model, and
+          what it does not cover.
+      - title: Layers stay labelled
         body: >-
-          Evidence the author does not control gates every immutable version.
-      - title: Rewards follow proof, not effort
+          Evaluation, static evidence, and field reports are never blended.
+          "No measurement yet" is a valid answer.
+      - title: Independent of what it measures
         body: >-
-          Bounties pay accepted outcomes, whoever produced them.
+          Logion does not host the artifact and does not delete a true,
+          reproducible result on request.
     caveat: >-
-      Benchmark-backed bounties and field reconciliation are the next proof
-      layer, not a current guarantee. Today, the review pipeline is the gate.
+      Logion is the only issuer of these measurements today, so the honest claim
+      is that Logion measured it, the method is published, and
+      anyone can reproduce it — not that a network validated it. Benchmark-backed bounties
+      and field reconciliation are the next proof layer, not a current
+      guarantee.
 
   - id: ethos
     title: We built the library
@@ -291,11 +303,14 @@ sections:
     title: What Logion is
     layout: split
     body: >-
-      Logion records an artifact as a versioned bundle — the skill file plus
-      the scripts, references, evals and docs that ship with it — behind one
-      machine-readable capability declaration. The audit covers the whole
-      bundle, not only the entry file, because that is where the blast radius
-      actually is. It is not a generic skill directory.
+      The category next door measures the agent you wrote — your prompts, your
+      task function, your scorers. Logion measures the parts you installed
+      inside it: the ones you did not write, cannot see, and did not test. It
+      records each one as a versioned bundle — the skill file plus the scripts,
+      references, evals and docs that ship with it — behind one machine-readable
+      capability declaration. The audit covers the whole bundle, not only the
+      entry file, because that is where the blast radius actually is.
+      It is not a generic skill directory.
     demo:
       title: inspect // frontend-design
       intro: Example bundle based on the popular frontend-design skill pattern.
@@ -440,8 +455,13 @@ sections:
       - label: release manifests
         href: https://github.com/nicolasmelo1/logion/tree/main/releases
     caveat: >-
-      Runtime sandbox enforcement is future runtime work; we don't claim it
-      is solved. Until then, trust comes from review before publication and
+      A measurement is not an endorsement. A result says what happened under one
+      contract, in one environment, against one version: it is not a safety
+      certification, not a compliance attestation, and not advice to install.
+      A security audit is evidence about reachability, never evidence that an
+      artifact does what it claims.
+      Runtime sandbox enforcement is future runtime work; we don't claim it is
+      solved. Until then, trust comes from review before publication and
       accountability after it.
 
   - id: loop
@@ -1024,10 +1044,34 @@ faq:
   items:
     - q: What is Logion?
       a: >-
-        Logion is an open, versioned registry of AI-agent artifacts —
-        skills, plugins, MCP servers, models — that attaches provenance and
-        first-party evidence to each version. It is not a video course
+        Logion is an independent measurement layer for AI-agent artifacts —
+        skills, plugins, MCP servers, models. It publishes versioned,
+        reproducible evidence about whether an exact version does what it
+        claims, and the method behind it. It is not a video course
         marketplace or a generic skill directory.
+    - q: How is this different from an eval platform?
+      a: >-
+        An eval platform measures the agent you wrote: your prompts, your task
+        function, your scorers, inside your own perimeter. Logion measures the
+        parts you installed inside it — third-party artifacts you did not
+        write — and publishes the result where the agent about to install one
+        can read it.
+    - q: Does a Logion measurement mean an artifact is safe?
+      a: >-
+        No. A measurement says what happened under one contract, in one
+        environment, against one version. It is not a safety certification, not
+        a compliance attestation, and not advice to install. A security audit is
+        evidence about what an artifact can reach, never evidence that it does
+        what it claims.
+    - q: Why should anyone trust Logion's number?
+      a: >-
+        Because you do not have to. Every result ships with its pinned subject
+        version, its contract digest, the harness and model it ran on, its
+        stated limits, and the exact command to reproduce it. Logion is
+        currently the only issuer, so the claim is that Logion measured it and
+        anyone can check — never that a network validated it. A true,
+        reproducible result is not deleted on request; errors are corrected in
+        public.
     - q: Does an artifact have to be published on Logion to be indexed?
       a: >-
         No. Logion records artifacts where they already live and keeps the
