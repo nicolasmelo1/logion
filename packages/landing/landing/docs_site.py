@@ -128,26 +128,23 @@ class DocsSite:
         sections: list[NavSection] = []
         for section in self.sections:
             entries = children(section, "pages")
-            sections.append(
-                {
-                    "id": _str(section.get("id")),
-                    "title": _str(section.get("title")),
-                    "summary": _str(section.get("summary")),
-                    "pages": [
-                        {
-                            "title": _str(entry.get("title")),
-                            "summary": _str(entry.get("summary")),
-                            "url": f"/docs/{_str(entry.get('slug'))}",
-                            "active": _str(entry.get("slug")) == current,
-                        }
-                        for entry in entries
-                    ],
-                    "active": any(
-                        _str(entry.get("slug")) == current
-                        for entry in entries
-                    ),
-                }
-            )
+            sections.append({
+                "id": _str(section.get("id")),
+                "title": _str(section.get("title")),
+                "summary": _str(section.get("summary")),
+                "pages": [
+                    {
+                        "title": _str(entry.get("title")),
+                        "summary": _str(entry.get("summary")),
+                        "url": f"/docs/{_str(entry.get('slug'))}",
+                        "active": _str(entry.get("slug")) == current,
+                    }
+                    for entry in entries
+                ],
+                "active": any(
+                    _str(entry.get("slug")) == current for entry in entries
+                ),
+            })
         return sections
 
     def outline(self, page: DocsPage) -> list[Heading]:

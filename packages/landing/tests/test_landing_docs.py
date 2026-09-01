@@ -130,9 +130,7 @@ def test_every_operation_id_is_documented() -> None:
         and operation.get("operationId")
     }
     documented = "\n".join(page.body for page in docs.pages)
-    missing = sorted(
-        op for op in operation_ids if f"`{op}`" not in documented
-    )
+    missing = sorted(op for op in operation_ids if f"`{op}`" not in documented)
     assert not missing, f"operations absent from the reference: {missing}"
 
 

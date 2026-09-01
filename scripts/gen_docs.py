@@ -128,6 +128,8 @@ def _arr(value: JsonValue | None) -> list[JsonValue]:
 
 def _text(value: JsonValue | None) -> str:
     return value if isinstance(value, str) else ""
+
+
 _SUMMARY_RE = re.compile(r"^summary:\s*(.+)$", re.MULTILINE)
 _FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 _H1_RE = re.compile(r"^# (.+)$", re.MULTILINE)
@@ -199,9 +201,7 @@ class SchemaRenderer:
     def __init__(self, components: JsonObject) -> None:
         self._schemas = _obj(components.get("schemas"))
 
-    def resolve(
-        self, schema: JsonObject
-    ) -> tuple[str | None, JsonObject]:
+    def resolve(self, schema: JsonObject) -> tuple[str | None, JsonObject]:
         """Follow a ``$ref`` once, returning ``(model_name, schema)``."""
         ref = schema.get("$ref")
         if not isinstance(ref, str):
@@ -209,29 +209,21 @@ class SchemaRenderer:
         name = ref.rsplit("/", 1)[-1]
         return name, _obj(self._schemas.get(name))
 
-    def type_label(self, schema: JsonObject) -> str:
-        """Describe a schema's type in one short string."""
-        name, resolved = self.resolve(schema)
-        if name is not None:
-            return name
+    def _union_label(self, arms: list[JsonObject]) -> str:
+        """``anyOf`` rendered as ``A | B``, plus an optional marker.
 
-        any_of = _arr(resolved.get("anyOf"))
-        if any_of:
-            arms = [_obj(entry) for entry in any_of]
-            parts = [
-                self.type_label(arm)
-                for arm in arms
-                if arm.get("type") != "null"
-            ]
-            label = " | ".join(dict.fromkeys(parts)) or "null"
-            nullable = any(arm.get("type") == "null" for arm in arms)
-            return f"{label}, optional" if nullable else label
+        FastAPI spells every nullable field as ``anyOf: [T, null]``, so this
+        arm carries most of the contract.
+        """
+        parts = [
+            self.type_label(arm) for arm in arms if arm.get("type") != "null"
+        ]
+        label = " | ".join(dict.fromkeys(parts)) or "null"
+        nullable = any(arm.get("type") == "null" for arm in arms)
+        return f"{label}, optional" if nullable else label
 
-        enum = _arr(resolved.get("enum"))
-        if enum:
-            values = ", ".join(json.dumps(value) for value in enum)
-            return f"enum({values})"
-
+    def _scalar_label(self, resolved: JsonObject) -> str:
+        """A plain type, an array of one, or a formatted string."""
         kind = resolved.get("type")
         if kind == "array":
             items = resolved.get("items")
@@ -243,9 +235,24 @@ class SchemaRenderer:
             return f"{inner}[]"
         if kind == "string" and resolved.get("format"):
             return f"string({_text(resolved.get('format'))})"
-        if isinstance(kind, str):
-            return kind
-        return "object"
+        return kind if isinstance(kind, str) else "object"
+
+    def type_label(self, schema: JsonObject) -> str:
+        """Describe a schema's type in one short string."""
+        name, resolved = self.resolve(schema)
+        if name is not None:
+            return name
+
+        any_of = _arr(resolved.get("anyOf"))
+        if any_of:
+            return self._union_label([_obj(entry) for entry in any_of])
+
+        enum = _arr(resolved.get("enum"))
+        if enum:
+            values = ", ".join(json.dumps(value) for value in enum)
+            return f"enum({values})"
+
+        return self._scalar_label(resolved)
 
     def field_rows(
         self, schema: JsonObject
@@ -277,14 +284,12 @@ class SchemaRenderer:
             description = _text(prop.get("description"))
             if description:
                 notes.insert(0, description)
-            rows.append(
-                (
-                    name,
-                    self.type_label(prop),
-                    "yes" if name in required else "no",
-                    "; ".join(notes),
-                )
-            )
+            rows.append((
+                name,
+                self.type_label(prop),
+                "yes" if name in required else "no",
+                "; ".join(notes),
+            ))
         return rows
 
     def table(self, schema: JsonObject, header: str) -> list[str]:
@@ -622,13 +627,22 @@ def _operation_page_lines(
     return lines
 
 
-def build_api_pages(
-    spec: JsonObject,
-    cli_for_operation: dict[str, list[tuple[str, str]]],
-) -> tuple[list[PageDict], dict[str, str]]:
-    """Return one page per contract tag, plus operationId -> page anchor."""
-    renderer = SchemaRenderer(_obj(spec.get("components")))
-    by_tag: dict[str, list[tuple[str, str, JsonObject]]] = {}
+#: One operation as the page builders pass it around: path, method, body.
+Operation = tuple[str, str, JsonObject]
+
+
+def _operation_heading(path: str, method: str, operation: JsonObject) -> str:
+    """The h2 an operation renders under. Its anchor is derived from this."""
+    return (
+        _text(operation.get("summary"))
+        or _text(operation.get("operationId"))
+        or f"{method.upper()} {path}"
+    )
+
+
+def _group_operations_by_tag(spec: JsonObject) -> dict[str, list[Operation]]:
+    """Bucket every contract operation under each tag it declares."""
+    by_tag: dict[str, list[Operation]] = {}
     for path, methods in _obj(spec.get("paths")).items():
         for method, raw in _obj(methods).items():
             if method not in _HTTP_METHODS:
@@ -641,6 +655,45 @@ def build_api_pages(
             ] or ["general"]
             for tag in tags:
                 by_tag.setdefault(tag, []).append((path, method, operation))
+    return by_tag
+
+
+def _api_page_body(
+    title: str,
+    operations: list[Operation],
+    renderer: SchemaRenderer,
+    cli_for_operation: dict[str, list[tuple[str, str]]],
+) -> str:
+    """A tag page: a contents list, then every operation in full."""
+    plural = "s" if len(operations) != 1 else ""
+    lines = [
+        f"# {title}",
+        "",
+        f"{len(operations)} operation{plural} on the Logion v1 API.",
+        "",
+    ]
+    for path, method, operation in operations:
+        heading = _operation_heading(path, method, operation)
+        lines.append(
+            f"- [{heading}](#{_anchor(heading)}) — `{method.upper()} {path}`"
+        )
+    lines.append("")
+    for path, method, operation in operations:
+        lines.extend(
+            _operation_page_lines(
+                path, method, operation, renderer, cli_for_operation
+            )
+        )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def build_api_pages(
+    spec: JsonObject,
+    cli_for_operation: dict[str, list[tuple[str, str]]],
+) -> tuple[list[PageDict], dict[str, str]]:
+    """Return one page per contract tag, plus operationId -> page anchor."""
+    renderer = SchemaRenderer(_obj(spec.get("components")))
+    by_tag = _group_operations_by_tag(spec)
 
     pages: list[PageDict] = []
     slug_for_operation: dict[str, str] = {}
@@ -648,51 +701,76 @@ def build_api_pages(
         operations = sorted(by_tag[tag], key=lambda item: (item[0], item[1]))
         slug = f"api/{tag.replace('_', '-')}"
         title = _title_for_tag(tag)
-        lines = [f"# {title}", ""]
-        lines.append(
-            f"{len(operations)} operation"
-            f"{'s' if len(operations) != 1 else ''} on the Logion v1 API."
-        )
-        lines.append("")
+        plural = "s" if len(operations) != 1 else ""
         for path, method, operation in operations:
-            heading = (
-                _text(operation.get("summary"))
-                or _text(operation.get("operationId"))
-                or f"{method.upper()} {path}"
-            )
-            lines.append(
-                f"- [{heading}](#{_anchor(heading)}) — "
-                f"`{method.upper()} {path}`"
-            )
-        lines.append("")
-        for path, method, operation in operations:
-            lines.extend(
-                _operation_page_lines(
-                    path, method, operation, renderer, cli_for_operation
-                )
-            )
             op_id = _text(operation.get("operationId"))
             if op_id:
-                heading = (
-                    _text(operation.get("summary"))
-                    or op_id
-                    or f"{method.upper()} {path}"
-                )
+                heading = _operation_heading(path, method, operation)
                 slug_for_operation[op_id] = f"{slug}#{_anchor(heading)}"
-        pages.append(
-            {
-                "slug": slug,
-                "title": title,
-                "summary": (
-                    f"{len(operations)} API operation"
-                    f"{'s' if len(operations) != 1 else ''} tagged "
-                    f"`{tag}`."
-                ),
-                "kind": "api",
-                "body": "\n".join(lines).rstrip() + "\n",
-            }
-        )
+        pages.append({
+            "slug": slug,
+            "title": title,
+            "summary": (
+                f"{len(operations)} API operation{plural} tagged `{tag}`."
+            ),
+            "kind": "api",
+            "body": _api_page_body(
+                title, operations, renderer, cli_for_operation
+            ),
+        })
     return pages, slug_for_operation
+
+
+def _command_lines(
+    command: CliCommand, slug_for_operation: dict[str, str]
+) -> list[str]:
+    """One command: heading, usage, options, and the endpoint it calls."""
+    lines = [f"## {command.invocation}", ""]
+    if command.help:
+        lines.append(command.help)
+        lines.append("")
+    lines.append(f"```bash\n{command.usage}\n```")
+    lines.append("")
+    if command.options:
+        lines.append("| Option | Value | Default | Description |")
+        lines.append("| --- | --- | --- | --- |")
+        for flags, value, default, help_text in command.options:
+            lines.append(
+                f"| `{flags}` | {value} | {default or '—'} "
+                f"| {_md_escape(help_text)} |"
+            )
+        lines.append("")
+    if command.operations:
+        lines.append("**Calls**")
+        lines.append("")
+        for op_id in command.operations:
+            target = slug_for_operation.get(op_id)
+            link = f"[`{op_id}`](/docs/{target})" if target else f"`{op_id}`"
+            lines.append(f"- {link}")
+        lines.append("")
+    return lines
+
+
+def _cli_page_body(
+    group: str,
+    commands: list[CliCommand],
+    slug_for_operation: dict[str, str],
+) -> str:
+    """A group page: a contents list, then every command in full."""
+    plural = "s" if len(commands) != 1 else ""
+    lines = [
+        f"# logion {group}",
+        "",
+        f"{len(commands)} command{plural} in this group.",
+        "",
+    ]
+    for command in commands:
+        suffix = f" — {command.help}" if command.help else ""
+        lines.append(f"- [`{command.invocation}`](#{command.anchor}){suffix}")
+    lines.append("")
+    for command in commands:
+        lines.extend(_command_lines(command, slug_for_operation))
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def build_cli_pages(
@@ -707,57 +785,14 @@ def build_cli_pages(
     pages: list[PageDict] = []
     for group in sorted(by_group):
         group_commands = sorted(by_group[group], key=lambda c: c.path)
-        lines = [f"# logion {group}", ""]
-        lines.append(
-            f"{len(group_commands)} command"
-            f"{'s' if len(group_commands) != 1 else ''} in this group."
-        )
-        lines.append("")
-        for command in group_commands:
-            lines.append(
-                f"- [`{command.invocation}`](#{command.anchor})"
-                + (f" — {command.help}" if command.help else "")
-            )
-        lines.append("")
-        for command in group_commands:
-            lines.append(f"## {command.invocation}")
-            lines.append("")
-            if command.help:
-                lines.append(command.help)
-                lines.append("")
-            lines.append(f"```bash\n{command.usage}\n```")
-            lines.append("")
-            if command.options:
-                lines.append("| Option | Value | Default | Description |")
-                lines.append("| --- | --- | --- | --- |")
-                for flags, value, default, help_text in command.options:
-                    lines.append(
-                        f"| `{flags}` | {value} | {default or '—'} "
-                        f"| {_md_escape(help_text)} |"
-                    )
-                lines.append("")
-            if command.operations:
-                lines.append("**Calls**")
-                lines.append("")
-                for op_id in command.operations:
-                    target = slug_for_operation.get(op_id)
-                    if target:
-                        lines.append(f"- [`{op_id}`](/docs/{target})")
-                    else:
-                        lines.append(f"- `{op_id}`")
-                lines.append("")
-        pages.append(
-            {
-                "slug": f"cli/{group}",
-                "title": f"logion {group}",
-                "summary": (
-                    f"{len(group_commands)} CLI command"
-                    f"{'s' if len(group_commands) != 1 else ''}."
-                ),
-                "kind": "cli",
-                "body": "\n".join(lines).rstrip() + "\n",
-            }
-        )
+        plural = "s" if len(group_commands) != 1 else ""
+        pages.append({
+            "slug": f"cli/{group}",
+            "title": f"logion {group}",
+            "summary": f"{len(group_commands)} CLI command{plural}.",
+            "kind": "cli",
+            "body": _cli_page_body(group, group_commands, slug_for_operation),
+        })
     return pages
 
 
@@ -769,19 +804,15 @@ def build_guide_pages() -> list[PageDict]:
         summary_match = _SUMMARY_RE.search(raw)
         body = _FRONTMATTER_RE.sub("", raw)
         title_match = _H1_RE.search(body)
-        pages.append(
-            {
-                "slug": f"guides/{path.stem}",
-                "title": (
-                    title_match.group(1) if title_match else path.stem
-                ),
-                "summary": (
-                    summary_match.group(1).strip() if summary_match else ""
-                ),
-                "kind": "guide",
-                "body": body.strip() + "\n",
-            }
-        )
+        pages.append({
+            "slug": f"guides/{path.stem}",
+            "title": (title_match.group(1) if title_match else path.stem),
+            "summary": (
+                summary_match.group(1).strip() if summary_match else ""
+            ),
+            "kind": "guide",
+            "body": body.strip() + "\n",
+        })
     return pages
 
 
@@ -1051,12 +1082,10 @@ def build_artifact() -> Artifact:
             if op_id is None:
                 continue
             command.operations.append(op_id)
-            cli_for_operation.setdefault(op_id, []).append(
-                (
-                    command.invocation,
-                    f"cli/{command.group}#{command.anchor}",
-                )
-            )
+            cli_for_operation.setdefault(op_id, []).append((
+                command.invocation,
+                f"cli/{command.group}#{command.anchor}",
+            ))
     for entries in cli_for_operation.values():
         entries.sort()
 
