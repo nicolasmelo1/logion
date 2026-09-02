@@ -27,6 +27,7 @@ members = [
     "logion-bot",
     "logion-cli",
     "logion-client",
+    "logion-eval-contract",
     "logion-harness-plugins",
     "logion-indexer",
     "logion-landing",
@@ -1795,6 +1796,11 @@ dev = [
 ]
 
 [[package]]
+name = "logion-eval-contract"
+version = "0.1.0.dev1"
+source = { editable = "packages/eval-contract" }
+
+[[package]]
 name = "logion-harness-plugins"
 version = "0.1.0"
 source = { editable = "packages/harness-plugins" }
@@ -1871,6 +1877,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "httpx" },
     { name = "logion-client" },
+    { name = "logion-eval-contract" },
 ]
 
 [package.metadata]
@@ -1878,6 +1885,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=44.0,<52.0" },
     { name = "httpx", specifier = ">=0.27,<1.0.0" },
     { name = "logion-client", editable = "packages/client" },
+    { name = "logion-eval-contract", editable = "packages/eval-contract" },
 ]
 
 [[package]]

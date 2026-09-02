@@ -48,11 +48,11 @@ type JsonValue = (
 #: built up key by key, so ``dict`` is what callers want. Only the
 #: values nested inside it are covariant.
 #:
-#: PEP 695 aliases, not strings assigned to ``TypeAlias``. A string alias is
-#: not evaluable, so ``str | JsonObject`` raises ``TypeError``, and a nested
-#: forward reference makes ``get_type_hints`` fail in any module importing
-#: ``JsonObject`` without ``JsonValue``. The CLI's startup guardrail
-#: introspects annotations at runtime and needs both to work.
+#: PEP 695 aliases, not strings assigned to ``TypeAlias``. A string alias
+#: is not evaluable, so ``str | JsonObject`` raises ``TypeError``, and a
+#: nested forward reference makes ``get_type_hints`` fail in any module
+#: importing ``JsonObject`` without ``JsonValue``. The CLI's startup
+#: guardrail introspects annotations at runtime and needs both to work.
 type JsonObject = dict[str, JsonValue]
 
 #: A JSON array — the common case for a decoded list body.

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:logion:schemas:eval-contract.v1",
+  "title": "AKTP eval contract v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "subject",
+    "archetype",
+    "inputs",
+    "fixtures",
+    "runtime_requirements",
+    "steps",
+    "metrics",
+    "assertions",
+    "budgets",
+    "outputs",
+    "redaction",
+    "determinism_class",
+    "evaluator_requirement"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest_constraint"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "digest_constraint": { "const": "exact" }
+      }
+    },
+    "archetype": { "type": "string", "minLength": 1 },
+    "inputs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "digest"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "runtime_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "value": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "action"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "action": { "type": "string", "minLength": 1 },
+          "params": { "type": "object" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "direction"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "enum": [
+              "count",
+              "ratio",
+              "duration_ms",
+              "tokens",
+              "cost_usd"
+            ]
+          },
+          "direction": {
+            "enum": ["higher_is_better", "lower_is_better"]
+          },
+          "unit": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "operator", "metric", "expected"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "operator": {
+            "enum": [
+              "eq",
+              "ne",
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "contains",
+              "matches"
+            ]
+          },
+          "metric": { "type": "string", "minLength": 1 },
+          "expected": {
+            "type": ["string", "number", "boolean", "null"]
+          }
+        }
+      }
+    },
+    "budgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "max_value"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "max_value": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "path"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "not": { "anyOf": [
+              { "pattern": "\\.\\." },
+              { "pattern": "~" },
+              { "pattern": "\\$" }
+            ] }
+          }
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["drop", "placeholder"] },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "determinism_class": {
+      "enum": ["deterministic", "seeded", "nondeterministic"]
+    },
+    "evaluator_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["none", "builtin", "pinned"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "if": { "properties": { "kind": { "const": "pinned" } } },
+      "then": { "required": ["digest"] }
+    },
+    "extensions": { "type": "object" }
+  }
+}

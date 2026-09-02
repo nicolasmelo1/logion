@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "subject": {
+    "type": "agent_skill",
+    "digest_constraint": "exact"
+  },
+  "archetype": "exact_match",
+  "inputs": ["normalize_input.json"],
+  "fixtures": [
+    {
+      "name": "normalize_input.json",
+      "digest": "3b5d5f5c1c0e4f0f1e5b7b3e6a9d8c7b2a1f0e9d8c7b6a5f4e3d2c1b0a998877"
+    }
+  ],
+  "runtime_requirements": [
+    {"kind": "sandbox_profile", "value": "pinned-image"}
+  ],
+  "steps": [
+    {
+      "id": "run_subject",
+      "action": "execute_subject",
+      "params": {
+        "entrypoint": "normalize",
+        "input": "normalize_input.json"
+      }
+    }
+  ],
+  "metrics": [
+    {"id": "cases_passed", "kind": "count", "direction": "higher_is_better"},
+    {"id": "duration_ms", "kind": "duration_ms", "direction": "lower_is_better"}
+  ],
+  "assertions": [
+    {
+      "id": "output_matches_golden",
+      "operator": "eq",
+      "metric": "cases_passed",
+      "expected": 1
+    }
+  ],
+  "budgets": [
+    {"kind": "wall_seconds", "max_value": 60},
+    {"kind": "output_bytes", "max_value": 1048576}
+  ],
+  "outputs": [
+    {"name": "result", "path": "outputs/result.json"}
+  ],
+  "redaction": {
+    "mode": "drop",
+    "fields": ["token", "secret"]
+  },
+  "determinism_class": "deterministic",
+  "evaluator_requirement": {"kind": "none"}
+}
