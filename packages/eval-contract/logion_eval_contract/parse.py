@@ -59,6 +59,46 @@ def _require_mapping(value: JsonValue, where: str) -> JsonObject:
     return value
 
 
+def _require_json_value(value: JsonValue, where: str) -> None:
+    """Reject YAML-only shapes that cannot survive the JSON digest.
+
+    ``yaml.safe_load`` produces values outside the JSON grammar —
+    ``date``/``datetime`` scalars, non-string mapping keys, ``inf``/
+    ``nan`` floats. The load docstring promises every parsed document
+    round-trips through ``json.dumps``; anything else would crash the
+    canonicalizer later (a 500) instead of failing validation (a 422),
+    so the parser rejects it here, at the boundary.
+    """
+    if value is None or isinstance(value, (bool, str)):
+        return
+    if isinstance(value, int):
+        if isinstance(value, bool) or value in (float("inf"), float("-inf")):
+            raise EvalContractInvalid(
+                f"{where} must be a JSON-representable value"
+            )
+        return
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            raise EvalContractInvalid(f"{where} must be a finite JSON number")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _require_json_value(item, f"{where}[{index}]")
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise EvalContractInvalid(
+                    f"{where} has a non-string key: {key!r}"
+                )
+            _require_json_value(item, f"{where}.{key}")
+        return
+    raise EvalContractInvalid(
+        f"{where} must be a JSON-representable value, got"
+        f" {type(value).__name__}"
+    )
+
+
 def _require_list(value: JsonValue, where: str) -> list[JsonValue]:
     if not isinstance(value, list):
         raise EvalContractInvalid(f"{where} must be an array")
@@ -363,6 +403,7 @@ def parse_contract_document(
     payload: JsonObject, *, source_format: str = "json"
 ) -> EvalContract:
     """Validate one contract document into its typed model."""
+    _require_json_value(payload, "eval contract")
     _reject_unknown_keys(
         payload, REQUIRED_CONTRACT_FIELDS, f"eval contract ({source_format})"
     )
@@ -514,9 +555,11 @@ def contract_digest(contract: EvalContract) -> str:
 def validate_subject(contract: EvalContract, subject_digest: str) -> None:
     """Fail when the presented subject does not satisfy the contract.
 
-    The ``exact`` digest constraint means the subject's content digest
-    must be a lowercase sha256 hex string; subject identity is bound at
-    run time by comparing it to the contract's declared inputs.
+    The ``exact`` constraint binds the presented subject to the
+    contract's declared inputs: the subject's content digest must be a
+    lowercase sha256 hex string AND must be the declared digest of a
+    fixture the contract names. A contract that declares no fixtures
+    binds nothing, so only the digest form is checkable there.
     """
     if not _SHA256_RE.match(subject_digest):
         raise EvalSubjectMismatch(
@@ -526,4 +569,9 @@ def validate_subject(contract: EvalContract, subject_digest: str) -> None:
         raise EvalSubjectMismatch(
             "unsupported subject digest constraint:"
             f" {contract.subject.digest_constraint}"
+        )
+    declared = {fixture.digest for fixture in contract.fixtures}
+    if declared and subject_digest not in declared:
+        raise EvalSubjectMismatch(
+            "subject digest does not match any fixture the contract declares"
         )

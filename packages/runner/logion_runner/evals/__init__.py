@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 
 from logion_eval_contract import (
     EvalContract,
+    EvalFixtureDigestMismatch,
     EvalRequirementUnsupported,
     EvalResult,
     JsonObject,
@@ -54,7 +56,10 @@ def subject_digest_for(subject_bytes: bytes) -> str:
 
 
 def resolve_eval_job(
-    contract: EvalContract, subject_bytes: bytes
+    contract: EvalContract,
+    subject_bytes: bytes,
+    *,
+    contract_dir: str | Path | None = None,
 ) -> ResolvedEvalJob:
     """Resolve every input before leasing or executing.
 
@@ -75,9 +80,25 @@ def resolve_eval_job(
     from logion_eval_contract import validate_subject
 
     validate_subject(contract, subject_digest)
+    fixture_dir = Path(contract_dir) if contract_dir else None
     input_digests: dict[str, str] = {}
     for fixture in contract.fixtures:
         input_digests[f"fixture:{fixture.name}"] = fixture.digest
+        if fixture_dir is not None:
+            fixture_path = fixture_dir / fixture.name
+            if not fixture_path.is_file():
+                raise EvalFixtureDigestMismatch(
+                    f"fixture {fixture.name!r} is not present at {fixture_dir}"
+                )
+            fixture_digest = hashlib.sha256(
+                fixture_path.read_bytes()
+            ).hexdigest()
+            if fixture_digest != fixture.digest:
+                raise EvalFixtureDigestMismatch(
+                    f"fixture {fixture.name!r} bytes hash to"
+                    f" {fixture_digest}, not the declared"
+                    f" {fixture.digest}"
+                )
     for step in contract.steps:
         # JCS-canonical JSON keeps the digest reproducible across
         # implementations, exactly like every other digest that flows
@@ -164,7 +185,7 @@ def _image_for(contract: EvalContract) -> str:
 
 
 def _profile_digest(contract: EvalContract) -> str:
-    from logion_runner._jcs import canonicalize
+    from logion_eval_contract import canonicalize
 
     profile = {
         "runtime": "container",

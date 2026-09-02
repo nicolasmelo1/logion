@@ -223,6 +223,9 @@ def _require_list_field(payload: dict, key: str) -> list:
 
 def parse_result_document(payload: dict) -> EvalResult:
     """Validate one result document into its typed model."""
+    from logion_eval_contract.parse import _require_json_value
+
+    _require_json_value(payload, "eval result")
     allowed = {
         *REQUIRED_RESULT_FIELDS,
         "extensions",

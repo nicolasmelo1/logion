@@ -9,7 +9,7 @@
   "fixtures": [
     {
       "name": "normalize_input.json",
-      "digest": "3b5d5f5c1c0e4f0f1e5b7b3e6a9d8c7b2a1f0e9d8c7b6a5f4e3d2c1b0a998877"
+      "digest": "164f771d15d6119bae5b9936020b7fb6162f5fdca8868ce4fbce017175bee72a"
     }
   ],
   "runtime_requirements": [

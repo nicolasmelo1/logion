@@ -72,17 +72,42 @@ def _normalized_result(subject_digest: str, contract_digest: str) -> dict:
 
 
 def test_two_executions_normalize_identically() -> None:
+    """Two REAL executions of the deterministic golden contract.
+
+    The subject runs through the executor's sandbox backend twice; the
+    gate (api.eval_result_digest_stable) is about executions, not
+    parses of one literal.
+    """
+    from logion_runner.evals.executor import execute_eval_contract
+
     contract = parse_contract_file(FIXTURES / "golden_contract.yaml")
     subject = (FIXTURES / "normalize_input.json").read_bytes()
-    job = resolve_eval_job(contract, subject)
-    first = parse_result_document(
-        _normalized_result(job.subject_digest, job.contract_digest)
+
+    first = execute_eval_contract(
+        contract,
+        subject,
+        harness_id="logion-node",
+        harness_version="0.1.0",
+        model_id="reference-subject",
+        model_version="1.0.0",
+        contract_dir=str(FIXTURES),
     )
-    second = parse_result_document(
-        _normalized_result(job.subject_digest, job.contract_digest)
+    second = execute_eval_contract(
+        contract,
+        subject,
+        harness_id="logion-node",
+        harness_version="0.1.0",
+        model_id="reference-subject",
+        model_version="1.0.0",
+        contract_dir=str(FIXTURES),
     )
-    assert result_digest(first) == result_digest(second)
-    assert first.to_json() == second.to_json()
+
+    assert first.result_document["outcome"] == "passed"
+    assert second.result_document["outcome"] == "passed"
+    assert result_digest(
+        parse_result_document(first.result_document)
+    ) == result_digest(parse_result_document(second.result_document))
+    assert first.result_document == second.result_document
 
 
 def test_result_digest_is_stable_across_key_order() -> None:

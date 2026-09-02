@@ -14,6 +14,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from logion_eval_contract import (
@@ -146,6 +147,7 @@ def execute_eval_contract(
     harness_version: str,
     model_id: str,
     model_version: str,
+    contract_dir: str | Path | None = None,
 ) -> GradedOutcome:
     """Run every step, grade the outputs, normalize the result.
 
@@ -161,7 +163,7 @@ def execute_eval_contract(
             f"no executor for contract step action {unsupported!r}"
         )
 
-    job = resolve_eval_job(contract, subject_bytes)
+    job = resolve_eval_job(contract, subject_bytes, contract_dir=contract_dir)
 
     subject_document = json.loads(subject_bytes.decode("utf-8"))
     payload: JsonObject = {
