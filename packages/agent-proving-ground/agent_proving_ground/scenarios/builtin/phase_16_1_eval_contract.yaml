@@ -1,0 +1,83 @@
+schema_version: "1"
+name: phase_16_1_eval_contract
+description: |
+  Validate the golden eval contract with the published package, execute it
+  twice on the reference runner, exercise the five stable rejection classes
+  against the node, convert one deterministic companion scenario, and retain
+  the digest chain, conversion identity sets, and no-500 evidence the 16.1
+  gate recomputes.
+api_adapter: local-devrig
+execution_requirements:
+  api_adapters: [local-devrig]
+  agent_drivers: [codex, claude-code]
+driver_config:
+  codex: {model: gpt-5.4-mini}
+  claude-code: {model: claude-haiku-4-5}
+agents:
+  - id: node_operator
+    role: Host operator acquiring eval evidence
+    driver: codex
+    devrig_role: admin
+    timeout_seconds: 1200
+  - id: auditor
+    role: Independent evidence auditor
+    driver: codex
+    devrig_role: buyer
+    timeout_seconds: 1200
+phases:
+  - id: execute_eval_evidence
+    actor: node_operator
+    goal: |
+      You are the operator of this Logion node. Run the eval evidence
+      acquisition exactly once, from the repository root, with:
+
+        make eval-evidence EVIDENCE_DIR=${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval
+
+      The command validates the golden eval contract with the published
+      package, executes it twice on the reference runner, exercises the five
+      rejection classes against the node, converts one deterministic
+      companion scenario, and retains the per-assertion evidence under the
+      given directory.
+      If the command exits 0, reply only with `RESULT: completed`.
+      If it fails, reply with `RESULT: blocked` and a one-line summary of
+      the observable error. Do not start, stop, or reset the node.
+  - id: collect_eval_evidence
+    actor: node_operator
+    goal: ""
+    local_hook: packages/agent-proving-ground/scripts/capture_eval_evidence.py
+    local_hook_args:
+      - collect
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval.json"
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval"
+    local_hook_capture_json:
+      EVAL_EVIDENCE_MANIFEST: evidence_manifest
+    assertions:
+      - type: files.eval_contract_valid
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: api.eval_runs_completed
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: api.eval_result_digest_stable
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: files.eval_reproduced_clean_workspace
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: api.invalid_eval_rejected
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: files.converted_scenario_assertions_preserved
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: api.canonical_digest_agrees
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+      - type: api.eval_contract_indexed
+        params:
+          manifest: "${EVAL_EVIDENCE_MANIFEST}"
+  - id: verify_api_logs
+    actor: auditor
+    goal: "Verify the eval evidence run completed without server errors."
+    assertions:
+      - type: logs.no_500s

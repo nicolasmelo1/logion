@@ -387,3 +387,9 @@ runner-evidence:
 	LOGION_API_BASE_URL=$(LOGION_API_BASE_URL) \
 	LOGION_PUBLIC_REPO_PATH=$(ROOT) \
 	uv run python packages/agent-proving-ground/scripts/run_runner_evidence.py $(EVIDENCE_DIR)
+
+eval-evidence:
+	LOGION_PROVING_GROUND_ROLE_KEYS_FILE=$(LOGION_PROVING_GROUND_ROLE_KEYS_FILE) \
+	LOGION_API_BASE_URL=$(LOGION_API_BASE_URL) \
+	LOGION_PUBLIC_REPO_PATH=$(ROOT) \
+	uv run python packages/agent-proving-ground/scripts/run_eval_evidence.py $(EVIDENCE_DIR)

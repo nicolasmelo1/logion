@@ -88,8 +88,8 @@ from agent_proving_ground.assertions.evals import (
     ConvertedScenarioAssertionsPreservedAssertion,
     EvalContractIndexedAssertion,
     EvalContractValidAssertion,
-    EvalResultDigestStableAssertion,
     EvalReproducedCleanWorkspaceAssertion,
+    EvalResultDigestStableAssertion,
     EvalRunsCompletedAssertion,
     InvalidEvalRejectedAssertion,
 )
