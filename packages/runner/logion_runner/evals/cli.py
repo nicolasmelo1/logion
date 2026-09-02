@@ -38,7 +38,7 @@ def cmd_eval_validate(args: argparse.Namespace) -> int:
     except EvalContractError as exc:
         _print({
             "ok": False,
-            "failure": "eval_contract_invalid",
+            "failure": exc.code,
             "detail": str(exc),
         })
         return _EXIT_INVALID
@@ -73,7 +73,7 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     except EvalContractError as exc:
         _print({
             "ok": False,
-            "failure": "eval_contract_invalid",
+            "failure": exc.code,
             "detail": str(exc),
         })
         return _EXIT_INVALID
@@ -106,7 +106,7 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     except EvalContractError as exc:
         _print({
             "ok": False,
-            "failure": "eval_fixture_digest_mismatch",
+            "failure": exc.code,
             "detail": str(exc),
         })
         return _EXIT_INVALID

@@ -23,6 +23,20 @@ def test_parent_traversal_in_output_path_rejected() -> None:
         parse_contract_document(payload)
 
 
+def test_parent_traversal_in_fixture_name_rejected() -> None:
+    payload = _payload()
+    payload["fixtures"][0]["name"] = "../secrets.bin"
+    with pytest.raises(ValueError, match="traversal"):
+        parse_contract_document(payload)
+
+
+def test_parent_traversal_in_input_name_rejected() -> None:
+    payload = _payload()
+    payload["inputs"] = ["~/identity.json"]
+    with pytest.raises(ValueError, match="traversal"):
+        parse_contract_document(payload)
+
+
 def test_home_relative_output_path_rejected() -> None:
     payload = _payload()
     payload["outputs"][0]["path"] = "~/result.json"

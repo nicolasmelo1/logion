@@ -48,7 +48,9 @@ from logion_eval_contract.models import (
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
-_PATH_FORBIDDEN = ("..", "~", "$")
+#: Path segment markers a contract output may never contain. ``..``
+#: escapes its directory; an absolute path escapes the output root.
+_PATH_FORBIDDEN_SEGMENT = ".."
 
 
 def _require_mapping(value: JsonValue, where: str) -> JsonObject:
@@ -80,6 +82,17 @@ def _reject_unknown_keys(
         )
 
 
+def _reject_section_keys(
+    payload: JsonObject, allowed: set[str], where: str
+) -> None:
+    """Nested objects are closed exactly like the published schema."""
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        raise EvalContractInvalid(
+            f"{where} has unknown keys: {', '.join(unknown)}"
+        )
+
+
 def _require_digest(value: JsonValue, where: str) -> str:
     text = _require_text(value, where)
     if not _SHA256_RE.match(text):
@@ -90,12 +103,26 @@ def _require_digest(value: JsonValue, where: str) -> str:
 
 
 def _check_safe_path(value: str, where: str) -> None:
-    if any(marker in value for marker in _PATH_FORBIDDEN):
+    """Reject paths that escape the run's output directory.
+
+    ``Path.is_absolute()`` covers ``/etc/passwd``; a ``..`` segment
+    covers traversal that stays nominally relative; leading ``~`` and
+    ``$`` cover the home-relative and expansion forms a shell would
+    send outside the workspace. A ``~`` or ``$`` *inside* one segment
+    name is an ordinary character, not traversal.
+    """
+    candidate = Path(value)
+    if (
+        candidate.is_absolute()
+        or _PATH_FORBIDDEN_SEGMENT in candidate.parts
+        or value.startswith(("~", "$"))
+    ):
         raise EvalContractInvalid(f"{where} must not contain path traversal")
 
 
 def _parse_subject(payload: JsonObject) -> Subject:
     subject = _require_mapping(payload.get("subject"), "subject")
+    _reject_section_keys(subject, {"type", "digest_constraint"}, "subject")
     subject_type = _require_text(subject.get("type"), "subject.type")
     constraint = _require_text(
         subject.get("digest_constraint"), "subject.digest_constraint"
@@ -112,7 +139,9 @@ def _parse_fixtures(payload: JsonObject) -> tuple[Fixture, ...]:
     for index, item in enumerate(fixtures):
         where = f"fixtures[{index}]"
         mapping = _require_mapping(item, where)
+        _reject_section_keys(mapping, {"name", "digest"}, where)
         name = _require_text(mapping.get("name"), f"{where}.name")
+        _check_safe_path(name, f"{where}.name")
         if name in seen:
             raise EvalContractInvalid(f"fixtures has duplicate name {name!r}")
         seen.add(name)
@@ -131,6 +160,7 @@ def _parse_runtime_requirements(
     for index, item in enumerate(items):
         where = f"runtime_requirements[{index}]"
         mapping = _require_mapping(item, where)
+        _reject_section_keys(mapping, {"kind", "value"}, where)
         parsed.append(
             RuntimeRequirement(
                 kind=_require_text(mapping.get("kind"), f"{where}.kind"),
@@ -151,6 +181,7 @@ def _parse_steps(payload: JsonObject) -> tuple[Step, ...]:
         if step_id in seen:
             raise EvalContractInvalid(f"steps has duplicate id {step_id!r}")
         seen.add(step_id)
+        _reject_section_keys(mapping, {"id", "action", "params"}, where)
         params_value = mapping.get("params", {})
         params = _require_mapping(params_value, f"{where}.params")
         parsed.append(
@@ -263,6 +294,7 @@ def _parse_outputs(payload: JsonObject) -> tuple[OutputSpec, ...]:
     for index, item in enumerate(outputs):
         where = f"outputs[{index}]"
         mapping = _require_mapping(item, where)
+        _reject_section_keys(mapping, {"name", "path"}, where)
         name = _require_text(mapping.get("name"), f"{where}.name")
         if name in seen:
             raise EvalContractInvalid(f"outputs has duplicate name {name!r}")
@@ -275,6 +307,7 @@ def _parse_outputs(payload: JsonObject) -> tuple[OutputSpec, ...]:
 
 def _parse_redaction(payload: JsonObject) -> Redaction:
     redaction = _require_mapping(payload.get("redaction"), "redaction")
+    _reject_section_keys(redaction, {"mode", "fields"}, "redaction")
     mode = _require_text(redaction.get("mode"), "redaction.mode")
     if mode not in ("drop", "placeholder"):
         raise EvalContractInvalid(
@@ -292,6 +325,9 @@ def _parse_evaluator_requirement(
 ) -> EvaluatorRequirement:
     evaluator = _require_mapping(
         payload.get("evaluator_requirement"), "evaluator_requirement"
+    )
+    _reject_section_keys(
+        evaluator, {"kind", "digest"}, "evaluator_requirement"
     )
     kind = _require_text(evaluator.get("kind"), "evaluator_requirement.kind")
     if kind not in ("none", "builtin", "pinned"):
@@ -333,7 +369,9 @@ def parse_contract_document(
     inputs = _require_list(payload.get("inputs"), "inputs")
     input_names: list[str] = []
     for index, item in enumerate(inputs):
-        input_names.append(_require_text(item, f"inputs[{index}]"))
+        input_name = _require_text(item, f"inputs[{index}]")
+        _check_safe_path(input_name, f"inputs[{index}]")
+        input_names.append(input_name)
     determinism_class = _require_text(
         payload.get("determinism_class"), "determinism_class"
     )

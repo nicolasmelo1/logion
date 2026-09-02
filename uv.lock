@@ -1799,6 +1799,12 @@ dev = [
 name = "logion-eval-contract"
 version = "0.1.0.dev1"
 source = { editable = "packages/eval-contract" }
+dependencies = [
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyyaml", specifier = ">=6.0,<7.0" }]
 
 [[package]]
 name = "logion-harness-plugins"

@@ -14,11 +14,11 @@ from pathlib import Path
 
 from logion_eval_contract import (
     EvalContract,
+    JsonObject,
     contract_digest,
     contract_to_json,
     parse_contract_document,
 )
-from logion_eval_contract._json import JsonObject
 
 CONVERSION_TOOL_VERSION = "logion.eval.convert.v1"
 
@@ -167,7 +167,7 @@ def conversion_report(scenario: dict, contract: EvalContract) -> JsonObject:
         "converted_assertion_ids": converted_ids,
         "dropped_assertion_count": len(set(source_ids) - set(converted_ids)),
         "added_assertion_count": len(set(converted_ids) - set(source_ids)),
-        "conversion_tool_version": "0.1.0",
+        "conversion_tool_version": CONVERSION_TOOL_VERSION,
     }
 
 

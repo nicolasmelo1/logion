@@ -13,6 +13,9 @@ from logion_eval_contract._json import opt_bool, opt_str
 from logion_eval_contract.canonical import short_sha256
 from logion_eval_contract.errors import EvalContractInvalid
 from logion_eval_contract.models import (
+    ASSERTION_OPERATORS,
+    METRIC_DIRECTIONS,
+    METRIC_KINDS,
     OUTCOME_VALUES,
     REQUIRED_RESULT_FIELDS,
     RESULT_MEDIA_TYPE,
@@ -90,6 +93,19 @@ def environment_digest_from(
 
 
 def _parse_environment(environment: dict) -> ResultEnvironment:
+    unknown = sorted(
+        set(environment)
+        - {
+            "harness_id",
+            "harness_version",
+            "model_id",
+            "model_version",
+        }
+    )
+    if unknown:
+        raise EvalContractInvalid(
+            f"environment has unknown keys: {', '.join(unknown)}"
+        )
     return ResultEnvironment(
         harness_id=_require_text(
             environment.get("harness_id"), "environment.harness_id"
@@ -130,15 +146,23 @@ def _parse_assertion_vector(vector_value: list) -> tuple:
         where = f"assertion_vector[{index}]"
         if not isinstance(item, dict):
             raise EvalContractInvalid(f"{where} must be an object")
+        unknown = sorted(set(item) - {"id", "operator", "passed", "actual"})
+        if unknown:
+            raise EvalContractInvalid(
+                f"{where} has unknown keys: {', '.join(unknown)}"
+            )
         passed = opt_bool(item, "passed")
         if passed is None:
             raise EvalContractInvalid(f"{where}.passed must be a boolean")
+        operator = _require_text(item.get("operator"), f"{where}.operator")
+        if operator not in ASSERTION_OPERATORS:
+            raise EvalContractInvalid(
+                f"{where}.operator must be one of {ASSERTION_OPERATORS}"
+            )
         vector.append(
             AssertionOutcome(
                 id=_require_text(item.get("id"), f"{where}.id"),
-                operator=_require_text(
-                    item.get("operator"), f"{where}.operator"
-                ),
+                operator=operator,
                 passed=passed,
                 actual=_scalar(item.get("actual"), f"{where}.actual"),
             )
@@ -152,18 +176,31 @@ def _parse_metric_values(metrics_value: list) -> tuple:
         where = f"metrics[{index}]"
         if not isinstance(item, dict):
             raise EvalContractInvalid(f"{where} must be an object")
+        unknown = sorted(set(item) - {"id", "kind", "direction", "value"})
+        if unknown:
+            raise EvalContractInvalid(
+                f"{where} has unknown keys: {', '.join(unknown)}"
+            )
         raw_value = item.get("value")
         if isinstance(raw_value, bool) or not isinstance(
             raw_value, (int, float)
         ):
             raise EvalContractInvalid(f"{where}.value must be a number")
+        kind = _require_text(item.get("kind"), f"{where}.kind")
+        if kind not in METRIC_KINDS:
+            raise EvalContractInvalid(
+                f"{where}.kind must be one of {METRIC_KINDS}"
+            )
+        direction = _require_text(item.get("direction"), f"{where}.direction")
+        if direction not in METRIC_DIRECTIONS:
+            raise EvalContractInvalid(
+                f"{where}.direction must be one of {METRIC_DIRECTIONS}"
+            )
         metrics.append(
             MetricValue(
                 id=_require_text(item.get("id"), f"{where}.id"),
-                kind=_require_text(item.get("kind"), f"{where}.kind"),
-                direction=_require_text(
-                    item.get("direction"), f"{where}.direction"
-                ),
+                kind=kind,
+                direction=direction,
                 value=raw_value,
             )
         )

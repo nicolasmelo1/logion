@@ -40,6 +40,40 @@ def test_unknown_result_field_rejected(minimal_result_payload: dict) -> None:
         parse_result_document(payload)
 
 
+def test_unknown_subject_key_rejected() -> None:
+    payload = _contract_payload()
+    payload["subject"]["extra"] = True
+    with pytest.raises(ValueError, match="subject has unknown keys"):
+        parse_contract_document(payload)
+
+
+def test_unknown_fixture_key_rejected() -> None:
+    payload = _contract_payload()
+    payload["fixtures"][0]["size"] = 12
+    with pytest.raises(ValueError, match="fixtures\\[0\\] has unknown keys"):
+        parse_contract_document(payload)
+
+
+def test_unknown_environment_key_rejected(
+    minimal_result_payload: dict,
+) -> None:
+    payload = minimal_result_payload
+    payload["environment"]["region"] = "us-east-1"
+    with pytest.raises(ValueError, match="environment has unknown keys"):
+        parse_result_document(payload)
+
+
+def test_unknown_assertion_outcome_key_rejected(
+    minimal_result_payload: dict,
+) -> None:
+    payload = minimal_result_payload
+    payload["assertion_vector"][0]["weight"] = 2
+    with pytest.raises(
+        ValueError, match="assertion_vector\\[0\\] has unknown keys"
+    ):
+        parse_result_document(payload)
+
+
 def test_result_extensions_accepted(minimal_result_payload: dict) -> None:
     payload = minimal_result_payload
     payload["extensions"] = {"note": "ok"}

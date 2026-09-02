@@ -16,10 +16,10 @@ from logion_eval_contract import (
     EvalContract,
     EvalRequirementUnsupported,
     EvalResult,
+    JsonObject,
     ResultEnvironment,
     environment_digest_from,
 )
-from logion_eval_contract._json import JsonObject
 
 #: Job type the coordinator leases for eval work. Reuses the 15.15
 #: envelope; the coordinator carries no separate eval job type.
@@ -59,9 +59,11 @@ def resolve_eval_job(
     """Resolve every input before leasing or executing.
 
     A run that leases first and resolves later cannot satisfy
-    ``rejected_before_execution: true`` — so unsupported requirements,
-    unknown input names, and subject mismatch all raise here, before
-    any lease exists.
+    ``rejected_before_execution: true`` — so unsupported requirements
+    and subject mismatch raise here, before any lease exists. The
+    parser already rejected unknown input names at validation time
+    (``inputs`` is advisory naming; the resolved inputs are the
+    declared fixtures plus each step's params).
     """
     for req in contract.runtime_requirements:
         if req.kind not in SUPPORTED_REQUIREMENT_KINDS:
@@ -77,8 +79,13 @@ def resolve_eval_job(
     for fixture in contract.fixtures:
         input_digests[f"fixture:{fixture.name}"] = fixture.digest
     for step in contract.steps:
+        # JCS-canonical JSON keeps the digest reproducible across
+        # implementations, exactly like every other digest that flows
+        # into the lease payload and the receipt.
+        from logion_eval_contract import canonicalize
+
         input_digests[f"step:{step.id}"] = hashlib.sha256(
-            repr(sorted(step.params.items())).encode()
+            canonicalize(step.params)
         ).hexdigest()
     input_digests["subject"] = subject_digest
     contract_digest = _contract_digest(contract)
