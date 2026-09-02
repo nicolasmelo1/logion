@@ -10700,6 +10700,55 @@
         "title": "SubmissionGithubPrBlock",
         "type": "object"
       },
+      "SubmitEvalResultRequest": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "SubmitEvalResultRequest",
+        "type": "object"
+      },
+      "SubmitEvalResultResponse": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "result_digest": {
+            "title": "Result Digest",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "result_digest",
+          "created"
+        ],
+        "title": "SubmitEvalResultResponse",
+        "type": "object"
+      },
       "SubmitExecutionReceiptRequest": {
         "properties": {
           "client_receipt": {
@@ -11682,6 +11731,57 @@
           "closed_at"
         ],
         "title": "UpdateIndexingRunProgressResponse",
+        "type": "object"
+      },
+      "UploadEvalContractRequest": {
+        "properties": {
+          "document": {
+            "additionalProperties": true,
+            "description": "The eval contract document",
+            "title": "Document",
+            "type": "object"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional friendly name for the contract",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "UploadEvalContractRequest",
+        "type": "object"
+      },
+      "UploadEvalContractResponse": {
+        "properties": {
+          "contract_digest": {
+            "title": "Contract Digest",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_digest",
+          "media_type",
+          "created"
+        ],
+        "title": "UploadEvalContractResponse",
         "type": "object"
       },
       "UploadExecutionArtifactResponse": {
@@ -19188,6 +19288,178 @@
         "summary": "Get credit top-up",
         "tags": [
           "credits"
+        ]
+      }
+    },
+    "/v1/evals/contracts": {
+      "post": {
+        "description": "Validate and store one contract blob.\n\nValidation uses the shared library; the five stable error codes\nall return 422 and reject before any job row exists.",
+        "operationId": "upload_eval_contract",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadEvalContractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadEvalContractResponse"
+                }
+              }
+            },
+            "description": "Contract already existed"
+          },
+          "201": {
+            "description": "Contract stored"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid contract"
+          }
+        },
+        "summary": "Upload an eval contract (immutable by digest)",
+        "tags": [
+          "evals"
+        ]
+      }
+    },
+    "/v1/evals/contracts/{ref}": {
+      "get": {
+        "operationId": "get_eval_contract",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Eval Contract",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Contract found"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown contract"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an eval contract by digest or friendly name",
+        "tags": [
+          "evals"
+        ]
+      }
+    },
+    "/v1/evals/results": {
+      "post": {
+        "description": "Store one normalized eval result.\n\nThe request body may never declare ``contract_standing``,\n``reproduced_by``, ``independence_group``, ``environment_verified``\nor ``issuer_id`` \u2014 the reporting runner is the party with the\nmotive to declare its own result reproduced.",
+        "operationId": "submit_eval_result",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvalResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Idempotent replay of an existing run"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitEvalResultResponse"
+                }
+              }
+            },
+            "description": "Result stored"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a valid runner"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid result"
+          }
+        },
+        "summary": "Submit an eval result (runner-authenticated)",
+        "tags": [
+          "evals"
         ]
       }
     },
