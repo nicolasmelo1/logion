@@ -207,6 +207,9 @@ def _parse_metrics(payload: JsonObject) -> tuple[MetricDefinition, ...]:
                 f"metrics has duplicate id {metric_id!r}"
             )
         seen.add(metric_id)
+        _reject_section_keys(
+            mapping, {"id", "kind", "direction", "unit"}, where
+        )
         kind = _require_text(mapping.get("kind"), f"{where}.kind")
         if kind not in METRIC_KINDS:
             raise EvalContractInvalid(
@@ -243,6 +246,9 @@ def _parse_assertions(
                 f"assertions has duplicate id {assertion_id!r}"
             )
         seen.add(assertion_id)
+        _reject_section_keys(
+            mapping, {"id", "operator", "metric", "expected"}, where
+        )
         operator = _require_text(mapping.get("operator"), f"{where}.operator")
         if operator not in ASSERTION_OPERATORS:
             raise EvalContractInvalid(
@@ -275,6 +281,7 @@ def _parse_budgets(payload: JsonObject) -> tuple[Budget, ...]:
     for index, item in enumerate(budgets):
         where = f"budgets[{index}]"
         mapping = _require_mapping(item, where)
+        _reject_section_keys(mapping, {"kind", "max_value"}, where)
         kind = _require_text(mapping.get("kind"), f"{where}.kind")
         max_value = mapping.get("max_value")
         if isinstance(max_value, bool) or not isinstance(

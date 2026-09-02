@@ -1803,8 +1803,16 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "jsonschema" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "pyyaml", specifier = ">=6.0,<7.0" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "jsonschema", specifier = ">=4.26,<5.0" }]
 
 [[package]]
 name = "logion-harness-plugins"

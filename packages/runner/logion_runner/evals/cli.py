@@ -110,8 +110,38 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
             "detail": str(exc),
         })
         return _EXIT_INVALID
+    # Execute the subject through the sandbox and grade the outputs.
+    from logion_runner.evals.executor import (
+        EvalExecutionError,
+        execute_eval_contract,
+    )
+
+    try:
+        outcome = execute_eval_contract(
+            contract,
+            subject_bytes,
+            harness_id="logion-node",
+            harness_version="0.1.0",
+            model_id="reference-subject",
+            model_version="1.0.0",
+        )
+    except EvalContractError as exc:
+        _print({
+            "ok": False,
+            "failure": exc.code,
+            "detail": str(exc),
+        })
+        return _EXIT_INVALID
+    except EvalExecutionError as exc:
+        _print({
+            "ok": False,
+            "failure": "eval_execution_failed",
+            "detail": str(exc),
+        })
+        return _EXIT_ERROR
     _print({
         "ok": True,
+        "executed": True,
         "resolved": {
             "contract_digest": contract_digest(contract),
             "subject_digest": job.subject_digest,
@@ -122,6 +152,9 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
             ),
             "idempotency_key": job.idempotency_key,
         },
+        "result": outcome.result_document,
+        "assertion_outcomes": outcome.assertion_outcomes,
+        "wall_ms": outcome.wall_ms,
     })
     return 0
 
