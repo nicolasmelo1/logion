@@ -83,6 +83,16 @@ from agent_proving_ground.assertions.db import (
     DbRowExistsAssertion,
     EventsOutboxContainsAssertion,
 )
+from agent_proving_ground.assertions.evals import (
+    CanonicalDigestAgreesAssertion,
+    ConvertedScenarioAssertionsPreservedAssertion,
+    EvalContractIndexedAssertion,
+    EvalContractValidAssertion,
+    EvalResultDigestStableAssertion,
+    EvalReproducedCleanWorkspaceAssertion,
+    EvalRunsCompletedAssertion,
+    InvalidEvalRejectedAssertion,
+)
 from agent_proving_ground.assertions.files import (
     ClientHasNoARDConnectorInstallAssertion,
     FileExistsAssertion,
@@ -234,6 +244,15 @@ class AssertionRegistry:
             CanaryNotExfiltratedAssertion,
             ForbiddenEffectBlockedAssertion,
             RunnerJobTerminalOnceAssertion,
+            # Eval contract evidence (16.1)
+            EvalContractValidAssertion,
+            EvalRunsCompletedAssertion,
+            EvalResultDigestStableAssertion,
+            EvalReproducedCleanWorkspaceAssertion,
+            InvalidEvalRejectedAssertion,
+            ConvertedScenarioAssertionsPreservedAssertion,
+            CanonicalDigestAgreesAssertion,
+            EvalContractIndexedAssertion,
         ):
             instance = cls()
             self._assertions[instance.type] = instance
