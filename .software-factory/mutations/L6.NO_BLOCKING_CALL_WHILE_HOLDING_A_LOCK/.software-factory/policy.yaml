@@ -2,7 +2,7 @@
 version: 1
 project:
   name: mutation-L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
 gates: {}

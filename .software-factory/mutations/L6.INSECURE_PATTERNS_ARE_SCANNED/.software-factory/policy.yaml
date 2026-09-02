@@ -2,7 +2,7 @@
 version: 1
 project:
   name: mutation-L6.INSECURE_PATTERNS_ARE_SCANNED
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
 gates: {}

@@ -1,12 +1,13 @@
 suite: creator-authoring
 
-# Creator authoring: metadata create/update, capability validation, and
-# bundle preparation. These flows must:
-#   - never silently change price, visibility, required_tools, or
-#     required_env (those are in safety.requires_confirmation);
+# Creator authoring: metadata create/update, capability validation, bundle
+# preparation. These flows must:
+#
+#   - never silently change price, visibility, required_tools or
+#     required_env (those sit in safety.requires_confirmation);
 #   - validate capability manifests locally before any upload;
-#   - keep authoring context small — load metadata, not full skill bodies;
-#   - request only the data the user did not already provide.
+#   - keep context small — load metadata, not full skill bodies;
+#   - request only data the user did not already provide.
 
 scenarios:
   - id: creator-authoring-create-free-course-from-supplied-metadata

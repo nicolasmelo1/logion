@@ -20,14 +20,14 @@ summary: >-
   whole marketplace into context.
 
 # tools — closed enum from the manifest schema.
+#
 #   file      — reads SKILL.md, references, scenario YAMLs, provider
 #               configs, downloaded GGUFs, .env defaults.
 #   terminal  — boots ``llama-server``, invokes ``hf`` / ``uv`` /
-#               ``python`` as subprocesses, and shells out to the
-#               public ``logion`` CLI at agent runtime.
-#   web       — outbound HTTP from Python code: ``urllib.request``
-#               health-pings the local llama-server, and the
-#               ``hf download`` subprocess fetches GGUFs over HTTPS.
+#               ``python``, and shells out to the public ``logion`` CLI.
+#
+#   web       — outbound HTTP from Python: ``urllib.request`` health-pings
+#               the local llama-server, and ``hf download`` fetches GGUFs.
 tools:
   - file
   - terminal
@@ -35,26 +35,25 @@ tools:
 
 # Outbound HTTP allow-list.  Plain hostnames only — no scheme, no
 # path, no wildcards.
+#
 #   huggingface.co, cdn-lfs.huggingface.co, cdn-lfs-us-1.hf.co,
 #   xet-bridge.xethub.hf.co, cas-bridge.xethub.hf.co
-#     ``hf download`` pulls GGUFs (Qwen3-4B/8B, Gemma3-4B) from the
-#     Hub.  Newer / regional / Xet-backed routes need all five hosts;
-#     older repos serve from huggingface.co + cdn-lfs.huggingface.co
-#     alone.
-#   127.0.0.1, localhost — local llama-server boots on
-#     127.0.0.1:8080 by default (see
-#     evals/harness/providers/llama_cpp_local.example.yaml).  Both names are
-#     listed so a sandbox that resolves by hostname can still reach
-#     it.
-#   pypi.org, files.pythonhosted.org — ``uv sync`` (and ``pip`` under
-#     the hood) resolve the index at pypi.org and fetch the actual
-#     wheels/sdists from files.pythonhosted.org.  Required at install
-#     time for the dspy/optuna optional extra and the dev group.
+#     ``hf download`` pulls GGUFs (Qwen3-4B/8B, Gemma3-4B) from the Hub.
+#     Newer / regional / Xet-backed routes need all five; older repos
+#     serve from the first two alone.
+#
+#   127.0.0.1, localhost — local llama-server boots on 127.0.0.1:8080
+#     (see evals/harness/providers/llama_cpp_local.example.yaml). Both
+#     names, so a sandbox resolving by hostname still reaches it.
+#
+#   pypi.org, files.pythonhosted.org — ``uv sync`` resolves the index at
+#     the first and fetches wheels/sdists from the second. Needed at
+#     install time for the dspy/optuna extra and the dev group.
+#
 #   github.com, objects.githubusercontent.com — ``uv`` bootstraps a
-#     ``python-build-standalone`` interpreter from GitHub releases on
-#     first run when the sandbox lacks a Python ≥3.12.  GitHub
-#     releases redirect to objects.githubusercontent.com for the
-#     actual asset bytes.
+#     ``python-build-standalone`` interpreter from GitHub releases when
+#     the sandbox lacks Python ≥3.12, redirecting to the second for the
+#     asset bytes.
 network:
   allow_domains:
     - huggingface.co
@@ -71,12 +70,12 @@ network:
 
 # Filesystem allow-list.  Paths must be relative to the package root
 # (no absolute paths, no ``..``).
-#   read  — broad, since the harness, optimizer, and package_skill
-#           validator traverse the package looking for SKILL.md,
-#           references/, evals/, course/, .env, and .models/.
-#   write — the three locations the dev tooling actually writes to:
-#           downloaded GGUF cache, eval reports, and DSPy candidate
-#           reports / programs / review packets.
+#
+#   read  — broad: the harness, optimizer and package_skill validator
+#           traverse the package for SKILL.md, references/, evals/,
+#           course/, .env and .models/.
+#   write — the three the dev tooling writes: GGUF cache, eval reports,
+#           and DSPy candidate reports / programs / review packets.
 filesystem:
   read:
     - .
@@ -137,27 +136,25 @@ secrets:
     # Live-LLM test gate (``tests/test_eval_harness.py``).
     - LOGION_RUN_LIVE_LLM_EVALS
 
-# Per-action approval lives in SKILL.md's
-# ``safety.requires_confirmation`` enum (spend_credits,
-# top_up_credits, fund_bounty, share_referral_link,
+# Per-action approval lives in SKILL.md's ``safety.requires_confirmation``
+# enum: spend_credits, top_up_credits, fund_bounty, share_referral_link,
 # creator_cash_out, install_new_capability, update_paid_capability,
 # permission_expansion, publish_or_unpublish_course,
-# upload_new_course_version, change_course_price).  A blanket
-# ``required: true`` here would force approval on every routine
-# recall lookup and listing search, which is the wrong UX for a
-# bootstrap skill that runs constantly in the background.
+# upload_new_course_version, change_course_price.
+#
+# A blanket ``required: true`` here would force approval on every routine
+# recall and listing search — wrong for a skill running in the background.
 human_approval:
   required: false
 
-# runtime — host-side dependency metadata.  The companion's dev/eval
-# tooling needs Python 3.12+ and ``uv`` for dependency management.  The
-# ``hf`` CLI (GGUF downloads) and the dspy/optuna extras are provisioned
-# by ``uv sync`` from the committed lockfile — no unpinned package
-# install, so what a host provisions matches what review saw.
-# llama-server may come from a pre-built binary or a local build
-# (any_bins).  The ``uv sync`` step below is disclosure only — Logion
-# never auto-runs it.  human_approval stays false because per-action
-# approval is already handled by SKILL.md's safety enum above.
+# runtime — host-side dependency metadata. The dev/eval tooling needs
+# Python 3.12+ and ``uv``. The ``hf`` CLI and the dspy/optuna extras come
+# from ``uv sync`` against the committed lockfile, so what a host
+# provisions matches what review saw. llama-server may be a pre-built
+# binary or a local build (any_bins).
+#
+# The ``uv sync`` step below is disclosure only — Logion never auto-runs
+# it. human_approval stays false: the safety enum above already covers it.
 runtime:
   requires:
     bins:

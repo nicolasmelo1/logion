@@ -1,13 +1,13 @@
 suite: review-loop
 
-# Agent-driven review loop (Tier B self-report). After finishing a
-# course-driven task the agent must file a usage review automatically —
-# without asking the user — via logion_courses_report_usage. The
-# carve-outs matter as much as the happy path: no review when the user
-# opted out, when the course content was not actually used, or when an
-# unchanged review was already filed this session. These negative
-# scenarios exist so prompt optimization cannot buy happy-path recall
-# by over-triggering reviews.
+# Agent-driven review loop (Tier B self-report). After a course-driven task
+# the agent files a usage review automatically, without asking, via
+# logion_courses_report_usage.
+#
+# The carve-outs matter as much as the happy path: no review when the user
+# opted out, when the content went unused, or when an unchanged review was
+# already filed this session. They exist so prompt optimization cannot buy
+# happy-path recall by over-triggering.
 
 scenarios:
   - id: review-filed-automatically-after-use

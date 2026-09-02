@@ -1,0 +1,8 @@
+# The retry budget is per attempt, not per job, because a job
+# that lost its lease has already consumed the attempt it was
+# leased for, and counting it twice turns a single slow worker
+# into an outage that looks like a retry storm.
+retries: 3
+
+# Per attempt.
+timeout: 30

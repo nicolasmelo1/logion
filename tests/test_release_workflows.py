@@ -283,7 +283,7 @@ def test_release_all_syncs_python_workspace_before_orchestrating_release():
         "cargo install --git https://github.com/nicolasmelo1/software-factory"
         in factory_command
     )
-    assert "--rev 76ec836dd0264712844fa86abc3fc26b35ccac4f" in factory_command
+    assert "--rev b06be44f6c982dac58b898778d7dba224d9ed7b1" in factory_command
     assert "--locked" in factory_command
     assert steps[factory_index - 1]["name"] == "Set up Rust toolchain"
     assert sync_index < factory_index < release_index

@@ -2,7 +2,7 @@
 version: 1
 project:
   name: mutation-L4.PLAN_DECLARES_EXIT_CONDITION
-  languages: [python, typescript, go, rust]
+  languages: [python, typescript, go, rust, ruby]
 docs:
   scan: ["docs/**/*.md"]
 gates: {}

@@ -23,13 +23,13 @@ from logion_scanners.models import (
 logger = logging.getLogger(__name__)
 _OUTPUT_SNIPPET_LIMIT = 500
 
-# Trivy pulls its vulnerability DB from an OCI registry when the local cache is
-# empty or stale. Trivy's built-in default (ghcr.io/aquasecurity/trivy-db) is
-# aggressively rate-limited (TOOMANYREQUESTS) under community-wide load, which
-# can make a scan burn its whole timeout budget — or fail outright — on the DB
-# download. Pull from the Google-hosted mirror first (no rate limit) and fall
-# back to GHCR only on transient 429/5xx. Passing --db-repository overrides
-# the built-in default list, so GHCR is named explicitly as the fallback.
+# Trivy pulls its vulnerability DB from an OCI registry when the cache is
+# stale. Its default (ghcr.io/aquasecurity/trivy-db) is rate-limited under
+# community load, which can burn a scan's whole timeout on the download, so
+# the Google-hosted mirror goes first and GHCR is the 429/5xx fallback.
+#
+# `--db-repository` overrides the built-in list, so GHCR must be named
+# explicitly to survive as that fallback.
 _DEFAULT_DB_REPOSITORIES: tuple[str, ...] = (
     "mirror.gcr.io/aquasec/trivy-db",
     "ghcr.io/aquasecurity/trivy-db",
