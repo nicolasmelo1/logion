@@ -1,5 +1,5 @@
 schema_version: "1"
-name: phase_16_1_eval_contract
+name: eval_contract_reference_runner
 description: |
   Validate the golden eval contract with the published package, execute it
   twice on the reference runner, exercise the five stable rejection classes
@@ -27,20 +27,10 @@ agents:
 phases:
   - id: execute_eval_evidence
     actor: node_operator
-    goal: |
-      You are the operator of this Logion node. Run the eval evidence
-      acquisition exactly once, from the repository root, with:
-
-        make eval-evidence EVIDENCE_DIR=${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval
-
-      The command validates the golden eval contract with the published
-      package, executes it twice on the reference runner, exercises the five
-      rejection classes against the node, converts one deterministic
-      companion scenario, and retains the per-assertion evidence under the
-      given directory.
-      If the command exits 0, reply only with `RESULT: completed`.
-      If it fails, reply with `RESULT: blocked` and a one-line summary of
-      the observable error. Do not start, stop, or reset the node.
+    goal: ""
+    local_hook: packages/agent-proving-ground/scripts/run_eval_evidence.py
+    local_hook_args:
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval"
   - id: collect_eval_evidence
     actor: node_operator
     goal: ""
