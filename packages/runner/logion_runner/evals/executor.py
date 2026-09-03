@@ -124,9 +124,13 @@ def _scalarize(observed: object) -> str | int | float | bool | None:
 def _metric_observation(
     metric_id: str,
     observed_document: JsonObject,
-    wall_ms: int,
 ) -> int:
-    """The observed value for one contract metric definition."""
+    """The observed value for one contract metric definition.
+
+    Timing deliberately stays out: a metric that reads the wall clock
+    would break the byte-identical property the determinism gate
+    asserts.
+    """
     if metric_id == "cases_passed":
         normalized = observed_document.get("normalized")
         expected = observed_document.get("expected")
@@ -259,7 +263,7 @@ def _grade(
             id=metric.id,
             kind=metric.kind,
             direction=metric.direction,
-            value=_metric_observation(metric.id, observed_document, wall_ms),
+            value=_metric_observation(metric.id, observed_document),
         )
         for metric in contract.metrics
     }
