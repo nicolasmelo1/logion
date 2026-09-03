@@ -3593,6 +3593,35 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "EvalErrorResponse": {
+        "description": "Error envelope emitted by eval routes and request validation.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "EvalErrorResponse",
+        "type": "object"
+      },
       "ExploreFacetBucket": {
         "description": "A single bucket in a facet result.",
         "properties": {
@@ -19325,6 +19354,9 @@
         },
         "responses": {
           "200": {
+            "description": "Contract already existed"
+          },
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -19332,16 +19364,13 @@
                 }
               }
             },
-            "description": "Contract already existed"
-          },
-          "201": {
             "description": "Contract stored"
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/EvalErrorResponse"
                 }
               }
             },
@@ -19401,7 +19430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/EvalErrorResponse"
                 }
               }
             },
@@ -19474,7 +19503,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/EvalErrorResponse"
                 }
               }
             },
@@ -19484,7 +19513,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/EvalErrorResponse"
                 }
               }
             },

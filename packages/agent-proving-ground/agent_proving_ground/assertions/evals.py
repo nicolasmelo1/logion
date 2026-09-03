@@ -95,12 +95,16 @@ def _check(
         if not ok:
             errors.append(name)
             continue
-        if name in expected and value != expected[name]:
+        if roles is not None:
+            if not isinstance(value, dict) or set(value) != set(roles):
+                errors.append(f"{name}:roles")
+                continue
+            if name in expected and any(
+                item != expected[name] for item in value.values()
+            ):
+                errors.append(name)
+        elif name in expected and value != expected[name]:
             errors.append(name)
-        if roles is not None and (
-            not isinstance(value, dict) or set(value) != set(roles)
-        ):
-            errors.append(f"{name}:roles")
     return not errors, evidence, ", ".join(errors)
 
 
@@ -258,7 +262,7 @@ class EvalReproducedCleanWorkspaceAssertion(_EvalFactsAssertion):
     expected: ClassVar[dict[str, object]] = {
         "public_checkout_visible": False,
         "private_checkout_visible": False,
-        "installed_from": "package-index",
+        "installed_from": "built-wheel",
         "matches_original_digest": True,
     }
 
@@ -417,9 +421,6 @@ class EvalContractIndexedAssertion(_EvalFactsAssertion):
     expected: ClassVar[dict[str, object]] = {
         "resource_type": "eval_contract",
         "indexed_alongside_subject": True,
-        # Every standing in the closed vocabulary is a legitimate outcome;
-        # what may not happen is a result presenting no standing at all.
-        "result_contract_standing": _CONTRACT_STANDINGS,
     }
 
     async def evaluate(

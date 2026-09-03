@@ -271,7 +271,7 @@ def _run_eval_normalize(payload: JsonObject, out_dir: Path) -> int:
     def normalize(node: object) -> object:
         if isinstance(node, str):
             text = node.strip()
-            return text.lower() if "@" in text else text
+            return text.casefold() if "@" in text else text
         if isinstance(node, dict):
             return {key: normalize(value) for key, value in node.items()}
         if isinstance(node, list):
@@ -283,9 +283,13 @@ def _run_eval_normalize(payload: JsonObject, out_dir: Path) -> int:
         "normalized": normalize(document),
         "expected": subject.get("expected"),
     }
+    output_path = payload.get("output_path")
+    if not isinstance(output_path, str) or not output_path:
+        sys.stderr.write("eval payload has no declared output path\n")
+        return 3
     _write_out(
         out_dir,
-        "outputs/result.json",
+        output_path,
         json.dumps(output, sort_keys=True).encode("utf-8"),
     )
     return 0

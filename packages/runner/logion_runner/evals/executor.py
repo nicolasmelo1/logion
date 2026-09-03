@@ -79,10 +79,8 @@ def _limits_for(contract: EvalContract) -> dict[str, int]:
         "log_bytes": 65536,
     }
     for budget in contract.budgets:
-        if budget.kind == "wall_seconds":
-            limits["wall_seconds"] = int(budget.max_value)
-        if budget.kind == "output_bytes":
-            limits["output_bytes"] = int(budget.max_value)
+        if budget.kind in limits:
+            limits[budget.kind] = int(budget.max_value)
     return limits
 
 
@@ -149,11 +147,29 @@ def _metric_observation(
             expected.get("input") if isinstance(expected, dict) else None
         )
         return int(normalized == expected_output)
+    if metric_id == "duration_ms":
+        # The reference contract declares this catalog metric but does not
+        # assert it; timing belongs to the receipt, not the deterministic
+        # result.
+        return 0
     # Timing is NOT part of the normalized result: it is not a function
     # of (contract, subject, output), so including it would break the
     # byte-identical property the determinism gate asserts. Wall time
     # lives in the 15.15 receipt envelope instead.
-    return 0
+    raise EvalExecutionError(f"no evaluator for metric {metric_id!r}")
+
+
+def _json_object(raw: bytes, where: str) -> JsonObject:
+    """Decode one UTF-8 JSON object as a structured execution error."""
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise EvalExecutionError(
+            f"{where} is not valid UTF-8 JSON: {exc}"
+        ) from exc
+    if not isinstance(value, dict):
+        raise EvalExecutionError(f"{where} must be a JSON object")
+    return value
 
 
 def execute_eval_contract(
@@ -182,7 +198,10 @@ def execute_eval_contract(
 
     job = resolve_eval_job(contract, subject_bytes, contract_dir=contract_dir)
 
-    subject_document = json.loads(subject_bytes.decode("utf-8"))
+    subject_document = _json_object(subject_bytes, "subject")
+    output_path = contract.outputs[0].path if contract.outputs else None
+    if output_path is None:
+        raise EvalExecutionError("contract declares no outputs to grade")
     payload: JsonObject = {
         "job_type": EVAL_SUBJECT_JOB_TYPE,
         "entrypoint": (
@@ -194,6 +213,7 @@ def execute_eval_contract(
             "input": subject_document.get("input"),
             "expected": subject_document.get("expected"),
         },
+        "output_path": output_path,
     }
 
     limits = _limits_for(contract)
@@ -267,7 +287,7 @@ def _grade(
         raise EvalExecutionError(
             f"subject produced no output at {output_path!r}"
         )
-    observed_document = json.loads(raw.decode("utf-8"))
+    observed_document = _json_object(raw, f"output {output_path!r}")
 
     metrics_by_id = {
         metric.id: MetricValue(
@@ -306,7 +326,11 @@ def _grade(
         tuple(outcomes),
         tuple(metrics_by_id.values()),
         outcome,
-        {name: f"outputs/{name}" for name in execution.output_files},
+        {
+            output.name: output.path
+            for output in contract.outputs
+            if output.path in execution.output_files
+        },
         {},
         "no known limitations",
     )

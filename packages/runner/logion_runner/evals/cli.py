@@ -51,56 +51,11 @@ def cmd_eval_validate(args: argparse.Namespace) -> int:
 
 def _subject_bytes(args: argparse.Namespace) -> bytes:
     if getattr(args, "resource", None):
-        return _resource_digest_bytes(args.resource)
+        raise OSError(
+            "eval run --resource cannot execute until resource content"
+            " retrieval is available; use --subject with acquired bytes"
+        )
     return Path(args.subject).read_bytes()
-
-
-def _resource_digest(resource_id: str) -> str:
-    """The subject digest for a resource: its indexed content digest.
-
-    The subject's identity must be bound to content, not to the id: the
-    acceptance criterion is that no result is persisted without the
-    exact subject digest. The resource's indexed versions carry the
-    content digest the indexer computed at ingestion time, so the
-    runner resolves the resource and grades against that digest.
-    """
-    import os
-
-    import httpx
-
-    base_url = os.environ.get("LOGION_API_BASE_URL", "").rstrip("/")
-    if not base_url:
-        raise SystemExit(
-            "eval run --resource requires LOGION_API_BASE_URL to resolve"
-            " the resource's content digest"
-        )
-    encoded_id = httpx.QueryParams({"id": resource_id})["id"]
-    response = httpx.get(
-        f"{base_url}/v1/resources/{encoded_id}/versions",
-        timeout=30,
-    )
-    if response.status_code != 200:
-        raise SystemExit(
-            f"cannot resolve resource {resource_id}: HTTP"
-            f" {response.status_code}"
-        )
-    payload = response.json()
-    versions = payload.get("versions") or []
-    if not versions:
-        raise SystemExit(
-            f"resource {resource_id} has no indexed versions to measure"
-        )
-    digest = versions[0].get("content_digest")
-    if not isinstance(digest, str) or not digest:
-        raise SystemExit(
-            f"resource {resource_id} has no content digest on its"
-            " indexed version"
-        )
-    return digest
-
-
-def _resource_digest_bytes(resource_id: str) -> bytes:
-    return _resource_digest(resource_id).encode("utf-8")
 
 
 def cmd_eval_run(args: argparse.Namespace) -> int:
@@ -133,8 +88,11 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
         })
         return _EXIT_INVALID
     # Resolve every input BEFORE leasing or executing.
+    contract_dir = Path(args.contract).resolve().parent
     try:
-        job = resolve_eval_job(contract, subject_bytes)
+        job = resolve_eval_job(
+            contract, subject_bytes, contract_dir=contract_dir
+        )
     except EvalSubjectMismatch as exc:
         _print({
             "ok": False,
@@ -170,6 +128,7 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
             harness_version="0.1.0",
             model_id="reference-subject",
             model_version="1.0.0",
+            contract_dir=contract_dir,
         )
     except EvalContractError as exc:
         _print({

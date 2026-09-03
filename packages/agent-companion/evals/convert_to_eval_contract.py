@@ -103,6 +103,8 @@ def _fact_assertion(
             },
         )
     if fact in _CEILING_FACTS:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{fact} must be a numeric ceiling")
         return (
             {
                 "id": assertion_id,
@@ -157,7 +159,9 @@ def convert_scenario(scenario: dict, suite: str) -> JsonObject:
 
     assertions: list[JsonObject] = []
     metrics: list[JsonObject] = []
-    for fact, value in (scenario.get("expected") or {}).items():
+    expected_facts = scenario.get("expected") or {}
+    for fact in _FACTS:
+        value = expected_facts.get(fact)
         if value is None or value == () or value is False:
             continue
         assertion_id = f"{scenario_id}.{fact}"

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from logion._http import HttpClient
 from logion._json import JsonObject
 
@@ -31,7 +33,10 @@ class EvalsResource:
 
     def get_contract(self, ref: str) -> JsonObject:
         """Get a contract by digest or friendly name."""
-        return self._http.request_object("GET", f"/v1/evals/contracts/{ref}")
+        encoded_ref = quote(ref, safe="")
+        return self._http.request_object(
+            "GET", f"/v1/evals/contracts/{encoded_ref}"
+        )
 
     def submit_result(
         self,

@@ -126,7 +126,7 @@ def test_result_digest_is_stable_across_key_order() -> None:
     assert result_digest(reordered) == result_digest(flipped)
 
 
-def test_compare_refuses_cross_pair(tmp_path: Path) -> None:
+def test_pair_key_distinguishes_cross_pair() -> None:
     contract = parse_contract_file(FIXTURES / "golden_contract.yaml")
     subject = (FIXTURES / "normalize_input.json").read_bytes()
     job = resolve_eval_job(contract, subject)
@@ -142,13 +142,110 @@ def test_compare_refuses_cross_pair(tmp_path: Path) -> None:
         "environment": other_env,
         "environment_digest": environment_digest_from(**other_env),
     }
-    base_path = tmp_path / "base.json"
-    candidate_path = tmp_path / "candidate.json"
-    base_path.write_text(json.dumps(base))
-    candidate_path.write_text(json.dumps(candidate))
     base_result = parse_result_document(base)
     candidate_result = parse_result_document(candidate)
     assert pair_key(base_result) != pair_key(candidate_result)
+
+
+def test_executor_honors_all_sandbox_budgets() -> None:
+    from logion_eval_contract import parse_contract_document
+
+    from logion_runner.evals.executor import _limits_for
+
+    document = json.loads((FIXTURES / "golden_contract.json").read_text())
+    document["budgets"] = [
+        {"kind": "wall_seconds", "max_value": 1},
+        {"kind": "memory_bytes", "max_value": 2},
+        {"kind": "output_bytes", "max_value": 3},
+        {"kind": "log_bytes", "max_value": 4},
+    ]
+    contract = parse_contract_document(document)
+
+    assert _limits_for(contract) == {
+        "wall_seconds": 1,
+        "memory_bytes": 2,
+        "output_bytes": 3,
+        "log_bytes": 4,
+    }
+
+
+@pytest.mark.parametrize("raw", [b"not json", b"[]", b"\xff"])
+def test_executor_rejects_invalid_json_objects(raw: bytes) -> None:
+    from logion_runner.evals.executor import EvalExecutionError, _json_object
+
+    with pytest.raises(EvalExecutionError):
+        _json_object(raw, "subject")
+
+
+def test_executor_honors_declared_output_path_and_artifact_name() -> None:
+    from logion_eval_contract import parse_contract_document
+
+    from logion_runner.evals.executor import execute_eval_contract
+
+    document = json.loads((FIXTURES / "golden_contract.json").read_text())
+    document["outputs"] = [{"name": "graded", "path": "custom/result.json"}]
+    contract = parse_contract_document(document)
+    outcome = execute_eval_contract(
+        contract,
+        (FIXTURES / "normalize_input.json").read_bytes(),
+        harness_id="logion-node",
+        harness_version="0.1.0",
+        model_id="reference-subject",
+        model_version="1.0.0",
+        contract_dir=FIXTURES,
+    )
+
+    assert outcome.result_document["artifacts"] == {
+        "graded": "custom/result.json"
+    }
+
+
+def test_executor_rejects_unknown_metric() -> None:
+    from logion_eval_contract import parse_contract_document
+
+    from logion_runner.evals.executor import (
+        EvalExecutionError,
+        execute_eval_contract,
+    )
+
+    document = json.loads((FIXTURES / "golden_contract.json").read_text())
+    document["metrics"][0]["id"] = "unknown_metric"
+    document["assertions"][0]["metric"] = "unknown_metric"
+    contract = parse_contract_document(document)
+
+    with pytest.raises(EvalExecutionError, match="no evaluator"):
+        execute_eval_contract(
+            contract,
+            (FIXTURES / "normalize_input.json").read_bytes(),
+            harness_id="logion-node",
+            harness_version="0.1.0",
+            model_id="reference-subject",
+            model_version="1.0.0",
+            contract_dir=FIXTURES,
+        )
+
+
+def test_resource_execution_fails_closed_until_bytes_are_available() -> None:
+    from argparse import Namespace
+
+    from logion_runner.evals.cli import _subject_bytes
+
+    with pytest.raises(OSError, match="resource content retrieval"):
+        _subject_bytes(Namespace(resource="resource/id", subject=None))
+
+
+def test_reference_subject_casefolds_email_values(tmp_path: Path) -> None:
+    from logion_runner.job_payload import _run_eval_normalize
+
+    payload = {
+        "entrypoint": "normalize",
+        "subject": {"input": {"email": " STRAßE@EXAMPLE.DE "}},
+        "output_path": "custom/result.json",
+    }
+
+    assert _run_eval_normalize(payload, tmp_path) == 0
+    result = json.loads((tmp_path / "custom/result.json").read_text())
+    assert result["normalized"]["email"] == "strasse@example.de"
 
 
 def test_cli_compare_exit_three(tmp_path: Path) -> None:

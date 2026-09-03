@@ -89,25 +89,39 @@ def _write(out_dir: Path, name: str, facts: dict[str, object]) -> None:
     )
 
 
-def _setup_validator_venv(public_repo: Path, venv_dir: Path) -> str:
-    """Install the published eval-contract package into a clean venv.
+def _build_validator_wheel(public_repo: Path, out_dir: Path) -> Path:
+    """Build the exact candidate package into an installable wheel."""
+    wheel_dir = out_dir / "package-dist"
+    wheel_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "uv",
+            "build",
+            "--wheel",
+            "--out-dir",
+            str(wheel_dir),
+            str(public_repo / "packages" / "eval-contract"),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    wheels = sorted(wheel_dir.glob("logion_eval_contract-*.whl"))
+    if len(wheels) != 1:
+        raise RuntimeError(
+            "eval-contract build did not produce exactly one wheel"
+        )
+    return wheels[0]
 
-    Mirrors the 15.15 runner venv: the validator must resolve from
-    site-packages, not a PYTHONPATH into the source tree — the same
-    discriminator between a real install and a source-tree shortcut.
-    """
+
+def _setup_validator_venv(wheel: Path, venv_dir: Path) -> dict[str, object]:
+    """Install the candidate eval-contract wheel into a clean venv."""
     subprocess.run(
         [sys.executable, "-m", "venv", str(venv_dir)],
         check=True,
         capture_output=True,
     )
     subprocess.run(
-        [
-            str(venv_dir / "bin" / "pip"),
-            "install",
-            "--quiet",
-            str(public_repo / "packages" / "eval-contract"),
-        ],
+        [str(venv_dir / "bin" / "pip"), "install", "--quiet", str(wheel)],
         check=True,
         capture_output=True,
     )
@@ -115,13 +129,36 @@ def _setup_validator_venv(public_repo: Path, venv_dir: Path) -> str:
         [
             str(venv_dir / "bin" / "python"),
             "-c",
-            "import logion_eval_contract as m; print(m.__file__)",
+            "import json, sys, logion_eval_contract as m;"
+            " print(json.dumps({'module': m.__file__, 'sys_path': sys.path}))",
         ],
         capture_output=True,
         text=True,
         check=True,
+        cwd=venv_dir,
     )
-    return probe.stdout.strip()
+    value = json.loads(probe.stdout)
+    if not isinstance(value, dict):
+        raise TypeError("validator provenance probe returned no object")
+    return value
+
+
+def _checkout_visible(provenance: dict[str, object], checkout: Path) -> bool:
+    """Whether the isolated interpreter can import through a checkout path."""
+    roots = provenance.get("sys_path")
+    if not isinstance(roots, list):
+        return True
+    checkout = checkout.resolve()
+    for raw in roots:
+        if not isinstance(raw, str) or not raw:
+            continue
+        try:
+            Path(raw).resolve().relative_to(checkout)
+        except ValueError:
+            continue
+        else:
+            return True
+    return False
 
 
 def _run_validator(venv_dir: Path, contract_path: Path) -> tuple[int, str]:
@@ -190,7 +227,8 @@ def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
     Returns {runner_digest, reproduced_digest}.
     """
     venv_dir = out_dir / "validator-venv"
-    module_path = _setup_validator_venv(public_repo, venv_dir)
+    wheel = _build_validator_wheel(public_repo, out_dir)
+    provenance = _setup_validator_venv(wheel, venv_dir)
     golden = json.loads(GOLDEN_CONTRACT.read_text())
     valid_exit, valid_out = _run_validator(venv_dir, GOLDEN_CONTRACT)
     if valid_exit != 0 or not valid_out.startswith("VALID"):
@@ -243,7 +281,9 @@ def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
             "schema_version": _fact(1),
             "validator_package_version": _fact(validator_version),
             "validator_import_root": _fact(
-                "site-packages" if "site-packages" in module_path else ""
+                "site-packages"
+                if "site-packages" in str(provenance.get("module", ""))
+                else ""
             ),
             "validation_exit_code": _fact(0),
             "unknown_field_rejected": _fact(unknown_rejected),
@@ -252,7 +292,7 @@ def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
 
     # Clean-workspace reproduction: package alone, no checkouts.
     clean_venv = out_dir / "reproducer-venv"
-    _setup_validator_venv(public_repo, clean_venv)
+    clean_provenance = _setup_validator_venv(wheel, clean_venv)
     _clean_exit, clean_out = _run_validator(clean_venv, GOLDEN_CONTRACT)
     reproduced_digest = _validator_digest(clean_out)
     _write(
@@ -260,15 +300,27 @@ def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
         "eval_reproduced_clean_workspace.json",
         {
             "workspace_root": _fact(str(out_dir)),
-            "public_checkout_visible": _fact(value=False),
-            "private_checkout_visible": _fact(value=False),
-            "installed_from": _fact("package-index"),
+            "public_checkout_visible": _fact(
+                _checkout_visible(clean_provenance, public_repo)
+            ),
+            "private_checkout_visible": _fact(
+                _checkout_visible(
+                    clean_provenance,
+                    Path(
+                        os.environ.get(
+                            "LOGION_PRIVATE_REPO_PATH",
+                            str(out_dir / ".non-public-checkout"),
+                        )
+                    ),
+                )
+            ),
+            "installed_from": _fact("built-wheel"),
             "reproduced_result_digest": _fact(reproduced_digest),
             "matches_original_digest": _fact(
                 reproduced_digest == runner_digest
             ),
             "commands_used": _fact([
-                "pip install packages/eval-contract",
+                f"pip install {wheel.name}",
                 "python -c parse+contract_digest",
             ]),
         },

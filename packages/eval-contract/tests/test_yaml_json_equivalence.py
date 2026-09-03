@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from logion_eval_contract import (
     contract_digest,
     load_document,
@@ -11,6 +13,17 @@ from logion_eval_contract import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.mark.parametrize("value", ["when: 2026-09-03", "value: .nan", "1: x"])
+def test_load_document_rejects_yaml_only_shapes(
+    tmp_path: Path, value: str
+) -> None:
+    path = tmp_path / "invalid.yaml"
+    path.write_text(value + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"JSON|finite|non-string"):
+        load_document(path)
 
 
 def test_yaml_and_json_forms_share_one_digest() -> None:

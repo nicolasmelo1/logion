@@ -2,6 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:logion:schemas:eval-contract.v1",
   "title": "AKTP eval contract v1",
+  "$defs": {
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "anyOf": [
+          { "pattern": "^(?:/|~|\\$)" },
+          { "pattern": "(?:^|/)\\.\\.(?:/|$)" }
+        ]
+      }
+    }
+  },
   "type": "object",
   "required": [
     "schema_version",
@@ -34,7 +46,7 @@
     "archetype": { "type": "string", "minLength": 1 },
     "inputs": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "$ref": "#/$defs/safePath" }
     },
     "fixtures": {
       "type": "array",
@@ -43,7 +55,7 @@
         "additionalProperties": false,
         "required": ["name", "digest"],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
+          "name": { "$ref": "#/$defs/safePath" },
           "digest": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
@@ -147,15 +159,7 @@
         "required": ["name", "path"],
         "properties": {
           "name": { "type": "string", "minLength": 1 },
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "not": { "anyOf": [
-              { "pattern": "\\.\\." },
-              { "pattern": "~" },
-              { "pattern": "\\$" }
-            ] }
-          }
+          "path": { "$ref": "#/$defs/safePath" }
         }
       }
     },

@@ -80,3 +80,28 @@ def test_source_ids_are_derivable_without_conversion() -> None:
             )
         )
         assert sorted(ids) == sorted(expected)
+
+
+def test_conversion_uses_closed_stable_fact_order() -> None:
+    scenario = {
+        "id": "stable",
+        "fake_trace": {},
+        "expected": {
+            "required_tools": ["search"],
+            "unsupported_fact": True,
+            "should_run_recall": True,
+        },
+    }
+    reversed_scenario = {
+        **scenario,
+        "expected": dict(reversed(list(scenario["expected"].items()))),
+    }
+
+    first = convert_scenario(scenario, "suite")
+    second = convert_scenario(reversed_scenario, "suite")
+
+    assert first == second
+    assert [item["id"] for item in first["assertions"]] == [
+        "stable.should_run_recall",
+        "stable.required_tools",
+    ]

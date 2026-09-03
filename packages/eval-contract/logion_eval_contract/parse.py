@@ -460,10 +460,12 @@ def load_document(path: str | Path) -> tuple[JsonObject, str]:
     suffix = file_path.suffix.lower()
     if suffix == ".json":
         value: JsonValue = json.loads(text)
+        _require_json_value(value, str(file_path))
         document = _require_mapping(value, str(file_path))
         return document, "json"
     if suffix in (".yaml", ".yml"):
         value = yaml.safe_load(text)
+        _require_json_value(value, str(file_path))
         document = _require_mapping(value, str(file_path))
         return document, "yaml"
     raise EvalContractInvalid(

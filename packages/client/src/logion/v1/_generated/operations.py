@@ -168,7 +168,6 @@ from logion.v1._types.generated.v1 import (
     UpdateIndexingRunProgressRequest,
     UpdateIndexingRunProgressResponse,
     UploadEvalContractRequest,
-    UploadEvalContractResponse,
     UploadExecutionArtifactResponse,
     UpsertCourseReviewRequest,
     UpsertCourseReviewResponse,
@@ -1311,13 +1310,15 @@ def upload_eval_contract(
     http: HttpClient,
     *,
     body: UploadEvalContractRequest,
-) -> UploadEvalContractResponse:
+) -> JsonObject:
     """Call the upload_eval_contract API operation."""
-    return http.request_model(
-        "POST",
-        "/v1/evals/contracts",
-        UploadEvalContractResponse,
-        json=body.model_dump(mode="json", exclude_none=True),
+    return cast(
+        JsonObject,
+        http.request(
+            "POST",
+            "/v1/evals/contracts",
+            json=body.model_dump(mode="json", exclude_none=True),
+        ),
     )
 
 

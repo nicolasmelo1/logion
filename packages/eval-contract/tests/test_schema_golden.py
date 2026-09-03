@@ -106,6 +106,8 @@ def test_parser_rejections_are_schema_rejections() -> None:
         lambda p: p["budgets"][0].update({"x": 1}),
         lambda p: p["subject"].update({"extra": 1}),
         lambda p: p["outputs"][0].update({"path": "../etc/result.json"}),
+        lambda p: p["fixtures"][0].update({"name": "../fixture.json"}),
+        lambda p: p.update({"inputs": ["$HOME/input.json"]}),
         lambda p: p["metrics"][0].update({"kind": "not-a-kind"}),
         lambda p: p["assertions"][0].update({"operator": "=>"}),
         lambda p: p.update({"determinism_class": "random"}),
@@ -134,6 +136,19 @@ def test_parser_accepts_what_the_schema_accepts() -> None:
 
     assert list(validator.iter_errors(payload)) == []
     parse_contract_document(json.loads(json.dumps(payload)))
+
+
+def test_schema_and_parser_accept_benign_path_characters() -> None:
+    from jsonschema import Draft202012Validator
+
+    payload = _golden_payload()
+    payload["outputs"][0]["path"] = "outputs/cost$~..json"
+
+    assert (
+        list(Draft202012Validator(_contract_schema()).iter_errors(payload))
+        == []
+    )
+    parse_contract_document(payload)
 
 
 def test_the_result_schema_rejects_the_parser_rejections() -> None:
