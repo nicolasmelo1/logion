@@ -1,5 +1,5 @@
 schema_version: "1"
-name: phase_15_15_isolated_runner
+name: isolated_runner_node
 description: |
   Execute one deterministic job through the enrolled isolated runner, retain
   coordinator and independent-verifier facts, and prove adversarial effects

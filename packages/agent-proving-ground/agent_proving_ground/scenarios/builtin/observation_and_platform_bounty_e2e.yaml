@@ -1,5 +1,8 @@
 schema_version: "1"
 name: observation_and_platform_bounty_e2e
+# Rig-driven: every phase is a script, no phase is decided by an agent.
+# Valid as an integration test, never as evidence about agent behaviour.
+kind: rig
 description: |
   Upsert an indexed listing, verify discovery with include_indexed, create a
   platform-funded bounty on the listing, submit as buyer, accept as admin with

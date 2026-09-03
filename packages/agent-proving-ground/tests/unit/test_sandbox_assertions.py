@@ -59,7 +59,7 @@ def _make_ctx(tmp_path: Path) -> AssertionContext:
         data: ClassVar[dict] = {}
 
     return AssertionContext(
-        scenario_name="phase_15_14_1_local_multi_agent_node",
+        scenario_name="local_multi_agent_node",
         phase_id="test",
         world=_FakeWorld(),
         api=_FakeApi(),
@@ -337,7 +337,7 @@ class TestRoleCleanupComplete:
 
 class TestScenarioShape:
     def test_scenario_loads_and_carries_every_gate_assertion(self):
-        spec = load_scenario("builtin:phase_15_14_1_local_multi_agent_node")
+        spec = load_scenario("builtin:local_multi_agent_node")
         assert spec.api_adapter == "local-devrig"
         assert {agent.id for agent in spec.agents} == {
             "consumer",
@@ -360,14 +360,14 @@ class TestScenarioShape:
         assert required <= declared
 
     def test_no_development_only_drivers(self):
-        spec = load_scenario("builtin:phase_15_14_1_local_multi_agent_node")
+        spec = load_scenario("builtin:local_multi_agent_node")
         assert all(
             agent.driver not in {"scripted", "local-process", "mock"}
             for agent in spec.agents
         )
 
     def test_local_hooks_reference_existing_scripts(self):
-        spec = load_scenario("builtin:phase_15_14_1_local_multi_agent_node")
+        spec = load_scenario("builtin:local_multi_agent_node")
         # tests/ lives at <pkg-root>/tests/unit/, so the repo root is
         # three levels up from this file's directory.
         repo_root = Path(__file__).resolve().parents[4]

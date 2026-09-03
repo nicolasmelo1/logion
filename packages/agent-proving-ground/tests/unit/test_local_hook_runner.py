@@ -57,6 +57,7 @@ async def test_local_hook_gets_package_pythonpath(tmp_path: Path) -> None:
     scenario = ScenarioSpec.model_validate({
         "name": "hook_pythonpath",
         "description": "test local hook pythonpath",
+        "kind": "rig",
         "agents": [{"id": "agent1", "role": "tester"}],
         "phases": [
             {

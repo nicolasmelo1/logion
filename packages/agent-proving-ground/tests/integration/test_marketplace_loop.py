@@ -154,17 +154,31 @@ async def test_duplicate_credit_debit_fails(loop_runner_factory) -> None:
     assert failed
 
 
-async def test_optional_local_assertions_do_not_fail_mock_run(
+async def test_optional_local_assertions_are_declared_gaps_not_passes(
     loop_runner_factory,
 ) -> None:
+    """An optional assertion that cannot run must not read as a pass.
+
+    ``db.exact_credit_ledger`` is the only check on the money math in this
+    scenario. Recording it as `passed` on an adapter with no database made
+    "the ledger balances" and "nobody could read the ledger" the same line
+    in the report, which is the one difference a reader of a sealed gate is
+    looking for. It still must not fail a mock run.
+    """
     runner = loop_runner_factory(FULL_LOOP_OPERATIONS)
     result = await runner.run()
-    optional_types = {"logs.no_500s", "db.exact_credit_ledger"}
-    outcomes = [
-        a for a in result.assertion_results if a.type in optional_types
+    ledger = [
+        a
+        for a in result.assertion_results
+        if a.type == "db.exact_credit_ledger"
     ]
-    assert outcomes
-    assert all(a.status == "passed" for a in outcomes)
+    assert ledger
+    # The mock adapter has no database, so this cannot run here. It must say
+    # so rather than report the same word as a ledger it actually checked.
+    assert all(a.status == "unsupported" for a in ledger)
+    assert all("declared gap" in a.message for a in ledger)
+    assert all(a.evidence.get("optional") is True for a in ledger)
+    # And a gap still does not fail the run: only `failed` decides that.
     assert result.status == "passed"
 
 

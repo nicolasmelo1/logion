@@ -11,7 +11,7 @@ PLANNING_PHASE_LABEL = re.compile(
 # phase's required scenario is matched by exact name, and the audit
 # fails closed (PHASE_REQUIRED_SCENARIO_MISSING) when a builtin file
 # with that name does not exist. Phase 15.14.1's policy entry names
-# `phase_15_14_1_local_multi_agent_node`, written after (2026-08-26,
+# `local_multi_agent_node`, written after (2026-08-26,
 # workspace #156) the behavior-naming rule below (2026-08-14, #254).
 # A scenario the canonical gate mandates by phase identity cannot be
 # renamed on this side without breaking the gate, so policy-mandated
@@ -20,8 +20,8 @@ PLANNING_PHASE_LABEL = re.compile(
 # named; a phase-labelled name appears only when the workspace gate
 # demands it.
 POLICY_MANDATED_SCENARIO_NAMES = frozenset({
-    "phase_15_14_1_local_multi_agent_node",
-    "phase_15_15_isolated_runner",
+    "local_multi_agent_node",
+    "isolated_runner_node",
     "phase_16_1_eval_contract",
 })
 

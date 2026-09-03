@@ -1,5 +1,5 @@
 schema_version: "1"
-name: phase_15_14_1_local_multi_agent_node
+name: local_multi_agent_node
 description: |
   Bounded local multi-agent first-node foundation. Host coordination
   starts consumer and auditor as separate non-root Compose services

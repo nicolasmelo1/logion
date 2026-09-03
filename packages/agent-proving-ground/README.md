@@ -55,11 +55,22 @@ buying the course again. `marketplace_loop` proves the transaction
 loop inside single sessions; this scenario proves the lifecycle
 survives session loss.
 
-## Release gate: `marketplace_loop`
+## Release gate: `native_use_observation_and_feedback`
 
-`builtin:marketplace_loop` is the full creator/learner/operator product
-loop (publish → purchase → use → review → bounty → approve → admin
-check). It is a release-gate proof, not normal PR CI. From the repo root:
+The gate scenario is the loop the release is about: acquisition through
+native use through attributed feedback, including
+`files.observation_from_live_hook`, the one assertion that separates a
+harness delivering a payload from an agent typing one.
+
+It used to be `builtin:marketplace_loop`, the full
+creator/learner/operator Courses loop (publish → purchase → use → review
+→ bounty → approve → admin check). Those rails are Loop C and target
+0.3, so a green run there says nothing about whether the loop 0.2 ships
+works. Run it with `LOGION_PROVING_GROUND_SCENARIO=marketplace_loop`
+when those rails changed.
+
+Either way this is a release-gate proof, not normal PR CI. From the repo
+root:
 
 ```bash
 make dev-up MODE=prod ROLE=admin   # or MODE=mock for mechanics only
