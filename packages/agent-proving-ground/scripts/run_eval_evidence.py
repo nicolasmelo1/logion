@@ -716,6 +716,9 @@ def main() -> int:
         subject_bytes=GOLDEN_SUBJECT.read_bytes(),
         subject_digest=hashlib.sha256(GOLDEN_SUBJECT.read_bytes()).hexdigest(),
     )
+    sys.stdout.write(
+        json.dumps({"evidence_dir": str(out_dir)}, sort_keys=True) + "\n"
+    )
     return 0
 
 
