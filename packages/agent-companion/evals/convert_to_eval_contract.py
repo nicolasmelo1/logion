@@ -70,6 +70,75 @@ def converted_assertion_ids(contract: EvalContract) -> list[str]:
     return [a.id for a in contract.assertions]
 
 
+#: Facts whose companion grader treats the value as a ceiling.
+_CEILING_FACTS = (
+    "max_courses_inspected",
+    "max_loaded_skills",
+    "max_listings_limit",
+)
+
+
+def _fact_assertion(
+    assertion_id: str, fact: str, value: object
+) -> tuple[JsonObject, JsonObject]:
+    """One (metric, assertion) pair with the grader-faithful operator.
+
+    The companion graders grade absence for forbidden facts (a finding
+    fires when the tool runs or the term appears), ceilings for max
+    facts, and presence for everything else. Mirroring the operator
+    keeps a converted pass meaning the same thing as a companion pass.
+    """
+    if fact in ("forbidden_tools", "must_not_mention"):
+        return (
+            {
+                "id": assertion_id,
+                "kind": "count",
+                "direction": "lower_is_better",
+            },
+            {
+                "id": assertion_id,
+                "operator": "lte",
+                "metric": assertion_id,
+                "expected": 0,
+            },
+        )
+    if fact in _CEILING_FACTS:
+        return (
+            {
+                "id": assertion_id,
+                "kind": "count",
+                "direction": "lower_is_better",
+            },
+            {
+                "id": assertion_id,
+                "operator": "lte",
+                "metric": assertion_id,
+                "expected": value,
+            },
+        )
+    if isinstance(value, bool):
+        expected: int | str | float | bool | None = int(value)
+    elif isinstance(value, int):
+        expected = value
+    elif isinstance(value, (list, tuple)):
+        expected = 1 if value else 0
+    else:
+        expected = 1 if value else 0
+    return (
+        {
+            "id": assertion_id,
+            "kind": "count",
+            "direction": "higher_is_better",
+        },
+        {
+            "id": assertion_id,
+            "operator": "gte",
+            "metric": assertion_id,
+            "expected": expected,
+        },
+    )
+
+
 def convert_scenario(scenario: dict, suite: str) -> JsonObject:
     """Convert one raw companion scenario into an eval contract document.
 
@@ -92,26 +161,12 @@ def convert_scenario(scenario: dict, suite: str) -> JsonObject:
         if value is None or value == () or value is False:
             continue
         assertion_id = f"{scenario_id}.{fact}"
-        if isinstance(value, bool):
-            metric_kind = "count"
-            expected: int | str | float | bool | None = int(value)
-        elif isinstance(value, int):
-            metric_kind = "count"
-            expected = value
-        else:
-            metric_kind = "count"
-            expected = 1 if value else 0
-        metrics.append({
-            "id": assertion_id,
-            "kind": metric_kind,
-            "direction": "higher_is_better",
-        })
-        assertions.append({
-            "id": assertion_id,
-            "operator": "gte",
-            "metric": assertion_id,
-            "expected": expected,
-        })
+        # Each fact converts with the operator its companion grader
+        # actually applies (P6): forbidden/max facts are ceilings (lte),
+        # never gte — gte would reward the violation.
+        metric, assertion = _fact_assertion(assertion_id, fact, value)
+        metrics.append(metric)
+        assertions.append(assertion)
 
     document: JsonObject = {
         "schema_version": 1,
