@@ -22,7 +22,6 @@ PLANNING_PHASE_LABEL = re.compile(
 POLICY_MANDATED_SCENARIO_NAMES = frozenset({
     "local_multi_agent_node",
     "isolated_runner_node",
-
 })
 
 

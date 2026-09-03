@@ -37,6 +37,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     # Evals
     "upload_eval_contract": "client.v1.evals.upload_contract",
     "get_eval_contract": "client.v1.evals.get_contract",
+    "validate_eval_job": "client.v1.evals.validate_job",
     "submit_eval_result": "client.v1.evals.submit_result",
     # Courses
     "create_course": "client.v1.courses.create",

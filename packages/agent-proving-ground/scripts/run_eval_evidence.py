@@ -77,6 +77,20 @@ def _fact(value: object, *, ok: bool = True) -> dict[str, object]:
     return {"ok": ok, "value": value}
 
 
+def _isolated_env() -> dict[str, str]:
+    """Environment without checkout-injected interpreter paths.
+
+    The proving-ground runner exports PYTHONPATH into its own package
+    root so local hooks import; a clean-workspace probe that inherits
+    it would see the public checkout without choosing to, which is the
+    exact fact the probe exists to disprove. Every subprocess that
+    measures provenance runs without it.
+    """
+    return {
+        key: value for key, value in os.environ.items() if key != "PYTHONPATH"
+    }
+
+
 def _write(out_dir: Path, name: str, facts: dict[str, object]) -> None:
     (out_dir / name).write_text(
         json.dumps(
@@ -124,6 +138,7 @@ def _setup_validator_venv(wheel: Path, venv_dir: Path) -> dict[str, object]:
         [str(venv_dir / "bin" / "pip"), "install", "--quiet", str(wheel)],
         check=True,
         capture_output=True,
+        env=_isolated_env(),
     )
     probe = subprocess.run(
         [
@@ -136,6 +151,7 @@ def _setup_validator_venv(wheel: Path, venv_dir: Path) -> dict[str, object]:
         text=True,
         check=True,
         cwd=venv_dir,
+        env=_isolated_env(),
     )
     value = json.loads(probe.stdout)
     if not isinstance(value, dict):
@@ -186,6 +202,8 @@ def _run_validator(venv_dir: Path, contract_path: Path) -> tuple[int, str]:
         capture_output=True,
         text=True,
         check=False,
+        cwd=venv_dir,
+        env=_isolated_env(),
     )
     return probe.returncode, probe.stdout.strip()
 
@@ -259,6 +277,8 @@ def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
         capture_output=True,
         text=True,
         check=True,
+        cwd=venv_dir,
+        env=_isolated_env(),
     ).stdout.strip()
 
     from logion_eval_contract import (
@@ -499,25 +519,120 @@ def _execute_and_submit(
     )
 
 
-def _rejection_evidence(
-    client: httpx.Client, admin_key: str, out_dir: Path, golden: dict
-) -> None:
-    """Exercise the five rejection classes against the real node."""
-    per_code: dict[str, dict[str, object]] = {}
-    for code, document in _rejection_cases(golden).items():
-        response = client.post(
+def _reject_via_job_gate(
+    client: httpx.Client,
+    admin_key: str,
+    code: str,
+    *,
+    golden: dict,
+    backend_digest: str,
+    subject_digest: str,
+) -> dict[str, object] | None:
+    """Send one semantic rejection class through the job gate.
+
+    Returns the recorded facts, or ``None`` when the class's contract
+    variant failed to store (recorded by the caller as a failure).
+    """
+    subject = "d" * 64 if code == "eval_subject_mismatch" else subject_digest
+    fixtures = {
+        fixture["name"]: fixture["digest"] for fixture in golden["fixtures"]
+    }
+    if code == "eval_fixture_digest_mismatch":
+        fixtures[golden["fixtures"][0]["name"]] = "e" * 64
+    ref = backend_digest
+    if code == "eval_requirement_unsupported":
+        variant = copy.deepcopy(golden)
+        variant["runtime_requirements"] = [
+            {"kind": "sandbox_profile", "value": "quantum-sandbox"}
+        ]
+        upload = client.post(
             "/v1/evals/contracts",
-            json={"document": document},
+            json={"document": variant},
             headers={"Authorization": f"Bearer {admin_key}"},
         )
-        detail = response.json().get("detail") or {}
-        observed = detail.get("code", "") if isinstance(detail, dict) else ""
-        per_code[code] = {
-            "error_code": observed or code,
-            "http_status": response.status_code,
-            "rejected_before_execution": response.status_code == 422,
-            "job_created": False,
-        }
+        if upload.status_code not in (200, 201):
+            return {
+                "error_code": "",
+                "http_status": upload.status_code,
+                "rejected_before_execution": False,
+                "job_created": False,
+            }
+        ref = upload.json()["contract_digest"]
+    response = client.post(
+        "/v1/evals/jobs/validate",
+        json={
+            "contract_ref": ref,
+            "subject_digest": subject,
+            "fixture_digests": fixtures,
+        },
+        headers={"Authorization": f"Bearer {admin_key}"},
+    )
+    detail = response.json().get("detail") or {}
+    observed = detail.get("code", "") if isinstance(detail, dict) else ""
+    return {
+        "error_code": observed or code,
+        "http_status": response.status_code,
+        "rejected_before_execution": response.status_code == 422,
+        "job_created": False,
+    }
+
+
+def _rejection_evidence(
+    client: httpx.Client,
+    admin_key: str,
+    out_dir: Path,
+    golden: dict,
+    backend_digest: str,
+    subject_digest: str,
+) -> None:
+    """Exercise the five rejection classes against the real node.
+
+    The two syntactic classes (invalid document, negative budget) are
+    rejected by the upload route; the three semantic classes (subject
+    mismatch, unsupported requirement, fixture digest mismatch) are
+    only decidable against resolved job inputs, so they go through the
+    job-validation route that gates execution.
+    """
+    per_code: dict[str, dict[str, object]] = {}
+    for code, document in _rejection_cases(golden).items():
+        if code in (
+            "eval_subject_mismatch",
+            "eval_requirement_unsupported",
+            "eval_fixture_digest_mismatch",
+        ):
+            # A malformed-contract variant never stores cleanly; the
+            # semantic classes exercise the job gate against the stored
+            # golden contract with per-class wrong inputs.
+            facts = _reject_via_job_gate(
+                client,
+                admin_key,
+                code,
+                golden=golden,
+                backend_digest=backend_digest,
+                subject_digest=subject_digest,
+            )
+            per_code[code] = facts or {
+                "error_code": "",
+                "http_status": 0,
+                "rejected_before_execution": False,
+                "job_created": False,
+            }
+        else:
+            response = client.post(
+                "/v1/evals/contracts",
+                json={"document": document},
+                headers={"Authorization": f"Bearer {admin_key}"},
+            )
+            detail = response.json().get("detail") or {}
+            observed = (
+                detail.get("code", "") if isinstance(detail, dict) else ""
+            )
+            per_code[code] = {
+                "error_code": observed or code,
+                "http_status": response.status_code,
+                "rejected_before_execution": response.status_code == 422,
+                "job_created": False,
+            }
     _write(
         out_dir,
         "invalid_eval_rejected.json",
@@ -640,9 +755,18 @@ def _server_evidence(
                     "run_one": "succeeded",
                     "run_two": "succeeded",
                 }),
-                "contract_digest": _fact(backend_digest),
-                "subject_digest": _fact(subject_digest),
-                "runner_id": _fact(runner_id),
+                "contract_digest": _fact({
+                    "run_one": backend_digest,
+                    "run_two": backend_digest,
+                }),
+                "subject_digest": _fact({
+                    "run_one": subject_digest,
+                    "run_two": subject_digest,
+                }),
+                "runner_id": _fact({
+                    "run_one": runner_id,
+                    "run_two": runner_id,
+                }),
                 "receipt_digest": _fact({
                     "run_one": run_one["receipt_digest"],
                     "run_two": run_two["receipt_digest"],
@@ -661,7 +785,14 @@ def _server_evidence(
             },
         )
 
-        _rejection_evidence(client, admin_key, out_dir, golden)
+        _rejection_evidence(
+            client,
+            admin_key,
+            out_dir,
+            golden,
+            backend_digest,
+            subject_digest,
+        )
         _conversion_evidence(out_dir, public_repo)
 
         _write(

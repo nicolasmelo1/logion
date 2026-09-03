@@ -171,6 +171,8 @@ from logion.v1._types.generated.v1 import (
     UploadExecutionArtifactResponse,
     UpsertCourseReviewRequest,
     UpsertCourseReviewResponse,
+    ValidateEvalJobRequest,
+    ValidateEvalJobResponse,
     WithdrawBountySubmissionResponse,
 )
 
@@ -1334,6 +1336,20 @@ def get_eval_contract(
             "GET",
             f"/v1/evals/contracts/{ref}",
         ),
+    )
+
+
+def validate_eval_job(
+    http: HttpClient,
+    *,
+    body: ValidateEvalJobRequest,
+) -> ValidateEvalJobResponse:
+    """Call the validate_eval_job API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/evals/jobs/validate",
+        ValidateEvalJobResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
     )
 
 

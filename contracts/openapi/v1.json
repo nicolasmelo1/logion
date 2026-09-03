@@ -12213,6 +12213,50 @@
         "title": "UserResponse",
         "type": "object"
       },
+      "ValidateEvalJobRequest": {
+        "properties": {
+          "contract_ref": {
+            "title": "Contract Ref",
+            "type": "string"
+          },
+          "fixture_digests": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fixture Digests",
+            "type": "object"
+          },
+          "subject_digest": {
+            "title": "Subject Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_ref",
+          "subject_digest",
+          "fixture_digests"
+        ],
+        "title": "ValidateEvalJobRequest",
+        "type": "object"
+      },
+      "ValidateEvalJobResponse": {
+        "properties": {
+          "contract_digest": {
+            "title": "Contract Digest",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contract_digest",
+          "valid"
+        ],
+        "title": "ValidateEvalJobResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -19448,6 +19492,65 @@
           }
         },
         "summary": "Get an eval contract by digest or friendly name",
+        "tags": [
+          "evals"
+        ]
+      }
+    },
+    "/v1/evals/jobs/validate": {
+      "post": {
+        "operationId": "validate_eval_job",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateEvalJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateEvalJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvalErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid eval job"
+          }
+        },
+        "summary": "Validate resolved eval inputs before execution",
         "tags": [
           "evals"
         ]

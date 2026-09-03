@@ -38,6 +38,28 @@ class EvalsResource:
             "GET", f"/v1/evals/contracts/{encoded_ref}"
         )
 
+    def validate_job(
+        self,
+        contract_ref: str,
+        subject_digest: str,
+        fixture_digests: dict[str, str],
+    ) -> JsonObject:
+        """Validate resolved eval inputs before execution.
+
+        The five stable rejection codes all return 422 and reject
+        before any job row is created, so an invalid job never
+        reaches the queue.
+        """
+        return self._http.request_object(
+            "POST",
+            "/v1/evals/jobs/validate",
+            json={
+                "contract_ref": contract_ref,
+                "subject_digest": subject_digest,
+                "fixture_digests": fixture_digests,
+            },
+        )
+
     def submit_result(
         self,
         result: JsonObject,
