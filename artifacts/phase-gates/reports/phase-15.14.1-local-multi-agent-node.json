@@ -1,14 +1,14 @@
 {
-  "run_id": "20260901T171013-phase_15_14_1_local_multi_agent_node",
-  "scenario": "phase_15_14_1_local_multi_agent_node",
+  "run_id": "20260903T231531-local_multi_agent_node",
+  "scenario": "local_multi_agent_node",
   "status": "passed",
   "api_adapter": "local-devrig",
   "agent_drivers": {
-    "consumer": "claude-code",
-    "auditor": "claude-code"
+    "consumer": "codex",
+    "auditor": "codex"
   },
-  "started_at": "2026-09-01T17:10:13.372433Z",
-  "finished_at": "2026-09-01T17:16:33.029088Z",
+  "started_at": "2026-09-03T23:15:31.276616Z",
+  "finished_at": "2026-09-03T23:24:49.352328Z",
   "phase_results": [
     {
       "phase_id": "capture_identity_limits",
@@ -35,12 +35,12 @@
             "compose_sha256": "e8b49b0ed386700723559fd8a7705a7a317b316ff35ff231bfebc8dd6c2d1a95",
             "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
             "role_agent_ids": {
-              "consumer": "6b12f662-60b1-4879-8d7d-27d44f9c58be",
-              "auditor": "62dfad50-b4e9-4121-ac6a-78467381d590"
+              "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+              "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
             },
             "credential_fingerprints": {
-              "consumer": "79c9370c0316422d",
-              "auditor": "ce08ddceada85391"
+              "consumer": "270dec36cd264e3d",
+              "auditor": "f142d6ac4785709f"
             },
             "prompts": [
               {
@@ -71,8 +71,8 @@
             ],
             "role_runtime": {
               "consumer": {
-                "container_id": "09f9ffc1aa2ceb5a25fa0c11b5b4f82e4bbaabbc27b712c6396972eebebb4fab",
-                "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+                "container_id": "6c1a924fb6f7c1368d17d892fcb2d5bee2a346e700e1637540c98358a17e94cf",
+                "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
                 "versions": {
                   "logion": "logion 0.2.0.dev1",
                   "codex": "codex-cli 0.150.1",
@@ -112,8 +112,8 @@
                 ]
               },
               "auditor": {
-                "container_id": "52712ab0cf5ffd9195d0a24a4352eece5aa2ed805c212258b2579d43b8e5d465",
-                "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+                "container_id": "e9263b94343b38437b9eefdf702b2a89ba34368cdc8c788c55928c6ed237b12c",
+                "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
                 "versions": {
                   "logion": "logion 0.2.0.dev1",
                   "codex": "codex-cli 0.150.1",
@@ -121,21 +121,15 @@
                 },
                 "mounts": [
                   {
-                    "type": "volume",
-                    "name": "logion-local-node_auditor_spool",
-                    "destination": "/home/agent/.logion/spool",
-                    "rw": true
-                  },
-                  {
                     "type": "bind",
                     "name": null,
-                    "destination": "/run/secrets/auditor_codex_auth",
+                    "destination": "/run/secrets/auditor_api_key",
                     "rw": false
                   },
                   {
                     "type": "bind",
                     "name": null,
-                    "destination": "/run/secrets/auditor_api_key",
+                    "destination": "/run/secrets/auditor_codex_auth",
                     "rw": false
                   },
                   {
@@ -148,6 +142,12 @@
                     "type": "volume",
                     "name": "logion-local-node_auditor_workspace",
                     "destination": "/workspace",
+                    "rw": true
+                  },
+                  {
+                    "type": "volume",
+                    "name": "logion-local-node_auditor_spool",
+                    "destination": "/home/agent/.logion/spool",
                     "rw": true
                   }
                 ]
@@ -181,9 +181,9 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:10:13.651059Z",
-      "finished_at": "2026-09-01T17:10:15.980328Z",
-      "duration_seconds": 2.329
+      "started_at": "2026-09-03T23:15:31.629142Z",
+      "finished_at": "2026-09-03T23:15:34.354301Z",
+      "duration_seconds": 2.725
     },
     {
       "phase_id": "prove_in_container_harnesses",
@@ -248,9 +248,9 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:10:15.980346Z",
-      "finished_at": "2026-09-01T17:10:45.446217Z",
-      "duration_seconds": 29.467
+      "started_at": "2026-09-03T23:15:34.354327Z",
+      "finished_at": "2026-09-03T23:15:58.989165Z",
+      "duration_seconds": 24.636
     },
     {
       "phase_id": "capture_canaries",
@@ -322,25 +322,25 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:10:45.446242Z",
-      "finished_at": "2026-09-01T17:10:47.235419Z",
-      "duration_seconds": 1.789
+      "started_at": "2026-09-03T23:15:58.989197Z",
+      "finished_at": "2026-09-03T23:16:00.649860Z",
+      "duration_seconds": 1.661
     },
     {
       "phase_id": "seed_node_workspaces",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:10:47.235437Z",
-      "finished_at": "2026-09-01T17:10:48.363190Z",
-      "duration_seconds": 1.128
+      "started_at": "2026-09-03T23:16:00.649883Z",
+      "finished_at": "2026-09-03T23:16:01.713267Z",
+      "duration_seconds": 1.063
     },
     {
       "phase_id": "consumer_repo_scoped_install",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:10:48.363209Z",
-      "finished_at": "2026-09-01T17:12:02.211960Z",
-      "duration_seconds": 73.852
+      "started_at": "2026-09-03T23:16:01.713289Z",
+      "finished_at": "2026-09-03T23:19:18.925007Z",
+      "duration_seconds": 197.224
     },
     {
       "phase_id": "capture_scope",
@@ -360,25 +360,25 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:12:02.211996Z",
-      "finished_at": "2026-09-01T17:12:02.763985Z",
-      "duration_seconds": 0.552
+      "started_at": "2026-09-03T23:19:18.925036Z",
+      "finished_at": "2026-09-03T23:19:19.470992Z",
+      "duration_seconds": 0.546
     },
     {
       "phase_id": "write_restart_markers",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:12:02.764025Z",
-      "finished_at": "2026-09-01T17:13:16.987297Z",
-      "duration_seconds": 74.226
+      "started_at": "2026-09-03T23:19:19.471016Z",
+      "finished_at": "2026-09-03T23:21:09.942913Z",
+      "duration_seconds": 110.479
     },
     {
       "phase_id": "auditor_restart_marker",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:13:16.987323Z",
-      "finished_at": "2026-09-01T17:14:21.117534Z",
-      "duration_seconds": 64.133
+      "started_at": "2026-09-03T23:21:09.942941Z",
+      "finished_at": "2026-09-03T23:22:08.686506Z",
+      "duration_seconds": 58.747
     },
     {
       "phase_id": "capture_restart",
@@ -390,12 +390,12 @@
           "message": "each role's intended state survived the restart and stayed invisible to the other role",
           "evidence": {
             "before_restart": {
-              "consumer": "consumer-marker-1788282777",
-              "auditor": "auditor-marker-1788282828"
+              "consumer": "consumer-marker-1788477663",
+              "auditor": "auditor-marker-1788477720"
             },
             "after_restart": {
-              "consumer": "consumer-marker-1788282777",
-              "auditor": "auditor-marker-1788282828"
+              "consumer": "consumer-marker-1788477663",
+              "auditor": "auditor-marker-1788477720"
             },
             "cross_role_visible": false,
             "query_evidence": {
@@ -404,25 +404,25 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:14:21.117573Z",
-      "finished_at": "2026-09-01T17:15:57.642011Z",
-      "duration_seconds": 96.528
+      "started_at": "2026-09-03T23:22:08.686543Z",
+      "finished_at": "2026-09-03T23:22:37.661461Z",
+      "duration_seconds": 28.977
     },
     {
       "phase_id": "provision_credentials",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:15:57.642033Z",
-      "finished_at": "2026-09-01T17:15:57.763817Z",
-      "duration_seconds": 0.122
+      "started_at": "2026-09-03T23:22:37.661499Z",
+      "finished_at": "2026-09-03T23:22:37.777347Z",
+      "duration_seconds": 0.116
     },
     {
       "phase_id": "capture_credentials",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-01T17:15:57.763849Z",
-      "finished_at": "2026-09-01T17:15:58.184305Z",
-      "duration_seconds": 0.42
+      "started_at": "2026-09-03T23:22:37.777373Z",
+      "finished_at": "2026-09-03T23:22:38.156707Z",
+      "duration_seconds": 0.379
     },
     {
       "phase_id": "selective_reset",
@@ -433,8 +433,8 @@
           "status": "passed",
           "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
           "evidence": {
-            "consumer_identity": "6b12f662-60b1-4879-8d7d-27d44f9c58be",
-            "auditor_identity": "62dfad50-b4e9-4121-ac6a-78467381d590",
+            "consumer_identity": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+            "auditor_identity": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b",
             "revoked_key_rejected": true,
             "auditor_still_authenticates": true,
             "query_evidence": {
@@ -460,9 +460,9 @@
           }
         }
       ],
-      "started_at": "2026-09-01T17:15:58.184321Z",
-      "finished_at": "2026-09-01T17:16:33.026051Z",
-      "duration_seconds": 34.843
+      "started_at": "2026-09-03T23:22:38.156735Z",
+      "finished_at": "2026-09-03T23:24:49.345458Z",
+      "duration_seconds": 130.908
     }
   ],
   "assertion_results": [
@@ -487,12 +487,12 @@
         "compose_sha256": "e8b49b0ed386700723559fd8a7705a7a317b316ff35ff231bfebc8dd6c2d1a95",
         "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
         "role_agent_ids": {
-          "consumer": "6b12f662-60b1-4879-8d7d-27d44f9c58be",
-          "auditor": "62dfad50-b4e9-4121-ac6a-78467381d590"
+          "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+          "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
         },
         "credential_fingerprints": {
-          "consumer": "79c9370c0316422d",
-          "auditor": "ce08ddceada85391"
+          "consumer": "270dec36cd264e3d",
+          "auditor": "f142d6ac4785709f"
         },
         "prompts": [
           {
@@ -523,8 +523,8 @@
         ],
         "role_runtime": {
           "consumer": {
-            "container_id": "09f9ffc1aa2ceb5a25fa0c11b5b4f82e4bbaabbc27b712c6396972eebebb4fab",
-            "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+            "container_id": "6c1a924fb6f7c1368d17d892fcb2d5bee2a346e700e1637540c98358a17e94cf",
+            "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
             "versions": {
               "logion": "logion 0.2.0.dev1",
               "codex": "codex-cli 0.150.1",
@@ -564,8 +564,8 @@
             ]
           },
           "auditor": {
-            "container_id": "52712ab0cf5ffd9195d0a24a4352eece5aa2ed805c212258b2579d43b8e5d465",
-            "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+            "container_id": "e9263b94343b38437b9eefdf702b2a89ba34368cdc8c788c55928c6ed237b12c",
+            "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
             "versions": {
               "logion": "logion 0.2.0.dev1",
               "codex": "codex-cli 0.150.1",
@@ -573,21 +573,15 @@
             },
             "mounts": [
               {
-                "type": "volume",
-                "name": "logion-local-node_auditor_spool",
-                "destination": "/home/agent/.logion/spool",
-                "rw": true
-              },
-              {
                 "type": "bind",
                 "name": null,
-                "destination": "/run/secrets/auditor_codex_auth",
+                "destination": "/run/secrets/auditor_api_key",
                 "rw": false
               },
               {
                 "type": "bind",
                 "name": null,
-                "destination": "/run/secrets/auditor_api_key",
+                "destination": "/run/secrets/auditor_codex_auth",
                 "rw": false
               },
               {
@@ -600,6 +594,12 @@
                 "type": "volume",
                 "name": "logion-local-node_auditor_workspace",
                 "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_spool",
+                "destination": "/home/agent/.logion/spool",
                 "rw": true
               }
             ]
@@ -774,12 +774,12 @@
       "message": "each role's intended state survived the restart and stayed invisible to the other role",
       "evidence": {
         "before_restart": {
-          "consumer": "consumer-marker-1788282777",
-          "auditor": "auditor-marker-1788282828"
+          "consumer": "consumer-marker-1788477663",
+          "auditor": "auditor-marker-1788477720"
         },
         "after_restart": {
-          "consumer": "consumer-marker-1788282777",
-          "auditor": "auditor-marker-1788282828"
+          "consumer": "consumer-marker-1788477663",
+          "auditor": "auditor-marker-1788477720"
         },
         "cross_role_visible": false,
         "query_evidence": {
@@ -792,8 +792,8 @@
       "status": "passed",
       "message": "consumer and auditor credentials are distinct, and selective reset revoked only the consumer's",
       "evidence": {
-        "consumer_identity": "6b12f662-60b1-4879-8d7d-27d44f9c58be",
-        "auditor_identity": "62dfad50-b4e9-4121-ac6a-78467381d590",
+        "consumer_identity": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+        "auditor_identity": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b",
         "revoked_key_rejected": true,
         "auditor_still_authenticates": true,
         "query_evidence": {
@@ -853,12 +853,12 @@
         "compose_sha256": "e8b49b0ed386700723559fd8a7705a7a317b316ff35ff231bfebc8dd6c2d1a95",
         "dockerfile_sha256": "6f22c6527a4d750b57020db3c58fc29e0294bd8d373f3e23e962ae6c5686124d",
         "role_agent_ids": {
-          "consumer": "6b12f662-60b1-4879-8d7d-27d44f9c58be",
-          "auditor": "62dfad50-b4e9-4121-ac6a-78467381d590"
+          "consumer": "8f696259-6e4c-4fcd-9997-0e4675f85770",
+          "auditor": "3f0d3c5f-1ee1-46ac-ad6f-414ac090a72b"
         },
         "credential_fingerprints": {
-          "consumer": "79c9370c0316422d",
-          "auditor": "ce08ddceada85391"
+          "consumer": "270dec36cd264e3d",
+          "auditor": "f142d6ac4785709f"
         },
         "prompts": [
           {
@@ -889,8 +889,8 @@
         ],
         "role_runtime": {
           "consumer": {
-            "container_id": "09f9ffc1aa2ceb5a25fa0c11b5b4f82e4bbaabbc27b712c6396972eebebb4fab",
-            "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+            "container_id": "6c1a924fb6f7c1368d17d892fcb2d5bee2a346e700e1637540c98358a17e94cf",
+            "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
             "versions": {
               "logion": "logion 0.2.0.dev1",
               "codex": "codex-cli 0.150.1",
@@ -930,8 +930,8 @@
             ]
           },
           "auditor": {
-            "container_id": "52712ab0cf5ffd9195d0a24a4352eece5aa2ed805c212258b2579d43b8e5d465",
-            "image_id": "sha256:04821b76d1448676d80554d280e1f29f84a06d7171b20717083bb02f88b0b807",
+            "container_id": "e9263b94343b38437b9eefdf702b2a89ba34368cdc8c788c55928c6ed237b12c",
+            "image_id": "sha256:4119d454392922cde1606fe2977344a652d4a24df60327705d5c739dc416222d",
             "versions": {
               "logion": "logion 0.2.0.dev1",
               "codex": "codex-cli 0.150.1",
@@ -939,21 +939,15 @@
             },
             "mounts": [
               {
-                "type": "volume",
-                "name": "logion-local-node_auditor_spool",
-                "destination": "/home/agent/.logion/spool",
-                "rw": true
-              },
-              {
                 "type": "bind",
                 "name": null,
-                "destination": "/run/secrets/auditor_codex_auth",
+                "destination": "/run/secrets/auditor_api_key",
                 "rw": false
               },
               {
                 "type": "bind",
                 "name": null,
-                "destination": "/run/secrets/auditor_api_key",
+                "destination": "/run/secrets/auditor_codex_auth",
                 "rw": false
               },
               {
@@ -966,6 +960,12 @@
                 "type": "volume",
                 "name": "logion-local-node_auditor_workspace",
                 "destination": "/workspace",
+                "rw": true
+              },
+              {
+                "type": "volume",
+                "name": "logion-local-node_auditor_spool",
+                "destination": "/home/agent/.logion/spool",
                 "rw": true
               }
             ]
@@ -1040,5 +1040,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "s14b"
+  "artifact_root": "pg-15141"
 }
