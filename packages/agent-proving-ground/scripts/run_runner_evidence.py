@@ -1056,6 +1056,9 @@ def main() -> int:
             }),
         },
     )
+    sys.stdout.write(
+        json.dumps({"evidence_dir": str(out_dir)}, sort_keys=True) + "\n"
+    )
     return 0
 
 

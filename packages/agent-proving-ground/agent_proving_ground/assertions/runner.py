@@ -37,7 +37,8 @@ def _manifest(ctx: AssertionContext, params: dict) -> dict[str, object]:
         raise ValueError("manifest parameter is required")
     target = Path(raw)
     if not target.is_absolute():
-        target = (ctx.artifacts_dir / target).resolve()
+        target = ctx.artifacts_dir / target
+    target = target.resolve()
     target.relative_to(ctx.artifacts_dir.resolve())
     value = json.loads(target.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
