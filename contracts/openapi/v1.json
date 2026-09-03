@@ -19295,6 +19295,24 @@
       "post": {
         "description": "Validate and store one contract blob.\n\nValidation uses the shared library; the five stable error codes\nall return 422 and reject before any job row exists.",
         "operationId": "upload_eval_contract",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -19347,6 +19365,22 @@
             "schema": {
               "title": "Ref",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
