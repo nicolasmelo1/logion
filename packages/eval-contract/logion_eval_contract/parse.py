@@ -59,6 +59,22 @@ def _require_mapping(value: JsonValue, where: str) -> JsonObject:
     return value
 
 
+def _require_json_scalar(value: JsonValue, where: str) -> None:
+    """Reject YAML-only scalar shapes: dates, non-finite numbers."""
+    if value is None or isinstance(value, (bool, str)):
+        return
+    if isinstance(value, float) and (
+        value != value or value in (float("inf"), float("-inf"))
+    ):
+        raise EvalContractInvalid(f"{where} must be a finite JSON number")
+    if isinstance(value, (int, float)):
+        return
+    raise EvalContractInvalid(
+        f"{where} must be a JSON-representable value, got"
+        f" {type(value).__name__}"
+    )
+
+
 def _require_json_value(value: JsonValue, where: str) -> None:
     """Reject YAML-only shapes that cannot survive the JSON digest.
 
@@ -69,18 +85,6 @@ def _require_json_value(value: JsonValue, where: str) -> None:
     canonicalizer later (a 500) instead of failing validation (a 422),
     so the parser rejects it here, at the boundary.
     """
-    if value is None or isinstance(value, (bool, str)):
-        return
-    if isinstance(value, int):
-        if isinstance(value, bool) or value in (float("inf"), float("-inf")):
-            raise EvalContractInvalid(
-                f"{where} must be a JSON-representable value"
-            )
-        return
-    if isinstance(value, float):
-        if value != value or value in (float("inf"), float("-inf")):
-            raise EvalContractInvalid(f"{where} must be a finite JSON number")
-        return
     if isinstance(value, list):
         for index, item in enumerate(value):
             _require_json_value(item, f"{where}[{index}]")
@@ -93,10 +97,7 @@ def _require_json_value(value: JsonValue, where: str) -> None:
                 )
             _require_json_value(item, f"{where}.{key}")
         return
-    raise EvalContractInvalid(
-        f"{where} must be a JSON-representable value, got"
-        f" {type(value).__name__}"
-    )
+    _require_json_scalar(value, where)
 
 
 def _require_list(value: JsonValue, where: str) -> list[JsonValue]:

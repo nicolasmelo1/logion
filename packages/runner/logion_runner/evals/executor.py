@@ -86,6 +86,26 @@ def _limits_for(contract: EvalContract) -> dict[str, int]:
     return limits
 
 
+def _string_holds(operator: str, expected: str, observed: str) -> bool:
+    if operator == "contains":
+        return expected in observed
+    if operator == "matches":
+        return re.search(expected, observed) is not None
+    raise ValueError(
+        f"operator {operator!r} not applicable to the observation"
+    )
+
+
+def _ordered_holds(operator: str, expected: float, observed: float) -> bool:
+    if operator == "lt":
+        return observed < expected
+    if operator == "lte":
+        return observed <= expected
+    if operator == "gt":
+        return observed > expected
+    return observed >= expected
+
+
 def _assertion_holds(
     operator: str, expected: object, observed: object
 ) -> bool:
@@ -94,22 +114,13 @@ def _assertion_holds(
     if operator == "ne":
         return observed != expected
     if isinstance(observed, str) and isinstance(expected, str):
-        if operator == "contains":
-            return expected in observed
-        if operator == "matches":
-            return re.search(expected, observed) is not None
+        return _string_holds(operator, expected, observed)
     if (
         operator in ("lt", "lte", "gt", "gte")
         and isinstance(observed, (int, float))
         and isinstance(expected, (int, float))
     ):
-        if operator == "lt":
-            return observed < expected
-        if operator == "lte":
-            return observed <= expected
-        if operator == "gt":
-            return observed > expected
-        return observed >= expected
+        return _ordered_holds(operator, expected, observed)
     raise ValueError(
         f"operator {operator!r} not applicable to the observation"
     )

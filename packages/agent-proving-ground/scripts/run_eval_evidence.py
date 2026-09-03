@@ -153,6 +153,13 @@ def _run_validator(venv_dir: Path, contract_path: Path) -> tuple[int, str]:
     return probe.returncode, probe.stdout.strip()
 
 
+def _validator_digest(vendor_out: str) -> str:
+    lines = [
+        line for line in vendor_out.splitlines() if line.startswith("DIGEST")
+    ]
+    return lines[0].split(" ", 1)[1] if lines else ""
+
+
 def _rejection_cases(golden: dict) -> dict[str, dict]:
     """One malformed contract per stable rejection class."""
     invalid = copy.deepcopy(golden)
@@ -177,23 +184,11 @@ def _rejection_cases(golden: dict) -> dict[str, dict]:
     }
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stderr.write("usage: run_eval_evidence.py OUT_DIR\n")
-        return 2
-    out_dir = Path(sys.argv[1]).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+def _offline_evidence(out_dir: Path, public_repo: Path) -> dict[str, str]:
+    """Validation facts, from venvs with no repository on the path.
 
-    public_repo = Path(
-        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
-    ).resolve()
-    role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
-    admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
-    base_url = os.environ.get(
-        "LOGION_API_BASE_URL", "http://localhost:8000"
-    ).rstrip("/")
-
-    # ── Validation with the published package, isolated ──
+    Returns {runner_digest, reproduced_digest}.
+    """
     venv_dir = out_dir / "validator-venv"
     module_path = _setup_validator_venv(public_repo, venv_dir)
     golden = json.loads(GOLDEN_CONTRACT.read_text())
@@ -202,13 +197,11 @@ def main() -> int:
         sys.stderr.write(
             f"golden contract failed isolated validation: {valid_out}\n"
         )
-        return 1
+        raise SystemExit(1)
 
     tampered_path = out_dir / "tampered-probe.json"
     tampered = copy.deepcopy(golden)
     tampered["unknown_field_probe"] = True
-    # The validator must reject the unknown key (schema parity), not
-    # merely fail on a different mutation.
     tampered_path.write_text(json.dumps(tampered, indent=2) + "\n")
     _tampered_exit, tampered_out = _run_validator(venv_dir, tampered_path)
     tampered_path.unlink(missing_ok=True)
@@ -235,15 +228,9 @@ def main() -> int:
     )
     from logion_eval_contract import (
         parse_contract_document,
-        parse_result_document,
-    )
-    from logion_eval_contract import (
-        result_digest as compute_result_digest,
     )
 
     runner_digest = compute_contract_digest(parse_contract_document(golden))
-    subject_bytes = GOLDEN_SUBJECT.read_bytes()
-    subject_digest = hashlib.sha256(subject_bytes).hexdigest()
 
     _write(
         out_dir,
@@ -263,14 +250,11 @@ def main() -> int:
         },
     )
 
-    # ── Clean-workspace reproduction: package alone, no checkouts ──
+    # Clean-workspace reproduction: package alone, no checkouts.
     clean_venv = out_dir / "reproducer-venv"
     _setup_validator_venv(public_repo, clean_venv)
     _clean_exit, clean_out = _run_validator(clean_venv, GOLDEN_CONTRACT)
-    clean_line = [
-        line for line in clean_out.splitlines() if line.startswith("DIGEST")
-    ]
-    reproduced_digest = clean_line[0].split(" ", 1)[1] if clean_line else ""
+    reproduced_digest = _validator_digest(clean_out)
     _write(
         out_dir,
         "eval_reproduced_clean_workspace.json",
@@ -289,237 +273,7 @@ def main() -> int:
             ]),
         },
     )
-
-    client = httpx.Client(base_url=base_url, timeout=120)
-    try:
-        # ── Enroll a runner and store the contract server-side ──
-        enroll = client.post(
-            "/v1/runners/enroll",
-            json={"name": f"eval-evidence-{uuid.uuid4().hex[:8]}"},
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        if enroll.status_code != 201:
-            sys.stderr.write(
-                "runner enrollment failed: HTTP"
-                f" {enroll.status_code} {enroll.text[:200]}\n"
-            )
-            return 1
-        enroll_payload = enroll.json()
-        runner_id = enroll_payload["runner_id"]
-        runner_headers = {
-            "Authorization": f"Bearer {enroll_payload['runner_key']}"
-        }
-
-        upload = client.post(
-            "/v1/evals/contracts",
-            json={"document": golden},
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        if upload.status_code not in (200, 201):
-            sys.stderr.write(
-                "contract upload failed: HTTP"
-                f" {upload.status_code} {upload.text[:200]}\n"
-            )
-            return 1
-        upload_payload = upload.json()
-        backend_digest = upload_payload["contract_digest"]
-
-        # ── Execute twice for real; submit both runs ──
-        from logion_eval_contract import parse_contract_file
-        from logion_runner.evals.executor import execute_eval_contract
-
-        contract = parse_contract_file(GOLDEN_CONTRACT)
-        run_rows: list[dict[str, str]] = []
-        run_result_digests: list[str] = []
-        for _index in (1, 2):
-            graded = execute_eval_contract(
-                contract,
-                subject_bytes,
-                harness_id="logion-node",
-                harness_version="0.1.0",
-                model_id="reference-subject",
-                model_version="1.0.0",
-                contract_dir=str(GOLDEN_CONTRACT.parent),
-            )
-            outcome = graded.result_document
-            # contract_standing is server-owned: the runner never
-            # declares it — the node overwrites it with the blob's
-            # standing on storage.
-            outcome.pop("contract_standing", None)
-            key = f"eval-evidence-{uuid.uuid4().hex[:8]}"
-            submit = client.post(
-                "/v1/evals/results",
-                json={"result": outcome, "idempotency_key": key},
-                headers=runner_headers,
-            )
-            if submit.status_code not in (200, 201):
-                sys.stderr.write(
-                    "result submission failed: HTTP"
-                    f" {submit.status_code} {submit.text[:200]}\n"
-                )
-                return 1
-            submit_payload = submit.json()
-            run_result_digests.append(
-                compute_result_digest(parse_result_document(outcome))
-            )
-            run_rows.append({
-                "eval_run_id": submit_payload["run_id"],
-                "receipt_digest": hashlib.sha256(
-                    json.dumps(outcome, sort_keys=True).encode()
-                ).hexdigest(),
-            })
-
-        _write(
-            out_dir,
-            "eval_runs_completed.json",
-            {
-                "eval_run_id": _fact({
-                    "run_one": run_rows[0]["eval_run_id"],
-                    "run_two": run_rows[1]["eval_run_id"],
-                }),
-                "terminal_status": _fact({
-                    "run_one": "succeeded",
-                    "run_two": "succeeded",
-                }),
-                "contract_digest": _fact(backend_digest),
-                "subject_digest": _fact(subject_digest),
-                "runner_id": _fact(runner_id),
-                "receipt_digest": _fact({
-                    "run_one": run_rows[0]["receipt_digest"],
-                    "run_two": run_rows[1]["receipt_digest"],
-                }),
-            },
-        )
-
-        _write(
-            out_dir,
-            "eval_result_digest_stable.json",
-            {
-                "run_one_result_digest": _fact(run_result_digests[0]),
-                "run_two_result_digest": _fact(run_result_digests[1]),
-                "digests_equal": _fact(
-                    run_result_digests[0] == run_result_digests[1]
-                ),
-                "normalization_version": _fact("logion.eval.normalize.v1"),
-                "determinism_class": _fact("deterministic"),
-            },
-        )
-
-        # ── The five rejection classes, against the real node ──
-        per_code: dict[str, dict[str, object]] = {}
-        for code, document in _rejection_cases(golden).items():
-            response = client.post(
-                "/v1/evals/contracts",
-                json={"document": document},
-                headers={"Authorization": f"Bearer {admin_key}"},
-            )
-            detail = response.json().get("detail") or {}
-            observed = (
-                detail.get("code", "") if isinstance(detail, dict) else ""
-            )
-            per_code[code] = {
-                "error_code": observed or code,
-                "http_status": response.status_code,
-                "rejected_before_execution": response.status_code == 422,
-                "job_created": False,
-            }
-        _write(
-            out_dir,
-            "invalid_eval_rejected.json",
-            {
-                "error_code": _fact({
-                    role: facts["error_code"]
-                    for role, facts in per_code.items()
-                }),
-                "http_status": _fact({
-                    role: facts["http_status"]
-                    for role, facts in per_code.items()
-                }),
-                "rejected_before_execution": _fact({
-                    role: facts["rejected_before_execution"]
-                    for role, facts in per_code.items()
-                }),
-                "job_created": _fact({
-                    role: facts["job_created"]
-                    for role, facts in per_code.items()
-                }),
-            },
-        )
-
-        # ── Conversion: identity sets over one builtin scenario ──
-        scenario_path = _pick_companion_scenario(public_repo)
-        scenario = _first_scenario(scenario_path)
-        _contracts, converted_ids = _convert_scenario(scenario_path)
-        _write(
-            out_dir,
-            "converted_scenario_assertions_preserved.json",
-            {
-                "source_scenario": _fact(str(scenario.get("id"))),
-                "source_assertion_ids": _fact(sorted(_source_ids(scenario))),
-                "converted_assertion_ids": _fact(sorted(converted_ids)),
-                "dropped_assertion_count": _fact(
-                    len(set(_source_ids(scenario)) - set(converted_ids))
-                ),
-                "added_assertion_count": _fact(
-                    len(set(converted_ids) - set(_source_ids(scenario)))
-                ),
-                "conversion_tool_version": _fact(_conversion_tool_version()),
-            },
-        )
-
-        # ── Backend vs runner canonical digest ──
-        _write(
-            out_dir,
-            "canonical_digest_agrees.json",
-            {
-                "golden_contract_id": _fact(
-                    f"urn:logion:eval-contract:{backend_digest}"
-                ),
-                "backend_canonical_digest": _fact(backend_digest),
-                "runner_canonical_digest": _fact(runner_digest),
-                "digests_equal": _fact(backend_digest == runner_digest),
-                "canonicalization": _fact("JCS"),
-            },
-        )
-
-        # ── Indexed alongside its subjects ──
-        lookup = client.get(
-            "/v1/resources",
-            params={"resource_type": "eval_contract", "limit": 50},
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        indexed_resource_id = ""
-        if lookup.status_code == 200:
-            entries = (
-                lookup.json().get("items")
-                or lookup.json().get("resources")
-                or []
-            )
-            for entry in entries:
-                if entry.get("canonical_uri", "").endswith(backend_digest):
-                    indexed_resource_id = str(entry.get("id", ""))
-                    break
-        _write(
-            out_dir,
-            "eval_contract_indexed.json",
-            {
-                "resource_id": _fact(indexed_resource_id),
-                "resource_type": _fact(
-                    "eval_contract" if indexed_resource_id else ""
-                ),
-                "contract_digest": _fact(
-                    backend_digest if indexed_resource_id else ""
-                ),
-                "indexed_alongside_subject": _fact(bool(indexed_resource_id)),
-                "result_contract_digest": _fact(backend_digest),
-                "result_contract_standing": _fact(
-                    upload_payload.get("standing") or "unreviewed"
-                ),
-            },
-        )
-    finally:
-        client.close()
-    return 0
+    return {"runner_digest": runner_digest, "reproduced": reproduced_digest}
 
 
 def _pick_companion_scenario(public_repo: Path) -> Path:
@@ -543,6 +297,17 @@ def _first_scenario(path: Path) -> dict:
     return {"id": path.stem, "expected": {}}
 
 
+def _conversion_tool_version() -> str:
+    sys.path.insert(
+        0, str(REPO_ROOT / "packages" / "agent-companion" / "evals")
+    )
+    from convert_to_eval_contract import (
+        CONVERSION_TOOL_VERSION,
+    )
+
+    return CONVERSION_TOOL_VERSION
+
+
 def _convert_scenario(path: Path) -> tuple[list[dict], list[str]]:
     """Run the conversion tool over one scenario file.
 
@@ -563,17 +328,6 @@ def _convert_scenario(path: Path) -> tuple[list[dict], list[str]]:
     return contracts, ids
 
 
-def _conversion_tool_version() -> str:
-    sys.path.insert(
-        0, str(REPO_ROOT / "packages" / "agent-companion" / "evals")
-    )
-    from convert_to_eval_contract import (
-        CONVERSION_TOOL_VERSION,
-    )
-
-    return CONVERSION_TOOL_VERSION
-
-
 def _source_ids(scenario: dict) -> set[str]:
     """The source assertion ids the conversion must preserve."""
     scenario_id = str(scenario.get("id", "scenario"))
@@ -583,6 +337,334 @@ def _source_ids(scenario: dict) -> set[str]:
         if scenario["expected"][fact] is not None
         and scenario["expected"][fact] is not False
     }
+
+
+def _enroll_and_upload(
+    client: httpx.Client,
+    admin_key: str,
+    golden: dict,
+    runner_digest: str,
+) -> tuple[str, dict, dict]:
+    """Enroll a runner, upload the contract, return runner auth + digest."""
+    enroll = client.post(
+        "/v1/runners/enroll",
+        json={"name": f"eval-evidence-{uuid.uuid4().hex[:8]}"},
+        headers={"Authorization": f"Bearer {admin_key}"},
+    )
+    if enroll.status_code != 201:
+        sys.stderr.write(
+            f"runner enrollment failed: HTTP {enroll.status_code}"
+            f" {enroll.text[:200]}\n"
+        )
+        raise SystemExit(1)
+    enroll_payload = enroll.json()
+    upload = client.post(
+        "/v1/evals/contracts",
+        json={"document": golden},
+        headers={"Authorization": f"Bearer {admin_key}"},
+    )
+    if upload.status_code not in (200, 201):
+        sys.stderr.write(
+            f"contract upload failed: HTTP {upload.status_code}"
+            f" {upload.text[:200]}\n"
+        )
+        raise SystemExit(1)
+    upload_payload = upload.json()
+    _digest_ok(upload_payload["contract_digest"], runner_digest)
+    runner_headers = {
+        "Authorization": f"Bearer {enroll_payload['runner_key']}"
+    }
+    return (
+        enroll_payload["runner_id"],
+        runner_headers,
+        upload_payload,
+    )
+
+
+def _digest_ok(backend_digest: str, runner_digest: str) -> None:
+    if backend_digest != runner_digest:
+        sys.stderr.write(
+            "backend stored a different canonical digest than the"
+            f" runner computed: {backend_digest} != {runner_digest}\n"
+        )
+        raise SystemExit(1)
+
+
+def _execute_and_submit(
+    client: httpx.Client,
+    runner_headers: dict[str, str],
+    subject_bytes: bytes,
+) -> tuple[dict[str, str], str, dict]:
+    """Execute the golden contract once; submit the result to the node."""
+    from logion_eval_contract import (
+        parse_contract_file,
+        parse_result_document,
+    )
+    from logion_eval_contract import (
+        result_digest as compute_result_digest,
+    )
+    from logion_runner.evals.executor import execute_eval_contract
+
+    contract = parse_contract_file(GOLDEN_CONTRACT)
+    graded = execute_eval_contract(
+        contract,
+        subject_bytes,
+        harness_id="logion-node",
+        harness_version="0.1.0",
+        model_id="reference-subject",
+        model_version="1.0.0",
+        contract_dir=str(GOLDEN_CONTRACT.parent),
+    )
+    outcome = graded.result_document
+    # contract_standing is server-owned: the runner never declares it —
+    # the node overwrites it with the blob's standing on storage.
+    outcome.pop("contract_standing", None)
+    submit = client.post(
+        "/v1/evals/results",
+        json={
+            "result": outcome,
+            "idempotency_key": f"eval-evidence-{uuid.uuid4().hex[:8]}",
+        },
+        headers=runner_headers,
+    )
+    if submit.status_code not in (200, 201):
+        sys.stderr.write(
+            f"result submission failed: HTTP {submit.status_code}"
+            f" {submit.text[:200]}\n"
+        )
+        raise SystemExit(1)
+    submit_payload = submit.json()
+    receipt_digest = hashlib.sha256(
+        json.dumps(outcome, sort_keys=True).encode()
+    ).hexdigest()
+    return (
+        {
+            "eval_run_id": submit_payload["run_id"],
+            "receipt_digest": receipt_digest,
+        },
+        compute_result_digest(parse_result_document(outcome)),
+        outcome,
+    )
+
+
+def _rejection_evidence(
+    client: httpx.Client, admin_key: str, out_dir: Path, golden: dict
+) -> None:
+    """Exercise the five rejection classes against the real node."""
+    per_code: dict[str, dict[str, object]] = {}
+    for code, document in _rejection_cases(golden).items():
+        response = client.post(
+            "/v1/evals/contracts",
+            json={"document": document},
+            headers={"Authorization": f"Bearer {admin_key}"},
+        )
+        detail = response.json().get("detail") or {}
+        observed = detail.get("code", "") if isinstance(detail, dict) else ""
+        per_code[code] = {
+            "error_code": observed or code,
+            "http_status": response.status_code,
+            "rejected_before_execution": response.status_code == 422,
+            "job_created": False,
+        }
+    _write(
+        out_dir,
+        "invalid_eval_rejected.json",
+        {
+            "error_code": _fact({
+                role: facts["error_code"] for role, facts in per_code.items()
+            }),
+            "http_status": _fact({
+                role: facts["http_status"] for role, facts in per_code.items()
+            }),
+            "rejected_before_execution": _fact({
+                role: facts["rejected_before_execution"]
+                for role, facts in per_code.items()
+            }),
+            "job_created": _fact({
+                role: facts["job_created"] for role, facts in per_code.items()
+            }),
+        },
+    )
+
+
+def _conversion_evidence(out_dir: Path, public_repo: Path) -> None:
+    """Convert one builtin scenario; retain the identity sets."""
+    scenario_path = _pick_companion_scenario(public_repo)
+    scenario = _first_scenario(scenario_path)
+    _contracts, converted_ids = _convert_scenario(scenario_path)
+    _write(
+        out_dir,
+        "converted_scenario_assertions_preserved.json",
+        {
+            "source_scenario": _fact(str(scenario.get("id"))),
+            "source_assertion_ids": _fact(sorted(_source_ids(scenario))),
+            "converted_assertion_ids": _fact(sorted(converted_ids)),
+            "dropped_assertion_count": _fact(
+                len(set(_source_ids(scenario)) - set(converted_ids))
+            ),
+            "added_assertion_count": _fact(
+                len(set(converted_ids) - set(_source_ids(scenario)))
+            ),
+            "conversion_tool_version": _fact(_conversion_tool_version()),
+        },
+    )
+
+
+def _index_evidence(
+    client: httpx.Client,
+    admin_key: str,
+    out_dir: Path,
+    backend_digest: str,
+    standing: str,
+) -> None:
+    """Read back the contract's resource addressing from the node."""
+    lookup = client.get(
+        "/v1/resources",
+        params={"resource_type": "eval_contract", "limit": 50},
+        headers={"Authorization": f"Bearer {admin_key}"},
+    )
+    indexed_resource_id = ""
+    if lookup.status_code == 200:
+        entries = (
+            lookup.json().get("items") or lookup.json().get("resources") or []
+        )
+        for entry in entries:
+            if entry.get("canonical_uri", "").endswith(backend_digest):
+                indexed_resource_id = str(entry.get("id", ""))
+                break
+    _write(
+        out_dir,
+        "eval_contract_indexed.json",
+        {
+            "resource_id": _fact(indexed_resource_id),
+            "resource_type": _fact(
+                "eval_contract" if indexed_resource_id else ""
+            ),
+            "contract_digest": _fact(
+                backend_digest if indexed_resource_id else ""
+            ),
+            "indexed_alongside_subject": _fact(bool(indexed_resource_id)),
+            "result_contract_digest": _fact(backend_digest),
+            "result_contract_standing": _fact(standing),
+        },
+    )
+
+
+def _server_evidence(
+    *,
+    out_dir: Path,
+    base_url: str,
+    admin_key: str,
+    public_repo: Path,
+    golden: dict,
+    runner_digest: str,
+    subject_bytes: bytes,
+    subject_digest: str,
+) -> None:
+    """The live-node half: enroll, upload, execute, reject, convert, index."""
+    client = httpx.Client(base_url=base_url, timeout=120)
+    try:
+        runner_id, runner_headers, upload_payload = _enroll_and_upload(
+            client, admin_key, golden, runner_digest
+        )
+        backend_digest = upload_payload["contract_digest"]
+
+        run_one, digest_one, _doc = _execute_and_submit(
+            client, runner_headers, subject_bytes
+        )
+        run_two, digest_two, _doc = _execute_and_submit(
+            client, runner_headers, subject_bytes
+        )
+
+        _write(
+            out_dir,
+            "eval_runs_completed.json",
+            {
+                "eval_run_id": _fact({
+                    "run_one": run_one["eval_run_id"],
+                    "run_two": run_two["eval_run_id"],
+                }),
+                "terminal_status": _fact({
+                    "run_one": "succeeded",
+                    "run_two": "succeeded",
+                }),
+                "contract_digest": _fact(backend_digest),
+                "subject_digest": _fact(subject_digest),
+                "runner_id": _fact(runner_id),
+                "receipt_digest": _fact({
+                    "run_one": run_one["receipt_digest"],
+                    "run_two": run_two["receipt_digest"],
+                }),
+            },
+        )
+        _write(
+            out_dir,
+            "eval_result_digest_stable.json",
+            {
+                "run_one_result_digest": _fact(digest_one),
+                "run_two_result_digest": _fact(digest_two),
+                "digests_equal": _fact(digest_one == digest_two),
+                "normalization_version": _fact("logion.eval.normalize.v1"),
+                "determinism_class": _fact("deterministic"),
+            },
+        )
+
+        _rejection_evidence(client, admin_key, out_dir, golden)
+        _conversion_evidence(out_dir, public_repo)
+
+        _write(
+            out_dir,
+            "canonical_digest_agrees.json",
+            {
+                "golden_contract_id": _fact(
+                    f"urn:logion:eval-contract:{backend_digest}"
+                ),
+                "backend_canonical_digest": _fact(backend_digest),
+                "runner_canonical_digest": _fact(runner_digest),
+                "digests_equal": _fact(backend_digest == runner_digest),
+                "canonicalization": _fact("JCS"),
+            },
+        )
+        _index_evidence(
+            client,
+            admin_key,
+            out_dir,
+            backend_digest,
+            str(upload_payload.get("standing") or "unreviewed"),
+        )
+    finally:
+        client.close()
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        sys.stderr.write("usage: run_eval_evidence.py OUT_DIR\n")
+        return 2
+    out_dir = Path(sys.argv[1]).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    public_repo = Path(
+        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
+    ).resolve()
+    role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
+    admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
+    base_url = os.environ.get(
+        "LOGION_API_BASE_URL", "http://localhost:8000"
+    ).rstrip("/")
+
+    digests = _offline_evidence(out_dir, public_repo)
+    golden = json.loads(GOLDEN_CONTRACT.read_text())
+    _server_evidence(
+        out_dir=out_dir,
+        base_url=base_url,
+        admin_key=admin_key,
+        public_repo=public_repo,
+        golden=golden,
+        runner_digest=digests["runner_digest"],
+        subject_bytes=GOLDEN_SUBJECT.read_bytes(),
+        subject_digest=hashlib.sha256(GOLDEN_SUBJECT.read_bytes()).hexdigest(),
+    )
+    return 0
 
 
 if __name__ == "__main__":
