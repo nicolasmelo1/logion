@@ -262,7 +262,11 @@ agent-proving-ground-verify: agent-proving-ground-lint agent-proving-ground-type
 #   make doctor AGENT=...
 # Override the driver with LOGION_PROVING_GROUND_AGENT_DRIVER=opencode etc.
 LOGION_PROVING_GROUND_AGENT_DRIVER ?= codex
-LOGION_PROVING_GROUND_SCENARIO ?= marketplace_loop
+# The release gate is the loop the release is about. It was
+# marketplace_loop, which drives the Courses rails: those are Loop C,
+# they target 0.3, and a green run there says nothing about whether the
+# loop 0.2 ships works. Override to run the old one deliberately.
+LOGION_PROVING_GROUND_SCENARIO ?= native_use_observation_and_feedback
 LOGION_PROVING_GROUND_DEVRIG_ROOT ?= $(ROOT)
 
 agent-proving-ground-smoke:

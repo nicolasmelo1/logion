@@ -10,7 +10,7 @@ rules:
     allow:
     - packages/agent-proving-ground/agent_proving_ground/_json.py:51
     - packages/agent-proving-ground/agent_proving_ground/assertions/api.py:62
-    - packages/agent-proving-ground/agent_proving_ground/assertions/files.py:579
+    - packages/agent-proving-ground/agent_proving_ground/assertions/files.py:669
     - packages/agent-proving-ground/agent_proving_ground/drivers/_provider.py:217
     - packages/agent-proving-ground/agent_proving_ground/runner.py:578
     - packages/agent-proving-ground/agent_proving_ground/runner.py:594

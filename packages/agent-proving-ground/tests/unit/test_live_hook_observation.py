@@ -73,38 +73,134 @@ async def test_fails_on_replayed_fixture_payload(tmp_path) -> None:
     assert "placeholder" in result.message
 
 
-async def test_fails_when_transcript_does_not_exist(tmp_path) -> None:
-    records = _records(tmp_path)
-    (records / "recorded.stdin.json").write_text(
-        json.dumps({
-            "session_id": "s1",
-            "transcript_path": str(tmp_path / "absent.jsonl"),
-        }),
+SESSION = "95d1105b-0000-4000-8000-0123456789ab"
+
+
+def _live_transcript(tmp_path, session: str = SESSION) -> Path:
+    """A transcript shaped like the harness writes one: named after the
+    session and stamping the id on every entry."""
+    harness_home = tmp_path / "harness-home" / "projects" / "p"
+    harness_home.mkdir(parents=True, exist_ok=True)
+    transcript = harness_home / f"{session}.jsonl"
+    transcript.write_text(
+        json.dumps({"sessionId": session, "type": "user"}) + "\n",
         encoding="utf-8",
     )
-    result = await ObservationFromLiveHookAssertion().evaluate(
-        await _ctx(tmp_path), {"invocations_dir": "hook-invocations"}
+    return transcript
+
+
+def _live_payload(transcript: Path, session: str = SESSION) -> str:
+    return json.dumps({
+        "session_id": session,
+        "transcript_path": str(transcript),
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Read",
+        "tool_use_id": "toolu_01XD1jujwXtZAucQRWNaQfPG",
+    })
+
+
+def _fired_more_than_once(records: Path) -> None:
+    """A hook on tool calls invokes the CLI many times and records once."""
+    (records / "1.stdin.json").write_text("{}", encoding="utf-8")
+    (records / "2.stdin.json").write_text("{}", encoding="utf-8")
+
+
+async def _evaluate(tmp_path, **params):
+    return await ObservationFromLiveHookAssertion().evaluate(
+        await _ctx(tmp_path),
+        {"invocations_dir": "hook-invocations", **params},
     )
+
+
+async def test_fails_when_transcript_does_not_exist(tmp_path) -> None:
+    records = _records(tmp_path)
+    _fired_more_than_once(records)
+    (records / "recorded.stdin.json").write_text(
+        _live_payload(tmp_path / "absent.jsonl"), encoding="utf-8"
+    )
+    result = await _evaluate(tmp_path)
     assert result.status == "failed"
     assert "does not exist" in result.message
 
 
-async def test_passes_on_a_live_harness_payload(tmp_path) -> None:
+async def test_fails_when_the_transcript_names_another_session(
+    tmp_path,
+) -> None:
+    """Pointing at any existing file used to be enough.
+
+    The cheapest forgery available to an agent was a hand-assembled payload
+    whose ``transcript_path`` named a file it knew existed. A harness
+    transcript records the session it belongs to; an arbitrary file does
+    not.
+    """
     records = _records(tmp_path)
-    transcript = tmp_path / "session.jsonl"
-    transcript.write_text("{}\n", encoding="utf-8")
+    _fired_more_than_once(records)
+    unrelated = tmp_path / "README.md"
+    unrelated.write_text("not a transcript\n", encoding="utf-8")
+    (records / "recorded.stdin.json").write_text(
+        _live_payload(unrelated), encoding="utf-8"
+    )
+    result = await _evaluate(tmp_path)
+    assert result.status == "failed"
+    assert "does not name session" in result.message
+
+
+async def test_fails_when_the_transcript_is_agent_writable(tmp_path) -> None:
+    """A transcript the agent could have authored proves nothing."""
+    records = _records(tmp_path)
+    _fired_more_than_once(records)
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    forged = workspace / f"{SESSION}.jsonl"
+    forged.write_text(
+        json.dumps({"sessionId": SESSION}) + "\n", encoding="utf-8"
+    )
+    (records / "recorded.stdin.json").write_text(
+        _live_payload(forged), encoding="utf-8"
+    )
+    result = await _evaluate(tmp_path, agent_writable_roots=[str(workspace)])
+    assert result.status == "failed"
+    assert "agent can write" in result.message
+
+
+async def test_fails_on_a_single_invocation(tmp_path) -> None:
+    """One invocation is what typing the command by hand looks like."""
+    records = _records(tmp_path)
+    (records / "recorded.stdin.json").write_text(
+        _live_payload(_live_transcript(tmp_path)), encoding="utf-8"
+    )
+    result = await _evaluate(tmp_path)
+    assert result.status == "failed"
+    assert "invocation" in result.message
+
+
+async def test_fails_when_the_payload_names_no_harness_event(
+    tmp_path,
+) -> None:
+    records = _records(tmp_path)
+    _fired_more_than_once(records)
     (records / "recorded.stdin.json").write_text(
         json.dumps({
-            "session_id": "95d1105b",
-            "hook_event_name": "PostToolUse",
-            "transcript_path": str(transcript),
+            "session_id": SESSION,
+            "transcript_path": str(_live_transcript(tmp_path)),
         }),
         encoding="utf-8",
     )
-    result = await ObservationFromLiveHookAssertion().evaluate(
-        await _ctx(tmp_path), {"invocations_dir": "hook-invocations"}
+    result = await _evaluate(tmp_path)
+    assert result.status == "failed"
+    assert "hook_event_name" in result.message
+
+
+async def test_passes_on_a_live_harness_payload(tmp_path) -> None:
+    records = _records(tmp_path)
+    _fired_more_than_once(records)
+    (records / "recorded.stdin.json").write_text(
+        _live_payload(_live_transcript(tmp_path)), encoding="utf-8"
     )
-    assert result.status == "passed"
+    result = await _evaluate(
+        tmp_path, agent_writable_roots=[str(tmp_path / "workspace")]
+    )
+    assert result.status == "passed", result.message
 
 
 def test_shim_records_only_the_recorded_response(tmp_path) -> None:

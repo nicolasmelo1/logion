@@ -13,6 +13,22 @@ from pydantic import (
 
 from agent_proving_ground.config import SAFE_NAME_RE
 
+#: Flags whose value is the agent's own judgement about a resource. A scenario
+#: that writes the number itself proves the write path and calls it a report:
+#: the run then carries a rating nobody formed, into the one signal class the
+#: product sells as deliberate agent judgement. Placeholders are fine — the
+#: shape of the command is plumbing, the number is the claim.
+_JUDGEMENT_FLAGS = (
+    "rating",
+    "usefulness",
+    "reliability",
+    "tool-safety",
+    "token-efficiency",
+)
+_DICTATED_JUDGEMENT_RE = re.compile(
+    r"--(" + "|".join(_JUDGEMENT_FLAGS) + r")[= ]\s*\d",
+)
+
 
 class AgentSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -114,6 +130,48 @@ class PhaseSpec(BaseModel):
             )
         return value
 
+    @model_validator(mode="after")
+    def _hook_phase_prompt_is_not_a_caption(self) -> PhaseSpec:
+        """A goal over rig work must be work, not a caption on work done.
+
+        ``_run_phase`` runs the hook *and then* sends the goal, so both
+        shapes exist and only one is honest. A hook that prepares state the
+        agent then acts on is legitimate, and every one of those asserts
+        what the agent did. A one-line goal restating what the script just
+        did asserts nothing, and it is how a scenario reads as agent
+        coverage it does not have: nine scripted phases with a caption each
+        look like nine agent phases in every listing.
+        """
+        if not self.local_hook or not self.goal.strip():
+            return self
+        if not self.assertions:
+            raise ValueError(
+                f"phase {self.id} runs a local_hook and also sends a goal, "
+                "but asserts nothing about what the agent did. Either assert "
+                'the agent\'s effect, or set goal: "" and move the '
+                "description into a YAML comment: a caption over rig work "
+                "counts as agent coverage in every listing and proves none."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _judgement_is_not_dictated(self) -> PhaseSpec:
+        """The agent's rating must not be typed by the scenario author."""
+        for name, text in (
+            ("goal", self.goal),
+            ("success_hint", self.success_hint or ""),
+        ):
+            match = _DICTATED_JUDGEMENT_RE.search(text)
+            if match:
+                raise ValueError(
+                    f"phase {self.id} {name} dictates a judgement value "
+                    f"({match.group(0).strip()}). Feedback ratings are the "
+                    "one signal class the product sells as the agent's own; "
+                    "write the flag with a placeholder and let the agent "
+                    "choose the number."
+                )
+        return self
+
 
 class ExecutionRequirements(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -129,6 +187,13 @@ class ScenarioSpec(BaseModel):
     schema_version: Literal["1"] = "1"
     name: str
     description: str
+    #: What the scenario can be evidence *of*. ``agent`` means at least one
+    #: phase is a real agent turn against observed effects; ``rig`` means the
+    #: whole scenario is rig-driven, so it is an integration test that happens
+    #: to run here and can never be evidence about agent behaviour. Declared,
+    #: not inferred, because the count of "scenarios" is what a reader uses to
+    #: judge how much of the product an agent has actually driven.
+    kind: Literal["agent", "rig"] = "agent"
     api_adapter: str = "mock"
     driver_config: dict = Field(default_factory=dict)
     execution_requirements: ExecutionRequirements = Field(
@@ -164,6 +229,29 @@ class ScenarioSpec(BaseModel):
         if not self.phases:
             raise ValueError("at least one phase is required")
         return self
+
+    @model_validator(mode="after")
+    def _kind_matches_the_phases(self) -> ScenarioSpec:
+        """The declared kind has to be what the phases actually are."""
+        agent_phases = self.agent_phase_ids
+        if self.kind == "agent" and not agent_phases:
+            raise ValueError(
+                f"scenario {self.name} declares kind: agent and has no phase "
+                "that sends a goal to an agent. Declare kind: rig — a "
+                "rig-driven scenario is a valid integration test and an "
+                "invalid piece of evidence about what an agent can do."
+            )
+        if self.kind == "rig" and agent_phases:
+            raise ValueError(
+                f"scenario {self.name} declares kind: rig but sends a goal "
+                "to an agent in: " + ", ".join(agent_phases)
+            )
+        return self
+
+    @property
+    def agent_phase_ids(self) -> list[str]:
+        """Phases decided by an agent turn rather than by the rig."""
+        return [p.id for p in self.phases if p.goal.strip()]
 
 
 def validate_assertions(_spec: ScenarioSpec) -> None:

@@ -111,6 +111,32 @@ class ObservationFromLiveHookAssertion(Assertion):
     actually recorded an observation; a payload the harness produced names
     a transcript that exists on this machine, while a checked-in fixture
     carries placeholder paths that resolve nowhere.
+
+    Four checks separate a delivered payload from a typed one, and none of
+    them is the scenario prose asking the agent not to type one. The argv is
+    deliberately *not* among them: ``integrations enable`` writes the hook as
+    ``logion usage observe --harness H --stdin``, so an agent typing that
+    string produces a byte-identical command line and argv discriminates
+    nothing.
+
+    1. The transcript the payload names must exist **and contain the
+       session_id it claims**. A harness transcript names its own session;
+       an arbitrary existing file does not, so pointing at one no longer
+       passes.
+    2. The transcript must sit outside every root the agent can write. A
+       transcript the agent could have authored is not evidence about the
+       harness.
+    3. The payload must carry the harness's own event fields
+       (``hook_event_name`` and a tool identifier). A hand-assembled minimal
+       observation does not reconstruct them.
+    4. A live hook fires on every matching tool call, so a run holds many
+       invocations of which one recorded. Exactly one invocation is the
+       signature of a single typed command.
+
+    Residual limit, stated rather than papered over: an agent that reads the
+    harness's own transcript, lifts its session id, and replays it would
+    still pass. Nothing inside the same trust domain as the agent can close
+    that, and by then the harness demonstrably ran the session anyway.
     """
 
     type = "files.observation_from_live_hook"
@@ -153,7 +179,12 @@ class ObservationFromLiveHookAssertion(Assertion):
                     "invocations": len(attempts),
                 },
             )
-        reason = _live_hook_verdict(recorded)
+        agent_roots = [
+            str(root)
+            for root in (params.get("agent_writable_roots") or [])
+            if str(root).strip()
+        ]
+        reason = _live_hook_verdict(recorded, agent_roots, len(attempts))
         return AssertionOutcome(
             type=self.type,
             status="failed" if reason else "passed",
@@ -165,11 +196,22 @@ class ObservationFromLiveHookAssertion(Assertion):
             evidence={
                 "payload": str(recorded),
                 "invocations": len(attempts),
+                "agent_writable_roots": agent_roots,
             },
         )
 
 
-def _live_hook_verdict(path: Path) -> str | None:
+#: A hook that fires on tool calls invokes the CLI far more often than it
+#: records. One invocation total means one command ran, which is what typing
+#: it by hand looks like.
+_MIN_LIVE_HOOK_INVOCATIONS = 2
+
+
+def _live_hook_verdict(
+    path: Path,
+    agent_writable_roots: list[str],
+    invocations: int,
+) -> str | None:
     """``None`` if *path* holds a live harness payload, else the reason."""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -180,14 +222,62 @@ def _live_hook_verdict(path: Path) -> str | None:
     raw = path.read_text(encoding="utf-8")
     if "PLACEHOLDER" in raw:
         return "carries fixture placeholders"
+    if invocations < _MIN_LIVE_HOOK_INVOCATIONS:
+        return (
+            f"only {invocations} hook invocation in the run; a hook firing "
+            "on tool calls invokes the CLI more than once"
+        )
+    if not payload.get("hook_event_name"):
+        return "no hook_event_name: the harness did not name the event"
+    if not (payload.get("tool_use_id") or payload.get("tool_name")):
+        return "no tool identifier: the payload names no tool call"
     session_id = payload.get("session_id")
     if not isinstance(session_id, str) or not session_id:
         return "no session_id"
     transcript = payload.get("transcript_path")
     if not isinstance(transcript, str) or not transcript:
         return "no transcript_path"
-    if not Path(transcript).exists():
+    return _transcript_verdict(transcript, session_id, agent_writable_roots)
+
+
+def _transcript_verdict(
+    transcript: str,
+    session_id: str,
+    agent_writable_roots: list[str],
+) -> str | None:
+    """``None`` if the transcript corroborates the payload, else the reason."""
+    path = Path(transcript)
+    if not path.exists():
         return f"transcript_path does not exist: {transcript}"
+    try:
+        resolved = path.resolve()
+    except OSError as exc:
+        return f"transcript_path does not resolve: {exc}"
+    for raw_root in agent_writable_roots:
+        try:
+            root = Path(raw_root).resolve()
+        except OSError:
+            continue
+        if resolved == root or root in resolved.parents:
+            return (
+                "transcript_path is inside a root the agent can write "
+                f"({root}), so it is not evidence about the harness"
+            )
+    try:
+        # Transcripts are append-only JSONL and can be large; the session id
+        # is stamped on every entry, so the head is enough and a run never
+        # pays for reading a multi-megabyte log.
+        with resolved.open("r", encoding="utf-8", errors="replace") as handle:
+            head = handle.read(1_000_000)
+    except OSError as exc:
+        return f"transcript_path is unreadable: {exc}"
+    # Claude Code names the file after the session and stamps the id on every
+    # entry; other harnesses do one or the other. Either corroborates.
+    if session_id not in head and session_id not in resolved.name:
+        return (
+            f"transcript {resolved} does not name session {session_id}: the "
+            "payload claims a session the transcript did not record"
+        )
     return None
 
 

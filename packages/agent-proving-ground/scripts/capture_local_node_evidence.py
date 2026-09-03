@@ -170,7 +170,7 @@ def _scenario_prompts() -> list[dict[str, str]]:
         / "agent_proving_ground"
         / "scenarios"
         / "builtin"
-        / "phase_15_14_1_local_multi_agent_node.yaml"
+        / "local_multi_agent_node.yaml"
     )
     try:
         import yaml
