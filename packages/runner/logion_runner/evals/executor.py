@@ -134,8 +134,10 @@ def _metric_observation(
             expected.get("input") if isinstance(expected, dict) else None
         )
         return int(normalized == expected_output)
-    if metric_id == "duration_ms":
-        return wall_ms
+    # Timing is NOT part of the normalized result: it is not a function
+    # of (contract, subject, output), so including it would break the
+    # byte-identical property the determinism gate asserts. Wall time
+    # lives in the 15.15 receipt envelope instead.
     return 0
 
 
@@ -290,7 +292,7 @@ def _grade(
         tuple(metrics_by_id.values()),
         outcome,
         {name: f"outputs/{name}" for name in execution.output_files},
-        {"wall_ms": wall_ms},
+        {},
         "no known limitations",
     )
     return GradedOutcome(
