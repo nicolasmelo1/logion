@@ -1,6 +1,14 @@
 schema_version: "1"
 name: marketplace_loop
-description: Full creator/learner marketplace loop.
+description: >-
+  DEPRECATED for release gating. Full creator/learner Courses marketplace
+  loop: publish, approve, purchase, review, bounty, submit, accept. These
+  rails are Loop C and target 0.3, so a green run here says nothing about
+  whether 0.2 works. Kept because the rails still ship and this is their
+  only end-to-end coverage; it is no longer what `make
+  agent-proving-ground-release` runs. Every success_hint below also hands
+  the agent its exact command sequence, so the run is evidence that the
+  state machine is correct and not that the product is usable.
 api_adapter: local-devrig
 driver_config:
   hermes:
@@ -138,6 +146,15 @@ phases:
 final_assertions:
   - type: api.no_double_credit_debit
   - type: api.course_remains_purchasable
+  # Still optional: public CI runs this against the mock adapter, which has
+  # neither a log file nor a database. What changed is what optional means —
+  # an assertion that cannot run now reports `unsupported` instead of being
+  # rewritten to `passed`. `db.exact_credit_ledger` is the only check on the
+  # money math here, and "the ledger balances" and "nobody could read the
+  # ledger" used to be the same line in the report.
+
+  # Enforcement is upward: the release checklist requires a gate run to carry
+  # no `unsupported`, and `contract-audit` refuses to seal a gate with any.
   - type: logs.no_500s
     optional: true
   - type: db.exact_credit_ledger

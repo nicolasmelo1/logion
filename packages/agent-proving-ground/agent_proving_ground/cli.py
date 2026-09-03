@@ -96,18 +96,33 @@ async def _dispatch(args: argparse.Namespace) -> int:
 
 
 async def _cmd_list(_args: argparse.Namespace) -> int:
+    # Print the kind alongside the name. A rig-driven scenario is a valid
+    # integration test and no evidence at all about agent behaviour, and a
+    # bare list of names is what lets the second get counted as the first.
     for name in list_builtin_scenarios():
-        print(f"builtin:{name}")
+        try:
+            spec = load_scenario(f"builtin:{name}")
+        except Exception:
+            print(f"builtin:{name}\t(unloadable)")
+            continue
+        agent_phases = len(spec.agent_phase_ids)
+        print(
+            f"builtin:{name}\t{spec.kind}\t"
+            f"{agent_phases}/{len(spec.phases)} agent phases"
+        )
     return 0
 
 
 async def _cmd_validate(args: argparse.Namespace) -> int:
     try:
-        load_scenario(args.scenario)
+        spec = load_scenario(args.scenario)
     except Exception as exc:
         print(f"validation failed: {exc}", file=sys.stderr)
         return 2
-    print("scenario is valid")
+    print(
+        f"scenario is valid (kind: {spec.kind}, "
+        f"{len(spec.agent_phase_ids)}/{len(spec.phases)} agent phases)"
+    )
     return 0
 
 

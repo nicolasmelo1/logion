@@ -1,5 +1,8 @@
 schema_version: "1"
 name: setup_complete_handoff_e2e
+# Rig-driven: every phase is a script, no phase is decided by an agent.
+# Valid as an integration test, never as evidence about agent behaviour.
+kind: rig
 description: >-
   Exercise the local setup-complete handoff lifecycle end-to-end. A local
   hook mints and claims a setup handoff; the scenario then verifies the

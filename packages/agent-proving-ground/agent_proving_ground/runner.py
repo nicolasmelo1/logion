@@ -883,13 +883,21 @@ class ScenarioRunner:
                 params,
             )
             if outcome.status == "unsupported" and assertion_spec.optional:
+                # Keep the status. Rewriting it to `passed` made "the ledger
+                # balances" and "nobody could read the ledger" the same line
+                # in the report, which is the one difference a reader of a
+                # sealed gate is trying to see. It still does not fail the
+                # run — only the run classifier decides that, and it counts
+                # `failed` alone.
                 outcome = AssertionOutcome(
                     type=assertion_spec.type,
-                    status="passed",
+                    status="unsupported",
                     message=(
-                        f"optional assertion skipped: {assertion_spec.type}"
+                        "declared gap: optional assertion "
+                        f"{assertion_spec.type} could not run here — "
+                        f"{outcome.message}"
                     ),
-                    evidence={},
+                    evidence={**outcome.evidence, "optional": True},
                 )
             elif outcome.status == "unsupported":
                 outcome = AssertionOutcome(

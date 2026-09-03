@@ -142,6 +142,13 @@ phases:
       - type: files.observation_from_live_hook
         params:
           invocations_dir: "${AGENT_USER_A_HOOK_INVOCATIONS}"
+          # A transcript the agent could have authored is not evidence about
+          # the harness. Naming the roots it can write moves the last part of
+          # this proof out of the prose above and into the check.
+          agent_writable_roots:
+            - "${AGENT_USER_A_WORKSPACE}"
+            - "${FIXTURE_ROOT}"
+            - "${EVIDENCE_DIR}"
       - type: files.native_use_observed
         params:
           pending_artifact: "${EVIDENCE_DIR}/pending-xpto.json"
@@ -153,20 +160,29 @@ phases:
   - id: inspect_and_submit_feedback
     actor: user_a
     goal: |
-      Inspect pending-xpto.json. Submit honest feedback with the same
-      resource ${RESOURCE_ID}, version ${VERSION_ID}, rating 4, usefulness
-      4, reliability 4, tool-safety 5, token-efficiency 4, completed-task,
-      task-class software-development, and repository-safe prose. Do not pass
-      an acquisition channel: Logion must resolve it from the local receipt,
-      and it must come back as ${ACQUISITION_CHANNEL}. Save the untouched JSON
-      response to ${EVIDENCE_DIR}/feedback-first.json.
+      Inspect pending-xpto.json, then report on the skill you just used.
+
+      The ratings are yours. Base every one of them on what actually
+      happened when you applied the skill to buggy.py, not on what would
+      make this phase pass — a low score is a valid outcome here and
+      nothing downstream checks which number you picked. If the skill did
+      not help, say so and rate it accordingly. Write the prose about the
+      skill, and keep repository contents out of it.
+
+      Fixed, because they identify the report rather than judge the
+      resource: resource ${RESOURCE_ID}, version ${VERSION_ID}, task-class
+      software-development. Do not pass an acquisition channel: Logion must
+      resolve it from the local receipt, and it must come back as
+      ${ACQUISITION_CHANNEL}. Save the untouched JSON response to
+      ${EVIDENCE_DIR}/feedback-first.json.
 
       Use the `logion feedback submit` command family for all three writes.
       Do not use `logion courses report-usage`, `logion usage upload`, or any
-      other command family here. The exact shape you need is:
-      `logion feedback submit ${RESOURCE_ID} ${VERSION_ID} --rating 4
-      --usefulness 4 --reliability 4 --tool-safety 5 --token-efficiency 4
-      --completed-task --task-class software-development --body "..." --json`
+      other command family here. The shape you need is:
+      `logion feedback submit ${RESOURCE_ID} ${VERSION_ID} --rating <1-5>
+      --usefulness <0.0-5.0> --reliability <0.0-5.0> --tool-safety <0.0-5.0>
+      --token-efficiency <0.0-5.0> --completed-task|--not-completed-task
+      --task-class software-development --body "..." --json`
       and the third submission repeats that same command with `--force`.
 
       Untouched means the entire document the command printed, starting with
