@@ -832,16 +832,11 @@ class SandboxRealHarnessUsesLogionAssertion(Assertion):
             for role, entry in sorted(runs.items())
             if isinstance(entry, dict)
         }
-        # The auditor recomputes this verdict from typed facts, so every field
-        # the contract requires goes out at the evidence root in the
-        # {"ok": true, "value": ...} envelope a fact must carry to even be
-        # read — including when nothing observed it: a fact everywhere absent
-        # reads as "not retained", which hides what the capture skipped
-        # behind a bookkeeping code. ``ok`` means observed for every role;
-        # None is the hook's unobserved marker and fails the fact instead of
-        # standing in for an observation. Whether an observed value is
-        # *acceptable* (exit 0, non-empty proof) is the contract's job via
-        # expected/forbidden values, not the handler's.
+        # Every required field leaves at the evidence root in the
+        # {"ok": true, "value": ...} envelope, so "everywhere absent" reads as
+        # not-retained instead of hiding behind a bookkeeping code. Whether an
+        # observed value is acceptable (exit 0, non-empty proof) is the
+        # contract's job, not the handler's — see the phase-gate plan.
         fields = (
             "process_exit_code",
             "proof_read_exit_code",
