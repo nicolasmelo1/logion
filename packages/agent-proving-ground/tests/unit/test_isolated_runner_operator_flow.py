@@ -51,6 +51,6 @@ def test_runner_launcher_is_the_versioned_fixture_with_substituted_paths(
         / "packages/agent-proving-ground/scripts/runner_flow_launcher.sh"
     ).read_text(encoding="utf-8")
     assert "@@OPERATOR_PYTHON@@" in fixture
-    assert "@@EVIDENCE_SCRIPT@@@" in fixture
+    assert "@@EVIDENCE_SCRIPT@@" in fixture
     assert "operator" in fixture
     assert "LOGION_PROVING_GROUND_ROLE_KEYS_FILE" not in fixture

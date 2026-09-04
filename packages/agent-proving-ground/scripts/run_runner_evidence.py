@@ -275,6 +275,10 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
 
     This is the lease-loss event: the runner still believes it holds the
     job, and the coordinator's own recovery decides what happens next.
+    The sweep may only report ``queued`` after it actually reclaimed a
+    lease it held — an idle queue reaches the same status without any
+    lease-loss event, and the retry hazard downstream depends on the
+    attempt budget this path consumes.
     """
     return _private_python(
         private_repo,
@@ -289,6 +293,7 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
             "with SessionLocal() as db:",
             f"    job = db.get(ExecutionJob, '{job_id}')",
             "    before = job.status",
+            "    held = before == 'leased'",
             "    job.lease_expires_at = datetime.now(UTC) - timedelta(",
             "        seconds=600)",
             "    db.commit()",
@@ -296,10 +301,11 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
             "    db.refresh(job)",
             "    print(json.dumps({",
             "        'before': before,",
+            "        'held': held,",
             "        'swept': swept,",
             "        'after': job.status,",
             "        'attempt_count': job.attempt_count,",
-            "        'terminal_transition_count':"
+            "        'terminal_transition_count':",
             " job.terminal_transition_count,",
             "    }))",
         ]),
@@ -551,28 +557,39 @@ def _enroll_and_seed(
 ) -> tuple[int, dict, str, str, dict[str, str]]:
     """Drain leftovers, enrol the runner, and queue the seed jobs.
 
-    Stale queued jobs from an aborted run are cancelled first so leasing
-    is FIFO-deterministic. Every artifact a sandbox may produce is
-    declared up front or the coordinator rejects the upload as unknown;
-    the two report artifacts carry no digest because their contents are
-    what the run is trying to find out.
+    Stale jobs from an aborted run are cancelled first so leasing is
+    FIFO-deterministic. Both ``queued`` and ``leased`` drain: a lease
+    abandoned by a crashed operator pass comes back to ``queued`` via the
+    coordinator's sweep mid-run, which would hand the next ``run --once``
+    a job the scenario did not create. Only jobs pinned to this run's
+    sandbox image are touched — anything else in the queue belongs to
+    someone else. Every artifact a sandbox may produce is declared up
+    front or the coordinator rejects the upload as unknown; the two
+    report artifacts carry no digest because their contents are what the
+    run is trying to find out.
     """
     client = httpx.Client(base_url=base_url, timeout=120)
     try:
-        stale = client.get(
-            "/v1/executions/jobs?status=queued&limit=200",
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        stale.raise_for_status()
-        stale_items = stale.json().get("data", stale.json()).get("items", [])
         cancelled = 0
-        for row in stale_items:
-            cancel = client.post(
-                f"/v1/executions/jobs/{row['id']}/cancel",
+        for status in ("queued", "leased"):
+            stale = client.get(
+                f"/v1/executions/jobs?status={status}&limit=200",
                 headers={"Authorization": f"Bearer {admin_key}"},
             )
-            if cancel.status_code == 200:
-                cancelled += 1
+            stale.raise_for_status()
+            stale_items = (
+                stale.json().get("data", stale.json()).get("items", [])
+            )
+            for row in stale_items:
+                profile = row.get("sandbox_profile") or {}
+                if profile.get("image") != runner_image:
+                    continue
+                cancel = client.post(
+                    f"/v1/executions/jobs/{row['id']}/cancel",
+                    headers={"Authorization": f"Bearer {admin_key}"},
+                )
+                if cancel.status_code == 200:
+                    cancelled += 1
 
         enroll = client.post(
             "/v1/runners/enroll",
@@ -760,6 +777,12 @@ def _exercise_hazards(
         job_ids[hazard] = _new_job(artifacts=echo_grant, **extra)
         _claim_only(base_url, runner_key)
         hazard_events[hazard] = _expire_lease(private_repo, job_ids[hazard])
+        if not hazard_events[hazard].get("held"):
+            raise RuntimeError(
+                f"{hazard} hazard: lease was not held at expiry "
+                f"(status {hazard_events[hazard]['before']!r}) — the sweep "
+                "event would be vacuous"
+            )
         if hazard_events[hazard]["after"] != "queued":
             raise RuntimeError(
                 f"{hazard} hazard: sweep left the job in "

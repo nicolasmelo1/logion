@@ -7,7 +7,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RECORD="$ROOT/launcher-command.json"
 set +e
-"@@OPERATOR_PYTHON@@" "@@@EVIDENCE_SCRIPT@@@" operator "$ROOT"
+"@@OPERATOR_PYTHON@@" "@@EVIDENCE_SCRIPT@@" operator "$ROOT"
 CODE=$?
 set -e
 python3 - "$RECORD" "$CODE" <<'PY'
