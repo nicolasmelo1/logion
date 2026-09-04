@@ -130,6 +130,18 @@ Do not introduce the language's "anything goes" type. Ban it where it is introdu
 
 **Fix.** Use a TypedDict/interface/struct for a known shape, a generic parameter for genuine passthrough, or the project's JSON value type at a serialization boundary. If a third-party stub truly forces it, suppress that one line with a reason.
 
+## L3 — Effect: a real actor achieved the outcome
+
+### L3.EVERY_ACTOR_HAS_A_GOAL
+
+**A driven actor receives a goal**
+
+In every proving-ground scenario, each agent that declares a `driver` is the actor of at least one phase whose `goal` is non-empty. Exceptions live in `scripts/allowed_mute_actors.txt` and carry a review date.
+
+**Why.** A scenario's agent roster is what its gate claims was proven: six driven roles listed is six parties that met the product. Nothing joined the roster to the phases, so a phase can keep its actor, its assertions and its retained evidence while its goal quietly becomes the empty string and the work moves into a local hook. The report still says passed and the seal still verifies, because the goal is only ever read as a denylist and the empty string contains nothing forbidden. What is left is a replay filed as evidence about an outcome. An agent with no driver is the honest way to say a step is a fixture, which is why this rule does not touch one; a named, driven role that never speaks is the dishonest way, and it is the only shape here that reads like coverage without being any. The exception key names the agent rather than the file, so freezing today's mute actors can never cover tomorrow's.
+
+**Fix.** Give the actor a phase with a goal written as the customer would meet it, or drop its `driver` and let the scenario say plainly that the step is a fixture. A hook that only collects evidence is fine; a hook that performs the flow the assertions measure is the product step, and a driven agent has to be the one performing it. Adding the key to the exception file instead is the one move this rule exists to make visible in review.
+
 ## L4 — Cadence: docs, plans and rules stay attached
 
 ### L4.DOC_LINKS_RESOLVE

@@ -1,0 +1,16 @@
+# Driven actors that no phase gives a goal to. Exceptions to
+# L3.EVERY_ACTOR_HAS_A_GOAL, one `<scenario file>:<agent id>` per line.
+#
+# These are debt with a due date, not permission. The baseline was taken from
+# `main` at the commit that introduced the rule, deliberately not from the
+# branch that added it: freezing the branch would have grandfathered the two
+# violations the rule was written to catch. Adding a key here to silence a new
+# violation is the one move this file exists to make visible in review.
+review_by: 2027-03-04
+
+isolated_runner_node.yaml:consumer
+isolated_runner_node.yaml:evaluator
+isolated_runner_node.yaml:contributor
+isolated_runner_node.yaml:sponsor
+resource_projection_backfill.yaml:local_hook
+setup_complete_handoff_e2e.yaml:seller
