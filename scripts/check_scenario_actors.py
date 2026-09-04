@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
@@ -50,37 +50,48 @@ def _records(lines: list[str], block: str) -> list[dict[str, str]]:
             break
         item = ITEM_RE.match(raw.rstrip())
         if item:
-            item_indent = len(item.group("indent"))
+            indent = len(item.group("indent"))
+            if item_indent is None:
+                item_indent = indent
+            if indent != item_indent:
+                continue
             out.append({})
             key, _, value = item.group("rest").partition(":")
-            out[-1][key.strip()] = _scalar(value.strip(), lines, index)
+            out[-1][key.strip()] = _scalar(
+                value.strip(), lines, index, indent
+            )
             continue
         field = FIELD_RE.match(raw.rstrip())
         if (
             field
             and item_indent is not None
             and out
-            and len(field.group("indent")) > item_indent
+            and len(field.group("indent")) == item_indent + 2
         ):
             out[-1][field.group("key")] = _scalar(
-                field.group("value").strip(), lines, index
+                field.group("value").strip(),
+                lines,
+                index,
+                len(field.group("indent")),
             )
     return out
 
 
-def _scalar(value: str, lines: list[str], index: int) -> str:
+def _scalar(
+    value: str, lines: list[str], index: int, field_indent: int
+) -> str:
     """A field's value, following a ``|`` or ``>`` block into its body."""
     if not BLOCK_RE.match(value):
         return value
     body = []
     for raw in lines[index + 1 :]:
-        if raw.strip() and not raw.startswith("  "):
-            break
-        if raw.strip() and not ITEM_RE.match(raw.rstrip()):
-            body.append(raw.strip())
+        if not raw.strip():
             continue
-        if raw.strip():
+        indent = len(raw) - len(raw.lstrip())
+        if indent <= field_indent:
             break
+        if not ITEM_RE.match(raw.rstrip()):
+            body.append(raw.strip())
     return " ".join(body)
 
 
@@ -146,7 +157,7 @@ def main(argv: list[str]) -> int:
 
 
 def _today() -> str:
-    return datetime.now(tz=UTC).date().isoformat()
+    return datetime.now(tz=timezone.utc).date().isoformat()
 
 
 if __name__ == "__main__":

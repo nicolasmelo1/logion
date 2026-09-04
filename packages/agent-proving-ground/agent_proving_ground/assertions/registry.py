@@ -95,6 +95,7 @@ from agent_proving_ground.assertions.evals import (
 )
 from agent_proving_ground.assertions.files import (
     ClientHasNoARDConnectorInstallAssertion,
+    EvalAgentPerformedAssertion,
     FileExistsAssertion,
     InstallScopedToRepositoryAssertion,
     ObservationFromLiveHookAssertion,
@@ -124,6 +125,9 @@ from agent_proving_ground.assertions.runner import (
     RunnerJobTerminalOnceAssertion,
     RunnerReceiptPublishedAssertion,
     RunnerReceiptValidAssertion,
+)
+from agent_proving_ground.assertions.runner_agent_performed import (
+    RunnerAgentPerformedAssertion,
 )
 from agent_proving_ground.assertions.timeline import (
     TimelineNoUnredactedSecretAssertion,
@@ -244,7 +248,9 @@ class AssertionRegistry:
             CanaryNotExfiltratedAssertion,
             ForbiddenEffectBlockedAssertion,
             RunnerJobTerminalOnceAssertion,
+            RunnerAgentPerformedAssertion,
             # Eval contract evidence (16.1)
+            EvalAgentPerformedAssertion,
             EvalContractValidAssertion,
             EvalRunsCompletedAssertion,
             EvalResultDigestStableAssertion,

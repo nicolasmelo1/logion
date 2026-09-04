@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501 -- embedded launcher commands are retained verbatim.
 """Drive the eval surface end-to-end and retain typed evidence facts.
 
 Every fact is a real exercise read back from the system that produced
@@ -32,6 +33,7 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -819,22 +821,113 @@ def _server_evidence(
         client.close()
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stderr.write("usage: run_eval_evidence.py OUT_DIR\n")
-        return 2
-    out_dir = Path(sys.argv[1]).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+def _prepared_launcher() -> str:
+    """Public runner commands the consumer role must execute itself."""
+    return """#!/bin/sh
+set -u
+root=/workspace/task/eval-flow
+raw="$root/raw"
+mkdir -p "$raw"
+commands="$raw/commands.jsonl"
+: > "$commands"
+run() {
+  name=$1
+  shift
+  "$@" > "$raw/$name.json"
+  status=$?
+  python - "$commands" "$status" "$@" <<'PY'
+import json
+import sys
+with open(sys.argv[1], "a", encoding="utf-8") as handle:
+    json.dump({"command": " ".join(sys.argv[3:]), "exit_code": int(sys.argv[2])}, handle)
+    handle.write("\\n")
+PY
+  return "$status"
+}
+run validate logion-node eval validate "$root/contract.json" || exit $?
+run run-one logion-node eval run --subject "$root/subject.json" "$root/contract.json" || exit $?
+run run-two logion-node eval run --subject "$root/subject.json" "$root/contract.json" || exit $?
+python - "$raw/run-one.json" "$raw/result-one.json" <<'PY'
+import json
+import sys
+json.dump(json.load(open(sys.argv[1], encoding="utf-8"))["result"], open(sys.argv[2], "w", encoding="utf-8"))
+PY
+python - "$raw/run-two.json" "$raw/result-two.json" <<'PY'
+import json
+import sys
+json.dump(json.load(open(sys.argv[1], encoding="utf-8"))["result"], open(sys.argv[2], "w", encoding="utf-8"))
+PY
+run run-summary logion-node eval compare "$raw/result-one.json" "$raw/result-two.json" || exit $?
+python - "$commands" "$raw/launcher-record.json" <<'PY'
+import json
+import sys
+commands = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
+json.dump({"commands": commands}, open(sys.argv[2], "w", encoding="utf-8"))
+PY
+"""
 
-    public_repo = Path(
-        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
-    ).resolve()
+
+def _compose(public_repo: Path, *args: str) -> None:
+    subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--project-directory",
+            str(public_repo / "deploy" / "local-node"),
+            "-f",
+            str(public_repo / "deploy" / "local-node" / "compose.yaml"),
+            *args,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _seed(out_dir: Path, public_repo: Path) -> None:
+    """Seed only non-secret inputs and the public CLI launcher in consumer."""
+    prepared = out_dir / "prepared"
+    prepared.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(GOLDEN_CONTRACT, prepared / "contract.json")
+    shutil.copyfile(GOLDEN_SUBJECT, prepared / "subject.json")
+    launcher = prepared / "run-eval-flow.sh"
+    launcher.write_text(_prepared_launcher(), encoding="utf-8")
+    launcher.chmod(0o755)
+    _compose(
+        public_repo,
+        "exec",
+        "-T",
+        "consumer",
+        "sh",
+        "-c",
+        "rm -rf /workspace/task/eval-flow && mkdir -p /workspace/task/eval-flow",
+    )
+    _compose(
+        public_repo,
+        "cp",
+        f"{prepared}/.",
+        "consumer:/workspace/task/eval-flow",
+    )
+    sys.stdout.write(
+        json.dumps({"prepared_dir": str(prepared)}, sort_keys=True) + "\n"
+    )
+
+
+def _collect(out_dir: Path, public_repo: Path) -> None:
+    """Copy agent outputs, then independently re-read the node's evidence."""
+    raw_dir = out_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    _compose(
+        public_repo,
+        "cp",
+        "consumer:/workspace/task/eval-flow/raw/.",
+        str(raw_dir),
+    )
     role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
     admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
     base_url = os.environ.get(
         "LOGION_API_BASE_URL", "http://localhost:8000"
     ).rstrip("/")
-
     digests = _offline_evidence(out_dir, public_repo)
     golden = json.loads(GOLDEN_CONTRACT.read_text())
     _server_evidence(
@@ -850,6 +943,29 @@ def main() -> int:
     sys.stdout.write(
         json.dumps({"evidence_dir": str(out_dir)}, sort_keys=True) + "\n"
     )
+
+
+def main() -> int:
+    if len(sys.argv) not in {2, 3}:
+        sys.stderr.write(
+            "usage: run_eval_evidence.py [seed|collect] OUT_DIR\n"
+        )
+        return 2
+    mode, raw_out_dir = (
+        ("collect", sys.argv[1]) if len(sys.argv) == 2 else sys.argv[1:]
+    )
+    if mode not in {"seed", "collect"}:
+        sys.stderr.write("mode must be seed or collect\n")
+        return 2
+    out_dir = Path(raw_out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    public_repo = Path(
+        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
+    ).resolve()
+    if mode == "seed":
+        _seed(out_dir, public_repo)
+    else:
+        _collect(out_dir, public_repo)
     return 0
 
 

@@ -25,13 +25,52 @@ agents:
     devrig_role: buyer
     timeout_seconds: 1200
 phases:
-  - id: execute_eval_evidence
+  - id: prepare_eval_operator_flow
     actor: node_operator
     goal: ""
     local_hook: packages/agent-proving-ground/scripts/run_eval_evidence.py
     local_hook_args:
+      - seed
       - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval"
+
+  - id: node_operator_eval_flow
+    actor: node_operator
+    goal: |
+      Operate the long-running consumer role from the operator side. Do not
+      start, stop, reset, or inspect another role, and do not install any
+      package or use a source checkout. The consumer already has the public
+      `logion-node` command and a prepared non-secret eval workflow at
+      `/workspace/task/eval-flow/run-eval-flow.sh`.
+
+      Run it inside the consumer container with:
+
+        docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml exec -T consumer sh -c 'sh /workspace/task/eval-flow/run-eval-flow.sh'
+
+      Copy the raw directory back to your evidence workspace after it exits:
+
+        mkdir -p "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval/raw" && docker compose --project-directory deploy/local-node -f deploy/local-node/compose.yaml cp consumer:/workspace/task/eval-flow/raw/. "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval/raw"
+
+      The launcher must perform validation, two eval runs, and the comparison
+      through the installed public `logion-node` workflow.
+    success_hint: |
+      Your evidence raw directory contains run-one.json, run-two.json, and
+      run-summary.json, and the launcher record shows successful public CLI
+      commands for validation, both runs, and comparison.
+    assertions:
+      - type: files.eval_agent_performed
+        params:
+          transcript: "${AGENT_NODE_OPERATOR_WORKSPACE}/node_operator_eval_flow.md"
+          raw_dir: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval/raw"
+
   - id: collect_eval_evidence
+    actor: node_operator
+    goal: ""
+    local_hook: packages/agent-proving-ground/scripts/run_eval_evidence.py
+    local_hook_args:
+      - collect
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/eval"
+
+  - id: capture_eval_evidence
     actor: node_operator
     goal: ""
     local_hook: packages/agent-proving-ground/scripts/capture_eval_evidence.py
