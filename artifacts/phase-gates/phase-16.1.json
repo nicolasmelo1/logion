@@ -1,0 +1,22 @@
+{
+  "caveats": [],
+  "phase_id": "16.1",
+  "runs": [
+    {
+      "api_adapter": "local-devrig",
+      "driver": "codex",
+      "implementation": {
+        "private_sha256": "430be1d01d7c99d0021ffecd42af771a99e4a67ac76b9aca8892294e517a8efc",
+        "public_sha256": "885081623b17b00555064fbb570199619b5df2f8df1efeb3f067a134cb3f53df"
+      },
+      "model": "gpt-5.4-mini",
+      "report": "artifacts/phase-gates/reports/phase-16.1-eval-contract-reference-runner.json",
+      "report_sha256": "6d8b7fb3e88bb59ee56b66d2c8f3c1eb6fb71126f6af03711f88e69d627655f1",
+      "run_id": "20260903T221338-eval_contract_reference_runner",
+      "scenario": "eval_contract_reference_runner",
+      "status": "passed",
+      "unsupported_assertions": []
+    }
+  ],
+  "schema_version": 2
+}

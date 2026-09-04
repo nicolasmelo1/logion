@@ -43,20 +43,28 @@ agents:
     devrig_role: buyer
     timeout_seconds: 1200
 phases:
-  - id: execute_runner_evidence
+  - id: prepare_runner_operator
+    actor: node_operator
+    local_hook: packages/agent-proving-ground/scripts/run_runner_evidence.py
+    local_hook_args:
+      - prepare
+      - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner"
+    goal: ""
+  - id: node_operator_runner_flow
     actor: node_operator
     goal: |
-      You are the operator of this Logion node. Run the evidence
-      acquisition exactly once, from the repository root, with:
-
-        make runner-evidence EVIDENCE_DIR=${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner
-
-      The command enrolls the node, runs the portable checker and the
-      untrusted fixtures under the published policy inside the isolated
-      sandbox, and retains the signed evidence under the given directory.
-      If the command exits 0, reply only with `RESULT: completed`.
-      If it fails, reply with `RESULT: blocked` and a one-line summary of
-      the observable error. Do not start, stop, or reset the node.
+      Run ${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner/
+      run-prepared-node-workflow.sh. Inspect its exit status and retained run
+      summary. Report RESULT: completed only when the installed logion-node
+      workflow completed successfully.
+    success_hint: |
+      The launcher exits zero and writes launcher-command.json, run-summary.json,
+      and raw logion-node outputs under the prepared evidence directory.
+    assertions:
+      - type: files.runner_agent_performed
+        params:
+          transcript: "${AGENT_NODE_OPERATOR_WORKSPACE}/node_operator_runner_flow.md"
+          evidence_dir: "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner"
   - id: collect_runner_evidence
     actor: node_operator
     goal: ""
@@ -67,6 +75,9 @@ phases:
       - "${AGENT_NODE_OPERATOR_WORKSPACE}/evidence/runner"
     local_hook_capture_json:
       RUNNER_EVIDENCE_MANIFEST: evidence_manifest
+  - id: capture_runner_evidence
+    actor: node_operator
+    goal: ""
     assertions:
       - type: api.runner_enrolled
         params:

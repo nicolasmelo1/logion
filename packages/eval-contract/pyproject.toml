@@ -1,0 +1,91 @@
+[project]
+name = "logion-eval-contract"
+version = "0.1.0.dev1"
+description = "Portable eval contract: parser, validator, canonicalizer, and result normalizer."
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Logion contributors" }]
+keywords = ["logion", "eval", "contract", "benchmark"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "pyyaml>=6.0,<7.0",
+]
+
+[dependency-groups]
+dev = [
+    "jsonschema>=4.26,<5.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "logion_eval_contract"
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+extend-select = [
+    "A",
+    "ANN401",
+    "ARG",
+    "ASYNC",
+    "C4",
+    "C901",
+    "DTZ",
+    "E302",
+    "E501",
+    "ERA",
+    "FBT",
+    "I001",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    "PGH",
+    "PIE",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "T20",
+    "TID251",
+    "TRY",
+    "W292",
+]
+explicit-preview-rules = true
+ignore = [
+    "FBT001",
+    "FBT002",
+    "N818",
+    "TRY003",
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Any" = { msg = "Use a TypedDict/dataclass for a known shape, JsonValue/JsonObject from the package's _json module at a JSON boundary, or a TypeVar for generic passthrough. If a third-party stub genuinely forces Any, add a narrow per-file-ignore for TID251 with a comment saying why." }
+
+[tool.ruff.lint.isort]
+known-first-party = ["logion_eval_contract"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

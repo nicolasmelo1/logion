@@ -9,6 +9,7 @@ from logion.v1._resources.bounties import BountiesResource
 from logion.v1._resources.course_reviews import CourseReviewsResource
 from logion.v1._resources.courses import CoursesResource
 from logion.v1._resources.credits import CreditsResource
+from logion.v1._resources.evals import EvalsResource
 from logion.v1._resources.github_setup import GithubSetupResource
 from logion.v1._resources.health import HealthResource
 from logion.v1._resources.identity import IdentityResource
@@ -44,3 +45,4 @@ class V1Namespace:
         self.resources = ResourcesResource(http)
         self.resource_feedback = ResourceFeedbackResource(http)
         self.usage_receipts = UsageReceiptResource(http)
+        self.evals = EvalsResource(http)

@@ -281,6 +281,172 @@ def _transcript_verdict(
     return None
 
 
+class EvalAgentPerformedAssertion(Assertion):
+    """Require the operator's recorded turn and its public CLI outputs.
+
+    The eval evidence collector can inspect server state, but it cannot stand
+    in for the consumer role performing the two local eval runs.  This check
+    ties the driver transcript to the raw files copied from that role and
+    rejects a launcher record that merely repeats a completion claim.
+    """
+
+    type = "files.eval_agent_performed"
+    _RAW_ARTIFACTS = ("run-one.json", "run-two.json", "run-summary.json")
+    _REQUIRED_COMMANDS = (
+        "logion-node eval validate",
+        "logion-node eval run",
+        "logion-node eval compare",
+    )
+
+    async def evaluate(
+        self, ctx: AssertionContext, params: dict
+    ) -> AssertionOutcome:
+        resolved, failure = _eval_artifact_paths(ctx, params)
+        if failure is not None:
+            return failure
+        transcript, raw_dir = resolved
+        verdict = _eval_operator_verdict(
+            transcript, raw_dir, self._RAW_ARTIFACTS
+        )
+        record = raw_dir / "launcher-record.json"
+        return AssertionOutcome(
+            type=self.type,
+            status="passed" if verdict is None else "failed",
+            message=(
+                "operator completed the prepared public logion-node workflow"
+                if verdict is None
+                else (
+                    "launcher record is not evidence of the eval flow: "
+                    f"{verdict}"
+                )
+            ),
+            evidence={
+                "transcript": str(transcript),
+                "raw_dir": str(raw_dir),
+                "launcher_record": str(record),
+            },
+        )
+
+
+def _eval_artifact_paths(
+    ctx: AssertionContext, params: dict
+) -> tuple[tuple[Path, Path], AssertionOutcome | None]:
+    transcript_raw = params.get("transcript")
+    raw_dir_raw = params.get("raw_dir")
+    if not transcript_raw or not raw_dir_raw:
+        return (Path(), Path()), AssertionOutcome(
+            type=EvalAgentPerformedAssertion.type,
+            status="failed",
+            message="transcript and raw_dir parameters are required",
+            evidence=params,
+        )
+    try:
+        return (
+            _resolve_pending_artifact(ctx.artifacts_dir, str(transcript_raw)),
+            _resolve_pending_artifact(ctx.artifacts_dir, str(raw_dir_raw)),
+        ), None
+    except ValueError as exc:
+        return (Path(), Path()), AssertionOutcome(
+            type=EvalAgentPerformedAssertion.type,
+            status="failed",
+            message=str(exc),
+            evidence={"transcript": transcript_raw, "raw_dir": raw_dir_raw},
+        )
+
+
+def _eval_operator_verdict(
+    transcript: Path, raw_dir: Path, artifacts: tuple[str, ...]
+) -> str | None:
+    try:
+        transcript_text = transcript.read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"cannot read process-driver transcript: {exc}"
+    if transcript.name != "node_operator_eval_flow.md":
+        return "transcript is not the node_operator_eval_flow turn"
+    if "RESULT: COMPLETED" not in transcript_text.upper():
+        return "process-driver transcript lacks RESULT: completed"
+    if "run-eval-flow.sh" not in transcript_text:
+        return "process-driver transcript does not name the launcher"
+    missing = [name for name in artifacts if not (raw_dir / name).is_file()]
+    if missing:
+        return "missing agent-produced raw artifacts: " + ", ".join(missing)
+    invalid = [
+        name for name in artifacts if not _is_json_object(raw_dir / name)
+    ]
+    if invalid:
+        return "invalid agent-produced raw artifacts: " + ", ".join(invalid)
+    return _eval_launcher_verdict(raw_dir / "launcher-record.json")
+
+
+def _is_json_object(path: Path) -> bool:
+    try:
+        return isinstance(json.loads(path.read_text(encoding="utf-8")), dict)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def _eval_launcher_verdict(record: Path) -> str | None:
+    """Return why the launcher log is insufficient, or ``None`` when live."""
+    commands, error = _successful_launcher_commands(record)
+    if error is not None:
+        return error
+    missing, run_count = _missing_eval_commands(commands)
+    if missing or run_count < 2:
+        detail = ", ".join(missing)
+        if run_count < 2:
+            detail = (
+                f"{detail}; two eval runs required"
+                if detail
+                else "two eval runs required"
+            )
+        return f"missing real public CLI commands ({detail})"
+    return None
+
+
+def _successful_launcher_commands(
+    record: Path,
+) -> tuple[list[str], str | None]:
+    try:
+        payload = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return [], f"unreadable launcher record: {exc}"
+    entries = payload.get("commands") if isinstance(payload, dict) else None
+    if not isinstance(entries, list) or not entries:
+        return [], "no commands with exits"
+    commands: list[str] = []
+    for entry in entries:
+        error = _launcher_command_error(entry)
+        if error is not None:
+            return [], error
+        commands.append(entry["command"])
+    return commands, None
+
+
+def _launcher_command_error(entry: object) -> str | None:
+    if not isinstance(entry, dict):
+        return "command entry is not an object"
+    command = entry.get("command")
+    if not isinstance(command, str) or not command.strip():
+        return "command entry has no command"
+    exit_code = entry.get("exit_code")
+    if not isinstance(exit_code, int):
+        return "command entry has no integer exit_code"
+    if exit_code != 0:
+        return f"command exited {exit_code}: {command}"
+    return None
+
+
+def _missing_eval_commands(commands: list[str]) -> tuple[list[str], int]:
+    missing = [
+        command
+        for command in EvalAgentPerformedAssertion._REQUIRED_COMMANDS
+        if not any(command in observed for observed in commands)
+    ]
+    return missing, sum(
+        "logion-node eval run" in command for command in commands
+    )
+
+
 class ClientHasNoARDConnectorInstallAssertion(Assertion):
     """Verify that no ARD connector files or finder preferences were
     installed into the client workspace."""
@@ -666,16 +832,11 @@ class SandboxRealHarnessUsesLogionAssertion(Assertion):
             for role, entry in sorted(runs.items())
             if isinstance(entry, dict)
         }
-        # The auditor recomputes this verdict from typed facts, so every field
-        # the contract requires goes out at the evidence root in the
-        # {"ok": true, "value": ...} envelope a fact must carry to even be
-        # read — including when nothing observed it: a fact everywhere absent
-        # reads as "not retained", which hides what the capture skipped
-        # behind a bookkeeping code. ``ok`` means observed for every role;
-        # None is the hook's unobserved marker and fails the fact instead of
-        # standing in for an observation. Whether an observed value is
-        # *acceptable* (exit 0, non-empty proof) is the contract's job via
-        # expected/forbidden values, not the handler's.
+        # Every required field leaves at the evidence root in the
+        # {"ok": true, "value": ...} envelope, so "everywhere absent" reads as
+        # not-retained instead of hiding behind a bookkeeping code. Whether an
+        # observed value is acceptable (exit 0, non-empty proof) is the
+        # contract's job, not the handler's — see the phase-gate plan.
         fields = (
             "process_exit_code",
             "proof_read_exit_code",

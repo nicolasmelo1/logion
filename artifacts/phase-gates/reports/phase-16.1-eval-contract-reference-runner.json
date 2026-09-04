@@ -1,0 +1,642 @@
+{
+  "run_id": "20260903T221338-eval_contract_reference_runner",
+  "scenario": "eval_contract_reference_runner",
+  "status": "passed",
+  "api_adapter": "local-devrig",
+  "agent_drivers": {
+    "node_operator": "codex",
+    "auditor": "codex"
+  },
+  "started_at": "2026-09-03T22:13:38.615614Z",
+  "finished_at": "2026-09-03T22:13:46.545675Z",
+  "phase_results": [
+    {
+      "phase_id": "execute_eval_evidence",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-09-03T22:13:38.950805Z",
+      "finished_at": "2026-09-03T22:13:43.664919Z",
+      "duration_seconds": 4.714
+    },
+    {
+      "phase_id": "collect_eval_evidence",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.eval_contract_valid",
+          "status": "passed",
+          "message": "the golden contract validates from the published package",
+          "evidence": {
+            "contract_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "contract_media_type": {
+              "ok": true,
+              "value": "application/vnd.aktp.eval-contract.v1+json"
+            },
+            "schema_version": {
+              "ok": true,
+              "value": 1
+            },
+            "validator_package_version": {
+              "ok": true,
+              "value": "0.1.0.dev1"
+            },
+            "validator_import_root": {
+              "ok": true,
+              "value": "site-packages"
+            },
+            "validation_exit_code": {
+              "ok": true,
+              "value": 0
+            },
+            "unknown_field_rejected": {
+              "ok": true,
+              "value": true
+            }
+          }
+        },
+        {
+          "type": "api.eval_runs_completed",
+          "status": "passed",
+          "message": "two distinct eval runs completed",
+          "evidence": {
+            "eval_run_id": {
+              "ok": true,
+              "value": {
+                "run_one": "2f196a9574394c249e5cc21f424942a0",
+                "run_two": "df9d6812d1bc4bd3be7e72ba676d7b6a"
+              }
+            },
+            "terminal_status": {
+              "ok": true,
+              "value": {
+                "run_one": "succeeded",
+                "run_two": "succeeded"
+              }
+            },
+            "contract_digest": {
+              "ok": true,
+              "value": {
+                "run_one": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf",
+                "run_two": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+              }
+            },
+            "subject_digest": {
+              "ok": true,
+              "value": {
+                "run_one": "164f771d15d6119bae5b9936020b7fb6162f5fdca8868ce4fbce017175bee72a",
+                "run_two": "164f771d15d6119bae5b9936020b7fb6162f5fdca8868ce4fbce017175bee72a"
+              }
+            },
+            "runner_id": {
+              "ok": true,
+              "value": {
+                "run_one": "747f9861-aad1-47eb-9153-b434fda8a487",
+                "run_two": "747f9861-aad1-47eb-9153-b434fda8a487"
+              }
+            },
+            "receipt_digest": {
+              "ok": true,
+              "value": {
+                "run_one": "24132a2a0693a5d49475ce98fabfc7335c321d7cfd03f4ea92eb33cc8a508ab7",
+                "run_two": "24132a2a0693a5d49475ce98fabfc7335c321d7cfd03f4ea92eb33cc8a508ab7"
+              }
+            }
+          }
+        },
+        {
+          "type": "api.eval_result_digest_stable",
+          "status": "passed",
+          "message": "the two run digests agree",
+          "evidence": {
+            "run_one_result_digest": {
+              "ok": true,
+              "value": "5864984b15efd0be8642827aacf9ad2ccae008e5500dddae67a1922d36a07650"
+            },
+            "run_two_result_digest": {
+              "ok": true,
+              "value": "5864984b15efd0be8642827aacf9ad2ccae008e5500dddae67a1922d36a07650"
+            },
+            "digests_equal": {
+              "ok": true,
+              "value": true
+            },
+            "normalization_version": {
+              "ok": true,
+              "value": "logion.eval.normalize.v1"
+            },
+            "determinism_class": {
+              "ok": true,
+              "value": "deterministic"
+            }
+          }
+        },
+        {
+          "type": "files.eval_reproduced_clean_workspace",
+          "status": "passed",
+          "message": "the clean workspace reproduced the original result digest",
+          "evidence": {
+            "workspace_root": {
+              "ok": true,
+              "value": "/private/tmp/logion-phase-16-1-run/agents/node_operator/workspace/evidence/eval"
+            },
+            "public_checkout_visible": {
+              "ok": true,
+              "value": false
+            },
+            "private_checkout_visible": {
+              "ok": true,
+              "value": false
+            },
+            "installed_from": {
+              "ok": true,
+              "value": "built-wheel"
+            },
+            "reproduced_result_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "matches_original_digest": {
+              "ok": true,
+              "value": true
+            },
+            "commands_used": {
+              "ok": true,
+              "value": [
+                "pip install <redacted>.1.0.dev1-py3-none-any.whl",
+                "python -c parse+contract_digest"
+              ]
+            }
+          }
+        },
+        {
+          "type": "api.invalid_eval_rejected",
+          "status": "passed",
+          "message": "each rejection class failed with its own stable code",
+          "evidence": {
+            "error_code": {
+              "ok": true,
+              "value": {
+                "eval_budget_invalid": "eval_budget_invalid",
+                "eval_contract_invalid": "eval_contract_invalid",
+                "eval_fixture_digest_mismatch": "eval_fixture_digest_mismatch",
+                "eval_requirement_unsupported": "eval_requirement_unsupported",
+                "eval_subject_mismatch": "eval_subject_mismatch"
+              }
+            },
+            "http_status": {
+              "ok": true,
+              "value": {
+                "eval_budget_invalid": 422,
+                "eval_contract_invalid": 422,
+                "eval_fixture_digest_mismatch": 422,
+                "eval_requirement_unsupported": 422,
+                "eval_subject_mismatch": 422
+              }
+            },
+            "rejected_before_execution": {
+              "ok": true,
+              "value": {
+                "eval_budget_invalid": true,
+                "eval_contract_invalid": true,
+                "eval_fixture_digest_mismatch": true,
+                "eval_requirement_unsupported": true,
+                "eval_subject_mismatch": true
+              }
+            },
+            "job_created": {
+              "ok": true,
+              "value": {
+                "eval_budget_invalid": false,
+                "eval_contract_invalid": false,
+                "eval_fixture_digest_mismatch": false,
+                "eval_requirement_unsupported": false,
+                "eval_subject_mismatch": false
+              }
+            }
+          }
+        },
+        {
+          "type": "files.converted_scenario_assertions_preserved",
+          "status": "passed",
+          "message": "converted assertion identity sets match the source",
+          "evidence": {
+            "source_scenario": {
+              "ok": true,
+              "value": "bounty-discover-by-skill"
+            },
+            "source_assertion_ids": {
+              "ok": true,
+              "value": [
+                "bounty-discover-by-skill.forbidden_tools",
+                "bounty-discover-by-skill.required_tools"
+              ]
+            },
+            "converted_assertion_ids": {
+              "ok": true,
+              "value": [
+                "bounty-discover-by-skill.forbidden_tools",
+                "bounty-discover-by-skill.required_tools"
+              ]
+            },
+            "dropped_assertion_count": {
+              "ok": true,
+              "value": 0
+            },
+            "added_assertion_count": {
+              "ok": true,
+              "value": 0
+            },
+            "conversion_tool_version": {
+              "ok": true,
+              "value": "logion.eval.convert.v1"
+            }
+          }
+        },
+        {
+          "type": "api.canonical_digest_agrees",
+          "status": "passed",
+          "message": "backend and runner canonical digests agree",
+          "evidence": {
+            "golden_contract_id": {
+              "ok": true,
+              "value": "urn:logion:eval-contract:8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "backend_canonical_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "runner_canonical_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "digests_equal": {
+              "ok": true,
+              "value": true
+            },
+            "canonicalization": {
+              "ok": true,
+              "value": "JCS"
+            }
+          }
+        },
+        {
+          "type": "api.eval_contract_indexed",
+          "status": "passed",
+          "message": "the result carries a standing in the closed vocabulary",
+          "evidence": {
+            "resource_id": {
+              "ok": true,
+              "value": "97e18a12-a068-44fc-9a28-1df8f8b7fcb9"
+            },
+            "resource_type": {
+              "ok": true,
+              "value": "eval_contract"
+            },
+            "contract_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "indexed_alongside_subject": {
+              "ok": true,
+              "value": true
+            },
+            "result_contract_digest": {
+              "ok": true,
+              "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+            },
+            "result_contract_standing": {
+              "ok": true,
+              "value": "unreviewed"
+            }
+          }
+        }
+      ],
+      "started_at": "2026-09-03T22:13:43.664950Z",
+      "finished_at": "2026-09-03T22:13:43.695294Z",
+      "duration_seconds": 0.03
+    },
+    {
+      "phase_id": "verify_api_logs",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "logs.no_500s",
+          "status": "passed",
+          "message": "API log contains no obvious 500 responses",
+          "evidence": {
+            "log_path": ".devrig/api.log"
+          }
+        }
+      ],
+      "started_at": "2026-09-03T22:13:43.695329Z",
+      "finished_at": "2026-09-03T22:13:46.545351Z",
+      "duration_seconds": 2.85
+    }
+  ],
+  "assertion_results": [
+    {
+      "type": "files.eval_contract_valid",
+      "status": "passed",
+      "message": "the golden contract validates from the published package",
+      "evidence": {
+        "contract_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "contract_media_type": {
+          "ok": true,
+          "value": "application/vnd.aktp.eval-contract.v1+json"
+        },
+        "schema_version": {
+          "ok": true,
+          "value": 1
+        },
+        "validator_package_version": {
+          "ok": true,
+          "value": "0.1.0.dev1"
+        },
+        "validator_import_root": {
+          "ok": true,
+          "value": "site-packages"
+        },
+        "validation_exit_code": {
+          "ok": true,
+          "value": 0
+        },
+        "unknown_field_rejected": {
+          "ok": true,
+          "value": true
+        }
+      }
+    },
+    {
+      "type": "api.eval_runs_completed",
+      "status": "passed",
+      "message": "two distinct eval runs completed",
+      "evidence": {
+        "eval_run_id": {
+          "ok": true,
+          "value": {
+            "run_one": "2f196a9574394c249e5cc21f424942a0",
+            "run_two": "df9d6812d1bc4bd3be7e72ba676d7b6a"
+          }
+        },
+        "terminal_status": {
+          "ok": true,
+          "value": {
+            "run_one": "succeeded",
+            "run_two": "succeeded"
+          }
+        },
+        "contract_digest": {
+          "ok": true,
+          "value": {
+            "run_one": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf",
+            "run_two": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+          }
+        },
+        "subject_digest": {
+          "ok": true,
+          "value": {
+            "run_one": "164f771d15d6119bae5b9936020b7fb6162f5fdca8868ce4fbce017175bee72a",
+            "run_two": "164f771d15d6119bae5b9936020b7fb6162f5fdca8868ce4fbce017175bee72a"
+          }
+        },
+        "runner_id": {
+          "ok": true,
+          "value": {
+            "run_one": "747f9861-aad1-47eb-9153-b434fda8a487",
+            "run_two": "747f9861-aad1-47eb-9153-b434fda8a487"
+          }
+        },
+        "receipt_digest": {
+          "ok": true,
+          "value": {
+            "run_one": "24132a2a0693a5d49475ce98fabfc7335c321d7cfd03f4ea92eb33cc8a508ab7",
+            "run_two": "24132a2a0693a5d49475ce98fabfc7335c321d7cfd03f4ea92eb33cc8a508ab7"
+          }
+        }
+      }
+    },
+    {
+      "type": "api.eval_result_digest_stable",
+      "status": "passed",
+      "message": "the two run digests agree",
+      "evidence": {
+        "run_one_result_digest": {
+          "ok": true,
+          "value": "5864984b15efd0be8642827aacf9ad2ccae008e5500dddae67a1922d36a07650"
+        },
+        "run_two_result_digest": {
+          "ok": true,
+          "value": "5864984b15efd0be8642827aacf9ad2ccae008e5500dddae67a1922d36a07650"
+        },
+        "digests_equal": {
+          "ok": true,
+          "value": true
+        },
+        "normalization_version": {
+          "ok": true,
+          "value": "logion.eval.normalize.v1"
+        },
+        "determinism_class": {
+          "ok": true,
+          "value": "deterministic"
+        }
+      }
+    },
+    {
+      "type": "files.eval_reproduced_clean_workspace",
+      "status": "passed",
+      "message": "the clean workspace reproduced the original result digest",
+      "evidence": {
+        "workspace_root": {
+          "ok": true,
+          "value": "/private/tmp/logion-phase-16-1-run/agents/node_operator/workspace/evidence/eval"
+        },
+        "public_checkout_visible": {
+          "ok": true,
+          "value": false
+        },
+        "private_checkout_visible": {
+          "ok": true,
+          "value": false
+        },
+        "installed_from": {
+          "ok": true,
+          "value": "built-wheel"
+        },
+        "reproduced_result_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "matches_original_digest": {
+          "ok": true,
+          "value": true
+        },
+        "commands_used": {
+          "ok": true,
+          "value": [
+            "pip install <redacted>.1.0.dev1-py3-none-any.whl",
+            "python -c parse+contract_digest"
+          ]
+        }
+      }
+    },
+    {
+      "type": "api.invalid_eval_rejected",
+      "status": "passed",
+      "message": "each rejection class failed with its own stable code",
+      "evidence": {
+        "error_code": {
+          "ok": true,
+          "value": {
+            "eval_budget_invalid": "eval_budget_invalid",
+            "eval_contract_invalid": "eval_contract_invalid",
+            "eval_fixture_digest_mismatch": "eval_fixture_digest_mismatch",
+            "eval_requirement_unsupported": "eval_requirement_unsupported",
+            "eval_subject_mismatch": "eval_subject_mismatch"
+          }
+        },
+        "http_status": {
+          "ok": true,
+          "value": {
+            "eval_budget_invalid": 422,
+            "eval_contract_invalid": 422,
+            "eval_fixture_digest_mismatch": 422,
+            "eval_requirement_unsupported": 422,
+            "eval_subject_mismatch": 422
+          }
+        },
+        "rejected_before_execution": {
+          "ok": true,
+          "value": {
+            "eval_budget_invalid": true,
+            "eval_contract_invalid": true,
+            "eval_fixture_digest_mismatch": true,
+            "eval_requirement_unsupported": true,
+            "eval_subject_mismatch": true
+          }
+        },
+        "job_created": {
+          "ok": true,
+          "value": {
+            "eval_budget_invalid": false,
+            "eval_contract_invalid": false,
+            "eval_fixture_digest_mismatch": false,
+            "eval_requirement_unsupported": false,
+            "eval_subject_mismatch": false
+          }
+        }
+      }
+    },
+    {
+      "type": "files.converted_scenario_assertions_preserved",
+      "status": "passed",
+      "message": "converted assertion identity sets match the source",
+      "evidence": {
+        "source_scenario": {
+          "ok": true,
+          "value": "bounty-discover-by-skill"
+        },
+        "source_assertion_ids": {
+          "ok": true,
+          "value": [
+            "bounty-discover-by-skill.forbidden_tools",
+            "bounty-discover-by-skill.required_tools"
+          ]
+        },
+        "converted_assertion_ids": {
+          "ok": true,
+          "value": [
+            "bounty-discover-by-skill.forbidden_tools",
+            "bounty-discover-by-skill.required_tools"
+          ]
+        },
+        "dropped_assertion_count": {
+          "ok": true,
+          "value": 0
+        },
+        "added_assertion_count": {
+          "ok": true,
+          "value": 0
+        },
+        "conversion_tool_version": {
+          "ok": true,
+          "value": "logion.eval.convert.v1"
+        }
+      }
+    },
+    {
+      "type": "api.canonical_digest_agrees",
+      "status": "passed",
+      "message": "backend and runner canonical digests agree",
+      "evidence": {
+        "golden_contract_id": {
+          "ok": true,
+          "value": "urn:logion:eval-contract:8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "backend_canonical_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "runner_canonical_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "digests_equal": {
+          "ok": true,
+          "value": true
+        },
+        "canonicalization": {
+          "ok": true,
+          "value": "JCS"
+        }
+      }
+    },
+    {
+      "type": "api.eval_contract_indexed",
+      "status": "passed",
+      "message": "the result carries a standing in the closed vocabulary",
+      "evidence": {
+        "resource_id": {
+          "ok": true,
+          "value": "97e18a12-a068-44fc-9a28-1df8f8b7fcb9"
+        },
+        "resource_type": {
+          "ok": true,
+          "value": "eval_contract"
+        },
+        "contract_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "indexed_alongside_subject": {
+          "ok": true,
+          "value": true
+        },
+        "result_contract_digest": {
+          "ok": true,
+          "value": "8d013fbe49e5a3c78b3312af7fa4e608c4ea344798f735bc595e00a46219e7cf"
+        },
+        "result_contract_standing": {
+          "ok": true,
+          "value": "unreviewed"
+        }
+      }
+    },
+    {
+      "type": "logs.no_500s",
+      "status": "passed",
+      "message": "API log contains no obvious 500 responses",
+      "evidence": {
+        "log_path": ".devrig/api.log"
+      }
+    }
+  ],
+  "failure_message": null,
+  "artifact_root": "logion-phase-16-1-run"
+}

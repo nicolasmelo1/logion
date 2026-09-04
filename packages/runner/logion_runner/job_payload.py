@@ -12,6 +12,9 @@ Supported job types (deterministic fixtures):
 - ``adversarial``  — attempt a declared forbidden effect; the sandbox
   is expected to block it, and the payload reports the blocked effect
   on stderr as one JSON line for the receipt
+- ``eval_normalize`` — the reference JSON-normalization subject: read
+  the subject document, normalize its ``input``, and write the result
+  to the contract's declared output path
 """
 
 from __future__ import annotations
@@ -245,6 +248,53 @@ def _run_adversarial(payload: JsonObject, out_dir: Path) -> int:
     return 3
 
 
+def _run_eval_normalize(payload: JsonObject, out_dir: Path) -> int:
+    """The reference subject: normalize the bundled JSON document.
+
+    The subject document bundles the task input and the golden expected
+    output. The reference ``normalize`` entrypoint trims every string
+    field and casefolds email-shaped values — the deterministic skill
+    under test. The runner grades the produced output against the
+    contract's assertions; the payload only executes the subject.
+    """
+    subject = payload.get("subject")
+    if not isinstance(subject, dict):
+        return 3
+    entrypoint = str(payload.get("entrypoint") or "normalize")
+    if entrypoint != "normalize":
+        sys.stderr.write(f"unsupported subject entrypoint: {entrypoint}\n")
+        return 3
+    document = subject.get("input")
+    if not isinstance(document, dict):
+        return 3
+
+    def normalize(node: object) -> object:
+        if isinstance(node, str):
+            text = node.strip()
+            return text.casefold() if "@" in text else text
+        if isinstance(node, dict):
+            return {key: normalize(value) for key, value in node.items()}
+        if isinstance(node, list):
+            return [normalize(item) for item in node]
+        return node
+
+    output = {
+        "input": document,
+        "normalized": normalize(document),
+        "expected": subject.get("expected"),
+    }
+    output_path = payload.get("output_path")
+    if not isinstance(output_path, str) or not output_path:
+        sys.stderr.write("eval payload has no declared output path\n")
+        return 3
+    _write_out(
+        out_dir,
+        output_path,
+        json.dumps(output, sort_keys=True).encode("utf-8"),
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if len(args) != 1:
@@ -258,6 +308,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_echo(payload, out_dir)
     if job_type == "canary_probe":
         return _run_canary_probe(payload, out_dir)
+    if job_type == "eval_normalize":
+        return _run_eval_normalize(payload, out_dir)
     if job_type == "adversarial":
         return _run_adversarial(payload, out_dir)
     sys.stderr.write(f"unknown job_type: {job_type}\n")

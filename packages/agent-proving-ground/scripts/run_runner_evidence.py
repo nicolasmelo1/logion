@@ -29,6 +29,13 @@ from pathlib import Path
 import httpx
 
 RUNNER_IMAGE_TAG = "logion-runner-job:fixed"
+PREPARED_INPUT = "prepared-runner-input.json"
+LAUNCHER_NAME = "run-prepared-node-workflow.sh"
+RUNNER_FLOW_LAUNCHER = (
+    Path(__file__).resolve().parent / "runner_flow_launcher.sh"
+)
+_RAW_OUTPUT_DIR: Path | None = None
+_RUNNER_PASS_NUMBER = 0
 
 
 def resolve_runner_image(docker_cli: str = "docker") -> str:
@@ -268,6 +275,10 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
 
     This is the lease-loss event: the runner still believes it holds the
     job, and the coordinator's own recovery decides what happens next.
+    The sweep may only report ``queued`` after it actually reclaimed a
+    lease it held — an idle queue reaches the same status without any
+    lease-loss event, and the retry hazard downstream depends on the
+    attempt budget this path consumes.
     """
     return _private_python(
         private_repo,
@@ -282,6 +293,7 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
             "with SessionLocal() as db:",
             f"    job = db.get(ExecutionJob, '{job_id}')",
             "    before = job.status",
+            "    held = before == 'leased'",
             "    job.lease_expires_at = datetime.now(UTC) - timedelta(",
             "        seconds=600)",
             "    db.commit()",
@@ -289,10 +301,11 @@ def _expire_lease(private_repo: Path, job_id: str) -> dict:
             "    db.refresh(job)",
             "    print(json.dumps({",
             "        'before': before,",
+            "        'held': held,",
             "        'swept': swept,",
             "        'after': job.status,",
             "        'attempt_count': job.attempt_count,",
-            "        'terminal_transition_count':"
+            "        'terminal_transition_count':",
             " job.terminal_transition_count,",
             "    }))",
         ]),
@@ -436,11 +449,25 @@ RUNNER_LOG: list[str] = []
 
 def _runner_pass(public_repo: Path, runner_bin: Path, run_env: dict) -> dict:
     """One ``run --once`` pass; the runner's stdout is the observed truth."""
-    run = _must_run(
-        [str(runner_bin), "run", "--once"], cwd=public_repo, env=run_env
-    )
+    global _RUNNER_PASS_NUMBER
+    command = [str(runner_bin), "run", "--once"]
+    run = _must_run(command, cwd=public_repo, env=run_env)
     RUNNER_LOG.append(run.stdout)
     RUNNER_LOG.append(run.stderr)
+    _RUNNER_PASS_NUMBER += 1
+    if _RAW_OUTPUT_DIR is not None:
+        payload = {
+            "command": command,
+            "exit_code": run.returncode,
+            "stdout": run.stdout,
+            "stderr": run.stderr,
+        }
+        (
+            _RAW_OUTPUT_DIR / f"runner-pass-{_RUNNER_PASS_NUMBER:02d}.json"
+        ).write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     return _json_stdout(run)
 
 
@@ -530,28 +557,39 @@ def _enroll_and_seed(
 ) -> tuple[int, dict, str, str, dict[str, str]]:
     """Drain leftovers, enrol the runner, and queue the seed jobs.
 
-    Stale queued jobs from an aborted run are cancelled first so leasing
-    is FIFO-deterministic. Every artifact a sandbox may produce is
-    declared up front or the coordinator rejects the upload as unknown;
-    the two report artifacts carry no digest because their contents are
-    what the run is trying to find out.
+    Stale jobs from an aborted run are cancelled first so leasing is
+    FIFO-deterministic. Both ``queued`` and ``leased`` drain: a lease
+    abandoned by a crashed operator pass comes back to ``queued`` via the
+    coordinator's sweep mid-run, which would hand the next ``run --once``
+    a job the scenario did not create. Only jobs pinned to this run's
+    sandbox image are touched — anything else in the queue belongs to
+    someone else. Every artifact a sandbox may produce is declared up
+    front or the coordinator rejects the upload as unknown; the two
+    report artifacts carry no digest because their contents are what the
+    run is trying to find out.
     """
     client = httpx.Client(base_url=base_url, timeout=120)
     try:
-        stale = client.get(
-            "/v1/executions/jobs?status=queued&limit=200",
-            headers={"Authorization": f"Bearer {admin_key}"},
-        )
-        stale.raise_for_status()
-        stale_items = stale.json().get("data", stale.json()).get("items", [])
         cancelled = 0
-        for row in stale_items:
-            cancel = client.post(
-                f"/v1/executions/jobs/{row['id']}/cancel",
+        for status in ("queued", "leased"):
+            stale = client.get(
+                f"/v1/executions/jobs?status={status}&limit=200",
                 headers={"Authorization": f"Bearer {admin_key}"},
             )
-            if cancel.status_code == 200:
-                cancelled += 1
+            stale.raise_for_status()
+            stale_items = (
+                stale.json().get("data", stale.json()).get("items", [])
+            )
+            for row in stale_items:
+                profile = row.get("sandbox_profile") or {}
+                if profile.get("image") != runner_image:
+                    continue
+                cancel = client.post(
+                    f"/v1/executions/jobs/{row['id']}/cancel",
+                    headers={"Authorization": f"Bearer {admin_key}"},
+                )
+                if cancel.status_code == 200:
+                    cancelled += 1
 
         enroll = client.post(
             "/v1/runners/enroll",
@@ -739,6 +777,12 @@ def _exercise_hazards(
         job_ids[hazard] = _new_job(artifacts=echo_grant, **extra)
         _claim_only(base_url, runner_key)
         hazard_events[hazard] = _expire_lease(private_repo, job_ids[hazard])
+        if not hazard_events[hazard].get("held"):
+            raise RuntimeError(
+                f"{hazard} hazard: lease was not held at expiry "
+                f"(status {hazard_events[hazard]['before']!r}) — the sweep "
+                "event would be vacuous"
+            )
         if hazard_events[hazard]["after"] != "queued":
             raise RuntimeError(
                 f"{hazard} hazard: sweep left the job in "
@@ -807,13 +851,59 @@ def _response_detail(response: httpx.Response) -> object:
     return response.text[:200]
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stderr.write("usage: run_runner_evidence.py OUT_DIR\n")
-        return 2
-    out_dir = Path(sys.argv[1]).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+def _prepare(out_dir: Path) -> int:
+    """Prepare only rig fixtures and a host-side operator launcher.
 
+    Docker preflight, isolated-venv construction, and canary planting belong
+    to the rig.  The launcher is the only hand-off to the driven operator; it
+    records its command and exit status beside the product's raw outputs.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    public_repo = Path(
+        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
+    ).resolve()
+    runner_image = resolve_runner_image()
+    runner_venv = out_dir / "runner-venv"
+    runner_state = out_dir / "runner-state"
+    runner_state.mkdir(parents=True, exist_ok=True)
+    os.chmod(runner_state, 0o700)
+    inspect_json = _setup_runner_venv(public_repo, runner_venv)
+    canary_paths = _plant_canaries("LOGION_RUNNER_CANARY_PROBE")
+    prepared = {
+        "runner_image": runner_image,
+        "runner_venv": str(runner_venv),
+        "runner_state": str(runner_state),
+        "runner_package": inspect_json,
+        "canary_paths": canary_paths,
+    }
+    (out_dir / PREPARED_INPUT).write_text(
+        json.dumps(prepared, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    launcher = out_dir / LAUNCHER_NAME
+    operator_python = runner_venv / "bin" / "python"
+    evidence_script = Path(__file__).resolve()
+    template = RUNNER_FLOW_LAUNCHER.read_text(encoding="utf-8")
+    rendered = template.replace(
+        "@@OPERATOR_PYTHON@@", str(operator_python)
+    ).replace("@@EVIDENCE_SCRIPT@@", str(evidence_script))
+    if "@@" in rendered:
+        raise RuntimeError("launcher fixture has unsubstituted placeholders")
+    launcher.write_text(rendered, encoding="utf-8")
+    launcher.chmod(0o700)
+    sys.stdout.write(
+        json.dumps({"evidence_dir": str(out_dir), "launcher": str(launcher)})
+        + "\n"
+    )
+    return 0
+
+
+def _operator(out_dir: Path) -> int:
+    """Perform the measured enrollment/job/runner workflow via logion-node."""
+    global _RAW_OUTPUT_DIR, _RUNNER_PASS_NUMBER
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prepared = json.loads(
+        (out_dir / PREPARED_INPUT).read_text(encoding="utf-8")
+    )
     public_repo = Path(
         os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
     ).resolve()
@@ -822,15 +912,16 @@ def main() -> int:
     admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
     base_url = os.environ.get("LOGION_API_BASE_URL", "http://localhost:8000")
     echo_digest = _sha256_text('{"echoed": []}')
-    env_name = "LOGION_RUNNER_CANARY_PROBE"
-    runner_image = resolve_runner_image()
-
-    runner_venv = out_dir / "runner-venv"
-    runner_state = out_dir / "runner-state"
-    runner_state.mkdir(parents=True, exist_ok=True)
-    os.chmod(runner_state, 0o700)
-    inspect_json = _setup_runner_venv(public_repo, runner_venv)
+    runner_image = str(prepared["runner_image"])
+    runner_venv = Path(str(prepared["runner_venv"]))
+    runner_state = Path(str(prepared["runner_state"]))
+    inspect_json = prepared["runner_package"]
+    if not isinstance(inspect_json, dict):
+        raise TypeError("prepared runner package details are invalid")
     runner_bin = runner_venv / "bin" / "logion-node"
+    _RAW_OUTPUT_DIR = out_dir / "raw-outputs"
+    _RAW_OUTPUT_DIR.mkdir(exist_ok=True)
+    _RUNNER_PASS_NUMBER = 0
 
     run_env = {
         "LOGION_NODE_BASE_URL": base_url,
@@ -869,7 +960,12 @@ def main() -> int:
     module_path = inspect_json["module_path"]
 
     # ── Canary probe ──
-    planted_probes = _plant_canaries(env_name)
+    prepared_paths = prepared.get("canary_paths")
+    if not isinstance(prepared_paths, dict):
+        raise TypeError("prepared canary paths are invalid")
+    planted_probes = {
+        str(role): str(path) for role, path in prepared_paths.items()
+    }
     _runner_pass(public_repo, runner_bin, run_env)
     canary_payload = _private_receipt(
         private_repo, canary_job_id, "canary-report.json"
@@ -1056,7 +1152,26 @@ def main() -> int:
             }),
         },
     )
+    sys.stdout.write(
+        json.dumps({"evidence_dir": str(out_dir)}, sort_keys=True) + "\n"
+    )
     return 0
+
+
+def main() -> int:
+    if len(sys.argv) == 2:
+        # Compatibility for existing local invocations; new scenarios use an
+        # explicit mode so setup cannot accidentally execute the product flow.
+        return _operator(Path(sys.argv[1]).resolve())
+    if len(sys.argv) != 3 or sys.argv[1] not in {"prepare", "operator"}:
+        sys.stderr.write(
+            "usage: run_runner_evidence.py {prepare|operator} OUT_DIR\n"
+        )
+        return 2
+    out_dir = Path(sys.argv[2]).resolve()
+    if sys.argv[1] == "prepare":
+        return _prepare(out_dir)
+    return _operator(out_dir)
 
 
 if __name__ == "__main__":

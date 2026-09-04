@@ -51,6 +51,9 @@ rules:
       # files that are deliberately full of them is narrower than weakening
       # the rule for the whole repository.
       exclude: ["scripts/check_*.py", "tests/test_check_*.py", "tests/test_audit_*.py"]
+  # L3 — A driven actor receives a goal
+  L3.EVERY_ACTOR_HAS_A_GOAL:
+    enabled: true
   # L4 — Repo-relative documentation links resolve
   L4.DOC_LINKS_RESOLVE:
     enabled: true
