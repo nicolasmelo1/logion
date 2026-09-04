@@ -38,43 +38,64 @@ EMPTY_SCALAR = {"", '""', "''", "~", "null"}
 def _records(lines: list[str], block: str) -> list[dict[str, str]]:
     """Every ``- `` item directly under a top-level ``block:`` key."""
     out: list[dict[str, str]] = []
+    item_indent: int | None = None
+    for index, raw in _block_lines(lines, block):
+        item_indent = _append_record(raw, lines, index, out, item_indent)
+        _append_field(raw, lines, index, out, item_indent)
+    return out
+
+
+def _block_lines(lines: list[str], block: str):
     inside = False
-    item_indent = None
     for index, raw in enumerate(lines):
         if raw.rstrip() == f"{block}:":
             inside = True
             continue
-        if not inside:
-            continue
-        if raw.strip() and not raw.startswith(" "):
-            break
-        item = ITEM_RE.match(raw.rstrip())
-        if item:
-            indent = len(item.group("indent"))
-            if item_indent is None:
-                item_indent = indent
-            if indent != item_indent:
-                continue
-            out.append({})
-            key, _, value = item.group("rest").partition(":")
-            out[-1][key.strip()] = _scalar(
-                value.strip(), lines, index, indent
-            )
-            continue
-        field = FIELD_RE.match(raw.rstrip())
-        if (
-            field
-            and item_indent is not None
-            and out
-            and len(field.group("indent")) == item_indent + 2
-        ):
-            out[-1][field.group("key")] = _scalar(
-                field.group("value").strip(),
-                lines,
-                index,
-                len(field.group("indent")),
-            )
-    return out
+        if inside and raw.strip() and not raw.startswith(" "):
+            return
+        if inside:
+            yield index, raw
+
+
+def _append_record(
+    raw: str,
+    lines: list[str],
+    index: int,
+    out: list[dict[str, str]],
+    item_indent: int | None,
+) -> int | None:
+    item = ITEM_RE.match(raw.rstrip())
+    if item is None:
+        return item_indent
+    indent = len(item.group("indent"))
+    if item_indent is not None and indent != item_indent:
+        return item_indent
+    key, _, value = item.group("rest").partition(":")
+    out.append({key.strip(): _scalar(value.strip(), lines, index, indent)})
+    return indent
+
+
+def _append_field(
+    raw: str,
+    lines: list[str],
+    index: int,
+    out: list[dict[str, str]],
+    item_indent: int | None,
+) -> None:
+    field = FIELD_RE.match(raw.rstrip())
+    if (
+        field is None
+        or item_indent is None
+        or not out
+        or len(field.group("indent")) != item_indent + 2
+    ):
+        return
+    out[-1][field.group("key")] = _scalar(
+        field.group("value").strip(),
+        lines,
+        index,
+        len(field.group("indent")),
+    )
 
 
 def _scalar(
@@ -157,7 +178,7 @@ def main(argv: list[str]) -> int:
 
 
 def _today() -> str:
-    return datetime.now(tz=timezone.utc).date().isoformat()
+    return datetime.now(tz=timezone.utc).date().isoformat()  # noqa: UP017 -- macOS Python 3.9 lacks datetime.UTC
 
 
 if __name__ == "__main__":

@@ -301,90 +301,14 @@ class EvalAgentPerformedAssertion(Assertion):
     async def evaluate(
         self, ctx: AssertionContext, params: dict
     ) -> AssertionOutcome:
-        transcript_raw = params.get("transcript")
-        raw_dir_raw = params.get("raw_dir")
-        if not transcript_raw or not raw_dir_raw:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="transcript and raw_dir parameters are required",
-                evidence=params,
-            )
-        try:
-            transcript = _resolve_pending_artifact(
-                ctx.artifacts_dir, str(transcript_raw)
-            )
-            raw_dir = _resolve_pending_artifact(
-                ctx.artifacts_dir, str(raw_dir_raw)
-            )
-        except ValueError as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=str(exc),
-                evidence={
-                    "transcript": transcript_raw,
-                    "raw_dir": raw_dir_raw,
-                },
-            )
-        try:
-            transcript_text = transcript.read_text(encoding="utf-8")
-        except OSError as exc:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message=f"cannot read process-driver transcript: {exc}",
-                evidence={"transcript": str(transcript)},
-            )
-        if transcript.name != "node_operator_eval_flow.md":
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="transcript is not the node_operator_eval_flow turn",
-                evidence={"transcript": str(transcript)},
-            )
-        if "RESULT: COMPLETED" not in transcript_text.upper():
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="process-driver transcript lacks RESULT: completed",
-                evidence={"transcript": str(transcript)},
-            )
-        if "run-eval-flow.sh" not in transcript_text:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="process-driver transcript does not name the launcher",
-                evidence={"transcript": str(transcript)},
-            )
-        missing = [
-            name
-            for name in self._RAW_ARTIFACTS
-            if not (raw_dir / name).is_file()
-        ]
-        if missing:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="missing agent-produced raw artifacts: "
-                + ", ".join(missing),
-                evidence={"raw_dir": str(raw_dir), "missing": missing},
-            )
-        invalid = [
-            name
-            for name in self._RAW_ARTIFACTS
-            if not _is_json_object(raw_dir / name)
-        ]
-        if invalid:
-            return AssertionOutcome(
-                type=self.type,
-                status="failed",
-                message="invalid agent-produced raw artifacts: "
-                + ", ".join(invalid),
-                evidence={"raw_dir": str(raw_dir), "invalid": invalid},
-            )
+        resolved, failure = _eval_artifact_paths(ctx, params)
+        if failure is not None:
+            return failure
+        transcript, raw_dir = resolved
+        verdict = _eval_operator_verdict(
+            transcript, raw_dir, self._RAW_ARTIFACTS
+        )
         record = raw_dir / "launcher-record.json"
-        verdict = _eval_launcher_verdict(record)
         return AssertionOutcome(
             type=self.type,
             status="passed" if verdict is None else "failed",
@@ -404,6 +328,56 @@ class EvalAgentPerformedAssertion(Assertion):
         )
 
 
+def _eval_artifact_paths(
+    ctx: AssertionContext, params: dict
+) -> tuple[tuple[Path, Path], AssertionOutcome | None]:
+    transcript_raw = params.get("transcript")
+    raw_dir_raw = params.get("raw_dir")
+    if not transcript_raw or not raw_dir_raw:
+        return (Path(), Path()), AssertionOutcome(
+            type=EvalAgentPerformedAssertion.type,
+            status="failed",
+            message="transcript and raw_dir parameters are required",
+            evidence=params,
+        )
+    try:
+        return (
+            _resolve_pending_artifact(ctx.artifacts_dir, str(transcript_raw)),
+            _resolve_pending_artifact(ctx.artifacts_dir, str(raw_dir_raw)),
+        ), None
+    except ValueError as exc:
+        return (Path(), Path()), AssertionOutcome(
+            type=EvalAgentPerformedAssertion.type,
+            status="failed",
+            message=str(exc),
+            evidence={"transcript": transcript_raw, "raw_dir": raw_dir_raw},
+        )
+
+
+def _eval_operator_verdict(
+    transcript: Path, raw_dir: Path, artifacts: tuple[str, ...]
+) -> str | None:
+    try:
+        transcript_text = transcript.read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"cannot read process-driver transcript: {exc}"
+    if transcript.name != "node_operator_eval_flow.md":
+        return "transcript is not the node_operator_eval_flow turn"
+    if "RESULT: COMPLETED" not in transcript_text.upper():
+        return "process-driver transcript lacks RESULT: completed"
+    if "run-eval-flow.sh" not in transcript_text:
+        return "process-driver transcript does not name the launcher"
+    missing = [name for name in artifacts if not (raw_dir / name).is_file()]
+    if missing:
+        return "missing agent-produced raw artifacts: " + ", ".join(missing)
+    invalid = [
+        name for name in artifacts if not _is_json_object(raw_dir / name)
+    ]
+    if invalid:
+        return "invalid agent-produced raw artifacts: " + ", ".join(invalid)
+    return _eval_launcher_verdict(raw_dir / "launcher-record.json")
+
+
 def _is_json_object(path: Path) -> bool:
     try:
         return isinstance(json.loads(path.read_text(encoding="utf-8")), dict)
@@ -413,36 +387,10 @@ def _is_json_object(path: Path) -> bool:
 
 def _eval_launcher_verdict(record: Path) -> str | None:
     """Return why the launcher log is insufficient, or ``None`` when live."""
-    try:
-        payload = json.loads(record.read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        return f"unreadable launcher record: {exc}"
-    commands = payload.get("commands") if isinstance(payload, dict) else None
-    if not isinstance(commands, list) or not commands:
-        return "no commands with exits"
-    observed: list[str] = []
-    run_count = 0
-    for entry in commands:
-        if not isinstance(entry, dict):
-            return "command entry is not an object"
-        command = entry.get("command")
-        exit_code = entry.get("exit_code")
-        if not isinstance(command, str) or not command.strip():
-            return "command entry has no command"
-        if not isinstance(exit_code, int):
-            return "command entry has no integer exit_code"
-        if exit_code != 0:
-            return f"command exited {exit_code}: {command}"
-        observed.append(command)
-        if "logion-node eval run" in command:
-            run_count += 1
-    missing = [
-        command
-        for command in EvalAgentPerformedAssertion._REQUIRED_COMMANDS
-        if not any(
-            command in observed_command for observed_command in observed
-        )
-    ]
+    commands, error = _successful_launcher_commands(record)
+    if error is not None:
+        return error
+    missing, run_count = _missing_eval_commands(commands)
     if missing or run_count < 2:
         detail = ", ".join(missing)
         if run_count < 2:
@@ -453,6 +401,50 @@ def _eval_launcher_verdict(record: Path) -> str | None:
             )
         return f"missing real public CLI commands ({detail})"
     return None
+
+
+def _successful_launcher_commands(
+    record: Path,
+) -> tuple[list[str], str | None]:
+    try:
+        payload = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return [], f"unreadable launcher record: {exc}"
+    entries = payload.get("commands") if isinstance(payload, dict) else None
+    if not isinstance(entries, list) or not entries:
+        return [], "no commands with exits"
+    commands: list[str] = []
+    for entry in entries:
+        error = _launcher_command_error(entry)
+        if error is not None:
+            return [], error
+        commands.append(entry["command"])
+    return commands, None
+
+
+def _launcher_command_error(entry: object) -> str | None:
+    if not isinstance(entry, dict):
+        return "command entry is not an object"
+    command = entry.get("command")
+    if not isinstance(command, str) or not command.strip():
+        return "command entry has no command"
+    exit_code = entry.get("exit_code")
+    if not isinstance(exit_code, int):
+        return "command entry has no integer exit_code"
+    if exit_code != 0:
+        return f"command exited {exit_code}: {command}"
+    return None
+
+
+def _missing_eval_commands(commands: list[str]) -> tuple[list[str], int]:
+    missing = [
+        command
+        for command in EvalAgentPerformedAssertion._REQUIRED_COMMANDS
+        if not any(command in observed for observed in commands)
+    ]
+    return missing, sum(
+        "logion-node eval run" in command for command in commands
+    )
 
 
 class ClientHasNoARDConnectorInstallAssertion(Assertion):
