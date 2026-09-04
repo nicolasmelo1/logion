@@ -41,6 +41,7 @@ def test_seed_only_prepares_non_secret_consumer_inputs(
     prepared = tmp_path / "prepared"
     assert (prepared / "contract.json").is_file()
     assert (prepared / "subject.json").is_file()
+    assert (prepared / "normalize_input.json").is_file()
     launcher = (prepared / "run-eval-flow.sh").read_text(encoding="utf-8")
     fixture = (
         module.REPO_ROOT

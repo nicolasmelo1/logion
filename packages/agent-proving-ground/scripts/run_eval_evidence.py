@@ -58,6 +58,7 @@ GOLDEN_SUBJECT = (
     / "fixtures"
     / "normalize_input.json"
 )
+GOLDEN_FIXTURE = GOLDEN_SUBJECT
 
 EVIDENCE_ASSERTIONS: dict[str, str] = {
     "eval_contract_valid.json": "files.eval_contract_valid",
@@ -849,6 +850,7 @@ def _seed(out_dir: Path, public_repo: Path) -> None:
     prepared.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(GOLDEN_CONTRACT, prepared / "contract.json")
     shutil.copyfile(GOLDEN_SUBJECT, prepared / "subject.json")
+    shutil.copyfile(GOLDEN_FIXTURE, prepared / "normalize_input.json")
     launcher = prepared / "run-eval-flow.sh"
     shutil.copyfile(EVAL_FLOW_LAUNCHER, launcher)
     launcher.chmod(0o755)
