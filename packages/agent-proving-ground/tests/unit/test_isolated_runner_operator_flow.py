@@ -41,3 +41,16 @@ def test_runner_evidence_modes_keep_prepare_out_of_product_flow() -> None:
     assert "_runner_pass(" in operator
     assert "raw-outputs" in operator
     assert "run-summary.json" in operator
+
+
+def test_runner_launcher_is_the_versioned_fixture_with_substituted_paths(
+    tmp_path: Path,  # noqa: ARG001 -- pytest signature convention
+) -> None:
+    fixture = (
+        REPO_ROOT
+        / "packages/agent-proving-ground/scripts/runner_flow_launcher.sh"
+    ).read_text(encoding="utf-8")
+    assert "@@OPERATOR_PYTHON@@" in fixture
+    assert "@@EVIDENCE_SCRIPT@@@" in fixture
+    assert "operator" in fixture
+    assert "LOGION_PROVING_GROUND_ROLE_KEYS_FILE" not in fixture

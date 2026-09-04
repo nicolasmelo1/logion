@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# ruff: noqa: E501 -- embedded launcher commands are retained verbatim.
 """Drive the eval surface end-to-end and retain typed evidence facts.
 
 Every fact is a real exercise read back from the system that produced
@@ -42,6 +41,7 @@ from pathlib import Path
 import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+EVAL_FLOW_LAUNCHER = Path(__file__).resolve().parent / "eval_flow_launcher.sh"
 GOLDEN_CONTRACT = (
     REPO_ROOT
     / "packages"
@@ -821,52 +821,6 @@ def _server_evidence(
         client.close()
 
 
-def _prepared_launcher() -> str:
-    """Public runner commands the consumer role must execute itself."""
-    return """#!/bin/sh
-set -u
-root=/workspace/task/eval-flow
-raw="$root/raw"
-mkdir -p "$raw"
-commands="$raw/commands.jsonl"
-: > "$commands"
-run() {
-  name=$1
-  shift
-  "$@" > "$raw/$name.json"
-  status=$?
-  python - "$commands" "$status" "$@" <<'PY'
-import json
-import sys
-with open(sys.argv[1], "a", encoding="utf-8") as handle:
-    json.dump({"command": " ".join(sys.argv[3:]), "exit_code": int(sys.argv[2])}, handle)
-    handle.write("\\n")
-PY
-  return "$status"
-}
-run validate logion-node eval validate "$root/contract.json" || exit $?
-run run-one logion-node eval run --subject "$root/subject.json" "$root/contract.json" || exit $?
-run run-two logion-node eval run --subject "$root/subject.json" "$root/contract.json" || exit $?
-python - "$raw/run-one.json" "$raw/result-one.json" <<'PY'
-import json
-import sys
-json.dump(json.load(open(sys.argv[1], encoding="utf-8"))["result"], open(sys.argv[2], "w", encoding="utf-8"))
-PY
-python - "$raw/run-two.json" "$raw/result-two.json" <<'PY'
-import json
-import sys
-json.dump(json.load(open(sys.argv[1], encoding="utf-8"))["result"], open(sys.argv[2], "w", encoding="utf-8"))
-PY
-run run-summary logion-node eval compare "$raw/result-one.json" "$raw/result-two.json" || exit $?
-python - "$commands" "$raw/launcher-record.json" <<'PY'
-import json
-import sys
-commands = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
-json.dump({"commands": commands}, open(sys.argv[2], "w", encoding="utf-8"))
-PY
-"""
-
-
 def _compose(public_repo: Path, *args: str) -> None:
     subprocess.run(
         [
@@ -885,13 +839,18 @@ def _compose(public_repo: Path, *args: str) -> None:
 
 
 def _seed(out_dir: Path, public_repo: Path) -> None:
-    """Seed only non-secret inputs and the public CLI launcher in consumer."""
+    """Seed only non-secret inputs and the public CLI launcher in consumer.
+
+    The launcher is the versioned fixture ``eval_flow_launcher.sh``; the seed
+    copies it verbatim so the agent executes a workflow that review can see,
+    not one generated at seed time.
+    """
     prepared = out_dir / "prepared"
     prepared.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(GOLDEN_CONTRACT, prepared / "contract.json")
     shutil.copyfile(GOLDEN_SUBJECT, prepared / "subject.json")
     launcher = prepared / "run-eval-flow.sh"
-    launcher.write_text(_prepared_launcher(), encoding="utf-8")
+    shutil.copyfile(EVAL_FLOW_LAUNCHER, launcher)
     launcher.chmod(0o755)
     _compose(
         public_repo,
@@ -900,7 +859,10 @@ def _seed(out_dir: Path, public_repo: Path) -> None:
         "consumer",
         "sh",
         "-c",
-        "rm -rf /workspace/task/eval-flow && mkdir -p /workspace/task/eval-flow",
+        (
+            "rm -rf /workspace/task/eval-flow && "
+            "mkdir -p /workspace/task/eval-flow"
+        ),
     )
     _compose(
         public_repo,

@@ -31,6 +31,9 @@ import httpx
 RUNNER_IMAGE_TAG = "logion-runner-job:fixed"
 PREPARED_INPUT = "prepared-runner-input.json"
 LAUNCHER_NAME = "run-prepared-node-workflow.sh"
+RUNNER_FLOW_LAUNCHER = (
+    Path(__file__).resolve().parent / "runner_flow_launcher.sh"
+)
 _RAW_OUTPUT_DIR: Path | None = None
 _RUNNER_PASS_NUMBER = 0
 
@@ -856,26 +859,13 @@ def _prepare(out_dir: Path) -> int:
     launcher = out_dir / LAUNCHER_NAME
     operator_python = runner_venv / "bin" / "python"
     evidence_script = Path(__file__).resolve()
-    record_writer = (
-        "Path(sys.argv[1]).write_text("
-        "json.dumps({'command': 'prepared public logion-node workflow', "
-        "'exit_code': int(sys.argv[2])}) + '\\n')"
-    )
-    launcher.write_text(
-        "#!/bin/sh\nset -eu\n"
-        'ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
-        'RECORD="$ROOT/launcher-command.json"\n'
-        "set +e\n"
-        f'"{operator_python}" "{evidence_script}" operator "$ROOT"\n'
-        "CODE=$?\nset -e\n"
-        'python3 - "$RECORD" "$CODE" <<\'PY\'\n'
-        "import json, sys\n"
-        "from pathlib import Path\n"
-        f"{record_writer}\n"
-        "PY\n"
-        'exit "$CODE"\n',
-        encoding="utf-8",
-    )
+    template = RUNNER_FLOW_LAUNCHER.read_text(encoding="utf-8")
+    rendered = template.replace(
+        "@@OPERATOR_PYTHON@@", str(operator_python)
+    ).replace("@@EVIDENCE_SCRIPT@@", str(evidence_script))
+    if "@@" in rendered:
+        raise RuntimeError("launcher fixture has unsubstituted placeholders")
+    launcher.write_text(rendered, encoding="utf-8")
     launcher.chmod(0o700)
     sys.stdout.write(
         json.dumps({"evidence_dir": str(out_dir), "launcher": str(launcher)})

@@ -66,6 +66,6 @@ artifacts/dogfood/phase-15.15.md:1
 # terminal transitions and stored receipts are facts only it holds, and a
 # runner reporting on itself is the position the gate exists to distrust.
 # Development and CI only; nothing here ships to a user.
-packages/agent-proving-ground/scripts/run_runner_evidence.py:229
-packages/agent-proving-ground/scripts/run_runner_evidence.py:897
+packages/agent-proving-ground/scripts/run_runner_evidence.py:232
+packages/agent-proving-ground/scripts/run_runner_evidence.py:887
 
