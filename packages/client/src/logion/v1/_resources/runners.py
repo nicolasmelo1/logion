@@ -15,7 +15,8 @@ class RunnersResource:
 
     def enroll(self, name: str) -> JsonObject:
         """Enroll one runner and return its one-time credentials."""
-        if not name.strip():
+        name = name.strip()
+        if not name:
             raise ValueError("runner name must not be empty")
         return self._http.request_object(
             "POST", "/v1/runners/enroll", json={"name": name}

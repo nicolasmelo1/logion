@@ -247,3 +247,23 @@ def test_eval_help_exposes_complete_workflow(capsys) -> None:
         "inspect",
     ):
         assert command in output
+
+
+def test_validate_without_installed_distribution_metadata(
+    tmp_path, capsys, monkeypatch
+):
+    from importlib.metadata import PackageNotFoundError
+
+    from cli.commands.eval import _execution
+
+    def unavailable(name):
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr(_execution, "version", unavailable)
+    project = tmp_path / "creator"
+    assert _run(["eval", "scaffold", str(project)]) == 0
+    _payload(capsys)
+    assert _run(["eval", "validate", str(project / "eval-contract.yaml")]) == 0
+    assert _payload(capsys)["data"]["validator_package_version"] == (
+        _execution.eval_contract_package.__version__
+    )

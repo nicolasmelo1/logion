@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import logion_eval_contract as eval_contract_package
@@ -78,6 +78,13 @@ def handle_eval_scaffold(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validator_version() -> str:
+    try:
+        return version("logion-eval-contract")
+    except PackageNotFoundError:
+        return eval_contract_package.__version__
+
+
 def handle_eval_validate(args: argparse.Namespace) -> int:
     """Validate a contract and resolve all declared fixtures."""
     try:
@@ -111,7 +118,7 @@ def handle_eval_validate(args: argparse.Namespace) -> int:
                 if "site-packages" in str(eval_contract_package.__file__)
                 else "source-tree"
             ),
-            "validator_package_version": version("logion-eval-contract"),
+            "validator_package_version": _validator_version(),
         },
     )
     return 0

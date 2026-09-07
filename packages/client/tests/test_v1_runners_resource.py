@@ -27,3 +27,11 @@ def test_enroll_runner_rejects_empty_name() -> None:
         RunnersResource(http).enroll("  ")
 
     http.request_object.assert_not_called()
+
+
+def test_enroll_strips_surrounding_whitespace() -> None:
+    http = MagicMock(spec=HttpClient)
+    RunnersResource(http).enroll("  creator-runner\t")
+    http.request_object.assert_called_once_with(
+        "POST", "/v1/runners/enroll", json={"name": "creator-runner"}
+    )
