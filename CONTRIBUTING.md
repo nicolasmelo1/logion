@@ -60,6 +60,15 @@ make test
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) — package and workspace manager
 - Node.js 18+ (only needed for the Prism mock server)
+- Rust/Cargo (for `make factory-check`; the first run builds the reviewed `sf` revision)
+
+`make factory-check` and CI use `python3 scripts/sf.py`, which installs the
+commit pinned in that launcher under `.local/software-factory/` without
+replacing a global `sf`. It checks Cargo source provenance and the installed
+binary's recorded SHA-256 before each invocation; an unrelated `sf` on `PATH`
+is never used. A missing install needs network access; a damaged or unverifiable
+install fails closed with its rebuild path. Do not remove rule documentation
+to accommodate a different local tool version.
 
 ## Running the OpenAPI mock locally
 

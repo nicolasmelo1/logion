@@ -274,18 +274,8 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install sf
-        run: >
-          cargo install --git https://github.com/nicolasmelo1/software-factory
-          --rev b06be44f6c982dac58b898778d7dba224d9ed7b1 --locked
-
-      # See the comment on `factory-check` in the Makefile for why the
-      # flag is required rather than a convenience.
-      - name: Prove the factory rules still fire
-        run: sf verify --allow-commands
-
-      - name: Software-factory rules
-        run: sf check --allow-commands
+      - name: Prove and check the pinned factory rules
+        run: make factory-check
 
       - name: Installer security guardrails
         run: make check-installer-security

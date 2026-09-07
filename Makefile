@@ -152,9 +152,10 @@ check-docs:
 # runs a command, and without the flag `sf verify` scores it as fired on
 # the "commands are not enabled" finding instead of on its mutation --
 # a rule proven by its own refusal to run.
+.PHONY: factory-check
 factory-check:
-	sf verify --allow-commands
-	sf check --allow-commands
+	python3 scripts/sf.py verify --allow-commands
+	python3 scripts/sf.py check --allow-commands
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update
