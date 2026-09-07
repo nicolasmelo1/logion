@@ -42,6 +42,10 @@ import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EVAL_FLOW_LAUNCHER = Path(__file__).resolve().parent / "eval_flow_launcher.sh"
+EVAL_OPERATOR_LAUNCHER = (
+    Path(__file__).resolve().parent / "eval_operator_launcher.sh"
+)
+OPERATOR_LAUNCHER_NAME = "run-consumer-eval-flow.sh"
 GOLDEN_CONTRACT = (
     REPO_ROOT
     / "packages"
@@ -822,21 +826,45 @@ def _server_evidence(
         client.close()
 
 
-def _compose(public_repo: Path, *args: str) -> None:
+def _node_operator(public_repo: Path) -> Path:
+    return public_repo / "deploy" / "local-node" / "node.sh"
+
+
+def _node(public_repo: Path, *args: str) -> None:
+    """Drive the local node through its own operator surface.
+
+    A raw ``docker compose`` call here would have to restate the runtime,
+    the container base URL and the pinned role image, and the compose file
+    fails closed when any of them is missing. ``node.sh`` already resolves
+    all three, so going through it is both shorter and the only version of
+    this command an operator could reproduce.
+    """
     subprocess.run(
-        [
-            "docker",
-            "compose",
-            "--project-directory",
-            str(public_repo / "deploy" / "local-node"),
-            "-f",
-            str(public_repo / "deploy" / "local-node" / "compose.yaml"),
-            *args,
-        ],
+        ["bash", str(_node_operator(public_repo)), *args],
         check=True,
         capture_output=True,
         text=True,
     )
+
+
+def _write_operator_launcher(out_dir: Path, public_repo: Path) -> Path:
+    """Render the reviewed host launcher into the operator's own workspace.
+
+    The driven operator's shell starts in its agent workspace, not in a
+    checkout, so the one hand-off it can act on is an absolute path inside
+    that workspace. The body is the versioned fixture with a single
+    substitution; a launcher assembled at seed time would put the measured
+    commands outside review.
+    """
+    launcher = out_dir / OPERATOR_LAUNCHER_NAME
+    rendered = EVAL_OPERATOR_LAUNCHER.read_text(encoding="utf-8").replace(
+        "@@NODE_OPERATOR@@", str(_node_operator(public_repo))
+    )
+    if "@@" in rendered:
+        raise RuntimeError("launcher fixture has unsubstituted placeholders")
+    launcher.write_text(rendered, encoding="utf-8")
+    launcher.chmod(0o700)
+    return launcher
 
 
 def _seed(out_dir: Path, public_repo: Path) -> None:
@@ -854,10 +882,9 @@ def _seed(out_dir: Path, public_repo: Path) -> None:
     launcher = prepared / "run-eval-flow.sh"
     shutil.copyfile(EVAL_FLOW_LAUNCHER, launcher)
     launcher.chmod(0o755)
-    _compose(
+    _node(
         public_repo,
-        "exec",
-        "-T",
+        "agent",
         "consumer",
         "sh",
         "-c",
@@ -866,14 +893,22 @@ def _seed(out_dir: Path, public_repo: Path) -> None:
             "mkdir -p /workspace/task/eval-flow"
         ),
     )
-    _compose(
+    _node(
         public_repo,
         "cp",
         f"{prepared}/.",
         "consumer:/workspace/task/eval-flow",
     )
+    operator_launcher = _write_operator_launcher(out_dir, public_repo)
     sys.stdout.write(
-        json.dumps({"prepared_dir": str(prepared)}, sort_keys=True) + "\n"
+        json.dumps(
+            {
+                "prepared_dir": str(prepared),
+                "launcher": str(operator_launcher),
+            },
+            sort_keys=True,
+        )
+        + "\n"
     )
 
 
@@ -881,7 +916,7 @@ def _collect(out_dir: Path, public_repo: Path) -> None:
     """Copy agent outputs, then independently re-read the node's evidence."""
     raw_dir = out_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
-    _compose(
+    _node(
         public_repo,
         "cp",
         "consumer:/workspace/task/eval-flow/raw/.",

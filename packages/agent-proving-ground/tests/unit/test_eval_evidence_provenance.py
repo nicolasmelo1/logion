@@ -33,7 +33,7 @@ def test_seed_only_prepares_non_secret_consumer_inputs(
     module = _module()
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(
-        module, "_compose", lambda _repo, *args: calls.append(args)
+        module, "_node", lambda _repo, *args: calls.append(args)
     )
 
     module._seed(tmp_path, module.REPO_ROOT)
@@ -52,5 +52,27 @@ def test_seed_only_prepares_non_secret_consumer_inputs(
     assert launcher.count("logion-node eval run") == 2
     assert "logion-node eval compare" in launcher
     assert "LOGION_PROVING_GROUND_ROLE_KEYS_FILE" not in launcher
-    assert calls[0][:4] == ("exec", "-T", "consumer", "sh")
+    assert calls[0][:3] == ("agent", "consumer", "sh")
     assert calls[1][0] == "cp"
+
+
+def test_seed_writes_the_operator_launcher_the_driven_agent_can_reach(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The operator's shell starts in its workspace, not in a checkout.
+
+    So the hand-off has to be an absolute path inside that workspace, and
+    it has to drive the shipped node operator surface rather than restate
+    the compose invocation the surface already resolves.
+    """
+    module = _module()
+    monkeypatch.setattr(module, "_node", lambda _repo, *_args: None)
+
+    module._seed(tmp_path, module.REPO_ROOT)
+
+    operator = (tmp_path / "run-consumer-eval-flow.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "@@" not in operator
+    assert str(module.REPO_ROOT / "deploy/local-node/node.sh") in operator
+    assert "run-eval-flow.sh" in operator

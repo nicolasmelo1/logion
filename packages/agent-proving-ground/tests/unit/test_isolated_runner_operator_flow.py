@@ -54,3 +54,26 @@ def test_runner_launcher_is_the_versioned_fixture_with_substituted_paths(
     assert "@@EVIDENCE_SCRIPT@@" in fixture
     assert "operator" in fixture
     assert "LOGION_PROVING_GROUND_ROLE_KEYS_FILE" not in fixture
+
+
+def test_prepared_input_carries_the_endpoint_the_operator_cannot_inherit() -> (
+    None
+):
+    """The driven operator gets an agent id and a run id, nothing else.
+
+    The launcher fixture deliberately names no endpoint, so the prepared
+    input is the only channel left; a run that reads them from the ambient
+    environment passes only for whoever prepared it.
+    """
+    source = (
+        REPO_ROOT
+        / "packages/agent-proving-ground/scripts/run_runner_evidence.py"
+    ).read_text(encoding="utf-8")
+    prepare = source[
+        source.index("def _prepare") : source.index("def _operator")
+    ]
+    for key in ("api_base_url", "role_keys_file", "public_repo"):
+        assert f'"{key}"' in prepare
+    operator = source[source.index("def _operator") :]
+    assert "LOGION_PROVING_GROUND_ROLE_KEYS_FILE" not in operator
+    assert "LOGION_API_BASE_URL" not in operator

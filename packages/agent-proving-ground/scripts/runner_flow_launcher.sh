@@ -3,6 +3,8 @@
 # the isolated runner evidence. run_runner_evidence.py copies this file into
 # the prepared evidence directory verbatim with the two paths substituted, so
 # the executed workflow is reviewable here, not generated at prepare time.
+# Endpoint and credential location are not repeated here: they are part of the
+# prepared input the rig already hands over beside this file.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RECORD="$ROOT/launcher-command.json"

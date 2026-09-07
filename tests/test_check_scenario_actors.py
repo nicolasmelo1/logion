@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 ROOT = Path(__file__).parents[1]
 SCRIPT = ROOT / "scripts" / "check_scenario_actors.py"
 
@@ -38,11 +37,19 @@ def test_records_keeps_only_direct_phase_entries_and_multiline_goals() -> None:
     ]
 
     assert module._records(lines, "phases") == [
-        {"id": "seed", "actor": "operator", "goal": '""', "local_hook_args": ""},
+        {
+            "id": "seed",
+            "actor": "operator",
+            "goal": '""',
+            "local_hook_args": "",
+        },
         {
             "id": "operate",
             "actor": "operator",
-            "goal": "Execute the measured flow. Keep the evidence directory intact.",
+            "goal": (
+                "Execute the measured flow. Keep the evidence directory "
+                "intact."
+            ),
             "assertions": "",
         },
     ]

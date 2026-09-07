@@ -875,6 +875,16 @@ def _prepare(out_dir: Path) -> int:
         "runner_state": str(runner_state),
         "runner_package": inspect_json,
         "canary_paths": canary_paths,
+        # The driven operator's shell inherits an agent id and a run id and
+        # nothing else, so an endpoint the rig only exported to itself is an
+        # endpoint the operator cannot reach. These travel with the rest of
+        # the prepared input; the credential itself stays in the 0600 file
+        # this only names.
+        "api_base_url": os.environ.get(
+            "LOGION_API_BASE_URL", "http://localhost:8000"
+        ),
+        "role_keys_file": os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"],
+        "public_repo": str(public_repo),
     }
     (out_dir / PREPARED_INPUT).write_text(
         json.dumps(prepared, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -904,13 +914,11 @@ def _operator(out_dir: Path) -> int:
     prepared = json.loads(
         (out_dir / PREPARED_INPUT).read_text(encoding="utf-8")
     )
-    public_repo = Path(
-        os.environ.get("LOGION_PUBLIC_REPO_PATH", Path.cwd())
-    ).resolve()
+    public_repo = Path(str(prepared["public_repo"])).resolve()
     private_repo = public_repo.with_name("logion-private")
-    role_keys = Path(os.environ["LOGION_PROVING_GROUND_ROLE_KEYS_FILE"])
+    role_keys = Path(str(prepared["role_keys_file"]))
     admin_key = json.loads(role_keys.read_text())["admin"]["api_key"]
-    base_url = os.environ.get("LOGION_API_BASE_URL", "http://localhost:8000")
+    base_url = str(prepared["api_base_url"])
     echo_digest = _sha256_text('{"echoed": []}')
     runner_image = str(prepared["runner_image"])
     runner_venv = Path(str(prepared["runner_venv"]))

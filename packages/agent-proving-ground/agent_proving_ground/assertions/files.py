@@ -365,7 +365,7 @@ def _eval_operator_verdict(
         return "transcript is not the node_operator_eval_flow turn"
     if "RESULT: COMPLETED" not in transcript_text.upper():
         return "process-driver transcript lacks RESULT: completed"
-    if "run-eval-flow.sh" not in transcript_text:
+    if "run-consumer-eval-flow.sh" not in transcript_text:
         return "process-driver transcript does not name the launcher"
     missing = [name for name in artifacts if not (raw_dir / name).is_file()]
     if missing:
@@ -375,7 +375,20 @@ def _eval_operator_verdict(
     ]
     if invalid:
         return "invalid agent-produced raw artifacts: " + ", ".join(invalid)
-    return _eval_launcher_verdict(raw_dir / "launcher-record.json")
+    return _eval_operator_exit_verdict(
+        raw_dir / "launcher-command.json"
+    ) or _eval_launcher_verdict(raw_dir / "launcher-record.json")
+
+
+def _eval_operator_exit_verdict(record: Path) -> str | None:
+    """Reject a completion claim the operator's own launcher contradicts."""
+    try:
+        payload = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return f"unreadable operator launcher record: {exc}"
+    if not isinstance(payload, dict) or payload.get("exit_code") != 0:
+        return "operator launcher did not exit successfully"
+    return None
 
 
 def _is_json_object(path: Path) -> bool:

@@ -29,14 +29,21 @@ def _performed(root: Path) -> dict[str, str]:
     )
     transcript.parent.mkdir(parents=True)
     transcript.write_text(
-        "# Agent turn\nOutput:\nRan /workspace/task/eval-flow/"
-        "run-eval-flow.sh.\nRESULT: completed\n",
+        "# Agent turn\nOutput:\nRan evidence/eval/"
+        "run-consumer-eval-flow.sh.\nRESULT: completed\n",
         encoding="utf-8",
     )
     raw = root / "eval-raw"
     raw.mkdir()
     for name in ("run-one.json", "run-two.json", "run-summary.json"):
         (raw / name).write_text("{}\n", encoding="utf-8")
+    (raw / "launcher-command.json").write_text(
+        json.dumps({
+            "command": "prepared public logion-node eval workflow",
+            "exit_code": 0,
+        }),
+        encoding="utf-8",
+    )
     (raw / "launcher-record.json").write_text(
         json.dumps({
             "commands": [
@@ -139,3 +146,23 @@ async def test_fails_on_tautological_or_unsuccessful_launcher_record(
 
     assert result.status == "failed"
     assert "launcher record" in result.message
+
+
+async def test_fails_when_the_operator_launcher_exited_non_zero(
+    tmp_path: Path,
+) -> None:
+    params = _performed(tmp_path)
+    (Path(params["raw_dir"]) / "launcher-command.json").write_text(
+        json.dumps({
+            "command": "prepared public logion-node eval workflow",
+            "exit_code": 1,
+        }),
+        encoding="utf-8",
+    )
+
+    result = await EvalAgentPerformedAssertion().evaluate(
+        _context(tmp_path), params
+    )
+
+    assert result.status == "failed"
+    assert "operator launcher did not exit successfully" in result.message
