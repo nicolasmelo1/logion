@@ -199,3 +199,25 @@ def _contract_digest(contract: EvalContract) -> str:
     from logion_eval_contract import contract_digest as _digest
 
     return _digest(contract)
+
+
+# Imported after the adapter definitions because the executor consumes this
+# public adapter surface while it initializes.
+from logion_runner.evals.executor import (  # noqa: E402
+    EvalExecutionError,
+    GradedOutcome,
+    execute_eval_contract,
+)
+
+__all__ = [
+    "EVAL_JOB_TYPE",
+    "EvalAdapterError",
+    "EvalExecutionError",
+    "GradedOutcome",
+    "ResolvedEvalJob",
+    "environment_for",
+    "execute_eval_contract",
+    "normalize_outcome",
+    "resolve_eval_job",
+    "subject_digest_for",
+]

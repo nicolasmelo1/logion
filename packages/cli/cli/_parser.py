@@ -32,6 +32,7 @@ from cli.commands import (
 from cli.commands import (
     credits as credits_mod,
 )
+from cli.commands import eval as eval_mod
 from cli.commands import (
     referrals as referrals_mod,
 )
@@ -58,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     health.register(subparsers)
     doctor.register(subparsers)
+    eval_mod.register(subparsers)
     identity.register(subparsers)
     indexed.register(subparsers)
     listings.register(subparsers)

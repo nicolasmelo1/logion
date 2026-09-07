@@ -1721,6 +1721,7 @@ source = { editable = "packages/cli" }
 dependencies = [
     { name = "cryptography" },
     { name = "logion-client" },
+    { name = "logion-runner" },
     { name = "logion-skillmap" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -1744,6 +1745,7 @@ dev = [
 requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0,<51.0.0" },
     { name = "logion-client", editable = "packages/client" },
+    { name = "logion-runner", editable = "packages/runner" },
     { name = "logion-skillmap", editable = "packages/skillmap" },
     { name = "pydantic", specifier = ">=2.7,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
