@@ -1,5 +1,5 @@
 {
-  "run_id": "20260903T221338-eval_contract_reference_runner",
+  "run_id": "20260907T011240-eval_contract_reference_runner",
   "scenario": "eval_contract_reference_runner",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -7,19 +7,46 @@
     "node_operator": "codex",
     "auditor": "codex"
   },
-  "started_at": "2026-09-03T22:13:38.615614Z",
-  "finished_at": "2026-09-03T22:13:46.545675Z",
+  "started_at": "2026-09-07T01:12:40.516697Z",
+  "finished_at": "2026-09-07T01:14:09.152373Z",
   "phase_results": [
     {
-      "phase_id": "execute_eval_evidence",
+      "phase_id": "prepare_eval_operator_flow",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-03T22:13:38.950805Z",
-      "finished_at": "2026-09-03T22:13:43.664919Z",
-      "duration_seconds": 4.714
+      "started_at": "2026-09-07T01:12:40.881370Z",
+      "finished_at": "2026-09-07T01:12:41.953689Z",
+      "duration_seconds": 1.072
+    },
+    {
+      "phase_id": "node_operator_eval_flow",
+      "status": "completed",
+      "assertion_results": [
+        {
+          "type": "files.eval_agent_performed",
+          "status": "passed",
+          "message": "operator completed the prepared public logion-node workflow",
+          "evidence": {
+            "transcript": "${ARTIFACTS}/agents/node_operator/workspace/node_operator_eval_flow.md",
+            "raw_dir": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval/raw",
+            "launcher_record": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval/raw/launcher-record.json"
+          }
+        }
+      ],
+      "started_at": "2026-09-07T01:12:41.953709Z",
+      "finished_at": "2026-09-07T01:13:09.100411Z",
+      "duration_seconds": 27.146
     },
     {
       "phase_id": "collect_eval_evidence",
+      "status": "completed",
+      "assertion_results": [],
+      "started_at": "2026-09-07T01:13:09.100498Z",
+      "finished_at": "2026-09-07T01:13:13.448766Z",
+      "duration_seconds": 4.348
+    },
+    {
+      "phase_id": "capture_eval_evidence",
       "status": "completed",
       "assertion_results": [
         {
@@ -65,8 +92,8 @@
             "eval_run_id": {
               "ok": true,
               "value": {
-                "run_one": "2f196a9574394c249e5cc21f424942a0",
-                "run_two": "df9d6812d1bc4bd3be7e72ba676d7b6a"
+                "run_one": "823057a30a814f6196a804afa5b903d4",
+                "run_two": "c8b05b5d2da747fe8da58b8f970c7841"
               }
             },
             "terminal_status": {
@@ -93,8 +120,8 @@
             "runner_id": {
               "ok": true,
               "value": {
-                "run_one": "747f9861-aad1-47eb-9153-b434fda8a487",
-                "run_two": "747f9861-aad1-47eb-9153-b434fda8a487"
+                "run_one": "9d886cdd-ba8a-48d0-8b48-d981df0b14b4",
+                "run_two": "9d886cdd-ba8a-48d0-8b48-d981df0b14b4"
               }
             },
             "receipt_digest": {
@@ -140,7 +167,7 @@
           "evidence": {
             "workspace_root": {
               "ok": true,
-              "value": "/private/tmp/logion-phase-16-1-run/agents/node_operator/workspace/evidence/eval"
+              "value": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval"
             },
             "public_checkout_visible": {
               "ok": true,
@@ -289,7 +316,7 @@
           "evidence": {
             "resource_id": {
               "ok": true,
-              "value": "97e18a12-a068-44fc-9a28-1df8f8b7fcb9"
+              "value": "3e9765c3-3ada-45ee-9e7f-abaac5e8ab4a"
             },
             "resource_type": {
               "ok": true,
@@ -314,9 +341,9 @@
           }
         }
       ],
-      "started_at": "2026-09-03T22:13:43.664950Z",
-      "finished_at": "2026-09-03T22:13:43.695294Z",
-      "duration_seconds": 0.03
+      "started_at": "2026-09-07T01:13:13.448787Z",
+      "finished_at": "2026-09-07T01:13:13.474475Z",
+      "duration_seconds": 0.026
     },
     {
       "phase_id": "verify_api_logs",
@@ -331,12 +358,22 @@
           }
         }
       ],
-      "started_at": "2026-09-03T22:13:43.695329Z",
-      "finished_at": "2026-09-03T22:13:46.545351Z",
-      "duration_seconds": 2.85
+      "started_at": "2026-09-07T01:13:13.474514Z",
+      "finished_at": "2026-09-07T01:14:09.152126Z",
+      "duration_seconds": 55.724
     }
   ],
   "assertion_results": [
+    {
+      "type": "files.eval_agent_performed",
+      "status": "passed",
+      "message": "operator completed the prepared public logion-node workflow",
+      "evidence": {
+        "transcript": "${ARTIFACTS}/agents/node_operator/workspace/node_operator_eval_flow.md",
+        "raw_dir": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval/raw",
+        "launcher_record": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval/raw/launcher-record.json"
+      }
+    },
     {
       "type": "files.eval_contract_valid",
       "status": "passed",
@@ -380,8 +417,8 @@
         "eval_run_id": {
           "ok": true,
           "value": {
-            "run_one": "2f196a9574394c249e5cc21f424942a0",
-            "run_two": "df9d6812d1bc4bd3be7e72ba676d7b6a"
+            "run_one": "823057a30a814f6196a804afa5b903d4",
+            "run_two": "c8b05b5d2da747fe8da58b8f970c7841"
           }
         },
         "terminal_status": {
@@ -408,8 +445,8 @@
         "runner_id": {
           "ok": true,
           "value": {
-            "run_one": "747f9861-aad1-47eb-9153-b434fda8a487",
-            "run_two": "747f9861-aad1-47eb-9153-b434fda8a487"
+            "run_one": "9d886cdd-ba8a-48d0-8b48-d981df0b14b4",
+            "run_two": "9d886cdd-ba8a-48d0-8b48-d981df0b14b4"
           }
         },
         "receipt_digest": {
@@ -455,7 +492,7 @@
       "evidence": {
         "workspace_root": {
           "ok": true,
-          "value": "/private/tmp/logion-phase-16-1-run/agents/node_operator/workspace/evidence/eval"
+          "value": "${ARTIFACTS}/agents/node_operator/workspace/evidence/eval"
         },
         "public_checkout_visible": {
           "ok": true,
@@ -604,7 +641,7 @@
       "evidence": {
         "resource_id": {
           "ok": true,
-          "value": "97e18a12-a068-44fc-9a28-1df8f8b7fcb9"
+          "value": "3e9765c3-3ada-45ee-9e7f-abaac5e8ab4a"
         },
         "resource_type": {
           "ok": true,
@@ -638,5 +675,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "logion-phase-16-1-run"
+  "artifact_root": "phase-16.1"
 }

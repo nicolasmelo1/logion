@@ -37,18 +37,12 @@ packages/agent-proving-ground/scripts/capture_local_node_evidence.py:322
 packages/agent-proving-ground/scripts/capture_local_node_evidence.py:331
 
 # Retained node evidence records in-container /home/agent mounts, not host paths.
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:91
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:103
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:138
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:150
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:543
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:555
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:590
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:602
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:909
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:921
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:956
-artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:968
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:97
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:132
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:549
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:584
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:915
+artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json:950
 
 # Cross-repository contract gate; PRIVATE_REPO is a coordination input only,
 # same as the WORKSPACE_REPO/ROOT lines above it.
@@ -67,5 +61,5 @@ artifacts/dogfood/phase-15.15.md:1
 # runner reporting on itself is the position the gate exists to distrust.
 # Development and CI only; nothing here ships to a user.
 packages/agent-proving-ground/scripts/run_runner_evidence.py:232
-packages/agent-proving-ground/scripts/run_runner_evidence.py:887
+packages/agent-proving-ground/scripts/run_runner_evidence.py:918
 

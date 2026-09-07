@@ -7,12 +7,12 @@
       "driver": "codex",
       "implementation": {
         "private_sha256": "27ad80932471b07200b9367b7aaead63837d9d02725105f4e1bf172841cbae7f",
-        "public_sha256": "9be10c473a7bfeb361f4394d7f6981206e0dcb888f0b0bb6152716601480a9ca"
+        "public_sha256": "6acfa322ca19032a3f29a5300301c2e0ffa1ad74cec3691d0157904860cd4bf0"
       },
       "model": "gpt-5.4-mini",
       "report": "artifacts/phase-gates/reports/phase-15.15-isolated-runner-node.json",
-      "report_sha256": "76bcd23450fa8b4373df599f8180fd513f6d68ad81db2796f7807fd765d7e660",
-      "run_id": "20260903T233428-isolated_runner_node",
+      "report_sha256": "dd7c5b4fe73648023fd542b79cd8adb49ccc18eca3eda8622e3fa21c5924befe",
+      "run_id": "20260907T012517-isolated_runner_node",
       "scenario": "isolated_runner_node",
       "status": "passed",
       "unsupported_assertions": []
