@@ -1,0 +1,24 @@
+schema_version: "1"
+name: mute_actor
+description: |
+  The violation in one file: `operator` is a driven role, the scenario counts
+  it as a party that met the product, and every phase it acts in hands the
+  work to a hook and leaves the goal empty.
+api_adapter: local-devrig
+agents:
+  - id: operator
+    role: Host operator
+    driver: codex
+    timeout_seconds: 900
+  - id: fixture
+    role: local_hook
+phases:
+  - id: do_the_work
+    actor: operator
+    goal: ""
+    local_hook: scripts/run_everything.py
+  - id: collect
+    actor: fixture
+    goal: ""
+    assertions:
+      - type: api.something_happened

@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:logion:schemas:eval-result.v1",
+  "title": "AKTP eval result v1",
+  "type": "object",
+  "required": [
+    "contract_digest",
+    "subject_digest",
+    "environment",
+    "assertion_vector",
+    "metrics",
+    "outcome",
+    "artifacts",
+    "resource_usage",
+    "limitations",
+    "environment_digest"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "subject_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "harness_id",
+        "harness_version",
+        "model_id",
+        "model_version"
+      ],
+      "properties": {
+        "harness_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "harness_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "assertion_vector": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "operator",
+          "passed"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operator": {
+            "enum": [
+              "eq",
+              "ne",
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "contains",
+              "matches"
+            ]
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "actual": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "direction",
+          "value"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "count",
+              "ratio",
+              "duration_ms",
+              "tokens",
+              "cost_usd"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "higher_is_better",
+              "lower_is_better"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "outcome": {
+      "enum": [
+        "passed",
+        "failed",
+        "errored",
+        "skipped"
+      ]
+    },
+    "artifacts": {
+      "type": "object"
+    },
+    "resource_usage": {
+      "type": "object"
+    },
+    "limitations": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_standing": {
+      "enum": [
+        "unreviewed",
+        "contested",
+        "reproduced",
+        "superseded"
+      ]
+    },
+    "extensions": {
+      "type": "object"
+    },
+    "environment_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

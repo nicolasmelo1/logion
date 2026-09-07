@@ -144,6 +144,36 @@ class LogionApiQueries:
         del agent_roles
         return _runner_fact_query(query, "runner_job_terminal_once")
 
+    async def _q_eval_runs_completed(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "eval_runs_completed")
+
+    async def _q_eval_result_digest_stable(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "eval_result_digest_stable")
+
+    async def _q_invalid_eval_rejected(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "invalid_eval_rejected")
+
+    async def _q_canonical_digest_agrees(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "canonical_digest_agrees")
+
+    async def _q_eval_contract_indexed(
+        self, query: JsonObject, agent_roles: dict[str, str]
+    ) -> JsonObject:
+        del agent_roles
+        return _runner_fact_query(query, "eval_contract_indexed")
+
     async def baseline(self, agent_roles: dict[str, str]) -> JsonObject:
         """Capture existing marketplace state before a scenario mutates it."""
         course_ids: set[str] = set()
@@ -3423,6 +3453,47 @@ _RUNNER_QUERY_FACTS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+#: The 16.1 contracts read their facts from the same retained-manifest
+#: shape; each entry names the typed facts the auditor recomputes from.
+_EVAL_QUERY_FACTS: dict[str, tuple[str, ...]] = {
+    "eval_runs_completed": (
+        "eval_run_id",
+        "terminal_status",
+        "contract_digest",
+        "subject_digest",
+        "runner_id",
+        "receipt_digest",
+    ),
+    "eval_result_digest_stable": (
+        "run_one_result_digest",
+        "run_two_result_digest",
+        "digests_equal",
+        "normalization_version",
+        "determinism_class",
+    ),
+    "invalid_eval_rejected": (
+        "error_code",
+        "http_status",
+        "rejected_before_execution",
+        "job_created",
+    ),
+    "canonical_digest_agrees": (
+        "golden_contract_id",
+        "backend_canonical_digest",
+        "runner_canonical_digest",
+        "digests_equal",
+        "canonicalization",
+    ),
+    "eval_contract_indexed": (
+        "resource_id",
+        "resource_type",
+        "contract_digest",
+        "indexed_alongside_subject",
+        "result_contract_digest",
+        "result_contract_standing",
+    ),
+}
+
 
 def _load_runner_manifest(
     raw_path: object, assertion: str
@@ -3478,7 +3549,11 @@ def _runner_fact_result(
 
 def _runner_fact_query(query: JsonObject, query_name: str) -> JsonObject:
     """Read a runner query from captured typed facts, never report claims."""
-    required = _RUNNER_QUERY_FACTS[query_name]
+    required = _RUNNER_QUERY_FACTS.get(query_name) or _EVAL_QUERY_FACTS.get(
+        query_name
+    )
+    if required is None:
+        return _unsupported(f"query {query_name} has no fact contract")
     facts, detail = _load_runner_manifest(query.get("manifest"), query_name)
     if facts is None:
         if detail == "unavailable":

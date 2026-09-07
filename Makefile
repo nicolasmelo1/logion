@@ -148,9 +148,13 @@ docs-generate:
 check-docs:
 	uv run python scripts/gen_docs.py --check
 
+# --allow-commands is required, not optional. L3.EVERY_ACTOR_HAS_A_GOAL
+# runs a command, and without the flag `sf verify` scores it as fired on
+# the "commands are not enabled" finding instead of on its mutation --
+# a rule proven by its own refusal to run.
 factory-check:
-	sf verify
-	sf check
+	sf verify --allow-commands
+	sf check --allow-commands
 
 update-generated-lock:
 	uv run python scripts/check_generated_lock.py --update
@@ -391,3 +395,9 @@ runner-evidence:
 	LOGION_API_BASE_URL=$(LOGION_API_BASE_URL) \
 	LOGION_PUBLIC_REPO_PATH=$(ROOT) \
 	uv run python packages/agent-proving-ground/scripts/run_runner_evidence.py $(EVIDENCE_DIR)
+
+eval-evidence:
+	LOGION_PROVING_GROUND_ROLE_KEYS_FILE=$(LOGION_PROVING_GROUND_ROLE_KEYS_FILE) \
+	LOGION_API_BASE_URL=$(LOGION_API_BASE_URL) \
+	LOGION_PUBLIC_REPO_PATH=$(ROOT) \
+	uv run python packages/agent-proving-ground/scripts/run_eval_evidence.py $(EVIDENCE_DIR)

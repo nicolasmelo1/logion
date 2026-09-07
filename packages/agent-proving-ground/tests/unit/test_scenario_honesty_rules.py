@@ -136,6 +136,19 @@ def test_a_hook_that_prepares_state_the_agent_acts_on_is_allowed() -> None:
     )
 
 
+def test_eval_operator_phase_asserts_the_agent_performed_the_flow() -> None:
+    spec = load_scenario("builtin:eval_contract_reference_runner")
+    phase = next(
+        phase for phase in spec.phases if phase.id == "node_operator_eval_flow"
+    )
+
+    assert phase.goal.strip()
+    assert phase.local_hook is None
+    assert [assertion.type for assertion in phase.assertions] == [
+        "files.eval_agent_performed"
+    ]
+
+
 @pytest.mark.parametrize("name", list_builtin_scenarios())
 def test_every_builtin_scenario_obeys_the_rules(name: str) -> None:
     """Loading is the check: the rules above are schema validators."""

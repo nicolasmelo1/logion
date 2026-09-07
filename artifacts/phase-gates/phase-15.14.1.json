@@ -4,16 +4,16 @@
   "runs": [
     {
       "api_adapter": "local-devrig",
-      "driver": "claude-code",
+      "driver": "codex",
       "implementation": {
         "private_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "public_sha256": "eab8d9e5c372874dbba6f0382cd09b15e66999cfa6a4363c173253a66ed98642"
+        "public_sha256": "bbc615f8bf986c6b1d0ca68a2593b819211b4e09f74b17765b5dc856b62416fd"
       },
-      "model": "claude-haiku-4-5",
+      "model": "gpt-5.4-mini",
       "report": "artifacts/phase-gates/reports/phase-15.14.1-local-multi-agent-node.json",
-      "report_sha256": "35a22b461a446802e2bc0be30966a152aae65ab4acbdd05c8ab0956f8c375448",
-      "run_id": "20260901T171013-phase_15_14_1_local_multi_agent_node",
-      "scenario": "phase_15_14_1_local_multi_agent_node",
+      "report_sha256": "374aa47b4e80748850f3960f903798497a009ec4ce42caa63088385ebf33d52f",
+      "run_id": "20260907T013055-local_multi_agent_node",
+      "scenario": "local_multi_agent_node",
       "status": "passed",
       "unsupported_assertions": []
     }

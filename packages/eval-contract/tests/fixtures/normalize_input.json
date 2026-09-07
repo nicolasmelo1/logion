@@ -1,0 +1,4 @@
+{
+  "input": {"name": "  Grace Hopper ", "email": "GRACE@NAVY.MIL"},
+  "expected": {"input": {"name": "Grace Hopper", "email": "grace@navy.mil"}}
+}

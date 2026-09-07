@@ -5,7 +5,8 @@ RUN useradd --uid "${RUNNER_UID}" --create-home --shell /usr/sbin/nologin runner
 WORKDIR /workspace
 COPY packages/runner /opt/logion-runner
 COPY packages/client /opt/logion-client
-RUN python -m pip install --no-cache-dir --no-compile /opt/logion-client /opt/logion-runner \
+COPY packages/eval-contract /opt/logion-eval-contract
+RUN python -m pip install --no-cache-dir --no-compile /opt/logion-client /opt/logion-eval-contract /opt/logion-runner \
     && rm -rf /root/.cache
 USER runner:runner
 ENV PATH=/usr/local/bin:/usr/bin:/bin PYTHONUNBUFFERED=1

@@ -160,6 +160,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rotate.set_defaults(handler=cmd_rotate_key)
 
+    from logion_runner.evals.cli import register_eval_subcommands
+
+    register_eval_subcommands(subparsers)
+
     return parser
 
 

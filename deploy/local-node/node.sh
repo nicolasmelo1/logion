@@ -217,6 +217,14 @@ node_agent() {
   fi
 }
 
+node_copy() {
+  # Move files between the host and a role's disposable workspace. The
+  # operator needs this to hand a role its inputs and to take its outputs
+  # back; without it the only way in or out is a raw compose invocation,
+  # which resolves neither the runtime nor the role environment.
+  node_compose cp "$@"
+}
+
 node_down() {
   node_compose down
   rm -rf "${NODE_DIR}/dist-wheels"
@@ -291,9 +299,10 @@ case "${1:-}" in
   up) shift; node_up "${1:-${NODE_ROLES:-consumer,auditor}}" ;;
   status) node_status ;;
   agent) shift; role="$1"; shift; node_agent "${role}" "$@" ;;
+  cp) shift; node_copy "$@" ;;
   down) node_down ;;
   reset) shift; node_reset "$1" "${2:-}" ;;
   runner-once) node_runner_once ;;
   doctor) node_doctor ;;
-  *) echo "usage: node.sh {up|status|agent|down|reset|runner-once|doctor} ..." >&2; exit 2 ;;
+  *) echo "usage: node.sh {up|status|agent|cp|down|reset|runner-once|doctor} ..." >&2; exit 2 ;;
 esac

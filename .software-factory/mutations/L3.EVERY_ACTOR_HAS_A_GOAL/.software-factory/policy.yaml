@@ -1,0 +1,16 @@
+# Mutation fixture for L3.EVERY_ACTOR_HAS_A_GOAL. It is supposed to fail.
+# `run` reaches back to the repository's own checker rather than vendoring a
+# copy: a fixture that proves a duplicate fires proves nothing about the
+# script CI actually runs.
+version: 1
+project:
+  name: mutation-L3.EVERY_ACTOR_HAS_A_GOAL
+  languages: [python]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L3.EVERY_ACTOR_HAS_A_GOAL:
+    enabled: true
+    options:
+      run: "python3 ../../../scripts/check_scenario_actors.py ."

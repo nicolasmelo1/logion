@@ -20,10 +20,12 @@ dependencies = [
     "cryptography>=44.0,<52.0",
     "httpx>=0.27,<1.0.0",
     "logion-client",
+    "logion-eval-contract",
 ]
 
 [tool.uv.sources]
 logion-client = { workspace = true }
+logion-eval-contract = { workspace = true }
 
 [project.scripts]
 logion-node = "logion_runner.cli:main"

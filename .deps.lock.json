@@ -109,7 +109,8 @@
     "dependencies": [
       "cryptography>=44.0,<52.0",
       "httpx>=0.27,<1.0.0",
-      "logion-client"
+      "logion-client",
+      "logion-eval-contract"
     ],
     "dependency-groups": {},
     "optional-dependencies": {}

@@ -81,7 +81,7 @@ def repo_files() -> list[Path]:
 
 def normalize_path(raw: str | None) -> str:
     path = raw or "/"
-    path = path.rstrip(").,;\"'")
+    path = path.rstrip(").,;\"'*")
     path = path.split("#", 1)[0].split("?", 1)[0]
     if not path:
         return "/"

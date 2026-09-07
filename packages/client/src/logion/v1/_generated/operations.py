@@ -6,7 +6,7 @@ from typing import cast
 from uuid import UUID
 
 from logion._http import HttpClient, QueryValue
-from logion._json import JsonObject
+from logion._json import JsonObject, JsonValue
 from logion.v1._types.generated.v1 import (
     AcceptBountySubmissionResponse,
     AcceptPlatformBountySubmissionRequest,
@@ -152,6 +152,7 @@ from logion.v1._types.generated.v1 import (
     SetCourseSourceLinkResponse,
     SetReferralAttributionStatusRequest,
     SetReferralAttributionStatusResponse,
+    SubmitEvalResultRequest,
     SubmitExecutionReceiptRequest,
     SubmitExecutionReceiptResponse,
     SubmitFeedbackRequest,
@@ -166,9 +167,12 @@ from logion.v1._types.generated.v1 import (
     UpdateCourseResponse,
     UpdateIndexingRunProgressRequest,
     UpdateIndexingRunProgressResponse,
+    UploadEvalContractRequest,
     UploadExecutionArtifactResponse,
     UpsertCourseReviewRequest,
     UpsertCourseReviewResponse,
+    ValidateEvalJobRequest,
+    ValidateEvalJobResponse,
     WithdrawBountySubmissionResponse,
 )
 
@@ -1301,6 +1305,67 @@ def get_credit_top_up(
         "GET",
         f"/v1/credits/top-ups/{top_up_id}",
         GetCreditTopUpResponse,
+    )
+
+
+def upload_eval_contract(
+    http: HttpClient,
+    *,
+    body: UploadEvalContractRequest,
+) -> JsonObject:
+    """Call the upload_eval_contract API operation."""
+    return cast(
+        JsonObject,
+        http.request(
+            "POST",
+            "/v1/evals/contracts",
+            json=body.model_dump(mode="json", exclude_none=True),
+        ),
+    )
+
+
+def get_eval_contract(
+    http: HttpClient,
+    *,
+    ref: str,
+) -> dict[str, JsonValue]:
+    """Call the get_eval_contract API operation."""
+    return cast(
+        dict[str, JsonValue],
+        http.request(
+            "GET",
+            f"/v1/evals/contracts/{ref}",
+        ),
+    )
+
+
+def validate_eval_job(
+    http: HttpClient,
+    *,
+    body: ValidateEvalJobRequest,
+) -> ValidateEvalJobResponse:
+    """Call the validate_eval_job API operation."""
+    return http.request_model(
+        "POST",
+        "/v1/evals/jobs/validate",
+        ValidateEvalJobResponse,
+        json=body.model_dump(mode="json", exclude_none=True),
+    )
+
+
+def submit_eval_result(
+    http: HttpClient,
+    *,
+    body: SubmitEvalResultRequest,
+) -> JsonObject:
+    """Call the submit_eval_result API operation."""
+    return cast(
+        JsonObject,
+        http.request(
+            "POST",
+            "/v1/evals/results",
+            json=body.model_dump(mode="json", exclude_none=True),
+        ),
     )
 
 
