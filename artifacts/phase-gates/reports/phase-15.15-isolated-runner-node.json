@@ -1,5 +1,5 @@
 {
-  "run_id": "20260907T012517-isolated_runner_node",
+  "run_id": "20260907T234105-isolated_runner_node",
   "scenario": "isolated_runner_node",
   "status": "passed",
   "api_adapter": "local-devrig",
@@ -11,16 +11,16 @@
     "sponsor": "codex",
     "auditor": "codex"
   },
-  "started_at": "2026-09-07T01:25:17.372900Z",
-  "finished_at": "2026-09-07T01:27:56.552601Z",
+  "started_at": "2026-09-07T23:41:05.580828Z",
+  "finished_at": "2026-09-07T23:45:16.990820Z",
   "phase_results": [
     {
       "phase_id": "prepare_runner_operator",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-07T01:25:18.167587Z",
-      "finished_at": "2026-09-07T01:25:20.059112Z",
-      "duration_seconds": 1.892
+      "started_at": "2026-09-07T23:41:06.601187Z",
+      "finished_at": "2026-09-07T23:41:17.741211Z",
+      "duration_seconds": 11.14
     },
     {
       "phase_id": "node_operator_runner_flow",
@@ -36,17 +36,17 @@
           }
         }
       ],
-      "started_at": "2026-09-07T01:25:20.059128Z",
-      "finished_at": "2026-09-07T01:26:39.374115Z",
-      "duration_seconds": 79.314
+      "started_at": "2026-09-07T23:41:17.741232Z",
+      "finished_at": "2026-09-07T23:43:32.525844Z",
+      "duration_seconds": 134.783
     },
     {
       "phase_id": "collect_runner_evidence",
       "status": "completed",
       "assertion_results": [],
-      "started_at": "2026-09-07T01:26:39.374219Z",
-      "finished_at": "2026-09-07T01:26:39.426477Z",
-      "duration_seconds": 0.052
+      "started_at": "2026-09-07T23:43:32.525894Z",
+      "finished_at": "2026-09-07T23:43:32.562425Z",
+      "duration_seconds": 0.037
     },
     {
       "phase_id": "capture_runner_evidence",
@@ -59,11 +59,11 @@
           "evidence": {
             "runner_id": {
               "ok": true,
-              "value": "b85cc01f-d5b7-47e7-83a8-38d89e535036"
+              "value": "6ed734f3-4db9-4f93-b660-322e65ff6b1d"
             },
             "runner_key_fingerprint": {
               "ok": true,
-              "value": "e2d1ecf70cd282c8"
+              "value": "a8dadf1fbb4050fa"
             },
             "runner_import_root": {
               "ok": true,
@@ -86,7 +86,7 @@
           "evidence": {
             "job_id": {
               "ok": true,
-              "value": "7a4484cc-edfc-40a5-81e2-69d83227095c"
+              "value": "da2d7171-8c1e-4064-a22c-c14cfcf92afd"
             },
             "terminal_status": {
               "ok": true,
@@ -106,7 +106,7 @@
             },
             "lease_holder": {
               "ok": true,
-              "value": "b85cc01f-d5b7-47e7-83a8-38d89e535036"
+              "value": "6ed734f3-4db9-4f93-b660-322e65ff6b1d"
             }
           }
         },
@@ -117,11 +117,11 @@
           "evidence": {
             "receipt_id": {
               "ok": true,
-              "value": "fc1851b8-0740-4306-a017-983f5efc09e5"
+              "value": "c0025bea-b7b1-4463-a84e-7377285490cc"
             },
             "receipt_digest": {
               "ok": true,
-              "value": "fc67e0412570b2b76d808ac58ce47fab54f6fd24abfad26c748a4be4d87d4b24"
+              "value": "eb4fe58eb2151e882d2a546d5f36f1fecbd4dc9adb333d4d1c887249f7e2cbd0"
             },
             "coordinator_accepted": {
               "ok": true,
@@ -133,7 +133,7 @@
             },
             "published_at": {
               "ok": true,
-              "value": "2026-09-07T01:25:29.150515+00:00"
+              "value": "2026-09-07T23:41:37.304207+00:00"
             }
           }
         },
@@ -152,7 +152,7 @@
             },
             "signing_key_fingerprint": {
               "ok": true,
-              "value": "f971074c0db3052b"
+              "value": "c3cc1c658f1e22c9"
             },
             "verify_exit_code": {
               "ok": true,
@@ -324,8 +324,8 @@
           }
         }
       ],
-      "started_at": "2026-09-07T01:26:39.426506Z",
-      "finished_at": "2026-09-07T01:26:39.429974Z",
+      "started_at": "2026-09-07T23:43:32.562445Z",
+      "finished_at": "2026-09-07T23:43:32.565211Z",
       "duration_seconds": 0.003
     },
     {
@@ -341,9 +341,9 @@
           }
         }
       ],
-      "started_at": "2026-09-07T01:26:39.429995Z",
-      "finished_at": "2026-09-07T01:27:56.552415Z",
-      "duration_seconds": 77.122
+      "started_at": "2026-09-07T23:43:32.565231Z",
+      "finished_at": "2026-09-07T23:45:16.990455Z",
+      "duration_seconds": 104.424
     }
   ],
   "assertion_results": [
@@ -363,11 +363,11 @@
       "evidence": {
         "runner_id": {
           "ok": true,
-          "value": "b85cc01f-d5b7-47e7-83a8-38d89e535036"
+          "value": "6ed734f3-4db9-4f93-b660-322e65ff6b1d"
         },
         "runner_key_fingerprint": {
           "ok": true,
-          "value": "e2d1ecf70cd282c8"
+          "value": "a8dadf1fbb4050fa"
         },
         "runner_import_root": {
           "ok": true,
@@ -390,7 +390,7 @@
       "evidence": {
         "job_id": {
           "ok": true,
-          "value": "7a4484cc-edfc-40a5-81e2-69d83227095c"
+          "value": "da2d7171-8c1e-4064-a22c-c14cfcf92afd"
         },
         "terminal_status": {
           "ok": true,
@@ -410,7 +410,7 @@
         },
         "lease_holder": {
           "ok": true,
-          "value": "b85cc01f-d5b7-47e7-83a8-38d89e535036"
+          "value": "6ed734f3-4db9-4f93-b660-322e65ff6b1d"
         }
       }
     },
@@ -421,11 +421,11 @@
       "evidence": {
         "receipt_id": {
           "ok": true,
-          "value": "fc1851b8-0740-4306-a017-983f5efc09e5"
+          "value": "c0025bea-b7b1-4463-a84e-7377285490cc"
         },
         "receipt_digest": {
           "ok": true,
-          "value": "fc67e0412570b2b76d808ac58ce47fab54f6fd24abfad26c748a4be4d87d4b24"
+          "value": "eb4fe58eb2151e882d2a546d5f36f1fecbd4dc9adb333d4d1c887249f7e2cbd0"
         },
         "coordinator_accepted": {
           "ok": true,
@@ -437,7 +437,7 @@
         },
         "published_at": {
           "ok": true,
-          "value": "2026-09-07T01:25:29.150515+00:00"
+          "value": "2026-09-07T23:41:37.304207+00:00"
         }
       }
     },
@@ -456,7 +456,7 @@
         },
         "signing_key_fingerprint": {
           "ok": true,
-          "value": "f971074c0db3052b"
+          "value": "c3cc1c658f1e22c9"
         },
         "verify_exit_code": {
           "ok": true,
@@ -637,5 +637,5 @@
     }
   ],
   "failure_message": null,
-  "artifact_root": "phase-15.15"
+  "artifact_root": "reseal-15.15"
 }

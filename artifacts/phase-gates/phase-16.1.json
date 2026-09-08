@@ -4,15 +4,15 @@
   "runs": [
     {
       "api_adapter": "local-devrig",
-      "driver": "codex",
+      "driver": "claude-code",
       "implementation": {
         "private_sha256": "430be1d01d7c99d0021ffecd42af771a99e4a67ac76b9aca8892294e517a8efc",
-        "public_sha256": "1d445b479d9912ef8022e7f17eb6ff1cc6c775e15c0a3f101dcf0b901c407961"
+        "public_sha256": "210dd03705f79936bc25d17e085166bb0bad303924dc3e11bb75f5a8885c364c"
       },
-      "model": "gpt-5.4-mini",
+      "model": "claude-haiku-4-5",
       "report": "artifacts/phase-gates/reports/phase-16.1-eval-contract-reference-runner.json",
-      "report_sha256": "2ad3029ef87cd460b0df7af3dcf66c9fac023863c792bf3c61a285d851392652",
-      "run_id": "20260907T011240-eval_contract_reference_runner",
+      "report_sha256": "72cec14d236e18f2b649d4b3155bbb6b3e2a1183e63434e188e5797c3e7918d4",
+      "run_id": "20260907T225931-eval_contract_reference_runner",
       "scenario": "eval_contract_reference_runner",
       "status": "passed",
       "unsupported_assertions": []
