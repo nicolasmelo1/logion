@@ -21,7 +21,29 @@ from logion.v1._resources.referrals import ReferralsResource
 from logion.v1._resources.reports import ReportsResource
 from logion.v1._resources.resource_feedback import ResourceFeedbackResource
 from logion.v1._resources.resources import ResourcesResource
+from logion.v1._resources.runners import RunnersResource
 from logion.v1._resources.usage_receipts import UsageReceiptResource
+from logion.v1.eval_types import (
+    EvalErrorResponse as EvalErrorResponse,
+)
+from logion.v1.eval_types import (
+    SubmitEvalResultRequest as SubmitEvalResultRequest,
+)
+from logion.v1.eval_types import (
+    SubmitEvalResultResponse as SubmitEvalResultResponse,
+)
+from logion.v1.eval_types import (
+    UploadEvalContractRequest as UploadEvalContractRequest,
+)
+from logion.v1.eval_types import (
+    UploadEvalContractResponse as UploadEvalContractResponse,
+)
+from logion.v1.eval_types import (
+    ValidateEvalJobRequest as ValidateEvalJobRequest,
+)
+from logion.v1.eval_types import (
+    ValidateEvalJobResponse as ValidateEvalJobResponse,
+)
 
 
 class V1Namespace:
@@ -43,6 +65,7 @@ class V1Namespace:
         self.referrals = ReferralsResource(http)
         self.github_setup = GithubSetupResource(http)
         self.resources = ResourcesResource(http)
+        self.runners = RunnersResource(http)
         self.resource_feedback = ResourceFeedbackResource(http)
         self.usage_receipts = UsageReceiptResource(http)
         self.evals = EvalsResource(http)

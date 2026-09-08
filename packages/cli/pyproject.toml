@@ -20,6 +20,7 @@ classifiers = [
 dependencies = [
     "cryptography>=50.0.0,<51.0.0",
     "logion-client",
+    "logion-runner",
     "logion-skillmap",
     "pydantic>=2.7,<3.0.0",
     "pyyaml>=6.0,<7.0",
@@ -38,6 +39,7 @@ recall = ["rapidfuzz>=3.9,<4.0"]
 
 [tool.uv.sources]
 logion-client = { workspace = true }
+logion-runner = { workspace = true }
 logion-skillmap = { workspace = true }
 
 [project.scripts]

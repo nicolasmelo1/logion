@@ -15,12 +15,14 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from logion_eval_contract import (
     EvalContract,
     JsonObject,
+    JsonValue,
     ResultEnvironment,
+    canonicalize_text,
 )
 from logion_eval_contract.models import AssertionOutcome, MetricValue
 
@@ -115,6 +117,8 @@ def _assertion_holds(
         return _string_holds(operator, expected, observed)
     if (
         operator in ("lt", "lte", "gt", "gte")
+        and not isinstance(observed, bool)
+        and not isinstance(expected, bool)
         and isinstance(observed, (int, float))
         and isinstance(expected, (int, float))
     ):
@@ -127,7 +131,7 @@ def _assertion_holds(
 def _scalarize(observed: object) -> str | int | float | bool | None:
     if isinstance(observed, (str, int, float, bool)) or observed is None:
         return observed
-    return json.dumps(observed, sort_keys=True)
+    return canonicalize_text(cast(JsonValue, observed))
 
 
 def _metric_observation(
@@ -306,9 +310,14 @@ def _grade(
             observed = metrics_by_id[assertion.metric].value
         else:
             observed = _scalarize(observed_document.get(assertion.metric))
-        holds = _assertion_holds(
-            assertion.operator, assertion.expected, observed
-        )
+        try:
+            holds = _assertion_holds(
+                assertion.operator, assertion.expected, observed
+            )
+        except (ValueError, re.error) as exc:
+            raise EvalExecutionError(
+                f"cannot evaluate assertion {assertion.id!r}: {exc}"
+            ) from exc
         outcomes.append(
             AssertionOutcome(
                 id=assertion.id,

@@ -39,6 +39,7 @@ IMPLEMENTED_OPERATIONS: dict[str, str] = {
     "get_eval_contract": "client.v1.evals.get_contract",
     "validate_eval_job": "client.v1.evals.validate_job",
     "submit_eval_result": "client.v1.evals.submit_result",
+    "enroll_runner": "client.v1.runners.enroll",
     # Courses
     "create_course": "client.v1.courses.create",
     "get_course": "client.v1.courses.get",
@@ -144,7 +145,6 @@ PREDECLARED_OPERATION_IDS = frozenset({
 UNSUPPORTED_OPERATIONS: dict[str, str] = {
     # Runner/coordinator endpoints are generated for contract compatibility,
     # but have no stable handwritten SDK resource surface yet.
-    "enroll_runner": ("Runner operator endpoint; no stable SDK resource yet."),
     "rotate_runner_key": (
         "Runner operator endpoint; no stable SDK resource yet."
     ),
