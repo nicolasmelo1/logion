@@ -153,7 +153,7 @@ The coordinator never promises compute it does not own. Jobs declare requirement
 ## Mandatory proving-ground scenario
 
 Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
-`builtin:phase_15_15_isolated_runner`.
+`builtin:isolated_runner_node`.
 
 - **Actors/seed:** host Hermes `node_operator`, plus real isolated `consumer`,
   `evaluator`, `contributor`, `sponsor`, and `auditor` containers; the runner is
@@ -175,20 +175,35 @@ Follow [the common real-agent gate](agent-proving-ground-phase-gate.md). Add
 
 ## Acceptance gates
 
+**Status 2026-09-01: implemented and sealed.** Gate
+`artifacts/phase-gates/phase-15.15.json` records run
+`20260901T171705-phase_15_15_isolated_runner` (driver `claude-code` /
+`claude-haiku-4-5`, adapter `local-devrig`) with `status: passed`, no caveats
+and no unsupported assertions. All seven assertions this plan requires passed,
+plus `logs.no_500s`. The three unchecked criteria below are the ones no check
+has been designed for; they are not unbuilt work, and they stay in
+`DEFERRED.md` until an assertion exists that could fail.
+
+The mandatory dogfood protocol was **not** completed. No container/sandboxing
+resource was available to recall, acquire and exercise, so no feedback was
+submitted — the blocker is recorded in `artifacts/dogfood/phase-15.15.md` in the
+public repository, which is what this plan requires when acquisition or real use
+is absent.
+
 Each gate names the check that proves it; see `DEFERRED.md` for
 what the markers below leave unproven.
 
-- [ ] A fresh runner completes a signed fixture job from claim through artifact
+- [x] A fresh runner completes a signed fixture job from claim through artifact
       upload.
       (proof: assertion:api.runner_job_completed)
-- [ ] Cancellation, timeout, lease loss, retry, and duplicate submission are safe.
+- [x] Cancellation, timeout, lease loss, retry, and duplicate submission are safe.
       (proof: assertion:api.runner_job_terminal_once)
-- [ ] A malicious fixture cannot read host secrets or mutate the API service.
+- [x] A malicious fixture cannot read host secrets or mutate the API service.
       (proof: assertion:sandbox.canary_not_exfiltrated)
-- [ ] Runner receipts bind resource, environment, inputs, outputs, and assertion
+- [x] Runner receipts bind resource, environment, inputs, outputs, and assertion
       results.
       (proof: assertion:crypto.runner_receipt_valid)
-- [ ] Public runner package can be installed and complete the conformance fixture
+- [x] Public runner package can be installed and complete the conformance fixture
       without access to either repository's source tree.
       (proof: assertion:api.runner_enrolled)
 - [ ] On an Apple Silicon Mac, the documented Compose stack starts all five roles,

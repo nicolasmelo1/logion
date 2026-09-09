@@ -49,7 +49,7 @@ isolated runner executions reconcile through the implemented code.
 
 ## Replication policy object
 
-Versioned policy fields: eval contract digest, eligible evaluator digests, minimum total results, minimum distinct operators/independence groups, permitted environment equivalence class, deadline, deterministic fields, tolerated numeric precision, and decision rule. Policy digest is stored in every reconciliation.
+Versioned policy fields: eval contract digest, eligible evaluator digests, minimum total results, minimum distinct operators/independence groups, permitted environment equivalence class (which never spans differing harness stacks or iteration budgets), deadline, deterministic fields, tolerated numeric precision, and decision rule. Policy digest is stored in every reconciliation.
 
 ## Canonical result digest
 
@@ -116,3 +116,4 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - Policy changes create new decisions instead of rewriting old ones.
 - Reconciliation result is reproducible offline from its bundle with the API unavailable.
 - Same binary run twice under two runner IDs owned by Logion does not satisfy the independent threshold.
+- Two results whose harness stacks or iteration budgets differ are never counted as replications of each other, however close their numbers.
