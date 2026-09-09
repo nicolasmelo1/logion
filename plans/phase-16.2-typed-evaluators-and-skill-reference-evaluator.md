@@ -100,7 +100,7 @@ Descriptor binds evaluator ID/version/source digest, supported resource/media ty
 - Resolve an exact `agent_skill` version and verify bundle digest before extraction.
 - Create project-scoped install inside the job workspace using existing CLI install helpers as a library; do not shell out to `logion skills install` when a safe library call exists.
 - Project contents: fixture repo, control/assisted workspaces, pinned skill, harness projection, and output only. No global `~/.logion` or agent skill directory writes.
-- Run control and assisted arms with the same agent/provider/config/budgets. Record any unsupported seed determinism as a limitation.
+- Run control and assisted arms with the same agent/provider/config/budgets, the same harness stack, and the same iteration budget. An arm wrapped in an orchestration loop the other arm did not get is not a control; see [16.1's environment fields](phase-16.1-eval-contract-and-reference-runner.md#a-pair-is-not-always-a-pair). Record any unsupported seed determinism as a limitation.
 - Capture declared vs observed capabilities, tool calls, assertion vector, tokens/cost/latency, and cleanup result.
 - Skill instructions are untrusted input and cannot modify evaluator policy/assertions.
 
@@ -133,13 +133,13 @@ Descriptor binds evaluator ID/version/source digest, supported resource/media ty
 - Evaluator plugin interface keyed by resource type and media type.
 - Skill reference evaluator with project-scoped install, baseline/control, assisted run, capability observation, and cleanup.
 - Typed metric namespaces and explicit units/directionality.
-- Evaluator identity, version, source digest, and environment fingerprint in every result.
+- Evaluator identity, version, source digest, and the closed 16.1 environment fields — full harness stack, model, iteration budget — in every result.
 - Quarantine for evaluator/resource incompatibility.
 
 ## Mandatory proving-ground scenario
 
 Use [the common gate](agent-proving-ground-phase-gate.md) and add
-`builtin:phase_16_2_skill_evaluator`.
+`builtin:skill_reference_evaluator`.
 
 - **Prompt:** “Evaluate whether this indexed debugging skill improves completion
   of the supplied repository task. Compare control and assisted arms, report
@@ -172,3 +172,6 @@ what the markers below leave unproven.
 - [ ] The project-scope install is removed after the run and a canary proves no
       global installation changed.
       (proof: unspecified:no assertion proves the project-scope install is removed after the run)
+- [ ] Control and assisted arms are refused when their harness stack or
+      iteration budget differs, not merely reported as a limitation.
+      (proof: unspecified:api.eval_arms_comparable retains budgets and inputs and does not retain the harness stack)

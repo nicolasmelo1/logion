@@ -30,7 +30,7 @@
     },
     {
       "path": "future-roadmap/human-dashboard-and-user-policy.md",
-      "sha256": "3c456f7b-bf85e2ff-87f1713d-d3ea1c69-4630bd55-64ded856-2381ef14-74025dbe"
+      "sha256": "cfcebc9b-7438c096-6c1e74c0-f77a5c9b-c1ec28ce-80f83943-7ac2989c-1ccb6fb8"
     },
     {
       "path": "future-roadmap/native-resource-feedback-and-first-node.md",
@@ -38,7 +38,7 @@
     },
     {
       "path": "future-roadmap/open-protocol-and-entitlement-portability.md",
-      "sha256": "de8e1480-5668be79-9a40c0e7-4e0dd8c4-54c81036-7cfcfc1c-8820fb0f-05fe2218"
+      "sha256": "74c8c37a-79de460d-a0673ad5-90c31faa-7acac1c4-4e880537-c8958e16-18356354"
     },
     {
       "path": "future-roadmap/post-launch-strategy.md",
@@ -70,11 +70,15 @@
     },
     {
       "path": "plans/consumption-adoption-ladder.md",
-      "sha256": "b814ba20-d9e27f51-36398919-14206993-a1efa607-ba190225-8045057e-3bc1abe5"
+      "sha256": "2d1c7353-86b6277a-e34b9940-9c62dcd4-f0b6332f-8cd99105-98e0d111-ef93adc9"
     },
     {
       "path": "plans/cycle-0-contract-e2e-hardening.md",
       "sha256": "28506ec7-5aaaddd0-76eb5a9b-0608e2a9-cf6577a7-662441bd-757d02ff-c9331c62"
+    },
+    {
+      "path": "plans/driven-actor-performs-the-measured-flow.md",
+      "sha256": "170ce4b2-279d76c7-8ea53021-544b4694-d337c150-edef5cb4-bca4fed5-3d81d841"
     },
     {
       "path": "plans/indexer-run-progress-observability.md",
@@ -86,35 +90,15 @@
     },
     {
       "path": "plans/next-steps.md",
-      "sha256": "31db3ea7-09fe50cd-8bd71a21-6b47870d-d2ae5cc6-e7bc2f7c-576de2bb-54c52a33"
+      "sha256": "e20d7332-a39c171d-3b68bc69-0c6ae6ef-9e46cc0a-1b801195-24dde668-b356d635"
     },
     {
       "path": "plans/normative-carry-overs.md",
-      "sha256": "18b61ccc-7d166dd2-b44840d0-47e609f9-3835ee6b-bf6aedf8-033c303c-64171dca"
+      "sha256": "e8cd98f1-ab388ea6-95afa76e-15df1274-37888b8f-df7c1187-5dc36934-a7bafb7e"
     },
     {
       "path": "plans/phase-15-native-resource-loop-and-first-ai-catalog-ard-node.md",
       "sha256": "d8ec7a9a-791b23b5-8570fb90-e0f30cae-a1fbbd79-5e0a405e-2381688f-e17277c2"
-    },
-    {
-      "path": "plans/phase-15.10-native-acquisition-artifact-delivery-and-inventory.md",
-      "sha256": "79fcaf3e-09cbcad4-161eb37e-b14bd71b-b7878bba-aceb7bdb-0f30ca09-9c3af138"
-    },
-    {
-      "path": "plans/phase-15.10.1-deepseek-harness-adapter-and-logion-dsh-plugin.md",
-      "sha256": "dcfb04e8-758b829f-37c292ff-dbcd18a2-bb31ca12-7d5b0f1c-02d5d57c-85d103b7"
-    },
-    {
-      "path": "plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md",
-      "sha256": "1c0bc904-75836003-6811c3e4-c8bcfc4e-abe8730e-9e969e3b-84988eda-9acd0139"
-    },
-    {
-      "path": "plans/phase-15.11.1-publisher-integrated-consented-observation.md",
-      "sha256": "31926669-fd250129-f9628228-560ffff0-ab0d7b0e-3776d0c0-c99cab59-64a0ce1a"
-    },
-    {
-      "path": "plans/phase-15.12-ai-catalog-publication-and-ard-discovery.md",
-      "sha256": "cc6c5481-2a0af01e-0b363d03-e9a6940b-3349e324-a0e6996a-70f85ad6-84acb564"
     },
     {
       "path": "plans/phase-15.13-portable-scan-evidence.md",
@@ -126,11 +110,11 @@
     },
     {
       "path": "plans/phase-15.14.1-local-multi-agent-first-node-foundation.md",
-      "sha256": "a396ddad-4164d54c-b39dab94-31da0ae9-e9e68941-da2f8f84-e00c6cee-b3c4978d"
+      "sha256": "a0969006-97ae11fb-7d4151fe-065c0157-e3b6108f-5b0406ba-971e3881-86455af8"
     },
     {
       "path": "plans/phase-15.15-isolated-first-runner-node.md",
-      "sha256": "b27bca03-16f928e3-ea74d387-70026145-4f70b119-3c83f80b-cf177403-41882042"
+      "sha256": "ad7fe673-e59032db-344a3bb5-2c255cba-095ac234-ec9152fe-ecfde678-e131eef8"
     },
     {
       "path": "plans/phase-15.16-first-party-resource-dogfood-loop.md",
@@ -146,7 +130,27 @@
     },
     {
       "path": "plans/phase-16.1-eval-contract-and-reference-runner.md",
-      "sha256": "9cb69e3c-de28f259-ddff0bac-ddbc10c6-725a28e3-ac77cb3c-ae1ed4bc-3d2767cb"
+      "sha256": "b449c423-95d36ef1-bed41c31-9e2f75be-121660b5-2938d8e1-223e1a77-6a116b2e"
+    },
+    {
+      "path": "plans/phase-16.1.1-a-gate-outlives-its-plan.md",
+      "sha256": "481cbf84-d4e2d180-dce1f1f7-031430ac-b65c7dfc-9e93a69f-a2cf40f7-16415f7c"
+    },
+    {
+      "path": "plans/phase-16.1.2-a-plan-is-one-pull-request.md",
+      "sha256": "68e01cfc-4f564ac4-37f533da-2ba32b40-0dcb458e-796159fb-ecc4327d-443e6f22"
+    },
+    {
+      "path": "plans/phase-16.1.3-the-documentation-is-read-out-of-the-code.md",
+      "sha256": "277772c9-88bc61b3-76fa2489-897e38fb-9a91e238-f64b7b40-c631e456-6109075d"
+    },
+    {
+      "path": "plans/phase-16.1.4-a-published-entry-resolves.md",
+      "sha256": "6fd740f4-eff58d30-19c61210-6ebe1326-3208798f-3e4b15a6-813d4919-81916c52"
+    },
+    {
+      "path": "plans/phase-16.1.5-what-is-installed-here-has-a-version.md",
+      "sha256": "4c8a557a-e4906b01-203fc3c7-8680d7e5-810ec96b-c806f8e3-cf26be95-64abe66a"
     },
     {
       "path": "plans/phase-16.10-external-runner-onboarding-and-conformance.md",
@@ -162,7 +166,7 @@
     },
     {
       "path": "plans/phase-16.2-typed-evaluators-and-skill-reference-evaluator.md",
-      "sha256": "8674489b-651863c5-4cbd4cd3-2f2ce452-dca6a2ad-b4e2f5e0-ced0e3ec-d9eb0fb0"
+      "sha256": "bf2de90b-a8b7cc0b-6933d6c8-a73dcdcd-c41344a7-b3533208-1ddd7260-fbc0ec12"
     },
     {
       "path": "plans/phase-16.3-runner-registry-and-network-jobs.md",
@@ -170,11 +174,11 @@
     },
     {
       "path": "plans/phase-16.4-deterministic-replication-and-agreement.md",
-      "sha256": "bb136f7d-f0f6fcfb-515bf968-fa232b36-e8aa3506-51bc4260-fc632582-45ffaa31"
+      "sha256": "cc1ac948-8b9bd2bb-f2b358f5-bcd2e239-1661e506-f10d0ed7-62a36cdd-0aba6b4a"
     },
     {
       "path": "plans/phase-16.5-eval-attestations-and-cross-node-authority.md",
-      "sha256": "efec965f-00f2095d-f75c4f14-98063494-e76eee2f-148f2b66-d91eb657-54d84820"
+      "sha256": "e16f0917-64824862-da76fe17-5bb92fc7-09e26e8b-5571782d-e21a073a-dc6801cc"
     },
     {
       "path": "plans/phase-16.6-benchmark-backed-bounties.md",
@@ -190,7 +194,7 @@
     },
     {
       "path": "plans/phase-16.9-benchmark-field-reconciliation.md",
-      "sha256": "c09c8d3c-14298878-11354114-5fe37d3b-a65bb7ed-638881bd-8b91d6ed-423c95ae"
+      "sha256": "a3d377b7-c852cddd-5595a416-83c41849-ac669438-016e3903-48c70b86-0ccea50e"
     },
     {
       "path": "plans/phase-17-open-ecosystem-and-production-hardening.md",
@@ -226,11 +230,15 @@
     },
     {
       "path": "plans/positioning-and-independence.md",
-      "sha256": "0df78710-3faa4046-f5f8a600-97bda4c7-371a4a08-e95cf9df-3f51de51-4ca9b3bc"
+      "sha256": "58d813ac-81ec01ac-9ac9083d-9e18fc23-0743e84c-d4465fcf-7f78a338-91bd9be0"
+    },
+    {
+      "path": "plans/public-answer-surface.md",
+      "sha256": "d86eaf49-8eedbe9c-0a6c1265-1c6ded22-d8c0f8e6-3912fe2a-9cfafb2c-44c3a1fd"
     },
     {
       "path": "plans/release-0.2.md",
-      "sha256": "4a5f1f7b-06c7fe45-6f280905-91468f40-4b56b2aa-a261bdf6-efe008cd-5e9274db"
+      "sha256": "8b41801e-790d6cb2-fe397f99-cc7fc2d9-45485750-f2c64c60-97aa7840-5061dc9e"
     },
     {
       "path": "protocol-specs/README.md",
@@ -294,5 +302,5 @@
     }
   ],
   "schema_version": 1,
-  "source_revision": "9f43c8f5-9534ee5b-644a30f6-a43c8dba-a987b9d2"
+  "source_revision": "31b8ea8b-1aab8817-b2534fd1-77a9e8c6-abd1c888"
 }

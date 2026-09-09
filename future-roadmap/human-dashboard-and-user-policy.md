@@ -15,8 +15,8 @@ Neither ships in `logion` 0.2.0. The readiness and enforcement seed now lives
 in [`plans/phase-15.15-isolated-first-runner-node.md`](../plans/phase-15.15-isolated-first-runner-node.md)
 (runner doctor, project-scoped resolution, and sandbox enforcement).
 Native inventory plus `off|local-only|prompt|auto` feedback consent lands earlier
-in [`plans/phase-15.10`](../plans/phase-15.10-native-acquisition-artifact-delivery-and-inventory.md)
-and [`plans/phase-15.11`](../plans/phase-15.11-native-use-observation-linked-feedback-and-reviews.md);
+in [`maintainer documentation: native-acquisition-and-inventory.md`](../maintainer documentation: native-acquisition-and-inventory.md)
+and [`maintainer documentation: native-use-observation-and-feedback.md`](../maintainer documentation: native-use-observation-and-feedback.md);
 the dashboard must configure those existing policies rather than inventing a second
 telemetry preference.
 
