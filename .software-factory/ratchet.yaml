@@ -12,8 +12,8 @@ rules:
     - packages/agent-proving-ground/agent_proving_ground/assertions/api.py:62
     - packages/agent-proving-ground/agent_proving_ground/assertions/files.py:669
     - packages/agent-proving-ground/agent_proving_ground/drivers/_provider.py:217
-    - packages/agent-proving-ground/agent_proving_ground/runner.py:578
-    - packages/agent-proving-ground/agent_proving_ground/runner.py:594
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:580
+    - packages/agent-proving-ground/agent_proving_ground/runner.py:596
     - packages/agent-proving-ground/tests/unit/test_builtin_scenario_labels.py:10
     - packages/runner/logion_runner/_json.py:51
   L1.COMPLEXITY_CEILING:

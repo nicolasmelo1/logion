@@ -253,3 +253,13 @@ final_assertions:
   - type: sandbox.cross_volume_canary_unreadable
     params:
       manifest: "${AGENT_AUDITOR_WORKSPACE}/evidence/canaries.json"
+# The scenario starts the roles and is therefore what stops them. Runs
+# after every phase and after the final assertions, whatever the run
+# decided, and produces no evidence: it releases the containers and the
+# network, and `compose down` without `-v` leaves the named volumes the
+# restart evidence depends on exactly where they are.
+teardown_hooks:
+  - hook: packages/agent-proving-ground/scripts/capture_local_node_evidence.py
+    args:
+      - teardown
+      - "${AGENT_CONSUMER_WORKSPACE}/evidence/teardown.json"

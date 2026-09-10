@@ -383,6 +383,7 @@ class ScenarioRunner:
 
     async def run(self) -> ScenarioResult:
         result: ScenarioResult | None = None
+        started_world: World | None = None
         phase_results: list[dict] = []
         all_assertion_results: list[AssertionOutcome] = []
         self.timeline.event(
@@ -391,7 +392,7 @@ class ScenarioRunner:
         try:
             await self.api.start()
             self.timeline.event("api.started", api_adapter=self.api.name)
-            world = await self.api.create_world(
+            world = started_world = await self.api.create_world(
                 self.run_id,
                 self.scenario.name,
                 [a.id for a in self.scenario.agents],
@@ -476,6 +477,7 @@ class ScenarioRunner:
                 status=result.status,
             )
             await self._stop_agents()
+            await self._run_teardown_hooks(started_world)
             await self.api.stop()
             await self.artifacts.flush()
             await self.timeline.flush()
@@ -926,6 +928,66 @@ class ScenarioRunner:
             [r.model_dump(mode="json") for r in results],
         )
         return results
+
+    async def _run_teardown_hooks(self, world: World | None) -> None:
+        """Release what the scenario started, whatever the run decided.
+
+        A teardown hook produces no evidence and cannot change a result:
+        a run that passed had already passed, and a run that failed is not
+        rescued by a clean exit. What it exists to stop is the opposite
+        failure — a gate that seals evidence about isolated roles and
+        leaves the roles running on the operator's machine afterwards.
+
+        Failures here are logged and swallowed. A teardown that could fail
+        a run would give a scenario two ways to go red, only one of which
+        is about the product.
+        """
+        import asyncio
+        import subprocess
+
+        if world is None or not self.scenario.teardown_hooks:
+            return
+        bindings = _scenario_bindings(world)
+        env = {
+            **os.environ,
+            **bindings,
+            "LOGION_PUBLIC_REPO_PATH": str(world.root_dir),
+        }
+        env.pop("LOGION_API_KEY", None)
+        env.pop("LOGION_PROVING_GROUND_API_KEY", None)
+        for spec in self.scenario.teardown_hooks:
+            hook = os.path.expandvars(spec.hook)
+            if not hook.startswith("/"):
+                hook = _resolve_hook_path(hook, world.root_dir)
+            args = [
+                os.path.expandvars(_resolve_scenario_value(a, bindings))
+                for a in spec.args
+            ]
+            cmd = [hook, *args]
+            if Path(hook).suffix == ".py":
+                cmd = [sys.executable, hook, *args]
+            self.timeline.event("run.teardown.started", hook=spec.hook)
+            try:
+                proc = await asyncio.to_thread(
+                    subprocess.run,
+                    cmd,
+                    cwd=world.root_dir,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=spec.timeout_seconds,
+                )
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                self.timeline.event(
+                    "run.teardown.failed", hook=spec.hook, error=str(exc)
+                )
+                continue
+            self.timeline.event(
+                "run.teardown.completed",
+                hook=spec.hook,
+                exit_code=proc.returncode,
+                stderr=proc.stderr[:500] if proc.returncode else "",
+            )
 
     async def _run_local_hook(
         self, phase: PhaseSpec, world: World

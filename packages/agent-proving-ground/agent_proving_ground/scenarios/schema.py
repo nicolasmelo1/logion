@@ -181,6 +181,22 @@ class ExecutionRequirements(BaseModel):
     driver_models: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class TeardownHookSpec(BaseModel):
+    """A command the run releases its own resources with.
+
+    Declared by the scenario rather than known to the runner: the runner
+    has no business knowing what a compose project is, and a scenario that
+    starts something outside the run directory is the only thing that knows
+    how to stop it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    hook: str
+    args: list[str] = Field(default_factory=list)
+    timeout_seconds: int = 300
+
+
 class ScenarioSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -202,6 +218,8 @@ class ScenarioSpec(BaseModel):
     agents: list[AgentSpec]
     phases: list[PhaseSpec]
     final_assertions: list[AssertionSpec] = Field(default_factory=list)
+    #: Run after every phase, whatever the run decided, and never evidence.
+    teardown_hooks: list[TeardownHookSpec] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
