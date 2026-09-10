@@ -730,6 +730,42 @@ def capture_harness_use(out: Path) -> None:
     out.write_text(json.dumps({"harness_runs": results}, indent=2) + "\n")
 
 
+def capture_teardown(out: Path) -> None:
+    """Stop the node the run started and record what survived it.
+
+    The scenario brings roles up and, before this existed, the last thing
+    it did to the node was bring it up again — so a sealed gate about
+    isolated roles left the roles on the operator's machine until their
+    wall-clock timeout killed them, and left the dead containers after
+    that. Named volumes are kept: ``node.sh down`` is ``compose down``
+    without ``-v``, so role state survives a teardown exactly as the
+    restart evidence says it does.
+    """
+    repo_root = NODE_DIR.parent.parent
+    down = subprocess.run(
+        ["make", "node-dev-down"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        check=False,
+    )
+    survivors = {role: _container_id(role) for role in ("consumer", "auditor")}
+    out.write_text(
+        json.dumps(
+            {
+                "teardown": {
+                    "down_exit_code": down.returncode,
+                    "surviving_container_ids": survivors,
+                }
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> int:
     capture = sys.argv[1]
     out = Path(sys.argv[2]).resolve()
@@ -750,6 +786,8 @@ def main() -> int:
         capture_restart(out)
     elif capture == "harness_use":
         capture_harness_use(out)
+    elif capture == "teardown":
+        capture_teardown(out)
     elif capture == "selective_reset":
         cred = Path(sys.argv[3]) if len(sys.argv) > 3 else None
         capture_selective_reset(out, cred)
