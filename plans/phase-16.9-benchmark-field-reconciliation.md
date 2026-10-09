@@ -88,7 +88,7 @@ Shadow-mode alerts on Logion dogfood for four weeks. Human triage labels useful/
 
 ## Build
 
-- Join compatible signals by resource digest, metric definition, harness class, and time window.
+- Join compatible signals by resource digest, metric definition, harness stack, iteration budget, and time window.
 - Drift and divergence detection with minimum sample and confidence metadata.
 - Investigation artifacts linking representative receipts, evals, and environment differences.
 - Optional bounty draft; never auto-publish or auto-pay from telemetry alone.
@@ -122,3 +122,5 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - No automatic ranking penalty or payout decision consumes reconciliation until a later explicit policy phase.
 - Declared ASM/provider claims, receipts, Logion observations, and reconciliation
   outputs remain separately attributable and digest-addressed.
+- A benchmark result is never reconciled against a field cohort whose harness
+  stack or iteration budget differs from the one the benchmark ran under.

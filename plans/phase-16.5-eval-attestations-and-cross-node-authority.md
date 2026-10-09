@@ -49,7 +49,7 @@ the backend result. No actual resource use means no feedback.
 
 ## Attestation predicate and cryptography
 
-- Add `aktp.eval.result/v1` to the public protocol package. It embeds/references eval contract digest, subject digest, evaluator descriptor digest, runner receipt digest, normalized result digest, environment class, artifacts, outcome, limitations, and replication group/decision when present.
+- Add `aktp.eval.result/v1` to the public protocol package. It embeds/references eval contract digest, subject digest, evaluator descriptor digest, runner receipt digest, normalized result digest, environment class — including the full harness stack and iteration budget of [16.1](phase-16.1-eval-contract-and-reference-runner.md#a-pair-is-not-always-a-pair) — artifacts, outcome, limitations, and replication group/decision when present.
 - Reuse the 15.11 canonicalization, signature, issuer, key rotation, and artifact code. Do not create an “eval signature” subsystem.
 - An attestation is cryptographically `valid|invalid|unverifiable`; local authority is separately `accepted|rejected|insufficient|expired`. API/UI must expose both.
 
@@ -110,3 +110,4 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - No single global score or hidden issuer weighting is introduced.
 - Public verifier reaches the same explanation tree as the backend for every golden policy/evidence bundle.
 - An invalid signature can never be rescued by a permissive authority policy.
+- A local policy can require a declared harness stack and iteration budget, and an attestation omitting either resolves to `insufficient` rather than `accepted`.
