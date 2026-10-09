@@ -49,7 +49,7 @@ isolated runner executions reconcile through the implemented code.
 
 ## Replication policy object
 
-Versioned policy fields: eval contract digest, eligible evaluator digests, minimum total results, minimum distinct operators/independence groups, permitted environment equivalence class, deadline, deterministic fields, tolerated numeric precision, and decision rule. Policy digest is stored in every reconciliation.
+Versioned policy fields: eval contract digest, eligible evaluator digests, minimum total results, minimum distinct operators/independence groups, permitted environment equivalence class (which never spans differing harness stacks or iteration budgets), deadline, deterministic fields, tolerated numeric precision, and decision rule. Policy digest is stored in every reconciliation.
 
 ## Canonical result digest
 
@@ -82,6 +82,74 @@ Versioned policy fields: eval contract digest, eligible evaluator digests, minim
 ## Rollout
 
 Start with public deterministic fixtures on two Logion-controlled but explicitly same-operator runners to debug mechanics; UI must label them non-independent. Phase exit requires a truly separate operator. Do not implement majority voting for rubric/nondeterministic evals here.
+
+## First nondeterministic subject: does a checked invariant change what an agent ships?
+
+The deterministic fixtures above debug the mechanics. They cannot exercise the
+states this phase exists to produce: a fixture that agrees every time never
+distinguishes `reproduced` from `drifted`, and a controlled divergence is a
+divergence somebody planted. The first subject that *needs* this phase is one
+that is nondeterministic by construction, and the obvious one is also a
+measurement Logion has a reason to publish.
+
+**The claim under test.** Several tools now ship a machine-checked invariant
+file next to the code — Bend's `LAWS.bend`, checked by `bend PROOF.bend` before
+commit, is the sharpest statement of it: "AGENTS.md backed by proof". The claim
+is behavioural and about an artifact an agent installs: that having invariants a
+machine checks, rather than invariants written down, changes what the agent
+ships. Nobody has measured it. That is the shape of every claim this product
+exists to measure.
+
+**Three arms, one language, one model, the same tasks.**
+
+| Arm | Treatment |
+| --- | --- |
+| A | The task, and nothing else. |
+| B | The task, plus the invariants stated in prose the agent reads. |
+| C | The task, plus the same invariants as checks the agent can run and that run in its gate. |
+
+A against C is the interesting number. B is the arm that makes the result mean
+anything: without it, C's advantage is indistinguishable from having been handed
+more context about the problem, and the honest null hypothesis is that writing
+the invariants down at all is the whole effect.
+
+Bend is not an arm. Restricting the tasks to a language expressible in it would
+confound the treatment with the novelty of the language and leave a sample too
+small to read. It can be a fourth arm over the subset of tasks it can express,
+reported on its own and never pooled with the others.
+
+**The oracle is declared before the run.** Each task carries a held-out defect
+set — inputs the implementation must handle, fixed in advance, never shown to
+the agent in any arm, and checked mechanically against observed state rather
+than against the agent's prose. A task whose defects cannot be stated that way
+does not belong in the set.
+
+**What replication is for here.** Agent runs vary; a single run per arm is an
+anecdote and publishing it would be the exact failure this product names in
+other people's hubs. Each arm runs under at least two independently configured
+runners, and a difference that does not reproduce is `inconclusive` rather than
+a finding. The honesty boundary at the top of this phase applies unchanged: two
+processes under one operator are not independent nodes, and a per-arm number
+from one operator is a debugging artifact, not a measurement.
+
+**Confounders the report must name, not resolve.** The treated arms carry more
+context than A, so length is not held constant and cannot be claimed to be. Who
+wrote the invariants, and whether they were written before or after seeing the
+defect set, decides the result more than the arms do. In arm C the checker must
+be observed to have actually run — a checked invariant nobody ran is arm B with
+extra files, and that is the single easiest way for this experiment to report a
+false positive.
+
+**Non-goals.** This is not a claim about Bend, about any proof assistant, or
+about formal methods. It ranks nothing and no vendor is named in the result. It
+produces one number with an interval, or it produces `inconclusive`.
+
+**Exit condition:** one published report says whether a machine-checked
+invariant file changed what a cheap agent shipped, arm B stands between arm A
+and arm C so the answer is about checking rather than about writing things down,
+every arm reproduced across two independently configured runners or is reported
+as inconclusive, and the confounders above appear in the report rather than in
+the discussion afterwards.
 
 ## Build
 
@@ -116,3 +184,4 @@ Use [the common gate](agent-proving-ground-phase-gate.md) and add
 - Policy changes create new decisions instead of rewriting old ones.
 - Reconciliation result is reproducible offline from its bundle with the API unavailable.
 - Same binary run twice under two runner IDs owned by Logion does not satisfy the independent threshold.
+- Two results whose harness stacks or iteration budgets differ are never counted as replications of each other, however close their numbers.

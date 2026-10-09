@@ -193,7 +193,7 @@ real-agent scenario below.
 
 ### Mandatory real-agent scenario
 
-Add `builtin:phase_15_14_1_local_multi_agent_node` and pass it with GPT-5.4-mini
+Add `builtin:local_multi_agent_node` and pass it with GPT-5.4-mini
 or Claude Haiku against the locally running real API.
 
 - **Prompt to host Hermes:** “Start the bounded 15.14.1 foundation smoke with
@@ -218,29 +218,44 @@ The canonical policy requires exactly these assertions:
 `api.role_credentials_isolated`, `api.state_survives_restart`,
 `files.role_cleanup_complete`, and `logs.no_500s`.
 
-- [ ] The documented command starts the local API/devrig plus consumer and
+**Status 2026-09-01: implemented and sealed.** Gate
+`artifacts/phase-gates/phase-15.14.1.json` records run
+`20260901T171013-phase_15_14_1_local_multi_agent_node` (driver `claude-code` /
+`claude-haiku-4-5`, adapter `local-devrig`) with `status: passed`, no caveats and
+no unsupported assertions. All eight assertions below passed, plus `logs.no_500s`
+and `timeline.no_unredacted_secret`.
+
+**One bound on that claim.** This phase sits in `_RECOMPUTATION_FREEZE` in
+`contract_audit/evidence_contract.py` until `FREEZE_REVIEW_BY` (2026-09-30). Its
+evidence contract is declared, but the auditor does not yet recompute the verdict
+from typed facts for these pairs — it is holding the specification of what the
+15.14.1 hooks do not capture yet. So these boxes rest on the run reporting its own
+status, one rung below 15.15, whose facts *are* recomputed. Lifting the freeze is
+tracked there, not here.
+
+- [x] The documented command starts the local API/devrig plus consumer and
       auditor as actual non-root Compose services.
       (proof: assertion:sandbox.roles_run_non_root)
-- [ ] Both role services run a gate-approved real-agent harness inside their
+- [x] Both role services run a gate-approved real-agent harness inside their
       containers, and each harness process invokes the installed Logion CLI.
       Host-side drivers coordinate but do not count as either role process.
       (proof: assertion:sandbox.real_harness_uses_logion)
-- [ ] Both role services run with the declared CPU, memory, PID, and wall-time
+- [x] Both role services run with the declared CPU, memory, PID, and wall-time
       limits.
       (proof: assertion:sandbox.role_resource_limits_enforced)
-- [ ] Host Hermes can coordinate without mounting host or cross-role homes,
+- [x] Host Hermes can coordinate without mounting host or cross-role homes,
       credentials, spools, workspaces, keychain, or container socket.
       (proof: assertion:sandbox.cross_volume_canary_unreadable)
-- [ ] Consumer and auditor receive distinct credentials; selective reset
+- [x] Consumer and auditor receive distinct credentials; selective reset
       revokes consumer's old credential without invalidating auditor.
       (proof: assertion:api.role_credentials_isolated)
-- [ ] A fresh consumer session sees the fixture in repository `XPTO`, but not
+- [x] A fresh consumer session sees the fixture in repository `XPTO`, but not
       in repository `ABC`, consumer user scope, or auditor scope.
       (proof: assertion:files.install_scoped_to_repository)
-- [ ] Normal stop/start preserves each role's intended state without making it
+- [x] Normal stop/start preserves each role's intended state without making it
       visible to the other role.
       (proof: assertion:api.state_survives_restart)
-- [ ] Explicit consumer reset removes only consumer disposable state while
+- [x] Explicit consumer reset removes only consumer disposable state while
       auditor remains usable.
       (proof: assertion:files.role_cleanup_complete)
 

@@ -29,7 +29,7 @@ hf download owner/model --revision COMMIT
 logion resources acquire RESOURCE_ID --version VERSION_ID --channel logion_bundle
 ```
 
-Logion may recommend or delegate to these commands, but it does not silently replace them. Phase [`15.10`](phase-15.10-native-acquisition-artifact-delivery-and-inventory.md) adds:
+Logion may recommend or delegate to these commands, but it does not silently replace them. Shipped, per [`native-acquisition-and-inventory.md`](../maintainer documentation: native-acquisition-and-inventory.md):
 
 - real Logion-hosted Course/capability downloads;
 - native acquisition plans;
@@ -50,12 +50,12 @@ npx plugins add OFFICIAL_LOGION_PLUGIN
 
 The skill installs the Logion companion into the same Agent Skills workflow the user already uses. The plugin installs the thin observer integration where supported. If the verified Logion CLI is absent, first use explains and requests approval for its official installer; neither native command silently installs a binary, enables hooks, uploads telemetry, or opts into automatic feedback.
 
-Phase [`15.11`](phase-15.11-native-use-observation-linked-feedback-and-reviews.md) owns this surface.
+[Native-use observation](../maintainer documentation: native-use-observation-and-feedback.md) owns this surface.
 
 ## Rung 1.1 — Accept Logion inside the publisher's resource
 
 A resource publisher may use
-[`15.11.1`](phase-15.11.1-publisher-integrated-consented-observation.md)
+[the publisher-integrated path](normative-carry-overs.md#publisher-integrated-observation--designed-not-built)
 to ship a thin, open-source observer in a native plugin projection. The user
 installs the resource through the manager they already use and sees one exact
 disclosure before any observation state or network request:
